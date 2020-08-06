@@ -42,5 +42,35 @@ error: this `min`/`max` combination leads to constant result
 LL |     max(min(s, "Apple"), "Zoo");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: this `min`/`max` combination leads to constant result
+  --> $DIR/min_max.rs:34:5
+   |
+LL |     x.min(1).max(3);
+   |     ^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> $DIR/min_max.rs:35:5
+   |
+LL |     x.max(3).min(1);
+   |     ^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> $DIR/min_max.rs:40:5
+   |
+LL |     max(x.min(1), 3);
+   |     ^^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> $DIR/min_max.rs:43:5
+   |
+LL |     s.max("Zoo").min("Apple");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this `min`/`max` combination leads to constant result
+  --> $DIR/min_max.rs:44:5
+   |
+LL |     s.min("Apple").max("Zoo");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
 

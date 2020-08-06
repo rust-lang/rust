@@ -18,6 +18,10 @@ declare_clippy_lint! {
     /// ```ignore
     /// min(0, max(100, x))
     /// ```
+    /// or
+    /// ```ignore
+    /// x.max(100).min(0)
+    /// ```
     /// It will always be equal to `0`. Probably the author meant to clamp the value
     /// between 0 and 100, but has erroneously swapped `min` and `max`.
     pub MIN_MAX,
@@ -60,25 +64,35 @@ enum MinMax {
 }
 
 fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
-    if let ExprKind::Call(ref path, ref args) = expr.kind {
-        if let ExprKind::Path(ref qpath) = path.kind {
-            cx.typeck_results()
-                .qpath_res(qpath, path.hir_id)
-                .opt_def_id()
-                .and_then(|def_id| {
-                    if match_def_path(cx, def_id, &paths::CMP_MIN) {
-                        fetch_const(cx, args, MinMax::Min)
-                    } else if match_def_path(cx, def_id, &paths::CMP_MAX) {
-                        fetch_const(cx, args, MinMax::Max)
-                    } else {
-                        None
-                    }
-                })
-        } else {
-            None
-        }
-    } else {
-        None
+    match expr.kind {
+        ExprKind::Call(ref path, ref args) => {
+            if let ExprKind::Path(ref qpath) = path.kind {
+                cx.typeck_results()
+                    .qpath_res(qpath, path.hir_id)
+                    .opt_def_id()
+                    .and_then(|def_id| {
+                        if match_def_path(cx, def_id, &paths::CMP_MIN) {
+                            fetch_const(cx, args, MinMax::Min)
+                        } else if match_def_path(cx, def_id, &paths::CMP_MAX) {
+                            fetch_const(cx, args, MinMax::Max)
+                        } else {
+                            None
+                        }
+                    })
+            } else {
+                None
+            }
+        },
+        ExprKind::MethodCall(ref path, _, ref args, _) => {
+            if path.ident.as_str() == sym!(max).as_str() {
+                fetch_const(cx, args, MinMax::Max)
+            } else if path.ident.as_str() == sym!(min).as_str() {
+                fetch_const(cx, args, MinMax::Min)
+            } else {
+                None
+            }
+        },
+        _ => None,
     }
 }
 

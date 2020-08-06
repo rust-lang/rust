@@ -30,4 +30,18 @@ fn main() {
     max(min(s, "Apple"), "Zoo");
 
     max("Apple", min(s, "Zoo")); // ok
+
+    x.min(1).max(3);
+    x.max(3).min(1);
+
+    x.max(1).min(3); // ok
+    x.min(3).max(1); // ok
+
+    max(x.min(1), 3);
+    min(x.max(1), 3); // ok
+
+    s.max("Zoo").min("Apple");
+    s.min("Apple").max("Zoo");
+
+    s.min("Zoo").max("Apple"); // ok
 }
