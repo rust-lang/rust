@@ -381,14 +381,11 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     Ok(unsafe { from_utf8_unchecked_mut(v) })
 }
 
-
 #[repr(C)]
 union StrOrSlice<'a> {
     str: &'a str,
     slice: &'a [u8],
 }
-
-
 
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
@@ -429,9 +426,8 @@ union StrOrSlice<'a> {
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
     // Also relies on `&str` and `&[u8]` having the same layout.
-    unsafe{ StrOrSlice{ slice: v }.str }
+    unsafe { StrOrSlice { slice: v }.str }
 }
-
 
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8; mutable version.
