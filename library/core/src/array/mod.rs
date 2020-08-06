@@ -377,7 +377,7 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(y, [2,3,4]);
     /// ```
     #[unstable(feature = "array_map", issue = "77777")]
-    fn map<F, S>(self, mut f: F) -> [S; N]
+    pub fn map<F, S>(self, mut f: F) -> [S; N]
     where
         F: FnMut(T) -> S,
     {
@@ -385,12 +385,6 @@ impl<T, const N: usize> [T; N] {
         struct Guard<T, const N: usize> {
             dst: *mut T,
             curr_init: usize,
-        }
-
-        impl<T, const N: usize> Guard<T, N> {
-            fn new(dst: &mut [MaybeUninit<T>; N]) -> Self {
-                Guard { dst: dst as *mut _ as *mut T, curr_init: 0 }
-            }
         }
 
         impl<T, const N: usize> Drop for Guard<T, N> {
@@ -407,15 +401,16 @@ impl<T, const N: usize> [T; N] {
             }
         }
         let mut dst = MaybeUninit::uninit_array::<N>();
-        let mut guard = Guard::new(&mut dst);
+        let mut guard: Guard<S, N> = Guard { dst: &mut dst as *mut _ as *mut S, curr_init: 0 };
         for (i, e) in IntoIter::new(self).enumerate() {
             dst[i] = MaybeUninit::new(f(e));
             guard.curr_init += 1;
         }
         // FIXME convert to crate::mem::transmute when works with generics
         // unsafe { crate::mem::transmute::<[MaybeUninit<S>; N], [S; N]>(dst) }
-        let mapped = unsafe { (&mut dst as *mut _ as *mut [S; N]).read() };
         crate::mem::forget(guard);
-        mapped
+        // SAFETY: At this point we've properly initialized the whole array
+        // and we just need to cast it to the correct type
+        unsafe { (&mut dst as *mut _ as *mut [S; N]).read() }
     }
 }
