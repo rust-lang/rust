@@ -767,8 +767,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 // Disallow e.g. linking to enums with `struct@`
                 if let Res::Def(kind, id) = res {
                     debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
-                    // NOTE: this relies on the fact that `''` is never parsed as a disambiguator
-                    // NOTE: this needs to be kept in sync with the disambiguator parsing
                     match (self.kind_side_channel.take().unwrap_or(kind), disambiguator) {
                         | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
                         // NOTE: this allows 'method' to mean both normal functions and associated functions
@@ -780,7 +778,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         | (_, None)
                         // All of these are valid, so do nothing
                         => {}
-                        (_, Some(Disambiguator::Kind(expected))) if kind == expected => {}
+                        (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
                         (_, Some(expected)) => {
                             // The resolved item did not match the disambiguator; give a better error than 'not found'
                             let msg = format!("incompatible link kind for `{}`", path_str);
