@@ -46,5 +46,11 @@ error: transmute from `fn(usize) -> u8 {main::foo}` to `usize` which could be ex
 LL |         transmute::<fn(usize) -> u8, usize>(foo)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `foo as usize`
 
-error: aborting due to 7 previous errors
+error: transmute from a reference to a pointer
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:75:14
+   |
+LL |     unsafe { transmute::<&[i32; 1], *const u8>(in_param) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `in_param as *const [i32; 1] as *const u8`
+
+error: aborting due to 8 previous errors
 
