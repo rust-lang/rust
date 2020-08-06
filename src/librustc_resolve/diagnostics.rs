@@ -1075,10 +1075,9 @@ impl<'a> Resolver<'a> {
         ) = binding.kind
         {
             let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
-            if let Some(fields) = self.field_names.get(&def_id) {
-                let first_field = fields.first().expect("empty field list in the map");
-                return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
-            }
+            let fields = self.field_names.get(&def_id)?;
+            let first_field = fields.first()?; // Handle `struct Foo()`
+            return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
         }
         None
     }
