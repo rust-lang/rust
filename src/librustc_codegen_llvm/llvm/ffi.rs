@@ -1802,6 +1802,8 @@ extern "C" {
         BufferOut: &RustString,
     );
 
+    pub fn LLVMRustCoverageCreatePGOFuncNameVar(F: &'a Value, FuncName: *const c_char)
+    -> &'a Value;
     pub fn LLVMRustCoverageComputeHash(Name: *const c_char) -> u64;
 
     #[allow(improper_ctypes)]
