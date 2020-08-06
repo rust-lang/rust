@@ -365,8 +365,8 @@ macro_rules! array_impl_default {
 
 array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
 
-#[lang = "array"]
 #[cfg(not(bootstrap))]
+#[lang = "array"]
 impl<T, const N: usize> [T; N] {
     /// Returns an array of the same size as self, with `f` applied to each element.
     ///
@@ -382,9 +382,35 @@ impl<T, const N: usize> [T; N] {
         F: FnMut(T) -> S,
     {
         use crate::mem::MaybeUninit;
+        struct Guard<T, const N: usize> {
+            dst: *mut T,
+            curr_init: usize,
+        }
+
+        impl<T, const N: usize> Guard<T, N> {
+            fn new(dst: &mut [MaybeUninit<T>; N]) -> Self {
+                Guard { dst: dst as *mut _ as *mut T, curr_init: 0 }
+            }
+        }
+
+        impl<T, const N: usize> Drop for Guard<T, N> {
+            fn drop(&mut self) {
+                debug_assert!(self.curr_init <= N);
+
+                let initialized_part =
+                    crate::ptr::slice_from_raw_parts_mut(self.dst, self.curr_init);
+                // SAFETY: this raw slice will contain only initialized objects
+                // that's why, it is allowed to drop it.
+                unsafe {
+                    crate::ptr::drop_in_place(initialized_part);
+                }
+            }
+        }
         let dst = MaybeUninit::uninit_array::<N>();
+        let mut guard = Guard::new(&mut dst);
         for (i, e) in self.into_iter().enumerate() {
             dst[i] = MaybeUninit::new(f(e));
+            guard.curr_init += 1;
         }
         // FIXME convert to crate::mem::transmute when works with generics
         // unsafe { crate::mem::transmute::<[MaybeUninit<S>; N], [S; N]>(dst) }
