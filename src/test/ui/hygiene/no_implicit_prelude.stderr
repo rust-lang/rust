@@ -4,6 +4,9 @@ error: cannot find macro `panic` in this scope
 LL |         assert_eq!(0, 0);
    |         ^^^^^^^^^^^^^^^^^
    |
+   = note: consider importing one of these items:
+           core::panic
+           std::panic
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: failed to resolve: use of undeclared type `Vec`
