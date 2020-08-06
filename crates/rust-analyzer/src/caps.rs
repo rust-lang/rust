@@ -76,7 +76,9 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
                     token_modifiers: semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
                 },
 
-                document_provider: Some(SemanticTokensDocumentProvider::Bool(true)),
+                document_provider: Some(SemanticTokensDocumentProvider::Edits {
+                    edits: Some(true),
+                }),
                 range_provider: Some(true),
                 work_done_progress_options: Default::default(),
             }
