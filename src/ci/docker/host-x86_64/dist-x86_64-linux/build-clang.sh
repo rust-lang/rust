@@ -18,8 +18,7 @@ cd clang-build
 # For whatever reason the default set of include paths for clang is different
 # than that of gcc. As a result we need to manually include our sysroot's
 # include path, /rustroot/include, to clang's default include path.
-INC="/rustroot/include"
-INC="$INC:/usr/include"
+INC="/rustroot/include:/usr/include"
 
 hide_output \
     cmake ../llvm \
