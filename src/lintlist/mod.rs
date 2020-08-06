@@ -2218,7 +2218,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "transmutes_expressible_as_ptr_casts",
         group: "complexity",
-        desc: "default lint description",
+        desc: "transmutes that could be a pointer cast",
         deprecation: None,
         module: "transmute",
     },
