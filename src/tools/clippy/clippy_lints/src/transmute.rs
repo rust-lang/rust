@@ -8,8 +8,8 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, GenericArg, Mutability, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, cast::CastKind, Ty};
-use rustc_span::DUMMY_SP;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::DUMMY_SP;
 use rustc_typeck::check::{cast::CastCheck, FnCtxt, Inherited};
 use std::borrow::Cow;
 
@@ -698,18 +698,16 @@ fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx>, to: Ty<'
 /// a transmute. In certain cases, including some invalid casts from array
 /// references to pointers, this may cause additional errors to be emitted and/or
 /// ICE error messages. This function will panic if that occurs.
-fn can_be_expressed_as_pointer_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> bool {
+fn can_be_expressed_as_pointer_cast<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx Expr<'_>,
+    from_ty: Ty<'tcx>,
+    to_ty: Ty<'tcx>,
+) -> bool {
     use CastKind::*;
     matches!(
         check_cast(cx, e, from_ty, to_ty),
-        Some(
-            PtrPtrCast
-            | PtrAddrCast
-            | AddrPtrCast
-            | ArrayPtrCast
-            | FnPtrPtrCast
-            | FnPtrAddrCast
-        )
+        Some(PtrPtrCast | PtrAddrCast | AddrPtrCast | ArrayPtrCast | FnPtrPtrCast | FnPtrAddrCast)
     )
 }
 
@@ -722,26 +720,18 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
     let local_def_id = hir_id.owner;
 
     Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
-        let fn_ctxt = FnCtxt::new(
-            &inherited,
-            cx.param_env,
-            hir_id
-        );
+        let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, hir_id);
 
         // If we already have errors, we can't be sure we can pointer cast.
         assert!(
-            !fn_ctxt.errors_reported_since_creation(), 
+            !fn_ctxt.errors_reported_since_creation(),
             "Newly created FnCtxt contained errors"
         );
 
         if let Ok(check) = CastCheck::new(
-            &fn_ctxt,
-            e,
-            from_ty,
-            to_ty,
+            &fn_ctxt, e, from_ty, to_ty,
             // We won't show any error to the user, so we don't care what the span is here.
-            DUMMY_SP,
-            DUMMY_SP,
+            DUMMY_SP, DUMMY_SP,
         ) {
             let res = check.do_check(&fn_ctxt);
 
