@@ -1,3 +1,4 @@
+// run-rustfix
 #![warn(clippy::transmutes_expressible_as_ptr_casts)]
 // These two warnings currrently cover the cases transmutes_expressible_as_ptr_casts
 // would otherwise be responsible for
