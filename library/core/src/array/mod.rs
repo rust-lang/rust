@@ -364,3 +364,30 @@ macro_rules! array_impl_default {
 }
 
 array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+
+#[lang = "array"]
+#[cfg(not(bootstrap))]
+impl<T, const N: usize> [T; N] {
+    /// Returns an array of the same size as self, with `f` applied to each element.
+    ///
+    /// # Examples
+    /// ```
+    /// let x = [1,2,3];
+    /// let y = x.map(|v| v + 1);
+    /// assert_eq!(y, [2,3,4]);
+    /// ```
+    #[unstable(feature = "array_map", issue = "77777")]
+    fn map<F, S>(self, f: F) -> [S; N]
+    where
+        F: FnMut(T) -> S,
+    {
+        use crate::mem::MaybeUninit;
+        let dst = MaybeUninit::uninit_array::<N>();
+        for (i, e) in self.into_iter().enumerate() {
+            dst[i] = MaybeUninit::new(f(e));
+        }
+        // FIXME convert to crate::mem::transmute when works with generics
+        // unsafe { crate::mem::transmute::<[MaybeUninit<S>; N], [S; N]>(dst) }
+        unsafe { (&mut dst as *mut _ as *mut [S; N]).read() }
+    }
+}
