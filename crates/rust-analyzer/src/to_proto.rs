@@ -1,6 +1,8 @@
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
-use std::path::{self, Path};
-use std::time::SystemTime;
+use std::{
+    path::{self, Path},
+    sync::atomic::{AtomicU32, Ordering},
+};
 
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
@@ -304,16 +306,14 @@ pub(crate) fn inlay_int(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_ex
     }
 }
 
+static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
+
 pub(crate) fn semantic_tokens(
     text: &str,
     line_index: &LineIndex,
     highlights: Vec<HighlightedRange>,
 ) -> lsp_types::SemanticTokens {
-    let id = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
-        Ok(d) => d.as_millis().to_string(),
-        Err(_) => String::new(),
-    };
-
+    let id = TOKEN_RESULT_COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
     let mut builder = semantic_tokens::SemanticTokensBuilder::new(id);
 
     for highlight_range in highlights {

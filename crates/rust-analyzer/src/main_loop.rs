@@ -452,7 +452,7 @@ impl GlobalState {
                         None => log::error!("orphan DidCloseTextDocument: {}", path),
                     }
 
-                    this.semantic_tokens_cache.lock().unwrap().remove(&params.text_document.uri);
+                    this.semantic_tokens_cache.lock().remove(&params.text_document.uri);
 
                     if let Some(path) = path.as_path() {
                         this.loader.handle.invalidate(path.to_path_buf());

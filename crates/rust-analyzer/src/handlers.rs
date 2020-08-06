@@ -1187,10 +1187,7 @@ pub(crate) fn handle_semantic_tokens(
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
 
     // Unconditionally cache the tokens
-    snap.semantic_tokens_cache
-        .lock()
-        .unwrap()
-        .insert(params.text_document.uri, semantic_tokens.clone());
+    snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens.clone());
 
     Ok(Some(semantic_tokens.into()))
 }
@@ -1209,7 +1206,7 @@ pub(crate) fn handle_semantic_tokens_edits(
 
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
 
-    let mut cache = snap.semantic_tokens_cache.lock().unwrap();
+    let mut cache = snap.semantic_tokens_cache.lock();
     let cached_tokens = cache.entry(params.text_document.uri).or_default();
 
     if let Some(prev_id) = &cached_tokens.result_id {
