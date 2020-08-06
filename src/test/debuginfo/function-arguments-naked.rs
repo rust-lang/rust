@@ -34,7 +34,5 @@ fn main() {
 
 #[naked]
 fn naked(x: usize, y: usize) {
-    zzz(); // #break
+    // #break
 }
-
-fn zzz() { () }
