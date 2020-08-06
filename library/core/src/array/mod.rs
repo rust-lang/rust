@@ -372,6 +372,7 @@ impl<T, const N: usize> [T; N] {
     ///
     /// # Examples
     /// ```
+    /// #![feature(array_map)]
     /// let x = [1,2,3];
     /// let y = x.map(|v| v + 1);
     /// assert_eq!(y, [2,3,4]);
@@ -402,8 +403,8 @@ impl<T, const N: usize> [T; N] {
         }
         let mut dst = MaybeUninit::uninit_array::<N>();
         let mut guard: Guard<S, N> = Guard { dst: &mut dst as *mut _ as *mut S, curr_init: 0 };
-        for (i, e) in IntoIter::new(self).enumerate() {
-            dst[i] = MaybeUninit::new(f(e));
+        for (src, dst) in IntoIter::new(self).zip(&mut dst) {
+            dst.write(f(src));
             guard.curr_init += 1;
         }
         // FIXME convert to crate::mem::transmute when works with generics
