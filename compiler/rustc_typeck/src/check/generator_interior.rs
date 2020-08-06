@@ -9,10 +9,12 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, ExprKind, Pat, PatKind};
+use rustc_hir::{Expr, ExprKind, Pat, PatKind, Arm, Guard, HirId};
+use rustc_hir::hir_id::HirIdSet;
 use rustc_middle::middle::region::{self, YieldData};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
+use smallvec::SmallVec;
 
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -21,6 +23,14 @@ struct InteriorVisitor<'a, 'tcx> {
     expr_count: usize,
     kind: hir::GeneratorKind,
     prev_unresolved_span: Option<Span>,
+    /// Match arm guards have temporary borrows from the pattern bindings.
+    /// In case there is a yield point in a guard with a reference to such bindings,
+    /// such borrows can span across this yield point.
+    /// As such, we need to track these borrows and record them despite of the fact
+    /// that they may succeed the said yield point in the post-order.
+    nested_scope_of_guards: SmallVec<[SmallVec<[HirId; 4]>; 4]>,
+    current_scope_of_guards: HirIdSet,
+    arm_has_guard: bool,
 }
 
 impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
@@ -30,6 +40,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
         scope: Option<region::Scope>,
         expr: Option<&'tcx Expr<'tcx>>,
         source_span: Span,
+        guard_borrowing_from_pattern: bool,
     ) {
         use rustc_span::DUMMY_SP;
 
@@ -53,7 +64,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         yield_data.expr_and_pat_count, self.expr_count, source_span
                     );
 
-                    if yield_data.expr_and_pat_count >= self.expr_count {
+                    if guard_borrowing_from_pattern || yield_data.expr_and_pat_count >= self.expr_count {
                         Some(yield_data)
                     } else {
                         None
@@ -134,6 +145,9 @@ pub fn resolve_interior<'a, 'tcx>(
         expr_count: 0,
         kind,
         prev_unresolved_span: None,
+        nested_scope_of_guards: <_>::default(),
+        current_scope_of_guards: <_>::default(),
+        arm_has_guard: false,
     };
     intravisit::walk_body(&mut visitor, body);
 
@@ -210,19 +224,46 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         NestedVisitorMap::None
     }
 
+    fn visit_arm(&mut self, arm: &'tcx Arm<'tcx>) {
+        if arm.guard.is_some() {
+            self.nested_scope_of_guards.push(<_>::default());
+            self.arm_has_guard = true;
+        }
+        self.visit_pat(&arm.pat);
+        if let Some(ref g) = arm.guard {
+            match g {
+                Guard::If(ref e) => {
+                    self.visit_expr(e);
+                }
+            }
+            let mut scope_var_ids =
+                self.nested_scope_of_guards.pop().expect("should have pushed at least one earlier");
+            for var_id in scope_var_ids.drain(..) {
+                assert!(self.current_scope_of_guards.remove(&var_id), "variable should be placed in scope earlier");
+            }
+            self.arm_has_guard = false;
+        }
+        self.visit_expr(&arm.body);
+    }
+
     fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
         intravisit::walk_pat(self, pat);
 
         self.expr_count += 1;
 
-        if let PatKind::Binding(..) = pat.kind {
+        if let PatKind::Binding(_, id, ..) = pat.kind {
             let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id);
             let ty = self.fcx.typeck_results.borrow().pat_ty(pat);
-            self.record(ty, Some(scope), None, pat.span);
+            self.record(ty, Some(scope), None, pat.span, false);
+            if self.arm_has_guard {
+                self.nested_scope_of_guards.as_mut_slice().last_mut().unwrap().push(id);
+                self.current_scope_of_guards.insert(id);
+            }
         }
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        let mut guard_borrowing_from_pattern = false;
         match &expr.kind {
             ExprKind::Call(callee, args) => match &callee.kind {
                 ExprKind::Path(qpath) => {
@@ -248,7 +289,18 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                     }
                 }
                 _ => intravisit::walk_expr(self, expr),
-            },
+            }
+            ExprKind::Path(qpath) => {
+                intravisit::walk_expr(self, expr);
+                let res = self.fcx.typeck_results.borrow().qpath_res(qpath, expr.hir_id);
+                match res {
+                    Res::Local(id) if self.current_scope_of_guards.contains(&id) => {
+                        debug!("a borrow in guard from pattern local is detected");
+                        guard_borrowing_from_pattern = true;
+                    }
+                    _ => {}
+                }
+            }
             _ => intravisit::walk_expr(self, expr),
         }
 
@@ -259,7 +311,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // If there are adjustments, then record the final type --
         // this is the actual value that is being produced.
         if let Some(adjusted_ty) = self.fcx.typeck_results.borrow().expr_ty_adjusted_opt(expr) {
-            self.record(adjusted_ty, scope, Some(expr), expr.span);
+            self.record(adjusted_ty, scope, Some(expr), expr.span, guard_borrowing_from_pattern);
         }
 
         // Also record the unadjusted type (which is the only type if
@@ -267,10 +319,10 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // unadjusted value is sometimes a "temporary" that would wind
         // up in a MIR temporary.
         //
-        // As an example, consider an expression like `vec![].push()`.
+        // As an example, consider an expression like `vec![].push(x)`.
         // Here, the `vec![]` would wind up MIR stored into a
         // temporary variable `t` which we can borrow to invoke
-        // `<Vec<_>>::push(&mut t)`.
+        // `<Vec<_>>::push(&mut t, x)`.
         //
         // Note that an expression can have many adjustments, and we
         // are just ignoring those intermediate types. This is because
@@ -287,7 +339,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // The type table might not have information for this expression
         // if it is in a malformed scope. (#66387)
         if let Some(ty) = self.fcx.typeck_results.borrow().expr_ty_opt(expr) {
-            self.record(ty, scope, Some(expr), expr.span);
+            self.record(ty, scope, Some(expr), expr.span, guard_borrowing_from_pattern);
         } else {
             self.fcx.tcx.sess.delay_span_bug(expr.span, "no type for node");
         }
