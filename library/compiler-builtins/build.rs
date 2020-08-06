@@ -419,6 +419,18 @@ mod c {
             if target_os != "windows" {
                 sources.extend(&[("__multc3", "multc3.c")]);
             }
+
+            if target_env == "musl" {
+                sources.extend(&[
+                    ("__addtf3", "addtf3.c"),
+                    ("__multf3", "multf3.c"),
+                    ("__subtf3", "subtf3.c"),
+                    ("__divtf3", "divtf3.c"),
+                    ("__powitf2", "powitf2.c"),
+                    ("__fe_getround", "fp_mode.c"),
+                    ("__fe_raise_inexact", "fp_mode.c"),
+                ]);
+            }
         }
 
         if target_arch == "mips" {
