@@ -57,7 +57,7 @@ impl ValType {
         unimplemented!();
     }
 
-    pub fn mut_ref_mut_bad(mut self: &mut Self) {
+    pub fn mut_ref_mut_good(mut self: &mut Self) {
         unimplemented!();
     }
 

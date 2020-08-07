@@ -36,11 +36,5 @@ error: the type of the `self` parameter does not need to be arbitrary
 LL |     pub fn mut_ref_bad_with_lifetime<'a>(self: &'a mut Self) {
    |                                          ^^^^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&'a mut self`
 
-error: the type of the `self` parameter does not need to be arbitrary
-  --> $DIR/needless_arbitrary_self_type.rs:60:28
-   |
-LL |     pub fn mut_ref_mut_bad(mut self: &mut Self) {
-   |                            ^^^^^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&mut self`
-
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
