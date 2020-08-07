@@ -1030,7 +1030,7 @@ pub fn decode_expn_id<
         drop(expns);
         expn_id
     });
-    return Ok(expn_id);
+    Ok(expn_id)
 }
 
 // Decodes `SyntaxContext`, using the provided `HygieneDecodeContext`
@@ -1103,7 +1103,7 @@ pub fn decode_syntax_context<
         assert_eq!(dummy.dollar_crate_name, kw::Invalid);
     });
 
-    return Ok(new_ctxt);
+    Ok(new_ctxt)
 }
 
 pub fn num_syntax_ctxts() -> usize {

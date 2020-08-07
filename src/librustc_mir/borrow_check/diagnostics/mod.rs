@@ -868,7 +868,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
         }
-        return normal_ret;
+        normal_ret
     }
 
     /// Finds the span of arguments of a closure (within `maybe_closure_span`)

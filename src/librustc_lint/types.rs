@@ -1074,7 +1074,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
             // If `ty` is a `repr(transparent)` newtype, and the non-zero-sized type is a generic
             // argument, which after substitution, is `()`, then this branch can be hit.
-            FfiResult::FfiUnsafe { ty, .. } if is_return_type && ty.is_unit() => return,
+            FfiResult::FfiUnsafe { ty, .. } if is_return_type && ty.is_unit() => {}
             FfiResult::FfiUnsafe { ty, reason, help } => {
                 self.emit_ffi_unsafe_type_lint(ty, sp, &reason, help.as_deref());
             }

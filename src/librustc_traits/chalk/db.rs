@@ -174,7 +174,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 phantom_data: adt_def.is_phantom_data(),
             },
         });
-        return struct_datum;
+        struct_datum
     }
 
     fn fn_def_datum(
