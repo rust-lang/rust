@@ -10,7 +10,7 @@ use std::{slice, vec};
 
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::attr;
-use rustc_ast::util::comments::strip_doc_comment_decoration;
+use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -506,10 +506,11 @@ impl Attributes {
             .iter()
             .filter_map(|attr| {
                 if let Some(value) = attr.doc_str() {
-                    let (value, mk_fragment): (_, fn(_, _, _) -> _) = if attr.is_doc_comment() {
-                        (strip_doc_comment_decoration(value), DocFragment::SugaredDoc)
+                    let value = beautify_doc_string(value);
+                    let mk_fragment: fn(_, _, _) -> _ = if attr.is_doc_comment() {
+                        DocFragment::SugaredDoc
                     } else {
-                        (value.to_string(), DocFragment::RawDoc)
+                        DocFragment::RawDoc
                     };
 
                     let line = doc_line;

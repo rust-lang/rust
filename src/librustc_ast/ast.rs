@@ -23,7 +23,7 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
 use crate::ptr::P;
-use crate::token::{self, DelimToken};
+use crate::token::{self, CommentKind, DelimToken};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -2365,7 +2365,7 @@ pub enum AttrKind {
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
-    DocComment(Symbol),
+    DocComment(CommentKind, Symbol),
 }
 
 /// `TraitRef`s appear in impls.

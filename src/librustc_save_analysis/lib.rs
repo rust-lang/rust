@@ -10,7 +10,7 @@ mod span_utils;
 mod sig;
 
 use rustc_ast::ast::{self};
-use rustc_ast::util::comments::strip_doc_comment_decoration;
+use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast_pretty::pprust::attribute_to_string;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind as HirDefKind, Res};
@@ -822,11 +822,8 @@ impl<'tcx> SaveContext<'tcx> {
 
         for attr in attrs {
             if let Some(val) = attr.doc_str() {
-                if attr.is_doc_comment() {
-                    result.push_str(&strip_doc_comment_decoration(val));
-                } else {
-                    result.push_str(&val.as_str());
-                }
+                // FIXME: Should save-analysis beautify doc strings itself or leave it to users?
+                result.push_str(&beautify_doc_string(val));
                 result.push('\n');
             } else if attr.check_name(sym::doc) {
                 if let Some(meta_list) = attr.meta_item_list() {

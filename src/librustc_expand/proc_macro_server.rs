@@ -3,7 +3,6 @@ use crate::base::ExtCtxt;
 use rustc_ast::ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
-use rustc_ast::util::comments;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Diagnostic;
@@ -148,11 +147,9 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                 tt!(Punct::new('\'', true))
             }
             Literal(lit) => tt!(Literal { lit }),
-            DocComment(c) => {
-                let style = comments::doc_comment_style(c);
-                let stripped = comments::strip_doc_comment_decoration(c);
+            DocComment(_, attr_style, data) => {
                 let mut escaped = String::new();
-                for ch in stripped.chars() {
+                for ch in data.as_str().chars() {
                     escaped.extend(ch.escape_debug());
                 }
                 let stream = vec![
@@ -169,7 +166,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                     span: DelimSpan::from_single(span),
                     flatten: false,
                 }));
-                if style == ast::AttrStyle::Inner {
+                if attr_style == ast::AttrStyle::Inner {
                     stack.push(tt!(Punct::new('!', false)));
                 }
                 tt!(Punct::new('#', false))
