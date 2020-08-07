@@ -2112,6 +2112,11 @@ impl Path {
     /// let path = Path::new("/etc/passwd");
     ///
     /// assert!(path.ends_with("passwd"));
+    /// assert!(path.ends_with("etc/passwd"));
+    /// assert!(path.ends_with("/etc/passwd"));
+    ///
+    /// assert!(!path.ends_with("/passwd"));
+    /// assert!(!path.ends_with("wd")); // use .extension() instead
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ends_with<P: AsRef<Path>>(&self, child: P) -> bool {
