@@ -350,7 +350,7 @@ fn infer_union() {
             57..172 '{     ...); } }': ()
             67..68 'u': MyUnion
             71..89 'MyUnio...o: 0 }': MyUnion
-            86..87 '0': i32
+            86..87 '0': u32
             95..113 'unsafe...(u); }': ()
             102..113 '{ baz(u); }': ()
             104..107 'baz': fn baz(MyUnion)
@@ -358,7 +358,7 @@ fn infer_union() {
             108..109 'u': MyUnion
             122..123 'u': MyUnion
             126..146 'MyUnio... 0.0 }': MyUnion
-            141..144 '0.0': f64
+            141..144 '0.0': f32
             152..170 'unsafe...(u); }': ()
             159..170 '{ baz(u); }': ()
             161..164 'baz': fn baz(MyUnion)
