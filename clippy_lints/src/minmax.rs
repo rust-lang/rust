@@ -1,5 +1,6 @@
 use crate::consts::{constant_simple, Constant};
-use crate::utils::{match_def_path, paths, span_lint};
+use crate::utils::{match_def_path, match_trait_method, paths, span_lint};
+use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -84,12 +85,20 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
             }
         },
         ExprKind::MethodCall(ref path, _, ref args, _) => {
-            if path.ident.as_str() == sym!(max).as_str() {
-                fetch_const(cx, args, MinMax::Max)
-            } else if path.ident.as_str() == sym!(min).as_str() {
-                fetch_const(cx, args, MinMax::Min)
-            } else {
-                None
+            if_chain! {
+                if let [obj, _] = args;
+                if cx.typeck_results().expr_ty(obj).is_floating_point() || match_trait_method(cx, expr, &paths::ORD);
+                then {
+                    if path.ident.as_str() == sym!(max).as_str() {
+                        fetch_const(cx, args, MinMax::Max)
+                    } else if path.ident.as_str() == sym!(min).as_str() {
+                        fetch_const(cx, args, MinMax::Min)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
             }
         },
         _ => None,
