@@ -506,11 +506,19 @@ fn polymorphize<'tcx>(
             match ty.kind {
                 ty::Closure(def_id, substs) => {
                     let polymorphized_substs = polymorphize(self.tcx, def_id, substs);
-                    self.tcx.mk_closure(def_id, polymorphized_substs)
+                    if substs == polymorphized_substs {
+                        ty
+                    } else {
+                        self.tcx.mk_closure(def_id, polymorphized_substs)
+                    }
                 }
                 ty::Generator(def_id, substs, movability) => {
                     let polymorphized_substs = polymorphize(self.tcx, def_id, substs);
-                    self.tcx.mk_generator(def_id, polymorphized_substs, movability)
+                    if substs == polymorphized_substs {
+                        ty
+                    } else {
+                        self.tcx.mk_generator(def_id, polymorphized_substs, movability)
+                    }
                 }
                 _ => ty.super_fold_with(self),
             }
