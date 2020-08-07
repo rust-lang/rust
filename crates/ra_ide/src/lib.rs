@@ -45,7 +45,7 @@ mod syntax_highlighting;
 mod syntax_tree;
 mod typing;
 
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use ra_db::{
@@ -100,8 +100,15 @@ pub use ra_text_edit::{Indel, TextEdit};
 
 pub type Cancelable<T> = Result<T, Canceled>;
 
+/// Configuration parameters for the analysis run.
+#[derive(Debug, Default, Clone)]
+pub struct AnalysisConfig {
+    pub disabled_diagnostics: HashSet<String>,
+}
+
 #[derive(Debug)]
 pub struct Diagnostic {
+    pub name: Option<String>,
     pub message: String,
     pub range: TextRange,
     pub severity: Severity,
@@ -139,11 +146,16 @@ impl<T> RangeInfo<T> {
 #[derive(Debug)]
 pub struct AnalysisHost {
     db: RootDatabase,
+    config: AnalysisConfig,
 }
 
 impl AnalysisHost {
-    pub fn new(lru_capacity: Option<usize>) -> AnalysisHost {
-        AnalysisHost { db: RootDatabase::new(lru_capacity) }
+    pub fn new(lru_capacity: Option<usize>) -> Self {
+        Self::with_config(lru_capacity, AnalysisConfig::default())
+    }
+
+    pub fn with_config(lru_capacity: Option<usize>, config: AnalysisConfig) -> Self {
+        AnalysisHost { db: RootDatabase::new(lru_capacity), config }
     }
 
     pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
@@ -153,7 +165,7 @@ impl AnalysisHost {
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
     pub fn analysis(&self) -> Analysis {
-        Analysis { db: self.db.snapshot() }
+        Analysis { db: self.db.snapshot(), config: self.config.clone() }
     }
 
     /// Applies changes to the current state of the world. If there are
@@ -197,6 +209,7 @@ impl Default for AnalysisHost {
 #[derive(Debug)]
 pub struct Analysis {
     db: salsa::Snapshot<RootDatabase>,
+    config: AnalysisConfig,
 }
 
 // As a general design guideline, `Analysis` API are intended to be independent
@@ -492,7 +505,7 @@ impl Analysis {
         file_id: FileId,
         enable_experimental: bool,
     ) -> Cancelable<Vec<Diagnostic>> {
-        self.with_db(|db| diagnostics::diagnostics(db, file_id, enable_experimental))
+        self.with_db(|db| diagnostics::diagnostics(db, file_id, enable_experimental, &self.config))
     }
 
     /// Returns the edit required to rename reference at the position to the new
@@ -516,6 +529,11 @@ impl Analysis {
             let edits = ssr::parse_search_replace(query, parse_only, db, position, selections)?;
             Ok(SourceChange::from(edits))
         })
+    }
+
+    /// Sets the provided config.
+    pub fn set_config(&mut self, config: AnalysisConfig) {
+        self.config = config;
     }
 
     /// Performs an operation on that may be Canceled.

@@ -21,7 +21,7 @@ use ra_syntax::{
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
-use crate::{Diagnostic, FileId, FileSystemEdit, Fix, SourceFileEdit};
+use crate::{AnalysisConfig, Diagnostic, FileId, FileSystemEdit, Fix, SourceFileEdit};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {
@@ -33,6 +33,7 @@ pub(crate) fn diagnostics(
     db: &RootDatabase,
     file_id: FileId,
     enable_experimental: bool,
+    analysis_config: &AnalysisConfig,
 ) -> Vec<Diagnostic> {
     let _p = profile("diagnostics");
     let sema = Semantics::new(db);
@@ -41,6 +42,7 @@ pub(crate) fn diagnostics(
 
     // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
     res.extend(parse.errors().iter().take(128).map(|err| Diagnostic {
+        name: None,
         range: err.range(),
         message: format!("Syntax Error: {}", err),
         severity: Severity::Error,
@@ -52,7 +54,7 @@ pub(crate) fn diagnostics(
         check_struct_shorthand_initialization(&mut res, file_id, &node);
     }
     let res = RefCell::new(res);
-    let mut sink = DiagnosticSinkBuilder::new()
+    let mut sink_builder = DiagnosticSinkBuilder::new()
         .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
             let original_file = d.source().file_id.original_file(db);
             let fix = Fix::new(
@@ -61,6 +63,7 @@ pub(crate) fn diagnostics(
                     .into(),
             );
             res.borrow_mut().push(Diagnostic {
+                name: Some(d.name()),
                 range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
@@ -95,6 +98,7 @@ pub(crate) fn diagnostics(
             };
 
             res.borrow_mut().push(Diagnostic {
+                name: Some(d.name()),
                 range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
@@ -108,6 +112,7 @@ pub(crate) fn diagnostics(
             let source_change = SourceFileEdit { file_id, edit }.into();
             let fix = Fix::new("Wrap with ok", source_change);
             res.borrow_mut().push(Diagnostic {
+                name: Some(d.name()),
                 range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
@@ -116,6 +121,7 @@ pub(crate) fn diagnostics(
         })
         .on::<hir::diagnostics::NoSuchField, _>(|d| {
             res.borrow_mut().push(Diagnostic {
+                name: Some(d.name()),
                 range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
@@ -123,10 +129,20 @@ pub(crate) fn diagnostics(
             })
         })
         // Only collect experimental diagnostics when they're enabled.
-        .filter(|diag| !diag.is_experimental() || enable_experimental)
+        .filter(|diag| !diag.is_experimental() || enable_experimental);
+
+    if !analysis_config.disabled_diagnostics.is_empty() {
+        // Do not collect disabled diagnostics.
+        sink_builder = sink_builder
+            .filter(|diag| !analysis_config.disabled_diagnostics.contains(&diag.name()));
+    }
+
+    // Finalize the `DiagnosticSink` building process.
+    let mut sink = sink_builder
         // Diagnostics not handled above get no fix and default treatment.
         .build(|d| {
             res.borrow_mut().push(Diagnostic {
+                name: Some(d.name()),
                 message: d.message(),
                 range: sema.diagnostics_range(d).range,
                 severity: Severity::Error,
@@ -234,6 +250,7 @@ fn check_unnecessary_braces_in_use_statement(
                 });
 
         acc.push(Diagnostic {
+            name: None,
             range,
             message: "Unnecessary braces in use statement".to_string(),
             severity: Severity::WeakWarning,
@@ -279,6 +296,7 @@ fn check_struct_shorthand_initialization(
                 let edit = edit_builder.finish();
 
                 acc.push(Diagnostic {
+                    name: None,
                     range: record_field.syntax().text_range(),
                     message: "Shorthand struct initialization".to_string(),
                     severity: Severity::WeakWarning,

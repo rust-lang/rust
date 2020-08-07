@@ -7,11 +7,11 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{ffi::OsString, path::PathBuf};
+use std::{collections::HashSet, ffi::OsString, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use lsp_types::ClientCapabilities;
-use ra_ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
+use ra_ide::{AnalysisConfig, AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
 use ra_project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
 use serde::Deserialize;
 use vfs::AbsPathBuf;
@@ -45,6 +45,8 @@ pub struct Config {
     pub with_sysroot: bool,
     pub linked_projects: Vec<LinkedProject>,
     pub root_path: AbsPathBuf,
+
+    pub analysis: AnalysisConfig,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -176,6 +178,8 @@ impl Config {
             hover: HoverConfig::default(),
             linked_projects: Vec::new(),
             root_path,
+
+            analysis: AnalysisConfig::default(),
         }
     }
 
@@ -292,6 +296,8 @@ impl Config {
             debug: data.hoverActions_enable && data.hoverActions_debug,
             goto_type_def: data.hoverActions_enable && data.hoverActions_gotoTypeDef,
         };
+
+        self.analysis = AnalysisConfig { disabled_diagnostics: data.analysis_disabledDiagnostics };
 
         log::info!("Config::update() = {:#?}", self);
     }
@@ -444,5 +450,7 @@ config_data! {
         rustfmt_overrideCommand: Option<Vec<String>> = None,
 
         withSysroot: bool = true,
+
+        analysis_disabledDiagnostics: HashSet<String> = HashSet::new(),
     }
 }

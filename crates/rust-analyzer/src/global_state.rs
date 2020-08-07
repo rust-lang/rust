@@ -108,7 +108,7 @@ impl GlobalState {
             Handle { handle, receiver }
         };
 
-        let analysis_host = AnalysisHost::new(config.lru_capacity);
+        let analysis_host = AnalysisHost::with_config(config.lru_capacity, config.analysis.clone());
         let (flycheck_sender, flycheck_receiver) = unbounded();
         GlobalState {
             sender,
