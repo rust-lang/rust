@@ -528,7 +528,11 @@ fn polymorphize<'tcx>(
                     // ..then use the identity for this parameter.
                     tcx.mk_param_from_def(param),
 
-            // Otherwise, use the parameter as before (polymorphizing any closures or generators).
+            // If the parameter does not contain any closures or generators, then use the
+            // substitution directly.
+            _ if !substs.may_polymorphize() => substs[param.index as usize],
+
+            // Otherwise, use the substitution after polymorphizing.
             _ => {
                 let arg = substs[param.index as usize];
                 let polymorphized_arg = arg.fold_with(&mut PolymorphizationFolder { tcx });
