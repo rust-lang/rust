@@ -3247,8 +3247,19 @@ impl<'test> TestCx<'test> {
     }
 
     fn diff_mir_files(&self, before: PathBuf, after: PathBuf) -> String {
-        let before = self.get_mir_dump_dir().join(before);
-        let after = self.get_mir_dump_dir().join(after);
+        let to_full_path = |path: PathBuf| {
+            let full = self.get_mir_dump_dir().join(&path);
+            if !full.exists() {
+                panic!(
+                    "the mir dump file for {} does not exist (requested in {})",
+                    path.display(),
+                    self.testpaths.file.display(),
+                );
+            }
+            full
+        };
+        let before = to_full_path(before);
+        let after = to_full_path(after);
         debug!("comparing the contents of: {} with {}", before.display(), after.display());
         let before = fs::read_to_string(before).unwrap();
         let after = fs::read_to_string(after).unwrap();
