@@ -37,6 +37,6 @@ fn main() {
 }
 
 #[naked]
-fn naked(x: usize, y: usize) {
+extern "C" fn naked(x: usize, y: usize) {
     unsafe { asm!("ret"); } // #break
 }
