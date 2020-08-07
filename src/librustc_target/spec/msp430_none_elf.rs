@@ -56,6 +56,8 @@ pub fn target() -> TargetResult {
             // See the thumb_base.rs file for an explanation of this value
             emit_debug_gdb_scripts: false,
 
+            eh_frame_header: false,
+
             ..Default::default()
         },
     })

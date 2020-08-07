@@ -25,6 +25,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: false,
         pre_link_args: args,
         position_independent_executables: false,
+        eh_frame_header: false,
         ..Default::default()
     }
 }

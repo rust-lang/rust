@@ -484,7 +484,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         lint: &'static lint::Lint,
         source_info: SourceInfo,
         message: &'static str,
-        panic: AssertKind<ConstInt>,
+        panic: AssertKind<impl std::fmt::Debug>,
     ) -> Option<()> {
         let lint_root = self.lint_root(source_info)?;
         self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, |lint| {
@@ -1004,11 +1004,27 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     let expected = ScalarMaybeUninit::from(Scalar::from_bool(*expected));
                     let value_const = self.ecx.read_scalar(value).unwrap();
                     if expected != value_const {
+                        enum DbgVal<T> {
+                            Val(T),
+                            Underscore,
+                        }
+                        impl<T: std::fmt::Debug> std::fmt::Debug for DbgVal<T> {
+                            fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                                match self {
+                                    Self::Val(val) => val.fmt(fmt),
+                                    Self::Underscore => fmt.write_str("_"),
+                                }
+                            }
+                        }
                         let mut eval_to_int = |op| {
-                            let op = self
-                                .eval_operand(op, source_info)
-                                .expect("if we got here, it must be const");
-                            self.ecx.read_immediate(op).unwrap().to_const_int()
+                            // This can be `None` if the lhs wasn't const propagated and we just
+                            // triggered the assert on the value of the rhs.
+                            match self.eval_operand(op, source_info) {
+                                Some(op) => {
+                                    DbgVal::Val(self.ecx.read_immediate(op).unwrap().to_const_int())
+                                }
+                                None => DbgVal::Underscore,
+                            }
                         };
                         let msg = match msg {
                             AssertKind::DivisionByZero(op) => {

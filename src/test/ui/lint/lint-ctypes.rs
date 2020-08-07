@@ -48,6 +48,8 @@ extern {
     pub fn slice_type(p: &[u32]); //~ ERROR: uses type `[u32]`
     pub fn str_type(p: &str); //~ ERROR: uses type `str`
     pub fn box_type(p: Box<u32>); //~ ERROR uses type `std::boxed::Box<u32>`
+    pub fn opt_box_type(p: Option<Box<u32>>);
+    //~^ ERROR uses type `std::option::Option<std::boxed::Box<u32>>`
     pub fn char_type(p: char); //~ ERROR uses type `char`
     pub fn i128_type(p: i128); //~ ERROR uses type `i128`
     pub fn u128_type(p: u128); //~ ERROR uses type `u128`
