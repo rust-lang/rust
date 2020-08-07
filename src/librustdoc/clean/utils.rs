@@ -607,6 +607,9 @@ pub fn register_res(cx: &DocContext<'_>, res: Res) -> DefId {
         Res::Def(DefKind::TyAlias, i) => (i, TypeKind::Typedef),
         Res::Def(DefKind::Enum, i) => (i, TypeKind::Enum),
         Res::Def(DefKind::Trait, i) => (i, TypeKind::Trait),
+        Res::Def(DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst, i) => {
+            (cx.tcx.parent(i).unwrap(), TypeKind::Trait)
+        }
         Res::Def(DefKind::Struct, i) => (i, TypeKind::Struct),
         Res::Def(DefKind::Union, i) => (i, TypeKind::Union),
         Res::Def(DefKind::Mod, i) => (i, TypeKind::Module),
