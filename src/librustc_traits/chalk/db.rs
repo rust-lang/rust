@@ -276,7 +276,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             parameters[0].assert_ty_ref(&self.interner).could_match(&self.interner, &lowered_ty)
         });
 
-        let impls = matched_impls.map(|matched_impl| chalk_ir::ImplId(matched_impl)).collect();
+        let impls = matched_impls.map(chalk_ir::ImplId).collect();
         impls
     }
 
@@ -440,7 +440,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             FnOnce => self.tcx.lang_items().fn_once_trait(),
             Unsize => self.tcx.lang_items().unsize_trait(),
         };
-        def_id.map(|t| chalk_ir::TraitId(t))
+        def_id.map(chalk_ir::TraitId)
     }
 
     fn is_object_safe(&self, trait_id: chalk_ir::TraitId<RustInterner<'tcx>>) -> bool {
