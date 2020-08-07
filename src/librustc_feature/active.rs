@@ -576,7 +576,7 @@ declare_features! (
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (active, lazy_normalization_consts, "1.46.0", Some(72219), None),
 
-    /// Alloc calling `transmute` in const fn
+    /// Allows calling `transmute` in const fn
     (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
     // -------------------------------------------------------------------------

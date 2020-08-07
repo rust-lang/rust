@@ -4383,8 +4383,8 @@ assert_eq!(
         }
 
         doc_comment! {
-            concat!("Create an integer value from its representation as a byte array in
-big endian.
+            concat!("Create a native endian integer value from its representation
+as a byte array in big endian.
 ",
 $from_xe_bytes_doc,
 "
@@ -4416,8 +4416,8 @@ fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 
         doc_comment! {
             concat!("
-Create an integer value from its representation as a byte array in
-little endian.
+Create a native endian integer value from its representation
+as a byte array in little endian.
 ",
 $from_xe_bytes_doc,
 "
@@ -4448,8 +4448,8 @@ fn read_le_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
         }
 
         doc_comment! {
-            concat!("Create an integer value from its memory representation as a byte
-array in native endianness.
+            concat!("Create a native endian integer value from its memory representation
+as a byte array in native endianness.
 
 As the target platform's native endianness is used, portable code
 likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
