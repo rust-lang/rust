@@ -68,7 +68,7 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
         match variance {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
-            ty::Bivariant => Ok(a.clone()),
+            ty::Bivariant => Ok(a),
             ty::Contravariant => self.with_expected_switched(|this| this.relate(b, a)),
         }
     }
