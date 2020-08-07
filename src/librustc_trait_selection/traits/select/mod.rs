@@ -440,7 +440,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation
         );
 
-        // `previous_stack` stores a `TraitObligatiom`, while `obligation` is
+        // `previous_stack` stores a `TraitObligation`, while `obligation` is
         // a `PredicateObligation`. These are distinct types, so we can't
         // use any `Option` combinator method that would force them to be
         // the same.
