@@ -31,3 +31,16 @@ pub fn test3(a: &u32) -> ARef {
 pub fn test4(a: &u32) -> ARef<'_> {
     Ref(a)
 }
+
+// Ensure external paths also display elided lifetime
+// @has foo/fn.test5.html
+// @matches - "Iter</a>&lt;'_"
+pub fn test5(a: &Option<u32>) -> std::option::Iter<u32> {
+    a.iter()
+}
+
+// @has foo/fn.test6.html
+// @matches - "Iter</a>&lt;'_"
+pub fn test6(a: &Option<u32>) -> std::option::Iter<'_, u32> {
+    a.iter()
+}

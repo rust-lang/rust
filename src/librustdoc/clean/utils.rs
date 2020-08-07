@@ -2,9 +2,9 @@ use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
     inline, Clean, Crate, Deprecation, ExternalCrate, FnDecl, FnRetTy, Generic, GenericArg,
-    GenericArgs, GenericBound, Generics, GetDefId, ImportSource, Item, ItemEnum, MacroKind, Path,
-    PathSegment, Primitive, PrimitiveType, ResolvedPath, Span, Stability, Type, TypeBinding,
-    TypeKind, Visibility, WherePredicate,
+    GenericArgs, GenericBound, Generics, GetDefId, ImportSource, Item, ItemEnum, Lifetime,
+    MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Span, Stability, Type,
+    TypeBinding, TypeKind, Visibility, WherePredicate,
 };
 use crate::core::DocContext;
 
@@ -121,7 +121,10 @@ pub fn external_generic_args(
     let args: Vec<_> = substs
         .iter()
         .filter_map(|kind| match kind.unpack() {
-            GenericArgKind::Lifetime(lt) => lt.clean(cx).map(GenericArg::Lifetime),
+            GenericArgKind::Lifetime(lt) => match lt {
+                ty::ReLateBound(_, ty::BrAnon(_)) => Some(GenericArg::Lifetime(Lifetime::elided())),
+                _ => lt.clean(cx).map(GenericArg::Lifetime),
+            },
             GenericArgKind::Type(_) if skip_self => {
                 skip_self = false;
                 None
