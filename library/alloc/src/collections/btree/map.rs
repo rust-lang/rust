@@ -1341,7 +1341,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         IntoKeys { inner: self.into_iter() }
     }
 
-    /// Creates a consuming iterator visiting all the values, in sorted order.
+    /// Creates a consuming iterator visiting all the values, in order by key.
     /// The map cannot be used after calling this.
     /// The iterator element type is `V`.
     ///
