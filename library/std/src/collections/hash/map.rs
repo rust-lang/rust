@@ -1921,7 +1921,7 @@ impl<K, V> FusedIterator for IntoKeys<K, V> {}
 #[unstable(feature = "map_into_keys_values", issue = "55214")]
 impl<K: Debug, V: Debug> fmt::Debug for IntoKeys<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.inner.iter()).finish()
+        f.debug_list().entries(self.inner.iter().map(|(k, _)| k)).finish()
     }
 }
 
@@ -1951,7 +1951,7 @@ impl<K, V> FusedIterator for IntoValues<K, V> {}
 #[unstable(feature = "map_into_keys_values", issue = "55214")]
 impl<K: Debug, V: Debug> fmt::Debug for IntoValues<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.inner.iter()).finish()
+        f.debug_list().entries(self.inner.iter().map(|(_, v)| v)).finish()
     }
 }
 
