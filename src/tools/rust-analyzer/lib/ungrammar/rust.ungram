@@ -146,7 +146,7 @@ SelfParam =
 
 Param =
   Attr* (
-    Pat (':' Type)
+    Pat (':' Type)?
   | Type
   | '...'
   )
