@@ -85,6 +85,8 @@ impl FlagComputation {
             }
 
             &ty::Generator(_, ref substs, _) => {
+                self.add_flags(TypeFlags::MAY_POLYMORPHIZE);
+
                 let substs = substs.as_generator();
                 let should_remove_further_specializable =
                     !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
@@ -107,6 +109,8 @@ impl FlagComputation {
             }
 
             &ty::Closure(_, substs) => {
+                self.add_flags(TypeFlags::MAY_POLYMORPHIZE);
+
                 let substs = substs.as_closure();
                 let should_remove_further_specializable =
                     !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
@@ -192,6 +196,8 @@ impl FlagComputation {
             }
 
             &ty::FnDef(_, substs) => {
+                self.add_flags(TypeFlags::MAY_POLYMORPHIZE);
+
                 self.add_substs(substs);
             }
 
