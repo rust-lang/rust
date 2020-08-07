@@ -943,7 +943,12 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
-            self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
+            // Use the outermost invocation, so that doctest names come from where the docs were written.
+            let span = attrs
+                .span
+                .map(|span| span.ctxt().outer_expn().expansion_cause().unwrap_or(span))
+                .unwrap_or(DUMMY_SP);
+            self.collector.set_position(span);
             markdown::find_testable_code(
                 &doc,
                 self.collector,
