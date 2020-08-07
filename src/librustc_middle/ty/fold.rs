@@ -150,7 +150,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
     }
 
-    /// Does this value contain closures or generators such that it may require
+    /// Does this value contain closures, generators or functions such that it may require
     /// polymorphization?
     fn may_polymorphize(&self) -> bool {
         self.has_type_flags(TypeFlags::MAY_POLYMORPHIZE)

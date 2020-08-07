@@ -196,6 +196,8 @@ impl FlagComputation {
             }
 
             &ty::FnDef(_, substs) => {
+                self.add_flags(TypeFlags::MAY_POLYMORPHIZE);
+
                 self.add_substs(substs);
             }
 

@@ -512,6 +512,14 @@ fn polymorphize<'tcx>(
                         self.tcx.mk_closure(def_id, polymorphized_substs)
                     }
                 }
+                ty::FnDef(def_id, substs) => {
+                    let polymorphized_substs = polymorphize(self.tcx, def_id, substs);
+                    if substs == polymorphized_substs {
+                        ty
+                    } else {
+                        self.tcx.mk_fn_def(def_id, polymorphized_substs)
+                    }
+                }
                 ty::Generator(def_id, substs, movability) => {
                     let polymorphized_substs = polymorphize(self.tcx, def_id, substs);
                     if substs == polymorphized_substs {

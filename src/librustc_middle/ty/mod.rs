@@ -576,7 +576,7 @@ bitflags! {
         /// replaced later, in a way that would change the results of `impl` specialization?
         const STILL_FURTHER_SPECIALIZABLE = 1 << 17;
 
-        /// Does this value contain closures or generators such that it may require
+        /// Does this value contain closures, generators or functions such that it may require
         /// polymorphization?
         const MAY_POLYMORPHIZE = 1 << 18;
     }
