@@ -39,8 +39,8 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
             .collect_and_partition_mono_items(LOCAL_CRATE)
             .1
             .iter()
-            .map(|cgu| cgu.name())
-            .collect::<BTreeSet<Symbol>>();
+            .map(|cgu| cgu.name().to_string())
+            .collect::<BTreeSet<String>>();
 
         let ams = AssertModuleSource { tcx, available_cgus };
 
@@ -52,7 +52,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
 
 struct AssertModuleSource<'tcx> {
     tcx: TyCtxt<'tcx>,
-    available_cgus: BTreeSet<Symbol>,
+    available_cgus: BTreeSet<String>,
 }
 
 impl AssertModuleSource<'tcx> {
@@ -121,12 +121,11 @@ impl AssertModuleSource<'tcx> {
 
         debug!("mapping '{}' to cgu name '{}'", self.field(attr, sym::module), cgu_name);
 
-        if !self.available_cgus.contains(&cgu_name) {
+        if !self.available_cgus.contains(&*cgu_name.as_str()) {
             self.tcx.sess.span_err(
                 attr.span,
                 &format!(
-                    "no module named `{}` (mangled: {}). \
-                          Available modules: {}",
+                    "no module named `{}` (mangled: {}). Available modules: {}",
                     user_path,
                     cgu_name,
                     self.available_cgus
