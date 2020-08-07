@@ -693,6 +693,9 @@ fn test_fn() {
             expect![[r#"
                 [
                     Diagnostic {
+                        name: Some(
+                            "unresolved-module",
+                        ),
                         message: "unresolved module",
                         range: 0..8,
                         severity: Error,
