@@ -245,6 +245,13 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UsedGenericParametersVisitor<'a, 'tcx> {
                 self.unused_parameters.clear(param.index);
                 false
             }
+            ty::ConstKind::Unevaluated(_, _, Some(p)) => {
+                // If there is a promoted, don't look at the substs - since it will always contain
+                // the generic parameters, instead, traverse the promoted MIR.
+                let promoted = self.tcx.promoted_mir(self.def_id);
+                self.visit_body(&promoted[p]);
+                false
+            }
             _ => c.super_visit_with(self),
         }
     }
