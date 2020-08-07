@@ -827,6 +827,7 @@ impl Config {
             name == util::get_pointer_width(&self.target) ||    // pointer width
             name == self.stage_id.split('-').next().unwrap() || // stage
             (self.target != self.host && name == "cross-compile") ||
+            (name == "endian-big" && util::is_big_endian(&self.target)) ||
             (self.remote_test_client.is_some() && name == "remote") ||
             match self.compare_mode {
                 Some(CompareMode::Nll) => name == "compare-mode-nll",
