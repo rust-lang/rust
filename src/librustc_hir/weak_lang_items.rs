@@ -5,7 +5,6 @@ use crate::{lang_items, LangItem, LanguageItems};
 
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 
 use lazy_static::lazy_static;
@@ -21,8 +20,13 @@ lazy_static! {
     };
 }
 
-pub fn link_name(sess: &Session, attrs: &[ast::Attribute]) -> Option<Symbol> {
-    lang_items::extract(sess, attrs).and_then(|(name, _)| {
+/// The `check_name` argument avoids the need for `librustc_hir` to depend on
+/// `librustc_session`.
+pub fn link_name<'a, F>(check_name: F, attrs: &'a [ast::Attribute]) -> Option<Symbol>
+where
+    F: Fn(&'a ast::Attribute, Symbol) -> bool
+{
+    lang_items::extract(check_name, attrs).and_then(|(name, _)| {
         $(if name == sym::$name {
             Some(sym::$sym)
         } else)* {
