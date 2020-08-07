@@ -377,7 +377,7 @@ impl<T, const N: usize> [T; N] {
     /// let y = x.map(|v| v + 1);
     /// assert_eq!(y, [2, 3, 4]);
     /// ```
-    #[unstable(feature = "array_map", issue = "77777")]
+    #[unstable(feature = "array_map", issue = "75027")]
     pub fn map<F, U>(self, mut f: F) -> [U; N]
     where
         F: FnMut(T) -> U,
