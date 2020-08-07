@@ -407,11 +407,11 @@ impl<T, const N: usize> [T; N] {
             dst.write(f(src));
             guard.initialized += 1;
         }
-        // FIXME convert to crate::mem::transmute when works with generics
+        // FIXME: Convert to crate::mem::transmute once it works with generics.
         // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
         crate::mem::forget(guard);
         // SAFETY: At this point we've properly initialized the whole array
-        // and we just need to cast it to the correct type
+        // and we just need to cast it to the correct type.
         unsafe { (&mut dst as *mut _ as *mut [U; N]).read() }
     }
 }
