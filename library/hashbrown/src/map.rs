@@ -802,7 +802,11 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.get_key_value(k).map(|(_, v)| v)
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.get_key_value(k) {
+            Some((_, v)) => Some(v),
+            None => None,
+        }
     }
 
     /// Returns the key-value pair corresponding to the supplied key.
@@ -831,12 +835,14 @@ where
         Q: Hash + Eq,
     {
         let hash = make_hash(&self.hash_builder, k);
-        self.table
-            .find(hash, |x| k.eq(x.0.borrow()))
-            .map(|item| unsafe {
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.table.find(hash, |x| k.eq(x.0.borrow())) {
+            Some(item) => unsafe {
                 let &(ref key, ref value) = item.as_ref();
-                (key, value)
-            })
+                Some((key, value))
+            }
+            None => None,
+        }
     }
 
     /// Returns the key-value pair corresponding to the supplied key, with a mutable reference to value.
@@ -869,12 +875,14 @@ where
         Q: Hash + Eq,
     {
         let hash = make_hash(&self.hash_builder, k);
-        self.table
-            .find(hash, |x| k.eq(x.0.borrow()))
-            .map(|item| unsafe {
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.table.find(hash, |x| k.eq(x.0.borrow())) {
+            Some(item) => unsafe {
                 let &mut (ref key, ref mut value) = item.as_mut();
-                (key, value)
-            })
+                Some((key, value))
+            }
+            None => None,
+        }
     }
 
     /// Returns `true` if the map contains a value for the specified key.
@@ -933,9 +941,11 @@ where
         Q: Hash + Eq,
     {
         let hash = make_hash(&self.hash_builder, k);
-        self.table
-            .find(hash, |x| k.eq(x.0.borrow()))
-            .map(|item| unsafe { &mut item.as_mut().1 })
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.table.find(hash, |x| k.eq(x.0.borrow())) {
+            Some(item) => Some(unsafe { &mut item.as_mut().1 }),
+            None => None,
+        }
     }
 
     /// Inserts a key-value pair into the map.
@@ -1004,7 +1014,11 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.remove_entry(k).map(|(_, v)| v)
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.remove_entry(k) {
+            Some((_, v)) => Some(v),
+            None => None,
+        }
     }
 
     /// Removes a key from the map, returning the stored key and value if the
@@ -1561,13 +1575,13 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
     where
         F: FnMut(&K) -> bool,
     {
-        self.map
-            .table
-            .find(hash, |(k, _)| is_match(k))
-            .map(|item| unsafe {
+        match self.map.table.find(hash, |(k, _)| is_match(k)) {
+            Some(item) => unsafe {
                 let &(ref key, ref value) = item.as_ref();
-                (key, value)
-            })
+                Some((key, value))
+            }
+            None => None,
+        }
     }
 
     /// Access an entry by hash.
@@ -2030,10 +2044,14 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        self.inner.next().map(|x| unsafe {
-            let r = x.as_ref();
-            (&r.0, &r.1)
-        })
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.inner.next() {
+            Some(x) => unsafe {
+                let r = x.as_ref();
+                Some((&r.0, &r.1))
+            }
+            None => None,
+        }
     }
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2054,10 +2072,14 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        self.inner.next().map(|x| unsafe {
-            let r = x.as_mut();
-            (&r.0, &mut r.1)
-        })
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.inner.next() {
+            Some(x) => unsafe {
+                let r = x.as_mut();
+                Some((&r.0, &mut r.1))
+            }
+            None => None,
+        }
     }
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2113,7 +2135,11 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<&'a K> {
-        self.inner.next().map(|(k, _)| k)
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.inner.next() {
+            Some((k, _)) => Some(k),
+            None => None,
+        }
     }
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2133,7 +2159,11 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<&'a V> {
-        self.inner.next().map(|(_, v)| v)
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.inner.next() {
+            Some((_, v)) => Some(v),
+            None => None,
+        }
     }
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2153,7 +2183,11 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<&'a mut V> {
-        self.inner.next().map(|(_, v)| v)
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.inner.next() {
+            Some((_, v)) => Some(v),
+            None => None,
+        }
     }
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {

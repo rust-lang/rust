@@ -687,7 +687,11 @@ where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.map.get_key_value(value).map(|(k, _)| k)
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.map.get_key_value(value) {
+            Some((k, _)) => Some(k),
+            None => None,
+        }
     }
 
     /// Inserts the given `value` into the set if it is not present, then
@@ -951,7 +955,11 @@ where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.map.remove_entry(value).map(|(k, _)| k)
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.map.remove_entry(value) {
+            Some((k, _)) => Some(k),
+            None => None,
+        }
     }
 }
 
@@ -1365,7 +1373,11 @@ impl<K> Iterator for IntoIter<K> {
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<K> {
-        self.iter.next().map(|(k, _)| k)
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.iter.next() {
+            Some((k, _)) => Some(k),
+            None => None,
+        }
     }
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1392,7 +1404,11 @@ impl<K> Iterator for Drain<'_, K> {
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<K> {
-        self.iter.next().map(|(k, _)| k)
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.iter.next() {
+            Some((k, _)) => Some(k),
+            None => None,
+        }
     }
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
