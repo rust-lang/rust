@@ -281,6 +281,12 @@ impl HasUnsafeFn {
     unsafe fn unsafe_method(&self) {}
 }
 
+struct TypeForStaticMut {
+    a: u8
+}
+
+static mut global_mut: TypeForStaticMut = TypeForStaticMut { a: 0 };
+
 fn main() {
     let x = &5 as *const usize;
     unsafe {
@@ -288,6 +294,7 @@ fn main() {
         HasUnsafeFn.unsafe_method();
         let y = *(x);
         let z = -x;
+        let a = global_mut.a;
     }
 }
 "#
