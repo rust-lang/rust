@@ -443,7 +443,7 @@ fn opaque_type_projection_predicates(
 
     let bounds = tcx.predicates_of(def_id);
     let predicates =
-        util::elaborate_predicates(tcx, bounds.predicates.into_iter().map(|&(pred, _)| pred));
+        util::elaborate_predicates(tcx, bounds.predicates.iter().map(|&(pred, _)| pred));
 
     let filtered_predicates = predicates.filter_map(|obligation| {
         let pred = obligation.predicate;

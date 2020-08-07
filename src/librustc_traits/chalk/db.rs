@@ -141,7 +141,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let predicates = self.tcx.predicates_of(adt_def.did).predicates;
         let where_clauses: Vec<_> = predicates
-            .into_iter()
+            .iter()
             .map(|(wc, _)| wc.subst(self.tcx, bound_vars))
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner))
             .collect();
@@ -187,7 +187,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let predicates = self.tcx.predicates_defined_on(def_id).predicates;
         let where_clauses: Vec<_> = predicates
-            .into_iter()
+            .iter()
             .map(|(wc, _)| wc.subst(self.tcx, &bound_vars))
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
 
