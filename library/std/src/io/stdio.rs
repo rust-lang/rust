@@ -409,6 +409,8 @@ impl Read for Stdin {
     }
 }
 
+// only used by platform-dependent io::copy specializations, i.e. unused on some platforms
+#[cfg(any(target_os = "linux", target_os = "android"))]
 impl StdinLock<'_> {
     pub(crate) fn as_mut_buf(&mut self) -> &mut BufReader<impl Read> {
         &mut self.inner

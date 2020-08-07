@@ -283,10 +283,8 @@ pub use self::stdio::{set_panic, set_print};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::util::{empty, repeat, sink, Empty, Repeat, Sink};
 
-pub(crate) use self::copy::generic_copy;
-
 mod buffered;
-mod copy;
+pub(crate) mod copy;
 mod cursor;
 mod error;
 mod impls;

@@ -1276,7 +1276,7 @@ pub(crate) fn copy_regular_files(
                         // - copy_file_range is disallowed, for example by seccomp (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
                         assert_eq!(written, 0);
-                        return io::generic_copy(reader, writer);
+                        return io::copy::generic_copy(reader, writer);
                     }
                     _ => return Err(err),
                 }
@@ -1328,7 +1328,7 @@ pub(crate) fn sendfile_splice(
                         // Try fallback io::copy if splice/sendfile do not support this particular
                         // file descritor (EINVAL)
                         assert_eq!(written, 0);
-                        return io::generic_copy(reader, writer);
+                        return io::copy::generic_copy(reader, writer);
                     }
                     _ => return Err(err),
                 }
