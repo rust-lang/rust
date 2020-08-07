@@ -54,6 +54,19 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 <span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable unsafe">global_mut</span><span class="punctuation">:</span> <span class="struct">TypeForStaticMut</span> <span class="operator">=</span> <span class="struct">TypeForStaticMut</span> <span class="punctuation">{</span> <span class="field">a</span><span class="punctuation">:</span> <span class="numeric_literal">0</span> <span class="punctuation">}</span><span class="punctuation">;</span>
 
+<span class="attribute">#</span><span class="attribute">[</span><span class="function attribute">repr</span><span class="punctuation">(</span><span class="attribute">packed</span><span class="punctuation">)</span><span class="attribute">]</span>
+<span class="keyword">struct</span> <span class="struct declaration">Packed</span> <span class="punctuation">{</span>
+    <span class="field declaration">a</span><span class="punctuation">:</span> <span class="builtin_type">u16</span><span class="punctuation">,</span>
+<span class="punctuation">}</span>
+
+<span class="keyword">trait</span> <span class="trait declaration">DoTheAutoref</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration">calls_autoref</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span><span class="punctuation">;</span>
+<span class="punctuation">}</span>
+
+<span class="keyword">impl</span> <span class="trait">DoTheAutoref</span> <span class="keyword">for</span> <span class="builtin_type">u16</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration">calls_autoref</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="punctuation">{</span><span class="punctuation">}</span>
+<span class="punctuation">}</span>
+
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="punctuation">{</span>
     <span class="keyword">let</span> <span class="variable declaration">x</span> <span class="operator">=</span> <span class="operator">&</span><span class="numeric_literal">5</span> <span class="keyword">as</span> <span class="keyword">*</span><span class="keyword">const</span> <span class="punctuation">_</span> <span class="keyword">as</span> <span class="keyword">*</span><span class="keyword">const</span> <span class="builtin_type">usize</span><span class="punctuation">;</span>
     <span class="keyword">let</span> <span class="variable declaration">u</span> <span class="operator">=</span> <span class="union">Union</span> <span class="punctuation">{</span> <span class="field">b</span><span class="punctuation">:</span> <span class="numeric_literal">0</span> <span class="punctuation">}</span><span class="punctuation">;</span>
@@ -66,8 +79,21 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
             <span class="union">Union</span> <span class="punctuation">{</span> <span class="field unsafe">a</span> <span class="punctuation">}</span> <span class="operator">=&gt;</span> <span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">,</span>
         <span class="punctuation">}</span>
         <span class="struct">HasUnsafeFn</span><span class="punctuation">.</span><span class="function unsafe">unsafe_method</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
-        <span class="keyword">let</span> <span class="variable declaration">y</span> <span class="operator">=</span> <span class="operator unsafe">*</span><span class="punctuation">(</span><span class="variable">x</span><span class="punctuation">)</span><span class="punctuation">;</span>
-        <span class="keyword">let</span> <span class="variable declaration">z</span> <span class="operator">=</span> <span class="numeric_literal">-</span><span class="variable">x</span><span class="punctuation">;</span>
+
+        <span class="comment">// unsafe deref</span>
+        <span class="keyword">let</span> <span class="variable declaration">y</span> <span class="operator">=</span> <span class="operator unsafe">*</span><span class="variable">x</span><span class="punctuation">;</span>
+
+        <span class="comment">// unsafe access to a static mut</span>
         <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="static mutable unsafe">global_mut</span><span class="punctuation">.</span><span class="field">a</span><span class="punctuation">;</span>
+
+        <span class="comment">// unsafe ref of packed fields</span>
+        <span class="keyword">let</span> <span class="variable declaration">packed</span> <span class="operator">=</span> <span class="struct">Packed</span> <span class="punctuation">{</span> <span class="field">a</span><span class="punctuation">:</span> <span class="numeric_literal">0</span> <span class="punctuation">}</span><span class="punctuation">;</span>
+        <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="operator unsafe">&</span><span class="variable">packed</span><span class="punctuation">.</span><span class="field">a</span><span class="punctuation">;</span>
+        <span class="keyword">let</span> <span class="keyword unsafe">ref</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="variable">packed</span><span class="punctuation">.</span><span class="field">a</span><span class="punctuation">;</span>
+        <span class="keyword">let</span> <span class="struct">Packed</span> <span class="punctuation">{</span> <span class="keyword unsafe">ref</span> <span class="field">a</span> <span class="punctuation">}</span> <span class="operator">=</span> <span class="variable">packed</span><span class="punctuation">;</span>
+        <span class="keyword">let</span> <span class="struct">Packed</span> <span class="punctuation">{</span> <span class="field">a</span><span class="punctuation">:</span> <span class="keyword unsafe">ref</span> <span class="variable declaration">_a</span> <span class="punctuation">}</span> <span class="operator">=</span> <span class="variable">packed</span><span class="punctuation">;</span>
+
+        <span class="comment">// unsafe auto ref of packed field</span>
+        <span class="variable">packed</span><span class="punctuation">.</span><span class="field">a</span><span class="punctuation">.</span><span class="function unsafe">calls_autoref</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
     <span class="punctuation">}</span>
 <span class="punctuation">}</span></code></pre>

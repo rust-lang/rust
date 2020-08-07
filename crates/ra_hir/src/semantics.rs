@@ -289,8 +289,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.is_unsafe_ref_expr(ref_expr)
     }
 
-    pub fn is_unsafe_bind_pat(&self, bind_pat: &ast::BindPat) -> bool {
-        self.imp.is_unsafe_bind_pat(bind_pat)
+    pub fn is_unsafe_ident_pat(&self, ident_pat: &ast::IdentPat) -> bool {
+        self.imp.is_unsafe_ident_pat(ident_pat)
     }
 }
 
@@ -629,20 +629,24 @@ impl<'db> SemanticsImpl<'db> {
         // more than it should with the current implementation.
     }
 
-    pub fn is_unsafe_bind_pat(&self, bind_pat: &ast::BindPat) -> bool {
-        bind_pat
+    pub fn is_unsafe_ident_pat(&self, ident_pat: &ast::IdentPat) -> bool {
+        if !ident_pat.ref_token().is_some() {
+            return false;
+        }
+
+        ident_pat
             .syntax()
             .parent()
             .and_then(|parent| {
-                // `BindPat` can live under `RecordPat` directly under `RecordFieldPat` or
-                // `RecordFieldPatList`. `RecordFieldPat` also lives under `RecordFieldPatList`,
-                // so this tries to lookup the `BindPat` anywhere along that structure to the
+                // `IdentPat` can live under `RecordPat` directly under `RecordPatField` or
+                // `RecordPatFieldList`. `RecordPatField` also lives under `RecordPatFieldList`,
+                // so this tries to lookup the `IdentPat` anywhere along that structure to the
                 // `RecordPat` so we can get the containing type.
-                let record_pat = ast::RecordFieldPat::cast(parent.clone())
+                let record_pat = ast::RecordPatField::cast(parent.clone())
                     .and_then(|record_pat| record_pat.syntax().parent())
                     .or_else(|| Some(parent.clone()))
                     .and_then(|parent| {
-                        ast::RecordFieldPatList::cast(parent)?
+                        ast::RecordPatFieldList::cast(parent)?
                             .syntax()
                             .parent()
                             .and_then(ast::RecordPat::cast)

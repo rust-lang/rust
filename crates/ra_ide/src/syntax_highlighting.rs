@@ -662,9 +662,9 @@ fn highlight_element(
                 }
                 T![ref] => element
                     .parent()
-                    .and_then(ast::BindPat::cast)
-                    .and_then(|bind_pat| {
-                        if sema.is_unsafe_bind_pat(&bind_pat) {
+                    .and_then(ast::IdentPat::cast)
+                    .and_then(|ident_pat| {
+                        if sema.is_unsafe_ident_pat(&ident_pat) {
                             Some(HighlightModifier::Unsafe)
                         } else {
                             None
