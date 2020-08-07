@@ -64,7 +64,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
-<span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable">STATIC_MUT</span><span class="punctuation">:</span> <span class="builtin_type">i32</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="punctuation">;</span>
+<span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable unsafe">STATIC_MUT</span><span class="punctuation">:</span> <span class="builtin_type">i32</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="punctuation">;</span>
 
 <span class="keyword">fn</span> <span class="function declaration">foo</span><span class="punctuation">&lt;</span><span class="lifetime declaration">'a</span><span class="punctuation">,</span> <span class="type_param declaration">T</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="type_param">T</span> <span class="punctuation">{</span>
     <span class="function">foo</span><span class="operator">::</span><span class="punctuation">&lt;</span><span class="lifetime">'a</span><span class="punctuation">,</span> <span class="builtin_type">i32</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="punctuation">)</span>
@@ -97,7 +97,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="punctuation">}</span>
     <span class="keyword unsafe">unsafe</span> <span class="punctuation">{</span>
         <span class="variable mutable">vec</span><span class="punctuation">.</span><span class="unresolved_reference">set_len</span><span class="punctuation">(</span><span class="numeric_literal">0</span><span class="punctuation">)</span><span class="punctuation">;</span>
-        <span class="static mutable">STATIC_MUT</span> <span class="operator">=</span> <span class="numeric_literal">1</span><span class="punctuation">;</span>
+        <span class="static mutable unsafe">STATIC_MUT</span> <span class="operator">=</span> <span class="numeric_literal">1</span><span class="punctuation">;</span>
     <span class="punctuation">}</span>
 
     <span class="keyword control">for</span> <span class="variable declaration">e</span> <span class="keyword control">in</span> <span class="variable mutable">vec</span> <span class="punctuation">{</span>

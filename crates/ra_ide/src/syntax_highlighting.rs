@@ -677,6 +677,7 @@ fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
                 let mut h = Highlight::new(HighlightTag::Static);
                 if s.is_mut(db) {
                     h |= HighlightModifier::Mutable;
+                    h |= HighlightModifier::Unsafe;
                 }
                 return h;
             }
