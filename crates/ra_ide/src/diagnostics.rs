@@ -316,7 +316,10 @@ mod tests {
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
-    use crate::mock_analysis::{analysis_and_position, single_file, MockAnalysis};
+    use crate::{
+        mock_analysis::{analysis_and_position, single_file, MockAnalysis},
+        AnalysisConfig,
+    };
     use expect::{expect, Expect};
 
     /// Takes a multi-file input fixture with annotated cursor positions,
@@ -378,6 +381,54 @@ mod tests {
             .flat_map(|file_id| analysis.diagnostics(file_id, true).unwrap())
             .collect::<Vec<_>>();
         assert_eq!(diagnostics.len(), 0, "unexpected diagnostics:\n{:#?}", diagnostics);
+    }
+
+    /// Takes a multi-file input fixture with annotated cursor position and the list of disabled diagnostics,
+    /// and checks that provided diagnostics aren't spawned during analysis.
+    fn check_disabled_diagnostics(
+        ra_fixture: &str,
+        disabled_diagnostics: impl IntoIterator<Item = String>,
+    ) {
+        let disabled_diagnostics: std::collections::HashSet<_> =
+            disabled_diagnostics.into_iter().collect();
+
+        let mock = MockAnalysis::with_files(ra_fixture);
+        let files = mock.files().map(|(it, _)| it).collect::<Vec<_>>();
+        let mut analysis = mock.analysis();
+        analysis.set_config(AnalysisConfig { disabled_diagnostics: disabled_diagnostics.clone() });
+
+        let diagnostics = files
+            .clone()
+            .into_iter()
+            .flat_map(|file_id| analysis.diagnostics(file_id, true).unwrap())
+            .collect::<Vec<_>>();
+
+        // First, we have to check that diagnostic is not emitted when it's added to the disabled diagnostics list.
+        for diagnostic in diagnostics {
+            if let Some(name) = diagnostic.name {
+                assert!(!disabled_diagnostics.contains(&name), "Diagnostic {} is disabled", name);
+            }
+        }
+
+        // Then, we must reset the config and repeat the check, so that we'll be sure that without
+        // config these diagnostics are emitted.
+        // This is required for tests to not become outdated if e.g. diagnostics name changes:
+        // without this additional run the test will pass simply because a diagnostic with an old name
+        // will no longer exist.
+        analysis.set_config(AnalysisConfig { disabled_diagnostics: Default::default() });
+
+        let diagnostics = files
+            .into_iter()
+            .flat_map(|file_id| analysis.diagnostics(file_id, true).unwrap())
+            .collect::<Vec<_>>();
+
+        assert!(
+            diagnostics
+                .into_iter()
+                .filter_map(|diag| diag.name)
+                .any(|name| disabled_diagnostics.contains(&name)),
+            "At least one of the diagnostics was not emitted even without config; are the diagnostics names correct?"
+        );
     }
 
     fn check_expect(ra_fixture: &str, expect: Expect) {
@@ -813,5 +864,10 @@ struct Foo {
             }
             ",
         )
+    }
+
+    #[test]
+    fn test_disabled_diagnostics() {
+        check_disabled_diagnostics(r#"mod foo;"#, vec!["unresolved-module".to_string()]);
     }
 }
