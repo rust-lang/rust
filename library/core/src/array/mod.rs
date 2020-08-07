@@ -368,10 +368,11 @@ array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T
 #[cfg(not(bootstrap))]
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
-    /// Returns an array of the same size as self, with `f` applied to each element.
+    /// Returns an array of the same size as `self`, with `f` applied to each element.
     /// The closure will be called on elements 0 up to N.
     ///
     /// # Examples
+    ///
     /// ```
     /// # #![feature(array_map)]
     /// let x = [1, 2, 3];
