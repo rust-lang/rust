@@ -275,6 +275,11 @@ fn test_unsafe_highlighting() {
         r#"
 unsafe fn unsafe_fn() {}
 
+union Union {
+    a: u32,
+    b: f32,
+}
+
 struct HasUnsafeFn;
 
 impl HasUnsafeFn {
@@ -283,8 +288,14 @@ impl HasUnsafeFn {
 
 fn main() {
     let x = &5 as *const usize;
+    let u = Union { b: 0 };
     unsafe {
         unsafe_fn();
+        let b = u.b;
+        match u {
+            Union { b: 0 } => (),
+            Union { a } => (),
+        }
         HasUnsafeFn.unsafe_method();
         let y = *(x);
         let z = -x;
