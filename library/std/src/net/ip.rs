@@ -961,11 +961,6 @@ impl AsInner<c::in_addr> for Ipv4Addr {
         &self.inner
     }
 }
-impl FromInner<c::in_addr> for Ipv4Addr {
-    fn from_inner(addr: c::in_addr) -> Ipv4Addr {
-        Ipv4Addr { inner: addr }
-    }
-}
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<Ipv4Addr> for u32 {
