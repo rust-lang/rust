@@ -402,9 +402,16 @@ impl<T> RawTable<T> {
         fallability: Fallibility,
     ) -> Result<Self, TryReserveError> {
         debug_assert!(buckets.is_power_of_two());
-        let (layout, ctrl_offset) =
-            calculate_layout::<T>(buckets).ok_or_else(|| fallability.capacity_overflow())?;
-        let ptr = NonNull::new(alloc(layout)).ok_or_else(|| fallability.alloc_err(layout))?;
+
+        // Avoid `Option::ok_or_else` because it bloats LLVM IR.
+        let (layout, ctrl_offset) = match calculate_layout::<T>(buckets) {
+            Some(lco) => lco,
+            None => return Err(fallability.capacity_overflow())
+        };
+        let ptr = match NonNull::new(alloc(layout)) {
+            Some(ptr) => ptr,
+            None => return Err(fallability.alloc_err(layout)),
+        };
         let ctrl = NonNull::new_unchecked(ptr.as_ptr().add(ctrl_offset));
         Ok(Self {
             ctrl,
@@ -425,8 +432,11 @@ impl<T> RawTable<T> {
             Ok(Self::new())
         } else {
             unsafe {
-                let buckets =
-                    capacity_to_buckets(capacity).ok_or_else(|| fallability.capacity_overflow())?;
+                // Avoid `Option::ok_or_else` because it bloats LLVM IR.
+                let buckets = match capacity_to_buckets(capacity) {
+                    Some(buckets) => buckets,
+                    None => return Err(fallability.capacity_overflow()),
+                };
                 let result = Self::new_uninitialized(buckets, fallability)?;
                 result.ctrl(0).write_bytes(EMPTY, result.num_ctrl_bytes());
 
@@ -445,15 +455,21 @@ impl<T> RawTable<T> {
     /// Allocates a new hash table with at least enough capacity for inserting
     /// the given number of elements without reallocating.
     pub fn with_capacity(capacity: usize) -> Self {
-        Self::fallible_with_capacity(capacity, Fallibility::Infallible)
-            .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() })
+        // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
+        match Self::fallible_with_capacity(capacity, Fallibility::Infallible) {
+            Ok(capacity) => capacity,
+            Err(_) => unsafe { hint::unreachable_unchecked() },
+        }
     }
 
     /// Deallocates the table without dropping any entries.
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn free_buckets(&mut self) {
-        let (layout, ctrl_offset) =
-            calculate_layout::<T>(self.buckets()).unwrap_or_else(|| hint::unreachable_unchecked());
+        // Avoid `Option::unwrap_or_else` because it bloats LLVM IR.
+        let (layout, ctrl_offset) = match calculate_layout::<T>(self.buckets()) {
+            Some(lco) => lco,
+            None => hint::unreachable_unchecked(),
+        };
         dealloc(self.ctrl.as_ptr().sub(ctrl_offset), layout);
     }
 
@@ -671,8 +687,10 @@ impl<T> RawTable<T> {
             if self.items == 0 {
                 *self = Self::with_capacity(min_size)
             } else {
-                self.resize(min_size, hasher, Fallibility::Infallible)
-                    .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() });
+                // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
+                if self.resize(min_size, hasher, Fallibility::Infallible).is_err() {
+                    unsafe { hint::unreachable_unchecked() }
+                }
             }
         }
     }
@@ -682,8 +700,10 @@ impl<T> RawTable<T> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn reserve(&mut self, additional: usize, hasher: impl Fn(&T) -> u64) {
         if additional > self.growth_left {
-            self.reserve_rehash(additional, hasher, Fallibility::Infallible)
-                .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() });
+            // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
+            if self.reserve_rehash(additional, hasher, Fallibility::Infallible).is_err() {
+                unsafe { hint::unreachable_unchecked() }
+            }
         }
     }
 
@@ -711,11 +731,11 @@ impl<T> RawTable<T> {
         hasher: impl Fn(&T) -> u64,
         fallability: Fallibility,
     ) -> Result<(), TryReserveError> {
-        let new_items = self
-            .items
-            .checked_add(additional)
-            .ok_or_else(|| fallability.capacity_overflow())?;
-
+        // Avoid `Option::ok_or_else` because it bloats LLVM IR.
+        let new_items = match self.items.checked_add(additional) {
+            Some(new_items) => new_items,
+            None => return Err(fallability.capacity_overflow()),
+        };
         let full_capacity = bucket_mask_to_capacity(self.bucket_mask);
         if new_items <= full_capacity / 2 {
             // Rehash in-place without re-allocating if we have plenty of spare
@@ -1065,8 +1085,11 @@ impl<T> RawTable<T> {
         let alloc = if self.is_empty_singleton() {
             None
         } else {
-            let (layout, ctrl_offset) = calculate_layout::<T>(self.buckets())
-                .unwrap_or_else(|| unsafe { hint::unreachable_unchecked() });
+            // Avoid `Option::unwrap_or_else` because it bloats LLVM IR.
+            let (layout, ctrl_offset) = match calculate_layout::<T>(self.buckets()) {
+                Some(lco) => lco,
+                None => unsafe { hint::unreachable_unchecked() },
+            };
             Some((
                 unsafe { NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)) },
                 layout,
@@ -1087,8 +1110,11 @@ impl<T: Clone> Clone for RawTable<T> {
         } else {
             unsafe {
                 let mut new_table = ManuallyDrop::new(
-                    Self::new_uninitialized(self.buckets(), Fallibility::Infallible)
-                        .unwrap_or_else(|_| hint::unreachable_unchecked()),
+                    // Avoid `Result::ok_or_else` because it bloats LLVM IR.
+                    match Self::new_uninitialized(self.buckets(), Fallibility::Infallible) {
+                        Ok(table) => table,
+                        Err(_) => hint::unreachable_unchecked(),
+                    }
                 );
 
                 new_table.clone_from_spec(self, |new_table| {
@@ -1121,8 +1147,11 @@ impl<T: Clone> Clone for RawTable<T> {
                         self.free_buckets();
                     }
                     (self as *mut Self).write(
-                        Self::new_uninitialized(source.buckets(), Fallibility::Infallible)
-                            .unwrap_or_else(|_| hint::unreachable_unchecked()),
+                        // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
+                        match Self::new_uninitialized(source.buckets(), Fallibility::Infallible) {
+                            Ok(table) => table,
+                            Err(_) => hint::unreachable_unchecked(),
+                        }
                     );
                 }
 
