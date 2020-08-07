@@ -63,6 +63,9 @@ struct LinkCollector<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
     // NOTE: this may not necessarily be a module in the current crate
     mod_ids: Vec<DefId>,
+    /// This is used to store the kind of associated items,
+    /// because `clean` and the disambiguator code expect them to be different.
+    /// See the code for associated items on inherent impls for details.
     kind_side_channel: Cell<Option<DefKind>>,
 }
 
