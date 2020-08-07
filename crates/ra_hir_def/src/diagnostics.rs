@@ -15,6 +15,9 @@ pub struct UnresolvedModule {
 }
 
 impl Diagnostic for UnresolvedModule {
+    fn name(&self) -> String {
+        "unresolved-module".to_string()
+    }
     fn message(&self) -> String {
         "unresolved module".to_string()
     }

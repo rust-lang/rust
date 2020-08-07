@@ -14,13 +14,14 @@
 //! subsystem provides a separate, non-query-based API which can walk all stored
 //! values and transform them into instances of `Diagnostic`.
 
-use std::{any::Any, fmt};
+use std::{any::Any, collections::HashSet, fmt};
 
 use ra_syntax::{SyntaxNode, SyntaxNodePtr};
 
 use crate::{db::AstDatabase, InFile};
 
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
+    fn name(&self) -> String;
     fn message(&self) -> String;
     fn source(&self) -> InFile<SyntaxNodePtr>;
     fn as_any(&self) -> &(dyn Any + Send + 'static);
@@ -49,10 +50,16 @@ pub struct DiagnosticSink<'a> {
     callbacks: Vec<Box<dyn FnMut(&dyn Diagnostic) -> Result<(), ()> + 'a>>,
     filters: Vec<Box<dyn FnMut(&dyn Diagnostic) -> bool + 'a>>,
     default_callback: Box<dyn FnMut(&dyn Diagnostic) + 'a>,
+    disabled_diagnostics: HashSet<String>,
 }
 
 impl<'a> DiagnosticSink<'a> {
     pub fn push(&mut self, d: impl Diagnostic) {
+        if self.disabled_diagnostics.contains(&d.name()) {
+            // This diagnostic is disabled, ignore it completely.
+            return;
+        }
+
         let d: &dyn Diagnostic = &d;
         self._push(d);
     }
@@ -76,11 +83,12 @@ impl<'a> DiagnosticSink<'a> {
 pub struct DiagnosticSinkBuilder<'a> {
     callbacks: Vec<Box<dyn FnMut(&dyn Diagnostic) -> Result<(), ()> + 'a>>,
     filters: Vec<Box<dyn FnMut(&dyn Diagnostic) -> bool + 'a>>,
+    disabled_diagnostics: HashSet<String>,
 }
 
 impl<'a> DiagnosticSinkBuilder<'a> {
     pub fn new() -> Self {
-        Self { callbacks: Vec::new(), filters: Vec::new() }
+        Self { callbacks: Vec::new(), filters: Vec::new(), disabled_diagnostics: HashSet::new() }
     }
 
     pub fn filter<F: FnMut(&dyn Diagnostic) -> bool + 'a>(mut self, cb: F) -> Self {
@@ -100,11 +108,17 @@ impl<'a> DiagnosticSinkBuilder<'a> {
         self
     }
 
+    pub fn disable_diagnostic(mut self, diagnostic: impl Into<String>) -> Self {
+        self.disabled_diagnostics.insert(diagnostic.into());
+        self
+    }
+
     pub fn build<F: FnMut(&dyn Diagnostic) + 'a>(self, default_callback: F) -> DiagnosticSink<'a> {
         DiagnosticSink {
             callbacks: self.callbacks,
             filters: self.filters,
             default_callback: Box::new(default_callback),
+            disabled_diagnostics: self.disabled_diagnostics,
         }
     }
 }

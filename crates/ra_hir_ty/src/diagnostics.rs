@@ -33,6 +33,10 @@ pub struct NoSuchField {
 }
 
 impl Diagnostic for NoSuchField {
+    fn name(&self) -> String {
+        "no-such-field".to_string()
+    }
+
     fn message(&self) -> String {
         "no such field".to_string()
     }
@@ -64,6 +68,9 @@ pub struct MissingFields {
 }
 
 impl Diagnostic for MissingFields {
+    fn name(&self) -> String {
+        "missing-structure-fields".to_string()
+    }
     fn message(&self) -> String {
         let mut buf = String::from("Missing structure fields:\n");
         for field in &self.missed_fields {
@@ -97,6 +104,9 @@ pub struct MissingPatFields {
 }
 
 impl Diagnostic for MissingPatFields {
+    fn name(&self) -> String {
+        "missing-pat-fields".to_string()
+    }
     fn message(&self) -> String {
         let mut buf = String::from("Missing structure fields:\n");
         for field in &self.missed_fields {
@@ -120,6 +130,9 @@ pub struct MissingMatchArms {
 }
 
 impl Diagnostic for MissingMatchArms {
+    fn name(&self) -> String {
+        "missing-match-arm".to_string()
+    }
     fn message(&self) -> String {
         String::from("Missing match arm")
     }
@@ -138,6 +151,9 @@ pub struct MissingOkInTailExpr {
 }
 
 impl Diagnostic for MissingOkInTailExpr {
+    fn name(&self) -> String {
+        "missing-ok-in-tail-expr".to_string()
+    }
     fn message(&self) -> String {
         "wrap return expression in Ok".to_string()
     }
@@ -166,6 +182,9 @@ pub struct BreakOutsideOfLoop {
 }
 
 impl Diagnostic for BreakOutsideOfLoop {
+    fn name(&self) -> String {
+        "break-outside-of-loop".to_string()
+    }
     fn message(&self) -> String {
         "break outside of loop".to_string()
     }
@@ -194,6 +213,9 @@ pub struct MissingUnsafe {
 }
 
 impl Diagnostic for MissingUnsafe {
+    fn name(&self) -> String {
+        "missing-unsafe".to_string()
+    }
     fn message(&self) -> String {
         format!("This operation is unsafe and requires an unsafe function or block")
     }
@@ -224,6 +246,9 @@ pub struct MismatchedArgCount {
 }
 
 impl Diagnostic for MismatchedArgCount {
+    fn name(&self) -> String {
+        "mismatched-arg-count".to_string()
+    }
     fn message(&self) -> String {
         let s = if self.expected == 1 { "" } else { "s" };
         format!("Expected {} argument{}, found {}", self.expected, s, self.found)
