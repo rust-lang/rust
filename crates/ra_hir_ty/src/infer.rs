@@ -440,6 +440,12 @@ impl<'a> InferenceContext<'a> {
                 let ty = self.insert_type_vars(ty.subst(&substs));
                 forbid_unresolved_segments((ty, Some(strukt.into())), unresolved)
             }
+            TypeNs::AdtId(AdtId::UnionId(u)) => {
+                let substs = Ty::substs_from_path(&ctx, path, u.into(), true);
+                let ty = self.db.ty(u.into());
+                let ty = self.insert_type_vars(ty.subst(&substs));
+                forbid_unresolved_segments((ty, Some(u.into())), unresolved)
+            }
             TypeNs::EnumVariantId(var) => {
                 let substs = Ty::substs_from_path(&ctx, path, var.into(), true);
                 let ty = self.db.ty(var.parent.into());
@@ -490,10 +496,7 @@ impl<'a> InferenceContext<'a> {
                 // FIXME potentially resolve assoc type
                 (Ty::Unknown, None)
             }
-            TypeNs::AdtId(AdtId::EnumId(_))
-            | TypeNs::AdtId(AdtId::UnionId(_))
-            | TypeNs::BuiltinType(_)
-            | TypeNs::TraitId(_) => {
+            TypeNs::AdtId(AdtId::EnumId(_)) | TypeNs::BuiltinType(_) | TypeNs::TraitId(_) => {
                 // FIXME diagnostic
                 (Ty::Unknown, None)
             }
