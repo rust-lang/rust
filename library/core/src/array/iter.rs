@@ -56,38 +56,34 @@ impl<T, const N: usize> IntoIter<T, N> {
 
         // FIXME(LukasKalbertodt): actually use `mem::transmute` here, once it
         // works with const generics:
-        //     `mem::transmute::<[T; {N}], [MaybeUninit<T>; {N}]>(array)`
+        //     `mem::transmute::<[T; N], [MaybeUninit<T>; N]>(array)`
         //
-        // Until then, we do it manually here. We first create a bitwise copy
-        // but cast the pointer so that it is treated as a different type. Then
-        // we forget `array` so that it is not dropped.
-        let data = unsafe {
-            let data = ptr::read(&array as *const [T; N] as *const [MaybeUninit<T>; N]);
+        // Until then, we can use `mem::transmute_copy` to create a bitwise copy
+        // as a different type, then forget `array` so that it is not dropped.
+        unsafe {
+            let iter = Self { data: mem::transmute_copy(&array), alive: 0..N };
             mem::forget(array);
-            data
-        };
-
-        Self { data, alive: 0..N }
+            iter
+        }
     }
 
     /// Returns an immutable slice of all elements that have not been yielded
     /// yet.
     fn as_slice(&self) -> &[T] {
-        let slice = &self.data[self.alive.clone()];
-        // SAFETY: This transmute is safe. As mentioned in `new`, `MaybeUninit` retains
-        // the size and alignment of `T`. Furthermore, we know that all
-        // elements within `alive` are properly initialized.
-        unsafe { mem::transmute::<&[MaybeUninit<T>], &[T]>(slice) }
+        // SAFETY: We know that all elements within `alive` are properly initialized.
+        unsafe {
+            let slice = self.data.get_unchecked(self.alive.clone());
+            MaybeUninit::slice_get_ref(slice)
+        }
     }
 
     /// Returns a mutable slice of all elements that have not been yielded yet.
     fn as_mut_slice(&mut self) -> &mut [T] {
-        // This transmute is safe, same as in `as_slice` above.
-        let slice = &mut self.data[self.alive.clone()];
-        // SAFETY: This transmute is safe. As mentioned in `new`, `MaybeUninit` retains
-        // the size and alignment of `T`. Furthermore, we know that all
-        // elements within `alive` are properly initialized.
-        unsafe { mem::transmute::<&mut [MaybeUninit<T>], &mut [T]>(slice) }
+        // SAFETY: We know that all elements within `alive` are properly initialized.
+        unsafe {
+            let slice = self.data.get_unchecked_mut(self.alive.clone());
+            MaybeUninit::slice_get_mut(slice)
+        }
     }
 }
 
@@ -95,30 +91,20 @@ impl<T, const N: usize> IntoIter<T, N> {
 impl<T, const N: usize> Iterator for IntoIter<T, N> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.alive.start == self.alive.end {
-            return None;
-        }
-
-        // Bump start index.
+        // Get the next index from the front.
         //
-        // From the check above we know that `alive.start != alive.end`.
-        // Combine this with the invariant `alive.start <= alive.end`, we know
-        // that `alive.start < alive.end`. Increasing `alive.start` by 1
-        // maintains the invariant regarding `alive`. However, due to this
-        // change, for a short time, the alive zone is not `data[alive]`
-        // anymore, but `data[idx..alive.end]`.
-        let idx = self.alive.start;
-        self.alive.start += 1;
-
-        // Read the element from the array.
-        // SAFETY: This is safe: `idx` is an index
-        // into the "alive" region of the array. Reading this element means
-        // that `data[idx]` is regarded as dead now (i.e. do not touch). As
-        // `idx` was the start of the alive-zone, the alive zone is now
-        // `data[alive]` again, restoring all invariants.
-        let out = unsafe { self.data.get_unchecked(idx).read() };
-
-        Some(out)
+        // Increasing `alive.start` by 1 maintains the invariant regarding
+        // `alive`. However, due to this change, for a short time, the alive
+        // zone is not `data[alive]` anymore, but `data[idx..alive.end]`.
+        self.alive.next().map(|idx| {
+            // Read the element from the array.
+            // SAFETY: `idx` is an index into the former "alive" region of the
+            // array. Reading this element means that `data[idx]` is regarded as
+            // dead now (i.e. do not touch). As `idx` was the start of the
+            // alive-zone, the alive zone is now `data[alive]` again, restoring
+            // all invariants.
+            unsafe { self.data.get_unchecked(idx).read() }
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -138,33 +124,20 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        if self.alive.start == self.alive.end {
-            return None;
-        }
-
-        // Decrease end index.
+        // Get the next index from the back.
         //
-        // From the check above we know that `alive.start != alive.end`.
-        // Combine this with the invariant `alive.start <= alive.end`, we know
-        // that `alive.start < alive.end`. As `alive.start` cannot be negative,
-        // `alive.end` is at least 1, meaning that we can safely decrement it
-        // by one. This also maintains the invariant `alive.start <=
-        // alive.end`. However, due to this change, for a short time, the alive
-        // zone is not `data[alive]` anymore, but `data[alive.start..alive.end
-        // + 1]`.
-        self.alive.end -= 1;
-
-        // Read the element from the array.
-        // SAFETY: This is safe: `alive.end` is an
-        // index into the "alive" region of the array. Compare the previous
-        // comment that states that the alive region is
-        // `data[alive.start..alive.end + 1]`. Reading this element means that
-        // `data[alive.end]` is regarded as dead now (i.e. do not touch). As
-        // `alive.end` was the end of the alive-zone, the alive zone is now
-        // `data[alive]` again, restoring all invariants.
-        let out = unsafe { self.data.get_unchecked(self.alive.end).read() };
-
-        Some(out)
+        // Decreasing `alive.end` by 1 maintains the invariant regarding
+        // `alive`. However, due to this change, for a short time, the alive
+        // zone is not `data[alive]` anymore, but `data[alive.start..=idx]`.
+        self.alive.next_back().map(|idx| {
+            // Read the element from the array.
+            // SAFETY: `idx` is an index into the former "alive" region of the
+            // array. Reading this element means that `data[idx]` is regarded as
+            // dead now (i.e. do not touch). As `idx` was the end of the
+            // alive-zone, the alive zone is now `data[alive]` again, restoring
+            // all invariants.
+            unsafe { self.data.get_unchecked(idx).read() }
+        })
     }
 }
 
@@ -203,26 +176,19 @@ unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> {}
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T: Clone, const N: usize> Clone for IntoIter<T, N> {
     fn clone(&self) -> Self {
-        // SAFETY: each point of unsafety is documented inside the unsafe block
-        unsafe {
-            // This creates a new uninitialized array. Note that the `assume_init`
-            // refers to the array, not the individual elements. And it is Ok if
-            // the array is in an uninitialized state as all elements may be
-            // uninitialized (all bit patterns are valid). Compare the
-            // `MaybeUninit` docs for more information.
-            let mut new_data: [MaybeUninit<T>; N] = MaybeUninit::uninit().assume_init();
+        // Note, we don't really need to match the exact same alive range, so
+        // we can just clone into offset 0 regardless of where `self` is.
+        let mut new = Self { data: MaybeUninit::uninit_array(), alive: 0..0 };
 
-            // Clone all alive elements.
-            for idx in self.alive.clone() {
-                // The element at `idx` in the old array is alive, so we can
-                // safely call `get_ref()`. We then clone it, and write the
-                // clone into the new array.
-                let clone = self.data.get_unchecked(idx).get_ref().clone();
-                new_data.get_unchecked_mut(idx).write(clone);
-            }
-
-            Self { data: new_data, alive: self.alive.clone() }
+        // Clone all alive elements.
+        for (src, dst) in self.as_slice().iter().zip(&mut new.data) {
+            // Write a clone into the new array, then update its alive range.
+            // If cloning panics, we'll correctly drop the previous items.
+            dst.write(src.clone());
+            new.alive.end += 1;
         }
+
+        new
     }
 }
 
