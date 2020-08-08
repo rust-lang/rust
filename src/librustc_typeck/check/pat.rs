@@ -1114,7 +1114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.sess.struct_span_err(pat.span, "`..` cannot be used in union patterns").emit();
             }
         } else if !etc && !unmentioned_fields.is_empty() {
-            unmentioned_err = Some(self.error_unmentioned_fields(pat.span, &unmentioned_fields));
+            unmentioned_err = Some(self.error_unmentioned_fields(pat, &unmentioned_fields));
         }
         match (inexistent_fields_err, unmentioned_err) {
             (Some(mut i), Some(mut u)) => {
@@ -1237,13 +1237,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "This error indicates that a struct pattern attempted to \
-                    extract a non-existent field from a struct. Struct fields \
-                    are identified by the name used before the colon : so struct \
-                    patterns should resemble the declaration of the struct type \
-                    being matched.\n\n\
-                    If you are using shorthand field patterns but want to refer \
-                    to the struct field by a different name, you should rename \
-                    it explicitly.",
+                 extract a non-existent field from a struct. Struct fields \
+                 are identified by the name used before the colon : so struct \
+                 patterns should resemble the declaration of the struct type \
+                 being matched.\n\n\
+                 If you are using shorthand field patterns but want to refer \
+                 to the struct field by a different name, you should rename \
+                 it explicitly.",
             );
         }
         err
@@ -1299,7 +1299,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn error_unmentioned_fields(
         &self,
-        span: Span,
+        pat: &Pat<'_>,
         unmentioned_fields: &[Ident],
     ) -> DiagnosticBuilder<'tcx> {
         let field_names = if unmentioned_fields.len() == 1 {
@@ -1312,23 +1312,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .join(", ");
             format!("fields {}", fields)
         };
-        let mut diag = struct_span_err!(
+        let mut err = struct_span_err!(
             self.tcx.sess,
-            span,
+            pat.span,
             E0027,
             "pattern does not mention {}",
             field_names
         );
-        diag.span_label(span, format!("missing {}", field_names));
-        if self.tcx.sess.teach(&diag.get_code().unwrap()) {
-            diag.note(
+        err.span_label(pat.span, format!("missing {}", field_names));
+        if self.tcx.sess.teach(&err.get_code().unwrap()) {
+            err.note(
                 "This error indicates that a pattern for a struct fails to specify a \
-                    sub-pattern for every one of the struct's fields. Ensure that each field \
-                    from the struct's definition is mentioned in the pattern, or use `..` to \
-                    ignore unwanted fields.",
+                 sub-pattern for every one of the struct's fields. Ensure that each field \
+                 from the struct's definition is mentioned in the pattern, or use `..` to \
+                 ignore unwanted fields.",
             );
         }
-        diag
+        err
     }
 
     fn check_pat_box(
