@@ -5,11 +5,14 @@ use std::{collections::HashMap, path::PathBuf, time::Instant};
 
 use lsp_types::{
     notification::DidOpenTextDocument,
-    request::{CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest},
+    request::{
+        CodeActionRequest, Completion, DocumentSymbolRequest, Formatting, GotoTypeDefinition,
+        HoverRequest,
+    },
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
-    DocumentFormattingParams, FormattingOptions, GotoDefinitionParams, HoverParams,
-    PartialResultParams, Position, Range, TextDocumentItem, TextDocumentPositionParams,
-    WorkDoneProgressParams,
+    DocumentFormattingParams, DocumentSymbolParams, FormattingOptions, GotoDefinitionParams,
+    HoverParams, PartialResultParams, Position, Range, TextDocumentItem,
+    TextDocumentPositionParams, WorkDoneProgressParams,
 };
 use rust_analyzer::lsp_ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
@@ -681,4 +684,314 @@ pub fn foo(_input: TokenStream) -> TokenStream {
 
     let value = res.get("contents").unwrap().get("value").unwrap().to_string();
     assert_eq!(value, r#""```rust\nfoo::Bar\n```\n\n```rust\nfn bar()\n```""#)
+}
+
+#[test]
+fn test_document_symbol_with_hierarchy() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/lib.rs
+mod a {
+    mod b {
+        struct B1;
+        fn b2() {}
+    }
+    struct A1;
+}
+"#,
+    )
+    .with_config(|config| {
+        config.client_caps.hierarchical_symbols = true;
+    })
+    .server();
+    server.wait_until_workspace_is_loaded();
+
+    server.request::<DocumentSymbolRequest>(
+        DocumentSymbolParams {
+            text_document: server.doc_id("src/lib.rs"),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+            partial_result_params: PartialResultParams::default(),
+        },
+        json!([
+            {
+                "children": [
+                    {
+                        "children": [
+                            {
+                                "deprecated": false,
+                                "kind": 23,
+                                "name": "B1",
+                                "range": {
+                                    "end": {
+                                        "character": 18,
+                                        "line": 2
+                                    },
+                                    "start": {
+                                        "character": 8,
+                                        "line": 2
+                                    }
+                                },
+                                "selectionRange": {
+                                    "end": {
+                                        "character": 17,
+                                        "line": 2
+                                    },
+                                    "start": {
+                                        "character": 15,
+                                        "line": 2
+                                    }
+                                },
+                                "tags": []
+                            },
+                            {
+                                "deprecated": false,
+                                "detail": "fn()",
+                                "kind": 12,
+                                "name": "b2",
+                                "range": {
+                                    "end": {
+                                        "character": 18,
+                                        "line": 3
+                                    },
+                                    "start": {
+                                        "character": 8,
+                                        "line": 3
+                                    }
+                                },
+                                "selectionRange": {
+                                    "end": {
+                                        "character": 13,
+                                        "line": 3
+                                    },
+                                    "start": {
+                                        "character": 11,
+                                        "line": 3
+                                    }
+                                },
+                                "tags": []
+                            }
+                        ],
+                        "deprecated": false,
+                        "kind": 2,
+                        "name": "b",
+                        "range": {
+                            "end": {
+                                "character": 5,
+                                "line": 4
+                            },
+                            "start": {
+                                "character": 4,
+                                "line": 1
+                            }
+                        },
+                        "selectionRange": {
+                            "end": {
+                                "character": 9,
+                                "line": 1
+                            },
+                            "start": {
+                                "character": 8,
+                                "line": 1
+                            }
+                        },
+                        "tags": []
+                    },
+                    {
+                        "deprecated": false,
+                        "kind": 23,
+                        "name": "A1",
+                        "range": {
+                            "end": {
+                                "character": 14,
+                                "line": 5
+                            },
+                            "start": {
+                                "character": 4,
+                                "line": 5
+                            }
+                        },
+                        "selectionRange": {
+                            "end": {
+                                "character": 13,
+                                "line": 5
+                            },
+                            "start": {
+                                "character": 11,
+                                "line": 5
+                            }
+                        },
+                        "tags": []
+                    }
+                ],
+                "deprecated": false,
+                "kind": 2,
+                "name": "a",
+                "range": {
+                    "end": {
+                        "character": 1,
+                        "line": 6
+                    },
+                    "start": {
+                        "character": 0,
+                        "line": 0
+                    }
+                },
+                "selectionRange": {
+                    "end": {
+                        "character": 5,
+                        "line": 0
+                    },
+                    "start": {
+                        "character": 4,
+                        "line": 0
+                    }
+                },
+                "tags": []
+            }
+        ]),
+    );
+}
+
+#[test]
+fn test_document_symbol_without_hierarchy() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = project(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/lib.rs
+mod a {
+    mod b {
+        struct B1;
+        fn b2() {}
+    }
+    struct A1;
+}
+"#,
+    );
+    server.wait_until_workspace_is_loaded();
+
+    server.request::<DocumentSymbolRequest>(
+        DocumentSymbolParams {
+            text_document: server.doc_id("src/lib.rs"),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+            partial_result_params: PartialResultParams::default(),
+        },
+        json!([
+            {
+                "deprecated": false,
+                "kind": 2,
+                "location": {
+                    "range": {
+                        "end": {
+                            "character": 1,
+                            "line": 6
+                        },
+                        "start": {
+                            "character": 0,
+                            "line": 0
+                        }
+                    },
+                    "uri": "file:///[..]/src/lib.rs"
+                },
+                "name": "a",
+                "tags": []
+            },
+            {
+                "containerName": "a",
+                "deprecated": false,
+                "kind": 2,
+                "location": {
+                    "range": {
+                        "end": {
+                            "character": 5,
+                            "line": 4
+                        },
+                        "start": {
+                            "character": 4,
+                            "line": 1
+                        }
+                    },
+                    "uri": "file:///[..]/src/lib.rs"
+                },
+                "name": "b",
+                "tags": []
+            },
+            {
+                "containerName": "b",
+                "deprecated": false,
+                "kind": 23,
+                "location": {
+                    "range": {
+                        "end": {
+                            "character": 18,
+                            "line": 2
+                        },
+                        "start": {
+                            "character": 8,
+                            "line": 2
+                        }
+                    },
+                    "uri": "file:///[..]/src/lib.rs"
+                },
+                "name": "B1",
+                "tags": []
+            },
+            {
+                "containerName": "b",
+                "deprecated": false,
+                "kind": 12,
+                "location": {
+                    "range": {
+                        "end": {
+                            "character": 18,
+                            "line": 3
+                        },
+                        "start": {
+                            "character": 8,
+                            "line": 3
+                        }
+                    },
+                    "uri": "file:///[..]/src/lib.rs"
+                },
+                "name": "b2",
+                "tags": []
+            },
+            {
+                "containerName": "a",
+                "deprecated": false,
+                "kind": 23,
+                "location": {
+                    "range": {
+                        "end": {
+                            "character": 14,
+                            "line": 5
+                        },
+                        "start": {
+                            "character": 4,
+                            "line": 5
+                        }
+                    },
+                    "uri": "file:///[..]/src/lib.rs"
+                },
+                "name": "A1",
+                "tags": []
+            }
+        ]),
+    );
 }
