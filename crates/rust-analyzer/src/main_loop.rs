@@ -47,7 +47,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
-    GlobalState::new(connection.sender.clone(), config).run(connection.receiver)
+    GlobalState::new(connection.sender, config).run(connection.receiver)
 }
 
 enum Event {
