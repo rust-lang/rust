@@ -6,7 +6,7 @@
 
 use crate::hygiene::SyntaxContext;
 use crate::SESSION_GLOBALS;
-use crate::{BytePos, SpanData};
+use crate::{BytePos, SpanData, SessionGlobals};
 
 use rustc_data_structures::fx::FxHashMap;
 
@@ -92,6 +92,16 @@ impl Span {
 
     #[inline]
     pub fn data(self) -> SpanData {
+        self.data_with_interner(|index| with_span_interner(|interner| *interner.get(index)))
+    }
+
+    #[inline]
+    pub fn data_from_globals(self, globals: &SessionGlobals) -> SpanData {
+        self.data_with_interner(|index| *globals.span_interner.lock().get(index))
+    }
+
+    #[inline]
+    pub fn data_with_interner(self, interner_get: impl FnOnce(u32) -> SpanData) -> SpanData {
         if self.len_or_tag != LEN_TAG {
             // Inline format.
             debug_assert!(self.len_or_tag as u32 <= MAX_LEN);
@@ -104,7 +114,7 @@ impl Span {
             // Interned format.
             debug_assert!(self.ctxt_or_zero == 0);
             let index = self.base_or_index;
-            with_span_interner(|interner| *interner.get(index))
+            interner_get(index)
         }
     }
 }

@@ -88,7 +88,7 @@ impl SessionGlobals {
 }
 
 pub fn with_session_globals<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
-    let session_globals = SessionGlobals::new(edition);
+    let session_globals = Lrc::new(SessionGlobals::new(edition));
     SESSION_GLOBALS.set(&session_globals, f)
 }
 
@@ -99,7 +99,7 @@ pub fn with_default_session_globals<R>(f: impl FnOnce() -> R) -> R {
 // If this ever becomes non thread-local, `decode_syntax_context`
 // and `decode_expn_id` will need to be updated to handle concurrent
 // deserialization.
-scoped_tls::scoped_thread_local!(pub static SESSION_GLOBALS: SessionGlobals);
+scoped_tls::scoped_thread_local!(pub static SESSION_GLOBALS: Lrc<SessionGlobals>);
 
 // FIXME: Perhaps this should not implement Rustc{Decodable, Encodable}
 //
@@ -1746,6 +1746,7 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in librustc_middle.
 pub trait HashStableContext {
+    fn session_globals(&self) -> &SessionGlobals;
     fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
     fn hash_crate_num(&mut self, _: CrateNum, hasher: &mut StableHasher);
     fn hash_spans(&self) -> bool;
@@ -1781,10 +1782,12 @@ where
             return;
         }
 
+        let globals = ctx.session_globals();
+
         // If this is not an empty or invalid span, we want to hash the last
         // position that belongs to it, as opposed to hashing the first
         // position past it.
-        let span = self.data();
+        let span = self.data_from_globals(globals);
         let (file_lo, line_lo, col_lo) = match ctx.byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,
             None => {

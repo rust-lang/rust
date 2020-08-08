@@ -226,6 +226,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
 }
 
 impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
+    fn session_globals(&self) -> &rustc_span::SessionGlobals {
+        &self.sess.parse_sess.span_globals
+    }
     fn hash_spans(&self) -> bool {
         self.hash_spans
     }

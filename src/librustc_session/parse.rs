@@ -11,7 +11,7 @@ use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{MultiSpan, Span, Symbol};
+use rustc_span::{MultiSpan, Span, Symbol, SessionGlobals};
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -140,6 +140,7 @@ pub struct ParseSess {
     pub env_depinfo: Lock<FxHashSet<(Symbol, Option<Symbol>)>>,
     /// All the type ascriptions expressions that have had a suggestion for likely path typo.
     pub type_ascription_path_suggestions: Lock<FxHashSet<Span>>,
+    pub span_globals: Lrc<SessionGlobals>
 }
 
 impl ParseSess {
@@ -150,6 +151,7 @@ impl ParseSess {
     }
 
     pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> Self {
+        let span_globals = rustc_span::SESSION_GLOBALS.with(|g| g.clone());
         Self {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
@@ -167,6 +169,7 @@ impl ParseSess {
             reached_eof: Lock::new(false),
             env_depinfo: Default::default(),
             type_ascription_path_suggestions: Default::default(),
+            span_globals
         }
     }
 
