@@ -1470,6 +1470,17 @@ impl<T> Iterator for RawIterRange<T> {
 impl<T> FusedIterator for RawIterRange<T> {}
 
 /// Iterator which returns a raw pointer to every full bucket in the table.
+///
+/// For maximum flexibility this iterator is not bound by a lifetime, but you
+/// must observe several rules when using it:
+/// - You must not free the hash table while iterating (including via growing/shrinking).
+/// - It is fine to erase a bucket that has been yielded by the iterator.
+/// - Erasing a bucket that has not yet been yielded by the iterator may still
+///   result in the iterator yielding that bucket (unless `reflect_remove` is called).
+/// - It is unspecified whether an element inserted after the iterator was
+///   created will be yielded by that iterator (unless `reflect_insert` is called).
+/// - The order in which the iterator yields bucket is unspecified and may
+///   change in the future.
 pub struct RawIter<T> {
     pub(crate) iter: RawIterRange<T>,
     items: usize,
