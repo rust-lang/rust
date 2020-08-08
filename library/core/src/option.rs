@@ -207,6 +207,35 @@ impl<T> Option<T> {
         !self.is_some()
     }
 
+    /// Returns `true` if the option is a [`Some`] and the given predicate
+    /// returns `true` for the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_is_some_and)]
+    ///
+    /// let x: Option<u32> = Some(2);
+    /// assert_eq!(x.is_some_and(|&n| n == 9), false);
+    /// assert_eq!(x.is_some_and(|&n| n < 5), true);
+    ///
+    /// let x: Option<u32> = None;
+    /// assert_eq!(x.is_some_and(|&n| n == 9), false);
+    /// assert_eq!(x.is_some_and(|&n| n < 5), false);
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "option_is_some_and", issue = "none")]
+    pub fn is_some_and<P>(&self, predicate: P) -> bool
+    where
+        P: FnOnce(&T) -> bool,
+    {
+        match self {
+            Some(x) => predicate(x),
+            None => false,
+        }
+    }
+
     /// Returns `true` if the option is a [`Some`] value containing the given value.
     ///
     /// # Examples
