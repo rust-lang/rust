@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::Debug;
@@ -353,6 +355,30 @@ impl<K, V: fmt::Debug> fmt::Debug for Values<'_, K, V> {
 #[derive(Debug)]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
+}
+
+/// An owning iterator over the keys of a `BTreeMap`.
+///
+/// This `struct` is created by the [`into_keys`] method on [`BTreeMap`].
+/// See its documentation for more.
+///
+/// [`into_keys`]: BTreeMap::into_keys
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[derive(Debug)]
+pub struct IntoKeys<K, V> {
+    inner: IntoIter<K, V>,
+}
+
+/// An owning iterator over the values of a `BTreeMap`.
+///
+/// This `struct` is created by the [`into_values`] method on [`BTreeMap`].
+/// See its documentation for more.
+///
+/// [`into_values`]: BTreeMap::into_values
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[derive(Debug)]
+pub struct IntoValues<K, V> {
+    inner: IntoIter<K, V>,
 }
 
 /// An iterator over a sub-range of entries in a `BTreeMap`.
@@ -1291,6 +1317,52 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
         self.length = dfs(self.root.as_ref().unwrap().as_ref());
     }
+
+    /// Creates a consuming iterator visiting all the keys, in sorted order.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `K`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_into_keys_values)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(2, "b");
+    /// a.insert(1, "a");
+    ///
+    /// let keys: Vec<i32> = a.into_keys().collect();
+    /// assert_eq!(keys, [1, 2]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "map_into_keys_values", issue = "75294")]
+    pub fn into_keys(self) -> IntoKeys<K, V> {
+        IntoKeys { inner: self.into_iter() }
+    }
+
+    /// Creates a consuming iterator visiting all the values, in order by key.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `V`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_into_keys_values)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "hello");
+    /// a.insert(2, "goodbye");
+    ///
+    /// let values: Vec<&str> = a.into_values().collect();
+    /// assert_eq!(values, ["hello", "goodbye"]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "map_into_keys_values", issue = "75294")]
+    pub fn into_values(self) -> IntoValues<K, V> {
+        IntoValues { inner: self.into_iter() }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1779,6 +1851,82 @@ impl<'a, K, V> Range<'a, K, V> {
         unsafe { unwrap_unchecked(self.front.as_mut()).next_unchecked() }
     }
 }
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> Iterator for IntoKeys<K, V> {
+    type Item = K;
+
+    fn next(&mut self) -> Option<K> {
+        self.inner.next().map(|(k, _)| k)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    fn last(mut self) -> Option<K> {
+        self.next_back()
+    }
+
+    fn min(mut self) -> Option<K> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<K> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> DoubleEndedIterator for IntoKeys<K, V> {
+    fn next_back(&mut self) -> Option<K> {
+        self.inner.next_back().map(|(k, _)| k)
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> FusedIterator for IntoKeys<K, V> {}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> Iterator for IntoValues<K, V> {
+    type Item = V;
+
+    fn next(&mut self) -> Option<V> {
+        self.inner.next().map(|(_, v)| v)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    fn last(mut self) -> Option<V> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> DoubleEndedIterator for IntoValues<K, V> {
+    fn next_back(&mut self) -> Option<V> {
+        self.inner.next_back().map(|(_, v)| v)
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> ExactSizeIterator for IntoValues<K, V> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> FusedIterator for IntoValues<K, V> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {

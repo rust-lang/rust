@@ -872,6 +872,52 @@ where
     {
         self.base.retain(f)
     }
+
+    /// Creates a consuming iterator visiting all the keys in arbitrary order.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `K`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_into_keys_values)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// let vec: Vec<&str> = map.into_keys().collect();
+    /// ```
+    #[inline]
+    #[unstable(feature = "map_into_keys_values", issue = "75294")]
+    pub fn into_keys(self) -> IntoKeys<K, V> {
+        IntoKeys { inner: self.into_iter() }
+    }
+
+    /// Creates a consuming iterator visiting all the values in arbitrary order.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `V`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_into_keys_values)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// let vec: Vec<i32> = map.into_values().collect();
+    /// ```
+    #[inline]
+    #[unstable(feature = "map_into_keys_values", issue = "75294")]
+    pub fn into_values(self) -> IntoValues<K, V> {
+        IntoValues { inner: self.into_iter() }
+    }
 }
 
 impl<K, V, S> HashMap<K, V, S>
@@ -1152,6 +1198,28 @@ impl<'a, K, V> Drain<'a, K, V> {
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
+}
+
+/// An owning iterator over the keys of a `HashMap`.
+///
+/// This `struct` is created by the [`into_keys`] method on [`HashMap`].
+/// See its documentation for more.
+///
+/// [`into_keys`]: HashMap::into_keys
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+pub struct IntoKeys<K, V> {
+    inner: IntoIter<K, V>,
+}
+
+/// An owning iterator over the values of a `HashMap`.
+///
+/// This `struct` is created by the [`into_values`] method on [`HashMap`].
+/// See its documentation for more.
+///
+/// [`into_values`]: HashMap::into_values
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+pub struct IntoValues<K, V> {
+    inner: IntoIter<K, V>,
 }
 
 /// A builder for computing where in a HashMap a key-value pair would be stored.
@@ -1824,6 +1892,66 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter()).finish()
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> Iterator for IntoKeys<K, V> {
+    type Item = K;
+
+    #[inline]
+    fn next(&mut self) -> Option<K> {
+        self.inner.next().map(|(k, _)| k)
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> FusedIterator for IntoKeys<K, V> {}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K: Debug, V: Debug> fmt::Debug for IntoKeys<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.inner.iter().map(|(k, _)| k)).finish()
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> Iterator for IntoValues<K, V> {
+    type Item = V;
+
+    #[inline]
+    fn next(&mut self) -> Option<V> {
+        self.inner.next().map(|(_, v)| v)
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> ExactSizeIterator for IntoValues<K, V> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> FusedIterator for IntoValues<K, V> {}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K: Debug, V: Debug> fmt::Debug for IntoValues<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.inner.iter().map(|(_, v)| v)).finish()
     }
 }
 
@@ -3082,6 +3210,30 @@ mod test_map {
         assert!(values.contains(&2));
         assert!(values.contains(&4));
         assert!(values.contains(&6));
+    }
+
+    #[test]
+    fn test_into_keys() {
+        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
+        let map: HashMap<_, _> = vec.into_iter().collect();
+        let keys: Vec<_> = map.into_keys().collect();
+
+        assert_eq!(keys.len(), 3);
+        assert!(keys.contains(&1));
+        assert!(keys.contains(&2));
+        assert!(keys.contains(&3));
+    }
+
+    #[test]
+    fn test_into_values() {
+        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
+        let map: HashMap<_, _> = vec.into_iter().collect();
+        let values: Vec<_> = map.into_values().collect();
+
+        assert_eq!(values.len(), 3);
+        assert!(values.contains(&'a'));
+        assert!(values.contains(&'b'));
+        assert!(values.contains(&'c'));
     }
 
     #[test]
