@@ -1,9 +1,11 @@
-#![crate_name = "foo"]
-
+// aux-build:elided-lifetime.rs
+//
 // rust-lang/rust#75225
 //
 // Since Rust 2018 we encourage writing out <'_> explicitly to make it clear
 // that borrowing is occuring. Make sure rustdoc is following the same idiom.
+
+#![crate_name = "foo"]
 
 pub struct Ref<'a>(&'a u32);
 type ARef<'a> = Ref<'a>;
@@ -32,15 +34,10 @@ pub fn test4(a: &u32) -> ARef<'_> {
     Ref(a)
 }
 
-// Ensure external paths also display elided lifetime
-// @has foo/fn.test5.html
-// @matches - "Iter</a>&lt;'_"
-pub fn test5(a: &Option<u32>) -> std::option::Iter<u32> {
-    a.iter()
-}
-
-// @has foo/fn.test6.html
-// @matches - "Iter</a>&lt;'_"
-pub fn test6(a: &Option<u32>) -> std::option::Iter<'_, u32> {
-    a.iter()
-}
+// Ensure external paths in inlined docs also display elided lifetime
+// @has foo/bar/fn.test5.html
+// @matches - "Ref</a>&lt;'_&gt;"
+// @has foo/bar/fn.test6.html
+// @matches - "Ref</a>&lt;'_&gt;"
+#[doc(inline)]
+pub extern crate bar;
