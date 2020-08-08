@@ -945,16 +945,28 @@ mod mod_keyword {}
 /// `move` converts any variables captured by reference or mutable reference
 /// to owned by value variables.
 ///
-/// Note: `move` closures may still implement [`Fn`] or [`FnMut`], even though
-/// they capture variables by `move`. This is because the traits implemented by
-/// a closure type are determined by *what* the closure does with captured
-/// values, not *how* it captures them.
-///
 /// ```rust
 /// let capture = "hello";
 /// let closure = move || {
 ///     println!("rust says {}", capture);
 /// };
+/// ```
+///
+/// Note: `move` closures may still implement [`Fn`] or [`FnMut`], even though
+/// they capture variables by `move`. This is because the traits implemented by
+/// a closure type are determined by *what* the closure does with captured
+/// values, not *how* it captures them:
+///
+/// ```rust
+/// fn create_fn() -> impl Fn() {
+///     let text = "Fn".to_owned();
+///
+///     move || println!("This is a: {}", text)
+/// }
+///
+///     let fn_plain = create_fn();
+///
+///     fn_plain();
 /// ```
 ///
 /// `move` is often used when [threads] are involved.
