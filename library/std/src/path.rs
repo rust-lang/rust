@@ -1232,10 +1232,10 @@ impl PathBuf {
     /// ```
     /// use std::path::{Path, PathBuf};
     ///
-    /// let mut p = PathBuf::from("/test/test.rs");
+    /// let mut p = PathBuf::from("/spirited/away.rs");
     ///
     /// p.pop();
-    /// assert_eq!(Path::new("/test"), p);
+    /// assert_eq!(Path::new("/spirited"), p);
     /// p.pop();
     /// assert_eq!(Path::new("/"), p);
     /// ```
@@ -1992,6 +1992,13 @@ impl Path {
     /// assert_eq!(ancestors.next(), Some(Path::new("/foo")));
     /// assert_eq!(ancestors.next(), Some(Path::new("/")));
     /// assert_eq!(ancestors.next(), None);
+    ///
+    /// let mut ancestors = Path::new("../foo/bar").ancestors();
+    /// assert_eq!(ancestors.next(), Some(Path::new("../foo/bar")));
+    /// assert_eq!(ancestors.next(), Some(Path::new("../foo")));
+    /// assert_eq!(ancestors.next(), Some(Path::new("..")));
+    /// assert_eq!(ancestors.next(), Some(Path::new("")));
+    /// assert_eq!(ancestors.next(), None);
     /// ```
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
@@ -2053,8 +2060,9 @@ impl Path {
     /// assert_eq!(path.strip_prefix("/test/"), Ok(Path::new("haha/foo.txt")));
     /// assert_eq!(path.strip_prefix("/test/haha/foo.txt"), Ok(Path::new("")));
     /// assert_eq!(path.strip_prefix("/test/haha/foo.txt/"), Ok(Path::new("")));
-    /// assert_eq!(path.strip_prefix("test").is_ok(), false);
-    /// assert_eq!(path.strip_prefix("/haha").is_ok(), false);
+    ///
+    /// assert!(path.strip_prefix("test").is_err());
+    /// assert!(path.strip_prefix("/haha").is_err());
     ///
     /// let prefix = PathBuf::from("/test/");
     /// assert_eq!(path.strip_prefix(prefix), Ok(Path::new("haha/foo.txt")));
@@ -2140,9 +2148,8 @@ impl Path {
     /// ```
     /// use std::path::Path;
     ///
-    /// let path = Path::new("foo.rs");
-    ///
-    /// assert_eq!("foo", path.file_stem().unwrap());
+    /// assert_eq!("foo", Path::new("foo.rs").file_stem().unwrap());
+    /// assert_eq!("foo.tar", Path::new("foo.tar.gz").file_stem().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_stem(&self) -> Option<&OsStr> {
@@ -2166,9 +2173,8 @@ impl Path {
     /// ```
     /// use std::path::Path;
     ///
-    /// let path = Path::new("foo.rs");
-    ///
-    /// assert_eq!("rs", path.extension().unwrap());
+    /// assert_eq!("rs", Path::new("foo.rs").extension().unwrap());
+    /// assert_eq!("gz", Path::new("foo.tar.gz").extension().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn extension(&self) -> Option<&OsStr> {
@@ -2247,6 +2253,8 @@ impl Path {
     ///
     /// let path = Path::new("foo.tar.gz");
     /// assert_eq!(path.with_extension(""), PathBuf::from("foo.tar"));
+    /// assert_eq!(path.with_extension("xz"), PathBuf::from("foo.tar.xz"));
+    /// assert_eq!(path.with_extension("").with_extension("txt"), PathBuf::from("foo.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
@@ -2473,7 +2481,7 @@ impl Path {
     ///
     /// ```no_run
     /// use std::path::Path;
-    /// assert_eq!(Path::new("does_not_exist.txt").exists(), false);
+    /// assert!(!Path::new("does_not_exist.txt").exists());
     /// ```
     ///
     /// # See Also

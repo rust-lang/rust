@@ -117,6 +117,24 @@ impl<T: ?Sized> NonNull<T> {
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
     /// (unbound) lifetime is needed, use `&*my_ptr.as_ptr()`.
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    /// - `self` is properly aligned
+    /// - `self` must point to an initialized instance of T; in particular, the pointer must be
+    ///   "dereferencable" in the sense defined [here].
+    ///
+    /// This applies even if the result of this method is unused!
+    /// (The part about being initialized is not yet fully decided, but until
+    /// it is, the only safe approach is to ensure that they are indeed initialized.)
+    ///
+    /// Additionally, the lifetime of `self` does not necessarily reflect the actual
+    /// lifetime of the data. *You* must enforce Rust's aliasing rules. In particular,
+    /// for the duration of this lifetime, the memory the pointer points to must not
+    /// get mutated (except inside `UnsafeCell`).
+    ///
+    /// [here]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub unsafe fn as_ref(&self) -> &T {
@@ -130,6 +148,24 @@ impl<T: ?Sized> NonNull<T> {
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
     /// (unbound) lifetime is needed, use `&mut *my_ptr.as_ptr()`.
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    /// - `self` is properly aligned
+    /// - `self` must point to an initialized instance of T; in particular, the pointer must be
+    ///   "dereferenceable" in the sense defined [here].
+    ///
+    /// This applies even if the result of this method is unused!
+    /// (The part about being initialized is not yet fully decided, but until
+    /// it is the only safe approach is to ensure that they are indeed initialized.)
+    ///
+    /// Additionally, the lifetime of `self` does not necessarily reflect the actual
+    /// lifetime of the data. *You* must enforce Rust's aliasing rules. In particular,
+    /// for the duration of this lifetime, the memory this pointer points to must not
+    /// get accessed (read or written) through any other pointer.
+    ///
+    /// [here]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub unsafe fn as_mut(&mut self) -> &mut T {
@@ -222,6 +258,24 @@ impl<T> NonNull<[T]> {
     pub const fn as_non_null_ptr(self) -> NonNull<T> {
         // SAFETY: We know `self` is non-null.
         unsafe { NonNull::new_unchecked(self.as_ptr().as_mut_ptr()) }
+    }
+
+    /// Returns a raw pointer to the slice's buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_ptr_get, nonnull_slice_from_raw_parts)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
+    /// assert_eq!(slice.as_mut_ptr(), 1 as *mut i8);
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
+    pub const fn as_mut_ptr(self) -> *mut T {
+        self.as_non_null_ptr().as_ptr()
     }
 
     /// Returns a raw pointer to an element or subslice, without doing bounds
