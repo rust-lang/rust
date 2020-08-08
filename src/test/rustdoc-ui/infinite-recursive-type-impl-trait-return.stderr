@@ -1,0 +1,17 @@
+error[E0072]: recursive type `DEF_ID` has infinite size
+  --> $DIR/infinite-recursive-type-impl-trait-return.rs:7:5
+   |
+LL |     enum E {
+   |     ^^^^^^ recursive type has infinite size
+LL |
+LL |         This(E),
+   |              - recursive without indirection
+   |
+help: insert some indirection (e.g., a `DEF_ID` representable
+   |
+LL |         This(Box<E>),
+   |              ^^^^ ^
+
+error: aborting due to previous error
+
+For more information about this error, try `DEF_ID`.
