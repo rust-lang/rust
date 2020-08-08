@@ -1910,14 +1910,6 @@ impl<K, V> Iterator for IntoValues<K, V> {
     fn last(mut self) -> Option<V> {
         self.next_back()
     }
-
-    fn min(mut self) -> Option<V> {
-        self.next()
-    }
-
-    fn max(mut self) -> Option<V> {
-        self.next_back()
-    }
 }
 
 #[unstable(feature = "map_into_keys_values", issue = "55214")]
