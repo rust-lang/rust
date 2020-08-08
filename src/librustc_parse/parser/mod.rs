@@ -103,6 +103,8 @@ pub struct Parser<'a> {
     /// error.
     pub(super) unclosed_delims: Vec<UnmatchedBrace>,
     last_unexpected_token_span: Option<Span>,
+    /// Span pointing at the `:` for the last type ascription the parser has seen, and whether it
+    /// looked like it could have been a mistyped path or literal `Option:Some(42)`).
     pub last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,

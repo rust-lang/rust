@@ -115,7 +115,7 @@ pub fn equal_up_to_regions(
             T: Relate<'tcx>,
         {
             self.relate(a.skip_binder(), b.skip_binder())?;
-            Ok(a.clone())
+            Ok(a)
         }
     }
 

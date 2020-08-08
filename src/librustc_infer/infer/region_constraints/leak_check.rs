@@ -288,9 +288,9 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
     ) -> TypeError<'tcx> {
         debug!("error: placeholder={:?}, other_region={:?}", placeholder, other_region);
         if self.overly_polymorphic {
-            return TypeError::RegionsOverlyPolymorphic(placeholder.name, other_region);
+            TypeError::RegionsOverlyPolymorphic(placeholder.name, other_region)
         } else {
-            return TypeError::RegionsInsufficientlyPolymorphic(placeholder.name, other_region);
+            TypeError::RegionsInsufficientlyPolymorphic(placeholder.name, other_region)
         }
     }
 }

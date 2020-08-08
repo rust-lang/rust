@@ -257,7 +257,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             param.param_ty.to_string(),
                             Applicability::MaybeIncorrect,
                         );
-                    } else if let Some(_) = opaque
+                    } else if opaque
                         .bounds
                         .iter()
                         .filter_map(|arg| match arg {
@@ -269,6 +269,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             _ => None,
                         })
                         .next()
+                        .is_some()
                     {
                     } else {
                         err.span_suggestion_verbose(

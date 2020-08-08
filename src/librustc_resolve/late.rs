@@ -226,7 +226,7 @@ impl<'a> PathSource<'a> {
                 ValueNS => "method or associated constant",
                 MacroNS => bug!("associated macro"),
             },
-            PathSource::Expr(parent) => match &parent.as_ref().map(|p| &p.kind) {
+            PathSource::Expr(parent) => match parent.as_ref().map(|p| &p.kind) {
                 // "function" here means "anything callable" rather than `DefKind::Fn`,
                 // this is not precise but usually more helpful than just "value".
                 Some(ExprKind::Call(call_expr, _)) => match &call_expr.kind {

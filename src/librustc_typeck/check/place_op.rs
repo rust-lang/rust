@@ -200,13 +200,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Gather up expressions we want to munge.
         let mut exprs = vec![expr];
 
-        loop {
-            match exprs.last().unwrap().kind {
-                hir::ExprKind::Field(ref expr, _)
-                | hir::ExprKind::Index(ref expr, _)
-                | hir::ExprKind::Unary(hir::UnOp::UnDeref, ref expr) => exprs.push(&expr),
-                _ => break,
-            }
+        while let hir::ExprKind::Field(ref expr, _)
+        | hir::ExprKind::Index(ref expr, _)
+        | hir::ExprKind::Unary(hir::UnOp::UnDeref, ref expr) = exprs.last().unwrap().kind
+        {
+            exprs.push(&expr);
         }
 
         debug!("convert_place_derefs_to_mutable: exprs={:?}", exprs);

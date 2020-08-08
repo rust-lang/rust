@@ -960,7 +960,7 @@ fn pointer_type_metadata(
 fn param_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
     debug!("param_type_metadata: {:?}", t);
     let name = format!("{:?}", t);
-    return unsafe {
+    unsafe {
         llvm::LLVMRustDIBuilderCreateBasicType(
             DIB(cx),
             name.as_ptr().cast(),
@@ -968,7 +968,7 @@ fn param_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
             Size::ZERO.bits(),
             DW_ATE_unsigned,
         )
-    };
+    }
 }
 
 pub fn compile_unit_metadata(

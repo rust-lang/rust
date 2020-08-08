@@ -405,9 +405,11 @@ impl<T> MaybeUninit<T> {
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_as_ptr", issue = "75251")]
     #[inline(always)]
-    pub fn as_ptr(&self) -> *const T {
-        unsafe { &*self.value as *const T }
+    pub const fn as_ptr(&self) -> *const T {
+        // `MaybeUninit` and `ManuallyDrop` are both `repr(transparent)` so we can cast the pointer.
+        self as *const _ as *const T
     }
 
     /// Gets a mutable pointer to the contained value. Reading from this pointer or turning it
@@ -442,9 +444,11 @@ impl<T> MaybeUninit<T> {
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_as_ptr", issue = "75251")]
     #[inline(always)]
-    pub fn as_mut_ptr(&mut self) -> *mut T {
-        unsafe { &mut *self.value as *mut T }
+    pub const fn as_mut_ptr(&mut self) -> *mut T {
+        // `MaybeUninit` and `ManuallyDrop` are both `repr(transparent)` so we can cast the pointer.
+        self as *mut _ as *mut T
     }
 
     /// Extracts the value from the `MaybeUninit<T>` container. This is a great way

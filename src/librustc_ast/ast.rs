@@ -378,7 +378,7 @@ impl Default for Generics {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
     /// `true` if we ate a `where` token: this can happen
-    /// if we parsed no predicates (e.g. `struct Foo where {}
+    /// if we parsed no predicates (e.g. `struct Foo where {}`).
     /// This allows us to accurately pretty-print
     /// in `nt_to_tokenstream`
     pub has_where_token: bool,

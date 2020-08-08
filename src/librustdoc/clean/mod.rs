@@ -1395,10 +1395,13 @@ impl Clean<Type> for hir::Ty<'_> {
                                             _ => None,
                                         });
                                     if let Some(lt) = lifetime.cloned() {
-                                        if !lt.is_elided() {
-                                            let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
-                                            lt_substs.insert(lt_def_id.to_def_id(), lt.clean(cx));
-                                        }
+                                        let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
+                                        let cleaned = if !lt.is_elided() {
+                                            lt.clean(cx)
+                                        } else {
+                                            self::types::Lifetime::elided()
+                                        };
+                                        lt_substs.insert(lt_def_id.to_def_id(), cleaned);
                                     }
                                     indices.lifetimes += 1;
                                 }
@@ -1957,21 +1960,17 @@ impl Clean<GenericArgs> for hir::GenericArgs<'_> {
                 output: if output != Type::Tuple(Vec::new()) { Some(output) } else { None },
             }
         } else {
-            let elide_lifetimes = self.args.iter().all(|arg| match arg {
-                hir::GenericArg::Lifetime(lt) => lt.is_elided(),
-                _ => true,
-            });
             GenericArgs::AngleBracketed {
                 args: self
                     .args
                     .iter()
-                    .filter_map(|arg| match arg {
-                        hir::GenericArg::Lifetime(lt) if !elide_lifetimes => {
-                            Some(GenericArg::Lifetime(lt.clean(cx)))
+                    .map(|arg| match arg {
+                        hir::GenericArg::Lifetime(lt) if !lt.is_elided() => {
+                            GenericArg::Lifetime(lt.clean(cx))
                         }
-                        hir::GenericArg::Lifetime(_) => None,
-                        hir::GenericArg::Type(ty) => Some(GenericArg::Type(ty.clean(cx))),
-                        hir::GenericArg::Const(ct) => Some(GenericArg::Const(ct.clean(cx))),
+                        hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
+                        hir::GenericArg::Type(ty) => GenericArg::Type(ty.clean(cx)),
+                        hir::GenericArg::Const(ct) => GenericArg::Const(ct.clean(cx)),
                     })
                     .collect(),
                 bindings: self.bindings.clean(cx),
