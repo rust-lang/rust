@@ -2481,7 +2481,7 @@ impl Path {
     ///
     /// ```no_run
     /// use std::path::Path;
-    /// assert_eq!(Path::new("does_not_exist.txt").exists(), false);
+    /// assert!(!Path::new("does_not_exist.txt").exists());
     /// ```
     ///
     /// # See Also
