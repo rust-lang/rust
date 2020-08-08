@@ -25,12 +25,14 @@ symbols! {
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
+        fn is_special:
         Invalid:            "",
         PathRoot:           "{{root}}",
         DollarCrate:        "$crate",
         Underscore:         "_",
 
-        // Keywords that are used in stable Rust.
+        // Keywords that are used in stable Rust on all editions.
+        fn is_used_keyword_20xx:
         As:                 "as",
         Break:              "break",
         Const:              "const",
@@ -67,7 +69,8 @@ symbols! {
         Where:              "where",
         While:              "while",
 
-        // Keywords that are used in unstable Rust or reserved for future use.
+        // Keywords that are used in unstable Rust or reserved for future use on all editions.
+        fn is_unused_keyword_20xx:
         Abstract:           "abstract",
         Become:             "become",
         Box:                "box",
@@ -82,18 +85,22 @@ symbols! {
         Yield:              "yield",
 
         // Edition-specific keywords that are used in stable Rust.
+        fn is_used_keyword_2018:
         Async:              "async", // >= 2018 Edition only
         Await:              "await", // >= 2018 Edition only
         Dyn:                "dyn", // >= 2018 Edition only
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
+        fn is_unused_keyword_2018:
         Try:                "try", // >= 2018 Edition only
 
         // Special lifetime names
+        fn is_special_lifetime:
         UnderscoreLifetime: "'_",
         StaticLifetime:     "'static",
 
         // Weak keywords, have special meaning only in specific contexts.
+        fn is_weak_keyword:
         Auto:               "auto",
         Catch:              "catch",
         Default:            "default",
@@ -1546,14 +1553,6 @@ pub mod sym {
 }
 
 impl Symbol {
-    fn is_used_keyword_2018(self) -> bool {
-        self >= kw::Async && self <= kw::Dyn
-    }
-
-    fn is_unused_keyword_2018(self) -> bool {
-        self == kw::Try
-    }
-
     /// A keyword or reserved identifier that can be used as a path segment.
     pub fn is_path_segment_keyword(self) -> bool {
         self == kw::Super
@@ -1579,20 +1578,20 @@ impl Ident {
     // Returns `true` for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
-        self.name <= kw::Underscore
+        self.name.is_special()
     }
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= kw::As && self.name <= kw::While
+        self.name.is_used_keyword_20xx()
             || self.name.is_used_keyword_2018() && self.span.rust_2018()
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= kw::Abstract && self.name <= kw::Yield
+        self.name.is_unused_keyword_20xx()
             || self.name.is_unused_keyword_2018() && self.span.rust_2018()
     }
 

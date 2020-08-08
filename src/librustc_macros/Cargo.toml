@@ -8,6 +8,7 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
+indexmap = "1"
 synstructure = "0.12.1"
 syn = { version = "1", features = ["full"] }
 proc-macro2 = "1"

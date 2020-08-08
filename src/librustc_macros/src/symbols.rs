@@ -1,5 +1,8 @@
+use indexmap::IndexMap;
 use proc_macro::TokenStream;
+use proc_macro2::TokenTree;
 use quote::quote;
+use std::collections::hash_map::RandomState;
 use std::collections::HashSet;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{braced, parse_macro_input, Ident, LitStr, Token};
@@ -44,22 +47,43 @@ impl Parse for Symbol {
     }
 }
 
-/// A type used to greedily parse another type until the input is empty.
-struct List<T>(Vec<T>);
+// Map from an optional keyword class to the list of keywords in it.
+// FIXME: the indexmap crate thinks `has_std` is false when building `rustc_macros`,
+// so we have to provide the hasher manually.
+struct Keywords(IndexMap<Option<Ident>, Vec<Keyword>, RandomState>);
 
-impl<T: Parse> Parse for List<T> {
+impl Parse for Keywords {
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        let mut classes = IndexMap::<_, Vec<_>, _>::with_hasher(Default::default());
+        let mut current_class = None;
+        while !input.is_empty() {
+            if input.peek(Token![fn]) {
+                input.parse::<TokenTree>()?;
+                current_class = Some(input.parse::<Ident>()?);
+                input.parse::<Token![:]>()?;
+            } else {
+                classes.entry(current_class.clone()).or_default().push(input.parse()?);
+            }
+        }
+        Ok(Keywords(classes))
+    }
+}
+
+struct Symbols(Vec<Symbol>);
+
+impl Parse for Symbols {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let mut list = Vec::new();
         while !input.is_empty() {
             list.push(input.parse()?);
         }
-        Ok(List(list))
+        Ok(Symbols(list))
     }
 }
 
 struct Input {
-    keywords: List<Keyword>,
-    symbols: List<Symbol>,
+    keywords: Keywords,
+    symbols: Symbols,
 }
 
 impl Parse for Input {
@@ -85,6 +109,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
     let mut symbols_stream = quote! {};
     let mut digits_stream = quote! {};
     let mut prefill_stream = quote! {};
+    let mut keyword_class_stream = quote! {};
     let mut counter = 0u32;
     let mut keys = HashSet::<String>::new();
     let mut prev_key: Option<String> = None;
@@ -106,18 +131,34 @@ pub fn symbols(input: TokenStream) -> TokenStream {
     };
 
     // Generate the listed keywords.
-    for keyword in &input.keywords.0 {
-        let name = &keyword.name;
-        let value = &keyword.value;
-        check_dup(&value.value(), &mut errors);
-        prefill_stream.extend(quote! {
-            #value,
-        });
-        keyword_stream.extend(quote! {
-            #[allow(non_upper_case_globals)]
-            pub const #name: Symbol = Symbol::new(#counter);
-        });
-        counter += 1;
+    for (class, keywords) in &input.keywords.0 {
+        let mut class_stream = quote! {};
+        for keyword in keywords {
+            let name = &keyword.name;
+            let value = &keyword.value;
+            check_dup(&value.value(), &mut errors);
+            prefill_stream.extend(quote! {
+                #value,
+            });
+            keyword_stream.extend(quote! {
+                #[allow(non_upper_case_globals)]
+                pub const #name: Symbol = Symbol::new(#counter);
+            });
+            class_stream.extend(quote! {
+                | kw::#name
+            });
+            counter += 1;
+        }
+        if let Some(class) = class {
+            keyword_class_stream.extend(quote! {
+                fn #class(self) -> bool {
+                    match self {
+                        #class_stream => true,
+                        _ => false
+                    }
+                }
+            });
+        }
     }
 
     // Generate the listed symbols.
@@ -184,6 +225,10 @@ pub fn symbols(input: TokenStream) -> TokenStream {
                     #prefill_stream
                 ])
             }
+        }
+
+        impl Symbol {
+            #keyword_class_stream
         }
     });
 
