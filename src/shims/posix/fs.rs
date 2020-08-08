@@ -485,6 +485,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let fh = &mut this.machine.file_handler;
             let (file_result, writable) = match fh.handles.get(&fd) {
                 Some(file_descriptor) => {
+                    // FIXME: Support "dup" for all FDs(stdin, etc)
                     let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
                     (file.try_clone(), *writable)
                 },
@@ -499,6 +500,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         {
             let &[_, _] = check_arg_count(args)?;
             if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
+                // FIXME: Support fullfsync for all FDs
                 match file_descriptor.as_file_handle() {
                     Ok(FileHandle { file, writable }) => {
                         let io_result = maybe_sync_file(&file, *writable, File::sync_all);
@@ -522,6 +524,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.remove(&fd) {
+            // FIXME: Support `close` for all FDs(stdin, etc)
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
             // We sync the file if it was opened in a mode different than read-only.
             if *writable {
@@ -1219,6 +1222,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let length = this.read_scalar(length_op)?.to_i64()?;
         if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
+            // FIXME: Support ftruncate64 for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
             if *writable {
                 if let Ok(length) = length.try_into() {
@@ -1252,6 +1256,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
+            // FIXME: Support fsync for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
             let io_result = maybe_sync_file(&file, *writable, File::sync_all);
             this.try_unwrap_io_result(io_result)
@@ -1267,6 +1272,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
+            // FIXME: Support fdatasync for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
             let io_result = maybe_sync_file(&file, *writable, File::sync_data);
             this.try_unwrap_io_result(io_result)
@@ -1306,6 +1312,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
+            // FIXME: Support sync_data_range for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
             let io_result = maybe_sync_file(&file, *writable, File::sync_data);
             this.try_unwrap_io_result(io_result)
