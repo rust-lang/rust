@@ -484,9 +484,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             let fh = &mut this.machine.file_handler;
             let (file_result, writable) = match fh.handles.get(&fd) {
-                Some(file_descriptor) => match file_descriptor.as_file_handle() {
-                    Ok(FileHandle { file, writable }) => (file.try_clone(), *writable),
-                    Err(_) => return this.handle_not_found(),
+                Some(file_descriptor) => {
+                    let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
+                    (file.try_clone(), *writable)
                 },
                 None => return this.handle_not_found(),
             };
@@ -522,28 +522,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.remove(&fd) {
-            match file_descriptor.as_file_handle() {
-                Ok(FileHandle { file, writable }) => {
-                    // We sync the file if it was opened in a mode different than read-only.
-                    if *writable {
-                        // `File::sync_all` does the checks that are done when closing a file. We do this to
-                        // to handle possible errors correctly.
-                        let result = this.try_unwrap_io_result(file.sync_all().map(|_| 0i32));
-                        // Now we actually close the file.
-                        drop(file);
-                        // And return the result.
-                        result
-                    } else {
-                        // We drop the file, this closes it but ignores any errors produced when closing
-                        // it. This is done because `File::sync_all` cannot be done over files like
-                        // `/dev/urandom` which are read-only. Check
-                        // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439 for a deeper
-                        // discussion.
-                        drop(file);
-                        Ok(0)
-                    }
-                },
-                Err(_) => this.handle_not_found()
+            let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
+            // We sync the file if it was opened in a mode different than read-only.
+            if *writable {
+                // `File::sync_all` does the checks that are done when closing a file. We do this to
+                // to handle possible errors correctly.
+                let result = this.try_unwrap_io_result(file.sync_all().map(|_| 0i32));
+                // Now we actually close the file.
+                drop(file);
+                // And return the result.
+                result
+            } else {
+                // We drop the file, this closes it but ignores any errors produced when closing
+                // it. This is done because `File::sync_all` cannot be done over files like
+                // `/dev/urandom` which are read-only. Check
+                // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439 for a deeper
+                // discussion.
+                drop(file);
+                Ok(0)
             }
         } else {
             this.handle_not_found()
@@ -1223,25 +1219,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let length = this.read_scalar(length_op)?.to_i64()?;
         if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
-            match file_descriptor.as_file_handle() {
-                Ok(FileHandle { file, writable }) => {
-                    if *writable {
-                        if let Ok(length) = length.try_into() {
-                            let result = file.set_len(length);
-                            this.try_unwrap_io_result(result.map(|_| 0i32))
-                        } else {
-                            let einval = this.eval_libc("EINVAL")?;
-                            this.set_last_error(einval)?;
-                            Ok(-1)
-                        }
-                    } else {
-                        // The file is not writable
-                        let einval = this.eval_libc("EINVAL")?;
-                        this.set_last_error(einval)?;
-                        Ok(-1)
-                    }
+            let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
+            if *writable {
+                if let Ok(length) = length.try_into() {
+                    let result = file.set_len(length);
+                    this.try_unwrap_io_result(result.map(|_| 0i32))
+                } else {
+                    let einval = this.eval_libc("EINVAL")?;
+                    this.set_last_error(einval)?;
+                    Ok(-1)
                 }
-                Err(_) => this.handle_not_found()
+            } else {
+                // The file is not writable
+                let einval = this.eval_libc("EINVAL")?;
+                this.set_last_error(einval)?;
+                Ok(-1)
             }
         } else {
             this.handle_not_found()
@@ -1260,13 +1252,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
-            match file_descriptor.as_file_handle() {
-                Ok(FileHandle { file, writable }) => {
-                    let io_result = maybe_sync_file(&file, *writable, File::sync_all);
-                    this.try_unwrap_io_result(io_result)
-                }
-                Err(_) => this.handle_not_found()
-            }
+            let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
+            let io_result = maybe_sync_file(&file, *writable, File::sync_all);
+            this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
         }
@@ -1279,13 +1267,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
-            match file_descriptor.as_file_handle() {
-                Ok(FileHandle { file, writable }) => {
-                    let io_result = maybe_sync_file(&file, *writable, File::sync_data);
-                    this.try_unwrap_io_result(io_result)
-                }
-                Err(_) => this.handle_not_found()
-            }
+            let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
+            let io_result = maybe_sync_file(&file, *writable, File::sync_data);
+            this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
         }
@@ -1322,13 +1306,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
-            match file_descriptor.as_file_handle() {
-                Ok(FileHandle { file, writable }) => {
-                    let io_result = maybe_sync_file(&file, *writable, File::sync_data);
-                    this.try_unwrap_io_result(io_result)
-                },
-                Err(_) => this.handle_not_found()
-            }
+            let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
+            let io_result = maybe_sync_file(&file, *writable, File::sync_data);
+            this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
         }
@@ -1378,9 +1358,9 @@ impl FileMetadata {
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let option = ecx.machine.file_handler.handles.get(&fd);
         let file = match option {
-            Some(file_descriptor) => match file_descriptor.as_file_handle() {
-                Ok(FileHandle { file, writable: _ }) => file,
-                Err(_) => return ecx.handle_not_found().map(|_: i32| None),
+            Some(file_descriptor) => {
+                let FileHandle { file, writable: _ } = file_descriptor.as_file_handle()?;
+                file
             },
             None => return ecx.handle_not_found().map(|_: i32| None),
         };
