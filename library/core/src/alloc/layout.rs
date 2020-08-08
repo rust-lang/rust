@@ -107,7 +107,15 @@ impl Layout {
     #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
     pub const fn align(&self) -> usize {
-        self.align_.get()
+        let align = self.align_.get();
+        if !align.is_power_of_two() {
+            debug_assert!(false, "alignment is not a power of two");
+            // SAFETY: align is guaranteed to be a power of two
+            unsafe {
+                crate::hint::unreachable_unchecked();
+            }
+        }
+        align
     }
 
     /// Constructs a `Layout` suitable for holding a value of type `T`.
