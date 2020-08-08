@@ -1992,6 +1992,13 @@ impl Path {
     /// assert_eq!(ancestors.next(), Some(Path::new("/foo")));
     /// assert_eq!(ancestors.next(), Some(Path::new("/")));
     /// assert_eq!(ancestors.next(), None);
+    ///
+    /// let mut ancestors = Path::new("../foo/bar").ancestors();
+    /// assert_eq!(ancestors.next(), Some(Path::new("../foo/bar")));
+    /// assert_eq!(ancestors.next(), Some(Path::new("../foo")));
+    /// assert_eq!(ancestors.next(), Some(Path::new("..")));
+    /// assert_eq!(ancestors.next(), Some(Path::new("")));
+    /// assert_eq!(ancestors.next(), None);
     /// ```
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
