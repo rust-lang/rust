@@ -1,4 +1,5 @@
 // compile-flags: --target wasm32-unknown-unknown
+// needs-llvm-components: webassembly
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]
