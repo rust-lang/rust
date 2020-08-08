@@ -891,7 +891,7 @@ where
     /// let vec: Vec<&str> = map.into_keys().collect();
     /// ```
     #[inline]
-    #[unstable(feature = "map_into_keys_values", issue = "55214")]
+    #[unstable(feature = "map_into_keys_values", issue = "75294")]
     pub fn into_keys(self) -> IntoKeys<K, V> {
         IntoKeys { inner: self.into_iter() }
     }
@@ -914,7 +914,7 @@ where
     /// let vec: Vec<i32> = map.into_values().collect();
     /// ```
     #[inline]
-    #[unstable(feature = "map_into_keys_values", issue = "55214")]
+    #[unstable(feature = "map_into_keys_values", issue = "75294")]
     pub fn into_values(self) -> IntoValues<K, V> {
         IntoValues { inner: self.into_iter() }
     }
@@ -1206,7 +1206,7 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 /// See its documentation for more.
 ///
 /// [`into_keys`]: HashMap::into_keys
-#[unstable(feature = "map_into_keys_values", issue = "55214")]
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
 pub struct IntoKeys<K, V> {
     inner: IntoIter<K, V>,
 }
@@ -1217,7 +1217,7 @@ pub struct IntoKeys<K, V> {
 /// See its documentation for more.
 ///
 /// [`into_values`]: HashMap::into_values
-#[unstable(feature = "map_into_keys_values", issue = "55214")]
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
 pub struct IntoValues<K, V> {
     inner: IntoIter<K, V>,
 }
@@ -1895,7 +1895,7 @@ where
     }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "55214")]
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
 impl<K, V> Iterator for IntoKeys<K, V> {
     type Item = K;
 
@@ -1908,24 +1908,24 @@ impl<K, V> Iterator for IntoKeys<K, V> {
         self.inner.size_hint()
     }
 }
-#[unstable(feature = "map_into_keys_values", issue = "55214")]
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
 impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
-#[unstable(feature = "map_into_keys_values", issue = "55214")]
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
 impl<K, V> FusedIterator for IntoKeys<K, V> {}
 
-#[unstable(feature = "map_into_keys_values", issue = "55214")]
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
 impl<K: Debug, V: Debug> fmt::Debug for IntoKeys<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(k, _)| k)).finish()
     }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "55214")]
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
 impl<K, V> Iterator for IntoValues<K, V> {
     type Item = V;
 
@@ -1938,17 +1938,17 @@ impl<K, V> Iterator for IntoValues<K, V> {
         self.inner.size_hint()
     }
 }
-#[unstable(feature = "map_into_keys_values", issue = "55214")]
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
 impl<K, V> ExactSizeIterator for IntoValues<K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
-#[unstable(feature = "map_into_keys_values", issue = "55214")]
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
 impl<K, V> FusedIterator for IntoValues<K, V> {}
 
-#[unstable(feature = "map_into_keys_values", issue = "55214")]
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
 impl<K: Debug, V: Debug> fmt::Debug for IntoValues<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(_, v)| v)).finish()
