@@ -38,7 +38,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                         if let hir::ItemKind::Fn(.., body_id) = i.kind {
                             if i.attrs
                                 .iter()
-                                .any(|attr| attr.check_name(rustc_span::symbol::sym::test))
+                                .any(|attr| self.0.sess.check_name(attr, rustc_span::symbol::sym::test))
                             {
                                 let config = miri::MiriConfig::default();
                                 let did = self.0.hir().body_owner_def_id(body_id).to_def_id();

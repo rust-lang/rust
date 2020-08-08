@@ -11,7 +11,6 @@ use std::fmt;
 use log::trace;
 use rand::rngs::StdRng;
 
-use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::{
     mir,
@@ -442,7 +441,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         def_id: DefId,
     ) -> InterpResult<'tcx, AllocId> {
         let attrs = memory.tcx.get_attrs(def_id);
-        let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
+        let link_name = match memory.tcx.sess.first_attr_value_str_by_name(&attrs, sym::link_name) {
             Some(name) => name,
             None => memory.tcx.item_name(def_id),
         };
