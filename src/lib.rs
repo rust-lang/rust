@@ -1,4 +1,4 @@
-#![feature(rustc_private, decl_macro, type_alias_impl_trait, associated_type_bounds, never_type)]
+#![feature(rustc_private, decl_macro, type_alias_impl_trait, associated_type_bounds, never_type, try_blocks)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 

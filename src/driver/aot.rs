@@ -54,7 +54,9 @@ fn emit_module<B: Backend>(
         .output_filenames(LOCAL_CRATE)
         .temp_path(OutputType::Object, Some(&name));
     let obj = product.emit();
-    std::fs::write(&tmp_file, obj).unwrap();
+    if let Err(err) = std::fs::write(&tmp_file, obj) {
+        tcx.sess.fatal(&format!("error writing object file: {}", err));
+    }
 
     let work_product = if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() {
         None
@@ -254,7 +256,9 @@ pub(super) fn run_aot(
                 crate::metadata::write_metadata(tcx, object);
             });
 
-            std::fs::write(&tmp_file, obj).unwrap();
+            if let Err(err) = std::fs::write(&tmp_file, obj) {
+                tcx.sess.fatal(&format!("error writing metadata object file: {}", err));
+            }
 
             (metadata_cgu_name, tmp_file)
         });

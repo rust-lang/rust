@@ -243,19 +243,18 @@ pub(crate) fn write_clif_file<'tcx>(
     )
     .unwrap();
 
-    match ::std::fs::File::create(clif_file_name) {
-        Ok(mut file) => {
-            let target_triple = crate::target_triple(tcx.sess);
-            writeln!(file, "test compile").unwrap();
-            writeln!(file, "set is_pic").unwrap();
-            writeln!(file, "set enable_simd").unwrap();
-            writeln!(file, "target {} haswell", target_triple).unwrap();
-            writeln!(file, "").unwrap();
-            file.write(clif.as_bytes()).unwrap();
-        }
-        Err(e) => {
-            tcx.sess.warn(&format!("err opening clif file: {:?}", e));
-        }
+    let res: std::io::Result<()> = try {
+        let mut file = std::fs::File::create(clif_file_name)?;
+        let target_triple = crate::target_triple(tcx.sess);
+        writeln!(file, "test compile")?;
+        writeln!(file, "set is_pic")?;
+        writeln!(file, "set enable_simd")?;
+        writeln!(file, "target {} haswell", target_triple)?;
+        writeln!(file, "")?;
+        file.write(clif.as_bytes())?;
+    };
+    if let Err(err) = res {
+        tcx.sess.warn(&format!("err writing clif file: {}", err));
     }
 }
 

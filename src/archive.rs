@@ -149,6 +149,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             Gnu(ar::GnuBuilder<File>),
         }
 
+        let sess = self.config.sess;
+
         let mut symbol_table = BTreeMap::new();
 
         let mut entries = Vec::new();
@@ -169,10 +171,11 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                     let mut data = Vec::new();
                     entry.read_to_end(&mut data).unwrap();
                     data
-
                 }
                 ArchiveEntry::File(file) => {
-                    std::fs::read(file).unwrap()
+                    std::fs::read(file).unwrap_or_else(|err| {
+                        sess.fatal(&format!("error while reading object file during archive building: {}", err));
+                    })
                 }
             };
 
@@ -192,7 +195,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                         if err == "Unknown file magic" {
                             // Not an object file; skip it.
                         } else {
-                            self.config.sess.fatal(&format!("Error parsing `{}` during archive creation: {}", entry_name, err));
+                            sess.fatal(&format!("error parsing `{}` during archive creation: {}", entry_name, err));
                         }
                     }
                 }
@@ -203,7 +206,9 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
 
         let mut builder = if self.config.use_gnu_style_archive {
             BuilderKind::Gnu(ar::GnuBuilder::new(
-                File::create(&self.config.dst).unwrap(),
+                File::create(&self.config.dst).unwrap_or_else(|err| {
+                    sess.fatal(&format!("error opening destination during archive building: {}", err));
+                }),
                 entries
                     .iter()
                     .map(|(name, _)| name.as_bytes().to_vec())
@@ -213,7 +218,9 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             ).unwrap())
         } else {
             BuilderKind::Bsd(ar::Builder::new(
-                File::create(&self.config.dst).unwrap(),
+                File::create(&self.config.dst).unwrap_or_else(|err| {
+                    sess.fatal(&format!("error opening destination during archive building: {}", err));
+                }),
                 symbol_table,
             ).unwrap())
         };
@@ -260,8 +267,10 @@ impl<'a> ArArchiveBuilder<'a> {
 
         let mut i = 0;
         while let Some(entry) = archive.next_entry() {
-            let entry = entry.unwrap();
-            let file_name = String::from_utf8(entry.header().identifier().to_vec()).unwrap();
+            let entry = entry?;
+            let file_name = String::from_utf8(entry.header().identifier().to_vec()).map_err(|err| {
+                std::io::Error::new(std::io::ErrorKind::InvalidData, err)
+            })?;
             if !skip(&file_name) {
                 self.entries.push((
                     file_name,
