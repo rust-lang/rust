@@ -130,13 +130,13 @@ fn find_name(
     opt_name: Option<ast::Name>,
 ) -> Option<RangeInfo<Definition>> {
     if let Some(name) = opt_name {
-        let def = classify_name(sema, &name)?.definition();
+        let def = classify_name(sema, &name)?.definition(sema.db)?;
         let range = name.syntax().text_range();
         return Some(RangeInfo::new(range, def));
     }
     let name_ref =
         sema.find_node_at_offset_with_descend::<ast::NameRef>(&syntax, position.offset)?;
-    let def = classify_name_ref(sema, &name_ref)?.definition();
+    let def = classify_name_ref(sema, &name_ref)?.definition(sema.db)?;
     let range = name_ref.syntax().text_range();
     Some(RangeInfo::new(range, def))
 }

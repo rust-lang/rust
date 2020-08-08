@@ -6,8 +6,8 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    Field, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, Name, PathResolution,
-    Semantics, TypeParam, Visibility,
+    db::HirDatabase, Crate, Field, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef,
+    Name, PathResolution, Semantics, TypeParam, Visibility,
 };
 use ra_prof::profile;
 use ra_syntax::{
@@ -80,6 +80,7 @@ impl Definition {
 
 #[derive(Debug)]
 pub enum NameClass {
+    ExternCrate(Crate),
     Definition(Definition),
     /// `None` in `if let None = Some(82) {}`
     ConstReference(Definition),
@@ -90,19 +91,21 @@ pub enum NameClass {
 }
 
 impl NameClass {
-    pub fn into_definition(self) -> Option<Definition> {
-        match self {
-            NameClass::Definition(it) => Some(it),
-            NameClass::ConstReference(_) => None,
-            NameClass::FieldShorthand { local, field: _ } => Some(Definition::Local(local)),
-        }
+    pub fn into_definition(self, db: &dyn HirDatabase) -> Option<Definition> {
+        Some(match self {
+            NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db)?.into()),
+            NameClass::Definition(it) => it,
+            NameClass::ConstReference(_) => return None,
+            NameClass::FieldShorthand { local, field: _ } => Definition::Local(local),
+        })
     }
 
-    pub fn definition(self) -> Definition {
-        match self {
+    pub fn definition(self, db: &dyn HirDatabase) -> Option<Definition> {
+        Some(match self {
+            NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db)?.into()),
             NameClass::Definition(it) | NameClass::ConstReference(it) => it,
             NameClass::FieldShorthand { local: _, field } => field,
-        }
+        })
     }
 }
 
@@ -120,32 +123,37 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
     match_ast! {
         match parent {
             ast::Rename(it) => {
-                let use_tree = it.syntax().parent().and_then(ast::UseTree::cast)?;
-                let path = use_tree.path()?;
-                let path_segment = path.segment()?;
-                let name_ref_class = path_segment
-                    .name_ref()
-                    // The rename might be from a `self` token, so fallback to the name higher
-                    // in the use tree.
-                    .or_else(||{
-                        if path_segment.self_token().is_none() {
-                            return None;
-                        }
+                if let Some(use_tree) = it.syntax().parent().and_then(ast::UseTree::cast) {
+                    let path = use_tree.path()?;
+                    let path_segment = path.segment()?;
+                    let name_ref_class = path_segment
+                        .name_ref()
+                        // The rename might be from a `self` token, so fallback to the name higher
+                        // in the use tree.
+                        .or_else(||{
+                            if path_segment.self_token().is_none() {
+                                return None;
+                            }
 
-                        let use_tree = use_tree
-                            .syntax()
-                            .parent()
-                            .as_ref()
-                            // Skip over UseTreeList
-                            .and_then(SyntaxNode::parent)
-                            .and_then(ast::UseTree::cast)?;
-                        let path = use_tree.path()?;
-                        let path_segment = path.segment()?;
-                        path_segment.name_ref()
-                    })
-                    .and_then(|name_ref| classify_name_ref(sema, &name_ref))?;
+                            let use_tree = use_tree
+                                .syntax()
+                                .parent()
+                                .as_ref()
+                                // Skip over UseTreeList
+                                .and_then(SyntaxNode::parent)
+                                .and_then(ast::UseTree::cast)?;
+                            let path = use_tree.path()?;
+                            let path_segment = path.segment()?;
+                            path_segment.name_ref()
+                        })
+                        .and_then(|name_ref| classify_name_ref(sema, &name_ref))?;
 
-                Some(NameClass::Definition(name_ref_class.definition()))
+                    Some(NameClass::Definition(name_ref_class.definition(sema.db)?))
+                } else {
+                    let extern_crate = it.syntax().parent().and_then(ast::ExternCrate::cast)?;
+                    let resolved = sema.resolve_extern_crate(&extern_crate)?;
+                    Some(NameClass::ExternCrate(resolved))
+                }
             },
             ast::IdentPat(it) => {
                 let local = sema.to_def(&it)?;
@@ -220,16 +228,20 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
 
 #[derive(Debug)]
 pub enum NameRefClass {
+    ExternCrate(Crate),
     Definition(Definition),
     FieldShorthand { local: Local, field: Definition },
 }
 
 impl NameRefClass {
-    pub fn definition(self) -> Definition {
-        match self {
+    pub fn definition(self, db: &dyn HirDatabase) -> Option<Definition> {
+        Some(match self {
+            NameRefClass::ExternCrate(krate) => {
+                Definition::ModuleDef(krate.root_module(db)?.into())
+            }
             NameRefClass::Definition(def) => def,
             NameRefClass::FieldShorthand { local, field: _ } => Definition::Local(local),
-        }
+        })
     }
 }
 
@@ -307,9 +319,15 @@ pub fn classify_name_ref(
         }
     }
 
-    let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
-    let resolved = sema.resolve_path(&path)?;
-    Some(NameRefClass::Definition(resolved.into()))
+    if let Some(path) = name_ref.syntax().ancestors().find_map(ast::Path::cast) {
+        if let Some(resolved) = sema.resolve_path(&path) {
+            return Some(NameRefClass::Definition(resolved.into()));
+        }
+    }
+
+    let extern_crate = ast::ExternCrate::cast(parent)?;
+    let resolved = sema.resolve_extern_crate(&extern_crate)?;
+    Some(NameRefClass::ExternCrate(resolved))
 }
 
 impl From<PathResolution> for Definition {

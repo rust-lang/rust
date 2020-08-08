@@ -380,6 +380,23 @@ macro_rules! noop {
     );
 }
 
+#[test]
+fn test_extern_crate() {
+    check_highlighting(
+        r#"
+        //- /main.rs
+        extern crate std;
+        extern crate alloc as abc;
+        //- /std/lib.rs
+        pub struct S;
+        //- /alloc/lib.rs
+        pub struct A
+        "#,
+        expect_file!["crates/ra_ide/test_data/highlight_extern_crate.html"],
+        false,
+    );
+}
+
 /// Highlights the code given by the `ra_fixture` argument, renders the
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.

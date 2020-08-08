@@ -483,6 +483,7 @@ fn highlight_element(
             };
 
             match name_kind {
+                Some(NameClass::ExternCrate(_)) => HighlightTag::Module.into(),
                 Some(NameClass::Definition(def)) => {
                     highlight_name(db, def) | HighlightModifier::Definition
                 }
@@ -500,6 +501,7 @@ fn highlight_element(
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
             match classify_name_ref(sema, &name_ref) {
                 Some(name_kind) => match name_kind {
+                    NameRefClass::ExternCrate(_) => HighlightTag::Module.into(),
                     NameRefClass::Definition(def) => {
                         if let Definition::Local(local) = &def {
                             if let Some(name) = local.name(db) {

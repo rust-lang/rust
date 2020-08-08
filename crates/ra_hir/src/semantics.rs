@@ -8,7 +8,7 @@ use hir_def::{
     resolver::{self, HasResolver, Resolver},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
-use hir_expand::{diagnostics::AstDiagnostic, hygiene::Hygiene, ExpansionInfo};
+use hir_expand::{diagnostics::AstDiagnostic, hygiene::Hygiene, name::AsName, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
@@ -24,8 +24,8 @@ use crate::{
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, resolve_hir_path_qualifier, SourceAnalyzer},
-    AssocItem, Callable, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module,
-    ModuleDef, Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    AssocItem, Callable, Crate, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef,
+    Module, ModuleDef, Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 use resolver::TypeNs;
 
@@ -226,6 +226,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.imp.resolve_path(path)
+    }
+
+    pub fn resolve_extern_crate(&self, extern_crate: &ast::ExternCrate) -> Option<Crate> {
+        self.imp.resolve_extern_crate(extern_crate)
     }
 
     pub fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantDef> {
@@ -443,6 +447,17 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(path.syntax()).resolve_path(self.db, path)
     }
 
+    fn resolve_extern_crate(&self, extern_crate: &ast::ExternCrate) -> Option<Crate> {
+        let krate = self.scope(extern_crate.syntax()).krate()?;
+        krate.dependencies(self.db).into_iter().find_map(|dep| {
+            if dep.name == extern_crate.name_ref()?.as_name() {
+                Some(dep.krate)
+            } else {
+                None
+            }
+        })
+    }
+
     fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {
         self.analyze(record_lit.syntax()).resolve_variant(self.db, record_lit)
     }
@@ -610,6 +625,10 @@ pub struct SemanticsScope<'a> {
 impl<'a> SemanticsScope<'a> {
     pub fn module(&self) -> Option<Module> {
         Some(Module { id: self.resolver.module()? })
+    }
+
+    pub fn krate(&self) -> Option<Crate> {
+        Some(Crate { id: self.resolver.krate()? })
     }
 
     /// Note: `FxHashSet<TraitId>` should be treated as an opaque type, passed into `Type
