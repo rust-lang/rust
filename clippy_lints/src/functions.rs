@@ -294,7 +294,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                 let body = cx.tcx.hir().body(eid);
                 Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id);
 
-                if attr.is_none() && cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(cx.sess(), &item.attrs) {
+                if attr.is_none() && cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(cx.sess(), &item.attrs)
+                {
                     check_must_use_candidate(
                         cx,
                         &sig.decl,
