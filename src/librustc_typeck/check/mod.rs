@@ -1967,10 +1967,16 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             check_union(tcx, it.hir_id, it.span);
         }
         hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
-            let def_id = tcx.hir().local_def_id(it.hir_id);
+            // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
+            // `async-std` (and `pub async fn` in general).
+            // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at it!
+            // See https://github.com/rust-lang/rust/issues/75100
+            if !tcx.sess.opts.actually_rustdoc {
+                let def_id = tcx.hir().local_def_id(it.hir_id);
 
-            let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-            check_opaque(tcx, def_id, substs, it.span, &origin);
+                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                check_opaque(tcx, def_id, substs, it.span, &origin);
+            }
         }
         hir::ItemKind::TyAlias(..) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
