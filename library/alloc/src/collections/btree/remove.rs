@@ -24,35 +24,36 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         self,
         handle_emptied_internal_root: F,
     ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
-        let (old_kv, mut pos) = self.remove();
-        let len = pos.reborrow().into_node().len();
-        if len < MIN_LEN {
-            let idx = pos.idx();
+        let leaf = self.reborrow().into_node();
+        if leaf.len() > MIN_LEN || leaf.ascend().is_err() {
+            self.remove()
+        } else {
+            let idx = self.idx();
             // We have to temporarily forget the child type, because there is no
             // distinct node type for the immediate parents of a leaf.
-            let new_pos = match pos.into_node().forget_type().choose_parent_kv() {
+            let (old_kv, pos) = match self.into_node().forget_type().choose_parent_kv() {
                 Ok(Left(left_parent_kv)) => {
-                    debug_assert!(left_parent_kv.right_child_len() == MIN_LEN - 1);
-                    if left_parent_kv.can_merge() {
-                        left_parent_kv.merge(Some(Right(idx)))
+                    debug_assert!(left_parent_kv.right_child_len() == MIN_LEN);
+                    if left_parent_kv.can_merge_discarding_hole() {
+                        left_parent_kv.merge_discarding_hole(Right(idx))
                     } else {
                         debug_assert!(left_parent_kv.left_child_len() > MIN_LEN);
-                        left_parent_kv.steal_left(idx)
+                        left_parent_kv.steal_left_discarding_hole(idx)
                     }
                 }
                 Ok(Right(right_parent_kv)) => {
-                    debug_assert!(right_parent_kv.left_child_len() == MIN_LEN - 1);
-                    if right_parent_kv.can_merge() {
-                        right_parent_kv.merge(Some(Left(idx)))
+                    debug_assert!(right_parent_kv.left_child_len() == MIN_LEN);
+                    if right_parent_kv.can_merge_discarding_hole() {
+                        right_parent_kv.merge_discarding_hole(Left(idx))
                     } else {
                         debug_assert!(right_parent_kv.right_child_len() > MIN_LEN);
-                        right_parent_kv.steal_right(idx)
+                        right_parent_kv.steal_right_discarding_hole(idx)
                     }
                 }
-                Err(pos) => unsafe { Handle::new_edge(pos, idx) },
+                Err(_) => unreachable!(),
             };
-            // SAFETY: `new_pos` is the leaf we started from or a sibling.
-            pos = unsafe { new_pos.cast_to_leaf_unchecked() };
+            // SAFETY: `pos` is the leaf we started from or a sibling.
+            let mut pos = unsafe { pos.cast_to_leaf_unchecked() };
 
             // Only if we merged, the parent (if any) has shrunk, but skipping
             // the following step does not pay off in benchmarks.
@@ -64,8 +65,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
             if let Ok(parent) = unsafe { pos.reborrow_mut() }.into_node().ascend() {
                 parent.into_node().handle_shrunk_node_recursively(handle_emptied_internal_root);
             }
+            (old_kv, pos)
         }
-        (old_kv, pos)
     }
 }
 
@@ -126,24 +127,24 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
             Ok(Left(left_parent_kv)) => {
                 debug_assert!(left_parent_kv.right_child_len() == MIN_LEN - 1);
                 if left_parent_kv.can_merge() {
-                    let pos = left_parent_kv.merge(None);
-                    let parent_edge = unsafe { unwrap_unchecked(pos.into_node().ascend().ok()) };
+                    let child = left_parent_kv.merge();
+                    let parent_edge = unsafe { unwrap_unchecked(child.ascend().ok()) };
                     Some(parent_edge.into_node())
                 } else {
                     debug_assert!(left_parent_kv.left_child_len() > MIN_LEN);
-                    left_parent_kv.steal_left(0);
+                    left_parent_kv.steal_left();
                     None
                 }
             }
             Ok(Right(right_parent_kv)) => {
                 debug_assert!(right_parent_kv.left_child_len() == MIN_LEN - 1);
                 if right_parent_kv.can_merge() {
-                    let pos = right_parent_kv.merge(None);
-                    let parent_edge = unsafe { unwrap_unchecked(pos.into_node().ascend().ok()) };
+                    let child = right_parent_kv.merge();
+                    let parent_edge = unsafe { unwrap_unchecked(child.ascend().ok()) };
                     Some(parent_edge.into_node())
                 } else {
                     debug_assert!(right_parent_kv.right_child_len() > MIN_LEN);
-                    right_parent_kv.steal_right(0);
+                    right_parent_kv.steal_right();
                     None
                 }
             }

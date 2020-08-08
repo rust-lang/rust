@@ -654,6 +654,21 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         }
     }
 
+    /// Adds a key/value pair to the end of the node, filling up a hole.
+    fn push_discarding_hole(&mut self, key: K, val: V, hole_idx: usize) -> (K, V) {
+        let last_idx = self.len() - 1;
+        assert!(hole_idx <= last_idx);
+        assert!(last_idx < CAPACITY);
+
+        unsafe {
+            let old_key = slice_remove(self.reborrow_mut().into_key_area_slice(), hole_idx);
+            let old_val = slice_remove(self.reborrow_mut().into_val_area_slice(), hole_idx);
+            self.reborrow_mut().into_key_area_mut_at(last_idx).write(key);
+            self.reborrow_mut().into_val_area_mut_at(last_idx).write(val);
+            (old_key, old_val)
+        }
+    }
+
     /// Adds a key/value pair to the beginning of the node.
     fn push_front(&mut self, key: K, val: V) {
         assert!(self.len() < CAPACITY);
@@ -662,6 +677,45 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
             *self.reborrow_mut().into_len_mut() += 1;
             slice_insert(self.reborrow_mut().into_key_area_slice(), 0, key);
             slice_insert(self.reborrow_mut().into_val_area_slice(), 0, val);
+        }
+    }
+
+    /// Adds a key/value pair to the beginning of the node, filling up a hole.
+    fn push_front_discarding_hole(&mut self, key: K, val: V, hole_idx: usize) -> (K, V) {
+        assert!(hole_idx < self.len());
+        debug_assert!(self.len() < CAPACITY);
+
+        unsafe {
+            let old_key =
+                slice_shift_right(self.reborrow_mut().into_key_area_slice(), 0, hole_idx, key);
+            let old_val =
+                slice_shift_right(self.reborrow_mut().into_val_area_slice(), 0, hole_idx, val);
+            (old_key, old_val)
+        }
+    }
+
+    /// Removes and returns a key/value pair from the end of this node.
+    pub fn pop(&mut self) -> (K, V) {
+        assert!(self.len() > 0);
+
+        let idx = self.len() - 1;
+        unsafe {
+            let key = ptr::read(self.reborrow().key_at(idx));
+            let val = ptr::read(self.reborrow().val_at(idx));
+            *self.reborrow_mut().into_len_mut() -= 1;
+            (key, val)
+        }
+    }
+
+    /// Removes and returns a key/value pair from the beginning of this node.
+    pub fn pop_front(&mut self) -> (K, V) {
+        assert!(self.len() > 0);
+
+        unsafe {
+            let key = slice_remove(self.reborrow_mut().into_key_area_slice(), 0);
+            let val = slice_remove(self.reborrow_mut().into_val_area_slice(), 0);
+            *self.reborrow_mut().into_len_mut() -= 1;
+            (key, val)
         }
     }
 }
@@ -1350,6 +1404,11 @@ impl<'a, K, V> BalancingContext<'a, K, V> {
     pub fn can_merge(&self) -> bool {
         self.left_child.len() + 1 + self.right_child.len() <= CAPACITY
     }
+
+    /// Returns whether it is valid to call `.merge_discarding_hole()`.
+    pub fn can_merge_discarding_hole(&self) -> bool {
+        self.left_child.len() + self.right_child.len() <= CAPACITY
+    }
 }
 
 impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
@@ -1359,29 +1418,20 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     /// to where the edge in that child node ended up,
     ///
     /// Panics unless we `.can_merge()`.
-    pub fn merge(
-        mut self,
-        track_edge_idx: Option<LeftOrRight<usize>>,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
+    pub fn merge(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+        let Handle { node: mut parent_node, idx: parent_idx, _marker: _ } = self.parent;
         let mut left_node = self.left_child;
         let left_len = left_node.len();
         let right_node = self.right_child;
         let right_len = right_node.len();
 
         assert!(left_len + right_len < CAPACITY);
-        assert!(match track_edge_idx {
-            None => true,
-            Some(LeftOrRight::Left(idx)) => idx <= left_len,
-            Some(LeftOrRight::Right(idx)) => idx <= right_len,
-        });
 
         unsafe {
             *left_node.reborrow_mut().into_len_mut() += right_len as u16 + 1;
 
-            let parent_key = slice_remove(
-                self.parent.node.reborrow_mut().into_key_area_slice(),
-                self.parent.idx,
-            );
+            let parent_key =
+                slice_remove(parent_node.reborrow_mut().into_key_area_slice(), parent_idx);
             left_node.reborrow_mut().into_key_area_mut_at(left_len).write(parent_key);
             ptr::copy_nonoverlapping(
                 right_node.reborrow().key_area().as_ptr(),
@@ -1389,10 +1439,8 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                 right_len,
             );
 
-            let parent_val = slice_remove(
-                self.parent.node.reborrow_mut().into_val_area_slice(),
-                self.parent.idx,
-            );
+            let parent_val =
+                slice_remove(parent_node.reborrow_mut().into_val_area_slice(), parent_idx);
             left_node.reborrow_mut().into_val_area_mut_at(left_len).write(parent_val);
             ptr::copy_nonoverlapping(
                 right_node.reborrow().val_area().as_ptr(),
@@ -1400,15 +1448,11 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                 right_len,
             );
 
-            slice_remove(
-                &mut self.parent.node.reborrow_mut().into_edge_area_slice(),
-                self.parent.idx + 1,
-            );
-            let parent_old_len = self.parent.node.len();
-            self.parent.node.correct_childrens_parent_links(self.parent.idx + 1..parent_old_len);
-            *self.parent.node.reborrow_mut().into_len_mut() -= 1;
+            slice_remove(&mut parent_node.reborrow_mut().into_edge_area_slice(), parent_idx + 1);
+            parent_node.correct_childrens_parent_links(parent_idx + 1..parent_node.len());
+            *parent_node.reborrow_mut().into_len_mut() -= 1;
 
-            if self.parent.node.height > 1 {
+            if parent_node.height > 1 {
                 // SAFETY: the height of the nodes being merged is one below the height
                 // of the node of this edge, thus above zero, so they are internal.
                 let mut left_node = left_node.reborrow_mut().cast_to_internal_unchecked();
@@ -1426,23 +1470,113 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                 Global.dealloc(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
             }
 
-            let new_idx = match track_edge_idx {
-                None => 0,
-                Some(LeftOrRight::Left(idx)) => idx,
-                Some(LeftOrRight::Right(idx)) => left_len + 1 + idx,
+            left_node
+        }
+    }
+
+    /// Combines the node immediately to the left of this handle, the key/value pair pointed
+    /// to by this handle, and the node immediately to the right of this handle into one
+    /// child of the underlying node, discarding a hole specified by index, and returning the
+    /// key/value of the hole and an edge to position of the collapsed hole.
+    ///
+    /// Panics if the children are not leaves but internal nodes themselves.
+    /// Panics if the hole specified by index is out of range.
+    /// Panics unless this edge `.can_merge_discarding_hole()`.
+    pub fn merge_discarding_hole(
+        self,
+        hole_idx: LeftOrRight<usize>,
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
+        assert_eq!(self.parent.node.height(), 1);
+
+        let Handle { node: mut parent_node, idx: parent_idx, _marker: _ } = self.parent;
+        let mut left_node = unsafe { self.left_child.cast_to_leaf_unchecked() };
+        let left_len = left_node.len();
+        let right_node = unsafe { self.right_child.cast_to_leaf_unchecked() };
+        let right_len = right_node.len();
+
+        assert!(left_len + right_len <= CAPACITY);
+        assert!(match hole_idx {
+            LeftOrRight::Left(idx) => idx < left_len,
+            LeftOrRight::Right(idx) => idx < right_len,
+        });
+
+        unsafe {
+            let mut left_end = left_len;
+            *left_node.reborrow_mut().into_len_mut() += right_len as u16;
+
+            // Deal with hole in left child.
+            let old_key;
+            let old_val;
+            let parent_key =
+                slice_remove(parent_node.reborrow_mut().into_key_area_slice(), parent_idx);
+            let parent_val =
+                slice_remove(parent_node.reborrow_mut().into_val_area_slice(), parent_idx);
+            match hole_idx {
+                LeftOrRight::Left(idx) => {
+                    old_key = slice_remove(left_node.reborrow_mut().into_key_area_slice(), idx);
+                    old_val = slice_remove(left_node.reborrow_mut().into_val_area_slice(), idx);
+                    left_node.reborrow_mut().into_key_area_mut_at(left_len - 1).write(parent_key);
+                    left_node.reborrow_mut().into_val_area_mut_at(left_len - 1).write(parent_val);
+                }
+                LeftOrRight::Right(idx) => {
+                    left_node.reborrow_mut().into_key_area_mut_at(left_len).write(parent_key);
+                    left_node.reborrow_mut().into_val_area_mut_at(left_len).write(parent_val);
+                    old_key = ptr::read(right_node.reborrow().key_at(idx));
+                    old_val = ptr::read(right_node.reborrow().val_at(idx));
+                    left_end += 1;
+                }
+            }
+
+            // Append entire or first part of right child.
+            let right_len_1 = if let LeftOrRight::Right(idx) = hole_idx { idx } else { right_len };
+            ptr::copy_nonoverlapping(
+                right_node.reborrow().key_area().as_ptr(),
+                left_node.reborrow_mut().into_key_area_slice().as_mut_ptr().add(left_end),
+                right_len_1,
+            );
+            ptr::copy_nonoverlapping(
+                right_node.reborrow().val_area().as_ptr(),
+                left_node.reborrow_mut().into_val_area_slice().as_mut_ptr().add(left_end),
+                right_len_1,
+            );
+            left_end += right_len_1;
+
+            // Append part of right child beyond hole.
+            if let LeftOrRight::Right(idx) = hole_idx {
+                let right_len_2 = right_len - idx - 1;
+                ptr::copy_nonoverlapping(
+                    right_node.reborrow().key_area().as_ptr().add(idx + 1),
+                    left_node.reborrow_mut().into_key_area_slice().as_mut_ptr().add(left_end),
+                    right_len_2,
+                );
+                ptr::copy_nonoverlapping(
+                    right_node.reborrow().val_area().as_ptr().add(idx + 1),
+                    left_node.reborrow_mut().into_val_area_slice().as_mut_ptr().add(left_end),
+                    right_len_2,
+                );
+                debug_assert_eq!(left_end + right_len_2, left_len + right_len);
+            }
+
+            slice_remove(
+                &mut parent_node.reborrow_mut().into_edge_area_slice(),
+                self.parent.idx + 1,
+            );
+            parent_node.correct_childrens_parent_links(parent_idx + 1..parent_node.len());
+            *parent_node.reborrow_mut().into_len_mut() -= 1;
+
+            Global.dealloc(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
+
+            let hole_idx = match hole_idx {
+                LeftOrRight::Left(idx) => idx,
+                LeftOrRight::Right(idx) => left_len + 1 + idx,
             };
-            Handle::new_edge(left_node, new_idx)
+            ((old_key, old_val), Handle::new_edge(left_node, hole_idx))
         }
     }
 
     /// Removes a key/value pair from the left child and places it in the key/value storage
     /// of the parent, while pushing the old parent key/value pair into the right child.
-    /// Returns a handle to the edge in the right child corresponding to where the original
-    /// edge specified by `track_right_edge_idx` ended up.
-    pub fn steal_left(
-        mut self,
-        track_right_edge_idx: usize,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
+    pub fn steal_left(mut self) {
         unsafe {
             let (k, v, edge) = self.left_child.pop();
 
@@ -1453,19 +1587,32 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                 ForceResult::Leaf(mut leaf) => leaf.push_front(k, v),
                 ForceResult::Internal(mut internal) => internal.push_front(k, v, edge.unwrap()),
             }
-
-            Handle::new_edge(self.right_child, 1 + track_right_edge_idx)
         }
+    }
+
+    /// Removes a key/value pair from the left child and places it in the key/value storage
+    /// of the parent, while pushing the old parent key/value pair onto the right child,
+    /// filling up a hole in the right child. Returns the edge that the hole collapsed into.
+    pub fn steal_left_discarding_hole(
+        mut self,
+        right_hole_idx: usize,
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
+        assert_eq!(self.parent.node.height(), 1);
+        let mut left_leaf = unsafe { self.left_child.cast_to_leaf_unchecked() };
+        let mut right_leaf = unsafe { self.right_child.cast_to_leaf_unchecked() };
+
+        let (k, v) = left_leaf.pop();
+        let k = mem::replace(self.parent.kv_mut().0, k);
+        let v = mem::replace(self.parent.kv_mut().1, v);
+
+        let old_kv = right_leaf.push_front_discarding_hole(k, v, right_hole_idx);
+        let hole = unsafe { Handle::new_edge(right_leaf, right_hole_idx + 1) };
+        (old_kv, hole)
     }
 
     /// Removes a key/value pair from the right child and places it in the key/value storage
     /// of the parent, while pushing the old parent key/value pair onto the left child.
-    /// Returns a handle to the edge in the left child specified by `track_left_edge_idx`,
-    /// which didn't move.
-    pub fn steal_right(
-        mut self,
-        track_left_edge_idx: usize,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
+    pub fn steal_right(mut self) {
         unsafe {
             let (k, v, edge) = self.right_child.pop_front();
 
@@ -1476,9 +1623,27 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                 ForceResult::Leaf(mut leaf) => leaf.push(k, v),
                 ForceResult::Internal(mut internal) => internal.push(k, v, edge.unwrap()),
             }
-
-            Handle::new_edge(self.left_child, track_left_edge_idx)
         }
+    }
+
+    /// Removes a key/value pair from the right child and places it in the key/value storage
+    /// of the parent, while pushing the old parent key/value pair onto the left child,
+    /// filling up a hole in the left child. Returns the edge that the hole collapsed into.
+    pub fn steal_right_discarding_hole(
+        mut self,
+        left_hole_idx: usize,
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
+        assert_eq!(self.parent.node.height(), 1);
+        let mut left_leaf = unsafe { self.left_child.cast_to_leaf_unchecked() };
+        let mut right_leaf = unsafe { self.right_child.cast_to_leaf_unchecked() };
+
+        let (k, v) = right_leaf.pop_front();
+        let k = mem::replace(self.parent.kv_mut().0, k);
+        let v = mem::replace(self.parent.kv_mut().1, v);
+
+        let old_kv = left_leaf.push_discarding_hole(k, v, left_hole_idx);
+        let hole = unsafe { Handle::new_edge(left_leaf, left_hole_idx) };
+        (old_kv, hole)
     }
 
     /// This does stealing similar to `steal_left` but steals multiple elements at once.
@@ -1789,6 +1954,27 @@ unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {
             ptr::copy(slice_ptr.add(idx), slice_ptr.add(idx + 1), len - idx - 1);
         }
         (*slice_ptr.add(idx)).write(val);
+    }
+}
+
+/// Inserts a value into a slice of initialized elements, removing and returning one of them.
+///
+/// # Safety
+/// `out_idx` does not precede `in_idx` and both are valid for the slice.
+unsafe fn slice_shift_right<T>(
+    slice: &mut [MaybeUninit<T>],
+    in_idx: usize,
+    out_idx: usize,
+    val: T,
+) -> T {
+    debug_assert!(in_idx <= out_idx);
+    debug_assert!(out_idx < slice.len());
+    unsafe {
+        let slice_ptr = slice.as_mut_ptr();
+        let ret = (*slice_ptr.add(out_idx)).assume_init_read();
+        ptr::copy(slice_ptr.add(in_idx), slice_ptr.add(in_idx + 1), out_idx - in_idx);
+        (*slice_ptr.add(in_idx)).write(val);
+        ret
     }
 }
 
