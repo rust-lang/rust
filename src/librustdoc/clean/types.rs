@@ -750,6 +750,10 @@ impl Lifetime {
     pub fn statik() -> Lifetime {
         Lifetime("'static".to_string())
     }
+
+    pub fn elided() -> Lifetime {
+        Lifetime("'_".to_string())
+    }
 }
 
 #[derive(Clone, Debug)]
