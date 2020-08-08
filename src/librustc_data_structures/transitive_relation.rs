@@ -1,4 +1,4 @@
-use crate::fx::FxHashMap;
+use crate::fx::FxIndexSet;
 use crate::stable_hasher::{HashStable, StableHasher};
 use crate::sync::Lock;
 use rustc_index::bit_set::BitMatrix;
@@ -13,10 +13,7 @@ mod tests;
 #[derive(Clone, Debug)]
 pub struct TransitiveRelation<T: Eq + Hash> {
     // List of elements. This is used to map from a T to a usize.
-    elements: Vec<T>,
-
-    // Maps each element to an index.
-    map: FxHashMap<T, Index>,
+    elements: FxIndexSet<T>,
 
     // List of base edges in the graph. Require to compute transitive
     // closure.
@@ -39,7 +36,6 @@ impl<T: Eq + Hash> Default for TransitiveRelation<T> {
     fn default() -> Self {
         TransitiveRelation {
             elements: Default::default(),
-            map: Default::default(),
             edges: Default::default(),
             closure: Default::default(),
         }
@@ -65,20 +61,16 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     }
 
     fn index(&self, a: &T) -> Option<Index> {
-        self.map.get(a).cloned()
+        self.elements.get_index_of(a).map(Index)
     }
 
     fn add_index(&mut self, a: T) -> Index {
-        let &mut TransitiveRelation { ref mut elements, ref mut closure, ref mut map, .. } = self;
-
-        *map.entry(a.clone()).or_insert_with(|| {
-            elements.push(a);
-
+        let (index, added) = self.elements.insert_full(a);
+        if added {
             // if we changed the dimensions, clear the cache
-            *closure.get_mut() = None;
-
-            Index(elements.len() - 1)
-        })
+            *self.closure.get_mut() = None;
+        }
+        Index(index)
     }
 
     /// Applies the (partial) function to each edge and returns a new
@@ -430,14 +422,11 @@ where
 {
     fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
         d.read_struct("TransitiveRelation", 2, |d| {
-            let elements: Vec<T> = d.read_struct_field("elements", 0, |d| Decodable::decode(d))?;
-            let edges = d.read_struct_field("edges", 1, |d| Decodable::decode(d))?;
-            let map = elements
-                .iter()
-                .enumerate()
-                .map(|(index, elem)| (elem.clone(), Index(index)))
-                .collect();
-            Ok(TransitiveRelation { elements, edges, map, closure: Lock::new(None) })
+            Ok(TransitiveRelation {
+                elements: d.read_struct_field("elements", 0, |d| Decodable::decode(d))?,
+                edges: d.read_struct_field("edges", 1, |d| Decodable::decode(d))?,
+                closure: Lock::new(None),
+            })
         })
     }
 }
@@ -452,8 +441,6 @@ where
         let TransitiveRelation {
             ref elements,
             ref edges,
-            // "map" is just a copy of elements vec
-            map: _,
             // "closure" is just a copy of the data above
             closure: _,
         } = *self;
