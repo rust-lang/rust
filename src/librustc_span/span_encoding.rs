@@ -8,7 +8,7 @@ use crate::hygiene::SyntaxContext;
 use crate::SESSION_GLOBALS;
 use crate::{BytePos, SpanData};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexSet;
 
 /// A compressed span.
 ///
@@ -111,25 +111,18 @@ impl Span {
 
 #[derive(Default)]
 pub struct SpanInterner {
-    spans: FxHashMap<SpanData, u32>,
-    span_data: Vec<SpanData>,
+    spans: FxIndexSet<SpanData>,
 }
 
 impl SpanInterner {
     fn intern(&mut self, span_data: &SpanData) -> u32 {
-        if let Some(index) = self.spans.get(span_data) {
-            return *index;
-        }
-
-        let index = self.spans.len() as u32;
-        self.span_data.push(*span_data);
-        self.spans.insert(*span_data, index);
-        index
+        let (index, _) = self.spans.insert_full(*span_data);
+        index as u32
     }
 
     #[inline]
     fn get(&self, index: u32) -> &SpanData {
-        &self.span_data[index as usize]
+        &self.spans[index as usize]
     }
 }
 
