@@ -23,7 +23,6 @@ use rustc_arena::TypedArena;
 use rustc_ast::ast::{self, FloatTy, IntTy, NodeId, UintTy};
 use rustc_ast::ast::{Crate, CRATE_NODE_ID};
 use rustc_ast::ast::{ItemKind, Path};
-use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
@@ -1198,7 +1197,7 @@ impl<'a> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let root_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Invalid);
         let graph_root = arenas.alloc_module(ModuleData {
-            no_implicit_prelude: attr::contains_name(&krate.attrs, sym::no_implicit_prelude),
+            no_implicit_prelude: session.contains_name(&krate.attrs, sym::no_implicit_prelude),
             ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
         });
         let empty_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Invalid);
@@ -1236,9 +1235,9 @@ impl<'a> Resolver<'a> {
             .map(|(name, _)| (Ident::from_str(name), Default::default()))
             .collect();
 
-        if !attr::contains_name(&krate.attrs, sym::no_core) {
+        if !session.contains_name(&krate.attrs, sym::no_core) {
             extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
-            if !attr::contains_name(&krate.attrs, sym::no_std) {
+            if !session.contains_name(&krate.attrs, sym::no_std) {
                 extern_prelude.insert(Ident::with_dummy_span(sym::std), Default::default());
                 if session.rust_2018() {
                     extern_prelude.insert(Ident::with_dummy_span(sym::meta), Default::default());

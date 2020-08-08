@@ -100,7 +100,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem<'_>) {
-        if let Some((lang_item, _)) = hir::lang_items::extract(&i.attrs) {
+        let check_name = |attr, sym| self.tcx.sess.check_name(attr, sym);
+        if let Some((lang_item, _)) = hir::lang_items::extract(check_name, &i.attrs) {
             self.register(lang_item, i.span, i.hir_id);
         }
         intravisit::walk_foreign_item(self, i)

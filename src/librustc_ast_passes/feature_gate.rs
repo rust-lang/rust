@@ -1,11 +1,11 @@
 use rustc_ast::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
 use rustc_ast::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
-use rustc_ast::attr;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_errors::{struct_span_err, Handler};
+use rustc_errors::struct_span_err;
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
-use rustc_feature::{Features, GateIssue, UnstableFeatures};
-use rustc_session::parse::{feature_err, feature_err_issue, ParseSess};
+use rustc_feature::{Features, GateIssue};
+use rustc_session::parse::{feature_err, feature_err_issue};
+use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -13,28 +13,32 @@ use rustc_span::Span;
 use tracing::debug;
 
 macro_rules! gate_feature_fn {
-    ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
-        let (cx, has_feature, span, name, explain) = (&*$cx, $has_feature, $span, $name, $explain);
-        let has_feature: bool = has_feature(&$cx.features);
+    ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
+        let (visitor, has_feature, span, name, explain) =
+            (&*$visitor, $has_feature, $span, $name, $explain);
+        let has_feature: bool = has_feature(visitor.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
         if !has_feature && !span.allows_unstable($name) {
-            feature_err_issue(cx.parse_sess, name, span, GateIssue::Language, explain).emit();
+            feature_err_issue(&visitor.sess.parse_sess, name, span, GateIssue::Language, explain)
+                .emit();
         }
     }};
 }
 
 macro_rules! gate_feature_post {
-    ($cx: expr, $feature: ident, $span: expr, $explain: expr) => {
-        gate_feature_fn!($cx, |x: &Features| x.$feature, $span, sym::$feature, $explain)
+    ($visitor: expr, $feature: ident, $span: expr, $explain: expr) => {
+        gate_feature_fn!($visitor, |x: &Features| x.$feature, $span, sym::$feature, $explain)
     };
 }
 
-pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
-    PostExpansionVisitor { parse_sess, features }.visit_attribute(attr)
+pub fn check_attribute(attr: &ast::Attribute, sess: &Session, features: &Features) {
+    PostExpansionVisitor { sess, features }.visit_attribute(attr)
 }
 
 struct PostExpansionVisitor<'a> {
-    parse_sess: &'a ParseSess,
+    sess: &'a Session,
+
+    // `sess` contains a `Features`, but this might not be that one.
     features: &'a Features,
 }
 
@@ -138,6 +142,7 @@ impl<'a> PostExpansionVisitor<'a> {
                 );
             }
             abi => self
+                .sess
                 .parse_sess
                 .span_diagnostic
                 .delay_span_bug(span, &format!("unrecognized ABI not caught in lowering: {}", abi)),
@@ -167,7 +172,7 @@ impl<'a> PostExpansionVisitor<'a> {
 
         if !discriminant_spans.is_empty() && has_fields {
             let mut err = feature_err(
-                self.parse_sess,
+                &self.sess.parse_sess,
                 sym::arbitrary_enum_discriminant,
                 discriminant_spans.clone(),
                 "custom discriminant values are not allowed in enums with tuple or struct variants",
@@ -240,7 +245,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             gate_feature_fn!(self, has_feature, attr.span, name, descr);
         }
         // Check unstable flavors of the `#[doc]` attribute.
-        if attr.check_name(sym::doc) {
+        if self.sess.check_name(attr, sym::doc) {
             for nested_meta in attr.meta_item_list().unwrap_or_default() {
                 macro_rules! gate_doc { ($($name:ident => $feature:ident)*) => {
                     $(if nested_meta.has_name(sym::$name) {
@@ -266,7 +271,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             gate_feature_post!(
                 &self,
                 non_ascii_idents,
-                self.parse_sess.source_map().guess_head_span(sp),
+                self.sess.parse_sess.source_map().guess_head_span(sp),
                 "non-ascii idents are not fully supported"
             );
         }
@@ -281,7 +286,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Fn(..) => {
-                if attr::contains_name(&i.attrs[..], sym::plugin_registrar) {
+                if self.sess.contains_name(&i.attrs[..], sym::plugin_registrar) {
                     gate_feature_post!(
                         &self,
                         plugin_registrar,
@@ -289,7 +294,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         "compiler plugins are experimental and possibly buggy"
                     );
                 }
-                if attr::contains_name(&i.attrs[..], sym::start) {
+                if self.sess.contains_name(&i.attrs[..], sym::start) {
                     gate_feature_post!(
                         &self,
                         start,
@@ -299,7 +304,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                          over time"
                     );
                 }
-                if attr::contains_name(&i.attrs[..], sym::main) {
+                if self.sess.contains_name(&i.attrs[..], sym::main) {
                     gate_feature_post!(
                         &self,
                         main,
@@ -312,7 +317,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Struct(..) => {
-                for attr in attr::filter_by_name(&i.attrs[..], sym::repr) {
+                for attr in self.sess.filter_by_name(&i.attrs[..], sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
                         if item.has_name(sym::simd) {
                             gate_feature_post!(
@@ -391,7 +396,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_foreign_item(&mut self, i: &'a ast::ForeignItem) {
         match i.kind {
             ast::ForeignItemKind::Fn(..) | ast::ForeignItemKind::Static(..) => {
-                let link_name = attr::first_attr_value_str_by_name(&i.attrs, sym::link_name);
+                let link_name = self.sess.first_attr_value_str_by_name(&i.attrs, sym::link_name);
                 let links_to_llvm = match link_name {
                     Some(val) => val.as_str().starts_with("llvm."),
                     _ => false,
@@ -450,7 +455,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::Type(..) => {
                 // To avoid noise about type ascription in common syntax errors, only emit if it
                 // is the *only* error.
-                if self.parse_sess.span_diagnostic.err_count() == 0 {
+                if self.sess.parse_sess.span_diagnostic.err_count() == 0 {
                     gate_feature_post!(
                         &self,
                         type_ascription,
@@ -600,16 +605,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 }
 
-pub fn check_crate(
-    krate: &ast::Crate,
-    parse_sess: &ParseSess,
-    features: &Features,
-    unstable: UnstableFeatures,
-) {
-    maybe_stage_features(&parse_sess.span_diagnostic, krate, unstable);
-    let mut visitor = PostExpansionVisitor { parse_sess, features };
+pub fn check_crate(krate: &ast::Crate, sess: &Session) {
+    maybe_stage_features(sess, krate);
+    let mut visitor = PostExpansionVisitor { sess, features: &sess.features_untracked() };
 
-    let spans = parse_sess.gated_spans.spans.borrow();
+    let spans = sess.parse_sess.gated_spans.spans.borrow();
     macro_rules! gate_all {
         ($gate:ident, $msg:literal) => {
             for span in spans.get(&sym::$gate).unwrap_or(&vec![]) {
@@ -652,18 +652,18 @@ pub fn check_crate(
     gate_all!(box_syntax, "box expression syntax is experimental; you can call `Box::new` instead");
     // To avoid noise about type ascription in common syntax errors,
     // only emit if it is the *only* error. (Also check it last.)
-    if parse_sess.span_diagnostic.err_count() == 0 {
+    if sess.parse_sess.span_diagnostic.err_count() == 0 {
         gate_all!(type_ascription, "type ascription is experimental");
     }
 
     visit::walk_crate(&mut visitor, krate);
 }
 
-fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate, unstable: UnstableFeatures) {
-    if !unstable.is_nightly_build() {
-        for attr in krate.attrs.iter().filter(|attr| attr.check_name(sym::feature)) {
+fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
+    if !sess.opts.unstable_features.is_nightly_build() {
+        for attr in krate.attrs.iter().filter(|attr| sess.check_name(attr, sym::feature)) {
             struct_span_err!(
-                span_handler,
+                sess.parse_sess.span_diagnostic,
                 attr.span,
                 E0554,
                 "`#![feature]` may not be used on the {} release channel",

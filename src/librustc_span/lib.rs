@@ -87,6 +87,15 @@ impl SessionGlobals {
     }
 }
 
+pub fn with_session_globals<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
+    let session_globals = SessionGlobals::new(edition);
+    SESSION_GLOBALS.set(&session_globals, f)
+}
+
+pub fn with_default_session_globals<R>(f: impl FnOnce() -> R) -> R {
+    with_session_globals(edition::DEFAULT_EDITION, f)
+}
+
 // If this ever becomes non thread-local, `decode_syntax_context`
 // and `decode_expn_id` will need to be updated to handle concurrent
 // deserialization.

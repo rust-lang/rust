@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
-use rustc_session::{parse::ParseSess, Limit};
+use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
@@ -790,7 +790,7 @@ impl SyntaxExtension {
     /// Constructs a syntax extension with the given properties
     /// and other properties converted from attributes.
     pub fn new(
-        sess: &ParseSess,
+        sess: &Session,
         kind: SyntaxExtensionKind,
         span: Span,
         helper_attrs: Vec<Symbol>,
@@ -798,27 +798,29 @@ impl SyntaxExtension {
         name: Symbol,
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
-        let allow_internal_unstable = attr::allow_internal_unstable(&attrs, &sess.span_diagnostic)
+        let allow_internal_unstable = attr::allow_internal_unstable(sess, &attrs)
             .map(|features| features.collect::<Vec<Symbol>>().into());
 
         let mut local_inner_macros = false;
-        if let Some(macro_export) = attr::find_by_name(attrs, sym::macro_export) {
+        if let Some(macro_export) = sess.find_by_name(attrs, sym::macro_export) {
             if let Some(l) = macro_export.meta_item_list() {
                 local_inner_macros = attr::list_contains_name(&l, sym::local_inner_macros);
             }
         }
 
-        let is_builtin = attr::contains_name(attrs, sym::rustc_builtin_macro);
+        let is_builtin = sess.contains_name(attrs, sym::rustc_builtin_macro);
         let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
         if const_stability.is_some() {
-            sess.span_diagnostic.span_err(span, "macros cannot have const stability attributes");
+            sess.parse_sess
+                .span_diagnostic
+                .span_err(span, "macros cannot have const stability attributes");
         }
 
         SyntaxExtension {
             kind,
             span,
             allow_internal_unstable,
-            allow_internal_unsafe: attr::contains_name(attrs, sym::allow_internal_unsafe),
+            allow_internal_unsafe: sess.contains_name(attrs, sym::allow_internal_unsafe),
             local_inner_macros,
             stability,
             deprecation: attr::find_deprecation(&sess, attrs, span),
@@ -941,7 +943,7 @@ pub struct ExpansionData {
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
 /// -> expn_data` of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
-    pub parse_sess: &'a ParseSess,
+    pub sess: &'a Session,
     pub ecfg: expand::ExpansionConfig<'a>,
     pub reduced_recursion_limit: Option<Limit>,
     pub root_path: PathBuf,
@@ -954,13 +956,13 @@ pub struct ExtCtxt<'a> {
 
 impl<'a> ExtCtxt<'a> {
     pub fn new(
-        parse_sess: &'a ParseSess,
+        sess: &'a Session,
         ecfg: expand::ExpansionConfig<'a>,
         resolver: &'a mut dyn ResolverExpand,
         extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
-            parse_sess,
+            sess,
             ecfg,
             reduced_recursion_limit: None,
             resolver,
@@ -988,13 +990,13 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self, true)
     }
     pub fn new_parser_from_tts(&self, stream: TokenStream) -> parser::Parser<'a> {
-        rustc_parse::stream_to_parser(self.parse_sess, stream, MACRO_ARGUMENTS)
+        rustc_parse::stream_to_parser(&self.sess.parse_sess, stream, MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap {
-        self.parse_sess.source_map()
+        self.sess.parse_sess.source_map()
     }
     pub fn parse_sess(&self) -> &'a ParseSess {
-        self.parse_sess
+        &self.sess.parse_sess
     }
     pub fn call_site(&self) -> Span {
         self.current_expansion.id.expn_data().call_site
@@ -1026,7 +1028,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'a> {
-        self.parse_sess.span_diagnostic.struct_span_err(sp, msg)
+        self.sess.parse_sess.span_diagnostic.struct_span_err(sp, msg)
     }
 
     /// Emit `msg` attached to `sp`, without immediately stopping
@@ -1035,17 +1037,17 @@ impl<'a> ExtCtxt<'a> {
     /// Compilation will be stopped in the near future (at the end of
     /// the macro expansion phase).
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
-        self.parse_sess.span_diagnostic.span_err(sp, msg);
+        self.sess.parse_sess.span_diagnostic.span_err(sp, msg);
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
-        self.parse_sess.span_diagnostic.span_warn(sp, msg);
+        self.sess.parse_sess.span_diagnostic.span_warn(sp, msg);
     }
     pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.parse_sess.span_diagnostic.span_bug(sp, msg);
+        self.sess.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
     pub fn trace_macros_diag(&mut self) {
         for (sp, notes) in self.expansions.iter() {
-            let mut db = self.parse_sess.span_diagnostic.span_note_diag(*sp, "trace_macro");
+            let mut db = self.sess.parse_sess.span_diagnostic.span_note_diag(*sp, "trace_macro");
             for note in notes {
                 db.note(note);
             }
@@ -1055,7 +1057,7 @@ impl<'a> ExtCtxt<'a> {
         self.expansions.clear();
     }
     pub fn bug(&self, msg: &str) -> ! {
-        self.parse_sess.span_diagnostic.bug(msg);
+        self.sess.parse_sess.span_diagnostic.bug(msg);
     }
     pub fn trace_macros(&self) -> bool {
         self.ecfg.trace_mac

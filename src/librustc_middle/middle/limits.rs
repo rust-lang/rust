@@ -27,7 +27,7 @@ fn update_limit(
     default: usize,
 ) {
     for attr in &krate.attrs {
-        if !attr.check_name(name) {
+        if !sess.check_name(attr, name) {
             continue;
         }
 

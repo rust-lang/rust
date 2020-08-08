@@ -16,6 +16,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 
 struct DiagnosticItemCollector<'tcx> {
@@ -44,7 +45,7 @@ impl<'tcx> DiagnosticItemCollector<'tcx> {
     }
 
     fn observe_item(&mut self, attrs: &[ast::Attribute], hir_id: hir::HirId) {
-        if let Some(name) = extract(attrs) {
+        if let Some(name) = extract(&self.tcx.sess, attrs) {
             let def_id = self.tcx.hir().local_def_id(hir_id);
             // insert into our table
             collect_item(self.tcx, &mut self.items, name, def_id.to_def_id());
@@ -86,9 +87,9 @@ fn collect_item(
 }
 
 /// Extract the first `rustc_diagnostic_item = "$name"` out of a list of attributes.
-fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
+fn extract(sess: &Session, attrs: &[ast::Attribute]) -> Option<Symbol> {
     attrs.iter().find_map(|attr| {
-        if attr.check_name(sym::rustc_diagnostic_item) { attr.value_str() } else { None }
+        if sess.check_name(attr, sym::rustc_diagnostic_item) { attr.value_str() } else { None }
     })
 }
 

@@ -3195,7 +3195,6 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
- "scoped-tls",
  "smallvec 1.4.0",
  "tracing",
 ]

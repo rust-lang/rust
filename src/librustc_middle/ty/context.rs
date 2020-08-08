@@ -1040,7 +1040,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn layout_scalar_valid_range(self, def_id: DefId) -> (Bound<u128>, Bound<u128>) {
         let attrs = self.get_attrs(def_id);
         let get = |name| {
-            let attr = match attrs.iter().find(|a| a.check_name(name)) {
+            let attr = match attrs.iter().find(|a| self.sess.check_name(a, name)) {
                 Some(attr) => attr,
                 None => return Bound::Unbounded,
             };
@@ -2738,11 +2738,11 @@ pub fn provide(providers: &mut ty::query::Providers) {
     };
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        attr::contains_name(tcx.hir().krate_attrs(), sym::panic_runtime)
+        tcx.sess.contains_name(tcx.hir().krate_attrs(), sym::panic_runtime)
     };
     providers.is_compiler_builtins = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        attr::contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins)
+        tcx.sess.contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins)
     };
     providers.has_panic_handler = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

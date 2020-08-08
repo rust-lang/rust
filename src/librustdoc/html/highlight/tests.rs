@@ -1,6 +1,6 @@
-use rustc_ast::attr::with_session_globals;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
+use rustc_span::with_session_globals;
 use rustc_span::FileName;
 
 use super::Classifier;

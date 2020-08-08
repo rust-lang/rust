@@ -538,7 +538,7 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
             let guaranteed_nonnull_optimization = tcx
                 .get_attrs(def.did)
                 .iter()
-                .any(|a| a.check_name(sym::rustc_nonnull_optimization_guaranteed));
+                .any(|a| tcx.sess.check_name(a, sym::rustc_nonnull_optimization_guaranteed));
 
             if guaranteed_nonnull_optimization {
                 return true;
@@ -556,6 +556,7 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
         _ => false,
     }
 }
+
 /// Given a non-null scalar (or transparent) type `ty`, return the nullable version of that type.
 /// If the type passed in was not scalar, returns None.
 fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {

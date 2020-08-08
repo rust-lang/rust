@@ -9,7 +9,7 @@ use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, T
 use rustc_ast::ast::{self, NodeId};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
-use rustc_attr::{self as attr, StabilityLevel};
+use rustc_attr::StabilityLevel;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Indeterminate, InvocationRes, ResolverExpand, SyntaxExtension};
 use rustc_expand::compile_declarative_macro;
@@ -105,7 +105,7 @@ fn registered_idents(
     descr: &str,
 ) -> FxHashSet<Ident> {
     let mut registered = FxHashSet::default();
-    for attr in attr::filter_by_name(attrs, attr_name) {
+    for attr in sess.filter_by_name(attrs, attr_name) {
         for nested_meta in attr.meta_item_list().unwrap_or_default() {
             match nested_meta.ident() {
                 Some(ident) => {
@@ -1068,7 +1068,7 @@ impl<'a> Resolver<'a> {
     /// its expander to a pre-defined one for built-in macros.
     crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> SyntaxExtension {
         let mut result = compile_declarative_macro(
-            &self.session.parse_sess,
+            &self.session,
             self.session.features_untracked(),
             item,
             edition,
