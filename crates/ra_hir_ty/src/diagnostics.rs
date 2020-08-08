@@ -9,7 +9,7 @@ use hir_def::DefWithBodyId;
 use hir_expand::diagnostics::{AstDiagnostic, Diagnostic, DiagnosticSink};
 use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
 use ra_prof::profile;
-use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
+use ra_syntax::{ast, AstPtr, SyntaxNodePtr};
 use stdx::format_to;
 
 use crate::db::HirDatabase;
@@ -37,7 +37,7 @@ impl Diagnostic for NoSuchField {
         "no such field".to_string()
     }
 
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn presentation(&self) -> InFile<SyntaxNodePtr> {
         InFile::new(self.file, self.field.clone().into())
     }
 
@@ -49,7 +49,7 @@ impl Diagnostic for NoSuchField {
 impl AstDiagnostic for NoSuchField {
     type AST = ast::RecordExprField;
 
-    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
+    fn fix_source(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.file).unwrap();
         self.field.to_node(&root)
     }
@@ -58,7 +58,7 @@ impl AstDiagnostic for NoSuchField {
 #[derive(Debug)]
 pub struct MissingFields {
     pub file: HirFileId,
-    pub field_list: AstPtr<ast::RecordExprFieldList>,
+    pub field_list_parent: AstPtr<ast::RecordExpr>,
     pub field_list_parent_path: Option<AstPtr<ast::Path>>,
     pub missed_fields: Vec<Name>,
 }
@@ -71,15 +71,16 @@ impl Diagnostic for MissingFields {
         }
         buf
     }
-    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.field_list.clone().into() }
-    }
 
-    fn source(&self) -> InFile<SyntaxNodePtr> {
-        self.field_list_parent_path
-            .clone()
-            .map(|path| InFile { file_id: self.file, value: path.into() })
-            .unwrap_or_else(|| self.fix_source())
+    fn presentation(&self) -> InFile<SyntaxNodePtr> {
+        InFile {
+            file_id: self.file,
+            value: self
+                .field_list_parent_path
+                .clone()
+                .map(SyntaxNodePtr::from)
+                .unwrap_or_else(|| self.field_list_parent.clone().into()),
+        }
     }
 
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -88,18 +89,18 @@ impl Diagnostic for MissingFields {
 }
 
 impl AstDiagnostic for MissingFields {
-    type AST = ast::RecordExprFieldList;
+    type AST = ast::RecordExpr;
 
-    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
+    fn fix_source(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.file).unwrap();
-        self.field_list.to_node(&root)
+        self.field_list_parent.to_node(&root)
     }
 }
 
 #[derive(Debug)]
 pub struct MissingPatFields {
     pub file: HirFileId,
-    pub field_list: AstPtr<ast::RecordPatFieldList>,
+    pub field_list_parent: AstPtr<ast::RecordPat>,
     pub field_list_parent_path: Option<AstPtr<ast::Path>>,
     pub missed_fields: Vec<Name>,
 }
@@ -112,14 +113,13 @@ impl Diagnostic for MissingPatFields {
         }
         buf
     }
-    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.field_list.clone().into() }
-    }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
-        self.field_list_parent_path
+    fn presentation(&self) -> InFile<SyntaxNodePtr> {
+        let value = self
+            .field_list_parent_path
             .clone()
-            .map(|path| InFile { file_id: self.file, value: path.into() })
-            .unwrap_or_else(|| self.fix_source())
+            .map(SyntaxNodePtr::from)
+            .unwrap_or_else(|| self.field_list_parent.clone().into());
+        InFile { file_id: self.file, value }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -137,7 +137,7 @@ impl Diagnostic for MissingMatchArms {
     fn message(&self) -> String {
         String::from("Missing match arm")
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn presentation(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.match_expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -155,7 +155,7 @@ impl Diagnostic for MissingOkInTailExpr {
     fn message(&self) -> String {
         "wrap return expression in Ok".to_string()
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn presentation(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -166,7 +166,7 @@ impl Diagnostic for MissingOkInTailExpr {
 impl AstDiagnostic for MissingOkInTailExpr {
     type AST = ast::Expr;
 
-    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
+    fn fix_source(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.file).unwrap();
         self.expr.to_node(&root)
     }
@@ -182,20 +182,11 @@ impl Diagnostic for BreakOutsideOfLoop {
     fn message(&self) -> String {
         "break outside of loop".to_string()
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn presentation(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
-    }
-}
-
-impl AstDiagnostic for BreakOutsideOfLoop {
-    type AST = ast::Expr;
-
-    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.file).unwrap();
-        self.expr.to_node(&root)
     }
 }
 
@@ -209,20 +200,11 @@ impl Diagnostic for MissingUnsafe {
     fn message(&self) -> String {
         format!("This operation is unsafe and requires an unsafe function or block")
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn presentation(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
-    }
-}
-
-impl AstDiagnostic for MissingUnsafe {
-    type AST = ast::Expr;
-
-    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.file).unwrap();
-        self.expr.to_node(&root)
     }
 }
 
@@ -239,7 +221,7 @@ impl Diagnostic for MismatchedArgCount {
         let s = if self.expected == 1 { "" } else { "s" };
         format!("Expected {} argument{}, found {}", self.expected, s, self.found)
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn presentation(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.call_expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -250,19 +232,13 @@ impl Diagnostic for MismatchedArgCount {
     }
 }
 
-impl AstDiagnostic for MismatchedArgCount {
-    type AST = ast::CallExpr;
-    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.file).unwrap();
-        let node = self.source().value.to_node(&root);
-        ast::CallExpr::cast(node).unwrap()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId};
-    use hir_expand::diagnostics::{Diagnostic, DiagnosticSinkBuilder};
+    use hir_expand::{
+        db::AstDatabase,
+        diagnostics::{Diagnostic, DiagnosticSinkBuilder},
+    };
     use ra_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
     use ra_syntax::{TextRange, TextSize};
     use rustc_hash::FxHashMap;
@@ -308,8 +284,11 @@ mod tests {
         let mut actual: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
         db.diagnostics(|d| {
             // FIXME: macros...
-            let file_id = d.source().file_id.original_file(&db);
-            let range = d.syntax_node(&db).text_range();
+            let diagnostics_presentation = d.presentation();
+            let root = db.parse_or_expand(diagnostics_presentation.file_id).unwrap();
+
+            let file_id = diagnostics_presentation.file_id.original_file(&db);
+            let range = diagnostics_presentation.value.to_node(&root).text_range();
             let message = d.message().to_owned();
             actual.entry(file_id).or_default().push((range, message));
         });
