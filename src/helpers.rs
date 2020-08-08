@@ -376,13 +376,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// case.
     fn check_no_isolation(&self, name: &str) -> InterpResult<'tcx> {
         if !self.eval_context_ref().machine.communicate {
-            throw_machine_stop!(TerminationInfo::UnsupportedInIsolation(format!(
-                "`{}` not available when isolation is enabled",
-                name,
-            )))
+            isolation_error(name)?;
         }
         Ok(())
     }
+
     /// Helper function used inside the shims of foreign functions to assert that the target OS
     /// is `target_os`. It panics showing a message with the `name` of the foreign function
     /// if this is not the case.
@@ -507,6 +505,13 @@ pub fn check_arg_count<'a, 'tcx, const N: usize>(args: &'a [OpTy<'tcx, Tag>]) ->
         return Ok(ops);
     }
     throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
+}
+
+pub fn isolation_error(name: &str) -> InterpResult<'static> {
+    throw_machine_stop!(TerminationInfo::UnsupportedInIsolation(format!(
+        "`{}` not available when isolation is enabled",
+        name,
+    )))
 }
 
 pub fn immty_from_int_checked<'tcx>(
