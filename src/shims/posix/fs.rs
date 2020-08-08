@@ -501,13 +501,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let &[_, _] = check_arg_count(args)?;
             if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
                 // FIXME: Support fullfsync for all FDs
-                match file_descriptor.as_file_handle() {
-                    Ok(FileHandle { file, writable }) => {
-                        let io_result = maybe_sync_file(&file, *writable, File::sync_all);
-                        this.try_unwrap_io_result(io_result)
-                    },
-                    Err(_) => this.handle_not_found(),
-                }
+                let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
+                let io_result = maybe_sync_file(&file, *writable, File::sync_all);
+                this.try_unwrap_io_result(io_result)
             } else {
                 this.handle_not_found()
             }
@@ -1365,10 +1361,7 @@ impl FileMetadata {
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let option = ecx.machine.file_handler.handles.get(&fd);
         let file = match option {
-            Some(file_descriptor) => {
-                let FileHandle { file, writable: _ } = file_descriptor.as_file_handle()?;
-                file
-            },
+            Some(file_descriptor) => &file_descriptor.as_file_handle()?.file,
             None => return ecx.handle_not_found().map(|_: i32| None),
         };
         let metadata = file.metadata();
