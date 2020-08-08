@@ -512,15 +512,15 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn swap(&mut self, a: usize, b: usize) {
+        // Can't take two mutable loans from one vector, so instead just cast
+        // them to their raw pointers to do the swap.
+        let pa: *mut T = &mut self[a];
+        let pb: *mut T = &mut self[b];
         // SAFETY: `pa` and `pb` have been created from safe mutable references and refer
         // to elements in the slice and therefore are guaranteed to be valid and aligned.
         // Note that accessing the elements behind `a` and `b` is checked and will
         // panic when out of bounds.
         unsafe {
-            // Can't take two mutable loans from one vector, so instead just cast
-            // them to their raw pointers to do the swap
-            let pa: *mut T = &mut self[a];
-            let pb: *mut T = &mut self[b];
             ptr::swap(pa, pb);
         }
     }
@@ -559,14 +559,20 @@ impl<T> [T] {
             // Use the llvm.bswap intrinsic to reverse u8s in a usize
             let chunk = mem::size_of::<usize>();
             while i + chunk - 1 < ln / 2 {
-                // SAFETY: An unaligned u32 can be read from `i` if `i + 1 < ln`
-                // (and obviously `i < ln`), because each element is 2 bytes and
-                // we're reading 4.
+                // SAFETY: An unaligned usize can be read from `i` if `i + 1 < ln`
+                // (and obviously `i < ln`), because each element is 1 byte and
+                // we're reading 2.
+                //
                 // `i + chunk - 1 < ln / 2` # while condition
                 // `i + 2 - 1 < ln / 2`
                 // `i + 1 < ln / 2`
+                //
                 // Since it's less than the length divided by 2, then it must be
                 // in bounds.
+                //
+                // This also means that the condition `0 < i + chunk <= ln` is
+                // always respected, ensuring the `pb` pointer can be used
+                // safely.
                 //
                 // Note: when updating this comment, update the others in the
                 // function too.
@@ -589,11 +595,17 @@ impl<T> [T] {
                 // SAFETY: An unaligned u32 can be read from `i` if `i + 1 < ln`
                 // (and obviously `i < ln`), because each element is 2 bytes and
                 // we're reading 4.
+                //
                 // `i + chunk - 1 < ln / 2` # while condition
                 // `i + 2 - 1 < ln / 2`
                 // `i + 1 < ln / 2`
+                //
                 // Since it's less than the length divided by 2, then it must be
                 // in bounds.
+                //
+                // This also means that the condition `0 < i + chunk <= ln` is
+                // always respected, ensuring the `pb` pointer can be used
+                // safely.
                 //
                 // Note: when updating this comment, update the others in the
                 // function too.
@@ -641,11 +653,23 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn iter(&self) -> Iter<'_, T> {
-        // SAFETY: adding `self.len()` to the starting pointer gives a pointer
-        // at the end of `self`, which fulfills the expectations of `ptr.add()`
-        // and `NonNull::new_unchecked()`.
+        let ptr = self.as_ptr();
+        // SAFETY: There are several things here:
+        //
+        // `ptr` has been checked for nullity before being passed to `NonNull` via
+        // `new_unchecked`.
+        //
+        // Adding `self.len()` to the starting pointer gives a pointer
+        // at the end of `self`. `end` will never be dereferenced, only checked
+        // for direct pointer equality with `ptr` to check if the iterator is
+        // done.
+        //
+        // In the case of a ZST, the end pointer is just the start pointer plus
+        // the length, to also allows for the fast `ptr == end` check.
+        //
+        // See the `next_unchecked!` and `is_empty!` macros as well as the
+        // `post_inc_start` method for more informations.
         unsafe {
-            let ptr = self.as_ptr();
             assume(!ptr.is_null());
 
             let end = if mem::size_of::<T>() == 0 {
@@ -672,11 +696,23 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
-        // SAFETY: adding `self.len()` to the starting pointer gives a pointer
-        // at the end of `self`, which fulfills the expectations of `ptr.add()`
-        // and `NonNull::new_unchecked()`.
+        let ptr = self.as_mut_ptr();
+        // SAFETY: There are several things here:
+        //
+        // `ptr` has been checked for nullity before being passed to `NonNull` via
+        // `new_unchecked`.
+        //
+        // Adding `self.len()` to the starting pointer gives a pointer
+        // at the end of `self`. `end` will never be dereferenced, only checked
+        // for direct pointer equality with `ptr` to check if the iterator is
+        // done.
+        //
+        // In the case of a ZST, the end pointer is just the start pointer plus
+        // the length, to also allows for the fast `ptr == end` check.
+        //
+        // See the `next_unchecked!` and `is_empty!` macros as well as the
+        // `post_inc_start` method for more informations.
         unsafe {
-            let ptr = self.as_mut_ptr();
             assume(!ptr.is_null());
 
             let end = if mem::size_of::<T>() == 0 {
@@ -2170,6 +2206,11 @@ impl<T> [T] {
         //
         // `next_write` is also incremented at most once per loop at most meaning
         // no element is skipped when it may need to be swapped.
+        //
+        // `ptr_read` and `prev_ptr_write` never point to the same element. This
+        // is required for `&mut *ptr_read`, `&mut *prev_ptr_write` to be safe.
+        // The explanation is simply that `next_read >= next_write` is always true,
+        // thus `next_read > next_write - 1` is too.
         unsafe {
             // Avoid bounds checks by using raw pointers.
             while next_read < len {
@@ -2253,11 +2294,11 @@ impl<T> [T] {
     pub fn rotate_left(&mut self, mid: usize) {
         assert!(mid <= self.len());
         let k = self.len() - mid;
+        let p = self.as_mut_ptr();
 
-        // SAFETY: `[mid - mid;mid+k]` corresponds to the entire
+        // SAFETY: `[mid; mid+k]` corresponds to the entire
         // `self` slice, thus is valid for reads and writes.
         unsafe {
-            let p = self.as_mut_ptr();
             rotate::ptr_rotate(mid, p.add(mid), k);
         }
     }
@@ -2296,11 +2337,11 @@ impl<T> [T] {
     pub fn rotate_right(&mut self, k: usize) {
         assert!(k <= self.len());
         let mid = self.len() - k;
+        let p = self.as_mut_ptr();
 
-        // SAFETY: `[mid - mid;mid+k]` corresponds to the entire
+        // SAFETY: `[mid; mid+k]` corresponds to the entire
         // `self` slice, thus is valid for reads and writes.
         unsafe {
-            let p = self.as_mut_ptr();
             rotate::ptr_rotate(mid, p.add(mid), k);
         }
     }
@@ -2517,7 +2558,8 @@ impl<T> [T] {
         assert!(src_end <= self.len(), "src is out of bounds");
         let count = src_end - src_start;
         assert!(dest <= self.len() - count, "dest is out of bounds");
-        // SAFETY: the conditions for `ptr::copy` have all been checked above.
+        // SAFETY: the conditions for `ptr::copy` have all been checked above,
+        // as have those for `ptr::add`.
         unsafe {
             ptr::copy(self.as_ptr().add(src_start), self.as_mut_ptr().add(dest), count);
         }
