@@ -580,7 +580,7 @@ declare_features! (
     (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
     /// The smallest useful subset of `const_generics`.
-    (active, min_const_generics, "1.46.0", Some(74878), None),
+    (active, min_const_generics, "1.47.0", Some(74878), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
