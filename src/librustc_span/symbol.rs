@@ -672,6 +672,7 @@ symbols! {
         min_align_of,
         min_align_of_val,
         min_const_fn,
+        min_const_generics,
         min_const_unsafe_fn,
         min_specialization,
         minnumf32,

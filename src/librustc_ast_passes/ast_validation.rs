@@ -776,7 +776,13 @@ fn validate_generic_param_order<'a>(
             span,
             &format!(
                 "reorder the parameters: lifetimes, then types{}",
-                if sess.features_untracked().const_generics { ", then consts" } else { "" },
+                if sess.features_untracked().const_generics
+                    || sess.features_untracked().min_const_generics
+                {
+                    ", then consts"
+                } else {
+                    ""
+                },
             ),
             ordered_params.clone(),
             Applicability::MachineApplicable,

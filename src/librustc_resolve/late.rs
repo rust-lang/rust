@@ -111,7 +111,7 @@ crate enum RibKind<'a> {
     ItemRibKind(HasGenericParams),
 
     /// We're in a constant item. Can't refer to dynamic stuff.
-    ConstantItemRibKind,
+    ConstantItemRibKind(bool),
 
     /// We passed through a module.
     ModuleRibKind(Module<'a>),
@@ -137,7 +137,7 @@ impl RibKind<'_> {
             NormalRibKind
             | ClosureOrAsyncRibKind
             | FnItemRibKind
-            | ConstantItemRibKind
+            | ConstantItemRibKind(_)
             | ModuleRibKind(_)
             | MacroDefinition(_)
             | ConstParamTyRibKind => false,
@@ -426,7 +426,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
         debug!("visit_anon_const {:?}", constant);
-        self.with_constant_rib(|this| {
+        self.with_constant_rib(constant.value.is_potential_trivial_const_param(), |this| {
             visit::walk_anon_const(this, constant);
         });
     }
@@ -628,7 +628,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         if !check_ns(TypeNS) && check_ns(ValueNS) {
                             // This must be equivalent to `visit_anon_const`, but we cannot call it
                             // directly due to visitor lifetimes so we have to copy-paste some code.
-                            self.with_constant_rib(|this| {
+                            self.with_constant_rib(true, |this| {
                                 this.smart_resolve_path(
                                     ty.id,
                                     qself.as_ref(),
@@ -829,7 +829,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | ClosureOrAsyncRibKind
                 | FnItemRibKind
                 | ItemRibKind(..)
-                | ConstantItemRibKind
+                | ConstantItemRibKind(_)
                 | ModuleRibKind(..)
                 | ForwardTyParamBanRibKind
                 | ConstParamTyRibKind => {
@@ -948,7 +948,14 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                         // Only impose the restrictions of `ConstRibKind` for an
                                         // actual constant expression in a provided default.
                                         if let Some(expr) = default {
-                                            this.with_constant_rib(|this| this.visit_expr(expr));
+                                            // We allow arbitrary const expressions inside of associated consts,
+                                            // even if they are potentially not const evaluatable.
+                                            //
+                                            // Type parameters can already be used and as associated consts are
+                                            // not used as part of the type system, this is far less surprising.
+                                            this.with_constant_rib(true, |this| {
+                                                this.visit_expr(expr)
+                                            });
                                         }
                                     }
                                     AssocItemKind::Fn(_, _, generics, _) => {
@@ -989,7 +996,9 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
                     if let Some(expr) = expr {
-                        this.with_constant_rib(|this| this.visit_expr(expr));
+                        this.with_constant_rib(expr.is_potential_trivial_const_param(), |this| {
+                            this.visit_expr(expr)
+                        });
                     }
                 });
             }
@@ -1086,11 +1095,11 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
     }
 
-    fn with_constant_rib(&mut self, f: impl FnOnce(&mut Self)) {
+    fn with_constant_rib(&mut self, trivial: bool, f: impl FnOnce(&mut Self)) {
         debug!("with_constant_rib");
-        self.with_rib(ValueNS, ConstantItemRibKind, |this| {
-            this.with_rib(TypeNS, ConstantItemRibKind, |this| {
-                this.with_label_rib(ConstantItemRibKind, f);
+        self.with_rib(ValueNS, ConstantItemRibKind(trivial), |this| {
+            this.with_rib(TypeNS, ConstantItemRibKind(trivial), |this| {
+                this.with_label_rib(ConstantItemRibKind(trivial), f);
             })
         });
     }
@@ -1220,7 +1229,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 for item in impl_items {
                                     use crate::ResolutionError::*;
                                     match &item.kind {
-                                        AssocItemKind::Const(..) => {
+                                        AssocItemKind::Const(_default, _ty, _expr) => {
                                             debug!("resolve_implementation AssocItemKind::Const",);
                                             // If this is a trait impl, ensure the const
                                             // exists in trait
@@ -1231,7 +1240,12 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 |n, s| ConstNotMemberOfTrait(n, s),
                                             );
 
-                                            this.with_constant_rib(|this| {
+                                            // We allow arbitrary const expressions inside of associated consts,
+                                            // even if they are potentially not const evaluatable.
+                                            //
+                                            // Type parameters can already be used and as associated consts are
+                                            // not used as part of the type system, this is far less surprising.
+                                            this.with_constant_rib(true, |this| {
                                                 visit::walk_assoc_item(this, item, AssocCtxt::Impl)
                                             });
                                         }

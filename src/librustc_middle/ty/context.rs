@@ -1380,7 +1380,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// we still evaluate them eagerly.
     #[inline]
     pub fn lazy_normalization(self) -> bool {
-        self.features().const_generics || self.features().lazy_normalization_consts
+        let features = self.features();
+        // Note: We do not enable lazy normalization for `features.min_const_generics`.
+        features.const_generics || features.lazy_normalization_consts
     }
 
     #[inline]

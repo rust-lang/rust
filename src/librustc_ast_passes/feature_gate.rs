@@ -526,12 +526,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
         if let GenericParamKind::Const { .. } = param.kind {
-            gate_feature_post!(
+            gate_feature_fn!(
                 &self,
-                const_generics,
+                |x: &Features| x.const_generics || x.min_const_generics,
                 param.ident.span,
+                sym::min_const_generics,
                 "const generics are unstable"
-            )
+            );
         }
         visit::walk_generic_param(self, param)
     }

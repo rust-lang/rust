@@ -218,6 +218,10 @@ enum ResolutionError<'a> {
     ParamInTyOfConstParam(Symbol),
     /// constant values inside of type parameter defaults must not depend on generic parameters.
     ParamInAnonConstInTyDefault(Symbol),
+    /// generic parameters must not be used inside of non trivial constant values.
+    ///
+    /// This error is only emitted when using `min_const_generics`.
+    ParamInNonTrivialAnonConst(Symbol),
     /// Error E0735: type parameters with a default cannot use `Self`
     SelfInTyParamDefault,
     /// Error E0767: use of unreachable label
@@ -2507,7 +2511,7 @@ impl<'a> Resolver<'a> {
                                 res_err = Some(CannotCaptureDynamicEnvironmentInFnItem);
                             }
                         }
-                        ConstantItemRibKind => {
+                        ConstantItemRibKind(_) => {
                             // Still doesn't deal with upvars
                             if record_used {
                                 self.report_error(span, AttemptToUseNonConstantValueInConstant);
@@ -2546,7 +2550,18 @@ impl<'a> Resolver<'a> {
                             in_ty_param_default = true;
                             continue;
                         }
-                        ConstantItemRibKind => {
+                        ConstantItemRibKind(trivial) => {
+                            // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
+                            if !trivial && self.session.features_untracked().min_const_generics {
+                                if record_used {
+                                    self.report_error(
+                                        span,
+                                        ResolutionError::ParamInNonTrivialAnonConst(rib_ident.name),
+                                    );
+                                }
+                                return Res::Err;
+                            }
+
                             if in_ty_param_default {
                                 if record_used {
                                     self.report_error(
@@ -2612,7 +2627,18 @@ impl<'a> Resolver<'a> {
                             in_ty_param_default = true;
                             continue;
                         }
-                        ConstantItemRibKind => {
+                        ConstantItemRibKind(trivial) => {
+                            // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
+                            if !trivial && self.session.features_untracked().min_const_generics {
+                                if record_used {
+                                    self.report_error(
+                                        span,
+                                        ResolutionError::ParamInNonTrivialAnonConst(rib_ident.name),
+                                    );
+                                }
+                                return Res::Err;
+                            }
+
                             if in_ty_param_default {
                                 if record_used {
                                     self.report_error(
