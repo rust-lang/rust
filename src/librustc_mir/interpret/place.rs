@@ -61,7 +61,7 @@ impl<Tag> MemPlaceMeta<Tag> {
 pub struct MemPlace<Tag = ()> {
     /// A place may have an integral pointer for ZSTs, and since it might
     /// be turned back into a reference before ever being dereferenced.
-    /// However, it may never be undef.
+    /// However, it may never be uninit.
     pub ptr: Scalar<Tag>,
     pub align: Align,
     /// Metadata for unsized places. Interpretation is up to the type.
@@ -729,7 +729,7 @@ where
                         "Size mismatch when writing bits"
                     )
                 }
-                Immediate::Scalar(ScalarMaybeUninit::Uninit) => {} // undef can have any size
+                Immediate::Scalar(ScalarMaybeUninit::Uninit) => {} // uninit can have any size
                 Immediate::ScalarPair(_, _) => {
                     // FIXME: Can we check anything here?
                 }

@@ -1107,7 +1107,7 @@ pub trait PrettyPrinter<'tcx>:
                 // The `inspect` here is okay since we checked the bounds, and there are
                 // no relocations (we have an active slice reference here). We don't use
                 // this result to affect interpreter execution.
-                let byte_str = data.inspect_with_undef_and_ptr_outside_interpreter(start..end);
+                let byte_str = data.inspect_with_uninit_and_ptr_outside_interpreter(start..end);
                 self.pretty_print_byte_str(byte_str)
             }
             (
@@ -1117,7 +1117,7 @@ pub trait PrettyPrinter<'tcx>:
                 // The `inspect` here is okay since we checked the bounds, and there are no
                 // relocations (we have an active `str` reference here). We don't use this
                 // result to affect interpreter execution.
-                let slice = data.inspect_with_undef_and_ptr_outside_interpreter(start..end);
+                let slice = data.inspect_with_uninit_and_ptr_outside_interpreter(start..end);
                 let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
                 p!(write("{:?}", s));
                 Ok(self)

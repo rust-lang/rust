@@ -1076,7 +1076,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 // ```rust
                 // let mut x = 42;
                 // x = SOME_MUTABLE_STATIC;
-                // // x must now be undefined
+                // // x must now be uninit
                 // ```
                 // FIXME: we overzealously erase the entire local, because that's easier to
                 // implement.
