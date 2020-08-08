@@ -3125,6 +3125,31 @@ impl<'a> Resolver<'a> {
         })
     }
 
+    pub fn traits_in_scope(&mut self, module_id: DefId) -> Vec<TraitCandidate> {
+        let module = self.get_module(module_id);
+        module.ensure_traits(self);
+        let traits = module.traits.borrow();
+        let to_candidate =
+            |this: &mut Self, &(trait_name, binding): &(Ident, &NameBinding<'_>)| TraitCandidate {
+                def_id: binding.res().def_id(),
+                import_ids: this.find_transitive_imports(&binding.kind, trait_name),
+            };
+
+        let mut candidates: Vec<_> =
+            traits.as_ref().unwrap().iter().map(|x| to_candidate(self, x)).collect();
+
+        if let Some(prelude) = self.prelude {
+            if !module.no_implicit_prelude {
+                prelude.ensure_traits(self);
+                candidates.extend(
+                    prelude.traits.borrow().as_ref().unwrap().iter().map(|x| to_candidate(self, x)),
+                );
+            }
+        }
+
+        candidates
+    }
+
     /// Rustdoc uses this to resolve things in a recoverable way. `ResolutionError<'a>`
     /// isn't something that can be returned because it can't be made to live that long,
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
