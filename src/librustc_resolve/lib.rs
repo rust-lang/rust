@@ -43,9 +43,9 @@ use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::hir::exports::ExportMap;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
-use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, ResolverOutputs};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
@@ -54,6 +54,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
+use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::{cmp, fmt, iter, ptr};
@@ -1428,6 +1429,82 @@ impl<'a> Resolver<'a> {
         self.check_unused(krate);
         self.report_errors(krate);
         self.crate_loader.postprocess(krate);
+    }
+
+    fn get_traits_in_module_containing_item(
+        &mut self,
+        ident: Ident,
+        ns: Namespace,
+        module: Module<'a>,
+        found_traits: &mut Vec<TraitCandidate>,
+        parent_scope: &ParentScope<'a>,
+    ) {
+        assert!(ns == TypeNS || ns == ValueNS);
+        let mut traits = module.traits.borrow_mut();
+        if traits.is_none() {
+            let mut collected_traits = Vec::new();
+            module.for_each_child(self, |_, name, ns, binding| {
+                if ns != TypeNS {
+                    return;
+                }
+                match binding.res() {
+                    Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
+                        collected_traits.push((name, binding))
+                    }
+                    _ => (),
+                }
+            });
+            *traits = Some(collected_traits.into_boxed_slice());
+        }
+
+        for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
+            // Traits have pseudo-modules that can be used to search for the given ident.
+            if let Some(module) = binding.module() {
+                let mut ident = ident;
+                if ident.span.glob_adjust(module.expansion, binding.span).is_none() {
+                    continue;
+                }
+                if self
+                    .resolve_ident_in_module_unadjusted(
+                        ModuleOrUniformRoot::Module(module),
+                        ident,
+                        ns,
+                        parent_scope,
+                        false,
+                        module.span,
+                    )
+                    .is_ok()
+                {
+                    let import_ids = self.find_transitive_imports(&binding.kind, trait_name);
+                    let trait_def_id = module.def_id().unwrap();
+                    found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
+                }
+            } else if let Res::Def(DefKind::TraitAlias, _) = binding.res() {
+                // For now, just treat all trait aliases as possible candidates, since we don't
+                // know if the ident is somewhere in the transitive bounds.
+                let import_ids = self.find_transitive_imports(&binding.kind, trait_name);
+                let trait_def_id = binding.res().def_id();
+                found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
+            } else {
+                bug!("candidate is not trait or trait alias?")
+            }
+        }
+    }
+
+    fn find_transitive_imports(
+        &mut self,
+        mut kind: &NameBindingKind<'_>,
+        trait_name: Ident,
+    ) -> SmallVec<[LocalDefId; 1]> {
+        let mut import_ids = smallvec![];
+        while let NameBindingKind::Import { import, binding, .. } = kind {
+            let id = self.local_def_id(import.id);
+            self.maybe_unused_trait_imports.insert(id);
+            self.add_to_glob_map(&import, trait_name);
+            import_ids.push(id);
+            kind = &binding.kind;
+        }
+        import_ids
     }
 
     fn new_module(
