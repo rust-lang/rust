@@ -2060,8 +2060,9 @@ impl Path {
     /// assert_eq!(path.strip_prefix("/test/"), Ok(Path::new("haha/foo.txt")));
     /// assert_eq!(path.strip_prefix("/test/haha/foo.txt"), Ok(Path::new("")));
     /// assert_eq!(path.strip_prefix("/test/haha/foo.txt/"), Ok(Path::new("")));
-    /// assert_eq!(path.strip_prefix("test").is_ok(), false);
-    /// assert_eq!(path.strip_prefix("/haha").is_ok(), false);
+    ///
+    /// assert!(path.strip_prefix("test").is_err());
+    /// assert!(path.strip_prefix("/haha").is_err());
     ///
     /// let prefix = PathBuf::from("/test/");
     /// assert_eq!(path.strip_prefix(prefix), Ok(Path::new("haha/foo.txt")));
