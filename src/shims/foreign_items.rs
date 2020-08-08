@@ -7,7 +7,6 @@ use rustc_middle::{mir, ty};
 use rustc_target::abi::{Align, Size};
 use rustc_apfloat::Float;
 use rustc_span::symbol::sym;
-use rustc_ast::attr;
 
 use crate::*;
 use helpers::check_arg_count;
@@ -117,7 +116,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
-        let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
+        let link_name = match this.tcx.sess.first_attr_value_str_by_name(&attrs, sym::link_name) {
             Some(name) => name.as_str(),
             None => this.tcx.item_name(def_id).as_str(),
         };
