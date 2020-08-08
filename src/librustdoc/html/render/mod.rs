@@ -3149,7 +3149,7 @@ fn render_struct(
             it.name.as_ref().unwrap()
         );
     } else {
-        write!(w, "struct {} ", it.name.as_ref().unwrap());
+        write!(w, "struct {}", it.name.as_ref().unwrap());
     }
     if let Some(g) = g {
         write!(w, "{}", g.print())
