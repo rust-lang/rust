@@ -97,8 +97,11 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-pub(crate) fn write_filenames_section_to_buffer(filenames: &Vec<CString>, buffer: &RustString) {
-    let c_str_vec = filenames.iter().map(|cstring| cstring.as_ptr()).collect::<Vec<_>>();
+pub(crate) fn write_filenames_section_to_buffer<'a>(
+    filenames: impl IntoIterator<Item = &'a CString>,
+    buffer: &RustString,
+) {
+    let c_str_vec = filenames.into_iter().map(|cstring| cstring.as_ptr()).collect::<Vec<_>>();
     unsafe {
         llvm::LLVMRustCoverageWriteFilenamesSectionToBuffer(
             c_str_vec.as_ptr(),
