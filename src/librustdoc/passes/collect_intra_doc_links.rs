@@ -10,7 +10,7 @@ use rustc_hir::def::{
     PerNS, Res,
 };
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty;
 use rustc_resolve::ParentScope;
 use rustc_session::lint;
 use rustc_span::hygiene::MacroKind;
@@ -327,7 +327,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         // To handle that properly resolve() would have to support
                         // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
                         .or_else(|| {
-                            let kind = resolve_associated_trait_item(did, item_name, ns, &self.cx);
+                            let kind = resolve_associated_trait_item(
+                                did, module_id, item_name, ns, &self.cx,
+                            );
                             debug!("got associated item kind {:?}", kind);
                             kind
                         });
@@ -440,6 +442,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
 fn resolve_associated_trait_item(
     did: DefId,
+    module: DefId,
     item_name: Symbol,
     ns: Namespace,
     cx: &DocContext<'_>,
@@ -504,8 +507,7 @@ fn resolve_associated_trait_item(
     // Next consider explicit impls: `impl MyTrait for MyType`
     // Give precedence to inherent impls.
     if candidates.is_empty() {
-        let mut cache = cx.type_trait_cache.borrow_mut();
-        let traits = cache.entry(did).or_insert_with(|| traits_implemented_by(cx.tcx, did));
+        let traits = traits_implemented_by(cx, did, module);
         debug!("considering traits {:?}", traits);
         candidates.extend(traits.iter().filter_map(|&trait_| {
             cx.tcx
@@ -519,27 +521,30 @@ fn resolve_associated_trait_item(
     candidates.pop().map(|(_, kind)| kind)
 }
 
-/// Given a type, return all traits implemented by that type.
+/// Given a type, return all traits in scope in `module` implemented by that type.
 ///
 /// NOTE: this cannot be a query because more traits could be available when more crates are compiled!
 /// So it is not stable to serialize cross-crate.
-/// FIXME: this should only search traits in scope
-fn traits_implemented_by<'a>(tcx: TyCtxt<'a>, type_: DefId) -> FxHashSet<DefId> {
-    use rustc_hir::def_id::LOCAL_CRATE;
+fn traits_implemented_by(cx: &DocContext<'_>, type_: DefId, module: DefId) -> FxHashSet<DefId> {
+    let mut cache = cx.module_trait_cache.borrow_mut();
+    let in_scope_traits = cache.entry(module).or_insert_with(|| {
+        cx.enter_resolver(|resolver| {
+            resolver.traits_in_scope(module).into_iter().map(|candidate| candidate.def_id).collect()
+        })
+    });
 
-    let all_traits = tcx.all_traits(LOCAL_CRATE).iter().copied();
-    let ty = tcx.type_of(type_);
-    let iter = all_traits.flat_map(|trait_| {
+    let ty = cx.tcx.type_of(type_);
+    let iter = in_scope_traits.iter().flat_map(|&trait_| {
         trace!("considering explicit impl for trait {:?}", trait_);
         let mut saw_impl = false;
         // Look at each trait implementation to see if it's an impl for `did`
-        tcx.for_each_relevant_impl(trait_, ty, |impl_| {
+        cx.tcx.for_each_relevant_impl(trait_, ty, |impl_| {
             // FIXME: this is inefficient, find a way to short-circuit for_each_* so this doesn't take as long
             if saw_impl {
                 return;
             }
 
-            let trait_ref = tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
+            let trait_ref = cx.tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
             // Check if these are the same type.
             let impl_type = trait_ref.self_ty();
             debug!(
