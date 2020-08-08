@@ -2374,7 +2374,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                 match_type(cx, ty, &paths::BTREEMAP) ||
                 is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) {
                 if method.ident.name == sym!(len) {
-                    let span = shorten_span(expr, sym!(collect));
+                    let span = shorten_needless_collect_span(expr);
                     span_lint_and_sugg(
                         cx,
                         NEEDLESS_COLLECT,
@@ -2386,20 +2386,20 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                     );
                 }
                 if method.ident.name == sym!(is_empty) {
-                    let span = shorten_span(expr, sym!(iter));
+                    let span = shorten_needless_collect_span(expr);
                     span_lint_and_sugg(
                         cx,
                         NEEDLESS_COLLECT,
                         span,
                         NEEDLESS_COLLECT_MSG,
                         "replace with",
-                        "get(0).is_none()".to_string(),
+                        "next().is_none()".to_string(),
                         Applicability::MachineApplicable,
                     );
                 }
                 if method.ident.name == sym!(contains) {
                     let contains_arg = snippet(cx, args[1].span, "??");
-                    let span = shorten_span(expr, sym!(collect));
+                    let span = shorten_needless_collect_span(expr);
                     span_lint_and_then(
                         cx,
                         NEEDLESS_COLLECT,
@@ -2579,13 +2579,13 @@ fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident)
     }
 }
 
-fn shorten_span(expr: &Expr<'_>, target_fn_name: Symbol) -> Span {
-    let mut current_expr = expr;
-    while let ExprKind::MethodCall(ref path, ref span, ref args, _) = current_expr.kind {
-        if path.ident.name == target_fn_name {
+fn shorten_needless_collect_span(expr: &Expr<'_>) -> Span {
+    if_chain! {
+        if let ExprKind::MethodCall(.., args, _) = &expr.kind;
+        if let ExprKind::MethodCall(_, span, ..) = &args[0].kind;
+        then {
             return expr.span.with_lo(span.lo());
         }
-        current_expr = &args[0];
     }
-    unreachable!()
+    unreachable!();
 }
