@@ -495,7 +495,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(span) {
                         // Don't care about `&mut` because `DerefMut` is used less
                         // often and user will not expect autoderef happens.
-                        if src.starts_with("&") && !src.starts_with("&mut ") {
+                        if src.starts_with('&') && !src.starts_with("&mut ") {
                             let derefs = "*".repeat(steps);
                             err.span_suggestion(
                                 span,

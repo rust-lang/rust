@@ -4,7 +4,7 @@ use std::env;
 
 #[allow(deprecated)]
 pub fn get_concurrency() -> usize {
-    return match env::var("RUST_TEST_THREADS") {
+    match env::var("RUST_TEST_THREADS") {
         Ok(s) => {
             let opt_n: Option<usize> = s.parse().ok();
             match opt_n {
@@ -13,7 +13,7 @@ pub fn get_concurrency() -> usize {
             }
         }
         Err(..) => num_cpus(),
-    };
+    }
 }
 
 cfg_if::cfg_if! {

@@ -162,7 +162,7 @@ impl<'a, 'tcx> SpecializedEncoder<ExpnId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, expn: &ExpnId) -> Result<(), Self::Error> {
         rustc_span::hygiene::raw_encode_expn_id(
             *expn,
-            &mut self.hygiene_ctxt,
+            &self.hygiene_ctxt,
             ExpnDataEncodeMode::Metadata,
             self,
         )

@@ -98,7 +98,7 @@ impl<'a> FileSearch<'a> {
         p.push(RUST_LIB_DIR);
         p.push(&self.triple);
         p.push("bin");
-        if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p.clone()] }
+        if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p] }
     }
 }
 
