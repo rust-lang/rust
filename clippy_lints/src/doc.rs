@@ -2,6 +2,7 @@ use crate::utils::{implements_trait, is_entrypoint_fn, is_type_diagnostic_item, 
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{AttrKind, Attribute};
+use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -249,7 +250,7 @@ fn lint_for_missing_headers<'tcx>(
     }
 }
 
-/// Cleanup documentation decoration (`///` and such).
+/// Cleanup documentation decoration.
 ///
 /// We can't use `rustc_ast::attr::AttributeMethods::with_desugared_doc` or
 /// `rustc_ast::parse::lexer::comments::strip_doc_comment_decoration` because we
@@ -257,54 +258,45 @@ fn lint_for_missing_headers<'tcx>(
 /// the spans but this function is inspired from the later.
 #[allow(clippy::cast_possible_truncation)]
 #[must_use]
-pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(usize, Span)>) {
+pub fn strip_doc_comment_decoration(doc: &str, comment_kind: CommentKind, span: Span) -> (String, Vec<(usize, Span)>) {
     // one-line comments lose their prefix
-    const ONELINERS: &[&str] = &["///!", "///", "//!", "//"];
-    for prefix in ONELINERS {
-        if comment.starts_with(*prefix) {
-            let doc = &comment[prefix.len()..];
-            let mut doc = doc.to_owned();
-            doc.push('\n');
-            return (
-                doc.to_owned(),
-                vec![(doc.len(), span.with_lo(span.lo() + BytePos(prefix.len() as u32)))],
-            );
-        }
+    if comment_kind == CommentKind::Line {
+        let mut doc = doc.to_owned();
+        doc.push('\n');
+        let len = doc.len();
+        // +3 skips the opening delimiter
+        return (doc, vec![(len, span.with_lo(span.lo() + BytePos(3)))]);
     }
 
-    if comment.starts_with("/*") {
-        let doc = &comment[3..comment.len() - 2];
-        let mut sizes = vec![];
-        let mut contains_initial_stars = false;
-        for line in doc.lines() {
-            let offset = line.as_ptr() as usize - comment.as_ptr() as usize;
-            debug_assert_eq!(offset as u32 as usize, offset);
-            contains_initial_stars |= line.trim_start().starts_with('*');
-            // +1 for the newline
-            sizes.push((line.len() + 1, span.with_lo(span.lo() + BytePos(offset as u32))));
-        }
-        if !contains_initial_stars {
-            return (doc.to_string(), sizes);
-        }
-        // remove the initial '*'s if any
-        let mut no_stars = String::with_capacity(doc.len());
-        for line in doc.lines() {
-            let mut chars = line.chars();
-            while let Some(c) = chars.next() {
-                if c.is_whitespace() {
-                    no_stars.push(c);
-                } else {
-                    no_stars.push(if c == '*' { ' ' } else { c });
-                    break;
-                }
+    let mut sizes = vec![];
+    let mut contains_initial_stars = false;
+    for line in doc.lines() {
+        let offset = line.as_ptr() as usize - doc.as_ptr() as usize;
+        debug_assert_eq!(offset as u32 as usize, offset);
+        contains_initial_stars |= line.trim_start().starts_with('*');
+        // +1 adds the newline, +3 skips the opening delimiter
+        sizes.push((line.len() + 1, span.with_lo(span.lo() + BytePos(3 + offset as u32))));
+    }
+    if !contains_initial_stars {
+        return (doc.to_string(), sizes);
+    }
+    // remove the initial '*'s if any
+    let mut no_stars = String::with_capacity(doc.len());
+    for line in doc.lines() {
+        let mut chars = line.chars();
+        while let Some(c) = chars.next() {
+            if c.is_whitespace() {
+                no_stars.push(c);
+            } else {
+                no_stars.push(if c == '*' { ' ' } else { c });
+                break;
             }
-            no_stars.push_str(chars.as_str());
-            no_stars.push('\n');
         }
-        return (no_stars, sizes);
+        no_stars.push_str(chars.as_str());
+        no_stars.push('\n');
     }
 
-    panic!("not a doc-comment: {}", comment);
+    (no_stars, sizes)
 }
 
 #[derive(Copy, Clone)]
@@ -318,9 +310,8 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
     let mut spans = vec![];
 
     for attr in attrs {
-        if let AttrKind::DocComment(ref comment) = attr.kind {
-            let comment = comment.to_string();
-            let (comment, current_spans) = strip_doc_comment_decoration(&comment, attr.span);
+        if let AttrKind::DocComment(comment_kind, comment) = attr.kind {
+            let (comment, current_spans) = strip_doc_comment_decoration(&comment.as_str(), comment_kind, attr.span);
             spans.extend_from_slice(&current_spans);
             doc.push_str(&comment);
         } else if attr.has_name(sym!(doc)) {
