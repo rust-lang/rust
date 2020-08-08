@@ -1232,10 +1232,10 @@ impl PathBuf {
     /// ```
     /// use std::path::{Path, PathBuf};
     ///
-    /// let mut p = PathBuf::from("/test/test.rs");
+    /// let mut p = PathBuf::from("/spirited/away.rs");
     ///
     /// p.pop();
-    /// assert_eq!(Path::new("/test"), p);
+    /// assert_eq!(Path::new("/spirited"), p);
     /// p.pop();
     /// assert_eq!(Path::new("/"), p);
     /// ```
