@@ -42,9 +42,6 @@ const MIN_ALIGN: usize = 8;
               target_arch = "sparc64")))]
 #[allow(dead_code)]
 const MIN_ALIGN: usize = 16;
-use core::alloc::*;
-use core::ptr::NonNull;
-use core::intrinsics;
 
 /// The default memory allocator provided by the operating system.
 ///
