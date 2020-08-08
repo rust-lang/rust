@@ -522,6 +522,29 @@ impl<'a> ModuleData<'a> {
         }
     }
 
+    /// This modifies `self` in place. The traits will be stored in `self.traits`.
+    fn ensure_traits<R>(&'a self, resolver: &mut R)
+    where
+        R: AsMut<Resolver<'a>>,
+    {
+        let mut traits = self.traits.borrow_mut();
+        if traits.is_none() {
+            let mut collected_traits = Vec::new();
+            self.for_each_child(resolver, |_, name, ns, binding| {
+                if ns != TypeNS {
+                    return;
+                }
+                match binding.res() {
+                    Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
+                        collected_traits.push((name, binding))
+                    }
+                    _ => (),
+                }
+            });
+            *traits = Some(collected_traits.into_boxed_slice());
+        }
+    }
+
     fn res(&self) -> Option<Res> {
         match self.kind {
             ModuleKind::Def(kind, def_id, _) => Some(Res::Def(kind, def_id)),
@@ -1440,22 +1463,8 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
     ) {
         assert!(ns == TypeNS || ns == ValueNS);
-        let mut traits = module.traits.borrow_mut();
-        if traits.is_none() {
-            let mut collected_traits = Vec::new();
-            module.for_each_child(self, |_, name, ns, binding| {
-                if ns != TypeNS {
-                    return;
-                }
-                match binding.res() {
-                    Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
-                        collected_traits.push((name, binding))
-                    }
-                    _ => (),
-                }
-            });
-            *traits = Some(collected_traits.into_boxed_slice());
-        }
+        module.ensure_traits(self);
+        let traits = module.traits.borrow();
 
         for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
             // Traits have pseudo-modules that can be used to search for the given ident.
