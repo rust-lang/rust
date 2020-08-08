@@ -932,7 +932,8 @@ impl CrateError {
                 let candidates = libraries
                     .iter()
                     .filter_map(|(_, lib)| {
-                        let crate_name = &lib.metadata.get_root().name().as_str();
+                        let crate_name = lib.metadata.get_root().name();
+                        let crate_name = crate_name.as_str();
                         match (&lib.source.dylib, &lib.source.rlib) {
                             (Some((pd, _)), Some((pr, _))) => Some(format!(
                                 "\ncrate `{}`: {}\n{:>padding$}",

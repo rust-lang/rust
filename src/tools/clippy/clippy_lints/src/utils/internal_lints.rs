@@ -16,7 +16,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
-use rustc_span::symbol::{Symbol, SymbolStr};
+use rustc_span::symbol::Symbol;
 
 use std::borrow::{Borrow, Cow};
 
@@ -219,11 +219,11 @@ impl EarlyLintPass for ClippyLintsInternal {
             if let ItemKind::Mod(ref utils_mod) = utils.kind {
                 if let Some(paths) = utils_mod.items.iter().find(|item| item.ident.name.as_str() == "paths") {
                     if let ItemKind::Mod(ref paths_mod) = paths.kind {
-                        let mut last_name: Option<SymbolStr> = None;
+                        let mut last_name: Option<Symbol> = None;
                         for item in &*paths_mod.items {
-                            let name = item.ident.as_str();
+                            let name = item.ident;
                             if let Some(ref last_name) = last_name {
-                                if **last_name > *name {
+                                if last_name.as_str() > name.as_str() {
                                     span_lint(
                                         cx,
                                         CLIPPY_LINTS_INTERNAL,
@@ -233,7 +233,7 @@ impl EarlyLintPass for ClippyLintsInternal {
                                     );
                                 }
                             }
-                            last_name = Some(name);
+                            last_name = Some(name.name);
                         }
                     }
                 }
@@ -430,8 +430,7 @@ impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
         }
 
         let (method_names, arg_lists, spans) = method_calls(expr, 2);
-        let method_names: Vec<SymbolStr> = method_names.iter().map(|s| s.as_str()).collect();
-        let method_names: Vec<&str> = method_names.iter().map(|s| &**s).collect();
+        let method_names: Vec<&str> = method_names.iter().map(|s| s.as_str()).collect();
         if_chain! {
             if let ["expn_data", "outer_expn"] = method_names.as_slice();
             let args = arg_lists[1];
@@ -494,7 +493,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             let and_then_snippets = get_and_then_snippets(cx, and_then_args);
             let mut sle = SpanlessEq::new(cx).deny_side_effects();
             then {
-                match &*ps.ident.as_str() {
+                match ps.ident.as_str() {
                     "span_suggestion" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
                         suggest_suggestion(cx, expr, &and_then_snippets, &span_suggestion_snippets(cx, span_call_args));
                     },

@@ -693,7 +693,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitCmp {
                     if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
                         let op = cmp.node;
                         if op.is_comparison() && is_unit(cx.typeck_results().expr_ty(left)) {
-                            let result = match &*symbol.as_str() {
+                            let result = match symbol.as_str() {
                                 "assert_eq" | "debug_assert_eq" => "succeed",
                                 "assert_ne" | "debug_assert_ne" => "fail",
                                 _ => return,

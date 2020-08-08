@@ -16,7 +16,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{Symbol, SymbolStr};
+use rustc_span::symbol::Symbol;
 use semver::Version;
 
 static UNIX_SYSTEMS: &[&str] = &[
@@ -316,7 +316,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                     }
                     if let Some(lint_list) = &attr.meta_item_list() {
                         if let Some(ident) = attr.ident() {
-                            match &*ident.as_str() {
+                            match ident.as_str() {
                                 "allow" | "warn" | "deny" | "forbid" => {
                                     // permit `unused_imports`, `deprecated` and `unreachable_pub` for `use` items
                                     // and `unused_imports` for `extern crate` items with `macro_use`
@@ -388,7 +388,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
 }
 
 fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMetaItem]) {
-    fn extract_name(lint: &NestedMetaItem) -> Option<SymbolStr> {
+    fn extract_name(lint: &NestedMetaItem) -> Option<Symbol> {
         if_chain! {
             if let Some(meta_item) = lint.meta_item();
             if meta_item.path.segments.len() > 1;
@@ -396,7 +396,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMet
             if tool_name.as_str() == "clippy";
             let lint_name = meta_item.path.segments.last().unwrap().ident.name;
             then {
-                return Some(lint_name.as_str());
+                return Some(lint_name);
             }
         }
         None
@@ -405,8 +405,9 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMet
     let lint_store = cx.lints();
     for lint in items {
         if let Some(lint_name) = extract_name(lint) {
+            let lint_name = lint_name.as_str();
             if let CheckLintNameResult::Tool(Err((None, _))) =
-                lint_store.check_lint_name(&lint_name, Some(sym!(clippy)))
+                lint_store.check_lint_name(lint_name, Some(sym!(clippy)))
             {
                 span_lint_and_then(
                     cx,

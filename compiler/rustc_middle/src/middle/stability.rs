@@ -184,7 +184,8 @@ pub fn deprecation_suggestion(
 pub fn deprecation_message(depr: &Deprecation, kind: &str, path: &str) -> (String, &'static Lint) {
     let (message, lint) = if deprecation_in_effect(
         depr.is_since_rustc_version,
-        depr.since.map(Symbol::as_str).as_deref(),
+        // njn: surely can use as_str() somehow here
+        depr.since.map(Symbol::as_str2).as_deref(),
     ) {
         (format!("use of deprecated {} `{}`", kind, path), DEPRECATED)
     } else {

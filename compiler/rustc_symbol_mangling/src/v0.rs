@@ -536,8 +536,8 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         self.push("C");
         let fingerprint = self.tcx.crate_disambiguator(cnum).to_fingerprint();
         self.push_disambiguator(fingerprint.to_smaller_hash());
-        let name = self.tcx.original_crate_name(cnum).as_str();
-        self.push_ident(&name);
+        let name = self.tcx.original_crate_name(cnum);
+        self.push_ident(name.as_str());
         Ok(self)
     }
     fn path_qualified(
@@ -596,13 +596,13 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             }
         };
 
-        let name = disambiguated_data.data.get_opt_name().map(|s| s.as_str());
+        let name = disambiguated_data.data.get_opt_name();
 
         self.path_append_ns(
             print_prefix,
             ns,
             disambiguated_data.disambiguator as u64,
-            name.as_ref().map_or("", |s| &s[..]),
+            name.as_ref().map_or("", |name| name.as_str()),
         )
     }
     fn path_generic_args(

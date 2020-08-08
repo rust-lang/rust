@@ -283,7 +283,7 @@ where
 
                                     // These unwraps are safe because `get` ensures the meta item
                                     // is a name/value pair string literal.
-                                    issue_num = match &*issue.unwrap().as_str() {
+                                    issue_num = match issue.unwrap().as_str() {
                                         "none" => None,
                                         issue => {
                                             let emit_diag = |msg: &str| {

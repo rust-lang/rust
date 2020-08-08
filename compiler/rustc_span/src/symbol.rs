@@ -1256,7 +1256,15 @@ impl Ident {
 
     /// Convert the name to a `SymbolStr`. This is a slowish operation because
     /// it requires locking the symbol interner.
-    pub fn as_str(self) -> SymbolStr {
+    // njn: want to remove this
+    pub fn as_str2(self) -> SymbolStr {
+        self.name.as_str2()
+    }
+
+    /// Access the underlying string. This is a slowish operation because it
+    /// requires locking the symbol interner.
+    // njn: comment about the lifetime of the return value being a lie?
+    pub fn as_str(&self) -> &str {
         self.name.as_str()
     }
 }
@@ -1402,10 +1410,18 @@ impl Symbol {
 
     /// Convert to a `SymbolStr`. This is a slowish operation because it
     /// requires locking the symbol interner.
-    pub fn as_str(self) -> SymbolStr {
+    // njn: want to remove this
+    pub fn as_str2(self) -> SymbolStr {
         with_interner(|interner| unsafe {
             SymbolStr { string: std::mem::transmute::<&str, &str>(interner.get(self)) }
         })
+    }
+
+    /// Access the underlying string. This is a slowish operation because it
+    /// requires locking the symbol interner.
+    // njn: comment about the lifetime of the return value being a lie?
+    pub fn as_str(&self) -> &str {
+        with_interner(|interner| unsafe { std::mem::transmute::<&str, &str>(interner.get(*self)) })
     }
 
     pub fn as_u32(self) -> u32 {
@@ -1458,7 +1474,8 @@ impl<CTX> ToStableHashKey<CTX> for Symbol {
 
     #[inline]
     fn to_stable_hash_key(&self, _: &CTX) -> SymbolStr {
-        self.as_str()
+        // njn: hmm
+        self.as_str2()
     }
 }
 
@@ -1635,6 +1652,8 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 //
 // FIXME: ensure that the interner outlives any thread which uses `SymbolStr`,
 // by creating a new thread right after constructing the interner.
+//
+// njn: want to remove this
 #[derive(Clone, Eq, PartialOrd, Ord)]
 pub struct SymbolStr {
     string: &'static str,

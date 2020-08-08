@@ -434,15 +434,16 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
         }
         let binding = match expr.kind {
             ExprKind::Path(ref qpath) if !matches!(qpath, hir::QPath::LangItem(..)) => {
-                let binding = last_path_segment(qpath).ident.as_str();
-                if binding.starts_with('_') &&
-                    !binding.starts_with("__") &&
-                    binding != "_result" && // FIXME: #944
+                let binding = last_path_segment(qpath).ident;
+                let binding_str = binding.as_str();
+                if binding_str.starts_with('_') &&
+                    !binding_str.starts_with("__") &&
+                    binding_str != "_result" && // FIXME: #944
                     is_used(cx, expr) &&
                     // don't lint if the declaration is in a macro
                     non_macro_local(cx, cx.qpath_res(qpath, expr.hir_id))
                 {
-                    Some(binding)
+                    Some(binding.name)
                 } else {
                     None
                 }
@@ -450,7 +451,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
             ExprKind::Field(_, ident) => {
                 let name = ident.as_str();
                 if name.starts_with('_') && !name.starts_with("__") {
-                    Some(name)
+                    Some(ident.name)
                 } else {
                     None
                 }

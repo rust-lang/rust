@@ -86,7 +86,9 @@ fn upstream_crates(cstore: &dyn CrateStore) -> Vec<(Symbol, Fingerprint, Svh)> {
             (name, disambiguator, hash)
         })
         .collect();
-    upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name.as_str(), dis));
+    upstream_crates.sort_unstable_by(|&(name1, dis1, _), &(name2, dis2, _)| {
+        (name1.as_str(), dis1).partial_cmp(&(name2.as_str(), dis2)).unwrap()
+    });
     upstream_crates
 }
 

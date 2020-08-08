@@ -43,7 +43,8 @@ impl LateLintPass<'_> for MultipleCrateVersions {
         }
 
         let metadata = unwrap_cargo_metadata!(cx, MULTIPLE_CRATE_VERSIONS, true);
-        let local_name = cx.tcx.crate_name(LOCAL_CRATE).as_str();
+        let local_name = cx.tcx.crate_name(LOCAL_CRATE);
+        let local_name = local_name.as_str();
         let mut packages = metadata.packages;
         packages.sort_by(|a, b| a.name.cmp(&b.name));
 

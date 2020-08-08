@@ -340,7 +340,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             tcx,
                             generics,
                             &mut err,
-                            &param.name.as_str(),
+                            param.name.as_str(),
                             "Copy",
                             None,
                         );

@@ -436,7 +436,7 @@ impl CodegenUnitNameBuilder<'tcx> {
         if self.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
             cgu_name
         } else {
-            Symbol::intern(&CodegenUnit::mangle_name(&cgu_name.as_str()))
+            Symbol::intern(&CodegenUnit::mangle_name(cgu_name.as_str()))
         }
     }
 

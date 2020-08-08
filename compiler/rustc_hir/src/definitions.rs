@@ -214,10 +214,10 @@ impl DefPath {
     where
         F: FnOnce(CrateNum) -> Symbol,
     {
-        let crate_name_str = crate_imported_name(self.krate).as_str();
-        let mut s = String::with_capacity(crate_name_str.len() + self.data.len() * 16);
+        let crate_name = crate_imported_name(self.krate);
+        let mut s = String::with_capacity(crate_name.as_str().len() + self.data.len() * 16);
 
-        write!(s, "::{}", crate_name_str).unwrap();
+        write!(s, "::{}", crate_name).unwrap();
 
         for component in &self.data {
             if component.disambiguator == 0 {

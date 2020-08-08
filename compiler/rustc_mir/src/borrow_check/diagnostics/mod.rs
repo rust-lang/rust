@@ -316,7 +316,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let decl = &self.body.local_decls[local];
         match self.local_names[local] {
             Some(name) if !decl.from_compiler_desugaring() => {
-                buf.push_str(&name.as_str());
+                buf.push_str(name.as_str());
                 Ok(())
             }
             _ => Err(()),

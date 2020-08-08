@@ -80,7 +80,7 @@ impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
             }
         }
 
-        let name = &*name.as_str();
+        let name = name.as_str();
         let components = [
             StringComponent::Ref(parent_string_id),
             StringComponent::Value("::"),
