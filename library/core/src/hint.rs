@@ -119,9 +119,11 @@ pub fn black_box<T>(dummy: T) -> T {
     // box. This isn't the greatest implementation since it probably deoptimizes
     // more than we want, but it's so far good enough.
 
+    #[cfg(not(miri))] // This is just a hint, so it is fine to skip in Miri.
     // SAFETY: the inline assembly is a no-op.
     unsafe {
         llvm_asm!("" : : "r"(&dummy));
-        dummy
     }
+
+    dummy
 }
