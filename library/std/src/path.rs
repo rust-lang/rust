@@ -2140,9 +2140,8 @@ impl Path {
     /// ```
     /// use std::path::Path;
     ///
-    /// let path = Path::new("foo.rs");
-    ///
-    /// assert_eq!("foo", path.file_stem().unwrap());
+    /// assert_eq!("foo", Path::new("foo.rs").file_stem().unwrap());
+    /// assert_eq!("foo.tar", Path::new("foo.tar.gz").file_stem().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_stem(&self) -> Option<&OsStr> {
@@ -2166,9 +2165,8 @@ impl Path {
     /// ```
     /// use std::path::Path;
     ///
-    /// let path = Path::new("foo.rs");
-    ///
-    /// assert_eq!("rs", path.extension().unwrap());
+    /// assert_eq!("rs", Path::new("foo.rs").extension().unwrap());
+    /// assert_eq!("gz", Path::new("foo.tar.gz").extension().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn extension(&self) -> Option<&OsStr> {
