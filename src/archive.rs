@@ -8,14 +8,6 @@ use rustc_codegen_ssa::METADATA_FILENAME;
 
 use object::{Object, SymbolKind};
 
-struct ArchiveConfig<'a> {
-    sess: &'a Session,
-    dst: PathBuf,
-    lib_search_paths: Vec<PathBuf>,
-    use_gnu_style_archive: bool,
-    no_builtin_ranlib: bool,
-}
-
 #[derive(Debug)]
 enum ArchiveEntry {
     FromArchive {
@@ -26,7 +18,12 @@ enum ArchiveEntry {
 }
 
 pub(crate) struct ArArchiveBuilder<'a> {
-    config: ArchiveConfig<'a>,
+    sess: &'a Session,
+    dst: PathBuf,
+    lib_search_paths: Vec<PathBuf>,
+    use_gnu_style_archive: bool,
+    no_builtin_ranlib: bool,
+
     src_archives: Vec<(PathBuf, ar::Archive<File>)>,
     // Don't use `HashMap` here, as the order is important. `rust.metadata.bin` must always be at
     // the end of an archive for linkers to not get confused.
@@ -37,14 +34,6 @@ pub(crate) struct ArArchiveBuilder<'a> {
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self {
         use rustc_codegen_ssa::back::link::archive_search_paths;
-        let config = ArchiveConfig {
-            sess,
-            dst: output.to_path_buf(),
-            lib_search_paths: archive_search_paths(sess),
-            use_gnu_style_archive: sess.target.target.options.archive_format == "gnu",
-            // FIXME fix builtin ranlib on macOS
-            no_builtin_ranlib: sess.target.target.options.is_like_osx,
-        };
 
         let (src_archives, entries) = if let Some(input) = input {
             let mut archive = ar::Archive::new(File::open(input).unwrap());
@@ -69,7 +58,13 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         };
 
         ArArchiveBuilder {
-            config,
+            sess,
+            dst: output.to_path_buf(),
+            lib_search_paths: archive_search_paths(sess),
+            use_gnu_style_archive: sess.target.target.options.archive_format == "gnu",
+            // FIXME fix builtin ranlib on macOS
+            no_builtin_ranlib: sess.target.target.options.is_like_osx,
+
             src_archives,
             entries,
             update_symbols: false,
@@ -97,7 +92,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     }
 
     fn add_native_library(&mut self, name: rustc_span::symbol::Symbol) {
-        let location = find_library(name, &self.config.lib_search_paths, self.config.sess);
+        let location = find_library(name, &self.lib_search_paths, self.sess);
         self.add_archive(location.clone(), |_| false)
             .unwrap_or_else(|e| {
                 panic!(
@@ -149,7 +144,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             Gnu(ar::GnuBuilder<File>),
         }
 
-        let sess = self.config.sess;
+        let sess = self.sess;
 
         let mut symbol_table = BTreeMap::new();
 
@@ -179,7 +174,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                 }
             };
 
-            if !self.config.no_builtin_ranlib {
+            if !self.no_builtin_ranlib {
                 match object::File::parse(&data) {
                     Ok(object) => {
                         symbol_table.insert(entry_name.as_bytes().to_vec(), object.symbols().filter_map(|(_index, symbol)| {
@@ -204,9 +199,9 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             entries.push((entry_name, data));
         }
 
-        let mut builder = if self.config.use_gnu_style_archive {
+        let mut builder = if self.use_gnu_style_archive {
             BuilderKind::Gnu(ar::GnuBuilder::new(
-                File::create(&self.config.dst).unwrap_or_else(|err| {
+                File::create(&self.dst).unwrap_or_else(|err| {
                     sess.fatal(&format!("error opening destination during archive building: {}", err));
                 }),
                 entries
@@ -218,7 +213,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             ).unwrap())
         } else {
             BuilderKind::Bsd(ar::Builder::new(
-                File::create(&self.config.dst).unwrap_or_else(|err| {
+                File::create(&self.dst).unwrap_or_else(|err| {
                     sess.fatal(&format!("error opening destination during archive building: {}", err));
                 }),
                 symbol_table,
@@ -241,17 +236,17 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         // Finalize archive
         std::mem::drop(builder);
 
-        if self.config.no_builtin_ranlib {
-            let ranlib = crate::toolchain::get_toolchain_binary(self.config.sess, "ranlib");
+        if self.no_builtin_ranlib {
+            let ranlib = crate::toolchain::get_toolchain_binary(self.sess, "ranlib");
 
             // Run ranlib to be able to link the archive
             let status = std::process::Command::new(ranlib)
-                .arg(self.config.dst)
+                .arg(self.dst)
                 .status()
                 .expect("Couldn't run ranlib");
 
             if !status.success() {
-                self.config.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
+                self.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
             }
         }
     }
