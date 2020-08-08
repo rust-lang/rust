@@ -5,7 +5,7 @@ LL |         let y = *x;
    |                 -- value moved here
 LL |         drop_unsized(y);
 LL |         println!("{}", &x);
-   |                        ^^ value borrowed here after partial move
+   |                        ^^ value borrowed here after move
    |
    = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
 
@@ -27,7 +27,7 @@ LL |         let y = *x;
    |                 -- value moved here
 LL |         y.foo();
 LL |         println!("{}", &x);
-   |                        ^^ value borrowed here after partial move
+   |                        ^^ value borrowed here after move
    |
    = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
 

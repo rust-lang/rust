@@ -412,10 +412,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         place_desc: &str,
         ty: Ty<'tcx>,
         span: Option<Span>,
+        move_prefix: &str,
     ) {
         let message = format!(
-            "move occurs because {} has type `{}`, which does not implement the `Copy` trait",
-            place_desc, ty,
+            "{}move occurs because {} has type `{}`, which does not implement the `Copy` trait",
+            move_prefix, place_desc, ty,
         );
         if let Some(span) = span {
             err.span_label(span, message);
