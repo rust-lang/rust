@@ -4,7 +4,7 @@
 //! types computed here.
 
 use super::FnCtxt;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -16,7 +16,7 @@ use rustc_span::Span;
 
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
-    types: FxHashMap<ty::GeneratorInteriorTypeCause<'tcx>, usize>,
+    types: FxIndexSet<ty::GeneratorInteriorTypeCause<'tcx>>,
     region_scope_tree: &'tcx region::ScopeTree,
     expr_count: usize,
     kind: hir::GeneratorKind,
@@ -88,18 +88,15 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                     .span_note(yield_data.span, &*note)
                     .emit();
             } else {
-                // Map the type to the number of types added before it
-                let entries = self.types.len();
+                // Insert the type into the ordered set.
                 let scope_span = scope.map(|s| s.span(self.fcx.tcx, self.region_scope_tree));
-                self.types
-                    .entry(ty::GeneratorInteriorTypeCause {
-                        span: source_span,
-                        ty: &ty,
-                        scope_span,
-                        yield_span: yield_data.span,
-                        expr: expr.map(|e| e.hir_id),
-                    })
-                    .or_insert(entries);
+                self.types.insert(ty::GeneratorInteriorTypeCause {
+                    span: source_span,
+                    ty: &ty,
+                    scope_span,
+                    yield_span: yield_data.span,
+                    expr: expr.map(|e| e.hir_id),
+                });
             }
         } else {
             debug!(
@@ -132,7 +129,7 @@ pub fn resolve_interior<'a, 'tcx>(
     let body = fcx.tcx.hir().body(body_id);
     let mut visitor = InteriorVisitor {
         fcx,
-        types: FxHashMap::default(),
+        types: FxIndexSet::default(),
         region_scope_tree: fcx.tcx.region_scope_tree(def_id),
         expr_count: 0,
         kind,
@@ -144,10 +141,8 @@ pub fn resolve_interior<'a, 'tcx>(
     let region_expr_count = visitor.region_scope_tree.body_expr_count(body_id).unwrap();
     assert_eq!(region_expr_count, visitor.expr_count);
 
-    let mut types: Vec<_> = visitor.types.drain().collect();
-
-    // Sort types by insertion order
-    types.sort_by_key(|t| t.1);
+    // The types are already kept in insertion order.
+    let types = visitor.types;
 
     // The types in the generator interior contain lifetimes local to the generator itself,
     // which should not be exposed outside of the generator. Therefore, we replace these
@@ -164,7 +159,7 @@ pub fn resolve_interior<'a, 'tcx>(
     let mut captured_tys = FxHashSet::default();
     let type_causes: Vec<_> = types
         .into_iter()
-        .filter_map(|(mut cause, _)| {
+        .filter_map(|mut cause| {
             // Erase regions and canonicalize late-bound regions to deduplicate as many types as we
             // can.
             let erased = fcx.tcx.erase_regions(&cause.ty);
