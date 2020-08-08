@@ -224,6 +224,24 @@ impl<T> NonNull<[T]> {
         unsafe { NonNull::new_unchecked(self.as_ptr().as_mut_ptr()) }
     }
 
+    /// Returns a raw pointer to the slice's buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_ptr_get, nonnull_slice_from_raw_parts)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
+    /// assert_eq!(slice.as_mut_ptr(), 1 as *mut i8);
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
+    pub const fn as_mut_ptr(self) -> *mut T {
+        self.as_non_null_ptr().as_ptr()
+    }
+
     /// Returns a raw pointer to an element or subslice, without doing bounds
     /// checking.
     ///
