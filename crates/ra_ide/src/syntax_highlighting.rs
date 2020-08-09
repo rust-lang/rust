@@ -4,7 +4,7 @@ mod injection;
 #[cfg(test)]
 mod tests;
 
-use hir::{Name, Semantics, TypeRef, VariantDef};
+use hir::{Name, Semantics, VariantDef};
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
