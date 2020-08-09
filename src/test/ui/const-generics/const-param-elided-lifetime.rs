@@ -2,23 +2,31 @@
 // behaviour of trait bounds where `fn foo<T: Ord<&u8>>() {}` is illegal. Though we could change
 // elided lifetimes within the type of a const generic parameters to be 'static, like elided
 // lifetimes within const/static items.
+// revisions: full min
 
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 struct A<const N: &u8>;
 //~^ ERROR `&` without an explicit lifetime name cannot be used here
+//[min]~^^ ERROR using `&'static u8` as const generic parameters is forbidden
 trait B {}
 
-impl<const N: &u8> A<N> { //~ ERROR `&` without an explicit lifetime name cannot be used here
+impl<const N: &u8> A<N> {
+//~^ ERROR `&` without an explicit lifetime name cannot be used here
+//[min]~^^ ERROR using `&'static u8` as const generic parameters is forbidden
     fn foo<const M: &u8>(&self) {}
     //~^ ERROR `&` without an explicit lifetime name cannot be used here
+    //[min]~^^ ERROR using `&'static u8` as const generic parameters is forbidden
 }
 
 impl<const N: &u8> B for A<N> {}
 //~^ ERROR `&` without an explicit lifetime name cannot be used here
+//[min]~^^ ERROR using `&'static u8` as const generic parameters is forbidden
 
 fn bar<const N: &u8>() {}
 //~^ ERROR `&` without an explicit lifetime name cannot be used here
+//[min]~^^ ERROR using `&'static u8` as const generic parameters is forbidden
 
 fn main() {}

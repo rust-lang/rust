@@ -1,4 +1,4 @@
-// Test if emits error if cannot properly infer constant.
+// Test that we emit an error if we cannot properly infer a constant.
 // revisions: full min
 
 #![cfg_attr(full, feature(const_generics))]

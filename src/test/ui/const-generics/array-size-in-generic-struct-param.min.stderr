@@ -1,0 +1,27 @@
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/array-size-in-generic-struct-param.rs:9:48
+   |
+LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
+   |                                                ^ non-trivial anonymous constants must not depend on the parameter `N`
+   |
+   = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
+
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/array-size-in-generic-struct-param.rs:20:15
+   |
+LL |     arr: [u8; CFG.arr_size],
+   |               ^^^ non-trivial anonymous constants must not depend on the parameter `CFG`
+   |
+   = help: it is currently only allowed to use either `CFG` or `{ CFG }` as generic constants
+
+error: using `Config` as const generic parameters is forbidden
+  --> $DIR/array-size-in-generic-struct-param.rs:18:21
+   |
+LL | struct B<const CFG: Config> {
+   |                     ^^^^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = note: more complex types are supported with `#[feature(const_generics)]`
+
+error: aborting due to 3 previous errors
+

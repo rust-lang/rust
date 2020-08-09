@@ -1,0 +1,78 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/const-param-elided-lifetime.rs:11:19
+   |
+LL | struct A<const N: &u8>;
+   |                   ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/const-param-elided-lifetime.rs:16:15
+   |
+LL | impl<const N: &u8> A<N> {
+   |               ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/const-param-elided-lifetime.rs:19:21
+   |
+LL |     fn foo<const M: &u8>(&self) {}
+   |                     ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/const-param-elided-lifetime.rs:24:15
+   |
+LL | impl<const N: &u8> B for A<N> {}
+   |               ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/const-param-elided-lifetime.rs:28:17
+   |
+LL | fn bar<const N: &u8>() {}
+   |                 ^ explicit lifetime name needed here
+
+error: using `&'static u8` as const generic parameters is forbidden
+  --> $DIR/const-param-elided-lifetime.rs:11:19
+   |
+LL | struct A<const N: &u8>;
+   |                   ^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = note: more complex types are supported with `#[feature(const_generics)]`
+
+error: using `&'static u8` as const generic parameters is forbidden
+  --> $DIR/const-param-elided-lifetime.rs:16:15
+   |
+LL | impl<const N: &u8> A<N> {
+   |               ^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = note: more complex types are supported with `#[feature(const_generics)]`
+
+error: using `&'static u8` as const generic parameters is forbidden
+  --> $DIR/const-param-elided-lifetime.rs:24:15
+   |
+LL | impl<const N: &u8> B for A<N> {}
+   |               ^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = note: more complex types are supported with `#[feature(const_generics)]`
+
+error: using `&'static u8` as const generic parameters is forbidden
+  --> $DIR/const-param-elided-lifetime.rs:28:17
+   |
+LL | fn bar<const N: &u8>() {}
+   |                 ^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = note: more complex types are supported with `#[feature(const_generics)]`
+
+error: using `&'static u8` as const generic parameters is forbidden
+  --> $DIR/const-param-elided-lifetime.rs:19:21
+   |
+LL |     fn foo<const M: &u8>(&self) {}
+   |                     ^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = note: more complex types are supported with `#[feature(const_generics)]`
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0637`.
