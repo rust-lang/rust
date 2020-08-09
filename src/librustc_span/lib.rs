@@ -32,8 +32,8 @@ pub mod edition;
 use edition::Edition;
 pub mod hygiene;
 pub use hygiene::SyntaxContext;
+use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, ForLoopLoc, MacroKind};
-use hygiene::{Transparency, NUM_TRANSPARENCIES};
 pub mod def_id;
 use def_id::{CrateNum, DefId, LOCAL_CRATE};
 mod span_encoding;
@@ -1823,47 +1823,51 @@ impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
             TAG_NO_EXPANSION.hash_stable(ctx, hasher);
         } else {
             TAG_EXPANSION.hash_stable(ctx, hasher);
+            let (expn_id, transparency) = self.outer_mark();
+            expn_id.hash_stable(ctx, hasher);
+            transparency.hash_stable(ctx, hasher);
+        }
+    }
+}
 
-            // Since the same expansion context is usually referenced many
-            // times, we cache a stable hash of it and hash that instead of
-            // recursing every time.
-            thread_local! {
-                static CACHE: RefCell<Vec<Option<[Option<u64>; NUM_TRANSPARENCIES]>>> = Default::default();
-            }
+impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        // Since the same expansion context is usually referenced many
+        // times, we cache a stable hash of it and hash that instead of
+        // recursing every time.
+        thread_local! {
+            static CACHE: RefCell<Vec<Option<Fingerprint>>> = Default::default();
+        }
 
-            let sub_hash: u64 = CACHE.with(|cache| {
-                let (expn_id, transparency, _) = self.outer_mark_with_data();
-                let index = expn_id.as_u32() as usize;
+        const TAG_ROOT: u8 = 0;
+        const TAG_NOT_ROOT: u8 = 1;
 
-                if let Some(sub_hash_cache) = cache.borrow().get(index).copied().flatten() {
-                    if let Some(sub_hash) = sub_hash_cache[transparency as usize] {
-                        return sub_hash;
-                    }
-                }
+        if *self == ExpnId::root() {
+            TAG_ROOT.hash_stable(ctx, hasher);
+            return;
+        }
 
-                let new_len = index + 1;
+        TAG_NOT_ROOT.hash_stable(ctx, hasher);
+        let index = self.as_u32() as usize;
 
-                let mut hasher = StableHasher::new();
-                expn_id.expn_data().hash_stable(ctx, &mut hasher);
-                transparency.hash_stable(ctx, &mut hasher);
+        let res = CACHE.with(|cache| cache.borrow().get(index).copied().flatten());
 
-                let sub_hash: Fingerprint = hasher.finish();
-                let sub_hash = sub_hash.to_smaller_hash();
+        if let Some(res) = res {
+            res.hash_stable(ctx, hasher);
+        } else {
+            let new_len = index + 1;
 
+            let mut sub_hasher = StableHasher::new();
+            self.expn_data().hash_stable(ctx, &mut sub_hasher);
+            let sub_hash: Fingerprint = sub_hasher.finish();
+
+            CACHE.with(|cache| {
                 let mut cache = cache.borrow_mut();
                 if cache.len() < new_len {
                     cache.resize(new_len, None);
                 }
-                if let Some(mut sub_hash_cache) = cache[index] {
-                    sub_hash_cache[transparency as usize] = Some(sub_hash);
-                } else {
-                    let mut sub_hash_cache = [None; NUM_TRANSPARENCIES];
-                    sub_hash_cache[transparency as usize] = Some(sub_hash);
-                    cache[index] = Some(sub_hash_cache);
-                }
-                sub_hash
+                cache[index].replace(sub_hash).expect_none("Cache slot was filled");
             });
-
             sub_hash.hash_stable(ctx, hasher);
         }
     }
