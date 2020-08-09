@@ -81,7 +81,7 @@ fn check_types_impl(ra_fixture: &str, display_source: bool) {
 fn type_at_range(db: &TestDB, pos: FileRange) -> Ty {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_range::<ast::Expr>(file.syntax(), pos.range).unwrap();
-    let fn_def = expr.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
+    let fn_def = expr.syntax().ancestors().find_map(ast::Fn::cast).unwrap();
     let module = db.module_for_file(pos.file_id);
     let func = *module.child_by_source(db)[keys::FUNCTION]
         .get(&InFile::new(pos.file_id.into(), fn_def))

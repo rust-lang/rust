@@ -1,5 +1,5 @@
 SOURCE_FILE@0..91
-  FN_DEF@0..90
+  FN@0..90
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -14,7 +14,7 @@ SOURCE_FILE@0..91
       LET_STMT@15..25
         LET_KW@15..18 "let"
         WHITESPACE@18..19 " "
-        PLACEHOLDER_PAT@19..20
+        WILDCARD_PAT@19..20
           UNDERSCORE@19..20 "_"
         WHITESPACE@20..21 " "
         EQ@21..22 "="
@@ -29,7 +29,7 @@ SOURCE_FILE@0..91
       LET_STMT@30..43
         LET_KW@30..33 "let"
         WHITESPACE@33..34 " "
-        PLACEHOLDER_PAT@34..35
+        WILDCARD_PAT@34..35
           UNDERSCORE@34..35 "_"
         WHITESPACE@35..36 " "
         EQ@36..37 "="
@@ -49,7 +49,7 @@ SOURCE_FILE@0..91
       LET_STMT@48..65
         LET_KW@48..51 "let"
         WHITESPACE@51..52 " "
-        PLACEHOLDER_PAT@52..53
+        WILDCARD_PAT@52..53
           UNDERSCORE@52..53 "_"
         WHITESPACE@53..54 " "
         EQ@54..55 "="
@@ -60,7 +60,7 @@ SOURCE_FILE@0..91
               COLON2@56..58 "::"
               NAME_REF@58..59
                 IDENT@58..59 "a"
-              TYPE_ARG_LIST@59..64
+              GENERIC_ARG_LIST@59..64
                 COLON2@59..61 "::"
                 L_ANGLE@61..62 "<"
                 TYPE_ARG@62..63
@@ -75,7 +75,7 @@ SOURCE_FILE@0..91
       LET_STMT@70..88
         LET_KW@70..73 "let"
         WHITESPACE@73..74 " "
-        PLACEHOLDER_PAT@74..75
+        WILDCARD_PAT@74..75
           UNDERSCORE@74..75 "_"
         WHITESPACE@75..76 " "
         EQ@76..77 "="

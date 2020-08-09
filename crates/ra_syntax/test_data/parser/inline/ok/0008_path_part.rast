@@ -1,5 +1,5 @@
 SOURCE_FILE@0..103
-  FN_DEF@0..102
+  FN@0..102
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -58,7 +58,7 @@ SOURCE_FILE@0..103
               NAME_REF@62..65
                 IDENT@62..65 "Bar"
           WHITESPACE@65..66 " "
-          RECORD_FIELD_PAT_LIST@66..72
+          RECORD_PAT_FIELD_LIST@66..72
             L_CURLY@66..67 "{"
             WHITESPACE@67..68 " "
             DOT2@68..70 ".."
@@ -81,7 +81,7 @@ SOURCE_FILE@0..103
               NAME_REF@87..90
                 IDENT@87..90 "Bar"
           L_PAREN@90..91 "("
-          DOT_DOT_PAT@91..93
+          REST_PAT@91..93
             DOT2@91..93 ".."
           R_PAREN@93..94 ")"
         WHITESPACE@94..95 " "

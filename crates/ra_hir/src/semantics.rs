@@ -209,11 +209,14 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_field(field)
     }
 
-    pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<(Field, Option<Local>)> {
+    pub fn resolve_record_field(
+        &self,
+        field: &ast::RecordExprField,
+    ) -> Option<(Field, Option<Local>)> {
         self.imp.resolve_record_field(field)
     }
 
-    pub fn resolve_record_field_pat(&self, field: &ast::RecordFieldPat) -> Option<Field> {
+    pub fn resolve_record_field_pat(&self, field: &ast::RecordPatField) -> Option<Field> {
         self.imp.resolve_record_field_pat(field)
     }
 
@@ -225,7 +228,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_path(path)
     }
 
-    pub fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantDef> {
+    pub fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantDef> {
         self.imp.resolve_variant(record_lit).map(VariantDef::from)
     }
 
@@ -233,14 +236,14 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.lower_path(path)
     }
 
-    pub fn resolve_bind_pat_to_const(&self, pat: &ast::BindPat) -> Option<ModuleDef> {
+    pub fn resolve_bind_pat_to_const(&self, pat: &ast::IdentPat) -> Option<ModuleDef> {
         self.imp.resolve_bind_pat_to_const(pat)
     }
 
     // FIXME: use this instead?
     // pub fn resolve_name_ref(&self, name_ref: &ast::NameRef) -> Option<???>;
 
-    pub fn record_literal_missing_fields(&self, literal: &ast::RecordLit) -> Vec<(Field, Type)> {
+    pub fn record_literal_missing_fields(&self, literal: &ast::RecordExpr) -> Vec<(Field, Type)> {
         self.imp.record_literal_missing_fields(literal)
     }
 
@@ -422,11 +425,11 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(field.syntax()).resolve_field(self.db, field)
     }
 
-    fn resolve_record_field(&self, field: &ast::RecordField) -> Option<(Field, Option<Local>)> {
+    fn resolve_record_field(&self, field: &ast::RecordExprField) -> Option<(Field, Option<Local>)> {
         self.analyze(field.syntax()).resolve_record_field(self.db, field)
     }
 
-    fn resolve_record_field_pat(&self, field: &ast::RecordFieldPat) -> Option<Field> {
+    fn resolve_record_field_pat(&self, field: &ast::RecordPatField) -> Option<Field> {
         self.analyze(field.syntax()).resolve_record_field_pat(self.db, field)
     }
 
@@ -440,7 +443,7 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(path.syntax()).resolve_path(self.db, path)
     }
 
-    fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantId> {
+    fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {
         self.analyze(record_lit.syntax()).resolve_variant(self.db, record_lit)
     }
 
@@ -449,11 +452,11 @@ impl<'db> SemanticsImpl<'db> {
         Path::from_src(path.clone(), &Hygiene::new(self.db.upcast(), src.file_id.into()))
     }
 
-    fn resolve_bind_pat_to_const(&self, pat: &ast::BindPat) -> Option<ModuleDef> {
+    fn resolve_bind_pat_to_const(&self, pat: &ast::IdentPat) -> Option<ModuleDef> {
         self.analyze(pat.syntax()).resolve_bind_pat_to_const(self.db, pat)
     }
 
-    fn record_literal_missing_fields(&self, literal: &ast::RecordLit) -> Vec<(Field, Type)> {
+    fn record_literal_missing_fields(&self, literal: &ast::RecordExpr) -> Vec<(Field, Type)> {
         self.analyze(literal.syntax())
             .record_literal_missing_fields(self.db, literal)
             .unwrap_or_default()
@@ -577,21 +580,21 @@ macro_rules! to_def_impls {
 
 to_def_impls![
     (crate::Module, ast::Module, module_to_def),
-    (crate::Struct, ast::StructDef, struct_to_def),
-    (crate::Enum, ast::EnumDef, enum_to_def),
-    (crate::Union, ast::UnionDef, union_to_def),
-    (crate::Trait, ast::TraitDef, trait_to_def),
-    (crate::ImplDef, ast::ImplDef, impl_to_def),
-    (crate::TypeAlias, ast::TypeAliasDef, type_alias_to_def),
-    (crate::Const, ast::ConstDef, const_to_def),
-    (crate::Static, ast::StaticDef, static_to_def),
-    (crate::Function, ast::FnDef, fn_to_def),
-    (crate::Field, ast::RecordFieldDef, record_field_to_def),
-    (crate::Field, ast::TupleFieldDef, tuple_field_to_def),
-    (crate::EnumVariant, ast::EnumVariant, enum_variant_to_def),
+    (crate::Struct, ast::Struct, struct_to_def),
+    (crate::Enum, ast::Enum, enum_to_def),
+    (crate::Union, ast::Union, union_to_def),
+    (crate::Trait, ast::Trait, trait_to_def),
+    (crate::ImplDef, ast::Impl, impl_to_def),
+    (crate::TypeAlias, ast::TypeAlias, type_alias_to_def),
+    (crate::Const, ast::Const, const_to_def),
+    (crate::Static, ast::Static, static_to_def),
+    (crate::Function, ast::Fn, fn_to_def),
+    (crate::Field, ast::RecordField, record_field_to_def),
+    (crate::Field, ast::TupleField, tuple_field_to_def),
+    (crate::EnumVariant, ast::Variant, enum_variant_to_def),
     (crate::TypeParam, ast::TypeParam, type_param_to_def),
     (crate::MacroDef, ast::MacroCall, macro_call_to_def), // this one is dubious, not all calls are macros
-    (crate::Local, ast::BindPat, bind_pat_to_def),
+    (crate::Local, ast::IdentPat, bind_pat_to_def),
 ];
 
 fn find_root(node: &SyntaxNode) -> SyntaxNode {

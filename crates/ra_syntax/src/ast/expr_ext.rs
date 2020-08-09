@@ -7,6 +7,8 @@ use crate::{
     SyntaxToken, T,
 };
 
+impl ast::AttrsOwner for ast::Expr {}
+
 impl ast::Expr {
     pub fn is_block_like(&self) -> bool {
         match self {
@@ -331,13 +333,12 @@ impl ast::Literal {
 
         match token.kind() {
             INT_NUMBER => {
-                // FYI: there was a bug here previously, thus an if statement bellow is necessary.
+                // FYI: there was a bug here previously, thus the if statement below is necessary.
                 // The lexer treats e.g. `1f64` as an integer literal. See
                 // https://github.com/rust-analyzer/rust-analyzer/issues/1592
                 // and the comments on the linked PR.
 
                 let text = token.text();
-
                 if let suffix @ Some(_) = Self::find_suffix(&text, &FLOAT_SUFFIXES) {
                     LiteralKind::FloatNumber { suffix }
                 } else {
@@ -399,7 +400,7 @@ impl ast::BlockExpr {
             Some(it) => it,
             None => return true,
         };
-        !matches!(parent.kind(), FN_DEF | IF_EXPR | WHILE_EXPR | LOOP_EXPR | EFFECT_EXPR)
+        !matches!(parent.kind(), FN | IF_EXPR | WHILE_EXPR | LOOP_EXPR | EFFECT_EXPR)
     }
 }
 
@@ -410,8 +411,8 @@ fn test_literal_with_attr() {
     assert_eq!(lit.token().text(), r#""Hello""#);
 }
 
-impl ast::RecordField {
-    pub fn parent_record_lit(&self) -> ast::RecordLit {
-        self.syntax().ancestors().find_map(ast::RecordLit::cast).unwrap()
+impl ast::RecordExprField {
+    pub fn parent_record_lit(&self) -> ast::RecordExpr {
+        self.syntax().ancestors().find_map(ast::RecordExpr::cast).unwrap()
     }
 }

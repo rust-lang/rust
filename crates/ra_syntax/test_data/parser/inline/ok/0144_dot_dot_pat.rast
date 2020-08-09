@@ -1,5 +1,5 @@
 SOURCE_FILE@0..555
-  FN_DEF@0..554
+  FN@0..554
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..7
@@ -14,7 +14,7 @@ SOURCE_FILE@0..555
       LET_STMT@16..28
         LET_KW@16..19 "let"
         WHITESPACE@19..20 " "
-        DOT_DOT_PAT@20..22
+        REST_PAT@20..22
           DOT2@20..22 ".."
         WHITESPACE@22..23 " "
         EQ@23..24 "="
@@ -35,12 +35,12 @@ SOURCE_FILE@0..555
         WHITESPACE@64..65 " "
         TUPLE_PAT@65..72
           L_PAREN@65..66 "("
-          BIND_PAT@66..67
+          IDENT_PAT@66..67
             NAME@66..67
               IDENT@66..67 "a"
           COMMA@67..68 ","
           WHITESPACE@68..69 " "
-          DOT_DOT_PAT@69..71
+          REST_PAT@69..71
             DOT2@69..71 ".."
           R_PAREN@71..72 ")"
         WHITESPACE@72..73 " "
@@ -56,12 +56,12 @@ SOURCE_FILE@0..555
         WHITESPACE@86..87 " "
         TUPLE_PAT@87..95
           L_PAREN@87..88 "("
-          BIND_PAT@88..89
+          IDENT_PAT@88..89
             NAME@88..89
               IDENT@88..89 "a"
           COMMA@89..90 ","
           WHITESPACE@90..91 " "
-          DOT_DOT_PAT@91..93
+          REST_PAT@91..93
             DOT2@91..93 ".."
           COMMA@93..94 ","
           R_PAREN@94..95 ")"
@@ -82,12 +82,12 @@ SOURCE_FILE@0..555
               NAME_REF@110..115
                 IDENT@110..115 "Tuple"
           L_PAREN@115..116 "("
-          BIND_PAT@116..117
+          IDENT_PAT@116..117
             NAME@116..117
               IDENT@116..117 "a"
           COMMA@117..118 ","
           WHITESPACE@118..119 " "
-          DOT_DOT_PAT@119..121
+          REST_PAT@119..121
             DOT2@119..121 ".."
           R_PAREN@121..122 ")"
         WHITESPACE@122..123 " "
@@ -107,12 +107,12 @@ SOURCE_FILE@0..555
               NAME_REF@137..142
                 IDENT@137..142 "Tuple"
           L_PAREN@142..143 "("
-          BIND_PAT@143..144
+          IDENT_PAT@143..144
             NAME@143..144
               IDENT@143..144 "a"
           COMMA@144..145 ","
           WHITESPACE@145..146 " "
-          DOT_DOT_PAT@146..148
+          REST_PAT@146..148
             DOT2@146..148 ".."
           COMMA@148..149 ","
           R_PAREN@149..150 ")"
@@ -129,11 +129,11 @@ SOURCE_FILE@0..555
         WHITESPACE@164..165 " "
         TUPLE_PAT@165..173
           L_PAREN@165..166 "("
-          DOT_DOT_PAT@166..168
+          REST_PAT@166..168
             DOT2@166..168 ".."
           COMMA@168..169 ","
           WHITESPACE@169..170 " "
-          DOT_DOT_PAT@170..172
+          REST_PAT@170..172
             DOT2@170..172 ".."
           R_PAREN@172..173 ")"
         WHITESPACE@173..174 " "
@@ -153,11 +153,11 @@ SOURCE_FILE@0..555
               NAME_REF@188..193
                 IDENT@188..193 "Tuple"
           L_PAREN@193..194 "("
-          DOT_DOT_PAT@194..196
+          REST_PAT@194..196
             DOT2@194..196 ".."
           COMMA@196..197 ","
           WHITESPACE@197..198 " "
-          DOT_DOT_PAT@198..200
+          REST_PAT@198..200
             DOT2@198..200 ".."
           R_PAREN@200..201 ")"
         WHITESPACE@201..202 " "
@@ -173,16 +173,16 @@ SOURCE_FILE@0..555
         WHITESPACE@215..216 " "
         TUPLE_PAT@216..227
           L_PAREN@216..217 "("
-          DOT_DOT_PAT@217..219
+          REST_PAT@217..219
             DOT2@217..219 ".."
           COMMA@219..220 ","
           WHITESPACE@220..221 " "
-          BIND_PAT@221..222
+          IDENT_PAT@221..222
             NAME@221..222
               IDENT@221..222 "a"
           COMMA@222..223 ","
           WHITESPACE@223..224 " "
-          DOT_DOT_PAT@224..226
+          REST_PAT@224..226
             DOT2@224..226 ".."
           R_PAREN@226..227 ")"
         WHITESPACE@227..228 " "
@@ -202,16 +202,16 @@ SOURCE_FILE@0..555
               NAME_REF@242..247
                 IDENT@242..247 "Tuple"
           L_PAREN@247..248 "("
-          DOT_DOT_PAT@248..250
+          REST_PAT@248..250
             DOT2@248..250 ".."
           COMMA@250..251 ","
           WHITESPACE@251..252 " "
-          BIND_PAT@252..253
+          IDENT_PAT@252..253
             NAME@252..253
               IDENT@252..253 "a"
           COMMA@253..254 ","
           WHITESPACE@254..255 " "
-          DOT_DOT_PAT@255..257
+          REST_PAT@255..257
             DOT2@255..257 ".."
           R_PAREN@257..258 ")"
         WHITESPACE@258..259 " "
@@ -233,7 +233,7 @@ SOURCE_FILE@0..555
         WHITESPACE@300..301 " "
         SLICE_PAT@301..305
           L_BRACK@301..302 "["
-          DOT_DOT_PAT@302..304
+          REST_PAT@302..304
             DOT2@302..304 ".."
           R_BRACK@304..305 "]"
         WHITESPACE@305..306 " "
@@ -249,12 +249,12 @@ SOURCE_FILE@0..555
         WHITESPACE@319..320 " "
         SLICE_PAT@320..330
           L_BRACK@320..321 "["
-          BIND_PAT@321..325
+          IDENT_PAT@321..325
             NAME@321..325
               IDENT@321..325 "head"
           COMMA@325..326 ","
           WHITESPACE@326..327 " "
-          DOT_DOT_PAT@327..329
+          REST_PAT@327..329
             DOT2@327..329 ".."
           R_BRACK@329..330 "]"
         WHITESPACE@330..331 " "
@@ -270,18 +270,18 @@ SOURCE_FILE@0..555
         WHITESPACE@344..345 " "
         SLICE_PAT@345..362
           L_BRACK@345..346 "["
-          BIND_PAT@346..350
+          IDENT_PAT@346..350
             NAME@346..350
               IDENT@346..350 "head"
           COMMA@350..351 ","
           WHITESPACE@351..352 " "
-          BIND_PAT@352..361
+          IDENT_PAT@352..361
             NAME@352..356
               IDENT@352..356 "tail"
             WHITESPACE@356..357 " "
             AT@357..358 "@"
             WHITESPACE@358..359 " "
-            DOT_DOT_PAT@359..361
+            REST_PAT@359..361
               DOT2@359..361 ".."
           R_BRACK@361..362 "]"
         WHITESPACE@362..363 " "
@@ -297,16 +297,16 @@ SOURCE_FILE@0..555
         WHITESPACE@376..377 " "
         SLICE_PAT@377..393
           L_BRACK@377..378 "["
-          BIND_PAT@378..382
+          IDENT_PAT@378..382
             NAME@378..382
               IDENT@378..382 "head"
           COMMA@382..383 ","
           WHITESPACE@383..384 " "
-          DOT_DOT_PAT@384..386
+          REST_PAT@384..386
             DOT2@384..386 ".."
           COMMA@386..387 ","
           WHITESPACE@387..388 " "
-          BIND_PAT@388..392
+          IDENT_PAT@388..392
             NAME@388..392
               IDENT@388..392 "cons"
           R_BRACK@392..393 "]"
@@ -323,22 +323,22 @@ SOURCE_FILE@0..555
         WHITESPACE@407..408 " "
         SLICE_PAT@408..430
           L_BRACK@408..409 "["
-          BIND_PAT@409..413
+          IDENT_PAT@409..413
             NAME@409..413
               IDENT@409..413 "head"
           COMMA@413..414 ","
           WHITESPACE@414..415 " "
-          BIND_PAT@415..423
+          IDENT_PAT@415..423
             NAME@415..418
               IDENT@415..418 "mid"
             WHITESPACE@418..419 " "
             AT@419..420 "@"
             WHITESPACE@420..421 " "
-            DOT_DOT_PAT@421..423
+            REST_PAT@421..423
               DOT2@421..423 ".."
           COMMA@423..424 ","
           WHITESPACE@424..425 " "
-          BIND_PAT@425..429
+          IDENT_PAT@425..429
             NAME@425..429
               IDENT@425..429 "cons"
           R_BRACK@429..430 "]"
@@ -355,20 +355,20 @@ SOURCE_FILE@0..555
         WHITESPACE@444..445 " "
         SLICE_PAT@445..465
           L_BRACK@445..446 "["
-          BIND_PAT@446..450
+          IDENT_PAT@446..450
             NAME@446..450
               IDENT@446..450 "head"
           COMMA@450..451 ","
           WHITESPACE@451..452 " "
-          DOT_DOT_PAT@452..454
+          REST_PAT@452..454
             DOT2@452..454 ".."
           COMMA@454..455 ","
           WHITESPACE@455..456 " "
-          DOT_DOT_PAT@456..458
+          REST_PAT@456..458
             DOT2@456..458 ".."
           COMMA@458..459 ","
           WHITESPACE@459..460 " "
-          BIND_PAT@460..464
+          IDENT_PAT@460..464
             NAME@460..464
               IDENT@460..464 "cons"
           R_BRACK@464..465 "]"
@@ -385,27 +385,27 @@ SOURCE_FILE@0..555
         WHITESPACE@479..480 " "
         SLICE_PAT@480..506
           L_BRACK@480..481 "["
-          BIND_PAT@481..485
+          IDENT_PAT@481..485
             NAME@481..485
               IDENT@481..485 "head"
           COMMA@485..486 ","
           WHITESPACE@486..487 " "
-          DOT_DOT_PAT@487..489
+          REST_PAT@487..489
             DOT2@487..489 ".."
           COMMA@489..490 ","
           WHITESPACE@490..491 " "
-          BIND_PAT@491..494
+          IDENT_PAT@491..494
             NAME@491..494
               IDENT@491..494 "mid"
           COMMA@494..495 ","
           WHITESPACE@495..496 " "
-          BIND_PAT@496..505
+          IDENT_PAT@496..505
             NAME@496..500
               IDENT@496..500 "tail"
             WHITESPACE@500..501 " "
             AT@501..502 "@"
             WHITESPACE@502..503 " "
-            DOT_DOT_PAT@503..505
+            REST_PAT@503..505
               DOT2@503..505 ".."
           R_BRACK@505..506 "]"
         WHITESPACE@506..507 " "
@@ -421,25 +421,25 @@ SOURCE_FILE@0..555
         WHITESPACE@520..521 " "
         SLICE_PAT@521..546
           L_BRACK@521..522 "["
-          BIND_PAT@522..526
+          IDENT_PAT@522..526
             NAME@522..526
               IDENT@522..526 "head"
           COMMA@526..527 ","
           WHITESPACE@527..528 " "
-          DOT_DOT_PAT@528..530
+          REST_PAT@528..530
             DOT2@528..530 ".."
           COMMA@530..531 ","
           WHITESPACE@531..532 " "
-          BIND_PAT@532..535
+          IDENT_PAT@532..535
             NAME@532..535
               IDENT@532..535 "mid"
           COMMA@535..536 ","
           WHITESPACE@536..537 " "
-          DOT_DOT_PAT@537..539
+          REST_PAT@537..539
             DOT2@537..539 ".."
           COMMA@539..540 ","
           WHITESPACE@540..541 " "
-          BIND_PAT@541..545
+          IDENT_PAT@541..545
             NAME@541..545
               IDENT@541..545 "cons"
           R_BRACK@545..546 "]"

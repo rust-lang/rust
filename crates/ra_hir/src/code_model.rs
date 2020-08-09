@@ -361,8 +361,8 @@ pub struct Field {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum FieldSource {
-    Named(ast::RecordFieldDef),
-    Pos(ast::TupleFieldDef),
+    Named(ast::RecordField),
+    Pos(ast::TupleField),
 }
 
 impl Field {
@@ -1002,7 +1002,7 @@ impl Local {
         Type::new(db, krate, def, ty)
     }
 
-    pub fn source(self, db: &dyn HirDatabase) -> InFile<Either<ast::BindPat, ast::SelfParam>> {
+    pub fn source(self, db: &dyn HirDatabase) -> InFile<Either<ast::IdentPat, ast::SelfParam>> {
         let (_body, source_map) = db.body_with_source_map(self.parent.into());
         let src = source_map.pat_syntax(self.pat_id).unwrap(); // Hmm...
         let root = src.file_syntax(db.upcast());

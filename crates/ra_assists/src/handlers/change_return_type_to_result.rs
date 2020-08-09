@@ -20,9 +20,9 @@ use test_utils::mark;
 pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
     // FIXME: extend to lambdas as well
-    let fn_def = ret_type.syntax().parent().and_then(ast::FnDef::cast)?;
+    let fn_def = ret_type.syntax().parent().and_then(ast::Fn::cast)?;
 
-    let type_ref = &ret_type.type_ref()?;
+    let type_ref = &ret_type.ty()?;
     let ret_type_str = type_ref.syntax().text().to_string();
     let first_part_ret_type = ret_type_str.splitn(2, '<').next();
     if let Some(ret_type_first_part) = first_part_ret_type {
@@ -74,6 +74,7 @@ impl TailReturnCollector {
             let expr = match &stmt {
                 ast::Stmt::ExprStmt(stmt) => stmt.expr(),
                 ast::Stmt::LetStmt(stmt) => stmt.initializer(),
+                ast::Stmt::Item(_) => continue,
             };
             if let Some(expr) = &expr {
                 self.handle_exprs(expr, collect_break);
@@ -94,6 +95,7 @@ impl TailReturnCollector {
                         let expr_stmt = match &expr_stmt {
                             ast::Stmt::ExprStmt(stmt) => stmt.expr(),
                             ast::Stmt::LetStmt(stmt) => stmt.initializer(),
+                            ast::Stmt::Item(_) => None,
                         };
                         if let Some(expr) = &expr_stmt {
                             self.handle_exprs(expr, collect_break);
@@ -239,8 +241,7 @@ fn get_tail_expr_from_block(expr: &Expr) -> Option<Vec<NodeType>> {
         Expr::ArrayExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
         Expr::ParenExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
         Expr::PathExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::Label(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::RecordLit(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
+        Expr::RecordExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
         Expr::IndexExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
         Expr::MethodCallExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
         Expr::AwaitExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),

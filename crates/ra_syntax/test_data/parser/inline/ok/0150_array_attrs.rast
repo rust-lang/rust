@@ -1,12 +1,12 @@
 SOURCE_FILE@0..40
-  CONST_DEF@0..39
+  CONST@0..39
     CONST_KW@0..5 "const"
     WHITESPACE@5..6 " "
     NAME@6..7
       IDENT@6..7 "A"
     COLON@7..8 ":"
     WHITESPACE@8..9 " "
-    REFERENCE_TYPE@9..15
+    REF_TYPE@9..15
       AMP@9..10 "&"
       SLICE_TYPE@10..15
         L_BRACK@10..11 "["

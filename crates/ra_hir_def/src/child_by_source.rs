@@ -162,7 +162,7 @@ impl ChildBySource for EnumId {
         let arena_map = arena_map.as_ref();
         for (local_id, source) in arena_map.value.iter() {
             let id = EnumVariantId { parent: *self, local_id };
-            res[keys::ENUM_VARIANT].insert(arena_map.with_value(source.clone()), id)
+            res[keys::VARIANT].insert(arena_map.with_value(source.clone()), id)
         }
 
         res

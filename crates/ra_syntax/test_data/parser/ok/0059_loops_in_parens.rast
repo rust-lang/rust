@@ -1,5 +1,5 @@
 SOURCE_FILE@0..105
-  FN_DEF@0..104
+  FN@0..104
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..7
@@ -23,7 +23,7 @@ SOURCE_FILE@0..105
             FOR_EXPR@21..48
               FOR_KW@21..24 "for"
               WHITESPACE@24..25 " "
-              PLACEHOLDER_PAT@25..26
+              WILDCARD_PAT@25..26
                 UNDERSCORE@25..26 "_"
               WHITESPACE@26..27 " "
               IN_KW@27..29 "in"

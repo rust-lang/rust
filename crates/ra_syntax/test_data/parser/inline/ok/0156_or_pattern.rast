@@ -1,5 +1,5 @@
 SOURCE_FILE@0..130
-  FN_DEF@0..129
+  FN@0..129
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..7
@@ -25,12 +25,12 @@ SOURCE_FILE@0..130
             PAREN_PAT@35..42
               L_PAREN@35..36 "("
               OR_PAT@36..41
-                PLACEHOLDER_PAT@36..37
+                WILDCARD_PAT@36..37
                   UNDERSCORE@36..37 "_"
                 WHITESPACE@37..38 " "
                 PIPE@38..39 "|"
                 WHITESPACE@39..40 " "
-                PLACEHOLDER_PAT@40..41
+                WILDCARD_PAT@40..41
                   UNDERSCORE@40..41 "_"
               R_PAREN@41..42 ")"
             WHITESPACE@42..43 " "
@@ -47,12 +47,12 @@ SOURCE_FILE@0..130
               PAREN_PAT@59..66
                 L_PAREN@59..60 "("
                 OR_PAT@60..65
-                  PLACEHOLDER_PAT@60..61
+                  WILDCARD_PAT@60..61
                     UNDERSCORE@60..61 "_"
                   WHITESPACE@61..62 " "
                   PIPE@62..63 "|"
                   WHITESPACE@63..64 " "
-                  PLACEHOLDER_PAT@64..65
+                  WILDCARD_PAT@64..65
                     UNDERSCORE@64..65 "_"
                 R_PAREN@65..66 ")"
             WHITESPACE@66..67 " "
@@ -67,12 +67,12 @@ SOURCE_FILE@0..130
             TUPLE_PAT@82..90
               L_PAREN@82..83 "("
               OR_PAT@83..88
-                PLACEHOLDER_PAT@83..84
+                WILDCARD_PAT@83..84
                   UNDERSCORE@83..84 "_"
                 WHITESPACE@84..85 " "
                 PIPE@85..86 "|"
                 WHITESPACE@86..87 " "
-                PLACEHOLDER_PAT@87..88
+                WILDCARD_PAT@87..88
                   UNDERSCORE@87..88 "_"
               COMMA@88..89 ","
               R_PAREN@89..90 ")"
@@ -88,12 +88,12 @@ SOURCE_FILE@0..130
             SLICE_PAT@106..114
               L_BRACK@106..107 "["
               OR_PAT@107..112
-                PLACEHOLDER_PAT@107..108
+                WILDCARD_PAT@107..108
                   UNDERSCORE@107..108 "_"
                 WHITESPACE@108..109 " "
                 PIPE@109..110 "|"
                 WHITESPACE@110..111 " "
-                PLACEHOLDER_PAT@111..112
+                WILDCARD_PAT@111..112
                   UNDERSCORE@111..112 "_"
               COMMA@112..113 ","
               R_BRACK@113..114 "]"

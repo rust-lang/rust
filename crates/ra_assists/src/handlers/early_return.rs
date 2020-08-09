@@ -8,7 +8,7 @@ use ra_syntax::{
         make,
     },
     AstNode,
-    SyntaxKind::{FN_DEF, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
+    SyntaxKind::{FN, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
     SyntaxNode,
 };
 
@@ -51,11 +51,11 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
     // Check if there is an IfLet that we can handle.
     let if_let_pat = match cond.pat() {
         None => None, // No IfLet, supported.
-        Some(ast::Pat::TupleStructPat(pat)) if pat.args().count() == 1 => {
+        Some(ast::Pat::TupleStructPat(pat)) if pat.fields().count() == 1 => {
             let path = pat.path()?;
             match path.qualifier() {
                 None => {
-                    let bound_ident = pat.args().next().unwrap();
+                    let bound_ident = pat.fields().next().unwrap();
                     Some((path, bound_ident))
                 }
                 Some(_) => return None,
@@ -88,7 +88,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
 
     let early_expression: ast::Expr = match parent_container.kind() {
         WHILE_EXPR | LOOP_EXPR => make::expr_continue(),
-        FN_DEF => make::expr_return(),
+        FN => make::expr_return(),
         _ => return None,
     };
 
@@ -123,7 +123,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                         let happy_arm = {
                             let pat = make::tuple_struct_pat(
                                 path,
-                                once(make::bind_pat(make::name("it")).into()),
+                                once(make::ident_pat(make::name("it")).into()),
                             );
                             let expr = {
                                 let name_ref = make::name_ref("it");
@@ -136,7 +136,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
 
                         let sad_arm = make::match_arm(
                             // FIXME: would be cool to use `None` or `Err(_)` if appropriate
-                            once(make::placeholder_pat().into()),
+                            once(make::wildcard_pat().into()),
                             early_expression,
                         );
 
@@ -144,7 +144,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                     };
 
                     let let_stmt = make::let_stmt(
-                        make::bind_pat(make::name(&bound_ident.syntax().to_string())).into(),
+                        make::ident_pat(make::name(&bound_ident.syntax().to_string())).into(),
                         Some(match_expr),
                     );
                     let let_stmt = let_stmt.indent(if_indent_level);

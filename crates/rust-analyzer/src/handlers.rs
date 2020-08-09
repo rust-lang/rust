@@ -13,9 +13,10 @@ use lsp_types::{
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeActionKind, CodeLens, Command, CompletionItem, Diagnostic, DocumentFormattingParams,
     DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams, HoverContents, Location,
-    Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensParams,
-    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
-    SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
+    Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensEditResult,
+    SemanticTokensEditsParams, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
+    TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
@@ -26,7 +27,7 @@ use ra_project_model::TargetKind;
 use ra_syntax::{algo, ast, AstNode, SyntaxKind, TextRange, TextSize};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
-use stdx::{format_to, split_delim};
+use stdx::{format_to, split_once};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -469,12 +470,12 @@ pub(crate) fn handle_runnables(
         res.push(runnable);
     }
 
-    // Add `cargo check` and `cargo test` for the whole package
+    // Add `cargo check` and `cargo test` for all targets of the whole package
     match cargo_spec {
         Some(spec) => {
             for &cmd in ["check", "test"].iter() {
                 res.push(lsp_ext::Runnable {
-                    label: format!("cargo {} -p {}", cmd, spec.package),
+                    label: format!("cargo {} -p {} --all-targets", cmd, spec.package),
                     location: None,
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
@@ -483,6 +484,7 @@ pub(crate) fn handle_runnables(
                             cmd.to_string(),
                             "--package".to_string(),
                             spec.package.clone(),
+                            "--all-targets".to_string(),
                         ],
                         executable_args: Vec::new(),
                         expect_test: None,
@@ -708,11 +710,6 @@ pub(crate) fn handle_formatting(
         }
     };
 
-    if let Ok(path) = params.text_document.uri.to_file_path() {
-        if let Some(parent) = path.parent() {
-            rustfmt.current_dir(parent);
-        }
-    }
     let mut rustfmt = rustfmt.stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()?;
 
     rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
@@ -864,7 +861,7 @@ pub(crate) fn handle_resolve_code_action(
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
     let assists = snap.analysis.resolved_assists(&snap.config.assist, frange)?;
-    let (id_string, index) = split_delim(&params.id, ':').unwrap();
+    let (id_string, index) = split_once(&params.id, ':').unwrap();
     let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];
     assert!(assist.assist.id.0 == id_string);
@@ -923,10 +920,10 @@ pub(crate) fn handle_code_lens(
                 .filter(|it| {
                     matches!(
                         it.kind,
-                        SyntaxKind::TRAIT_DEF
-                            | SyntaxKind::STRUCT_DEF
-                            | SyntaxKind::ENUM_DEF
-                            | SyntaxKind::UNION_DEF
+                        SyntaxKind::TRAIT
+                            | SyntaxKind::STRUCT
+                            | SyntaxKind::ENUM
+                            | SyntaxKind::UNION
                     )
                 })
                 .map(|it| {
@@ -1026,9 +1023,18 @@ pub(crate) fn handle_ssr(
     params: lsp_ext::SsrParams,
 ) -> Result<lsp_types::WorkspaceEdit> {
     let _p = profile("handle_ssr");
+    let selections = params
+        .selections
+        .iter()
+        .map(|range| from_proto::file_range(&snap, params.position.text_document.clone(), *range))
+        .collect::<Result<Vec<_>, _>>()?;
     let position = from_proto::file_position(&snap, params.position)?;
-    let source_change =
-        snap.analysis.structural_search_replace(&params.query, params.parse_only, position)??;
+    let source_change = snap.analysis.structural_search_replace(
+        &params.query,
+        params.parse_only,
+        position,
+        selections,
+    )??;
     to_proto::workspace_edit(&snap, source_change)
 }
 
@@ -1085,7 +1091,7 @@ pub(crate) fn handle_call_hierarchy_prepare(
     let RangeInfo { range: _, info: navs } = nav_info;
     let res = navs
         .into_iter()
-        .filter(|it| it.kind == SyntaxKind::FN_DEF)
+        .filter(|it| it.kind == SyntaxKind::FN)
         .map(|it| to_proto::call_hierarchy_item(&snap, it))
         .collect::<Result<Vec<_>>>()?;
 
@@ -1174,6 +1180,40 @@ pub(crate) fn handle_semantic_tokens(
 
     let highlights = snap.analysis.highlight(file_id)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
+
+    // Unconditionally cache the tokens
+    snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens.clone());
+
+    Ok(Some(semantic_tokens.into()))
+}
+
+pub(crate) fn handle_semantic_tokens_edits(
+    snap: GlobalStateSnapshot,
+    params: SemanticTokensEditsParams,
+) -> Result<Option<SemanticTokensEditResult>> {
+    let _p = profile("handle_semantic_tokens_edits");
+
+    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let text = snap.analysis.file_text(file_id)?;
+    let line_index = snap.analysis.file_line_index(file_id)?;
+
+    let highlights = snap.analysis.highlight(file_id)?;
+
+    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
+
+    let mut cache = snap.semantic_tokens_cache.lock();
+    let cached_tokens = cache.entry(params.text_document.uri).or_default();
+
+    if let Some(prev_id) = &cached_tokens.result_id {
+        if *prev_id == params.previous_result_id {
+            let edits = to_proto::semantic_token_edits(&cached_tokens, &semantic_tokens);
+            *cached_tokens = semantic_tokens;
+            return Ok(Some(edits.into()));
+        }
+    }
+
+    *cached_tokens = semantic_tokens.clone();
+
     Ok(Some(semantic_tokens.into()))
 }
 

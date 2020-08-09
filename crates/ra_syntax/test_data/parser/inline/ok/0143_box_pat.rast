@@ -1,5 +1,5 @@
 SOURCE_FILE@0..118
-  FN_DEF@0..117
+  FN@0..117
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..7
@@ -17,7 +17,7 @@ SOURCE_FILE@0..118
         BOX_PAT@20..25
           BOX_KW@20..23 "box"
           WHITESPACE@23..24 " "
-          BIND_PAT@24..25
+          IDENT_PAT@24..25
             NAME@24..25
               IDENT@24..25 "i"
         WHITESPACE@25..26 " "
@@ -40,19 +40,19 @@ SOURCE_FILE@0..118
                 NAME_REF@44..49
                   IDENT@44..49 "Outer"
             WHITESPACE@49..50 " "
-            RECORD_FIELD_PAT_LIST@50..81
+            RECORD_PAT_FIELD_LIST@50..81
               L_CURLY@50..51 "{"
               WHITESPACE@51..52 " "
-              RECORD_FIELD_PAT@52..57
+              RECORD_PAT_FIELD@52..57
                 BOX_PAT@52..57
                   BOX_KW@52..55 "box"
                   WHITESPACE@55..56 " "
-                  BIND_PAT@56..57
+                  IDENT_PAT@56..57
                     NAME@56..57
                       IDENT@56..57 "i"
               COMMA@57..58 ","
               WHITESPACE@58..59 " "
-              RECORD_FIELD_PAT@59..79
+              RECORD_PAT_FIELD@59..79
                 NAME_REF@59..60
                   IDENT@59..60 "j"
                 COLON@60..61 ":"
@@ -71,7 +71,7 @@ SOURCE_FILE@0..118
                       WHITESPACE@75..76 " "
                       REF_PAT@76..78
                         AMP@76..77 "&"
-                        BIND_PAT@77..78
+                        IDENT_PAT@77..78
                           NAME@77..78
                             IDENT@77..78 "x"
                     R_PAREN@78..79 ")"
@@ -91,7 +91,7 @@ SOURCE_FILE@0..118
         BOX_PAT@96..109
           BOX_KW@96..99 "box"
           WHITESPACE@99..100 " "
-          BIND_PAT@100..109
+          IDENT_PAT@100..109
             REF_KW@100..103 "ref"
             WHITESPACE@103..104 " "
             MUT_KW@104..107 "mut"

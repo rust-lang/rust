@@ -78,8 +78,10 @@ pub(crate) fn diagnostics(
             } else {
                 let mut field_list = d.ast(db);
                 for f in d.missed_fields.iter() {
-                    let field =
-                        make::record_field(make::name_ref(&f.to_string()), Some(make::expr_unit()));
+                    let field = make::record_expr_field(
+                        make::name_ref(&f.to_string()),
+                        Some(make::expr_unit()),
+                    );
                     field_list = field_list.append_field(&field);
                 }
 
@@ -146,7 +148,7 @@ fn missing_struct_field_fix(
 ) -> Option<Fix> {
     let record_expr = sema.ast(d);
 
-    let record_lit = ast::RecordLit::cast(record_expr.syntax().parent()?.parent()?)?;
+    let record_lit = ast::RecordExpr::cast(record_expr.syntax().parent()?.parent()?)?;
     let def_id = sema.resolve_variant(record_lit)?;
     let module;
     let def_file_id;
@@ -155,21 +157,21 @@ fn missing_struct_field_fix(
             module = s.module(sema.db);
             let source = s.source(sema.db);
             def_file_id = source.file_id;
-            let fields = source.value.field_def_list()?;
-            record_field_def_list(fields)?
+            let fields = source.value.field_list()?;
+            record_field_list(fields)?
         }
         VariantDef::Union(u) => {
             module = u.module(sema.db);
             let source = u.source(sema.db);
             def_file_id = source.file_id;
-            source.value.record_field_def_list()?
+            source.value.record_field_list()?
         }
         VariantDef::EnumVariant(e) => {
             module = e.module(sema.db);
             let source = e.source(sema.db);
             def_file_id = source.file_id;
-            let fields = source.value.field_def_list()?;
-            record_field_def_list(fields)?
+            let fields = source.value.field_list()?;
+            record_field_list(fields)?
         }
     };
     let def_file_id = def_file_id.original_file(sema.db);
@@ -178,9 +180,9 @@ fn missing_struct_field_fix(
     if new_field_type.is_unknown() {
         return None;
     }
-    let new_field = make::record_field_def(
+    let new_field = make::record_field(
         record_expr.field_name()?,
-        make::type_ref(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
+        make::ty(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
     );
 
     let last_field = record_fields.fields().last()?;
@@ -205,10 +207,10 @@ fn missing_struct_field_fix(
     let fix = Fix::new("Create field", source_change.into());
     return Some(fix);
 
-    fn record_field_def_list(field_def_list: ast::FieldDefList) -> Option<ast::RecordFieldDefList> {
+    fn record_field_list(field_def_list: ast::FieldList) -> Option<ast::RecordFieldList> {
         match field_def_list {
-            ast::FieldDefList::RecordFieldDefList(it) => Some(it),
-            ast::FieldDefList::TupleFieldDefList(_) => None,
+            ast::FieldList::RecordFieldList(it) => Some(it),
+            ast::FieldList::TupleFieldList(_) => None,
         }
     }
 }
@@ -263,8 +265,8 @@ fn check_struct_shorthand_initialization(
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<()> {
-    let record_lit = ast::RecordLit::cast(node.clone())?;
-    let record_field_list = record_lit.record_field_list()?;
+    let record_lit = ast::RecordExpr::cast(node.clone())?;
+    let record_field_list = record_lit.record_expr_field_list()?;
     for record_field in record_field_list.fields() {
         if let (Some(name_ref), Some(expr)) = (record_field.name_ref(), record_field.expr()) {
             let field_name = name_ref.syntax().text().to_string();

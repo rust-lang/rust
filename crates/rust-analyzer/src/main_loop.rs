@@ -1,14 +1,13 @@
 //! The main loop of `rust-analyzer` responsible for dispatching LSP
 //! requests/replies and notifications back to the client.
 use std::{
-    borrow::Cow,
     env, fmt, panic,
     time::{Duration, Instant},
 };
 
 use crossbeam_channel::{select, Receiver};
 use lsp_server::{Connection, Notification, Request, Response};
-use lsp_types::{notification::Notification as _, DidChangeTextDocumentParams};
+use lsp_types::notification::Notification as _;
 use ra_db::VfsPath;
 use ra_ide::{Canceled, FileId};
 use ra_prof::profile;
@@ -48,7 +47,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
-    GlobalState::new(connection.sender.clone(), config).run(connection.receiver)
+    GlobalState::new(connection.sender, config).run(connection.receiver)
 }
 
 enum Event {
@@ -387,6 +386,9 @@ impl GlobalState {
                 handlers::handle_call_hierarchy_outgoing,
             )?
             .on::<lsp_types::request::SemanticTokensRequest>(handlers::handle_semantic_tokens)?
+            .on::<lsp_types::request::SemanticTokensEditsRequest>(
+                handlers::handle_semantic_tokens_edits,
+            )?
             .on::<lsp_types::request::SemanticTokensRangeRequest>(
                 handlers::handle_semantic_tokens_range,
             )?
@@ -422,20 +424,15 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidChangeTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    let DidChangeTextDocumentParams { text_document, content_changes } = params;
+                    let doc = this.mem_docs.get_mut(&path).unwrap();
                     let vfs = &mut this.vfs.write().0;
-                    let world = this.snapshot();
                     let file_id = vfs.file_id(&path).unwrap();
-
-                    // let file_id = vfs.file_id(&path).unwrap();
                     let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
-                    let line_index = world.analysis.file_line_index(file_id)?;
-                    apply_document_changes(&mut text, content_changes, Cow::Borrowed(&line_index));
+                    apply_document_changes(&mut text, params.content_changes);
 
                     // The version passed in DidChangeTextDocument is the version after all edits are applied
                     // so we should apply it before the vfs is notified.
-                    let doc = this.mem_docs.get_mut(&path).unwrap();
-                    doc.version = text_document.version;
+                    doc.version = params.text_document.version;
 
                     vfs.set_file_contents(path.clone(), Some(text.into_bytes()));
                 }
@@ -448,6 +445,8 @@ impl GlobalState {
                         Some(doc) => version = doc.version,
                         None => log::error!("orphan DidCloseTextDocument: {}", path),
                     }
+
+                    this.semantic_tokens_cache.lock().remove(&params.text_document.uri);
 
                     if let Some(path) = path.as_path() {
                         this.loader.handle.invalidate(path.to_path_buf());

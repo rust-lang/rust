@@ -7,7 +7,7 @@ use ra_ide_db::{defs::Definition, RootDatabase};
 use ra_syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
     match_ast, AstNode, SmolStr,
-    SyntaxKind::{self, BIND_PAT, TYPE_PARAM},
+    SyntaxKind::{self, IDENT_PAT, TYPE_PARAM},
     TextRange,
 };
 
@@ -253,7 +253,7 @@ impl ToNav for hir::ImplDef {
         let focus_range = if derive_attr.is_some() {
             None
         } else {
-            src.value.target_type().map(|ty| original_range(db, src.with_value(ty.syntax())).range)
+            src.value.self_ty().map(|ty| original_range(db, src.with_value(ty.syntax())).range)
         };
 
         NavigationTarget::from_syntax(
@@ -339,7 +339,7 @@ impl ToNav for hir::Local {
         NavigationTarget {
             file_id: full_range.file_id,
             name,
-            kind: BIND_PAT,
+            kind: IDENT_PAT,
             full_range: full_range.range,
             focus_range: None,
             container_name: None,
@@ -379,16 +379,16 @@ pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option
 
     match_ast! {
         match node {
-            ast::FnDef(it) => it.doc_comment_text(),
-            ast::StructDef(it) => it.doc_comment_text(),
-            ast::EnumDef(it) => it.doc_comment_text(),
-            ast::TraitDef(it) => it.doc_comment_text(),
+            ast::Fn(it) => it.doc_comment_text(),
+            ast::Struct(it) => it.doc_comment_text(),
+            ast::Enum(it) => it.doc_comment_text(),
+            ast::Trait(it) => it.doc_comment_text(),
             ast::Module(it) => it.doc_comment_text(),
-            ast::TypeAliasDef(it) => it.doc_comment_text(),
-            ast::ConstDef(it) => it.doc_comment_text(),
-            ast::StaticDef(it) => it.doc_comment_text(),
-            ast::RecordFieldDef(it) => it.doc_comment_text(),
-            ast::EnumVariant(it) => it.doc_comment_text(),
+            ast::TypeAlias(it) => it.doc_comment_text(),
+            ast::Const(it) => it.doc_comment_text(),
+            ast::Static(it) => it.doc_comment_text(),
+            ast::RecordField(it) => it.doc_comment_text(),
+            ast::Variant(it) => it.doc_comment_text(),
             ast::MacroCall(it) => it.doc_comment_text(),
             _ => None,
         }
@@ -404,16 +404,16 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
 
     match_ast! {
         match node {
-            ast::FnDef(it) => it.short_label(),
-            ast::StructDef(it) => it.short_label(),
-            ast::EnumDef(it) => it.short_label(),
-            ast::TraitDef(it) => it.short_label(),
+            ast::Fn(it) => it.short_label(),
+            ast::Struct(it) => it.short_label(),
+            ast::Enum(it) => it.short_label(),
+            ast::Trait(it) => it.short_label(),
             ast::Module(it) => it.short_label(),
-            ast::TypeAliasDef(it) => it.short_label(),
-            ast::ConstDef(it) => it.short_label(),
-            ast::StaticDef(it) => it.short_label(),
-            ast::RecordFieldDef(it) => it.short_label(),
-            ast::EnumVariant(it) => it.short_label(),
+            ast::TypeAlias(it) => it.short_label(),
+            ast::Const(it) => it.short_label(),
+            ast::Static(it) => it.short_label(),
+            ast::RecordField(it) => it.short_label(),
+            ast::Variant(it) => it.short_label(),
             _ => None,
         }
     }
@@ -446,7 +446,7 @@ fn foo() { enum FooInner { } }
                         5..13,
                     ),
                     name: "FooInner",
-                    kind: ENUM_DEF,
+                    kind: ENUM,
                     container_name: None,
                     description: Some(
                         "enum FooInner",
@@ -462,7 +462,7 @@ fn foo() { enum FooInner { } }
                         34..42,
                     ),
                     name: "FooInner",
-                    kind: ENUM_DEF,
+                    kind: ENUM,
                     container_name: Some(
                         "foo",
                     ),

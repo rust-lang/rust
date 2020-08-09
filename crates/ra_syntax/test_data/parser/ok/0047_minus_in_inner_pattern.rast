@@ -1,7 +1,7 @@
 SOURCE_FILE@0..395
   COMMENT@0..60 "// https://github.com ..."
   WHITESPACE@60..62 "\n\n"
-  FN_DEF@62..341
+  FN@62..341
     FN_KW@62..64 "fn"
     WHITESPACE@64..65 " "
     NAME@65..69
@@ -55,7 +55,7 @@ SOURCE_FILE@0..395
             COMMA@117..118 ","
             WHITESPACE@118..127 "\n        "
             MATCH_ARM@127..134
-              PLACEHOLDER_PAT@127..128
+              WILDCARD_PAT@127..128
                 UNDERSCORE@127..128 "_"
               WHITESPACE@128..129 " "
               FAT_ARROW@129..131 "=>"
@@ -127,7 +127,7 @@ SOURCE_FILE@0..395
             COMMA@198..199 ","
             WHITESPACE@199..208 "\n        "
             MATCH_ARM@208..215
-              PLACEHOLDER_PAT@208..209
+              WILDCARD_PAT@208..209
                 UNDERSCORE@208..209 "_"
               WHITESPACE@209..210 " "
               FAT_ARROW@210..212 "=>"
@@ -203,7 +203,7 @@ SOURCE_FILE@0..395
             COMMA@275..276 ","
             WHITESPACE@276..285 "\n        "
             MATCH_ARM@285..292
-              PLACEHOLDER_PAT@285..286
+              WILDCARD_PAT@285..286
                 UNDERSCORE@285..286 "_"
               WHITESPACE@286..287 " "
               FAT_ARROW@287..289 "=>"
@@ -256,21 +256,21 @@ SOURCE_FILE@0..395
       WHITESPACE@339..340 "\n"
       R_CURLY@340..341 "}"
   WHITESPACE@341..343 "\n\n"
-  ENUM_DEF@343..367
+  ENUM@343..367
     ENUM_KW@343..347 "enum"
     WHITESPACE@347..348 " "
     NAME@348..349
       IDENT@348..349 "A"
     WHITESPACE@349..350 " "
-    ENUM_VARIANT_LIST@350..367
+    VARIANT_LIST@350..367
       L_CURLY@350..351 "{"
       WHITESPACE@351..356 "\n    "
-      ENUM_VARIANT@356..365
+      VARIANT@356..365
         NAME@356..357
           IDENT@356..357 "B"
-        TUPLE_FIELD_DEF_LIST@357..365
+        TUPLE_FIELD_LIST@357..365
           L_PAREN@357..358 "("
-          TUPLE_FIELD_DEF@358..360
+          TUPLE_FIELD@358..360
             PATH_TYPE@358..360
               PATH@358..360
                 PATH_SEGMENT@358..360
@@ -278,7 +278,7 @@ SOURCE_FILE@0..395
                     IDENT@358..360 "i8"
           COMMA@360..361 ","
           WHITESPACE@361..362 " "
-          TUPLE_FIELD_DEF@362..364
+          TUPLE_FIELD@362..364
             PATH_TYPE@362..364
               PATH@362..364
                 PATH_SEGMENT@362..364
@@ -288,7 +288,7 @@ SOURCE_FILE@0..395
       WHITESPACE@365..366 "\n"
       R_CURLY@366..367 "}"
   WHITESPACE@367..369 "\n\n"
-  FN_DEF@369..394
+  FN@369..394
     FN_KW@369..371 "fn"
     WHITESPACE@371..372 " "
     NAME@372..375

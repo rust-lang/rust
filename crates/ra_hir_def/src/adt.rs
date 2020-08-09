@@ -8,7 +8,7 @@ use hir_expand::{
     InFile,
 };
 use ra_arena::{map::ArenaMap, Arena};
-use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, VisibilityOwner};
+use ra_syntax::ast::{self, NameOwner, VisibilityOwner};
 
 use crate::{
     body::{CfgExpander, LowerCtx},
@@ -112,7 +112,7 @@ impl EnumData {
 
 impl HasChildSource for EnumId {
     type ChildId = LocalEnumVariantId;
-    type Value = ast::EnumVariant;
+    type Value = ast::Variant;
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
         let src = self.lookup(db).source(db);
         let mut trace = Trace::new_for_map();
@@ -123,8 +123,8 @@ impl HasChildSource for EnumId {
 
 fn lower_enum(
     db: &dyn DefDatabase,
-    trace: &mut Trace<EnumVariantData, ast::EnumVariant>,
-    ast: &InFile<ast::EnumDef>,
+    trace: &mut Trace<EnumVariantData, ast::Variant>,
+    ast: &InFile<ast::Enum>,
     module_id: ModuleId,
 ) {
     let expander = CfgExpander::new(db, ast.file_id, module_id.krate);
@@ -179,7 +179,7 @@ impl VariantData {
 
 impl HasChildSource for VariantId {
     type ChildId = LocalFieldId;
-    type Value = Either<ast::TupleFieldDef, ast::RecordFieldDef>;
+    type Value = Either<ast::TupleField, ast::RecordField>;
 
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
         let (src, module_id) = match self {
@@ -194,7 +194,7 @@ impl HasChildSource for VariantId {
             }
             VariantId::UnionId(it) => (
                 it.lookup(db).source(db).map(|it| {
-                    it.record_field_def_list()
+                    it.record_field_list()
                         .map(ast::StructKind::Record)
                         .unwrap_or(ast::StructKind::Unit)
                 }),
@@ -218,7 +218,7 @@ pub enum StructKind {
 fn lower_struct(
     db: &dyn DefDatabase,
     expander: &mut CfgExpander,
-    trace: &mut Trace<FieldData, Either<ast::TupleFieldDef, ast::RecordFieldDef>>,
+    trace: &mut Trace<FieldData, Either<ast::TupleField, ast::RecordField>>,
     ast: &InFile<ast::StructKind>,
 ) -> StructKind {
     let ctx = LowerCtx::new(db, ast.file_id);
@@ -234,7 +234,7 @@ fn lower_struct(
                     || Either::Left(fd.clone()),
                     || FieldData {
                         name: Name::new_tuple_field(i),
-                        type_ref: TypeRef::from_ast_opt(&ctx, fd.type_ref()),
+                        type_ref: TypeRef::from_ast_opt(&ctx, fd.ty()),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
                     },
                 );
@@ -251,7 +251,7 @@ fn lower_struct(
                     || Either::Right(fd.clone()),
                     || FieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
-                        type_ref: TypeRef::from_ast_opt(&ctx, fd.ascribed_type()),
+                        type_ref: TypeRef::from_ast_opt(&ctx, fd.ty()),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
                     },
                 );

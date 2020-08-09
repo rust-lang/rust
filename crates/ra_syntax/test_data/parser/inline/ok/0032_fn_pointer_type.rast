@@ -1,5 +1,5 @@
 SOURCE_FILE@0..113
-  TYPE_ALIAS_DEF@0..14
+  TYPE_ALIAS@0..14
     TYPE_KW@0..4 "type"
     WHITESPACE@4..5 " "
     NAME@5..6
@@ -7,14 +7,14 @@ SOURCE_FILE@0..113
     WHITESPACE@6..7 " "
     EQ@7..8 "="
     WHITESPACE@8..9 " "
-    FN_POINTER_TYPE@9..13
+    FN_PTR_TYPE@9..13
       FN_KW@9..11 "fn"
       PARAM_LIST@11..13
         L_PAREN@11..12 "("
         R_PAREN@12..13 ")"
     SEMICOLON@13..14 ";"
   WHITESPACE@14..15 "\n"
-  TYPE_ALIAS_DEF@15..36
+  TYPE_ALIAS@15..36
     TYPE_KW@15..19 "type"
     WHITESPACE@19..20 " "
     NAME@20..21
@@ -22,7 +22,7 @@ SOURCE_FILE@0..113
     WHITESPACE@21..22 " "
     EQ@22..23 "="
     WHITESPACE@23..24 " "
-    FN_POINTER_TYPE@24..35
+    FN_PTR_TYPE@24..35
       UNSAFE_KW@24..30 "unsafe"
       WHITESPACE@30..31 " "
       FN_KW@31..33 "fn"
@@ -31,7 +31,7 @@ SOURCE_FILE@0..113
         R_PAREN@34..35 ")"
     SEMICOLON@35..36 ";"
   WHITESPACE@36..37 "\n"
-  TYPE_ALIAS_DEF@37..69
+  TYPE_ALIAS@37..69
     TYPE_KW@37..41 "type"
     WHITESPACE@41..42 " "
     NAME@42..43
@@ -39,7 +39,7 @@ SOURCE_FILE@0..113
     WHITESPACE@43..44 " "
     EQ@44..45 "="
     WHITESPACE@45..46 " "
-    FN_POINTER_TYPE@46..68
+    FN_PTR_TYPE@46..68
       UNSAFE_KW@46..52 "unsafe"
       WHITESPACE@52..53 " "
       ABI@53..63
@@ -53,7 +53,7 @@ SOURCE_FILE@0..113
         R_PAREN@67..68 ")"
     SEMICOLON@68..69 ";"
   WHITESPACE@69..70 "\n"
-  TYPE_ALIAS_DEF@70..112
+  TYPE_ALIAS@70..112
     TYPE_KW@70..74 "type"
     WHITESPACE@74..75 " "
     NAME@75..76
@@ -61,7 +61,7 @@ SOURCE_FILE@0..113
     WHITESPACE@76..77 " "
     EQ@77..78 "="
     WHITESPACE@78..79 " "
-    FN_POINTER_TYPE@79..111
+    FN_PTR_TYPE@79..111
       ABI@79..89
         EXTERN_KW@79..85 "extern"
         WHITESPACE@85..86 " "

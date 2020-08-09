@@ -23,7 +23,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let type_param_list = ctx.find_node_at_offset::<ast::TypeParamList>()?;
+    let type_param_list = ctx.find_node_at_offset::<ast::GenericParamList>()?;
 
     let mut type_params = type_param_list.type_params();
     if type_params.all(|p| p.type_bound_list().is_none()) {
@@ -37,13 +37,13 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
 
     let anchor = match_ast! {
         match parent {
-            ast::FnDef(it) => it.body()?.syntax().clone().into(),
-            ast::TraitDef(it) => it.item_list()?.syntax().clone().into(),
-            ast::ImplDef(it) => it.item_list()?.syntax().clone().into(),
-            ast::EnumDef(it) => it.variant_list()?.syntax().clone().into(),
-            ast::StructDef(it) => {
+            ast::Fn(it) => it.body()?.syntax().clone().into(),
+            ast::Trait(it) => it.assoc_item_list()?.syntax().clone().into(),
+            ast::Impl(it) => it.assoc_item_list()?.syntax().clone().into(),
+            ast::Enum(it) => it.variant_list()?.syntax().clone().into(),
+            ast::Struct(it) => {
                 it.syntax().children_with_tokens()
-                    .find(|it| it.kind() == RECORD_FIELD_DEF_LIST || it.kind() == T![;])?
+                    .find(|it| it.kind() == RECORD_FIELD_LIST || it.kind() == T![;])?
             },
             _ => return None
         }

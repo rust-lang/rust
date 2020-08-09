@@ -12,7 +12,7 @@ use hir_expand::{
 use ra_arena::{map::ArenaMap, Arena};
 use ra_db::FileId;
 use ra_prof::profile;
-use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
+use ra_syntax::ast::{self, GenericParamsOwner, NameOwner, TypeBoundsOwner};
 
 use crate::{
     body::LowerCtx,
@@ -66,7 +66,7 @@ pub enum WherePredicateTarget {
     TypeParam(LocalTypeParamId),
 }
 
-type SourceMap = ArenaMap<LocalTypeParamId, Either<ast::TraitDef, ast::TypeParam>>;
+type SourceMap = ArenaMap<LocalTypeParamId, Either<ast::Trait, ast::TypeParam>>;
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
@@ -205,9 +205,9 @@ impl GenericParams {
         &mut self,
         lower_ctx: &LowerCtx,
         sm: &mut SourceMap,
-        node: &dyn TypeParamsOwner,
+        node: &dyn GenericParamsOwner,
     ) {
-        if let Some(params) = node.type_param_list() {
+        if let Some(params) = node.generic_param_list() {
             self.fill_params(lower_ctx, sm, params)
         }
         if let Some(where_clause) = node.where_clause() {
@@ -232,7 +232,7 @@ impl GenericParams {
         &mut self,
         lower_ctx: &LowerCtx,
         sm: &mut SourceMap,
-        params: ast::TypeParamList,
+        params: ast::GenericParamList,
     ) {
         for type_param in params.type_params() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
@@ -253,7 +253,7 @@ impl GenericParams {
 
     fn fill_where_predicates(&mut self, lower_ctx: &LowerCtx, where_clause: ast::WhereClause) {
         for pred in where_clause.predicates() {
-            let type_ref = match pred.type_ref() {
+            let type_ref = match pred.ty() {
                 Some(type_ref) => type_ref,
                 None => continue,
             };
@@ -270,7 +270,7 @@ impl GenericParams {
         bound: ast::TypeBound,
         type_ref: TypeRef,
     ) {
-        if bound.question_token().is_some() {
+        if bound.question_mark_token().is_some() {
             // FIXME: remove this bound
             return;
         }
@@ -317,7 +317,7 @@ impl GenericParams {
 
 impl HasChildSource for GenericDefId {
     type ChildId = LocalTypeParamId;
-    type Value = Either<ast::TraitDef, ast::TypeParam>;
+    type Value = Either<ast::Trait, ast::TypeParam>;
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<SourceMap> {
         let (_, sm) = GenericParams::new(db, *self);
         sm

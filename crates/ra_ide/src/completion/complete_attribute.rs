@@ -16,25 +16,23 @@ use crate::completion::UNSTABLE_FEATURE_DESCRIPTOR;
 
 pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let attribute = ctx.attribute_under_caret.as_ref()?;
-    match (attribute.path(), attribute.input()) {
-        (Some(path), Some(ast::AttrInput::TokenTree(token_tree)))
-            if path.to_string() == "derive" =>
-        {
+    match (attribute.path(), attribute.token_tree()) {
+        (Some(path), Some(token_tree)) if path.to_string() == "derive" => {
             complete_derive(acc, ctx, token_tree)
         }
-        (Some(path), Some(ast::AttrInput::TokenTree(token_tree)))
+        (Some(path), Some(token_tree))
             if path.to_string() == "feature" =>
         {
             complete_lint(acc, ctx, token_tree, UNSTABLE_FEATURE_DESCRIPTOR);
         }
-        (Some(path), Some(ast::AttrInput::TokenTree(token_tree)))
+        (Some(path), Some(token_tree))
             if ["allow", "warn", "deny", "forbid"]
                 .iter()
                 .any(|lint_level| lint_level == &path.to_string()) =>
         {
             complete_lint(acc, ctx, token_tree, DEFAULT_LINT_COMPLETIONS)
         }
-        (_, Some(ast::AttrInput::TokenTree(_token_tree))) => {}
+        (_, Some(_token_tree)) => {}
         _ => complete_attribute_start(acc, ctx, attribute),
     }
     Some(())

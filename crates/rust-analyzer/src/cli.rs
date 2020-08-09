@@ -14,8 +14,8 @@ use ra_ide::Analysis;
 use ra_prof::profile;
 use ra_syntax::{AstNode, SourceFile};
 
-pub use analysis_bench::{analysis_bench, BenchWhat, Position};
-pub use analysis_stats::analysis_stats;
+pub use analysis_bench::{BenchCmd, BenchWhat, Position};
+pub use analysis_stats::AnalysisStatsCmd;
 pub use diagnostics::diagnostics;
 pub use load_cargo::load_cargo;
 pub use ssr::{apply_ssr_rules, search_for_patterns};

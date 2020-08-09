@@ -10,6 +10,7 @@ use crate::{SsrError, SsrPattern, SsrRule};
 use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, T};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::str::FromStr;
+use test_utils::mark;
 
 #[derive(Debug)]
 pub(crate) struct ParsedRule {
@@ -69,11 +70,8 @@ impl ParsedRule {
             rules: Vec::new(),
         };
         builder.try_add(ast::Expr::parse(&raw_pattern), raw_template.map(ast::Expr::parse));
-        builder.try_add(ast::TypeRef::parse(&raw_pattern), raw_template.map(ast::TypeRef::parse));
-        builder.try_add(
-            ast::ModuleItem::parse(&raw_pattern),
-            raw_template.map(ast::ModuleItem::parse),
-        );
+        builder.try_add(ast::Type::parse(&raw_pattern), raw_template.map(ast::Type::parse));
+        builder.try_add(ast::Item::parse(&raw_pattern), raw_template.map(ast::Item::parse));
         builder.try_add(ast::Path::parse(&raw_pattern), raw_template.map(ast::Path::parse));
         builder.try_add(ast::Pat::parse(&raw_pattern), raw_template.map(ast::Pat::parse));
         builder.build()
@@ -102,12 +100,33 @@ impl RuleBuilder {
         }
     }
 
-    fn build(self) -> Result<Vec<ParsedRule>, SsrError> {
+    fn build(mut self) -> Result<Vec<ParsedRule>, SsrError> {
         if self.rules.is_empty() {
             bail!("Not a valid Rust expression, type, item, path or pattern");
         }
+        // If any rules contain paths, then we reject any rules that don't contain paths. Allowing a
+        // mix leads to strange semantics, since the path-based rules only match things where the
+        // path refers to semantically the same thing, whereas the non-path-based rules could match
+        // anything. Specifically, if we have a rule like `foo ==>> bar` we only want to match the
+        // `foo` that is in the current scope, not any `foo`. However "foo" can be parsed as a
+        // pattern (IDENT_PAT -> NAME -> IDENT). Allowing such a rule through would result in
+        // renaming everything called `foo` to `bar`. It'd also be slow, since without a path, we'd
+        // have to use the slow-scan search mechanism.
+        if self.rules.iter().any(|rule| contains_path(&rule.pattern)) {
+            let old_len = self.rules.len();
+            self.rules.retain(|rule| contains_path(&rule.pattern));
+            if self.rules.len() < old_len {
+                mark::hit!(pattern_is_a_single_segment_path);
+            }
+        }
         Ok(self.rules)
     }
+}
+
+/// Returns whether there are any paths in `node`.
+fn contains_path(node: &SyntaxNode) -> bool {
+    node.kind() == SyntaxKind::PATH
+        || node.descendants().any(|node| node.kind() == SyntaxKind::PATH)
 }
 
 impl FromStr for SsrRule {

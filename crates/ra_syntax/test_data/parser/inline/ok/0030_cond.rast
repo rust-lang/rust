@@ -1,5 +1,5 @@
 SOURCE_FILE@0..197
-  FN_DEF@0..37
+  FN@0..37
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -23,7 +23,7 @@ SOURCE_FILE@0..197
                 NAME_REF@18..22
                   IDENT@18..22 "Some"
             L_PAREN@22..23 "("
-            PLACEHOLDER_PAT@23..24
+            WILDCARD_PAT@23..24
               UNDERSCORE@23..24 "_"
             R_PAREN@24..25 ")"
           WHITESPACE@25..26 " "
@@ -41,7 +41,7 @@ SOURCE_FILE@0..197
       WHITESPACE@35..36 " "
       R_CURLY@36..37 "}"
   WHITESPACE@37..38 "\n"
-  FN_DEF@38..196
+  FN@38..196
     FN_KW@38..40 "fn"
     WHITESPACE@40..41 " "
     NAME@41..44
@@ -67,7 +67,7 @@ SOURCE_FILE@0..197
                     NAME_REF@60..64
                       IDENT@60..64 "Some"
                 L_PAREN@64..65 "("
-                PLACEHOLDER_PAT@65..66
+                WILDCARD_PAT@65..66
                   UNDERSCORE@65..66 "_"
                 R_PAREN@66..67 ")"
               WHITESPACE@67..68 " "
@@ -79,7 +79,7 @@ SOURCE_FILE@0..197
                     NAME_REF@70..74
                       IDENT@70..74 "Some"
                 L_PAREN@74..75 "("
-                PLACEHOLDER_PAT@75..76
+                WILDCARD_PAT@75..76
                   UNDERSCORE@75..76 "_"
                 R_PAREN@76..77 ")"
             WHITESPACE@77..78 " "
@@ -110,7 +110,7 @@ SOURCE_FILE@0..197
                   NAME_REF@101..105
                     IDENT@101..105 "Some"
               L_PAREN@105..106 "("
-              PLACEHOLDER_PAT@106..107
+              WILDCARD_PAT@106..107
                 UNDERSCORE@106..107 "_"
               R_PAREN@107..108 ")"
             WHITESPACE@108..109 " "
@@ -140,7 +140,7 @@ SOURCE_FILE@0..197
                     NAME_REF@133..137
                       IDENT@133..137 "Some"
                 L_PAREN@137..138 "("
-                PLACEHOLDER_PAT@138..139
+                WILDCARD_PAT@138..139
                   UNDERSCORE@138..139 "_"
                 R_PAREN@139..140 ")"
               WHITESPACE@140..141 " "
@@ -152,7 +152,7 @@ SOURCE_FILE@0..197
                     NAME_REF@143..147
                       IDENT@143..147 "Some"
                 L_PAREN@147..148 "("
-                PLACEHOLDER_PAT@148..149
+                WILDCARD_PAT@148..149
                   UNDERSCORE@148..149 "_"
                 R_PAREN@149..150 ")"
             WHITESPACE@150..151 " "
@@ -182,7 +182,7 @@ SOURCE_FILE@0..197
                 NAME_REF@177..181
                   IDENT@177..181 "Some"
             L_PAREN@181..182 "("
-            PLACEHOLDER_PAT@182..183
+            WILDCARD_PAT@182..183
               UNDERSCORE@182..183 "_"
             R_PAREN@183..184 ")"
           WHITESPACE@184..185 " "

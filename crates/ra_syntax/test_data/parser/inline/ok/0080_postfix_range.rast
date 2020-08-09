@@ -1,5 +1,5 @@
 SOURCE_FILE@0..89
-  FN_DEF@0..88
+  FN@0..88
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -14,7 +14,7 @@ SOURCE_FILE@0..89
       LET_STMT@15..27
         LET_KW@15..18 "let"
         WHITESPACE@18..19 " "
-        BIND_PAT@19..20
+        IDENT_PAT@19..20
           NAME@19..20
             IDENT@19..20 "x"
         WHITESPACE@20..21 " "
@@ -39,7 +39,7 @@ SOURCE_FILE@0..89
             L_CURLY@42..43 "{"
             WHITESPACE@43..44 " "
             MATCH_ARM@44..51
-              PLACEHOLDER_PAT@44..45
+              WILDCARD_PAT@44..45
                 UNDERSCORE@44..45 "_"
               WHITESPACE@45..46 " "
               FAT_ARROW@46..48 "=>"
@@ -79,7 +79,7 @@ SOURCE_FILE@0..89
             L_CURLY@74..75 "{"
             WHITESPACE@75..76 " "
             MATCH_ARM@76..83
-              PLACEHOLDER_PAT@76..77
+              WILDCARD_PAT@76..77
                 UNDERSCORE@76..77 "_"
               WHITESPACE@77..78 " "
               FAT_ARROW@78..80 "=>"

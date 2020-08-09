@@ -1,5 +1,8 @@
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
-use std::path::{self, Path};
+use std::{
+    path::{self, Path},
+    sync::atomic::{AtomicU32, Ordering},
+};
 
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
@@ -31,18 +34,18 @@ pub(crate) fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Rang
 
 pub(crate) fn symbol_kind(syntax_kind: SyntaxKind) -> lsp_types::SymbolKind {
     match syntax_kind {
-        SyntaxKind::FN_DEF => lsp_types::SymbolKind::Function,
-        SyntaxKind::STRUCT_DEF => lsp_types::SymbolKind::Struct,
-        SyntaxKind::ENUM_DEF => lsp_types::SymbolKind::Enum,
-        SyntaxKind::ENUM_VARIANT => lsp_types::SymbolKind::EnumMember,
-        SyntaxKind::TRAIT_DEF => lsp_types::SymbolKind::Interface,
+        SyntaxKind::FN => lsp_types::SymbolKind::Function,
+        SyntaxKind::STRUCT => lsp_types::SymbolKind::Struct,
+        SyntaxKind::ENUM => lsp_types::SymbolKind::Enum,
+        SyntaxKind::VARIANT => lsp_types::SymbolKind::EnumMember,
+        SyntaxKind::TRAIT => lsp_types::SymbolKind::Interface,
         SyntaxKind::MACRO_CALL => lsp_types::SymbolKind::Function,
         SyntaxKind::MODULE => lsp_types::SymbolKind::Module,
-        SyntaxKind::TYPE_ALIAS_DEF => lsp_types::SymbolKind::TypeParameter,
-        SyntaxKind::RECORD_FIELD_DEF => lsp_types::SymbolKind::Field,
-        SyntaxKind::STATIC_DEF => lsp_types::SymbolKind::Constant,
-        SyntaxKind::CONST_DEF => lsp_types::SymbolKind::Constant,
-        SyntaxKind::IMPL_DEF => lsp_types::SymbolKind::Object,
+        SyntaxKind::TYPE_ALIAS => lsp_types::SymbolKind::TypeParameter,
+        SyntaxKind::RECORD_FIELD => lsp_types::SymbolKind::Field,
+        SyntaxKind::STATIC => lsp_types::SymbolKind::Constant,
+        SyntaxKind::CONST => lsp_types::SymbolKind::Constant,
+        SyntaxKind::IMPL => lsp_types::SymbolKind::Object,
         _ => lsp_types::SymbolKind::Variable,
     }
 }
@@ -303,12 +306,15 @@ pub(crate) fn inlay_int(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_ex
     }
 }
 
+static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
+
 pub(crate) fn semantic_tokens(
     text: &str,
     line_index: &LineIndex,
     highlights: Vec<HighlightedRange>,
 ) -> lsp_types::SemanticTokens {
-    let mut builder = semantic_tokens::SemanticTokensBuilder::default();
+    let id = TOKEN_RESULT_COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
+    let mut builder = semantic_tokens::SemanticTokensBuilder::new(id);
 
     for highlight_range in highlights {
         let (type_, mods) = semantic_token_type_and_modifiers(highlight_range.highlight);
@@ -326,6 +332,15 @@ pub(crate) fn semantic_tokens(
     }
 
     builder.build()
+}
+
+pub(crate) fn semantic_token_edits(
+    previous: &lsp_types::SemanticTokens,
+    current: &lsp_types::SemanticTokens,
+) -> lsp_types::SemanticTokensEdits {
+    let result_id = current.result_id.clone();
+    let edits = semantic_tokens::diff_tokens(&previous.data, &current.data);
+    lsp_types::SemanticTokensEdits { result_id, edits }
 }
 
 fn semantic_token_type_and_modifiers(

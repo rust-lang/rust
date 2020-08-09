@@ -43,7 +43,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
 
     let mut arms: Vec<MatchArm> = match_arm_list.arms().collect();
     if arms.len() == 1 {
-        if let Some(Pat::PlaceholderPat(..)) = arms[0].pat() {
+        if let Some(Pat::WildcardPat(..)) = arms[0].pat() {
             arms.clear();
         }
     }
@@ -116,17 +116,15 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
             match (first_new_arm, ctx.config.snippet_cap) {
                 (Some(first_new_arm), Some(cap)) => {
                     let extend_lifetime;
-                    let cursor = match first_new_arm
-                        .syntax()
-                        .descendants()
-                        .find_map(ast::PlaceholderPat::cast)
-                    {
-                        Some(it) => {
-                            extend_lifetime = it.syntax().clone();
-                            Cursor::Replace(&extend_lifetime)
-                        }
-                        None => Cursor::Before(first_new_arm.syntax()),
-                    };
+                    let cursor =
+                        match first_new_arm.syntax().descendants().find_map(ast::WildcardPat::cast)
+                        {
+                            Some(it) => {
+                                extend_lifetime = it.syntax().clone();
+                                Cursor::Replace(&extend_lifetime)
+                            }
+                            None => Cursor::Before(first_new_arm.syntax()),
+                        };
                     let snippet = render_snippet(cap, new_arm_list.syntax(), cursor);
                     builder.replace_snippet(cap, old_range, snippet);
                 }
@@ -152,7 +150,7 @@ fn does_pat_match_variant(pat: &Pat, var: &Pat) -> bool {
     let first_node_text = |pat: &Pat| pat.syntax().first_child().map(|node| node.text());
 
     let pat_head = match pat {
-        Pat::BindPat(bind_pat) => {
+        Pat::IdentPat(bind_pat) => {
             if let Some(p) = bind_pat.pat() {
                 first_node_text(&p)
             } else {
@@ -199,12 +197,11 @@ fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::EnumVariant) -> O
     // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though
     let pat: ast::Pat = match var.source(db).value.kind() {
         ast::StructKind::Tuple(field_list) => {
-            let pats =
-                iter::repeat(make::placeholder_pat().into()).take(field_list.fields().count());
+            let pats = iter::repeat(make::wildcard_pat().into()).take(field_list.fields().count());
             make::tuple_struct_pat(path, pats).into()
         }
         ast::StructKind::Record(field_list) => {
-            let pats = field_list.fields().map(|f| make::bind_pat(f.name().unwrap()).into());
+            let pats = field_list.fields().map(|f| make::ident_pat(f.name().unwrap()).into());
             make::record_pat(path, pats).into()
         }
         ast::StructKind::Unit => make::path_pat(path),

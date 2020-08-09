@@ -57,56 +57,56 @@ impl HasSource for Field {
     }
 }
 impl HasSource for Struct {
-    type Ast = ast::StructDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::StructDef> {
+    type Ast = ast::Struct;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Struct> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
 impl HasSource for Union {
-    type Ast = ast::UnionDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::UnionDef> {
+    type Ast = ast::Union;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Union> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
 impl HasSource for Enum {
-    type Ast = ast::EnumDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::EnumDef> {
+    type Ast = ast::Enum;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Enum> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
 impl HasSource for EnumVariant {
-    type Ast = ast::EnumVariant;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::EnumVariant> {
+    type Ast = ast::Variant;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Variant> {
         self.parent.id.child_source(db.upcast()).map(|map| map[self.id].clone())
     }
 }
 impl HasSource for Function {
-    type Ast = ast::FnDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::FnDef> {
+    type Ast = ast::Fn;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Fn> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
 impl HasSource for Const {
-    type Ast = ast::ConstDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::ConstDef> {
+    type Ast = ast::Const;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Const> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
 impl HasSource for Static {
-    type Ast = ast::StaticDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::StaticDef> {
+    type Ast = ast::Static;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Static> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
 impl HasSource for Trait {
-    type Ast = ast::TraitDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::TraitDef> {
+    type Ast = ast::Trait;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Trait> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
 impl HasSource for TypeAlias {
-    type Ast = ast::TypeAliasDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::TypeAliasDef> {
+    type Ast = ast::TypeAlias;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::TypeAlias> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
@@ -120,14 +120,14 @@ impl HasSource for MacroDef {
     }
 }
 impl HasSource for ImplDef {
-    type Ast = ast::ImplDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::ImplDef> {
+    type Ast = ast::Impl;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Impl> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
 
 impl HasSource for TypeParam {
-    type Ast = Either<ast::TraitDef, ast::TypeParam>;
+    type Ast = Either<ast::Trait, ast::TypeParam>;
     fn source(self, db: &dyn HirDatabase) -> InFile<Self::Ast> {
         let child_source = self.id.parent.child_source(db.upcast());
         child_source.map(|it| it[self.id.local_id].clone())

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..47
-  FN_DEF@0..46
+  FN@0..46
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -7,7 +7,7 @@ SOURCE_FILE@0..47
     PARAM_LIST@6..16
       L_PAREN@6..7 "("
       PARAM@7..15
-        BIND_PAT@7..10
+        IDENT_PAT@7..10
           NAME@7..10
             IDENT@7..10 "foo"
         COLON@10..11 ":"
@@ -25,7 +25,7 @@ SOURCE_FILE@0..47
       LET_STMT@23..36
         LET_KW@23..26 "let"
         WHITESPACE@26..27 " "
-        BIND_PAT@27..30
+        IDENT_PAT@27..30
           NAME@27..30
             IDENT@27..30 "bar"
         WHITESPACE@30..31 " "

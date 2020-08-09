@@ -20,10 +20,10 @@ env_logger = { version = "0.7.1", default-features = false }
 itertools = "0.9.0"
 jod-thread = "0.1.0"
 log = "0.4.8"
-lsp-types = { version = "0.78.0", features = ["proposed"] }
+lsp-types = { version = "0.79.0", features = ["proposed"] }
 parking_lot = "0.11.0"
 pico-args = "0.3.1"
-rand = { version = "0.7.3", features = ["small_rng"] }
+oorandom = "11.1.2"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.106", features = ["derive"] }
 serde_json = "1.0.48"
@@ -42,7 +42,7 @@ ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
 vfs = { path = "../vfs" }
 vfs-notify = { path = "../vfs-notify" }
-ra_cfg = { path = "../ra_cfg"}
+ra_cfg = { path = "../ra_cfg" }
 ra_toolchain = { path = "../ra_toolchain" }
 
 # This should only be used in CLI

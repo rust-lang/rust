@@ -14,19 +14,19 @@ use crate::{
 
 pub type Key<K, V> = crate::dyn_map::Key<InFile<K>, V, AstPtrPolicy<K, V>>;
 
-pub const FUNCTION: Key<ast::FnDef, FunctionId> = Key::new();
-pub const CONST: Key<ast::ConstDef, ConstId> = Key::new();
-pub const STATIC: Key<ast::StaticDef, StaticId> = Key::new();
-pub const TYPE_ALIAS: Key<ast::TypeAliasDef, TypeAliasId> = Key::new();
-pub const IMPL: Key<ast::ImplDef, ImplId> = Key::new();
-pub const TRAIT: Key<ast::TraitDef, TraitId> = Key::new();
-pub const STRUCT: Key<ast::StructDef, StructId> = Key::new();
-pub const UNION: Key<ast::UnionDef, UnionId> = Key::new();
-pub const ENUM: Key<ast::EnumDef, EnumId> = Key::new();
+pub const FUNCTION: Key<ast::Fn, FunctionId> = Key::new();
+pub const CONST: Key<ast::Const, ConstId> = Key::new();
+pub const STATIC: Key<ast::Static, StaticId> = Key::new();
+pub const TYPE_ALIAS: Key<ast::TypeAlias, TypeAliasId> = Key::new();
+pub const IMPL: Key<ast::Impl, ImplId> = Key::new();
+pub const TRAIT: Key<ast::Trait, TraitId> = Key::new();
+pub const STRUCT: Key<ast::Struct, StructId> = Key::new();
+pub const UNION: Key<ast::Union, UnionId> = Key::new();
+pub const ENUM: Key<ast::Enum, EnumId> = Key::new();
 
-pub const ENUM_VARIANT: Key<ast::EnumVariant, EnumVariantId> = Key::new();
-pub const TUPLE_FIELD: Key<ast::TupleFieldDef, FieldId> = Key::new();
-pub const RECORD_FIELD: Key<ast::RecordFieldDef, FieldId> = Key::new();
+pub const VARIANT: Key<ast::Variant, EnumVariantId> = Key::new();
+pub const TUPLE_FIELD: Key<ast::TupleField, FieldId> = Key::new();
+pub const RECORD_FIELD: Key<ast::RecordField, FieldId> = Key::new();
 pub const TYPE_PARAM: Key<ast::TypeParam, TypeParamId> = Key::new();
 
 pub const MACRO: Key<ast::MacroCall, MacroDefId> = Key::new();

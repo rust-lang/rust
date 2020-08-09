@@ -22,7 +22,7 @@ use crate::{utils::FamousDefs, AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let variant = ctx.find_node_at_offset::<ast::EnumVariant>()?;
+    let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let variant_name = variant.name()?;
     let enum_name = variant.parent_enum().name()?;
     let field_list = match variant.kind() {
@@ -32,9 +32,9 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
     if field_list.fields().count() != 1 {
         return None;
     }
-    let field_type = field_list.fields().next()?.type_ref()?;
+    let field_type = field_list.fields().next()?.ty()?;
     let path = match field_type {
-        ast::TypeRef::PathType(it) => it,
+        ast::Type::PathType(it) => it,
         _ => return None,
     };
 
@@ -69,7 +69,7 @@ impl From<{0}> for {1} {{
 
 fn existing_from_impl(
     sema: &'_ hir::Semantics<'_, RootDatabase>,
-    variant: &ast::EnumVariant,
+    variant: &ast::Variant,
 ) -> Option<()> {
     let variant = sema.to_def(variant)?;
     let enum_ = variant.parent_enum(sema.db);

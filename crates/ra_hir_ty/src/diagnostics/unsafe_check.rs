@@ -6,6 +6,7 @@ use std::sync::Arc;
 use hir_def::{
     body::Body,
     expr::{Expr, ExprId, UnaryOp},
+    resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
     DefWithBodyId,
 };
 use hir_expand::diagnostics::DiagnosticSink;
@@ -70,7 +71,7 @@ pub fn unsafe_expressions(
 ) -> Vec<UnsafeExpr> {
     let mut unsafe_exprs = vec![];
     let body = db.body(def);
-    walk_unsafe(&mut unsafe_exprs, db, infer, &body, body.body_expr, false);
+    walk_unsafe(&mut unsafe_exprs, db, infer, def, &body, body.body_expr, false);
 
     unsafe_exprs
 }
@@ -79,6 +80,7 @@ fn walk_unsafe(
     unsafe_exprs: &mut Vec<UnsafeExpr>,
     db: &dyn HirDatabase,
     infer: &InferenceResult,
+    def: DefWithBodyId,
     body: &Body,
     current: ExprId,
     inside_unsafe_block: bool,
@@ -93,6 +95,15 @@ fn walk_unsafe(
             }) = ty
             {
                 if db.function_data(func).is_unsafe {
+                    unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
+                }
+            }
+        }
+        Expr::Path(path) => {
+            let resolver = resolver_for_expr(db.upcast(), def, current);
+            let value_or_partial = resolver.resolve_path_in_value_ns(db.upcast(), path.mod_path());
+            if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id))) = value_or_partial {
+                if db.static_data(id).mutable {
                     unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
                 }
             }
@@ -112,13 +123,13 @@ fn walk_unsafe(
             }
         }
         Expr::Unsafe { body: child } => {
-            return walk_unsafe(unsafe_exprs, db, infer, body, *child, true);
+            return walk_unsafe(unsafe_exprs, db, infer, def, body, *child, true);
         }
         _ => {}
     }
 
     expr.walk_child_exprs(|child| {
-        walk_unsafe(unsafe_exprs, db, infer, body, child, inside_unsafe_block);
+        walk_unsafe(unsafe_exprs, db, infer, def, body, child, inside_unsafe_block);
     });
 }
 
@@ -165,6 +176,27 @@ fn main() {
     unsafe {
         unsafe_fn();
         HasUnsafe.unsafe_fn();
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn missing_unsafe_diagnostic_with_static_mut() {
+        check_diagnostics(
+            r#"
+struct Ty {
+    a: u8,
+}
+
+static mut static_mut: Ty = Ty { a: 0 };
+
+fn main() {
+    let x = static_mut.a;
+          //^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
+    unsafe {
+        let x = static_mut.a;
     }
 }
 "#,

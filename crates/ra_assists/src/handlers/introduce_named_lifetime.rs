@@ -1,5 +1,5 @@
 use ra_syntax::{
-    ast::{self, NameOwner, TypeAscriptionOwner, TypeParamsOwner},
+    ast::{self, GenericParamsOwner, NameOwner},
     AstNode, SyntaxKind, TextRange, TextSize,
 };
 use rustc_hash::FxHashSet;
@@ -38,9 +38,9 @@ pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext) -
     let lifetime_token = ctx
         .find_token_at_offset(SyntaxKind::LIFETIME)
         .filter(|lifetime| lifetime.text() == "'_")?;
-    if let Some(fn_def) = lifetime_token.ancestors().find_map(ast::FnDef::cast) {
+    if let Some(fn_def) = lifetime_token.ancestors().find_map(ast::Fn::cast) {
         generate_fn_def_assist(acc, &fn_def, lifetime_token.text_range())
-    } else if let Some(impl_def) = lifetime_token.ancestors().find_map(ast::ImplDef::cast) {
+    } else if let Some(impl_def) = lifetime_token.ancestors().find_map(ast::Impl::cast) {
         generate_impl_def_assist(acc, &impl_def, lifetime_token.text_range())
     } else {
         None
@@ -50,11 +50,11 @@ pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext) -
 /// Generate the assist for the fn def case
 fn generate_fn_def_assist(
     acc: &mut Assists,
-    fn_def: &ast::FnDef,
+    fn_def: &ast::Fn,
     lifetime_loc: TextRange,
 ) -> Option<()> {
     let param_list: ast::ParamList = fn_def.param_list()?;
-    let new_lifetime_param = generate_unique_lifetime_param_name(&fn_def.type_param_list())?;
+    let new_lifetime_param = generate_unique_lifetime_param_name(&fn_def.generic_param_list())?;
     let end_of_fn_ident = fn_def.name()?.ident_token()?.text_range().end();
     let self_param =
         // use the self if it's a reference and has no explicit lifetime
@@ -67,8 +67,8 @@ fn generate_fn_def_assist(
         // otherwise, if there's a single reference parameter without a named liftime, use that
         let fn_params_without_lifetime: Vec<_> = param_list
             .params()
-            .filter_map(|param| match param.ascribed_type() {
-                Some(ast::TypeRef::ReferenceType(ascribed_type))
+            .filter_map(|param| match param.ty() {
+                Some(ast::Type::RefType(ascribed_type))
                     if ascribed_type.lifetime_token() == None =>
                 {
                     Some(ascribed_type.amp_token()?.text_range().end())
@@ -93,10 +93,10 @@ fn generate_fn_def_assist(
 /// Generate the assist for the impl def case
 fn generate_impl_def_assist(
     acc: &mut Assists,
-    impl_def: &ast::ImplDef,
+    impl_def: &ast::Impl,
     lifetime_loc: TextRange,
 ) -> Option<()> {
-    let new_lifetime_param = generate_unique_lifetime_param_name(&impl_def.type_param_list())?;
+    let new_lifetime_param = generate_unique_lifetime_param_name(&impl_def.generic_param_list())?;
     let end_of_impl_kw = impl_def.impl_token()?.text_range().end();
     acc.add(AssistId(ASSIST_NAME, AssistKind::Refactor), ASSIST_LABEL, lifetime_loc, |builder| {
         add_lifetime_param(impl_def, builder, end_of_impl_kw, new_lifetime_param);
@@ -107,7 +107,7 @@ fn generate_impl_def_assist(
 /// Given a type parameter list, generate a unique lifetime parameter name
 /// which is not in the list
 fn generate_unique_lifetime_param_name(
-    existing_type_param_list: &Option<ast::TypeParamList>,
+    existing_type_param_list: &Option<ast::GenericParamList>,
 ) -> Option<char> {
     match existing_type_param_list {
         Some(type_params) => {
@@ -123,13 +123,13 @@ fn generate_unique_lifetime_param_name(
 
 /// Add the lifetime param to `builder`. If there are type parameters in `type_params_owner`, add it to the end. Otherwise
 /// add new type params brackets with the lifetime parameter at `new_type_params_loc`.
-fn add_lifetime_param<TypeParamsOwner: ast::TypeParamsOwner>(
+fn add_lifetime_param<TypeParamsOwner: ast::GenericParamsOwner>(
     type_params_owner: &TypeParamsOwner,
     builder: &mut AssistBuilder,
     new_type_params_loc: TextSize,
     new_lifetime_param: char,
 ) {
-    match type_params_owner.type_param_list() {
+    match type_params_owner.generic_param_list() {
         // add the new lifetime parameter to an existing type param list
         Some(type_params) => {
             builder.insert(

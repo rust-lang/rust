@@ -50,10 +50,10 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
         target,
         |edit| {
             let with_placeholder: ast::Pat = match happy_variant {
-                None => make::placeholder_pat().into(),
+                None => make::wildcard_pat().into(),
                 Some(var_name) => make::tuple_struct_pat(
                     make::path_unqualified(make::path_segment(make::name_ref(var_name))),
-                    once(make::placeholder_pat().into()),
+                    once(make::wildcard_pat().into()),
                 )
                 .into(),
             };
@@ -62,8 +62,7 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
             let if_ = make::expr_if(make::condition(init, Some(with_placeholder)), block);
             let stmt = make::expr_stmt(if_);
 
-            let placeholder =
-                stmt.syntax().descendants().find_map(ast::PlaceholderPat::cast).unwrap();
+            let placeholder = stmt.syntax().descendants().find_map(ast::WildcardPat::cast).unwrap();
             let stmt = stmt.replace_descendant(placeholder.into(), original_pat);
 
             edit.replace_ast(ast::Stmt::from(let_stmt), ast::Stmt::from(stmt));

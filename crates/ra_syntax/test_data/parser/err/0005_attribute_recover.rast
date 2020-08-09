@@ -1,5 +1,5 @@
 SOURCE_FILE@0..54
-  FN_DEF@0..31
+  FN@0..31
     ATTR@0..18
       POUND@0..1 "#"
       L_BRACK@1..2 "["

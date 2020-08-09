@@ -1,5 +1,5 @@
 SOURCE_FILE@0..49
-  FN_DEF@0..48
+  FN@0..48
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -36,7 +36,7 @@ SOURCE_FILE@0..49
           DOT@29..30 "."
           NAME_REF@30..33
             IDENT@30..33 "bar"
-          TYPE_ARG_LIST@33..38
+          GENERIC_ARG_LIST@33..38
             COLON2@33..35 "::"
             L_ANGLE@35..36 "<"
             TYPE_ARG@36..37

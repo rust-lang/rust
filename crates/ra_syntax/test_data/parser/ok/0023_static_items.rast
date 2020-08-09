@@ -1,5 +1,5 @@
 SOURCE_FILE@0..47
-  STATIC_DEF@0..20
+  STATIC@0..20
     STATIC_KW@0..6 "static"
     WHITESPACE@6..7 " "
     NAME@7..10
@@ -18,7 +18,7 @@ SOURCE_FILE@0..47
       INT_NUMBER@18..19 "1"
     SEMICOLON@19..20 ";"
   WHITESPACE@20..21 "\n"
-  STATIC_DEF@21..46
+  STATIC@21..46
     STATIC_KW@21..27 "static"
     WHITESPACE@27..28 " "
     MUT_KW@28..31 "mut"

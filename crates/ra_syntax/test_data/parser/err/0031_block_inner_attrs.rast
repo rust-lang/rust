@@ -1,5 +1,5 @@
 SOURCE_FILE@0..350
-  FN_DEF@0..349
+  FN@0..349
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..8
@@ -14,7 +14,7 @@ SOURCE_FILE@0..350
       LET_STMT@17..129
         LET_KW@17..20 "let"
         WHITESPACE@20..21 " "
-        BIND_PAT@21..26
+        IDENT_PAT@21..26
           NAME@21..26
             IDENT@21..26 "inner"
         WHITESPACE@26..27 " "

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..39
-  TYPE_ALIAS_DEF@0..38
+  TYPE_ALIAS@0..38
     TYPE_KW@0..4 "type"
     WHITESPACE@4..5 " "
     NAME@5..6
@@ -12,7 +12,7 @@ SOURCE_FILE@0..39
         PATH_SEGMENT@9..37
           NAME_REF@9..12
             IDENT@9..12 "Box"
-          TYPE_ARG_LIST@12..37
+          GENERIC_ARG_LIST@12..37
             L_ANGLE@12..13 "<"
             TYPE_ARG@13..36
               PATH_TYPE@13..36
@@ -31,7 +31,7 @@ SOURCE_FILE@0..39
                       COMMA@19..20 ","
                       WHITESPACE@20..21 " "
                       PARAM@21..25
-                        REFERENCE_TYPE@21..25
+                        REF_TYPE@21..25
                           AMP@21..22 "&"
                           PATH_TYPE@22..25
                             PATH@22..25
@@ -41,7 +41,7 @@ SOURCE_FILE@0..39
                       COMMA@25..26 ","
                       WHITESPACE@26..27 " "
                       PARAM@27..31
-                        REFERENCE_TYPE@27..31
+                        REF_TYPE@27..31
                           AMP@27..28 "&"
                           PATH_TYPE@28..31
                             PATH@28..31

@@ -344,7 +344,7 @@ impl Query {
 }
 
 fn is_type(kind: SyntaxKind) -> bool {
-    matches!(kind, STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF)
+    matches!(kind, STRUCT | ENUM | TRAIT | TYPE_ALIAS)
 }
 
 /// The actual data that is stored in the index. It should be as compact as
@@ -397,14 +397,14 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
     }
     match_ast! {
         match node {
-            ast::FnDef(it) => decl(it),
-            ast::StructDef(it) => decl(it),
-            ast::EnumDef(it) => decl(it),
-            ast::TraitDef(it) => decl(it),
+            ast::Fn(it) => decl(it),
+            ast::Struct(it) => decl(it),
+            ast::Enum(it) => decl(it),
+            ast::Trait(it) => decl(it),
             ast::Module(it) => decl(it),
-            ast::TypeAliasDef(it) => decl(it),
-            ast::ConstDef(it) => decl(it),
-            ast::StaticDef(it) => decl(it),
+            ast::TypeAlias(it) => decl(it),
+            ast::Const(it) => decl(it),
+            ast::Static(it) => decl(it),
             ast::MacroCall(it) => {
                 if it.is_macro_rules().is_some() {
                     decl(it)

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..97
-  FN_DEF@0..96
+  FN@0..96
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -53,7 +53,7 @@ SOURCE_FILE@0..97
             L_CURLY@59..60 "{"
             WHITESPACE@60..61 " "
             MATCH_ARM@61..68
-              PLACEHOLDER_PAT@61..62
+              WILDCARD_PAT@61..62
                 UNDERSCORE@61..62 "_"
               WHITESPACE@62..63 " "
               FAT_ARROW@63..65 "=>"
@@ -72,13 +72,13 @@ SOURCE_FILE@0..97
           BLOCK_EXPR@82..90
             L_CURLY@82..83 "{"
             WHITESPACE@83..84 " "
-            RECORD_LIT@84..88
+            RECORD_EXPR@84..88
               PATH@84..85
                 PATH_SEGMENT@84..85
                   NAME_REF@84..85
                     IDENT@84..85 "S"
               WHITESPACE@85..86 " "
-              RECORD_FIELD_LIST@86..88
+              RECORD_EXPR_FIELD_LIST@86..88
                 L_CURLY@86..87 "{"
                 R_CURLY@87..88 "}"
             WHITESPACE@88..89 " "

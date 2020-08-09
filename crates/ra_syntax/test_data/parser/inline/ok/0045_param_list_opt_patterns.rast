@@ -1,10 +1,10 @@
 SOURCE_FILE@0..35
-  FN_DEF@0..34
+  FN@0..34
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
       IDENT@3..6 "foo"
-    TYPE_PARAM_LIST@6..30
+    GENERIC_PARAM_LIST@6..30
       L_ANGLE@6..7 "<"
       TYPE_PARAM@7..29
         NAME@7..8
@@ -21,7 +21,7 @@ SOURCE_FILE@0..35
                   PARAM_LIST@15..29
                     L_PAREN@15..16 "("
                     PARAM@16..28
-                      REFERENCE_TYPE@16..28
+                      REF_TYPE@16..28
                         AMP@16..17 "&"
                         MUT_KW@17..20 "mut"
                         WHITESPACE@20..21 " "
@@ -30,7 +30,7 @@ SOURCE_FILE@0..35
                             PATH_SEGMENT@21..28
                               NAME_REF@21..24
                                 IDENT@21..24 "Foo"
-                              TYPE_ARG_LIST@24..28
+                              GENERIC_ARG_LIST@24..28
                                 L_ANGLE@24..25 "<"
                                 LIFETIME_ARG@25..27
                                   LIFETIME@25..27 "\'a"

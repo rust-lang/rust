@@ -1,0 +1,587 @@
+//*************************//
+// Names, Paths and Macros //
+//*************************//
+
+Name =
+  'ident'
+
+NameRef =
+  'ident' | 'int_number'
+
+Path =
+  (qualifier:Path '::')? segment:PathSegment
+
+PathSegment =
+  'crate' | 'self' | 'super'
+| '::' NameRef
+| NameRef GenericArgList?
+| NameRef ParamList RetType?
+| '<' PathType ('as' PathType)? '>'
+
+GenericArgList =
+  '::'? '<' (GenericArg (',' GenericArg)* ','?)? '>'
+
+GenericArg =
+  TypeArg
+| AssocTypeArg
+| LifetimeArg
+| ConstArg
+
+TypeArg =
+  Type
+
+AssocTypeArg =
+  NameRef (':' TypeBoundList | '=' Type)
+
+LifetimeArg =
+  'lifetime'
+
+ConstArg =
+  Expr
+
+MacroCall =
+  Attr* Path '!' Name? TokenTree ';'?
+
+TokenTree =
+  '(' ')'
+| '{' '}'
+| '[' ']'
+
+MacroItems =
+  Item*
+
+MacroStmts =
+  statements:Stmt*
+  Expr?
+
+//*************************//
+//          Items          //
+//*************************//
+
+SourceFile =
+  'shebang'?
+  Attr*
+  Item*
+
+Item =
+  Const
+| Enum
+| ExternBlock
+| ExternCrate
+| Fn
+| Impl
+| MacroCall
+| Module
+| Static
+| Struct
+| Trait
+| TypeAlias
+| Union
+| Use
+
+Module =
+  Attr* Visibility? 'mod' Name
+  (ItemList | ';')
+
+ItemList =
+  '{' Attr* Item* '}'
+
+ExternCrate =
+  Attr* Visibility? 'extern' 'crate' (NameRef | 'self') Rename? ';'
+
+Rename =
+  'as' (Name | '_')
+
+Use =
+  Attr* Visibility? 'use' UseTree ';'
+
+UseTree =
+  (Path? '::')? ('*' | UseTreeList )
+| Path Rename?
+
+UseTreeList =
+  '{' (UseTree (',' UseTree)* ','?)? '}'
+
+Fn =
+ Attr* Visibility?
+ 'default'? ('async' | 'const')? 'unsafe'? Abi?
+ 'fn' Name GenericParamList? ParamList RetType?
+ WhereClause?
+ (body:BlockExpr | ';')
+
+Abi =
+  'extern' 'string'?
+
+ParamList =
+  '('(
+    SelfParam
+  | (SelfParam ',')? (Param (',' Param)* ','?)?
+  )')'
+
+SelfParam =
+  Attr* (
+    ('&' 'lifetime'?)? 'mut'? 'self'
+  | 'mut'? 'self' ':' Type
+  )
+
+Param =
+  Attr* (
+    Pat (':' Type)
+  | Type
+  | '...'
+  )
+
+RetType =
+  '->' Type
+
+TypeAlias =
+  Attr* Visibility? 'default'? 'type' Name GenericParamList? (':' TypeBoundList?)? WhereClause?
+  '=' Type ';'
+
+Struct =
+  Attr* Visibility? 'struct' Name GenericParamList? (
+    WhereClause?  (RecordFieldList | ';')
+  | TupleFieldList WhereClause? ';'
+  )
+
+RecordFieldList =
+ '{' fields:(RecordField (',' RecordField)* ','?)? '}'
+
+RecordField =
+  Attr* Visibility? Name ':' Type
+
+TupleFieldList =
+  '(' fields:(TupleField (',' TupleField)* ','?)? ')'
+
+TupleField =
+  Attr* Visibility? Type
+
+FieldList =
+  RecordFieldList
+| TupleFieldList
+
+Enum =
+  Attr* Visibility? 'enum' Name GenericParamList? WhereClause?
+  VariantList
+
+VariantList =
+ '{' (Variant (',' Variant)* ','?)? '}'
+
+Variant =
+  Attr* Visibility? Name FieldList ('=' Expr)?
+
+Union =
+  Attr* Visibility? 'union' Name GenericParamList? WhereClause?
+  RecordFieldList
+
+AdtDef =
+  Enum
+| Struct
+| Union
+
+Const =
+  Attr* Visibility? 'default'? 'const' (Name | '_') ':' Type
+  '=' body:Expr ';'
+
+Static =
+  Attr* Visibility? 'static'? 'mut'? Name ':' Type
+  '=' body:Expr ';'
+
+Trait =
+  Attr* Visibility? 'unsafe'? 'auto'? 'trait' Name GenericParamList
+  (':' TypeBoundList?)? WhereClause
+  AssocItemList
+
+AssocItemList =
+  '{' Attr* AssocItem* '}'
+
+AssocItem =
+  Const
+| Fn
+| MacroCall
+| TypeAlias
+
+Impl =
+  Attr* Visibility?
+  'default'? 'unsafe'? 'impl' 'const'? GenericParamList?
+  ('!'? target_trait:Type 'for')? target_type:Type
+  WhereClause?
+  AssocItemList
+
+ExternBlock =
+  Attr* Abi ExternItemList
+
+ExternItemList =
+  '{' Attr* ExternItem* '}'
+
+ExternItem =
+  Fn | Static | MacroCall
+
+GenericParamList =
+  '<' (GenericParam (',' GenericParam)* ','?)? '>'
+
+GenericParam =
+  ConstParam
+| LifetimeParam
+| TypeParam
+
+TypeParam =
+  Attr* Name (':' TypeBoundList?)?
+  ('=' default_type:Type)?
+
+ConstParam =
+  Attr* 'const' Name ':' Type
+  ('=' default_val:Expr)?
+
+LifetimeParam =
+  Attr* 'lifetime' (':' TypeBoundList?)?
+
+WhereClause =
+  'where' predicates:(WherePred (',' WherePred)* ','?)
+
+WherePred =
+  ('for' GenericParamList)?  ('lifetime' | Type) ':' TypeBoundList
+
+Visibility =
+  'pub' ('('
+    'super'
+  | 'self'
+  | 'crate'
+  | 'in' Path
+  ')')?
+
+Attr =
+  '#' '!'? '[' Path ('=' Literal | TokenTree)? ']'
+
+//****************************//
+// Statements and Expressions //
+//****************************//
+
+Stmt =
+  ExprStmt
+| Item
+| LetStmt
+
+LetStmt =
+  Attr* 'let' Pat (':' Type)?
+  '=' initializer:Expr ';'
+
+ExprStmt =
+  Attr* Expr ';'?
+
+Expr =
+  ArrayExpr
+| AwaitExpr
+| BinExpr
+| BlockExpr
+| BoxExpr
+| BreakExpr
+| CallExpr
+| CastExpr
+| ClosureExpr
+| ContinueExpr
+| EffectExpr
+| FieldExpr
+| ForExpr
+| IfExpr
+| IndexExpr
+| Literal
+| LoopExpr
+| MacroCall
+| MatchExpr
+| MethodCallExpr
+| ParenExpr
+| PathExpr
+| PrefixExpr
+| RangeExpr
+| RecordExpr
+| RefExpr
+| ReturnExpr
+| TryExpr
+| TupleExpr
+| WhileExpr
+
+Literal =
+  Attr* value:(
+    'int_number' | 'float_number'
+  | 'string' | 'raw_string'
+  | 'byte_string' | 'raw_byte_string'
+  | 'true' | 'false'
+  | 'char' | 'byte'
+  )
+
+PathExpr =
+  Attr* Path
+
+BlockExpr =
+  '{'
+    Attr*
+    statements:Stmt*
+    Expr?
+  '}'
+
+RefExpr =
+  Attr* '&' ('raw' |'mut' | 'const') Expr
+
+TryExpr =
+  Attr* Expr '?'
+
+EffectExpr =
+  Attr* Label? ('try' | 'unsafe' | 'async') BlockExpr
+
+PrefixExpr =
+  Attr* op:('-' | '!' | '*') Expr
+
+BinExpr =
+  Attr*
+  lhs:Expr
+  op:(
+    '||' | '&&'
+    | '==' | '!=' | '<=' | '>=' | '<' | '>'
+    | '+' | '*' | '-' | '/' | '%' | '<<' | '>>' | '^' | '|' | '&'
+    | '=' | '+=' | '/=' | '*=' | '%=' | '>>=' | '<<=' | '-=' | '|=' | '&=' | '^='
+  )
+  rhs:Expr
+
+CastExpr =
+  Attr* Expr 'as' Type
+
+ParenExpr =
+  Attr* '(' Attr* Expr ')'
+
+ArrayExpr =
+  Attr* '[' Attr* (
+    (Expr (',' Expr)* ','?)?
+  | Expr ';' Expr
+  ) ']'
+
+IndexExpr =
+  Attr* base:Expr '[' index:Expr ']'
+
+TupleExpr =
+  Attr* '(' Attr* fields:(Expr (',' Expr)* ','?)? ')'
+
+RecordExpr =
+  Path RecordExprFieldList
+
+RecordExprFieldList =
+  '{'
+    Attr*
+    fields:(RecordExprField (',' RecordExprField)* ','?)
+    ('..' spread:Expr)?
+  '}'
+
+RecordExprField =
+  Attr* NameRef (':' Expr)?
+
+CallExpr =
+  Attr* Expr ArgList
+
+ArgList =
+  '(' args:(Expr (',' Expr)* ','?)? ')'
+
+MethodCallExpr =
+  Attr* Expr '.' NameRef GenericArgList? ArgList
+
+FieldExpr =
+  Attr* Expr '.' NameRef
+
+ClosureExpr =
+  Attr* 'static'? 'async'? 'move'?  ParamList RetType?
+  body:Expr
+
+IfExpr =
+  Attr* 'if' Condition then_branch:BlockExpr
+  ('else' else_branch:(IfExpr | BlockExpr))?
+
+Condition =
+  'let' Pat '=' Expr
+| Expr
+
+LoopExpr =
+  Attr* Label? 'loop'
+  loop_body:BlockExpr
+
+ForExpr =
+  Attr* Label? 'for' Pat 'in' iterable:Expr
+  loop_body:BlockExpr
+
+WhileExpr =
+  Attr* Label? 'while' Condition
+  loop_body:BlockExpr
+
+Label =
+  'lifetime'
+
+BreakExpr =
+  Attr* 'break' 'lifetime'? Expr?
+
+ContinueExpr =
+  Attr* 'continue' 'lifetime'?
+
+RangeExpr =
+  Attr* start:Expr? op:('..' | '..=') end:Expr?
+
+MatchExpr =
+  Attr* 'match' Expr MatchArmList
+
+MatchArmList =
+  '{'
+    Attr*
+    arms:MatchArm*
+  '}'
+
+MatchArm =
+  Attr* Pat guard:MatchGuard? '=>' Expr ','?
+
+MatchGuard =
+  'if' Expr
+
+ReturnExpr =
+  Attr* 'return' Expr?
+
+AwaitExpr =
+  Attr* Expr '.' 'await'
+
+BoxExpr =
+  Attr* 'box' Expr
+
+//*************************//
+//          Types          //
+//*************************//
+
+Type =
+  ArrayType
+| DynTraitType
+| FnPointerType
+| ForType
+| ImplTraitType
+| InferType
+| NeverType
+| ParenType
+| PathType
+| PointerType
+| ReferenceType
+| SliceType
+| TupleType
+
+ParenType =
+  '(' Type ')'
+
+NeverType =
+  '!'
+
+PathType =
+  Path
+
+TupleType =
+  '(' fields:(Type (',' Type)* ','?)? ')'
+
+PointerType =
+  '*' ('const' | 'mut') Type
+
+ReferenceType =
+  '&' 'lifetime'? 'mut'? Type
+
+ArrayType =
+  '[' Type ';' Expr ']'
+
+SliceType =
+  '[' Type ']'
+
+InferType =
+  '_'
+
+FnPointerType =
+  'const'? 'async'? 'unsafe'? Abi? 'fn' ParamList RetType?
+
+ForType =
+  'for' GenericParamList Type
+
+ImplTraitType =
+  'impl' TypeBoundList
+
+DynTraitType =
+  'dyn' TypeBoundList
+
+TypeBoundList =
+  bounds:(TypeBound ('+' TypeBound)* '+'?)
+
+TypeBound =
+  'lifetime'
+| '?'? Type
+
+//************************//
+//        Patterns        //
+//************************//
+
+Pat =
+  IdentPat
+| BoxPat
+| RestPat
+| LiteralPat
+| MacroPat
+| OrPat
+| ParenPat
+| PathPat
+| WildcardPat
+| RangePat
+| RecordPat
+| RefPat
+| SlicePat
+| TuplePat
+| TupleStructPat
+
+LiteralPat =
+  Literal
+
+IdentPat =
+  Attr* 'ref'? 'mut'? Name ('@' Pat)?
+
+WildcardPat =
+  '_'
+
+RangePat =
+  start:Pat op:('..' | '..=') end:Pat
+
+RefPat =
+  '&' 'mut'? Pat
+
+RecordPat =
+  Path RecordPatFieldList
+
+RecordPatFieldList =
+  '{'
+    fields:(RecordPatField (',' RecordPatField)* ','?)
+    '..'?
+  '}'
+
+RecordPatField =
+  Attr* (NameRef ':')? Pat
+
+TupleStructPat =
+   Path '(' fields:(Pat (',' Pat)* ','?)? ')'
+
+TuplePat =
+   '(' fields:(Pat (',' Pat)* ','?)? ')'
+
+ParenPat =
+  '(' Pat ')'
+
+SlicePat =
+  '[' (Pat (',' Pat)* ','?)? ']'
+
+PathPat =
+  Path
+
+OrPat =
+  (Pat ('|' Pat)* '|'?)
+
+BoxPat =
+  'box' Pat
+
+RestPat =
+  '..'
+
+MacroPat =
+  MacroCall

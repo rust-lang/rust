@@ -521,7 +521,7 @@ impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
     }
 }
 
-impl AsMacroCall for AstIdWithPath<ast::ModuleItem> {
+impl AsMacroCall for AstIdWithPath<ast::Item> {
     fn as_call_id(
         &self,
         db: &dyn db::DefDatabase,

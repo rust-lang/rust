@@ -1,5 +1,5 @@
 SOURCE_FILE@0..98
-  USE_ITEM@0..12
+  USE@0..12
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
     USE_TREE@4..11
@@ -9,7 +9,7 @@ SOURCE_FILE@0..98
           CRATE_KW@6..11 "crate"
     SEMICOLON@11..12 ";"
   WHITESPACE@12..13 "\n"
-  USE_ITEM@13..54
+  USE@13..54
     USE_KW@13..16 "use"
     WHITESPACE@16..17 " "
     USE_TREE@17..53
@@ -52,7 +52,7 @@ SOURCE_FILE@0..98
         R_CURLY@52..53 "}"
     SEMICOLON@53..54 ";"
   WHITESPACE@54..55 "\n"
-  USE_ITEM@55..72
+  USE@55..72
     USE_KW@55..58 "use"
     WHITESPACE@58..59 " "
     USE_TREE@59..71
@@ -66,7 +66,7 @@ SOURCE_FILE@0..98
           CRATE_KW@66..71 "crate"
     SEMICOLON@71..72 ";"
   WHITESPACE@72..73 "\n"
-  USE_ITEM@73..97
+  USE@73..97
     USE_KW@73..76 "use"
     WHITESPACE@76..77 " "
     USE_TREE@77..96

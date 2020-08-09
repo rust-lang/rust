@@ -170,7 +170,7 @@ struct MacroDirective {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct DeriveDirective {
     module_id: LocalModuleId,
-    ast_id: AstIdWithPath<ast::ModuleItem>,
+    ast_id: AstIdWithPath<ast::Item>,
 }
 
 struct DefData<'a> {
@@ -1100,7 +1100,7 @@ impl ModCollector<'_, '_> {
         res
     }
 
-    fn collect_derives(&mut self, attrs: &Attrs, ast_id: FileAstId<ast::ModuleItem>) {
+    fn collect_derives(&mut self, attrs: &Attrs, ast_id: FileAstId<ast::Item>) {
         for derive_subtree in attrs.by_key("derive").tt_values() {
             // for #[derive(Copy, Clone)], `derive_subtree` is the `(Copy, Clone)` subtree
             for tt in &derive_subtree.token_trees {

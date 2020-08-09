@@ -1,5 +1,5 @@
 SOURCE_FILE@0..43
-  TYPE_ALIAS_DEF@0..42
+  TYPE_ALIAS@0..42
     TYPE_KW@0..4 "type"
     WHITESPACE@4..5 " "
     NAME@5..6
@@ -17,7 +17,7 @@ SOURCE_FILE@0..43
               PATH_SEGMENT@14..36
                 NAME_REF@14..22
                   IDENT@14..22 "Iterator"
-                TYPE_ARG_LIST@22..36
+                GENERIC_ARG_LIST@22..36
                   L_ANGLE@22..23 "<"
                   ASSOC_TYPE_ARG@23..35
                     NAME_REF@23..27
@@ -28,7 +28,7 @@ SOURCE_FILE@0..43
                         PATH_SEGMENT@28..35
                           NAME_REF@28..31
                             IDENT@28..31 "Foo"
-                          TYPE_ARG_LIST@31..35
+                          GENERIC_ARG_LIST@31..35
                             L_ANGLE@31..32 "<"
                             LIFETIME_ARG@32..34
                               LIFETIME@32..34 "\'a"

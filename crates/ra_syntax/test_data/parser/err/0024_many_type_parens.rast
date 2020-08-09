@@ -1,10 +1,10 @@
 SOURCE_FILE@0..240
-  FN_DEF@0..53
+  FN@0..53
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..4
       IDENT@3..4 "f"
-    TYPE_PARAM_LIST@4..48
+    GENERIC_PARAM_LIST@4..48
       L_ANGLE@4..5 "<"
       TYPE_PARAM@5..47
         NAME@5..6
@@ -39,7 +39,7 @@ SOURCE_FILE@0..240
             L_PAREN@28..29 "("
             FOR_TYPE@29..46
               FOR_KW@29..32 "for"
-              TYPE_PARAM_LIST@32..36
+              GENERIC_PARAM_LIST@32..36
                 L_ANGLE@32..33 "<"
                 LIFETIME_PARAM@33..35
                   LIFETIME@33..35 "\'a"
@@ -50,7 +50,7 @@ SOURCE_FILE@0..240
                   PATH_SEGMENT@37..46
                     NAME_REF@37..42
                       IDENT@37..42 "Trait"
-                    TYPE_ARG_LIST@42..46
+                    GENERIC_ARG_LIST@42..46
                       L_ANGLE@42..43 "<"
                       LIFETIME_ARG@43..45
                         LIFETIME@43..45 "\'a"
@@ -65,7 +65,7 @@ SOURCE_FILE@0..240
       L_CURLY@51..52 "{"
       R_CURLY@52..53 "}"
   WHITESPACE@53..55 "\n\n"
-  FN_DEF@55..239
+  FN@55..239
     FN_KW@55..57 "fn"
     WHITESPACE@57..58 " "
     NAME@58..62
@@ -80,7 +80,7 @@ SOURCE_FILE@0..240
       LET_STMT@71..121
         LET_KW@71..74 "let"
         WHITESPACE@74..75 " "
-        PLACEHOLDER_PAT@75..76
+        WILDCARD_PAT@75..76
           UNDERSCORE@75..76 "_"
         COLON@76..77 ":"
         WHITESPACE@77..78 " "
@@ -92,7 +92,7 @@ SOURCE_FILE@0..240
                   PATH_SEGMENT@78..88
                     NAME_REF@78..81
                       IDENT@78..81 "Box"
-                    TYPE_ARG_LIST@81..88
+                    GENERIC_ARG_LIST@81..88
                       L_ANGLE@81..82 "<"
                       TYPE_ARG@82..88
                         PAREN_TYPE@82..88
@@ -122,7 +122,7 @@ SOURCE_FILE@0..240
               L_PAREN@102..103 "("
               FOR_TYPE@103..120
                 FOR_KW@103..106 "for"
-                TYPE_PARAM_LIST@106..110
+                GENERIC_PARAM_LIST@106..110
                   L_ANGLE@106..107 "<"
                   LIFETIME_PARAM@107..109
                     LIFETIME@107..109 "\'a"
@@ -133,7 +133,7 @@ SOURCE_FILE@0..240
                     PATH_SEGMENT@111..120
                       NAME_REF@111..116
                         IDENT@111..116 "Trait"
-                      TYPE_ARG_LIST@116..120
+                      GENERIC_ARG_LIST@116..120
                         L_ANGLE@116..117 "<"
                         LIFETIME_ARG@117..119
                           LIFETIME@117..119 "\'a"
@@ -147,7 +147,7 @@ SOURCE_FILE@0..240
       LET_STMT@128..141
         LET_KW@128..131 "let"
         WHITESPACE@131..132 " "
-        PLACEHOLDER_PAT@132..133
+        WILDCARD_PAT@132..133
           UNDERSCORE@132..133 "_"
         COLON@133..134 ":"
         WHITESPACE@134..135 " "
@@ -156,7 +156,7 @@ SOURCE_FILE@0..240
             PATH_SEGMENT@135..141
               NAME_REF@135..138
                 IDENT@135..138 "Box"
-              TYPE_ARG_LIST@138..141
+              GENERIC_ARG_LIST@138..141
                 L_ANGLE@138..139 "<"
                 TYPE_ARG@139..141
                   PAREN_TYPE@139..141
@@ -223,7 +223,7 @@ SOURCE_FILE@0..240
       LET_STMT@185..235
         LET_KW@185..188 "let"
         WHITESPACE@188..189 " "
-        PLACEHOLDER_PAT@189..190
+        WILDCARD_PAT@189..190
           UNDERSCORE@189..190 "_"
         COLON@190..191 ":"
         WHITESPACE@191..192 " "
@@ -235,14 +235,14 @@ SOURCE_FILE@0..240
                   PATH_SEGMENT@192..215
                     NAME_REF@192..195
                       IDENT@192..195 "Box"
-                    TYPE_ARG_LIST@195..215
+                    GENERIC_ARG_LIST@195..215
                       L_ANGLE@195..196 "<"
                       TYPE_ARG@196..215
                         PAREN_TYPE@196..215
                           L_PAREN@196..197 "("
                           FOR_TYPE@197..214
                             FOR_KW@197..200 "for"
-                            TYPE_PARAM_LIST@200..204
+                            GENERIC_PARAM_LIST@200..204
                               L_ANGLE@200..201 "<"
                               LIFETIME_PARAM@201..203
                                 LIFETIME@201..203 "\'a"
@@ -253,7 +253,7 @@ SOURCE_FILE@0..240
                                 PATH_SEGMENT@205..214
                                   NAME_REF@205..210
                                     IDENT@205..210 "Trait"
-                                  TYPE_ARG_LIST@210..214
+                                  GENERIC_ARG_LIST@210..214
                                     L_ANGLE@210..211 "<"
                                     LIFETIME_ARG@211..213
                                       LIFETIME@211..213 "\'a"

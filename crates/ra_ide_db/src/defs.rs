@@ -12,7 +12,7 @@ use hir::{
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode},
-    match_ast,
+    match_ast, SyntaxNode,
 };
 
 use crate::RootDatabase;
@@ -111,7 +111,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
 
     let parent = name.syntax().parent()?;
 
-    if let Some(bind_pat) = ast::BindPat::cast(parent.clone()) {
+    if let Some(bind_pat) = ast::IdentPat::cast(parent.clone()) {
         if let Some(def) = sema.resolve_bind_pat_to_const(&bind_pat) {
             return Some(NameClass::ConstReference(Definition::ModuleDef(def)));
         }
@@ -119,19 +119,38 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
 
     match_ast! {
         match parent {
-            ast::Alias(it) => {
+            ast::Rename(it) => {
                 let use_tree = it.syntax().parent().and_then(ast::UseTree::cast)?;
                 let path = use_tree.path()?;
                 let path_segment = path.segment()?;
-                let name_ref = path_segment.name_ref()?;
-                let name_ref_class = classify_name_ref(sema, &name_ref)?;
+                let name_ref_class = path_segment
+                    .name_ref()
+                    // The rename might be from a `self` token, so fallback to the name higher
+                    // in the use tree.
+                    .or_else(||{
+                        if path_segment.self_token().is_none() {
+                            return None;
+                        }
+
+                        let use_tree = use_tree
+                            .syntax()
+                            .parent()
+                            .as_ref()
+                            // Skip over UseTreeList
+                            .and_then(SyntaxNode::parent)
+                            .and_then(ast::UseTree::cast)?;
+                        let path = use_tree.path()?;
+                        let path_segment = path.segment()?;
+                        path_segment.name_ref()
+                    })
+                    .and_then(|name_ref| classify_name_ref(sema, &name_ref))?;
 
                 Some(NameClass::Definition(name_ref_class.definition()))
             },
-            ast::BindPat(it) => {
+            ast::IdentPat(it) => {
                 let local = sema.to_def(&it)?;
 
-                if let Some(record_field_pat) = it.syntax().parent().and_then(ast::RecordFieldPat::cast) {
+                if let Some(record_field_pat) = it.syntax().parent().and_then(ast::RecordPatField::cast) {
                     if record_field_pat.name_ref().is_none() {
                         if let Some(field) = sema.resolve_record_field_pat(&record_field_pat) {
                             let field = Definition::Field(field);
@@ -142,7 +161,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
 
                 Some(NameClass::Definition(Definition::Local(local)))
             },
-            ast::RecordFieldDef(it) => {
+            ast::RecordField(it) => {
                 let field: hir::Field = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::Field(field)))
             },
@@ -150,39 +169,39 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                 let def = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::StructDef(it) => {
+            ast::Struct(it) => {
                 let def: hir::Struct = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::UnionDef(it) => {
+            ast::Union(it) => {
                 let def: hir::Union = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::EnumDef(it) => {
+            ast::Enum(it) => {
                 let def: hir::Enum = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::TraitDef(it) => {
+            ast::Trait(it) => {
                 let def: hir::Trait = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::StaticDef(it) => {
+            ast::Static(it) => {
                 let def: hir::Static = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::EnumVariant(it) => {
+            ast::Variant(it) => {
                 let def: hir::EnumVariant = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::FnDef(it) => {
+            ast::Fn(it) => {
                 let def: hir::Function = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::ConstDef(it) => {
+            ast::Const(it) => {
                 let def: hir::Const = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::TypeAliasDef(it) => {
+            ast::TypeAlias(it) => {
                 let def: hir::TypeAlias = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
@@ -236,7 +255,7 @@ pub fn classify_name_ref(
         }
     }
 
-    if let Some(record_field) = ast::RecordField::for_field_name(name_ref) {
+    if let Some(record_field) = ast::RecordExprField::for_field_name(name_ref) {
         if let Some((field, local)) = sema.resolve_record_field(&record_field) {
             let field = Definition::Field(field);
             let res = match local {
@@ -247,7 +266,7 @@ pub fn classify_name_ref(
         }
     }
 
-    if let Some(record_field_pat) = ast::RecordFieldPat::cast(parent.clone()) {
+    if let Some(record_field_pat) = ast::RecordPatField::cast(parent.clone()) {
         if let Some(field) = sema.resolve_record_field_pat(&record_field_pat) {
             let field = Definition::Field(field);
             return Some(NameRefClass::Definition(field));

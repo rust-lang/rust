@@ -1,5 +1,5 @@
 SOURCE_FILE@0..84
-  FN_DEF@0..83
+  FN@0..83
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -22,7 +22,7 @@ SOURCE_FILE@0..84
           L_CURLY@24..25 "{"
           WHITESPACE@25..34 "\n        "
           MATCH_ARM@34..41
-            PLACEHOLDER_PAT@34..35
+            WILDCARD_PAT@34..35
               UNDERSCORE@34..35 "_"
             WHITESPACE@35..36 " "
             FAT_ARROW@36..38 "=>"

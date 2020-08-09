@@ -1,5 +1,5 @@
 SOURCE_FILE@0..97
-  FN_DEF@0..96
+  FN@0..96
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -38,7 +38,7 @@ SOURCE_FILE@0..97
               NAME_REF@37..38
                 IDENT@37..38 "S"
           L_PAREN@38..39 "("
-          PLACEHOLDER_PAT@39..40
+          WILDCARD_PAT@39..40
             UNDERSCORE@39..40 "_"
           R_PAREN@40..41 ")"
         WHITESPACE@41..42 " "
@@ -58,7 +58,7 @@ SOURCE_FILE@0..97
               NAME_REF@56..57
                 IDENT@56..57 "S"
           L_PAREN@57..58 "("
-          PLACEHOLDER_PAT@58..59
+          WILDCARD_PAT@58..59
             UNDERSCORE@58..59 "_"
           COMMA@59..60 ","
           R_PAREN@60..61 ")"
@@ -79,16 +79,16 @@ SOURCE_FILE@0..97
               NAME_REF@76..77
                 IDENT@76..77 "S"
           L_PAREN@77..78 "("
-          PLACEHOLDER_PAT@78..79
+          WILDCARD_PAT@78..79
             UNDERSCORE@78..79 "_"
           COMMA@79..80 ","
           WHITESPACE@80..81 " "
-          DOT_DOT_PAT@81..83
+          REST_PAT@81..83
             DOT2@81..83 ".."
           WHITESPACE@83..84 " "
           COMMA@84..85 ","
           WHITESPACE@85..86 " "
-          BIND_PAT@86..87
+          IDENT_PAT@86..87
             NAME@86..87
               IDENT@86..87 "x"
           R_PAREN@87..88 ")"

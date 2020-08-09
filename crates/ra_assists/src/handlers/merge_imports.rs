@@ -28,7 +28,7 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()
     let mut rewriter = SyntaxRewriter::default();
     let mut offset = ctx.offset();
 
-    if let Some(use_item) = tree.syntax().parent().and_then(ast::UseItem::cast) {
+    if let Some(use_item) = tree.syntax().parent().and_then(ast::Use::cast) {
         let (merged, to_delete) = next_prev()
             .filter_map(|dir| neighbor(&use_item, dir))
             .filter_map(|it| Some((it.clone(), it.use_tree()?)))

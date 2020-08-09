@@ -35,12 +35,12 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) krate: Option<hir::Crate>,
     pub(super) expected_type: Option<Type>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
-    pub(super) function_syntax: Option<ast::FnDef>,
-    pub(super) use_item_syntax: Option<ast::UseItem>,
-    pub(super) record_lit_syntax: Option<ast::RecordLit>,
+    pub(super) function_syntax: Option<ast::Fn>,
+    pub(super) use_item_syntax: Option<ast::Use>,
+    pub(super) record_lit_syntax: Option<ast::RecordExpr>,
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
-    pub(super) record_field_syntax: Option<ast::RecordField>,
-    pub(super) impl_def: Option<ast::ImplDef>,
+    pub(super) record_field_syntax: Option<ast::RecordExprField>,
+    pub(super) impl_def: Option<ast::Impl>,
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
     pub(super) is_param: bool,
@@ -265,7 +265,7 @@ impl<'a> CompletionContext<'a> {
                 return;
             }
             // FIXME: remove this (V) duplication and make the check more precise
-            if name_ref.syntax().ancestors().find_map(ast::RecordFieldPatList::cast).is_some() {
+            if name_ref.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
                 self.record_pat_syntax =
                     self.sema.find_node_at_offset_with_macros(&original_file, offset);
             }
@@ -275,7 +275,7 @@ impl<'a> CompletionContext<'a> {
         // Otherwise, see if this is a declaration. We can use heuristics to
         // suggest declaration names, see `CompletionKind::Magic`.
         if let Some(name) = find_node_at_offset::<ast::Name>(&file_with_fake_ident, offset) {
-            if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
+            if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::IdentPat::cast) {
                 self.is_pat_binding_or_const = true;
                 if bind_pat.at_token().is_some()
                     || bind_pat.ref_token().is_some()
@@ -283,7 +283,7 @@ impl<'a> CompletionContext<'a> {
                 {
                     self.is_pat_binding_or_const = false;
                 }
-                if bind_pat.syntax().parent().and_then(ast::RecordFieldPatList::cast).is_some() {
+                if bind_pat.syntax().parent().and_then(ast::RecordPatFieldList::cast).is_some() {
                     self.is_pat_binding_or_const = false;
                 }
                 if let Some(let_stmt) = bind_pat.syntax().ancestors().find_map(ast::LetStmt::cast) {
@@ -300,7 +300,7 @@ impl<'a> CompletionContext<'a> {
                 return;
             }
             // FIXME: remove this (^) duplication and make the check more precise
-            if name.syntax().ancestors().find_map(ast::RecordFieldPatList::cast).is_some() {
+            if name.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
                 self.record_pat_syntax =
                     self.sema.find_node_at_offset_with_macros(&original_file, offset);
             }
@@ -316,7 +316,7 @@ impl<'a> CompletionContext<'a> {
         self.name_ref_syntax =
             find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
         let name_range = name_ref.syntax().text_range();
-        if ast::RecordField::for_field_name(&name_ref).is_some() {
+        if ast::RecordExprField::for_field_name(&name_ref).is_some() {
             self.record_lit_syntax =
                 self.sema.find_node_at_offset_with_macros(&original_file, offset);
         }
@@ -325,7 +325,7 @@ impl<'a> CompletionContext<'a> {
             .sema
             .ancestors_with_macros(self.token.parent())
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-            .find_map(ast::ImplDef::cast);
+            .find_map(ast::Impl::cast);
 
         let top_node = name_ref
             .syntax()
@@ -343,13 +343,13 @@ impl<'a> CompletionContext<'a> {
         }
 
         self.use_item_syntax =
-            self.sema.ancestors_with_macros(self.token.parent()).find_map(ast::UseItem::cast);
+            self.sema.ancestors_with_macros(self.token.parent()).find_map(ast::Use::cast);
 
         self.function_syntax = self
             .sema
             .ancestors_with_macros(self.token.parent())
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-            .find_map(ast::FnDef::cast);
+            .find_map(ast::Fn::cast);
 
         self.record_field_syntax = self
             .sema
@@ -357,7 +357,7 @@ impl<'a> CompletionContext<'a> {
             .take_while(|it| {
                 it.kind() != SOURCE_FILE && it.kind() != MODULE && it.kind() != CALL_EXPR
             })
-            .find_map(ast::RecordField::cast);
+            .find_map(ast::RecordExprField::cast);
 
         let parent = match name_ref.syntax().parent() {
             Some(it) => it,
@@ -377,7 +377,7 @@ impl<'a> CompletionContext<'a> {
                 path.syntax().parent().and_then(ast::TupleStructPat::cast).is_some();
 
             self.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
-            self.has_type_args = segment.type_arg_list().is_some();
+            self.has_type_args = segment.generic_arg_list().is_some();
 
             #[allow(deprecated)]
             if let Some(path) = hir::Path::from_ast(path.clone()) {

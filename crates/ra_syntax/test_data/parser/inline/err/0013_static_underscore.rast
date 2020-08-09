@@ -1,5 +1,5 @@
 SOURCE_FILE@0..19
-  STATIC_DEF@0..18
+  STATIC@0..18
     STATIC_KW@0..6 "static"
     WHITESPACE@6..7 " "
     ERROR@7..8

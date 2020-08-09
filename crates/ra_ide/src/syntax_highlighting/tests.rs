@@ -9,6 +9,9 @@ use crate::{mock_analysis::single_file, FileRange, TextRange};
 fn test_highlighting() {
     check_highlighting(
         r#"
+use inner::{self as inner_mod};
+mod inner {}
+
 #[derive(Clone, Debug)]
 struct Foo {
     pub x: i32,
@@ -272,19 +275,37 @@ fn test_unsafe_highlighting() {
         r#"
 unsafe fn unsafe_fn() {}
 
+union Union {
+    a: u32,
+    b: f32,
+}
+
 struct HasUnsafeFn;
 
 impl HasUnsafeFn {
     unsafe fn unsafe_method(&self) {}
 }
 
+struct TypeForStaticMut {
+    a: u8
+}
+
+static mut global_mut: TypeForStaticMut = TypeForStaticMut { a: 0 };
+
 fn main() {
     let x = &5 as *const usize;
+    let u = Union { b: 0 };
     unsafe {
         unsafe_fn();
+        let b = u.b;
+        match u {
+            Union { b: 0 } => (),
+            Union { a } => (),
+        }
         HasUnsafeFn.unsafe_method();
         let y = *(x);
         let z = -x;
+        let a = global_mut.a;
     }
 }
 "#

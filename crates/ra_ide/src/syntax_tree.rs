@@ -116,7 +116,7 @@ mod tests {
             syn.trim(),
             r#"
 SOURCE_FILE@0..11
-  FN_DEF@0..11
+  FN@0..11
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -148,7 +148,7 @@ fn test() {
             syn.trim(),
             r#"
 SOURCE_FILE@0..60
-  FN_DEF@0..60
+  FN@0..60
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..7
@@ -190,7 +190,7 @@ SOURCE_FILE@0..60
         assert_eq_text!(
             syn.trim(),
             r#"
-FN_DEF@0..11
+FN@0..11
   FN_KW@0..2 "fn"
   WHITESPACE@2..3 " "
   NAME@3..6
@@ -258,7 +258,7 @@ fn bar() {
             syn.trim(),
             r#"
 SOURCE_FILE@0..12
-  FN_DEF@0..12
+  FN@0..12
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -292,7 +292,7 @@ fn bar() {
             syn.trim(),
             r#"
 SOURCE_FILE@0..12
-  FN_DEF@0..12
+  FN@0..12
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -325,7 +325,7 @@ fn bar() {
             syn.trim(),
             r#"
 SOURCE_FILE@0..25
-  FN_DEF@0..12
+  FN@0..12
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -339,7 +339,7 @@ SOURCE_FILE@0..25
       WHITESPACE@10..11 "\n"
       R_CURLY@11..12 "}"
   WHITESPACE@12..13 "\n"
-  FN_DEF@13..25
+  FN@13..25
     FN_KW@13..15 "fn"
     WHITESPACE@15..16 " "
     NAME@16..19

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..80
-  FN_DEF@0..79
+  FN@0..79
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -14,7 +14,7 @@ SOURCE_FILE@0..80
       FOR_EXPR@14..77
         FOR_KW@14..17 "for"
         WHITESPACE@17..18 " "
-        BIND_PAT@18..20
+        IDENT_PAT@18..20
           NAME@18..20
             IDENT@18..20 "_x"
         WHITESPACE@20..21 " "
@@ -50,7 +50,7 @@ SOURCE_FILE@0..80
             DOT@43..44 "."
             NAME_REF@44..47
               IDENT@44..47 "sum"
-            TYPE_ARG_LIST@47..54
+            GENERIC_ARG_LIST@47..54
               COLON2@47..49 "::"
               L_ANGLE@49..50 "<"
               TYPE_ARG@50..53

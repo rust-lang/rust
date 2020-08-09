@@ -1,9 +1,9 @@
 use crate::{MatchFinder, SsrRule};
 use expect::{expect, Expect};
-use ra_db::{salsa::Durability, FileId, FilePosition, SourceDatabaseExt};
+use ra_db::{salsa::Durability, FileId, FilePosition, FileRange, SourceDatabaseExt};
 use rustc_hash::FxHashSet;
 use std::sync::Arc;
-use test_utils::mark;
+use test_utils::{mark, RangeOrOffset};
 
 fn parse_error_text(query: &str) -> String {
     format!("{}", query.parse::<SsrRule>().unwrap_err())
@@ -60,20 +60,32 @@ fn parser_undefined_placeholder_in_replacement() {
 }
 
 /// `code` may optionally contain a cursor marker `<|>`. If it doesn't, then the position will be
-/// the start of the file.
-pub(crate) fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FilePosition) {
+/// the start of the file. If there's a second cursor marker, then we'll return a single range.
+pub(crate) fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FilePosition, Vec<FileRange>) {
     use ra_db::fixture::WithFixture;
     use ra_ide_db::symbol_index::SymbolsDatabase;
-    let (mut db, position) = if code.contains(test_utils::CURSOR_MARKER) {
-        ra_ide_db::RootDatabase::with_position(code)
+    let (mut db, file_id, range_or_offset) = if code.contains(test_utils::CURSOR_MARKER) {
+        ra_ide_db::RootDatabase::with_range_or_offset(code)
     } else {
         let (db, file_id) = ra_ide_db::RootDatabase::with_single_file(code);
-        (db, FilePosition { file_id, offset: 0.into() })
+        (db, file_id, RangeOrOffset::Offset(0.into()))
     };
+    let selections;
+    let position;
+    match range_or_offset {
+        RangeOrOffset::Range(range) => {
+            position = FilePosition { file_id, offset: range.start() };
+            selections = vec![FileRange { file_id, range: range }];
+        }
+        RangeOrOffset::Offset(offset) => {
+            position = FilePosition { file_id, offset };
+            selections = vec![];
+        }
+    }
     let mut local_roots = FxHashSet::default();
     local_roots.insert(ra_db::fixture::WORKSPACE);
     db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
-    (db, position)
+    (db, position, selections)
 }
 
 fn assert_ssr_transform(rule: &str, input: &str, expected: Expect) {
@@ -81,8 +93,8 @@ fn assert_ssr_transform(rule: &str, input: &str, expected: Expect) {
 }
 
 fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
-    let (db, position) = single_file(input);
-    let mut match_finder = MatchFinder::in_context(&db, position);
+    let (db, position, selections) = single_file(input);
+    let mut match_finder = MatchFinder::in_context(&db, position, selections);
     for rule in rules {
         let rule: SsrRule = rule.parse().unwrap();
         match_finder.add_rule(rule).unwrap();
@@ -112,8 +124,8 @@ fn print_match_debug_info(match_finder: &MatchFinder, file_id: FileId, snippet: 
 }
 
 fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
-    let (db, position) = single_file(code);
-    let mut match_finder = MatchFinder::in_context(&db, position);
+    let (db, position, selections) = single_file(code);
+    let mut match_finder = MatchFinder::in_context(&db, position, selections);
     match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
     let matched_strings: Vec<String> =
         match_finder.matches().flattened().matches.iter().map(|m| m.matched_text()).collect();
@@ -124,8 +136,8 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
 }
 
 fn assert_no_match(pattern: &str, code: &str) {
-    let (db, position) = single_file(code);
-    let mut match_finder = MatchFinder::in_context(&db, position);
+    let (db, position, selections) = single_file(code);
+    let mut match_finder = MatchFinder::in_context(&db, position, selections);
     match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
     let matches = match_finder.matches().flattened().matches;
     if !matches.is_empty() {
@@ -135,8 +147,8 @@ fn assert_no_match(pattern: &str, code: &str) {
 }
 
 fn assert_match_failure_reason(pattern: &str, code: &str, snippet: &str, expected_reason: &str) {
-    let (db, position) = single_file(code);
-    let mut match_finder = MatchFinder::in_context(&db, position);
+    let (db, position, selections) = single_file(code);
+    let mut match_finder = MatchFinder::in_context(&db, position, selections);
     match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
     let mut reasons = Vec::new();
     for d in match_finder.debug_where_text_equal(position.file_id, snippet) {
@@ -490,9 +502,10 @@ fn no_match_split_expression() {
 
 #[test]
 fn replace_function_call() {
+    // This test also makes sure that we ignore empty-ranges.
     assert_ssr_transform(
         "foo() ==>> bar()",
-        "fn foo() {} fn bar() {} fn f1() {foo(); foo();}",
+        "fn foo() {<|><|>} fn bar() {} fn f1() {foo(); foo();}",
         expect![["fn foo() {} fn bar() {} fn f1() {bar(); bar();}"]],
     );
 }
@@ -651,7 +664,7 @@ fn replace_binary_op() {
     assert_ssr_transform(
         "$a + $b ==>> $b + $a",
         "fn f() {1 + 2 + 3 + 4}",
-        expect![["fn f() {4 + 3 + 2 + 1}"]],
+        expect![[r#"fn f() {4 + (3 + (2 + 1))}"#]],
     );
 }
 
@@ -760,8 +773,29 @@ fn preserves_whitespace_within_macro_expansion() {
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(4 - 3 - 1   *   2}
+            fn f() {macro1!(4 - (3 - 1   *   2)}
             "#]],
+    )
+}
+
+#[test]
+fn add_parenthesis_when_necessary() {
+    assert_ssr_transform(
+        "foo($a) ==>> $a.to_string()",
+        r#"
+        fn foo(_: i32) {}
+        fn bar3(v: i32) {
+            foo(1 + 2);
+            foo(-v);
+        }
+        "#,
+        expect![[r#"
+            fn foo(_: i32) {}
+            fn bar3(v: i32) {
+                (1 + 2).to_string();
+                (-v).to_string();
+            }
+        "#]],
     )
 }
 
@@ -887,6 +921,45 @@ fn ufcs_matches_method_call() {
 }
 
 #[test]
+fn pattern_is_a_single_segment_path() {
+    mark::check!(pattern_is_a_single_segment_path);
+    // The first function should not be altered because the `foo` in scope at the cursor position is
+    // a different `foo`. This case is special because "foo" can be parsed as a pattern (IDENT_PAT ->
+    // NAME -> IDENT), which contains no path. If we're not careful we'll end up matching the `foo`
+    // in `let foo` from the first function. Whether we should match the `let foo` in the second
+    // function is less clear. At the moment, we don't. Doing so sounds like a rename operation,
+    // which isn't really what SSR is for, especially since the replacement `bar` must be able to be
+    // resolved, which means if we rename `foo` we'll get a name collision.
+    assert_ssr_transform(
+        "foo ==>> bar",
+        r#"
+        fn f1() -> i32 {
+            let foo = 1;
+            let bar = 2;
+            foo
+        }
+        fn f1() -> i32 {
+            let foo = 1;
+            let bar = 2;
+            foo<|>
+        }
+        "#,
+        expect![[r#"
+            fn f1() -> i32 {
+                let foo = 1;
+                let bar = 2;
+                foo
+            }
+            fn f1() -> i32 {
+                let foo = 1;
+                let bar = 2;
+                bar
+            }
+        "#]],
+    );
+}
+
+#[test]
 fn replace_local_variable_reference() {
     // The pattern references a local variable `foo` in the block containing the cursor. We should
     // only replace references to this variable `foo`, not other variables that just happen to have
@@ -921,4 +994,88 @@ fn replace_local_variable_reference() {
             }
         "#]],
     )
+}
+
+#[test]
+fn replace_path_within_selection() {
+    assert_ssr_transform(
+        "foo ==>> bar",
+        r#"
+        fn main() {
+            let foo = 41;
+            let bar = 42;
+            do_stuff(foo);
+            do_stuff(foo);<|>
+            do_stuff(foo);
+            do_stuff(foo);<|>
+            do_stuff(foo);
+        }"#,
+        expect![[r#"
+            fn main() {
+                let foo = 41;
+                let bar = 42;
+                do_stuff(foo);
+                do_stuff(foo);
+                do_stuff(bar);
+                do_stuff(bar);
+                do_stuff(foo);
+            }"#]],
+    );
+}
+
+#[test]
+fn replace_nonpath_within_selection() {
+    mark::check!(replace_nonpath_within_selection);
+    assert_ssr_transform(
+        "$a + $b ==>> $b * $a",
+        r#"
+        fn main() {
+            let v = 1 + 2;<|>
+            let v2 = 3 + 3;
+            let v3 = 4 + 5;<|>
+            let v4 = 6 + 7;
+        }"#,
+        expect![[r#"
+            fn main() {
+                let v = 1 + 2;
+                let v2 = 3 * 3;
+                let v3 = 5 * 4;
+                let v4 = 6 + 7;
+            }"#]],
+    );
+}
+
+#[test]
+fn replace_self() {
+    // `foo(self)` occurs twice in the code, however only the first occurrence is the `self` that's
+    // in scope where the rule is invoked.
+    assert_ssr_transform(
+        "foo(self) ==>> bar(self)",
+        r#"
+        struct S1 {}
+        fn foo(_: &S1) {}
+        fn bar(_: &S1) {}
+        impl S1 {
+            fn f1(&self) {
+                foo(self)<|>
+            }
+            fn f2(&self) {
+                foo(self)
+            }
+        }
+        "#,
+        expect![[r#"
+            struct S1 {}
+            fn foo(_: &S1) {}
+            fn bar(_: &S1) {}
+            impl S1 {
+                fn f1(&self) {
+                    bar(self)
+                }
+                fn f2(&self) {
+                    foo(self)
+                }
+            }
+        "#]],
+    );
 }

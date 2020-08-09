@@ -1,5 +1,5 @@
 SOURCE_FILE@0..86
-  STRUCT_DEF@0..72
+  STRUCT@0..72
     VISIBILITY@0..3
       PUB_KW@0..3 "pub"
     WHITESPACE@3..4 " "
@@ -7,16 +7,16 @@ SOURCE_FILE@0..86
     WHITESPACE@10..11 " "
     NAME@11..16
       IDENT@11..16 "Cache"
-    TUPLE_FIELD_DEF_LIST@16..72
+    TUPLE_FIELD_LIST@16..72
       L_PAREN@16..17 "("
       WHITESPACE@17..22 "\n    "
-      TUPLE_FIELD_DEF@22..68
+      TUPLE_FIELD@22..68
         PATH_TYPE@22..68
           PATH@22..68
             PATH_SEGMENT@22..68
               NAME_REF@22..29
                 IDENT@22..29 "RefCell"
-              TYPE_ARG_LIST@29..68
+              GENERIC_ARG_LIST@29..68
                 L_ANGLE@29..30 "<"
                 TYPE_ARG@30..68
                   PATH_TYPE@30..68
@@ -24,7 +24,7 @@ SOURCE_FILE@0..86
                       PATH_SEGMENT@30..68
                         NAME_REF@30..37
                           IDENT@30..37 "HashMap"
-                        TYPE_ARG_LIST@37..68
+                        GENERIC_ARG_LIST@37..68
                           L_ANGLE@37..38 "<"
                           WHITESPACE@38..47 "\n        "
                           TYPE_ARG@47..53
@@ -41,13 +41,13 @@ SOURCE_FILE@0..86
                                 PATH_SEGMENT@63..68
                                   NAME_REF@63..66
                                     IDENT@63..66 "Box"
-                                  TYPE_ARG_LIST@66..68
+                                  GENERIC_ARG_LIST@66..68
                                     L_ANGLE@66..67 "<"
                                     TYPE_ARG@67..68
                                       ERROR@67..68
                                         AT@67..68 "@"
       WHITESPACE@68..69 " "
-      TUPLE_FIELD_DEF@69..72
+      TUPLE_FIELD@69..72
         PATH_TYPE@69..72
           PATH@69..72
             PATH_SEGMENT@69..72

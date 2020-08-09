@@ -1,5 +1,5 @@
 SOURCE_FILE@0..89
-  FN_DEF@0..88
+  FN@0..88
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -22,7 +22,7 @@ SOURCE_FILE@0..89
           L_CURLY@24..25 "{"
           WHITESPACE@25..34 "\n        "
           MATCH_ARM@34..41
-            PLACEHOLDER_PAT@34..35
+            WILDCARD_PAT@34..35
               UNDERSCORE@34..35 "_"
             WHITESPACE@35..36 " "
             FAT_ARROW@36..38 "=>"
@@ -33,7 +33,7 @@ SOURCE_FILE@0..89
           COMMA@41..42 ","
           WHITESPACE@42..51 "\n        "
           MATCH_ARM@51..58
-            PLACEHOLDER_PAT@51..52
+            WILDCARD_PAT@51..52
               UNDERSCORE@51..52 "_"
             WHITESPACE@52..53 " "
             FAT_ARROW@53..55 "=>"

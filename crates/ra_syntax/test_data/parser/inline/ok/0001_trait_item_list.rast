@@ -1,5 +1,5 @@
 SOURCE_FILE@0..83
-  IMPL_DEF@0..82
+  IMPL@0..82
     IMPL_KW@0..4 "impl"
     WHITESPACE@4..5 " "
     PATH_TYPE@5..6
@@ -8,10 +8,10 @@ SOURCE_FILE@0..83
           NAME_REF@5..6
             IDENT@5..6 "F"
     WHITESPACE@6..7 " "
-    ITEM_LIST@7..82
+    ASSOC_ITEM_LIST@7..82
       L_CURLY@7..8 "{"
       WHITESPACE@8..13 "\n    "
-      TYPE_ALIAS_DEF@13..27
+      TYPE_ALIAS@13..27
         TYPE_KW@13..17 "type"
         WHITESPACE@17..18 " "
         NAME@18..19
@@ -27,7 +27,7 @@ SOURCE_FILE@0..83
                     IDENT@21..26 "Clone"
         SEMICOLON@26..27 ";"
       WHITESPACE@27..32 "\n    "
-      CONST_DEF@32..45
+      CONST@32..45
         CONST_KW@32..37 "const"
         WHITESPACE@37..38 " "
         NAME@38..39
@@ -41,7 +41,7 @@ SOURCE_FILE@0..83
                 IDENT@41..44 "i32"
         SEMICOLON@44..45 ";"
       WHITESPACE@45..50 "\n    "
-      FN_DEF@50..61
+      FN@50..61
         FN_KW@50..52 "fn"
         WHITESPACE@52..53 " "
         NAME@53..56
@@ -54,7 +54,7 @@ SOURCE_FILE@0..83
           L_CURLY@59..60 "{"
           R_CURLY@60..61 "}"
       WHITESPACE@61..66 "\n    "
-      FN_DEF@66..80
+      FN@66..80
         FN_KW@66..68 "fn"
         WHITESPACE@68..69 " "
         NAME@69..72

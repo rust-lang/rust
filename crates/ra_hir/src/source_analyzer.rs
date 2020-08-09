@@ -159,7 +159,7 @@ impl SourceAnalyzer {
     pub(crate) fn resolve_record_field(
         &self,
         db: &dyn HirDatabase,
-        field: &ast::RecordField,
+        field: &ast::RecordExprField,
     ) -> Option<(Field, Option<Local>)> {
         let expr = field.expr()?;
         let expr_id = self.expr_id(db, &expr)?;
@@ -182,7 +182,7 @@ impl SourceAnalyzer {
     pub(crate) fn resolve_record_field_pat(
         &self,
         _db: &dyn HirDatabase,
-        field: &ast::RecordFieldPat,
+        field: &ast::RecordPatField,
     ) -> Option<Field> {
         let pat_id = self.pat_id(&field.pat()?)?;
         let struct_field = self.infer.as_ref()?.record_field_pat_resolution(pat_id)?;
@@ -202,7 +202,7 @@ impl SourceAnalyzer {
     pub(crate) fn resolve_bind_pat_to_const(
         &self,
         db: &dyn HirDatabase,
-        pat: &ast::BindPat,
+        pat: &ast::IdentPat,
     ) -> Option<ModuleDef> {
         let pat_id = self.pat_id(&pat.clone().into())?;
         let body = self.body.as_ref()?;
@@ -246,7 +246,7 @@ impl SourceAnalyzer {
             }
         }
 
-        if let Some(rec_lit) = path.syntax().parent().and_then(ast::RecordLit::cast) {
+        if let Some(rec_lit) = path.syntax().parent().and_then(ast::RecordExpr::cast) {
             let expr_id = self.expr_id(db, &rec_lit.into())?;
             if let Some(VariantId::EnumVariantId(variant)) =
                 self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
@@ -284,7 +284,7 @@ impl SourceAnalyzer {
     pub(crate) fn record_literal_missing_fields(
         &self,
         db: &dyn HirDatabase,
-        literal: &ast::RecordLit,
+        literal: &ast::RecordExpr,
     ) -> Option<Vec<(Field, Type)>> {
         let krate = self.resolver.krate()?;
         let body = self.body.as_ref()?;
@@ -358,7 +358,7 @@ impl SourceAnalyzer {
     pub(crate) fn resolve_variant(
         &self,
         db: &dyn HirDatabase,
-        record_lit: ast::RecordLit,
+        record_lit: ast::RecordExpr,
     ) -> Option<VariantId> {
         let infer = self.infer.as_ref()?;
         let expr_id = self.expr_id(db, &record_lit.into())?;
@@ -405,8 +405,7 @@ fn scope_for_offset(
             )
         })
         .map(|(expr_range, scope)| {
-            adjust(db, scopes, source_map, expr_range, offset.file_id, offset.value)
-                .unwrap_or(*scope)
+            adjust(db, scopes, source_map, expr_range, offset).unwrap_or(*scope)
         })
 }
 
@@ -417,8 +416,7 @@ fn adjust(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
     expr_range: TextRange,
-    file_id: HirFileId,
-    offset: TextSize,
+    offset: InFile<TextSize>,
 ) -> Option<ScopeId> {
     let child_scopes = scopes
         .scope_by_expr()
@@ -426,7 +424,7 @@ fn adjust(
         .filter_map(|(id, scope)| {
             let source = source_map.expr_syntax(*id).ok()?;
             // FIXME: correctly handle macro expansion
-            if source.file_id != file_id {
+            if source.file_id != offset.file_id {
                 return None;
             }
             let root = source.file_syntax(db.upcast());
@@ -434,7 +432,7 @@ fn adjust(
             Some((node.syntax().text_range(), scope))
         })
         .filter(|&(range, _)| {
-            range.start() <= offset && expr_range.contains_range(range) && range != expr_range
+            range.start() <= offset.value && expr_range.contains_range(range) && range != expr_range
         });
 
     child_scopes

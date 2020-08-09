@@ -5,13 +5,13 @@ use super::*;
 pub(super) fn struct_def(p: &mut Parser, m: Marker) {
     assert!(p.at(T![struct]));
     p.bump(T![struct]);
-    struct_or_union(p, m, T![struct], STRUCT_DEF);
+    struct_or_union(p, m, T![struct], STRUCT);
 }
 
 pub(super) fn union_def(p: &mut Parser, m: Marker) {
     assert!(p.at_contextual_kw("union"));
     p.bump_remap(T![union]);
-    struct_or_union(p, m, T![union], UNION_DEF);
+    struct_or_union(p, m, T![union], UNION);
 }
 
 fn struct_or_union(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
@@ -64,7 +64,7 @@ pub(super) fn enum_def(p: &mut Parser, m: Marker) {
     } else {
         p.error("expected `{`")
     }
-    m.complete(p, ENUM_DEF);
+    m.complete(p, ENUM);
 }
 
 pub(crate) fn enum_variant_list(p: &mut Parser) {
@@ -91,7 +91,7 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
             if p.eat(T![=]) {
                 expressions::expr(p);
             }
-            var.complete(p, ENUM_VARIANT);
+            var.complete(p, VARIANT);
         } else {
             var.abandon(p);
             p.err_and_bump("expected enum variant");
@@ -101,7 +101,7 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
         }
     }
     p.expect(T!['}']);
-    m.complete(p, ENUM_VARIANT_LIST);
+    m.complete(p, VARIANT_LIST);
 }
 
 pub(crate) fn record_field_def_list(p: &mut Parser) {
@@ -119,7 +119,7 @@ pub(crate) fn record_field_def_list(p: &mut Parser) {
         }
     }
     p.expect(T!['}']);
-    m.complete(p, RECORD_FIELD_DEF_LIST);
+    m.complete(p, RECORD_FIELD_LIST);
 
     fn record_field_def(p: &mut Parser) {
         let m = p.start();
@@ -134,7 +134,7 @@ pub(crate) fn record_field_def_list(p: &mut Parser) {
             name(p);
             p.expect(T![:]);
             types::type_(p);
-            m.complete(p, RECORD_FIELD_DEF);
+            m.complete(p, RECORD_FIELD);
         } else {
             m.abandon(p);
             p.err_and_bump("expected field declaration");
@@ -167,12 +167,12 @@ fn tuple_field_def_list(p: &mut Parser) {
             break;
         }
         types::type_(p);
-        m.complete(p, TUPLE_FIELD_DEF);
+        m.complete(p, TUPLE_FIELD);
 
         if !p.at(T![')']) {
             p.expect(T![,]);
         }
     }
     p.expect(T![')']);
-    m.complete(p, TUPLE_FIELD_DEF_LIST);
+    m.complete(p, TUPLE_FIELD_LIST);
 }

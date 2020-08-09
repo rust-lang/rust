@@ -29,9 +29,9 @@ impl ast::BinExpr {
     }
 }
 
-impl ast::FnDef {
+impl ast::Fn {
     #[must_use]
-    pub fn with_body(&self, body: ast::BlockExpr) -> ast::FnDef {
+    pub fn with_body(&self, body: ast::BlockExpr) -> ast::Fn {
         let mut to_insert: ArrayVec<[SyntaxElement; 2]> = ArrayVec::new();
         let old_body_or_semi: SyntaxElement = if let Some(old_body) = self.body() {
             old_body.syntax().clone().into()
@@ -80,9 +80,12 @@ where
     }
 }
 
-impl ast::ItemList {
+impl ast::AssocItemList {
     #[must_use]
-    pub fn append_items(&self, items: impl IntoIterator<Item = ast::AssocItem>) -> ast::ItemList {
+    pub fn append_items(
+        &self,
+        items: impl IntoIterator<Item = ast::AssocItem>,
+    ) -> ast::AssocItemList {
         let mut res = self.clone();
         if !self.syntax().text().contains_char('\n') {
             res = make_multiline(res);
@@ -92,7 +95,7 @@ impl ast::ItemList {
     }
 
     #[must_use]
-    pub fn append_item(&self, item: ast::AssocItem) -> ast::ItemList {
+    pub fn append_item(&self, item: ast::AssocItem) -> ast::AssocItemList {
         let (indent, position) = match self.assoc_items().last() {
             Some(it) => (
                 leading_indent(it.syntax()).unwrap_or_default().to_string(),
@@ -113,18 +116,18 @@ impl ast::ItemList {
     }
 }
 
-impl ast::RecordFieldList {
+impl ast::RecordExprFieldList {
     #[must_use]
-    pub fn append_field(&self, field: &ast::RecordField) -> ast::RecordFieldList {
+    pub fn append_field(&self, field: &ast::RecordExprField) -> ast::RecordExprFieldList {
         self.insert_field(InsertPosition::Last, field)
     }
 
     #[must_use]
     pub fn insert_field(
         &self,
-        position: InsertPosition<&'_ ast::RecordField>,
-        field: &ast::RecordField,
-    ) -> ast::RecordFieldList {
+        position: InsertPosition<&'_ ast::RecordExprField>,
+        field: &ast::RecordExprField,
+    ) -> ast::RecordExprFieldList {
         let is_multiline = self.syntax().text().contains_char('\n');
         let ws;
         let space = if is_multiline {
@@ -189,9 +192,9 @@ impl ast::RecordFieldList {
     }
 }
 
-impl ast::TypeAliasDef {
+impl ast::TypeAlias {
     #[must_use]
-    pub fn remove_bounds(&self) -> ast::TypeAliasDef {
+    pub fn remove_bounds(&self) -> ast::TypeAlias {
         let colon = match self.colon_token() {
             Some(it) => it,
             None => return self.clone(),
@@ -234,17 +237,17 @@ impl ast::Path {
 
 impl ast::PathSegment {
     #[must_use]
-    pub fn with_type_args(&self, type_args: ast::TypeArgList) -> ast::PathSegment {
+    pub fn with_type_args(&self, type_args: ast::GenericArgList) -> ast::PathSegment {
         self._with_type_args(type_args, false)
     }
 
     #[must_use]
-    pub fn with_turbo_fish(&self, type_args: ast::TypeArgList) -> ast::PathSegment {
+    pub fn with_turbo_fish(&self, type_args: ast::GenericArgList) -> ast::PathSegment {
         self._with_type_args(type_args, true)
     }
 
-    fn _with_type_args(&self, type_args: ast::TypeArgList, turbo: bool) -> ast::PathSegment {
-        if let Some(old) = self.type_arg_list() {
+    fn _with_type_args(&self, type_args: ast::GenericArgList, turbo: bool) -> ast::PathSegment {
+        if let Some(old) = self.generic_arg_list() {
             return self.replace_children(
                 single_node(old.syntax().clone()),
                 iter::once(type_args.syntax().clone().into()),
@@ -259,9 +262,9 @@ impl ast::PathSegment {
     }
 }
 
-impl ast::UseItem {
+impl ast::Use {
     #[must_use]
-    pub fn with_use_tree(&self, use_tree: ast::UseTree) -> ast::UseItem {
+    pub fn with_use_tree(&self, use_tree: ast::UseTree) -> ast::Use {
         if let Some(old) = self.use_tree() {
             return self.replace_descendant(old, use_tree);
         }
@@ -314,8 +317,12 @@ impl ast::UseTree {
             Some(it) => it,
             None => return self.clone(),
         };
-        let use_tree =
-            make::use_tree(suffix, self.use_tree_list(), self.alias(), self.star_token().is_some());
+        let use_tree = make::use_tree(
+            suffix,
+            self.use_tree_list(),
+            self.rename(),
+            self.star_token().is_some(),
+        );
         let nested = make::use_tree_list(iter::once(use_tree));
         return make::use_tree(prefix.clone(), Some(nested), None, false);
 
@@ -383,7 +390,7 @@ impl ast::MatchArmList {
     #[must_use]
     pub fn remove_placeholder(&self) -> ast::MatchArmList {
         let placeholder =
-            self.arms().find(|arm| matches!(arm.pat(), Some(ast::Pat::PlaceholderPat(_))));
+            self.arms().find(|arm| matches!(arm.pat(), Some(ast::Pat::WildcardPat(_))));
         if let Some(placeholder) = placeholder {
             self.remove_arm(&placeholder)
         } else {
@@ -614,7 +621,7 @@ fn single_node(element: impl Into<SyntaxElement>) -> RangeInclusive<SyntaxElemen
 #[test]
 fn test_increase_indent() {
     let arm_list = {
-        let arm = make::match_arm(iter::once(make::placeholder_pat().into()), make::expr_unit());
+        let arm = make::match_arm(iter::once(make::wildcard_pat().into()), make::expr_unit());
         make::match_arm_list(vec![arm.clone(), arm])
     };
     assert_eq!(

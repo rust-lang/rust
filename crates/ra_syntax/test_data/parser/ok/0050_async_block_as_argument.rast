@@ -1,5 +1,5 @@
 SOURCE_FILE@0..95
-  FN_DEF@0..52
+  FN@0..52
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -7,7 +7,7 @@ SOURCE_FILE@0..95
     PARAM_LIST@6..49
       L_PAREN@6..7 "("
       PARAM@7..48
-        BIND_PAT@7..8
+        IDENT_PAT@7..8
           NAME@7..8
             IDENT@7..8 "x"
         COLON@8..9 ":"
@@ -32,7 +32,7 @@ SOURCE_FILE@0..95
                   PATH_SEGMENT@28..48
                     NAME_REF@28..34
                       IDENT@28..34 "Future"
-                    TYPE_ARG_LIST@34..48
+                    GENERIC_ARG_LIST@34..48
                       L_ANGLE@34..35 "<"
                       ASSOC_TYPE_ARG@35..47
                         NAME_REF@35..41
@@ -52,7 +52,7 @@ SOURCE_FILE@0..95
       L_CURLY@50..51 "{"
       R_CURLY@51..52 "}"
   WHITESPACE@52..54 "\n\n"
-  FN_DEF@54..94
+  FN@54..94
     FN_KW@54..56 "fn"
     WHITESPACE@56..57 " "
     NAME@57..61

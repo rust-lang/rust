@@ -140,6 +140,7 @@ mod handlers {
     mod change_return_type_to_result;
     mod change_visibility;
     mod early_return;
+    mod expand_glob_import;
     mod extract_struct_from_enum_variant;
     mod extract_variable;
     mod fill_match_arms;
@@ -181,6 +182,7 @@ mod handlers {
             change_return_type_to_result::change_return_type_to_result,
             change_visibility::change_visibility,
             early_return::convert_to_guarded_return,
+            expand_glob_import::expand_glob_import,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,
             extract_variable::extract_variable,
             fill_match_arms::fill_match_arms,

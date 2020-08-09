@@ -1,5 +1,5 @@
 SOURCE_FILE@0..83
-  FN_DEF@0..82
+  FN@0..82
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -49,11 +49,11 @@ SOURCE_FILE@0..83
               IDENT@48..51 "map"
             ARG_LIST@51..57
               L_PAREN@51..52 "("
-              LAMBDA_EXPR@52..56
+              CLOSURE_EXPR@52..56
                 PARAM_LIST@52..56
                   PIPE@52..53 "|"
                   PARAM@53..55
-                    BIND_PAT@53..55
+                    IDENT_PAT@53..55
                       NAME@53..55
                         IDENT@53..55 "it"
                   PIPE@55..56 "|"
@@ -62,7 +62,7 @@ SOURCE_FILE@0..83
           DOT@66..67 "."
           NAME_REF@67..70
             IDENT@67..70 "max"
-          TYPE_ARG_LIST@70..77
+          GENERIC_ARG_LIST@70..77
             COLON2@70..72 "::"
             L_ANGLE@72..73 "<"
             TYPE_ARG@73..76

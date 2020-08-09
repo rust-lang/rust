@@ -1,7 +1,7 @@
 SOURCE_FILE@0..29
-  IMPL_DEF@0..28
+  IMPL@0..28
     IMPL_KW@0..4 "impl"
-    TYPE_PARAM_LIST@4..18
+    GENERIC_PARAM_LIST@4..18
       L_ANGLE@4..5 "<"
       CONST_PARAM@5..17
         CONST_KW@5..10 "const"
@@ -22,7 +22,7 @@ SOURCE_FILE@0..29
         PATH_SEGMENT@19..25
           NAME_REF@19..22
             IDENT@19..22 "Bar"
-          TYPE_ARG_LIST@22..25
+          GENERIC_ARG_LIST@22..25
             L_ANGLE@22..23 "<"
             TYPE_ARG@23..24
               PATH_TYPE@23..24
@@ -32,7 +32,7 @@ SOURCE_FILE@0..29
                       IDENT@23..24 "N"
             R_ANGLE@24..25 ">"
     WHITESPACE@25..26 " "
-    ITEM_LIST@26..28
+    ASSOC_ITEM_LIST@26..28
       L_CURLY@26..27 "{"
       R_CURLY@27..28 "}"
   WHITESPACE@28..29 "\n"

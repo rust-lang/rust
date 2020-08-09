@@ -1,5 +1,5 @@
 SOURCE_FILE@0..37
-  USE_ITEM@0..36
+  USE@0..36
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
     USE_TREE@4..36

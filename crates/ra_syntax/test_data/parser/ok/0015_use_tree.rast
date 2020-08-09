@@ -1,5 +1,5 @@
 SOURCE_FILE@0..55
-  USE_ITEM@0..15
+  USE@0..15
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
     USE_TREE@4..14
@@ -8,14 +8,14 @@ SOURCE_FILE@0..55
           NAME_REF@4..7
             IDENT@4..7 "foo"
       WHITESPACE@7..8 " "
-      ALIAS@8..14
+      RENAME@8..14
         AS_KW@8..10 "as"
         WHITESPACE@10..11 " "
         NAME@11..14
           IDENT@11..14 "bar"
     SEMICOLON@14..15 ";"
   WHITESPACE@15..16 "\n"
-  USE_ITEM@16..54
+  USE@16..54
     USE_KW@16..19 "use"
     WHITESPACE@19..20 " "
     USE_TREE@20..53
@@ -32,7 +32,7 @@ SOURCE_FILE@0..55
               NAME_REF@26..27
                 IDENT@26..27 "a"
           WHITESPACE@27..28 " "
-          ALIAS@28..32
+          RENAME@28..32
             AS_KW@28..30 "as"
             WHITESPACE@30..31 " "
             NAME@31..32
@@ -55,7 +55,7 @@ SOURCE_FILE@0..55
               NAME_REF@44..47
                 IDENT@44..47 "foo"
           WHITESPACE@47..48 " "
-          ALIAS@48..52
+          RENAME@48..52
             AS_KW@48..50 "as"
             WHITESPACE@50..51 " "
             NAME@51..52

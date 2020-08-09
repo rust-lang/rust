@@ -82,7 +82,7 @@ struct FunctionTemplate {
     insert_offset: TextSize,
     placeholder_expr: ast::MacroCall,
     leading_ws: String,
-    fn_def: ast::FnDef,
+    fn_def: ast::Fn,
     trailing_ws: String,
     file: FileId,
 }
@@ -104,7 +104,7 @@ impl FunctionTemplate {
 struct FunctionBuilder {
     target: GeneratedFunctionTarget,
     fn_name: ast::Name,
-    type_params: Option<ast::TypeParamList>,
+    type_params: Option<ast::GenericParamList>,
     params: ast::ParamList,
     file: FileId,
     needs_pub: bool,
@@ -142,7 +142,7 @@ impl FunctionBuilder {
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
         let visibility = if self.needs_pub { Some(make::visibility_pub_crate()) } else { None };
         let mut fn_def =
-            make::fn_def(visibility, self.fn_name, self.type_params, self.params, fn_body);
+            make::fn_(visibility, self.fn_name, self.type_params, self.params, fn_body);
         let leading_ws;
         let trailing_ws;
 
@@ -200,7 +200,7 @@ fn fn_args(
     ctx: &AssistContext,
     target_module: hir::Module,
     call: &ast::CallExpr,
-) -> Option<(Option<ast::TypeParamList>, ast::ParamList)> {
+) -> Option<(Option<ast::GenericParamList>, ast::ParamList)> {
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
     for arg in call.arg_list()?.args() {

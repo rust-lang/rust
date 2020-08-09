@@ -56,33 +56,34 @@ pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor
 
 pub fn get_missing_assoc_items(
     sema: &Semantics<RootDatabase>,
-    impl_def: &ast::ImplDef,
+    impl_def: &ast::Impl,
 ) -> Vec<hir::AssocItem> {
     // Names must be unique between constants and functions. However, type aliases
     // may share the same name as a function or constant.
     let mut impl_fns_consts = FxHashSet::default();
     let mut impl_type = FxHashSet::default();
 
-    if let Some(item_list) = impl_def.item_list() {
+    if let Some(item_list) = impl_def.assoc_item_list() {
         for item in item_list.assoc_items() {
             match item {
-                ast::AssocItem::FnDef(f) => {
+                ast::AssocItem::Fn(f) => {
                     if let Some(n) = f.name() {
                         impl_fns_consts.insert(n.syntax().to_string());
                     }
                 }
 
-                ast::AssocItem::TypeAliasDef(t) => {
+                ast::AssocItem::TypeAlias(t) => {
                     if let Some(n) = t.name() {
                         impl_type.insert(n.syntax().to_string());
                     }
                 }
 
-                ast::AssocItem::ConstDef(c) => {
+                ast::AssocItem::Const(c) => {
                     if let Some(n) = c.name() {
                         impl_fns_consts.insert(n.syntax().to_string());
                     }
                 }
+                ast::AssocItem::MacroCall(_) => (),
             }
         }
     }
@@ -108,13 +109,10 @@ pub fn get_missing_assoc_items(
 
 pub(crate) fn resolve_target_trait(
     sema: &Semantics<RootDatabase>,
-    impl_def: &ast::ImplDef,
+    impl_def: &ast::Impl,
 ) -> Option<hir::Trait> {
-    let ast_path = impl_def
-        .target_trait()
-        .map(|it| it.syntax().clone())
-        .and_then(ast::PathType::cast)?
-        .path()?;
+    let ast_path =
+        impl_def.trait_().map(|it| it.syntax().clone()).and_then(ast::PathType::cast)?.path()?;
 
     match sema.resolve_path(&ast_path) {
         Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def),
@@ -183,10 +181,10 @@ impl TryEnum {
         match self {
             TryEnum::Result => make::tuple_struct_pat(
                 make::path_unqualified(make::path_segment(make::name_ref("Err"))),
-                iter::once(make::placeholder_pat().into()),
+                iter::once(make::wildcard_pat().into()),
             )
             .into(),
-            TryEnum::Option => make::bind_pat(make::name("None")).into(),
+            TryEnum::Option => make::ident_pat(make::name("None")).into(),
         }
     }
 

@@ -17,7 +17,7 @@ use crate::{
 
 pub use self::{
     expr_ext::{ArrayExprKind, BinOp, Effect, ElseBranch, LiteralKind, PrefixOp, RangeOp},
-    generated::{nodes::*, tokens::*},
+    generated::*,
     node_ext::{
         AttrKind, FieldKind, NameOrNameRef, PathSegmentKind, SelfParamKind, SlicePatComponents,
         StructKind, TypeBoundKind, VisibilityKind,
@@ -139,7 +139,7 @@ fn test_doc_comment_of_statics() {
     )
     .ok()
     .unwrap();
-    let st = file.syntax().descendants().find_map(StaticDef::cast).unwrap();
+    let st = file.syntax().descendants().find_map(Static::cast).unwrap();
     assert_eq!("Number of levels", st.doc_comment_text().unwrap());
 }
 
@@ -235,7 +235,7 @@ fn test_comments_preserve_trailing_whitespace() {
     )
     .ok()
     .unwrap();
-    let def = file.syntax().descendants().find_map(StructDef::cast).unwrap();
+    let def = file.syntax().descendants().find_map(Struct::cast).unwrap();
     assert_eq!(
         "Representation of a Realm.   \nIn the specification these are called Realm Records.",
         def.doc_comment_text().unwrap()
@@ -286,8 +286,8 @@ where
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
     assert!(pred.for_token().is_none());
-    assert!(pred.type_param_list().is_none());
-    assert_eq!("T", pred.type_ref().unwrap().syntax().text().to_string());
+    assert!(pred.generic_param_list().is_none());
+    assert_eq!("T", pred.ty().unwrap().syntax().text().to_string());
     assert_bound("Clone", bounds.next());
     assert_bound("Copy", bounds.next());
     assert_bound("Debug", bounds.next());
@@ -304,20 +304,20 @@ where
     let pred = predicates.next().unwrap();
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
-    assert_eq!("Iterator::Item", pred.type_ref().unwrap().syntax().text().to_string());
+    assert_eq!("Iterator::Item", pred.ty().unwrap().syntax().text().to_string());
     assert_bound("'a", bounds.next());
 
     let pred = predicates.next().unwrap();
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
-    assert_eq!("Iterator::Item", pred.type_ref().unwrap().syntax().text().to_string());
+    assert_eq!("Iterator::Item", pred.ty().unwrap().syntax().text().to_string());
     assert_bound("Debug", bounds.next());
     assert_bound("'a", bounds.next());
 
     let pred = predicates.next().unwrap();
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
-    assert_eq!("<T as Iterator>::Item", pred.type_ref().unwrap().syntax().text().to_string());
+    assert_eq!("<T as Iterator>::Item", pred.ty().unwrap().syntax().text().to_string());
     assert_bound("Debug", bounds.next());
     assert_bound("'a", bounds.next());
 
@@ -325,7 +325,7 @@ where
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
     assert!(pred.for_token().is_some());
-    assert_eq!("<'a>", pred.type_param_list().unwrap().syntax().text().to_string());
-    assert_eq!("F", pred.type_ref().unwrap().syntax().text().to_string());
+    assert_eq!("<'a>", pred.generic_param_list().unwrap().syntax().text().to_string());
+    assert_eq!("F", pred.ty().unwrap().syntax().text().to_string());
     assert_bound("Fn(&'a str)", bounds.next());
 }

@@ -187,14 +187,14 @@ impl ast::Expr {
     }
 }
 
-impl ast::ModuleItem {
+impl ast::Item {
     /// Returns `text`, parsed as an item, but only if it has no errors.
     pub fn parse(text: &str) -> Result<Self, ()> {
         parsing::parse_text_fragment(text, ra_parser::FragmentKind::Item)
     }
 }
 
-impl ast::TypeRef {
+impl ast::Type {
     /// Returns `text`, parsed as an type reference, but only if it has no errors.
     pub fn parse(text: &str) -> Result<Self, ()> {
         parsing::parse_text_fragment(text, ra_parser::FragmentKind::Type)
@@ -255,11 +255,11 @@ fn api_walkthrough() {
     let mut func = None;
     for item in file.items() {
         match item {
-            ast::ModuleItem::FnDef(f) => func = Some(f),
+            ast::Item::Fn(f) => func = Some(f),
             _ => unreachable!(),
         }
     }
-    let func: ast::FnDef = func.unwrap();
+    let func: ast::Fn = func.unwrap();
 
     // Each AST node has a bunch of getters for children. All getters return
     // `Option`s though, to account for incomplete code. Some getters are common
@@ -316,7 +316,7 @@ fn api_walkthrough() {
     );
 
     // As well as some iterator helpers:
-    let f = expr_syntax.ancestors().find_map(ast::FnDef::cast);
+    let f = expr_syntax.ancestors().find_map(ast::Fn::cast);
     assert_eq!(f, Some(func));
     assert!(expr_syntax.siblings_with_tokens(Direction::Next).any(|it| it.kind() == T!['}']));
     assert_eq!(

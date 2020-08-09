@@ -1,5 +1,5 @@
 SOURCE_FILE@0..71
-  FN_DEF@0..19
+  FN@0..19
     VISIBILITY@0..5
       CRATE_KW@0..5 "crate"
     WHITESPACE@5..6 " "
@@ -16,16 +16,16 @@ SOURCE_FILE@0..71
       WHITESPACE@17..18 " "
       R_CURLY@18..19 "}"
   WHITESPACE@19..20 "\n"
-  STRUCT_DEF@20..49
+  STRUCT@20..49
     STRUCT_KW@20..26 "struct"
     WHITESPACE@26..27 " "
     NAME@27..28
       IDENT@27..28 "S"
     WHITESPACE@28..29 " "
-    RECORD_FIELD_DEF_LIST@29..49
+    RECORD_FIELD_LIST@29..49
       L_CURLY@29..30 "{"
       WHITESPACE@30..31 " "
-      RECORD_FIELD_DEF@31..47
+      RECORD_FIELD@31..47
         VISIBILITY@31..36
           CRATE_KW@31..36 "crate"
         WHITESPACE@36..37 " "
@@ -41,14 +41,14 @@ SOURCE_FILE@0..71
       WHITESPACE@47..48 " "
       R_CURLY@48..49 "}"
   WHITESPACE@49..50 "\n"
-  STRUCT_DEF@50..70
+  STRUCT@50..70
     STRUCT_KW@50..56 "struct"
     WHITESPACE@56..57 " "
     NAME@57..58
       IDENT@57..58 "T"
-    TUPLE_FIELD_DEF_LIST@58..69
+    TUPLE_FIELD_LIST@58..69
       L_PAREN@58..59 "("
-      TUPLE_FIELD_DEF@59..68
+      TUPLE_FIELD@59..68
         VISIBILITY@59..64
           CRATE_KW@59..64 "crate"
         WHITESPACE@64..65 " "

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..29
-  TYPE_ALIAS_DEF@0..28
+  TYPE_ALIAS@0..28
     TYPE_KW@0..4 "type"
     WHITESPACE@4..5 " "
     NAME@5..6
@@ -12,7 +12,7 @@ SOURCE_FILE@0..29
         PATH_SEGMENT@9..27
           NAME_REF@9..12
             IDENT@9..12 "Box"
-          TYPE_ARG_LIST@12..27
+          GENERIC_ARG_LIST@12..27
             L_ANGLE@12..13 "<"
             TYPE_ARG@13..26
               PATH_TYPE@13..26

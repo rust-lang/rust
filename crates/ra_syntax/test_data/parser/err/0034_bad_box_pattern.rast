@@ -1,5 +1,5 @@
 SOURCE_FILE@0..91
-  FN_DEF@0..89
+  FN@0..89
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..7
@@ -14,7 +14,7 @@ SOURCE_FILE@0..91
       LET_STMT@16..27
         LET_KW@16..19 "let"
         WHITESPACE@19..20 " "
-        BIND_PAT@20..27
+        IDENT_PAT@20..27
           REF_KW@20..23 "ref"
           WHITESPACE@23..24 " "
           ERROR@24..27
@@ -38,7 +38,7 @@ SOURCE_FILE@0..91
       LET_STMT@40..51
         LET_KW@40..43 "let"
         WHITESPACE@43..44 " "
-        BIND_PAT@44..51
+        IDENT_PAT@44..51
           MUT_KW@44..47 "mut"
           WHITESPACE@47..48 " "
           ERROR@48..51
@@ -62,7 +62,7 @@ SOURCE_FILE@0..91
       LET_STMT@64..79
         LET_KW@64..67 "let"
         WHITESPACE@67..68 " "
-        BIND_PAT@68..79
+        IDENT_PAT@68..79
           REF_KW@68..71 "ref"
           WHITESPACE@71..72 " "
           MUT_KW@72..75 "mut"

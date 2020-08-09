@@ -1,5 +1,5 @@
 SOURCE_FILE@0..28
-  FN_DEF@0..27
+  FN@0..27
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..4
@@ -16,7 +16,7 @@ SOURCE_FILE@0..28
         R_BRACK@12..13 "]"
       WHITESPACE@13..14 " "
       PARAM@14..23
-        BIND_PAT@14..17
+        IDENT_PAT@14..17
           NAME@14..17
             IDENT@14..17 "pat"
         COLON@17..18 ":"

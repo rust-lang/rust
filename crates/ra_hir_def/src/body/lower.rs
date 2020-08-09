@@ -1,6 +1,8 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
+use std::{any::type_name, sync::Arc};
+
 use either::Either;
 use hir_expand::{
     hygiene::Hygiene,
@@ -10,11 +12,12 @@ use hir_expand::{
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
-        self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, ModuleItemOwner, NameOwner,
-        SlicePatComponents, TypeAscriptionOwner,
+        self, ArgListOwner, ArrayExprKind, AstChildren, LiteralKind, LoopBodyOwner, NameOwner,
+        SlicePatComponents,
     },
     AstNode, AstPtr,
 };
+use rustc_hash::FxHashMap;
 use test_utils::mark;
 
 use crate::{
@@ -35,9 +38,6 @@ use crate::{
 };
 
 use super::{ExprSource, PatSource};
-use ast::AstChildren;
-use rustc_hash::FxHashMap;
-use std::{any::type_name, sync::Arc};
 
 pub(crate) struct LowerCtx {
     hygiene: Hygiene,
@@ -224,9 +224,22 @@ impl ExprCollector<'_> {
                     self.alloc_expr(Expr::Unsafe { body }, syntax_ptr)
                 }
                 // FIXME: we need to record these effects somewhere...
-                ast::Effect::Async(_) | ast::Effect::Label(_) => {
-                    self.collect_block_opt(e.block_expr())
-                }
+                ast::Effect::Label(label) => match e.block_expr() {
+                    Some(block) => {
+                        let res = self.collect_block(block);
+                        match &mut self.body.exprs[res] {
+                            Expr::Block { label: block_label, .. } => {
+                                *block_label =
+                                    label.lifetime_token().map(|t| Name::new_lifetime(&t))
+                            }
+                            _ => unreachable!(),
+                        }
+                        res
+                    }
+                    None => self.missing_expr(),
+                },
+                // FIXME: we need to record these effects somewhere...
+                ast::Effect::Async(_) => self.collect_block_opt(e.block_expr()),
             },
             ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {
@@ -324,7 +337,7 @@ impl ExprCollector<'_> {
                 };
                 let method_name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let generic_args =
-                    e.type_arg_list().and_then(|it| GenericArgs::from_ast(&self.ctx(), it));
+                    e.generic_arg_list().and_then(|it| GenericArgs::from_ast(&self.ctx(), it));
                 self.alloc_expr(
                     Expr::MethodCall { receiver, method_name, args, generic_args },
                     syntax_ptr,
@@ -379,10 +392,10 @@ impl ExprCollector<'_> {
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
-            ast::Expr::RecordLit(e) => {
+            ast::Expr::RecordExpr(e) => {
                 let path = e.path().and_then(|path| self.expander.parse_path(path));
                 let mut field_ptrs = Vec::new();
-                let record_lit = if let Some(nfl) = e.record_field_list() {
+                let record_lit = if let Some(nfl) = e.record_expr_field_list() {
                     let fields = nfl
                         .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
@@ -432,7 +445,7 @@ impl ExprCollector<'_> {
             }
             ast::Expr::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let type_ref = TypeRef::from_ast_opt(&self.ctx(), e.type_ref());
+                let type_ref = TypeRef::from_ast_opt(&self.ctx(), e.ty());
                 self.alloc_expr(Expr::Cast { expr, type_ref }, syntax_ptr)
             }
             ast::Expr::RefExpr(e) => {
@@ -460,22 +473,19 @@ impl ExprCollector<'_> {
                     self.alloc_expr(Expr::Missing, syntax_ptr)
                 }
             }
-            ast::Expr::LambdaExpr(e) => {
+            ast::Expr::ClosureExpr(e) => {
                 let mut args = Vec::new();
                 let mut arg_types = Vec::new();
                 if let Some(pl) = e.param_list() {
                     for param in pl.params() {
                         let pat = self.collect_pat_opt(param.pat());
-                        let type_ref =
-                            param.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                        let type_ref = param.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
                         args.push(pat);
                         arg_types.push(type_ref);
                     }
                 }
-                let ret_type = e
-                    .ret_type()
-                    .and_then(|r| r.type_ref())
-                    .map(|it| TypeRef::from_ast(&self.ctx(), it));
+                let ret_type =
+                    e.ret_type().and_then(|r| r.ty()).map(|it| TypeRef::from_ast(&self.ctx(), it));
                 let body = self.collect_expr_opt(e.body());
                 self.alloc_expr(Expr::Lambda { args, arg_types, ret_type, body }, syntax_ptr)
             }
@@ -486,7 +496,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr)
             }
             ast::Expr::TupleExpr(e) => {
-                let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
+                let exprs = e.fields().map(|expr| self.collect_expr(expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
             }
             ast::Expr::BoxExpr(e) => {
@@ -559,9 +569,6 @@ impl ExprCollector<'_> {
                     }
                 }
             }
-
-            // FIXME implement HIR for these:
-            ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
     }
 
@@ -604,76 +611,84 @@ impl ExprCollector<'_> {
         self.collect_block_items(&block);
         let statements = block
             .statements()
-            .map(|s| match s {
-                ast::Stmt::LetStmt(stmt) => {
-                    let pat = self.collect_pat_opt(stmt.pat());
-                    let type_ref =
-                        stmt.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx(), it));
-                    let initializer = stmt.initializer().map(|e| self.collect_expr(e));
-                    Statement::Let { pat, type_ref, initializer }
-                }
-                ast::Stmt::ExprStmt(stmt) => Statement::Expr(self.collect_expr_opt(stmt.expr())),
+            .filter_map(|s| {
+                let stmt = match s {
+                    ast::Stmt::LetStmt(stmt) => {
+                        let pat = self.collect_pat_opt(stmt.pat());
+                        let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                        let initializer = stmt.initializer().map(|e| self.collect_expr(e));
+                        Statement::Let { pat, type_ref, initializer }
+                    }
+                    ast::Stmt::ExprStmt(stmt) => {
+                        Statement::Expr(self.collect_expr_opt(stmt.expr()))
+                    }
+                    ast::Stmt::Item(_) => return None,
+                };
+                Some(stmt)
             })
             .collect();
         let tail = block.expr().map(|e| self.collect_expr(e));
-        let label = block.label().and_then(|l| l.lifetime_token()).map(|t| Name::new_lifetime(&t));
-        self.alloc_expr(Expr::Block { statements, tail, label }, syntax_node_ptr)
+        self.alloc_expr(Expr::Block { statements, tail, label: None }, syntax_node_ptr)
     }
 
     fn collect_block_items(&mut self, block: &ast::BlockExpr) {
         let container = ContainerId::DefWithBodyId(self.def);
 
         let items = block
-            .items()
+            .statements()
+            .filter_map(|stmt| match stmt {
+                ast::Stmt::Item(it) => Some(it),
+                ast::Stmt::LetStmt(_) | ast::Stmt::ExprStmt(_) => None,
+            })
             .filter_map(|item| {
                 let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
-                    ast::ModuleItem::FnDef(def) => {
+                    ast::Item::Fn(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             FunctionLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
-                    ast::ModuleItem::TypeAliasDef(def) => {
+                    ast::Item::TypeAlias(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             TypeAliasLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
-                    ast::ModuleItem::ConstDef(def) => {
+                    ast::Item::Const(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             ConstLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
-                    ast::ModuleItem::StaticDef(def) => {
+                    ast::Item::Static(def) => {
                         let id = self.find_inner_item(&def)?;
                         (StaticLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::StructDef(def) => {
+                    ast::Item::Struct(def) => {
                         let id = self.find_inner_item(&def)?;
                         (StructLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::EnumDef(def) => {
+                    ast::Item::Enum(def) => {
                         let id = self.find_inner_item(&def)?;
                         (EnumLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::UnionDef(def) => {
+                    ast::Item::Union(def) => {
                         let id = self.find_inner_item(&def)?;
                         (UnionLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::TraitDef(def) => {
+                    ast::Item::Trait(def) => {
                         let id = self.find_inner_item(&def)?;
                         (TraitLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::ExternBlock(_) => return None, // FIXME: collect from extern blocks
-                    ast::ModuleItem::ImplDef(_)
-                    | ast::ModuleItem::UseItem(_)
-                    | ast::ModuleItem::ExternCrateItem(_)
-                    | ast::ModuleItem::Module(_)
-                    | ast::ModuleItem::MacroCall(_) => return None,
+                    ast::Item::ExternBlock(_) => return None, // FIXME: collect from extern blocks
+                    ast::Item::Impl(_)
+                    | ast::Item::Use(_)
+                    | ast::Item::ExternCrate(_)
+                    | ast::Item::Module(_)
+                    | ast::Item::MacroCall(_) => return None,
                 };
 
                 Some((def, name))
@@ -708,7 +723,7 @@ impl ExprCollector<'_> {
 
     fn collect_pat(&mut self, pat: ast::Pat) -> PatId {
         let pattern = match &pat {
-            ast::Pat::BindPat(bp) => {
+            ast::Pat::IdentPat(bp) => {
                 let name = bp.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let annotation =
                     BindingAnnotation::new(bp.mut_token().is_some(), bp.ref_token().is_some());
@@ -747,7 +762,7 @@ impl ExprCollector<'_> {
             }
             ast::Pat::TupleStructPat(p) => {
                 let path = p.path().and_then(|path| self.expander.parse_path(path));
-                let (args, ellipsis) = self.collect_tuple_pat(p.args());
+                let (args, ellipsis) = self.collect_tuple_pat(p.fields());
                 Pat::TupleStruct { path, args, ellipsis }
             }
             ast::Pat::RefPat(p) => {
@@ -765,40 +780,36 @@ impl ExprCollector<'_> {
             }
             ast::Pat::ParenPat(p) => return self.collect_pat_opt(p.pat()),
             ast::Pat::TuplePat(p) => {
-                let (args, ellipsis) = self.collect_tuple_pat(p.args());
+                let (args, ellipsis) = self.collect_tuple_pat(p.fields());
                 Pat::Tuple { args, ellipsis }
             }
-            ast::Pat::PlaceholderPat(_) => Pat::Wild,
+            ast::Pat::WildcardPat(_) => Pat::Wild,
             ast::Pat::RecordPat(p) => {
                 let path = p.path().and_then(|path| self.expander.parse_path(path));
-                let record_field_pat_list =
-                    p.record_field_pat_list().expect("every struct should have a field list");
-                let mut fields: Vec<_> = record_field_pat_list
-                    .bind_pats()
-                    .filter_map(|bind_pat| {
-                        let ast_pat =
-                            ast::Pat::cast(bind_pat.syntax().clone()).expect("bind pat is a pat");
+                let args: Vec<_> = p
+                    .record_pat_field_list()
+                    .expect("every struct should have a field list")
+                    .fields()
+                    .filter_map(|f| {
+                        let ast_pat = f.pat()?;
                         let pat = self.collect_pat(ast_pat);
-                        let name = bind_pat.name()?.as_name();
+                        let name = f.field_name()?.as_name();
                         Some(RecordFieldPat { name, pat })
                     })
                     .collect();
-                let iter = record_field_pat_list.record_field_pats().filter_map(|f| {
-                    let ast_pat = f.pat()?;
-                    let pat = self.collect_pat(ast_pat);
-                    let name = f.field_name()?.as_name();
-                    Some(RecordFieldPat { name, pat })
-                });
-                fields.extend(iter);
 
-                let ellipsis = record_field_pat_list.dotdot_token().is_some();
+                let ellipsis = p
+                    .record_pat_field_list()
+                    .expect("every struct should have a field list")
+                    .dotdot_token()
+                    .is_some();
 
-                Pat::Record { path, args: fields, ellipsis }
+                Pat::Record { path, args, ellipsis }
             }
             ast::Pat::SlicePat(p) => {
                 let SlicePatComponents { prefix, slice, suffix } = p.components();
 
-                // FIXME properly handle `DotDotPat`
+                // FIXME properly handle `RestPat`
                 Pat::Slice {
                     prefix: prefix.into_iter().map(|p| self.collect_pat(p)).collect(),
                     slice: slice.map(|p| self.collect_pat(p)),
@@ -815,10 +826,10 @@ impl ExprCollector<'_> {
                     Pat::Missing
                 }
             }
-            ast::Pat::DotDotPat(_) => {
-                // `DotDotPat` requires special handling and should not be mapped
+            ast::Pat::RestPat(_) => {
+                // `RestPat` requires special handling and should not be mapped
                 // to a Pat. Here we are using `Pat::Missing` as a fallback for
-                // when `DotDotPat` is mapped to `Pat`, which can easily happen
+                // when `RestPat` is mapped to `Pat`, which can easily happen
                 // when the source code being analyzed has a malformed pattern
                 // which includes `..` in a place where it isn't valid.
 
@@ -842,10 +853,10 @@ impl ExprCollector<'_> {
     fn collect_tuple_pat(&mut self, args: AstChildren<ast::Pat>) -> (Vec<PatId>, Option<usize>) {
         // Find the location of the `..`, if there is one. Note that we do not
         // consider the possiblity of there being multiple `..` here.
-        let ellipsis = args.clone().position(|p| matches!(p, ast::Pat::DotDotPat(_)));
+        let ellipsis = args.clone().position(|p| matches!(p, ast::Pat::RestPat(_)));
         // We want to skip the `..` pattern here, since we account for it above.
         let args = args
-            .filter(|p| !matches!(p, ast::Pat::DotDotPat(_)))
+            .filter(|p| !matches!(p, ast::Pat::RestPat(_)))
             .map(|p| self.collect_pat(p))
             .collect();
 

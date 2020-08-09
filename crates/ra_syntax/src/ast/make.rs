@@ -17,7 +17,7 @@ pub fn name_ref(text: &str) -> ast::NameRef {
     ast_from_text(&format!("fn f() {{ {}; }}", text))
 }
 
-pub fn type_ref(text: &str) -> ast::TypeRef {
+pub fn ty(text: &str) -> ast::Type {
     ast_from_text(&format!("impl {} for D {{}};", text))
 }
 
@@ -30,14 +30,14 @@ pub fn path_unqualified(segment: ast::PathSegment) -> ast::Path {
 pub fn path_qualified(qual: ast::Path, segment: ast::PathSegment) -> ast::Path {
     path_from_text(&format!("{}::{}", qual, segment))
 }
-fn path_from_text(text: &str) -> ast::Path {
+pub fn path_from_text(text: &str) -> ast::Path {
     ast_from_text(text)
 }
 
 pub fn use_tree(
     path: ast::Path,
     use_tree_list: Option<ast::UseTreeList>,
-    alias: Option<ast::Alias>,
+    alias: Option<ast::Rename>,
     add_star: bool,
 ) -> ast::UseTree {
     let mut buf = "use ".to_string();
@@ -60,22 +60,22 @@ pub fn use_tree_list(use_trees: impl IntoIterator<Item = ast::UseTree>) -> ast::
     ast_from_text(&format!("use {{{}}};", use_trees))
 }
 
-pub fn use_item(use_tree: ast::UseTree) -> ast::UseItem {
+pub fn use_(use_tree: ast::UseTree) -> ast::Use {
     ast_from_text(&format!("use {};", use_tree))
 }
 
-pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
+pub fn record_expr_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordExprField {
     return match expr {
         Some(expr) => from_text(&format!("{}: {}", name, expr)),
         None => from_text(&name.to_string()),
     };
 
-    fn from_text(text: &str) -> ast::RecordField {
+    fn from_text(text: &str) -> ast::RecordExprField {
         ast_from_text(&format!("fn f() {{ S {{ {}, }} }}", text))
     }
 }
 
-pub fn record_field_def(name: ast::NameRef, ty: ast::TypeRef) -> ast::RecordFieldDef {
+pub fn record_field(name: ast::NameRef, ty: ast::Type) -> ast::RecordField {
     ast_from_text(&format!("struct S {{ {}: {}, }}", name, ty))
 }
 
@@ -148,18 +148,18 @@ pub fn condition(expr: ast::Expr, pattern: Option<ast::Pat>) -> ast::Condition {
     }
 }
 
-pub fn bind_pat(name: ast::Name) -> ast::BindPat {
+pub fn ident_pat(name: ast::Name) -> ast::IdentPat {
     return from_text(name.text());
 
-    fn from_text(text: &str) -> ast::BindPat {
+    fn from_text(text: &str) -> ast::IdentPat {
         ast_from_text(&format!("fn f({}: ())", text))
     }
 }
 
-pub fn placeholder_pat() -> ast::PlaceholderPat {
+pub fn wildcard_pat() -> ast::WildcardPat {
     return from_text("_");
 
-    fn from_text(text: &str) -> ast::PlaceholderPat {
+    fn from_text(text: &str) -> ast::WildcardPat {
         ast_from_text(&format!("fn f({}: ())", text))
     }
 }
@@ -288,13 +288,13 @@ pub fn visibility_pub_crate() -> ast::Visibility {
     ast_from_text("pub(crate) struct S")
 }
 
-pub fn fn_def(
+pub fn fn_(
     visibility: Option<ast::Visibility>,
     fn_name: ast::Name,
-    type_params: Option<ast::TypeParamList>,
+    type_params: Option<ast::GenericParamList>,
     params: ast::ParamList,
     body: ast::BlockExpr,
-) -> ast::FnDef {
+) -> ast::Fn {
     let type_params =
         if let Some(type_params) = type_params { format!("<{}>", type_params) } else { "".into() };
     let visibility = match visibility {

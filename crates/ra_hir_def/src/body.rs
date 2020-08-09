@@ -216,7 +216,7 @@ pub struct BodySourceMap {
     expr_map_back: ArenaMap<ExprId, Result<ExprSource, SyntheticSyntax>>,
     pat_map: FxHashMap<PatSource, PatId>,
     pat_map_back: ArenaMap<PatId, Result<PatSource, SyntheticSyntax>>,
-    field_map: FxHashMap<(ExprId, usize), InFile<AstPtr<ast::RecordField>>>,
+    field_map: FxHashMap<(ExprId, usize), InFile<AstPtr<ast::RecordExprField>>>,
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 }
 
@@ -314,7 +314,7 @@ impl BodySourceMap {
         self.pat_map.get(&src).cloned()
     }
 
-    pub fn field_syntax(&self, expr: ExprId, field: usize) -> InFile<AstPtr<ast::RecordField>> {
+    pub fn field_syntax(&self, expr: ExprId, field: usize) -> InFile<AstPtr<ast::RecordExprField>> {
         self.field_map[&(expr, field)].clone()
     }
 }

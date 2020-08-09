@@ -1,5 +1,6 @@
 //! A collection of tools for profiling rust-analyzer.
 
+mod stop_watch;
 mod memory_usage;
 #[cfg(feature = "cpu_profiler")]
 mod google_cpu_profiler;
@@ -11,6 +12,7 @@ use std::cell::RefCell;
 pub use crate::{
     hprof::{init, init_from, profile},
     memory_usage::{Bytes, MemoryUsage},
+    stop_watch::{StopWatch, StopWatchSpan},
 };
 
 /// Prints backtrace to stderr, useful for debugging.

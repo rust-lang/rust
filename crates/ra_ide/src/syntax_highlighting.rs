@@ -4,7 +4,7 @@ mod injection;
 #[cfg(test)]
 mod tests;
 
-use hir::{Name, Semantics};
+use hir::{Name, Semantics, VariantDef};
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -455,6 +455,18 @@ fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
     Some(TextRange::new(range_start, range_end))
 }
 
+fn is_possibly_unsafe(name_ref: &ast::NameRef) -> bool {
+    name_ref
+        .syntax()
+        .parent()
+        .and_then(|parent| {
+            ast::FieldExpr::cast(parent.clone())
+                .map(|_| true)
+                .or_else(|| ast::RecordPatField::cast(parent).map(|_| true))
+        })
+        .unwrap_or(false)
+}
+
 fn highlight_element(
     sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
@@ -464,7 +476,7 @@ fn highlight_element(
     let db = sema.db;
     let mut binding_hash = None;
     let highlight: Highlight = match element.kind() {
-        FN_DEF => {
+        FN => {
             bindings_shadow_count.clear();
             return None;
         }
@@ -484,10 +496,19 @@ fn highlight_element(
 
             match name_kind {
                 Some(NameClass::Definition(def)) => {
-                    highlight_name(db, def) | HighlightModifier::Definition
+                    highlight_name(db, def, false) | HighlightModifier::Definition
                 }
-                Some(NameClass::ConstReference(def)) => highlight_name(db, def),
-                Some(NameClass::FieldShorthand { .. }) => HighlightTag::Field.into(),
+                Some(NameClass::ConstReference(def)) => highlight_name(db, def, false),
+                Some(NameClass::FieldShorthand { field, .. }) => {
+                    let mut h = HighlightTag::Field.into();
+                    if let Definition::Field(field) = field {
+                        if let VariantDef::Union(_) = field.parent_def(db) {
+                            h |= HighlightModifier::Unsafe;
+                        }
+                    }
+
+                    h
+                }
                 None => highlight_name_by_syntax(name) | HighlightModifier::Definition,
             }
         }
@@ -498,6 +519,7 @@ fn highlight_element(
         }
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
+            let possibly_unsafe = is_possibly_unsafe(&name_ref);
             match classify_name_ref(sema, &name_ref) {
                 Some(name_kind) => match name_kind {
                     NameRefClass::Definition(def) => {
@@ -508,11 +530,13 @@ fn highlight_element(
                                 binding_hash = Some(calc_binding_hash(&name, *shadow_count))
                             }
                         };
-                        highlight_name(db, def)
+                        highlight_name(db, def, possibly_unsafe)
                     }
                     NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
                 },
-                None if syntactic_name_ref_highlighting => highlight_name_ref_by_syntax(name_ref),
+                None if syntactic_name_ref_highlighting => {
+                    highlight_name_ref_by_syntax(name_ref, sema)
+                }
                 None => HighlightTag::UnresolvedReference.into(),
             }
         }
@@ -546,7 +570,7 @@ fn highlight_element(
             T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
                 HighlightTag::Macro.into()
             }
-            T![*] if element.parent().and_then(ast::PointerType::cast).is_some() => {
+            T![*] if element.parent().and_then(ast::PtrType::cast).is_some() => {
                 HighlightTag::Keyword.into()
             }
             T![*] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
@@ -577,7 +601,7 @@ fn highlight_element(
             _ if element.parent().and_then(ast::RangePat::cast).is_some() => {
                 HighlightTag::Operator.into()
             }
-            _ if element.parent().and_then(ast::DotDotPat::cast).is_some() => {
+            _ if element.parent().and_then(ast::RestPat::cast).is_some() => {
                 HighlightTag::Operator.into()
             }
             _ if element.parent().and_then(ast::Attr::cast).is_some() => {
@@ -647,15 +671,24 @@ fn highlight_element(
 
 fn is_child_of_impl(element: &SyntaxElement) -> bool {
     match element.parent() {
-        Some(e) => e.kind() == IMPL_DEF,
+        Some(e) => e.kind() == IMPL,
         _ => false,
     }
 }
 
-fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
+fn highlight_name(db: &RootDatabase, def: Definition, possibly_unsafe: bool) -> Highlight {
     match def {
         Definition::Macro(_) => HighlightTag::Macro,
-        Definition::Field(_) => HighlightTag::Field,
+        Definition::Field(field) => {
+            let mut h = HighlightTag::Field.into();
+            if possibly_unsafe {
+                if let VariantDef::Union(_) = field.parent_def(db) {
+                    h |= HighlightModifier::Unsafe;
+                }
+            }
+
+            return h;
+        }
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
             hir::ModuleDef::Function(func) => {
@@ -677,6 +710,7 @@ fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
                 let mut h = Highlight::new(HighlightTag::Static);
                 if s.is_mut(db) {
                     h |= HighlightModifier::Mutable;
+                    h |= HighlightModifier::Unsafe;
                 }
                 return h;
             }
@@ -705,26 +739,26 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
     };
 
     let tag = match parent.kind() {
-        STRUCT_DEF => HighlightTag::Struct,
-        ENUM_DEF => HighlightTag::Enum,
-        UNION_DEF => HighlightTag::Union,
-        TRAIT_DEF => HighlightTag::Trait,
-        TYPE_ALIAS_DEF => HighlightTag::TypeAlias,
+        STRUCT => HighlightTag::Struct,
+        ENUM => HighlightTag::Enum,
+        UNION => HighlightTag::Union,
+        TRAIT => HighlightTag::Trait,
+        TYPE_ALIAS => HighlightTag::TypeAlias,
         TYPE_PARAM => HighlightTag::TypeParam,
-        RECORD_FIELD_DEF => HighlightTag::Field,
+        RECORD_FIELD => HighlightTag::Field,
         MODULE => HighlightTag::Module,
-        FN_DEF => HighlightTag::Function,
-        CONST_DEF => HighlightTag::Constant,
-        STATIC_DEF => HighlightTag::Static,
-        ENUM_VARIANT => HighlightTag::EnumVariant,
-        BIND_PAT => HighlightTag::Local,
+        FN => HighlightTag::Function,
+        CONST => HighlightTag::Constant,
+        STATIC => HighlightTag::Static,
+        VARIANT => HighlightTag::EnumVariant,
+        IDENT_PAT => HighlightTag::Local,
         _ => default,
     };
 
     tag.into()
 }
 
-fn highlight_name_ref_by_syntax(name: ast::NameRef) -> Highlight {
+fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabase>) -> Highlight {
     let default = HighlightTag::UnresolvedReference;
 
     let parent = match name.syntax().parent() {
@@ -734,7 +768,20 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef) -> Highlight {
 
     let tag = match parent.kind() {
         METHOD_CALL_EXPR => HighlightTag::Function,
-        FIELD_EXPR => HighlightTag::Field,
+        FIELD_EXPR => {
+            let h = HighlightTag::Field;
+            let is_union = ast::FieldExpr::cast(parent)
+                .and_then(|field_expr| {
+                    let field = sema.resolve_field(&field_expr)?;
+                    Some(if let VariantDef::Union(_) = field.parent_def(sema.db) {
+                        true
+                    } else {
+                        false
+                    })
+                })
+                .unwrap_or(false);
+            return if is_union { h | HighlightModifier::Unsafe } else { h.into() };
+        }
         PATH_SEGMENT => {
             let path = match parent.parent().and_then(ast::Path::cast) {
                 Some(it) => it,

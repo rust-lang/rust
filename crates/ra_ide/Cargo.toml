@@ -17,7 +17,7 @@ indexmap = "1.3.2"
 itertools = "0.9.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
-rand = { version = "0.7.3", features = ["small_rng"] }
+oorandom = "11.1.2"
 
 stdx = { path = "../stdx" }
 

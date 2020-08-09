@@ -2,8 +2,8 @@
 //!
 //! This module adds the completion items related to implementing associated
 //! items within a `impl Trait for Struct` block. The current context node
-//! must be within either a `FN_DEF`, `TYPE_ALIAS_DEF`, or `CONST_DEF` node
-//! and an direct child of an `IMPL_DEF`.
+//! must be within either a `FN`, `TYPE_ALIAS`, or `CONST` node
+//! and an direct child of an `IMPL`.
 //!
 //! # Examples
 //!
@@ -34,7 +34,7 @@
 use hir::{self, Docs, HasSource};
 use ra_assists::utils::get_missing_assoc_items;
 use ra_syntax::{
-    ast::{self, edit, ImplDef},
+    ast::{self, edit, Impl},
     AstNode, SyntaxKind, SyntaxNode, TextRange, T,
 };
 use ra_text_edit::TextEdit;
@@ -63,7 +63,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
                     }
                 }),
 
-            SyntaxKind::FN_DEF => {
+            SyntaxKind::FN => {
                 for missing_fn in get_missing_assoc_items(&ctx.sema, &impl_def)
                     .into_iter()
                     .filter_map(|item| match item {
@@ -75,7 +75,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
                 }
             }
 
-            SyntaxKind::TYPE_ALIAS_DEF => {
+            SyntaxKind::TYPE_ALIAS => {
                 for missing_fn in get_missing_assoc_items(&ctx.sema, &impl_def)
                     .into_iter()
                     .filter_map(|item| match item {
@@ -87,7 +87,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
                 }
             }
 
-            SyntaxKind::CONST_DEF => {
+            SyntaxKind::CONST => {
                 for missing_fn in get_missing_assoc_items(&ctx.sema, &impl_def)
                     .into_iter()
                     .filter_map(|item| match item {
@@ -104,18 +104,17 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
     }
 }
 
-fn completion_match(ctx: &CompletionContext) -> Option<(SyntaxNode, ImplDef)> {
+fn completion_match(ctx: &CompletionContext) -> Option<(SyntaxNode, Impl)> {
     let (trigger, impl_def_offset) = ctx.token.ancestors().find_map(|p| match p.kind() {
-        SyntaxKind::FN_DEF
-        | SyntaxKind::TYPE_ALIAS_DEF
-        | SyntaxKind::CONST_DEF
-        | SyntaxKind::BLOCK_EXPR => Some((p, 2)),
+        SyntaxKind::FN | SyntaxKind::TYPE_ALIAS | SyntaxKind::CONST | SyntaxKind::BLOCK_EXPR => {
+            Some((p, 2))
+        }
         SyntaxKind::NAME_REF => Some((p, 5)),
         _ => None,
     })?;
     let impl_def = (0..impl_def_offset - 1)
         .try_fold(trigger.parent()?, |t, _| t.parent())
-        .and_then(ast::ImplDef::cast)?;
+        .and_then(ast::Impl::cast)?;
     Some((trigger, impl_def))
 }
 
@@ -201,7 +200,7 @@ fn add_const_impl(
     }
 }
 
-fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
+fn make_const_compl_syntax(const_: &ast::Const) -> String {
     let const_ = edit::remove_attrs_and_docs(const_);
 
     let const_start = const_.syntax().text_range().start();

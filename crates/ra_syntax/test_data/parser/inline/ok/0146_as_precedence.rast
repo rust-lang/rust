@@ -1,5 +1,5 @@
 SOURCE_FILE@0..43
-  FN_DEF@0..42
+  FN@0..42
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -14,7 +14,7 @@ SOURCE_FILE@0..43
       LET_STMT@15..40
         LET_KW@15..18 "let"
         WHITESPACE@18..19 " "
-        PLACEHOLDER_PAT@19..20
+        WILDCARD_PAT@19..20
           UNDERSCORE@19..20 "_"
         WHITESPACE@20..21 " "
         EQ@21..22 "="
@@ -27,7 +27,7 @@ SOURCE_FILE@0..43
           WHITESPACE@25..26 " "
           AS_KW@26..28 "as"
           WHITESPACE@28..29 " "
-          POINTER_TYPE@29..39
+          PTR_TYPE@29..39
             STAR@29..30 "*"
             CONST_KW@30..35 "const"
             WHITESPACE@35..36 " "

@@ -209,7 +209,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         // Some kinds of nodes have special handling. For everything else, we fall back to default
         // matching.
         match code.kind() {
-            SyntaxKind::RECORD_FIELD_LIST => {
+            SyntaxKind::RECORD_EXPR_FIELD_LIST => {
                 self.attempt_match_record_field_list(phase, pattern, code)
             }
             SyntaxKind::TOKEN_TREE => self.attempt_match_token_tree(phase, pattern, code),
@@ -348,8 +348,8 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 // separately via comparing what the path resolves to below.
                 self.attempt_match_opt(
                     phase,
-                    pattern_segment.type_arg_list(),
-                    code_segment.type_arg_list(),
+                    pattern_segment.generic_arg_list(),
+                    code_segment.generic_arg_list(),
                 )?;
                 self.attempt_match_opt(
                     phase,
@@ -399,7 +399,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         // Build a map keyed by field name.
         let mut fields_by_name = FxHashMap::default();
         for child in code.children() {
-            if let Some(record) = ast::RecordField::cast(child.clone()) {
+            if let Some(record) = ast::RecordExprField::cast(child.clone()) {
                 if let Some(name) = record.field_name() {
                     fields_by_name.insert(name.text().clone(), child.clone());
                 }
@@ -706,8 +706,8 @@ mod tests {
         let rule: SsrRule = "foo($x) ==>> bar($x)".parse().unwrap();
         let input = "fn foo() {} fn bar() {} fn main() { foo(1+2); }";
 
-        let (db, position) = crate::tests::single_file(input);
-        let mut match_finder = MatchFinder::in_context(&db, position);
+        let (db, position, selections) = crate::tests::single_file(input);
+        let mut match_finder = MatchFinder::in_context(&db, position, selections);
         match_finder.add_rule(rule).unwrap();
         let matches = match_finder.matches();
         assert_eq!(matches.matches.len(), 1);

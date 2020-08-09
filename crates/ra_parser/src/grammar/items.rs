@@ -180,7 +180,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         // unsafe const fn bar() {}
         T![fn] => {
             fn_def(p);
-            m.complete(p, FN_DEF);
+            m.complete(p, FN);
         }
 
         // test unsafe_trait
@@ -193,7 +193,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         // unsafe auto trait T {}
         T![trait] => {
             traits::trait_def(p);
-            m.complete(p, TRAIT_DEF);
+            m.complete(p, TRAIT);
         }
 
         // test unsafe_impl
@@ -221,7 +221,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         // unsafe default impl Foo {}
         T![impl] => {
             traits::impl_def(p);
-            m.complete(p, IMPL_DEF);
+            m.complete(p, IMPL);
         }
 
         // test existential_type
@@ -304,10 +304,16 @@ fn extern_crate_item(p: &mut Parser, m: Marker) {
     p.bump(T![extern]);
     assert!(p.at(T![crate]));
     p.bump(T![crate]);
-    name_ref(p);
+
+    if p.at(T![self]) {
+        p.bump(T![self]);
+    } else {
+        name_ref(p);
+    }
+
     opt_alias(p);
     p.expect(T![;]);
-    m.complete(p, EXTERN_CRATE_ITEM);
+    m.complete(p, EXTERN_CRATE);
 }
 
 pub(crate) fn extern_item_list(p: &mut Parser) {
@@ -374,7 +380,7 @@ fn type_def(p: &mut Parser, m: Marker) {
         types::type_(p);
     }
     p.expect(T![;]);
-    m.complete(p, TYPE_ALIAS_DEF);
+    m.complete(p, TYPE_ALIAS);
 }
 
 pub(crate) fn mod_item(p: &mut Parser, m: Marker) {

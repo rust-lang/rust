@@ -1,5 +1,5 @@
 SOURCE_FILE@0..59
-  FN_DEF@0..59
+  FN@0..59
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -14,7 +14,7 @@ SOURCE_FILE@0..59
       LET_STMT@11..29
         LET_KW@11..14 "let"
         WHITESPACE@14..15 " "
-        BIND_PAT@15..23
+        IDENT_PAT@15..23
           NAME@15..23
             IDENT@15..23 "r#struct"
         WHITESPACE@23..24 " "
@@ -27,7 +27,7 @@ SOURCE_FILE@0..59
       LET_STMT@30..57
         LET_KW@30..33 "let"
         WHITESPACE@33..34 " "
-        BIND_PAT@34..41
+        IDENT_PAT@34..41
           NAME@34..41
             IDENT@34..41 "r#trait"
         WHITESPACE@41..42 " "

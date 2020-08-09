@@ -1,5 +1,5 @@
 SOURCE_FILE@0..42
-  FN_DEF@0..41
+  FN@0..41
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..7
@@ -12,7 +12,7 @@ SOURCE_FILE@0..42
       L_CURLY@10..11 "{"
       WHITESPACE@11..16 "\n    "
       EXPR_STMT@16..24
-        LAMBDA_EXPR@16..24
+        CLOSURE_EXPR@16..24
           PARAM_LIST@16..18
             PIPE@16..17 "|"
             PIPE@17..18 "|"

@@ -150,7 +150,7 @@ fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Optio
     let stmt = find_node_at_offset::<ast::LetStmt>(syntax, range.start())?;
     if stmt.initializer().is_some() {
         let pat = stmt.pat()?;
-        if let ast::Pat::BindPat(it) = pat {
+        if let ast::Pat::IdentPat(it) = pat {
             if it.mut_token().is_some() {
                 return Some(ReferenceAccess::Write);
             }
@@ -172,16 +172,16 @@ fn get_struct_def_name_for_struct_literal_search(
         if let Some(name) =
             sema.find_node_at_offset_with_descend::<ast::Name>(&syntax, left.text_range().start())
         {
-            return name.syntax().ancestors().find_map(ast::StructDef::cast).and_then(|l| l.name());
+            return name.syntax().ancestors().find_map(ast::Struct::cast).and_then(|l| l.name());
         }
         if sema
-            .find_node_at_offset_with_descend::<ast::TypeParamList>(
+            .find_node_at_offset_with_descend::<ast::GenericParamList>(
                 &syntax,
                 left.text_range().start(),
             )
             .is_some()
         {
-            return left.ancestors().find_map(ast::StructDef::cast).and_then(|l| l.name());
+            return left.ancestors().find_map(ast::Struct::cast).and_then(|l| l.name());
         }
     }
     None
@@ -212,7 +212,7 @@ fn main() {
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..26 7..10 Other",
+            "Foo STRUCT FileId(1) 0..26 7..10 Other",
             &["FileId(1) 101..104 StructLiteral"],
         );
     }
@@ -230,7 +230,7 @@ struct Foo<|> {}
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..13 7..10 Other",
+            "Foo STRUCT FileId(1) 0..13 7..10 Other",
             &["FileId(1) 41..44 Other", "FileId(1) 54..57 StructLiteral"],
         );
     }
@@ -248,7 +248,7 @@ struct Foo<T> <|>{}
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..16 7..10 Other",
+            "Foo STRUCT FileId(1) 0..16 7..10 Other",
             &["FileId(1) 64..67 StructLiteral"],
         );
     }
@@ -267,7 +267,7 @@ fn main() {
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..16 7..10 Other",
+            "Foo STRUCT FileId(1) 0..16 7..10 Other",
             &["FileId(1) 54..57 StructLiteral"],
         );
     }
@@ -290,7 +290,7 @@ fn main() {
         );
         check_result(
             refs,
-            "i BIND_PAT FileId(1) 24..25 Other Write",
+            "i IDENT_PAT FileId(1) 24..25 Other Write",
             &[
                 "FileId(1) 50..51 Other Write",
                 "FileId(1) 54..55 Other Read",
@@ -316,7 +316,7 @@ fn bar() {
         );
         check_result(
             refs,
-            "spam BIND_PAT FileId(1) 19..23 Other",
+            "spam IDENT_PAT FileId(1) 19..23 Other",
             &["FileId(1) 34..38 Other Read", "FileId(1) 41..45 Other Read"],
         );
     }
@@ -330,7 +330,7 @@ fn foo(i : u32) -> u32 {
 }
 "#,
         );
-        check_result(refs, "i BIND_PAT FileId(1) 7..8 Other", &["FileId(1) 29..30 Other Read"]);
+        check_result(refs, "i IDENT_PAT FileId(1) 7..8 Other", &["FileId(1) 29..30 Other Read"]);
     }
 
     #[test]
@@ -342,7 +342,7 @@ fn foo(i<|> : u32) -> u32 {
 }
 "#,
         );
-        check_result(refs, "i BIND_PAT FileId(1) 7..8 Other", &["FileId(1) 29..30 Other Read"]);
+        check_result(refs, "i IDENT_PAT FileId(1) 7..8 Other", &["FileId(1) 29..30 Other Read"]);
     }
 
     #[test]
@@ -361,7 +361,7 @@ fn main(s: Foo) {
         );
         check_result(
             refs,
-            "spam RECORD_FIELD_DEF FileId(1) 17..30 21..25 Other",
+            "spam RECORD_FIELD FileId(1) 17..30 21..25 Other",
             &["FileId(1) 67..71 Other Read"],
         );
     }
@@ -376,7 +376,7 @@ impl Foo {
 }
 "#,
         );
-        check_result(refs, "f FN_DEF FileId(1) 27..43 30..31 Other", &[]);
+        check_result(refs, "f FN FileId(1) 27..43 30..31 Other", &[]);
     }
 
     #[test]
@@ -390,7 +390,7 @@ enum Foo {
 }
 "#,
         );
-        check_result(refs, "B ENUM_VARIANT FileId(1) 22..23 22..23 Other", &[]);
+        check_result(refs, "B VARIANT FileId(1) 22..23 22..23 Other", &[]);
     }
 
     #[test]
@@ -431,7 +431,7 @@ fn f() {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(2) 17..51 28..31 Other",
+            "Foo STRUCT FileId(2) 17..51 28..31 Other",
             &["FileId(1) 53..56 StructLiteral", "FileId(3) 79..82 StructLiteral"],
         );
     }
@@ -486,7 +486,7 @@ pub(super) struct Foo<|> {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(3) 0..41 18..21 Other",
+            "Foo STRUCT FileId(3) 0..41 18..21 Other",
             &["FileId(2) 20..23 Other", "FileId(2) 47..50 StructLiteral"],
         );
     }
@@ -514,7 +514,7 @@ pub(super) struct Foo<|> {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) 19..35 26..30 Other",
+            "quux FN FileId(1) 19..35 26..30 Other",
             &["FileId(2) 16..20 StructLiteral", "FileId(3) 16..20 StructLiteral"],
         );
 
@@ -522,7 +522,7 @@ pub(super) struct Foo<|> {
             analysis.find_all_refs(pos, Some(SearchScope::single_file(bar))).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) 19..35 26..30 Other",
+            "quux FN FileId(1) 19..35 26..30 Other",
             &["FileId(3) 16..20 StructLiteral"],
         );
     }
@@ -559,7 +559,7 @@ fn foo() {
         );
         check_result(
             refs,
-            "i BIND_PAT FileId(1) 23..24 Other Write",
+            "i IDENT_PAT FileId(1) 23..24 Other Write",
             &["FileId(1) 34..35 Other Write", "FileId(1) 38..39 Other Read"],
         );
     }
@@ -580,7 +580,7 @@ fn foo() {
         );
         check_result(
             refs,
-            "f RECORD_FIELD_DEF FileId(1) 15..21 15..16 Other",
+            "f RECORD_FIELD FileId(1) 15..21 15..16 Other",
             &["FileId(1) 55..56 Other Read", "FileId(1) 68..69 Other Write"],
         );
     }
@@ -595,7 +595,7 @@ fn foo() {
 }
 "#,
         );
-        check_result(refs, "i BIND_PAT FileId(1) 19..20 Other", &["FileId(1) 26..27 Other Write"]);
+        check_result(refs, "i IDENT_PAT FileId(1) 19..20 Other", &["FileId(1) 26..27 Other Write"]);
     }
 
     #[test]
@@ -619,7 +619,7 @@ fn main() {
         );
         check_result(
             refs,
-            "new FN_DEF FileId(1) 54..101 61..64 Other",
+            "new FN FileId(1) 54..101 61..64 Other",
             &["FileId(1) 146..149 StructLiteral"],
         );
     }
@@ -646,7 +646,7 @@ fn main() {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "f FN_DEF FileId(1) 26..35 29..30 Other",
+            "f FN FileId(1) 26..35 29..30 Other",
             &["FileId(2) 11..12 Other", "FileId(2) 28..29 StructLiteral"],
         );
     }

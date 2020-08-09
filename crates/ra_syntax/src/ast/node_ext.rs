@@ -7,7 +7,7 @@ use itertools::Itertools;
 use ra_parser::SyntaxKind;
 
 use crate::{
-    ast::{self, support, AstNode, AttrInput, NameOwner, SyntaxNode},
+    ast::{self, support, AstNode, NameOwner, SyntaxNode},
     SmolStr, SyntaxElement, SyntaxToken, T,
 };
 
@@ -39,29 +39,23 @@ pub enum AttrKind {
 
 impl ast::Attr {
     pub fn as_simple_atom(&self) -> Option<SmolStr> {
-        match self.input() {
-            None => self.simple_name(),
-            Some(_) => None,
+        if self.eq_token().is_some() || self.token_tree().is_some() {
+            return None;
         }
+        self.simple_name()
     }
 
     pub fn as_simple_call(&self) -> Option<(SmolStr, ast::TokenTree)> {
-        match self.input() {
-            Some(AttrInput::TokenTree(tt)) => Some((self.simple_name()?, tt)),
-            _ => None,
-        }
+        let tt = self.token_tree()?;
+        Some((self.simple_name()?, tt))
     }
 
     pub fn as_simple_key_value(&self) -> Option<(SmolStr, SmolStr)> {
-        match self.input() {
-            Some(AttrInput::Literal(lit)) => {
-                let key = self.simple_name()?;
-                // FIXME: escape? raw string?
-                let value = lit.syntax().first_token()?.text().trim_matches('"').into();
-                Some((key, value))
-            }
-            _ => None,
-        }
+        let lit = self.literal()?;
+        let key = self.simple_name()?;
+        // FIXME: escape? raw string?
+        let value = lit.syntax().first_token()?.text().trim_matches('"').into();
+        Some((key, value))
     }
 
     pub fn simple_name(&self) -> Option<SmolStr> {
@@ -88,7 +82,7 @@ impl ast::Attr {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PathSegmentKind {
     Name(ast::NameRef),
-    Type { type_ref: Option<ast::TypeRef>, trait_ref: Option<ast::PathType> },
+    Type { type_ref: Option<ast::Type>, trait_ref: Option<ast::PathType> },
     SelfKw,
     SuperKw,
     CrateKw,
@@ -114,8 +108,8 @@ impl ast::PathSegment {
                     // <T> or <T as Trait>
                     // T is any TypeRef, Trait has to be a PathType
                     let mut type_refs =
-                        self.syntax().children().filter(|node| ast::TypeRef::can_cast(node.kind()));
-                    let type_ref = type_refs.next().and_then(ast::TypeRef::cast);
+                        self.syntax().children().filter(|node| ast::Type::can_cast(node.kind()));
+                    let type_ref = type_refs.next().and_then(ast::Type::cast);
                     let trait_ref = type_refs.next().and_then(ast::PathType::cast);
                     PathSegmentKind::Type { type_ref, trait_ref }
                 }
@@ -141,22 +135,22 @@ impl ast::UseTreeList {
     }
 }
 
-impl ast::ImplDef {
-    pub fn target_type(&self) -> Option<ast::TypeRef> {
+impl ast::Impl {
+    pub fn self_ty(&self) -> Option<ast::Type> {
         match self.target() {
             (Some(t), None) | (_, Some(t)) => Some(t),
             _ => None,
         }
     }
 
-    pub fn target_trait(&self) -> Option<ast::TypeRef> {
+    pub fn trait_(&self) -> Option<ast::Type> {
         match self.target() {
             (Some(t), Some(_)) => Some(t),
             _ => None,
         }
     }
 
-    fn target(&self) -> (Option<ast::TypeRef>, Option<ast::TypeRef>) {
+    fn target(&self) -> (Option<ast::Type>, Option<ast::Type>) {
         let mut types = support::children(self.syntax());
         let first = types.next();
         let second = types.next();
@@ -166,16 +160,16 @@ impl ast::ImplDef {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StructKind {
-    Record(ast::RecordFieldDefList),
-    Tuple(ast::TupleFieldDefList),
+    Record(ast::RecordFieldList),
+    Tuple(ast::TupleFieldList),
     Unit,
 }
 
 impl StructKind {
     fn from_node<N: AstNode>(node: &N) -> StructKind {
-        if let Some(nfdl) = support::child::<ast::RecordFieldDefList>(node.syntax()) {
+        if let Some(nfdl) = support::child::<ast::RecordFieldList>(node.syntax()) {
             StructKind::Record(nfdl)
-        } else if let Some(pfl) = support::child::<ast::TupleFieldDefList>(node.syntax()) {
+        } else if let Some(pfl) = support::child::<ast::TupleFieldList>(node.syntax()) {
             StructKind::Tuple(pfl)
         } else {
             StructKind::Unit
@@ -183,17 +177,17 @@ impl StructKind {
     }
 }
 
-impl ast::StructDef {
+impl ast::Struct {
     pub fn kind(&self) -> StructKind {
         StructKind::from_node(self)
     }
 }
 
-impl ast::RecordField {
-    pub fn for_field_name(field_name: &ast::NameRef) -> Option<ast::RecordField> {
+impl ast::RecordExprField {
+    pub fn for_field_name(field_name: &ast::NameRef) -> Option<ast::RecordExprField> {
         let candidate =
-            field_name.syntax().parent().and_then(ast::RecordField::cast).or_else(|| {
-                field_name.syntax().ancestors().nth(4).and_then(ast::RecordField::cast)
+            field_name.syntax().parent().and_then(ast::RecordExprField::cast).or_else(|| {
+                field_name.syntax().ancestors().nth(4).and_then(ast::RecordExprField::cast)
             })?;
         if candidate.field_name().as_ref() == Some(field_name) {
             Some(candidate)
@@ -233,13 +227,13 @@ impl fmt::Display for NameOrNameRef {
     }
 }
 
-impl ast::RecordFieldPat {
+impl ast::RecordPatField {
     /// Deals with field init shorthand
     pub fn field_name(&self) -> Option<NameOrNameRef> {
         if let Some(name_ref) = self.name_ref() {
             return Some(NameOrNameRef::NameRef(name_ref));
         }
-        if let Some(ast::Pat::BindPat(pat)) = self.pat() {
+        if let Some(ast::Pat::IdentPat(pat)) = self.pat() {
             let name = pat.name()?;
             return Some(NameOrNameRef::Name(name));
         }
@@ -247,12 +241,12 @@ impl ast::RecordFieldPat {
     }
 }
 
-impl ast::EnumVariant {
-    pub fn parent_enum(&self) -> ast::EnumDef {
+impl ast::Variant {
+    pub fn parent_enum(&self) -> ast::Enum {
         self.syntax()
             .parent()
             .and_then(|it| it.parent())
-            .and_then(ast::EnumDef::cast)
+            .and_then(ast::Enum::cast)
             .expect("EnumVariants are always nested in Enums")
     }
     pub fn kind(&self) -> StructKind {
@@ -296,18 +290,18 @@ pub struct SlicePatComponents {
 
 impl ast::SlicePat {
     pub fn components(&self) -> SlicePatComponents {
-        let mut args = self.args().peekable();
+        let mut args = self.pats().peekable();
         let prefix = args
             .peeking_take_while(|p| match p {
-                ast::Pat::DotDotPat(_) => false,
-                ast::Pat::BindPat(bp) => match bp.pat() {
-                    Some(ast::Pat::DotDotPat(_)) => false,
+                ast::Pat::RestPat(_) => false,
+                ast::Pat::IdentPat(bp) => match bp.pat() {
+                    Some(ast::Pat::RestPat(_)) => false,
                     _ => true,
                 },
                 ast::Pat::RefPat(rp) => match rp.pat() {
-                    Some(ast::Pat::DotDotPat(_)) => false,
-                    Some(ast::Pat::BindPat(bp)) => match bp.pat() {
-                        Some(ast::Pat::DotDotPat(_)) => false,
+                    Some(ast::Pat::RestPat(_)) => false,
+                    Some(ast::Pat::IdentPat(bp)) => match bp.pat() {
+                        Some(ast::Pat::RestPat(_)) => false,
                         _ => true,
                     },
                     _ => true,
@@ -366,26 +360,6 @@ impl ast::TypeBound {
             TypeBoundKind::Lifetime(lifetime)
         } else {
             unreachable!()
-        }
-    }
-
-    pub fn const_question_token(&self) -> Option<SyntaxToken> {
-        self.syntax()
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .take_while(|it| it.kind() != T![const])
-            .find(|it| it.kind() == T![?])
-    }
-
-    pub fn question_token(&self) -> Option<SyntaxToken> {
-        if self.const_token().is_some() {
-            self.syntax()
-                .children_with_tokens()
-                .filter_map(|it| it.into_token())
-                .skip_while(|it| it.kind() != T![const])
-                .find(|it| it.kind() == T![?])
-        } else {
-            support::token(&self.syntax, T![?])
         }
     }
 }
@@ -472,3 +446,40 @@ impl ast::TokenTree {
             .filter(|it| matches!(it.kind(), T!['}'] | T![')'] | T![']']))
     }
 }
+
+impl ast::GenericParamList {
+    pub fn lifetime_params(&self) -> impl Iterator<Item = ast::LifetimeParam> {
+        self.generic_params().filter_map(|param| match param {
+            ast::GenericParam::LifetimeParam(it) => Some(it),
+            ast::GenericParam::TypeParam(_) | ast::GenericParam::ConstParam(_) => None,
+        })
+    }
+    pub fn type_params(&self) -> impl Iterator<Item = ast::TypeParam> {
+        self.generic_params().filter_map(|param| match param {
+            ast::GenericParam::TypeParam(it) => Some(it),
+            ast::GenericParam::LifetimeParam(_) | ast::GenericParam::ConstParam(_) => None,
+        })
+    }
+    pub fn const_params(&self) -> impl Iterator<Item = ast::ConstParam> {
+        self.generic_params().filter_map(|param| match param {
+            ast::GenericParam::ConstParam(it) => Some(it),
+            ast::GenericParam::TypeParam(_) | ast::GenericParam::LifetimeParam(_) => None,
+        })
+    }
+}
+
+impl ast::DocCommentsOwner for ast::SourceFile {}
+impl ast::DocCommentsOwner for ast::Fn {}
+impl ast::DocCommentsOwner for ast::Struct {}
+impl ast::DocCommentsOwner for ast::Union {}
+impl ast::DocCommentsOwner for ast::RecordField {}
+impl ast::DocCommentsOwner for ast::TupleField {}
+impl ast::DocCommentsOwner for ast::Enum {}
+impl ast::DocCommentsOwner for ast::Variant {}
+impl ast::DocCommentsOwner for ast::Trait {}
+impl ast::DocCommentsOwner for ast::Module {}
+impl ast::DocCommentsOwner for ast::Static {}
+impl ast::DocCommentsOwner for ast::Const {}
+impl ast::DocCommentsOwner for ast::TypeAlias {}
+impl ast::DocCommentsOwner for ast::Impl {}
+impl ast::DocCommentsOwner for ast::MacroCall {}

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..67
-  FN_DEF@0..9
+  FN@0..9
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..4
@@ -12,7 +12,7 @@ SOURCE_FILE@0..67
       L_CURLY@7..8 "{"
       R_CURLY@8..9 "}"
   WHITESPACE@9..10 "\n"
-  FN_DEF@10..25
+  FN@10..25
     FN_KW@10..12 "fn"
     WHITESPACE@12..13 " "
     NAME@13..14
@@ -20,7 +20,7 @@ SOURCE_FILE@0..67
     PARAM_LIST@14..22
       L_PAREN@14..15 "("
       PARAM@15..21
-        BIND_PAT@15..16
+        IDENT_PAT@15..16
           NAME@15..16
             IDENT@15..16 "x"
         COLON@16..17 ":"
@@ -36,7 +36,7 @@ SOURCE_FILE@0..67
       L_CURLY@23..24 "{"
       R_CURLY@24..25 "}"
   WHITESPACE@25..26 "\n"
-  FN_DEF@26..43
+  FN@26..43
     FN_KW@26..28 "fn"
     WHITESPACE@28..29 " "
     NAME@29..30
@@ -44,7 +44,7 @@ SOURCE_FILE@0..67
     PARAM_LIST@30..40
       L_PAREN@30..31 "("
       PARAM@31..37
-        BIND_PAT@31..32
+        IDENT_PAT@31..32
           NAME@31..32
             IDENT@31..32 "x"
         COLON@32..33 ":"
@@ -62,7 +62,7 @@ SOURCE_FILE@0..67
       L_CURLY@41..42 "{"
       R_CURLY@42..43 "}"
   WHITESPACE@43..44 "\n"
-  FN_DEF@44..66
+  FN@44..66
     FN_KW@44..46 "fn"
     WHITESPACE@46..47 " "
     NAME@47..48
@@ -70,7 +70,7 @@ SOURCE_FILE@0..67
     PARAM_LIST@48..63
       L_PAREN@48..49 "("
       PARAM@49..55
-        BIND_PAT@49..50
+        IDENT_PAT@49..50
           NAME@49..50
             IDENT@49..50 "x"
         COLON@50..51 ":"
@@ -83,7 +83,7 @@ SOURCE_FILE@0..67
       COMMA@55..56 ","
       WHITESPACE@56..57 " "
       PARAM@57..62
-        BIND_PAT@57..58
+        IDENT_PAT@57..58
           NAME@57..58
             IDENT@57..58 "y"
         COLON@58..59 ":"

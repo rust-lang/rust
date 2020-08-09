@@ -89,7 +89,7 @@ fn item_parser_tests() {
     fragment_parser_dir_test(
         &["parser/fragments/item/ok"],
         &["parser/fragments/item/err"],
-        crate::ast::ModuleItem::parse,
+        crate::ast::Item::parse,
     );
 }
 
@@ -98,7 +98,7 @@ fn type_parser_tests() {
     fragment_parser_dir_test(
         &["parser/fragments/type/ok"],
         &["parser/fragments/type/err"],
-        crate::ast::TypeRef::parse,
+        crate::ast::Type::parse,
     );
 }
 

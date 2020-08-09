@@ -32,7 +32,7 @@ impl<'a> AstTransform<'a> for NullTransformer {
 
 pub struct SubstituteTypeParams<'a> {
     source_scope: &'a SemanticsScope<'a>,
-    substs: FxHashMap<hir::TypeParam, ast::TypeRef>,
+    substs: FxHashMap<hir::TypeParam, ast::Type>,
     previous: Box<dyn AstTransform<'a> + 'a>,
 }
 
@@ -41,7 +41,7 @@ impl<'a> SubstituteTypeParams<'a> {
         source_scope: &'a SemanticsScope<'a>,
         // FIXME: there's implicit invariant that `trait_` and  `source_scope` match...
         trait_: hir::Trait,
-        impl_def: ast::ImplDef,
+        impl_def: ast::Impl,
     ) -> SubstituteTypeParams<'a> {
         let substs = get_syntactic_substs(impl_def).unwrap_or_default();
         let generic_def: hir::GenericDef = trait_.into();
@@ -63,7 +63,7 @@ impl<'a> SubstituteTypeParams<'a> {
                     let default = k.default(source_scope.db)?;
                     Some((
                         k,
-                        ast::make::type_ref(
+                        ast::make::ty(
                             &default
                                 .display_source_code(source_scope.db, source_scope.module()?.into())
                                 .ok()?,
@@ -79,19 +79,25 @@ impl<'a> SubstituteTypeParams<'a> {
         };
 
         // FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
-        // trait ref, and then go from the types in the substs back to the syntax)
-        fn get_syntactic_substs(impl_def: ast::ImplDef) -> Option<Vec<ast::TypeRef>> {
-            let target_trait = impl_def.target_trait()?;
+        // trait ref, and then go from the types in the substs back to the syntax).
+        fn get_syntactic_substs(impl_def: ast::Impl) -> Option<Vec<ast::Type>> {
+            let target_trait = impl_def.trait_()?;
             let path_type = match target_trait {
-                ast::TypeRef::PathType(path) => path,
+                ast::Type::PathType(path) => path,
                 _ => return None,
             };
-            let type_arg_list = path_type.path()?.segment()?.type_arg_list()?;
+            let generic_arg_list = path_type.path()?.segment()?.generic_arg_list()?;
+
             let mut result = Vec::new();
-            for type_arg in type_arg_list.type_args() {
-                let type_arg: ast::TypeArg = type_arg;
-                result.push(type_arg.type_ref()?);
+            for generic_arg in generic_arg_list.generic_args() {
+                match generic_arg {
+                    ast::GenericArg::TypeArg(type_arg) => result.push(type_arg.ty()?),
+                    ast::GenericArg::AssocTypeArg(_)
+                    | ast::GenericArg::LifetimeArg(_)
+                    | ast::GenericArg::ConstArg(_) => (),
+                }
             }
+
             Some(result)
         }
     }
@@ -99,9 +105,9 @@ impl<'a> SubstituteTypeParams<'a> {
         &self,
         node: &ra_syntax::SyntaxNode,
     ) -> Option<ra_syntax::SyntaxNode> {
-        let type_ref = ast::TypeRef::cast(node.clone())?;
+        let type_ref = ast::Type::cast(node.clone())?;
         let path = match &type_ref {
-            ast::TypeRef::PathType(path_type) => path_type.path()?,
+            ast::Type::PathType(path_type) => path_type.path()?,
             _ => return None,
         };
         // FIXME: use `hir::Path::from_src` instead.
@@ -157,7 +163,7 @@ impl<'a> QualifyPaths<'a> {
 
                 let type_args = p
                     .segment()
-                    .and_then(|s| s.type_arg_list())
+                    .and_then(|s| s.generic_arg_list())
                     .map(|arg_list| apply(self, arg_list));
                 if let Some(type_args) = type_args {
                     let last_segment = path.segment().unwrap();

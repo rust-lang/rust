@@ -1,5 +1,5 @@
 SOURCE_FILE@0..26
-  FN_DEF@0..25
+  FN@0..25
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..7
@@ -14,7 +14,7 @@ SOURCE_FILE@0..26
       LET_STMT@12..23
         LET_KW@12..15 "let"
         WHITESPACE@15..16 " "
-        PLACEHOLDER_PAT@16..17
+        WILDCARD_PAT@16..17
           UNDERSCORE@16..17 "_"
         WHITESPACE@17..18 " "
         EQ@18..19 "="

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..121
-  TYPE_ALIAS_DEF@0..28
+  TYPE_ALIAS@0..28
     TYPE_KW@0..4 "type"
     WHITESPACE@4..5 " "
     NAME@5..6
@@ -9,13 +9,13 @@ SOURCE_FILE@0..121
     WHITESPACE@8..9 " "
     FOR_TYPE@9..27
       FOR_KW@9..12 "for"
-      TYPE_PARAM_LIST@12..16
+      GENERIC_PARAM_LIST@12..16
         L_ANGLE@12..13 "<"
         LIFETIME_PARAM@13..15
           LIFETIME@13..15 "\'a"
         R_ANGLE@15..16 ">"
       WHITESPACE@16..17 " "
-      FN_POINTER_TYPE@17..27
+      FN_PTR_TYPE@17..27
         FN_KW@17..19 "fn"
         PARAM_LIST@19..21
           L_PAREN@19..20 "("
@@ -29,7 +29,7 @@ SOURCE_FILE@0..121
             R_PAREN@26..27 ")"
     SEMICOLON@27..28 ";"
   WHITESPACE@28..29 "\n"
-  TYPE_ALIAS_DEF@29..81
+  TYPE_ALIAS@29..81
     TYPE_KW@29..33 "type"
     WHITESPACE@33..34 " "
     NAME@34..35
@@ -39,13 +39,13 @@ SOURCE_FILE@0..121
     WHITESPACE@37..38 " "
     FOR_TYPE@38..80
       FOR_KW@38..41 "for"
-      TYPE_PARAM_LIST@41..45
+      GENERIC_PARAM_LIST@41..45
         L_ANGLE@41..42 "<"
         LIFETIME_PARAM@42..44
           LIFETIME@42..44 "\'a"
         R_ANGLE@44..45 ">"
       WHITESPACE@45..46 " "
-      FN_POINTER_TYPE@46..80
+      FN_PTR_TYPE@46..80
         UNSAFE_KW@46..52 "unsafe"
         WHITESPACE@52..53 " "
         ABI@53..63
@@ -57,7 +57,7 @@ SOURCE_FILE@0..121
         PARAM_LIST@66..74
           L_PAREN@66..67 "("
           PARAM@67..73
-            REFERENCE_TYPE@67..73
+            REF_TYPE@67..73
               AMP@67..68 "&"
               LIFETIME@68..70 "\'a"
               WHITESPACE@70..71 " "
@@ -74,7 +74,7 @@ SOURCE_FILE@0..121
             R_PAREN@79..80 ")"
     SEMICOLON@80..81 ";"
   WHITESPACE@81..82 "\n"
-  TYPE_ALIAS_DEF@82..120
+  TYPE_ALIAS@82..120
     TYPE_KW@82..86 "type"
     WHITESPACE@86..87 " "
     NAME@87..90
@@ -84,7 +84,7 @@ SOURCE_FILE@0..121
     WHITESPACE@92..93 " "
     FOR_TYPE@93..119
       FOR_KW@93..96 "for"
-      TYPE_PARAM_LIST@96..100
+      GENERIC_PARAM_LIST@96..100
         L_ANGLE@96..97 "<"
         LIFETIME_PARAM@97..99
           LIFETIME@97..99 "\'a"
@@ -95,10 +95,10 @@ SOURCE_FILE@0..121
           PATH_SEGMENT@101..119
             NAME_REF@101..110
               IDENT@101..110 "PartialEq"
-            TYPE_ARG_LIST@110..119
+            GENERIC_ARG_LIST@110..119
               L_ANGLE@110..111 "<"
               TYPE_ARG@111..118
-                REFERENCE_TYPE@111..118
+                REF_TYPE@111..118
                   AMP@111..112 "&"
                   LIFETIME@112..114 "\'a"
                   WHITESPACE@114..115 " "

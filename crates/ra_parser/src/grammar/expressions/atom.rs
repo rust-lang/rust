@@ -250,7 +250,7 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
             p.error("expected expression");
         }
     }
-    m.complete(p, LAMBDA_EXPR)
+    m.complete(p, CLOSURE_EXPR)
 }
 
 // test if_expr

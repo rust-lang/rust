@@ -1,8 +1,6 @@
 use hir::Adt;
 use ra_syntax::{
-    ast::{
-        self, AstNode, NameOwner, StructKind, TypeAscriptionOwner, TypeParamsOwner, VisibilityOwner,
-    },
+    ast::{self, AstNode, GenericParamsOwner, NameOwner, StructKind, VisibilityOwner},
     T,
 };
 use stdx::{format_to, SepBy};
@@ -30,7 +28,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let strukt = ctx.find_node_at_offset::<ast::StructDef>()?;
+    let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
 
     // We want to only apply this to non-union structs with named fields
     let field_list = match strukt.kind() {
@@ -53,9 +51,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
         let params = field_list
             .fields()
-            .filter_map(|f| {
-                Some(format!("{}: {}", f.name()?.syntax(), f.ascribed_type()?.syntax()))
-            })
+            .filter_map(|f| Some(format!("{}: {}", f.name()?.syntax(), f.ty()?.syntax())))
             .sep_by(", ");
         let fields = field_list.fields().filter_map(|f| f.name()).sep_by(", ");
 
@@ -90,8 +86,8 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
 // Generates the surrounding `impl Type { <code> }` including type and lifetime
 // parameters
-fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
-    let type_params = strukt.type_param_list();
+fn generate_impl_text(strukt: &ast::Struct, code: &str) -> String {
+    let type_params = strukt.generic_param_list();
     let mut buf = String::with_capacity(code.len());
     buf.push_str("\n\nimpl");
     if let Some(type_params) = &type_params {
@@ -121,7 +117,7 @@ fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
 //
 // FIXME: change the new fn checking to a more semantic approach when that's more
 // viable (e.g. we process proc macros, etc)
-fn find_struct_impl(ctx: &AssistContext, strukt: &ast::StructDef) -> Option<Option<ast::ImplDef>> {
+fn find_struct_impl(ctx: &AssistContext, strukt: &ast::Struct) -> Option<Option<ast::Impl>> {
     let db = ctx.db();
     let module = strukt.syntax().ancestors().find(|node| {
         ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())
@@ -129,7 +125,7 @@ fn find_struct_impl(ctx: &AssistContext, strukt: &ast::StructDef) -> Option<Opti
 
     let struct_def = ctx.sema.to_def(strukt)?;
 
-    let block = module.descendants().filter_map(ast::ImplDef::cast).find_map(|impl_blk| {
+    let block = module.descendants().filter_map(ast::Impl::cast).find_map(|impl_blk| {
         let blk = ctx.sema.to_def(&impl_blk)?;
 
         // FIXME: handle e.g. `struct S<T>; impl<U> S<U> {}`
@@ -157,10 +153,10 @@ fn find_struct_impl(ctx: &AssistContext, strukt: &ast::StructDef) -> Option<Opti
     Some(block)
 }
 
-fn has_new_fn(imp: &ast::ImplDef) -> bool {
-    if let Some(il) = imp.item_list() {
+fn has_new_fn(imp: &ast::Impl) -> bool {
+    if let Some(il) = imp.assoc_item_list() {
         for item in il.assoc_items() {
-            if let ast::AssocItem::FnDef(f) = item {
+            if let ast::AssocItem::Fn(f) = item {
                 if let Some(name) = f.name() {
                     if name.text().eq_ignore_ascii_case("new") {
                         return true;

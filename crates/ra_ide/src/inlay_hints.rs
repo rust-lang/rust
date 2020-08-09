@@ -2,7 +2,7 @@ use hir::{Adt, Callable, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
+    ast::{self, ArgListOwner, AstNode},
     match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
 };
 use stdx::to_lower_snake_case;
@@ -78,7 +78,7 @@ pub(crate) fn inlay_hints(
             match node {
                 ast::CallExpr(it) => { get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it)); },
                 ast::MethodCallExpr(it) => { get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it)); },
-                ast::BindPat(it) => { get_bind_pat_hints(&mut res, &sema, config, it); },
+                ast::IdentPat(it) => { get_bind_pat_hints(&mut res, &sema, config, it); },
                 _ => (),
             }
         }
@@ -96,7 +96,7 @@ fn get_chaining_hints(
         return None;
     }
 
-    if matches!(expr, ast::Expr::RecordLit(_)) {
+    if matches!(expr, ast::Expr::RecordExpr(_)) {
         return None;
     }
 
@@ -161,7 +161,7 @@ fn get_param_name_hints(
             Either::Left(self_param) => Some((self_param.to_string(), arg)),
             Either::Right(pat) => {
                 let param_name = match pat {
-                    ast::Pat::BindPat(it) => it.name()?.to_string(),
+                    ast::Pat::IdentPat(it) => it.name()?.to_string(),
                     it => it.to_string(),
                 };
                 Some((param_name, arg))
@@ -182,7 +182,7 @@ fn get_bind_pat_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
-    pat: ast::BindPat,
+    pat: ast::IdentPat,
 ) -> Option<()> {
     if !config.type_hints {
         return None;
@@ -202,7 +202,7 @@ fn get_bind_pat_hints(
     Some(())
 }
 
-fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::BindPat, pat_ty: &Type) -> bool {
+fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &Type) -> bool {
     if let Some(Adt::Enum(enum_data)) = pat_ty.as_adt() {
         let pat_text = bind_pat.to_string();
         enum_data
@@ -215,7 +215,11 @@ fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::BindPat, pat_ty: &Type
     }
 }
 
-fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_ty: &Type) -> bool {
+fn should_not_display_type_hint(
+    db: &RootDatabase,
+    bind_pat: &ast::IdentPat,
+    pat_ty: &Type,
+) -> bool {
     if pat_ty.is_unknown() {
         return true;
     }
@@ -230,10 +234,10 @@ fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_
         match_ast! {
             match node {
                 ast::LetStmt(it) => {
-                    return it.ascribed_type().is_some()
+                    return it.ty().is_some()
                 },
                 ast::Param(it) => {
-                    return it.ascribed_type().is_some()
+                    return it.ty().is_some()
                 },
                 ast::MatchArm(_it) => {
                     return pat_is_enum_variant(db, bind_pat, pat_ty);

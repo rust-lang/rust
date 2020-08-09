@@ -58,7 +58,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
             }
             NodeOrToken::Node(node) => {
                 // Fold groups of imports
-                if node.kind() == USE_ITEM && !visited_imports.contains(&node) {
+                if node.kind() == USE && !visited_imports.contains(&node) {
                     if let Some(range) = contiguous_range_for_group(&node, &mut visited_imports) {
                         res.push(Fold { range, kind: FoldKind::Imports })
                     }
@@ -83,17 +83,18 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
 fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     match kind {
         COMMENT => Some(FoldKind::Comment),
-        USE_ITEM => Some(FoldKind::Imports),
+        USE => Some(FoldKind::Imports),
         ARG_LIST | PARAM_LIST => Some(FoldKind::ArgList),
-        RECORD_FIELD_DEF_LIST
-        | RECORD_FIELD_PAT_LIST
+        ASSOC_ITEM_LIST
         | RECORD_FIELD_LIST
+        | RECORD_PAT_FIELD_LIST
+        | RECORD_EXPR_FIELD_LIST
         | ITEM_LIST
         | EXTERN_ITEM_LIST
         | USE_TREE_LIST
         | BLOCK_EXPR
         | MATCH_ARM_LIST
-        | ENUM_VARIANT_LIST
+        | VARIANT_LIST
         | TOKEN_TREE => Some(FoldKind::Block),
         _ => None,
     }
@@ -333,6 +334,26 @@ use std::f64;</fold>
 
 fn main() <fold block>{
 }</fold>"#,
+        );
+    }
+
+    #[test]
+    fn test_folds_structs() {
+        check(
+            r#"
+struct Foo <fold block>{
+}</fold>
+"#,
+        );
+    }
+
+    #[test]
+    fn test_folds_traits() {
+        check(
+            r#"
+trait Foo <fold block>{
+}</fold>
+"#,
         );
     }
 

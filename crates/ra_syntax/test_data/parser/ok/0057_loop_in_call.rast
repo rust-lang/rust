@@ -1,5 +1,5 @@
 SOURCE_FILE@0..50
-  FN_DEF@0..17
+  FN@0..17
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -7,7 +7,7 @@ SOURCE_FILE@0..50
     PARAM_LIST@6..14
       L_PAREN@6..7 "("
       PARAM@7..13
-        BIND_PAT@7..8
+        IDENT_PAT@7..8
           NAME@7..8
             IDENT@7..8 "x"
         COLON@8..9 ":"
@@ -23,7 +23,7 @@ SOURCE_FILE@0..50
       L_CURLY@15..16 "{"
       R_CURLY@16..17 "}"
   WHITESPACE@17..19 "\n\n"
-  FN_DEF@19..50
+  FN@19..50
     FN_KW@19..21 "fn"
     WHITESPACE@21..22 " "
     NAME@22..26

@@ -8,7 +8,7 @@ SOURCE_FILE@0..126
     EXTERN_ITEM_LIST@11..125
       L_CURLY@11..12 "{"
       WHITESPACE@12..17 "\n    "
-      FN_DEF@17..40
+      FN@17..40
         FN_KW@17..19 "fn"
         WHITESPACE@19..20 " "
         NAME@20..21
@@ -16,11 +16,11 @@ SOURCE_FILE@0..126
         PARAM_LIST@21..39
           L_PAREN@21..22 "("
           PARAM@22..32
-            PLACEHOLDER_PAT@22..23
+            WILDCARD_PAT@22..23
               UNDERSCORE@22..23 "_"
             COLON@23..24 ":"
             WHITESPACE@24..25 " "
-            POINTER_TYPE@25..32
+            PTR_TYPE@25..32
               STAR@25..26 "*"
               MUT_KW@26..29 "mut"
               WHITESPACE@29..30 " "
@@ -37,7 +37,7 @@ SOURCE_FILE@0..126
           R_PAREN@38..39 ")"
         SEMICOLON@39..40 ";"
       WHITESPACE@40..45 "\n    "
-      FN_DEF@45..70
+      FN@45..70
         FN_KW@45..47 "fn"
         WHITESPACE@47..48 " "
         NAME@48..49
@@ -45,11 +45,11 @@ SOURCE_FILE@0..126
         PARAM_LIST@49..69
           L_PAREN@49..50 "("
           PARAM@50..60
-            PLACEHOLDER_PAT@50..51
+            WILDCARD_PAT@50..51
               UNDERSCORE@50..51 "_"
             COLON@51..52 ":"
             WHITESPACE@52..53 " "
-            POINTER_TYPE@53..60
+            PTR_TYPE@53..60
               STAR@53..54 "*"
               MUT_KW@54..57 "mut"
               WHITESPACE@57..58 " "
@@ -61,7 +61,7 @@ SOURCE_FILE@0..126
           COMMA@60..61 ","
           WHITESPACE@61..62 " "
           PARAM@62..68
-            PLACEHOLDER_PAT@62..63
+            WILDCARD_PAT@62..63
               UNDERSCORE@62..63 "_"
             COLON@63..64 ":"
             WHITESPACE@64..65 " "
@@ -69,7 +69,7 @@ SOURCE_FILE@0..126
           R_PAREN@68..69 ")"
         SEMICOLON@69..70 ";"
       WHITESPACE@70..75 "\n    "
-      FN_DEF@75..123
+      FN@75..123
         FN_KW@75..77 "fn"
         WHITESPACE@77..78 " "
         NAME@78..79
@@ -77,11 +77,11 @@ SOURCE_FILE@0..126
         PARAM_LIST@79..122
           L_PAREN@79..80 "("
           PARAM@80..90
-            PLACEHOLDER_PAT@80..81
+            WILDCARD_PAT@80..81
               UNDERSCORE@80..81 "_"
             COLON@81..82 ":"
             WHITESPACE@82..83 " "
-            POINTER_TYPE@83..90
+            PTR_TYPE@83..90
               STAR@83..84 "*"
               MUT_KW@84..87 "mut"
               WHITESPACE@87..88 " "
@@ -108,17 +108,17 @@ SOURCE_FILE@0..126
           PARAM@106..120
             SLICE_PAT@106..115
               L_BRACK@106..107 "["
-              BIND_PAT@107..108
+              IDENT_PAT@107..108
                 NAME@107..108
                   IDENT@107..108 "w"
               COMMA@108..109 ","
               WHITESPACE@109..110 " "
-              BIND_PAT@110..111
+              IDENT_PAT@110..111
                 NAME@110..111
                   IDENT@110..111 "t"
               COMMA@111..112 ","
               WHITESPACE@112..113 " "
-              BIND_PAT@113..114
+              IDENT_PAT@113..114
                 NAME@113..114
                   IDENT@113..114 "f"
               R_BRACK@114..115 "]"

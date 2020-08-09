@@ -1,5 +1,5 @@
 SOURCE_FILE@0..63
-  FN_DEF@0..62
+  FN@0..62
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -20,10 +20,10 @@ SOURCE_FILE@0..63
               NAME_REF@19..20
                 IDENT@19..20 "S"
           WHITESPACE@20..21 " "
-          RECORD_FIELD_PAT_LIST@21..29
+          RECORD_PAT_FIELD_LIST@21..29
             L_CURLY@21..22 "{"
             WHITESPACE@22..23 " "
-            RECORD_FIELD_PAT@23..27
+            RECORD_PAT_FIELD@23..27
               NAME_REF@23..24
                 INT_NUMBER@23..24 "0"
               COLON@24..25 ":"
@@ -50,10 +50,10 @@ SOURCE_FILE@0..63
               NAME_REF@44..45
                 IDENT@44..45 "S"
           WHITESPACE@45..46 " "
-          RECORD_FIELD_PAT_LIST@46..54
+          RECORD_PAT_FIELD_LIST@46..54
             L_CURLY@46..47 "{"
             WHITESPACE@47..48 " "
-            RECORD_FIELD_PAT@48..52
+            RECORD_PAT_FIELD@48..52
               NAME_REF@48..49
                 IDENT@48..49 "x"
               COLON@49..50 ":"

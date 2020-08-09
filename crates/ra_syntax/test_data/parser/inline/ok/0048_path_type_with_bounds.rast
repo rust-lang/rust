@@ -1,5 +1,5 @@
 SOURCE_FILE@0..58
-  FN_DEF@0..26
+  FN@0..26
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -16,7 +16,7 @@ SOURCE_FILE@0..58
           PATH_SEGMENT@12..23
             NAME_REF@12..15
               IDENT@12..15 "Box"
-            TYPE_ARG_LIST@15..23
+            GENERIC_ARG_LIST@15..23
               L_ANGLE@15..16 "<"
               TYPE_ARG@16..22
                 DYN_TRAIT_TYPE@16..22
@@ -38,7 +38,7 @@ SOURCE_FILE@0..58
       L_CURLY@24..25 "{"
       R_CURLY@25..26 "}"
   WHITESPACE@26..27 "\n"
-  FN_DEF@27..57
+  FN@27..57
     FN_KW@27..29 "fn"
     WHITESPACE@29..30 " "
     NAME@30..33
@@ -55,7 +55,7 @@ SOURCE_FILE@0..58
           PATH_SEGMENT@39..54
             NAME_REF@39..42
               IDENT@39..42 "Box"
-            TYPE_ARG_LIST@42..54
+            GENERIC_ARG_LIST@42..54
               L_ANGLE@42..43 "<"
               TYPE_ARG@43..53
                 DYN_TRAIT_TYPE@43..53

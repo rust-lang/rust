@@ -1,5 +1,5 @@
 SOURCE_FILE@0..62
-  FN_DEF@0..61
+  FN@0..61
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..7

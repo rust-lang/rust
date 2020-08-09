@@ -1,7 +1,6 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
-
-use ra_syntax::ast::{self, TypeAscriptionOwner, TypeBoundsOwner};
+use ra_syntax::ast::{self};
 
 use crate::{body::LowerCtx, path::Path};
 
@@ -80,14 +79,14 @@ pub enum TypeBound {
 
 impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
-    pub(crate) fn from_ast(ctx: &LowerCtx, node: ast::TypeRef) -> Self {
+    pub(crate) fn from_ast(ctx: &LowerCtx, node: ast::Type) -> Self {
         match node {
-            ast::TypeRef::ParenType(inner) => TypeRef::from_ast_opt(&ctx, inner.type_ref()),
-            ast::TypeRef::TupleType(inner) => {
+            ast::Type::ParenType(inner) => TypeRef::from_ast_opt(&ctx, inner.ty()),
+            ast::Type::TupleType(inner) => {
                 TypeRef::Tuple(inner.fields().map(|it| TypeRef::from_ast(ctx, it)).collect())
             }
-            ast::TypeRef::NeverType(..) => TypeRef::Never,
-            ast::TypeRef::PathType(inner) => {
+            ast::Type::NeverType(..) => TypeRef::Never,
+            ast::Type::PathType(inner) => {
                 // FIXME: Use `Path::from_src`
                 inner
                     .path()
@@ -95,27 +94,27 @@ impl TypeRef {
                     .map(TypeRef::Path)
                     .unwrap_or(TypeRef::Error)
             }
-            ast::TypeRef::PointerType(inner) => {
-                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.type_ref());
+            ast::Type::PtrType(inner) => {
+                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.ty());
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::RawPtr(Box::new(inner_ty), mutability)
             }
-            ast::TypeRef::ArrayType(inner) => {
-                TypeRef::Array(Box::new(TypeRef::from_ast_opt(&ctx, inner.type_ref())))
+            ast::Type::ArrayType(inner) => {
+                TypeRef::Array(Box::new(TypeRef::from_ast_opt(&ctx, inner.ty())))
             }
-            ast::TypeRef::SliceType(inner) => {
-                TypeRef::Slice(Box::new(TypeRef::from_ast_opt(&ctx, inner.type_ref())))
+            ast::Type::SliceType(inner) => {
+                TypeRef::Slice(Box::new(TypeRef::from_ast_opt(&ctx, inner.ty())))
             }
-            ast::TypeRef::ReferenceType(inner) => {
-                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.type_ref());
+            ast::Type::RefType(inner) => {
+                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.ty());
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::Reference(Box::new(inner_ty), mutability)
             }
-            ast::TypeRef::PlaceholderType(_inner) => TypeRef::Placeholder,
-            ast::TypeRef::FnPointerType(inner) => {
+            ast::Type::InferType(_inner) => TypeRef::Placeholder,
+            ast::Type::FnPtrType(inner) => {
                 let ret_ty = inner
                     .ret_type()
-                    .and_then(|rt| rt.type_ref())
+                    .and_then(|rt| rt.ty())
                     .map(|it| TypeRef::from_ast(ctx, it))
                     .unwrap_or_else(|| TypeRef::Tuple(Vec::new()));
                 let mut is_varargs = false;
@@ -124,10 +123,7 @@ impl TypeRef {
                         is_varargs = param.dotdotdot_token().is_some();
                     }
 
-                    pl.params()
-                        .map(|p| p.ascribed_type())
-                        .map(|it| TypeRef::from_ast_opt(&ctx, it))
-                        .collect()
+                    pl.params().map(|p| p.ty()).map(|it| TypeRef::from_ast_opt(&ctx, it)).collect()
                 } else {
                     Vec::new()
                 };
@@ -135,17 +131,17 @@ impl TypeRef {
                 TypeRef::Fn(params, is_varargs)
             }
             // for types are close enough for our purposes to the inner type for now...
-            ast::TypeRef::ForType(inner) => TypeRef::from_ast_opt(&ctx, inner.type_ref()),
-            ast::TypeRef::ImplTraitType(inner) => {
+            ast::Type::ForType(inner) => TypeRef::from_ast_opt(&ctx, inner.ty()),
+            ast::Type::ImplTraitType(inner) => {
                 TypeRef::ImplTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
-            ast::TypeRef::DynTraitType(inner) => {
+            ast::Type::DynTraitType(inner) => {
                 TypeRef::DynTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
         }
     }
 
-    pub(crate) fn from_ast_opt(ctx: &LowerCtx, node: Option<ast::TypeRef>) -> Self {
+    pub(crate) fn from_ast_opt(ctx: &LowerCtx, node: Option<ast::Type>) -> Self {
         if let Some(node) = node {
             TypeRef::from_ast(ctx, node)
         } else {

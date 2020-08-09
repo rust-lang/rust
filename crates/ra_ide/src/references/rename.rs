@@ -7,7 +7,8 @@ use ra_ide_db::{
     RootDatabase,
 };
 use ra_syntax::{
-    algo::find_node_at_offset, ast, ast::NameOwner, ast::TypeAscriptionOwner,
+    algo::find_node_at_offset,
+    ast::{self, NameOwner},
     lex_single_valid_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 use ra_text_edit::TextEdit;
@@ -149,14 +150,14 @@ fn rename_to_self(
     let source_file = sema.parse(position.file_id);
     let syn = source_file.syntax();
 
-    let fn_def = find_node_at_offset::<ast::FnDef>(syn, position.offset)?;
+    let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)?;
     let params = fn_def.param_list()?;
     if params.self_param().is_some() {
         return None; // method already has self param
     }
     let first_param = params.params().next()?;
-    let mutable = match first_param.ascribed_type() {
-        Some(ast::TypeRef::ReferenceType(rt)) => rt.mut_token().is_some(),
+    let mutable = match first_param.ty() {
+        Some(ast::Type::RefType(rt)) => rt.mut_token().is_some(),
         _ => return None, // not renaming other types
     };
 
@@ -192,15 +193,14 @@ fn text_edit_from_self_param(
     self_param: &ast::SelfParam,
     new_name: &str,
 ) -> Option<TextEdit> {
-    fn target_type_name(impl_def: &ast::ImplDef) -> Option<String> {
-        if let Some(ast::TypeRef::PathType(p)) = impl_def.target_type() {
+    fn target_type_name(impl_def: &ast::Impl) -> Option<String> {
+        if let Some(ast::Type::PathType(p)) = impl_def.self_ty() {
             return Some(p.path()?.segment()?.name_ref()?.text().to_string());
         }
         None
     }
 
-    let impl_def =
-        find_node_at_offset::<ast::ImplDef>(syn, self_param.syntax().text_range().start())?;
+    let impl_def = find_node_at_offset::<ast::Impl>(syn, self_param.syntax().text_range().start())?;
     let type_name = target_type_name(&impl_def)?;
 
     let mut replacement_text = String::from(new_name);
@@ -221,7 +221,7 @@ fn rename_self_to_param(
     let syn = source_file.syntax();
 
     let text = sema.db.file_text(position.file_id);
-    let fn_def = find_node_at_offset::<ast::FnDef>(syn, position.offset)?;
+    let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)?;
     let search_range = fn_def.syntax().text_range();
 
     let mut edits: Vec<SourceFileEdit> = vec![];

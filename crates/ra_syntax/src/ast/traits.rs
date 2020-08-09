@@ -9,12 +9,6 @@ use crate::{
     SyntaxToken, T,
 };
 
-pub trait TypeAscriptionOwner: AstNode {
-    fn ascribed_type(&self) -> Option<ast::TypeRef> {
-        support::child(self.syntax())
-    }
-}
-
 pub trait NameOwner: AstNode {
     fn name(&self) -> Option<ast::Name> {
         support::child(self.syntax())
@@ -44,13 +38,13 @@ pub trait ArgListOwner: AstNode {
 }
 
 pub trait ModuleItemOwner: AstNode {
-    fn items(&self) -> AstChildren<ast::ModuleItem> {
+    fn items(&self) -> AstChildren<ast::Item> {
         support::children(self.syntax())
     }
 }
 
-pub trait TypeParamsOwner: AstNode {
-    fn type_param_list(&self) -> Option<ast::TypeParamList> {
+pub trait GenericParamsOwner: AstNode {
+    fn generic_param_list(&self) -> Option<ast::GenericParamList> {
         support::child(self.syntax())
     }
 

@@ -1,10 +1,10 @@
 SOURCE_FILE@0..32
-  STRUCT_DEF@0..31
+  STRUCT@0..31
     STRUCT_KW@0..6 "struct"
     WHITESPACE@6..7 " "
     NAME@7..8
       IDENT@7..8 "S"
-    TYPE_PARAM_LIST@8..17
+    GENERIC_PARAM_LIST@8..17
       L_ANGLE@8..9 "<"
       TYPE_PARAM@9..16
         NAME@9..10
@@ -20,10 +20,10 @@ SOURCE_FILE@0..32
                     IDENT@12..16 "Copy"
       R_ANGLE@16..17 ">"
     WHITESPACE@17..18 " "
-    RECORD_FIELD_DEF_LIST@18..31
+    RECORD_FIELD_LIST@18..31
       L_CURLY@18..19 "{"
       WHITESPACE@19..24 "\n    "
-      RECORD_FIELD_DEF@24..28
+      RECORD_FIELD@24..28
         NAME@24..25
           IDENT@24..25 "f"
         COLON@25..26 ":"

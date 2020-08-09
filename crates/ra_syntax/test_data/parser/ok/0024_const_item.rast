@@ -1,5 +1,5 @@
 SOURCE_FILE@0..64
-  CONST_DEF@0..17
+  CONST@0..17
     CONST_KW@0..5 "const"
     WHITESPACE@5..6 " "
     UNDERSCORE@6..7 "_"
@@ -17,7 +17,7 @@ SOURCE_FILE@0..64
       INT_NUMBER@15..16 "0"
     SEMICOLON@16..17 ";"
   WHITESPACE@17..18 "\n"
-  CONST_DEF@18..38
+  CONST@18..38
     CONST_KW@18..23 "const"
     WHITESPACE@23..24 " "
     NAME@24..27
@@ -36,7 +36,7 @@ SOURCE_FILE@0..64
       INT_NUMBER@35..37 "92"
     SEMICOLON@37..38 ";"
   WHITESPACE@38..39 "\n"
-  CONST_DEF@39..63
+  CONST@39..63
     CONST_KW@39..44 "const"
     WHITESPACE@44..45 " "
     MUT_KW@45..48 "mut"

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..88
-  FN_DEF@0..87
+  FN@0..87
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -38,7 +38,7 @@ SOURCE_FILE@0..88
         FOR_EXPR@49..66
           FOR_KW@49..52 "for"
           WHITESPACE@52..53 " "
-          BIND_PAT@53..54
+          IDENT_PAT@53..54
             NAME@53..54
               IDENT@53..54 "i"
           WHITESPACE@54..55 " "

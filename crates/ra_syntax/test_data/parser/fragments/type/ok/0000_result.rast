@@ -3,7 +3,7 @@ PATH_TYPE@0..16
     PATH_SEGMENT@0..16
       NAME_REF@0..6
         IDENT@0..6 "Result"
-      TYPE_ARG_LIST@6..16
+      GENERIC_ARG_LIST@6..16
         L_ANGLE@6..7 "<"
         TYPE_ARG@7..10
           PATH_TYPE@7..10

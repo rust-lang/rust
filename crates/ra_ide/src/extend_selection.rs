@@ -37,15 +37,15 @@ fn try_extend_selection(
 
     let string_kinds = [COMMENT, STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
     let list_kinds = [
-        RECORD_FIELD_PAT_LIST,
+        RECORD_PAT_FIELD_LIST,
         MATCH_ARM_LIST,
-        RECORD_FIELD_DEF_LIST,
-        TUPLE_FIELD_DEF_LIST,
         RECORD_FIELD_LIST,
-        ENUM_VARIANT_LIST,
+        TUPLE_FIELD_LIST,
+        RECORD_EXPR_FIELD_LIST,
+        VARIANT_LIST,
         USE_TREE_LIST,
-        TYPE_PARAM_LIST,
-        TYPE_ARG_LIST,
+        GENERIC_PARAM_LIST,
+        GENERIC_ARG_LIST,
         TYPE_BOUND_LIST,
         PARAM_LIST,
         ARG_LIST,

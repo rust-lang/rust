@@ -258,7 +258,7 @@ fn test_expr_order() {
     assert_eq_text!(
         dump.trim(),
         r#"MACRO_ITEMS@0..15
-  FN_DEF@0..15
+  FN@0..15
     FN_KW@0..2 "fn"
     NAME@2..5
       IDENT@2..5 "bar"
@@ -490,13 +490,13 @@ fn test_expand_to_item_list() {
         format!("{:#?}", tree).trim(),
         r#"
 MACRO_ITEMS@0..40
-  STRUCT_DEF@0..20
+  STRUCT@0..20
     STRUCT_KW@0..6 "struct"
     NAME@6..9
       IDENT@6..9 "Foo"
-    RECORD_FIELD_DEF_LIST@9..20
+    RECORD_FIELD_LIST@9..20
       L_CURLY@9..10 "{"
-      RECORD_FIELD_DEF@10..19
+      RECORD_FIELD@10..19
         NAME@10..15
           IDENT@10..15 "field"
         COLON@15..16 ":"
@@ -506,13 +506,13 @@ MACRO_ITEMS@0..40
               NAME_REF@16..19
                 IDENT@16..19 "u32"
       R_CURLY@19..20 "}"
-  STRUCT_DEF@20..40
+  STRUCT@20..40
     STRUCT_KW@20..26 "struct"
     NAME@26..29
       IDENT@26..29 "Bar"
-    RECORD_FIELD_DEF_LIST@29..40
+    RECORD_FIELD_LIST@29..40
       L_CURLY@29..30 "{"
-      RECORD_FIELD_DEF@30..39
+      RECORD_FIELD@30..39
         NAME@30..35
           IDENT@30..35 "field"
         COLON@35..36 ":"
@@ -625,7 +625,7 @@ fn test_tt_to_stmts() {
         r#"MACRO_STMTS@0..15
   LET_STMT@0..7
     LET_KW@0..3 "let"
-    BIND_PAT@3..4
+    IDENT_PAT@3..4
       NAME@3..4
         IDENT@3..4 "a"
     EQ@4..5 "="
@@ -1116,7 +1116,7 @@ fn test_vec() {
   L_CURLY@0..1 "{"
   LET_STMT@1..20
     LET_KW@1..4 "let"
-    BIND_PAT@4..8
+    IDENT_PAT@4..8
       MUT_KW@4..7 "mut"
       NAME@7..8
         IDENT@7..8 "v"
@@ -1467,7 +1467,7 @@ macro_rules! quick_error {
         buf [ ]
         queue [ ]
     ) => {
-        quick_error!(ENUM_DEFINITION [enum $name $( #[$meta] )*]
+        quick_error!(ENUMINITION [enum $name $( #[$meta] )*]
             body []
             queue [$(
                 $( #[$imeta] )*
@@ -1489,7 +1489,7 @@ quick_error ! (SORT [enum Wrapped # [derive (Debug)]] items [
 "#,
     );
 
-    assert_eq!(expanded.to_string(), "quick_error ! (ENUM_DEFINITION [enum Wrapped # [derive (Debug)]] body [] queue [=> One : UNIT [] => Two : TUPLE [s : String]]) ;");
+    assert_eq!(expanded.to_string(), "quick_error ! (ENUMINITION [enum Wrapped # [derive (Debug)]] body [] queue [=> One : UNIT [] => Two : TUPLE [s : String]]) ;");
 }
 
 #[test]

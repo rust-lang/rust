@@ -1,5 +1,5 @@
 SOURCE_FILE@0..106
-  FN_DEF@0..105
+  FN@0..105
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -14,7 +14,7 @@ SOURCE_FILE@0..106
       LET_STMT@15..32
         LET_KW@15..18 "let"
         WHITESPACE@18..19 " "
-        BIND_PAT@19..20
+        IDENT_PAT@19..20
           NAME@19..20
             IDENT@19..20 "x"
         WHITESPACE@20..21 " "
@@ -30,7 +30,7 @@ SOURCE_FILE@0..106
       LET_STMT@37..66
         LET_KW@37..40 "let"
         WHITESPACE@40..41 " "
-        BIND_PAT@41..42
+        IDENT_PAT@41..42
           NAME@41..42
             IDENT@41..42 "y"
         WHITESPACE@42..43 " "
@@ -56,7 +56,7 @@ SOURCE_FILE@0..106
       LET_STMT@71..103
         LET_KW@71..74 "let"
         WHITESPACE@74..75 " "
-        BIND_PAT@75..76
+        IDENT_PAT@75..76
           NAME@75..76
             IDENT@75..76 "z"
         WHITESPACE@76..77 " "

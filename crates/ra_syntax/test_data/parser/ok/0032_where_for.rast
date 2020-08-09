@@ -1,10 +1,10 @@
 SOURCE_FILE@0..116
-  FN_DEF@0..115
+  FN@0..115
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..21
       IDENT@3..21 "test_serialization"
-    TYPE_PARAM_LIST@21..26
+    GENERIC_PARAM_LIST@21..26
       L_ANGLE@21..22 "<"
       TYPE_PARAM@22..25
         NAME@22..25
@@ -38,7 +38,7 @@ SOURCE_FILE@0..116
           TYPE_BOUND@56..81
             FOR_TYPE@56..81
               FOR_KW@56..59 "for"
-              TYPE_PARAM_LIST@59..64
+              GENERIC_PARAM_LIST@59..64
                 L_ANGLE@59..60 "<"
                 LIFETIME_PARAM@60..63
                   LIFETIME@60..63 "\'de"
@@ -49,7 +49,7 @@ SOURCE_FILE@0..116
                   PATH_SEGMENT@65..81
                     NAME_REF@65..76
                       IDENT@65..76 "Deserialize"
-                    TYPE_ARG_LIST@76..81
+                    GENERIC_ARG_LIST@76..81
                       L_ANGLE@76..77 "<"
                       LIFETIME_ARG@77..80
                         LIFETIME@77..80 "\'de"

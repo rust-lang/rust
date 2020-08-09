@@ -587,7 +587,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
     match p.current() {
         T!['{'] if !r.forbid_structs => {
             record_field_list(p);
-            (m.complete(p, RECORD_LIT), BlockLike::NotBlock)
+            (m.complete(p, RECORD_EXPR), BlockLike::NotBlock)
         }
         T![!] if !p.at(T![!=]) => {
             let block_like = items::macro_call_after_excl(p);
@@ -627,7 +627,7 @@ pub(crate) fn record_field_list(p: &mut Parser) {
                     p.expect(T![:]);
                 }
                 expr(p);
-                m.complete(p, RECORD_FIELD);
+                m.complete(p, RECORD_EXPR_FIELD);
             }
             T![.] if p.at(T![..]) => {
                 m.abandon(p);
@@ -648,5 +648,5 @@ pub(crate) fn record_field_list(p: &mut Parser) {
         }
     }
     p.expect(T!['}']);
-    m.complete(p, RECORD_FIELD_LIST);
+    m.complete(p, RECORD_EXPR_FIELD_LIST);
 }

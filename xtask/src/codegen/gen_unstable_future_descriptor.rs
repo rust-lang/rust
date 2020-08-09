@@ -42,7 +42,7 @@ pub fn generate_unstable_future_descriptor(mode: Mode) -> Result<()> {
     let ts = quote! {
         use crate::completion::LintCompletion;
 
-        const UNSTABLE_FEATURE_DESCRIPTOR:  &[LintCompletion] = &[
+        pub const UNSTABLE_FEATURE_DESCRIPTOR:  &[LintCompletion] = &[
             #(#definitions),*
         ];
     };

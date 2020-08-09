@@ -8,7 +8,7 @@ use std::{env, fmt::Write, path::PathBuf};
 use anyhow::{bail, Result};
 use pico_args::Arguments;
 use ra_ssr::{SsrPattern, SsrRule};
-use rust_analyzer::cli::{BenchWhat, Position, Verbosity};
+use rust_analyzer::cli::{AnalysisStatsCmd, BenchCmd, BenchWhat, Position, Verbosity};
 use vfs::AbsPathBuf;
 
 pub(crate) struct Args {
@@ -24,23 +24,8 @@ pub(crate) enum Command {
     Highlight {
         rainbow: bool,
     },
-    Stats {
-        randomize: bool,
-        parallel: bool,
-        memory_usage: bool,
-        only: Option<String>,
-        with_deps: bool,
-        path: PathBuf,
-        load_output_dirs: bool,
-        with_proc_macro: bool,
-    },
-    Bench {
-        memory_usage: bool,
-        path: PathBuf,
-        what: BenchWhat,
-        load_output_dirs: bool,
-        with_proc_macro: bool,
-    },
+    AnalysisStats(AnalysisStatsCmd),
+    Bench(BenchCmd),
     Diagnostics {
         path: PathBuf,
         load_output_dirs: bool,
@@ -59,15 +44,16 @@ pub(crate) enum Command {
     ProcMacro,
     RunServer,
     Version,
+    Help,
 }
 
 impl Args {
-    pub(crate) fn parse() -> Result<Result<Args, HelpPrinted>> {
+    pub(crate) fn parse() -> Result<Args> {
         let mut matches = Arguments::from_env();
 
         if matches.contains("--version") {
             matches.finish().or_else(handle_extra_flags)?;
-            return Ok(Ok(Args { verbosity: Verbosity::Normal, command: Command::Version }));
+            return Ok(Args { verbosity: Verbosity::Normal, command: Command::Version });
         }
 
         let verbosity = match (
@@ -83,15 +69,16 @@ impl Args {
             (false, true, true) => bail!("Invalid flags: -q conflicts with -v"),
         };
 
+        let help = Ok(Args { verbosity, command: Command::Help });
         let subcommand = match matches.subcommand()? {
             Some(it) => it,
             None => {
                 if matches.contains(["-h", "--help"]) {
                     print_subcommands();
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
                 matches.finish().or_else(handle_extra_flags)?;
-                return Ok(Ok(Args { verbosity, command: Command::RunServer }));
+                return Ok(Args { verbosity, command: Command::RunServer });
             }
         };
         let command = match subcommand.as_str() {
@@ -108,7 +95,7 @@ FLAGS:
     -h, --help       Prints help information
         --no-dump"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 let no_dump = matches.contains("--no-dump");
@@ -127,7 +114,7 @@ USAGE:
 FLAGS:
     -h, --help    Prints help inforamtion"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 matches.finish().or_else(handle_extra_flags)?;
@@ -147,7 +134,7 @@ FLAGS:
     -h, --help       Prints help information
     -r, --rainbow"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 let rainbow = matches.contains(["-r", "--rainbow"]);
@@ -181,7 +168,7 @@ OPTIONS:
 ARGS:
     <PATH>"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 let randomize = matches.contains("--randomize");
@@ -199,7 +186,7 @@ ARGS:
                     trailing.pop().unwrap().into()
                 };
 
-                Command::Stats {
+                Command::AnalysisStats(AnalysisStatsCmd {
                     randomize,
                     parallel,
                     memory_usage,
@@ -208,7 +195,7 @@ ARGS:
                     path,
                     load_output_dirs,
                     with_proc_macro,
-                }
+                })
             }
             "analysis-bench" => {
                 if matches.contains(["-h", "--help"]) {
@@ -235,7 +222,7 @@ OPTIONS:
 ARGS:
     <PATH>    Project to analyse"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 let path: PathBuf = matches.opt_value_from_str("--project")?.unwrap_or_default();
@@ -256,7 +243,13 @@ ARGS:
                 let memory_usage = matches.contains("--memory-usage");
                 let load_output_dirs = matches.contains("--load-output-dirs");
                 let with_proc_macro = matches.contains("--with-proc-macro");
-                Command::Bench { memory_usage, path, what, load_output_dirs, with_proc_macro }
+                Command::Bench(BenchCmd {
+                    memory_usage,
+                    path,
+                    what,
+                    load_output_dirs,
+                    with_proc_macro,
+                })
             }
             "diagnostics" => {
                 if matches.contains(["-h", "--help"]) {
@@ -275,7 +268,7 @@ FLAGS:
 ARGS:
     <PATH>"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 let load_output_dirs = matches.contains("--load-output-dirs");
@@ -311,7 +304,7 @@ FLAGS:
 ARGS:
     <RULE>              A structured search replace rule"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
                 let mut rules = Vec::new();
                 while let Some(rule) = matches.free_from_str()? {
@@ -338,7 +331,7 @@ FLAGS:
 ARGS:
     <PATTERN>           A structured search pattern"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
                 let debug_snippet = matches.opt_value_from_str("--debug")?;
                 let mut patterns = Vec::new();
@@ -349,10 +342,10 @@ ARGS:
             }
             _ => {
                 print_subcommands();
-                return Ok(Err(HelpPrinted));
+                return help;
             }
         };
-        Ok(Ok(Args { verbosity, command }))
+        Ok(Args { verbosity, command })
     }
 }
 
@@ -379,8 +372,6 @@ SUBCOMMANDS:
     symbols"
     )
 }
-
-pub(crate) struct HelpPrinted;
 
 fn handle_extra_flags(e: pico_args::Error) -> Result<()> {
     if let pico_args::Error::UnusedArgsLeft(flags) = e {

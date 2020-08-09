@@ -1,14 +1,14 @@
 SOURCE_FILE@0..94
-  ENUM_DEF@0..8
+  ENUM@0..8
     ENUM_KW@0..4 "enum"
     WHITESPACE@4..5 " "
     NAME@5..6
       IDENT@5..6 "F"
-    ENUM_VARIANT_LIST@6..8
+    VARIANT_LIST@6..8
       L_CURLY@6..7 "{"
       R_CURLY@7..8 "}"
   WHITESPACE@8..9 "\n"
-  IMPL_DEF@9..93
+  IMPL@9..93
     IMPL_KW@9..13 "impl"
     WHITESPACE@13..14 " "
     PATH_TYPE@14..15
@@ -17,7 +17,7 @@ SOURCE_FILE@0..94
           NAME_REF@14..15
             IDENT@14..15 "F"
     WHITESPACE@15..16 " "
-    ITEM_LIST@16..93
+    ASSOC_ITEM_LIST@16..93
       L_CURLY@16..17 "{"
       WHITESPACE@17..23 "\n     "
       COMMENT@23..48 "//! This is a doc com ..."

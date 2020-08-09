@@ -50,7 +50,7 @@ pub(crate) fn trait_item_list(p: &mut Parser) {
         item_or_macro(p, true, ItemFlavor::Trait);
     }
     p.expect(T!['}']);
-    m.complete(p, ITEM_LIST);
+    m.complete(p, ASSOC_ITEM_LIST);
 }
 
 // test impl_def
@@ -107,7 +107,7 @@ pub(crate) fn impl_item_list(p: &mut Parser) {
         item_or_macro(p, true, ItemFlavor::Mod);
     }
     p.expect(T!['}']);
-    m.complete(p, ITEM_LIST);
+    m.complete(p, ASSOC_ITEM_LIST);
 }
 
 // test impl_type_params

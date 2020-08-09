@@ -13,9 +13,9 @@ use crate::completion::test_utils::check_pattern_is_applicable;
 
 pub(crate) fn has_trait_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element)
-        .filter(|it| it.kind() == ITEM_LIST)
+        .filter(|it| it.kind() == ASSOC_ITEM_LIST)
         .and_then(|it| it.parent())
-        .filter(|it| it.kind() == TRAIT_DEF)
+        .filter(|it| it.kind() == TRAIT)
         .is_some()
 }
 #[test]
@@ -25,9 +25,9 @@ fn test_has_trait_parent() {
 
 pub(crate) fn has_impl_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element)
-        .filter(|it| it.kind() == ITEM_LIST)
+        .filter(|it| it.kind() == ASSOC_ITEM_LIST)
         .and_then(|it| it.parent())
-        .filter(|it| it.kind() == IMPL_DEF)
+        .filter(|it| it.kind() == IMPL)
         .is_some()
 }
 #[test]
@@ -44,7 +44,7 @@ fn test_has_block_expr_parent() {
 }
 
 pub(crate) fn has_bind_pat_parent(element: SyntaxElement) -> bool {
-    element.ancestors().find(|it| it.kind() == BIND_PAT).is_some()
+    element.ancestors().find(|it| it.kind() == IDENT_PAT).is_some()
 }
 #[test]
 fn test_has_bind_pat_parent() {
@@ -73,7 +73,7 @@ pub(crate) fn has_item_list_or_source_file_parent(element: SyntaxElement) -> boo
 #[test]
 fn test_has_item_list_or_source_file_parent() {
     check_pattern_is_applicable(r"i<|>", has_item_list_or_source_file_parent);
-    check_pattern_is_applicable(r"impl { f<|> }", has_item_list_or_source_file_parent);
+    check_pattern_is_applicable(r"mod foo { f<|> }", has_item_list_or_source_file_parent);
 }
 
 pub(crate) fn is_match_arm(element: SyntaxElement) -> bool {
@@ -113,7 +113,7 @@ fn test_if_is_prev() {
 }
 
 pub(crate) fn has_trait_as_prev_sibling(element: SyntaxElement) -> bool {
-    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == TRAIT_DEF).is_some()
+    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == TRAIT).is_some()
 }
 #[test]
 fn test_has_trait_as_prev_sibling() {
@@ -121,7 +121,7 @@ fn test_has_trait_as_prev_sibling() {
 }
 
 pub(crate) fn has_impl_as_prev_sibling(element: SyntaxElement) -> bool {
-    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == IMPL_DEF).is_some()
+    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == IMPL).is_some()
 }
 #[test]
 fn test_has_impl_as_prev_sibling() {
@@ -134,7 +134,7 @@ pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
         NodeOrToken::Token(token) => token.parent(),
     };
     for node in leaf.ancestors() {
-        if node.kind() == FN_DEF || node.kind() == LAMBDA_EXPR {
+        if node.kind() == FN || node.kind() == CLOSURE_EXPR {
             break;
         }
         let loop_body = match_ast! {

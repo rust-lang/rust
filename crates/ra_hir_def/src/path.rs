@@ -67,7 +67,7 @@ impl ModPath {
 
     /// Calls `cb` with all paths, represented by this use item.
     pub(crate) fn expand_use_item(
-        item_src: InFile<ast::UseItem>,
+        item_src: InFile<ast::Use>,
         hygiene: &Hygiene,
         mut cb: impl FnMut(ModPath, &ast::UseTree, /* is_glob */ bool, Option<ImportAlias>),
     ) {
@@ -258,7 +258,7 @@ impl<'a> PathSegments<'a> {
 }
 
 impl GenericArgs {
-    pub(crate) fn from_ast(lower_ctx: &LowerCtx, node: ast::TypeArgList) -> Option<GenericArgs> {
+    pub(crate) fn from_ast(lower_ctx: &LowerCtx, node: ast::GenericArgList) -> Option<GenericArgs> {
         lower::lower_generic_args(lower_ctx, node)
     }
 

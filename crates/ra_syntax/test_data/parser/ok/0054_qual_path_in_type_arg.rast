@@ -1,5 +1,5 @@
 SOURCE_FILE@0..88
-  FN_DEF@0..26
+  FN@0..26
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..4
@@ -16,7 +16,7 @@ SOURCE_FILE@0..88
           PATH_SEGMENT@10..23
             NAME_REF@10..13
               IDENT@10..13 "Foo"
-            TYPE_ARG_LIST@13..23
+            GENERIC_ARG_LIST@13..23
               L_ANGLE@13..14 "<"
               TYPE_ARG@14..22
                 PATH_TYPE@14..22
@@ -35,7 +35,7 @@ SOURCE_FILE@0..88
       L_CURLY@24..25 "{"
       R_CURLY@25..26 "}"
   WHITESPACE@26..28 "\n\n"
-  FN_DEF@28..56
+  FN@28..56
     FN_KW@28..30 "fn"
     WHITESPACE@30..31 " "
     NAME@31..32
@@ -43,7 +43,7 @@ SOURCE_FILE@0..88
     PARAM_LIST@32..53
       L_PAREN@32..33 "("
       PARAM@33..52
-        PLACEHOLDER_PAT@33..34
+        WILDCARD_PAT@33..34
           UNDERSCORE@33..34 "_"
         COLON@34..35 ":"
         WHITESPACE@35..36 " "
@@ -77,7 +77,7 @@ SOURCE_FILE@0..88
       L_CURLY@54..55 "{"
       R_CURLY@55..56 "}"
   WHITESPACE@56..58 "\n\n"
-  FN_DEF@58..87
+  FN@58..87
     FN_KW@58..60 "fn"
     WHITESPACE@60..61 " "
     NAME@61..62
@@ -85,7 +85,7 @@ SOURCE_FILE@0..88
     PARAM_LIST@62..84
       L_PAREN@62..63 "("
       PARAM@63..83
-        PLACEHOLDER_PAT@63..64
+        WILDCARD_PAT@63..64
           UNDERSCORE@63..64 "_"
         COLON@64..65 ":"
         WHITESPACE@65..66 " "
@@ -102,7 +102,7 @@ SOURCE_FILE@0..88
                     PARAM_LIST@76..83
                       L_PAREN@76..77 "("
                       PARAM@77..82
-                        REFERENCE_TYPE@77..82
+                        REF_TYPE@77..82
                           AMP@77..78 "&"
                           PATH_TYPE@78..82
                             PATH@78..82

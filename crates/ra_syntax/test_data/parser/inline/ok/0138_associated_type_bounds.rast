@@ -1,10 +1,10 @@
 SOURCE_FILE@0..59
-  FN_DEF@0..58
+  FN@0..58
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..12
       IDENT@3..12 "print_all"
-    TYPE_PARAM_LIST@12..40
+    GENERIC_PARAM_LIST@12..40
       L_ANGLE@12..13 "<"
       TYPE_PARAM@13..39
         NAME@13..14
@@ -18,7 +18,7 @@ SOURCE_FILE@0..59
                 PATH_SEGMENT@16..39
                   NAME_REF@16..24
                     IDENT@16..24 "Iterator"
-                  TYPE_ARG_LIST@24..39
+                  GENERIC_ARG_LIST@24..39
                     L_ANGLE@24..25 "<"
                     ASSOC_TYPE_ARG@25..38
                       NAME_REF@25..29
@@ -37,7 +37,7 @@ SOURCE_FILE@0..59
     PARAM_LIST@40..55
       L_PAREN@40..41 "("
       PARAM@41..54
-        BIND_PAT@41..51
+        IDENT_PAT@41..51
           NAME@41..51
             IDENT@41..51 "printables"
         COLON@51..52 ":"

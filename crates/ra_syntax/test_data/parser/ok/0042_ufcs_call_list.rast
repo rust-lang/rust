@@ -1,14 +1,14 @@
 SOURCE_FILE@0..199
   COMMENT@0..60 "// https://github.com ..."
   WHITESPACE@60..62 "\n\n"
-  STRUCT_DEF@62..73
+  STRUCT@62..73
     STRUCT_KW@62..68 "struct"
     WHITESPACE@68..69 " "
     NAME@69..72
       IDENT@69..72 "Foo"
     SEMICOLON@72..73 ";"
   WHITESPACE@73..75 "\n\n"
-  IMPL_DEF@75..141
+  IMPL@75..141
     IMPL_KW@75..79 "impl"
     WHITESPACE@79..80 " "
     PATH_TYPE@80..83
@@ -17,10 +17,10 @@ SOURCE_FILE@0..199
           NAME_REF@80..83
             IDENT@80..83 "Foo"
     WHITESPACE@83..84 " "
-    ITEM_LIST@84..141
+    ASSOC_ITEM_LIST@84..141
       L_CURLY@84..85 "{"
       WHITESPACE@85..90 "\n    "
-      FN_DEF@90..139
+      FN@90..139
         FN_KW@90..92 "fn"
         WHITESPACE@92..93 " "
         NAME@93..96
@@ -55,7 +55,7 @@ SOURCE_FILE@0..199
       WHITESPACE@139..140 "\n"
       R_CURLY@140..141 "}"
   WHITESPACE@141..143 "\n\n"
-  FN_DEF@143..161
+  FN@143..161
     FN_KW@143..145 "fn"
     WHITESPACE@145..146 " "
     NAME@146..149
@@ -63,7 +63,7 @@ SOURCE_FILE@0..199
     PARAM_LIST@149..158
       L_PAREN@149..150 "("
       PARAM@150..157
-        PLACEHOLDER_PAT@150..151
+        WILDCARD_PAT@150..151
           UNDERSCORE@150..151 "_"
         COLON@151..152 ":"
         WHITESPACE@152..153 " "
@@ -78,7 +78,7 @@ SOURCE_FILE@0..199
       L_CURLY@159..160 "{"
       R_CURLY@160..161 "}"
   WHITESPACE@161..163 "\n\n"
-  FN_DEF@163..198
+  FN@163..198
     FN_KW@163..165 "fn"
     WHITESPACE@165..166 " "
     NAME@166..170
