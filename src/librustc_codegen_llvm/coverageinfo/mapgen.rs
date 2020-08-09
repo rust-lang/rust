@@ -6,7 +6,7 @@ use llvm::coverageinfo::CounterMappingRegion;
 use log::debug;
 use rustc_codegen_ssa::coverageinfo::map::{Counter, CounterExpression, Region};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_llvm::RustString;
 
 use std::ffi::CString;
@@ -76,13 +76,12 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
 }
 
 struct CoverageMapGenerator {
-    filenames: Vec<CString>,
-    filename_to_index: FxHashMap<CString, u32>,
+    filenames: FxIndexSet<CString>,
 }
 
 impl CoverageMapGenerator {
     fn new() -> Self {
-        Self { filenames: Vec::new(), filename_to_index: FxHashMap::default() }
+        Self { filenames: FxIndexSet::default() }
     }
 
     /// Using the `expressions` and `counter_regions` collected for the current function, generate
@@ -122,16 +121,8 @@ impl CoverageMapGenerator {
                 let c_filename =
                     CString::new(file_name).expect("null error converting filename to C string");
                 debug!("  file_id: {} = '{:?}'", current_file_id, c_filename);
-                let filenames_index = match self.filename_to_index.get(&c_filename) {
-                    Some(index) => *index,
-                    None => {
-                        let index = self.filenames.len() as u32;
-                        self.filenames.push(c_filename.clone());
-                        self.filename_to_index.insert(c_filename.clone(), index);
-                        index
-                    }
-                };
-                virtual_file_mapping.push(filenames_index);
+                let (filenames_index, _) = self.filenames.insert_full(c_filename);
+                virtual_file_mapping.push(filenames_index as u32);
             }
             mapping_regions.push(CounterMappingRegion::code_region(
                 counter,

@@ -4,7 +4,7 @@ use crate::rmeta::*;
 use log::{debug, trace};
 use rustc_ast::ast;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, Lrc};
 use rustc_hir as hir;
@@ -48,8 +48,7 @@ struct EncodeContext<'a, 'tcx> {
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
 
-    interpret_allocs: FxHashMap<interpret::AllocId, usize>,
-    interpret_allocs_inverse: Vec<interpret::AllocId>,
+    interpret_allocs: FxIndexSet<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
     // The `usize` is an index into the `MonotonicVec`
@@ -331,17 +330,7 @@ impl<'a, 'b, 'tcx> SpecializedEncoder<ty::Predicate<'b>> for EncodeContext<'a, '
 
 impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
-        use std::collections::hash_map::Entry;
-        let index = match self.interpret_allocs.entry(*alloc_id) {
-            Entry::Occupied(e) => *e.get(),
-            Entry::Vacant(e) => {
-                let idx = self.interpret_allocs_inverse.len();
-                self.interpret_allocs_inverse.push(*alloc_id);
-                e.insert(idx);
-                idx
-            }
-        };
-
+        let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
         index.encode(self)
     }
 }
@@ -583,7 +572,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let mut n = 0;
             trace!("beginning to encode alloc ids");
             loop {
-                let new_n = self.interpret_allocs_inverse.len();
+                let new_n = self.interpret_allocs.len();
                 // if we have found new ids, serialize those, too
                 if n == new_n {
                     // otherwise, abort
@@ -591,7 +580,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
                 trace!("encoding {} further alloc ids", new_n - n);
                 for idx in n..new_n {
-                    let id = self.interpret_allocs_inverse[idx];
+                    let id = self.interpret_allocs[idx];
                     let pos = self.position() as u32;
                     interpret_alloc_index.push(pos);
                     interpret::specialized_encode_alloc_id(self, tcx, id).unwrap();
@@ -2019,7 +2008,6 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
         predicate_shorthands: Default::default(),
         source_file_cache: (source_map_files[0].clone(), 0),
         interpret_allocs: Default::default(),
-        interpret_allocs_inverse: Default::default(),
         required_source_files: Some(GrowableBitSet::with_capacity(source_map_files.len())),
         is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,

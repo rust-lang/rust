@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 ena = "0.14"
-indexmap = "1"
+indexmap = "1.5.1"
 log = { package = "tracing", version = "0.1" }
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 lazy_static = "1"

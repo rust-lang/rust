@@ -22,7 +22,7 @@ use rustc_ast::ast;
 use rustc_ast::ast::MetaItemKind;
 use rustc_attr::{list_contains_name, InlineAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -1718,21 +1718,17 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     /// A data structure with unique elements, which preserves order of insertion.
     /// Preserving the order of insertion is important here so as not to break
     /// compile-fail UI tests.
-    // FIXME(eddyb) just use `IndexSet` from `indexmap`.
     struct UniquePredicates<'tcx> {
-        predicates: Vec<(ty::Predicate<'tcx>, Span)>,
-        uniques: FxHashSet<(ty::Predicate<'tcx>, Span)>,
+        predicates: FxIndexSet<(ty::Predicate<'tcx>, Span)>,
     }
 
     impl<'tcx> UniquePredicates<'tcx> {
         fn new() -> Self {
-            UniquePredicates { predicates: vec![], uniques: FxHashSet::default() }
+            UniquePredicates { predicates: FxIndexSet::default() }
         }
 
         fn push(&mut self, value: (ty::Predicate<'tcx>, Span)) {
-            if self.uniques.insert(value) {
-                self.predicates.push(value);
-            }
+            self.predicates.insert(value);
         }
 
         fn extend<I: IntoIterator<Item = (ty::Predicate<'tcx>, Span)>>(&mut self, iter: I) {
@@ -2014,7 +2010,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
         }))
     }
 
-    let mut predicates = predicates.predicates;
+    let mut predicates: Vec<_> = predicates.predicates.into_iter().collect();
 
     // Subtle: before we store the predicates into the tcx, we
     // sort them so that predicates like `T: Foo<Item=U>` come
