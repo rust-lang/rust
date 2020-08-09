@@ -16,7 +16,7 @@ const EXEMPTED_FROM_TEST: &[&str] = &[
 ];
 
 // Some error codes don't have any tests apparently...
-const IGNORE_EXPLANATION_CHECK: &[&str] = &["E0570", "E0601", "E0602", "E0639", "E0729", "E0749"];
+const IGNORE_EXPLANATION_CHECK: &[&str] = &["E0570", "E0601", "E0602", "E0639", "E0729"];
 
 fn check_error_code_explanation(
     f: &str,
