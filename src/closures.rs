@@ -155,8 +155,15 @@ fn rewrite_closure_with_block(
         rules: ast::BlockCheckMode::Default,
         span: body.span,
     };
-    let block =
-        crate::expr::rewrite_block_with_visitor(context, "", &block, None, None, shape, false)?;
+    let block = crate::expr::rewrite_block_with_visitor(
+        context,
+        "",
+        &block,
+        Some(&body.attrs),
+        None,
+        shape,
+        false,
+    )?;
     Some(format!("{} {}", prefix, block))
 }
 
