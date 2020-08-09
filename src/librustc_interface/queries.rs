@@ -132,11 +132,10 @@ impl<'tcx> Queries<'tcx> {
             let crate_name = self.crate_name()?.peek().clone();
             let krate = self.parse()?.take();
 
-            let empty: &(dyn Fn(&Session, &mut LintStore) + Sync + Send) = &|_, _| {};
             let result = passes::register_plugins(
                 self.session(),
                 &*self.codegen_backend().metadata_loader(),
-                self.compiler.register_lints.as_deref().unwrap_or_else(|| empty),
+                &self.compiler.register_lints,
                 krate,
                 &crate_name,
             );

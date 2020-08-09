@@ -174,7 +174,7 @@ pub fn run_compiler(
             stderr: None,
             crate_name: None,
             lint_caps: Default::default(),
-            register_lints: None,
+            register_lints: Default::default(),
             override_queries: None,
             registry: diagnostics_registry(),
         };
@@ -250,7 +250,7 @@ pub fn run_compiler(
         stderr: None,
         crate_name: None,
         lint_caps: Default::default(),
-        register_lints: None,
+        register_lints: Default::default(),
         override_queries: None,
         registry: diagnostics_registry(),
     };

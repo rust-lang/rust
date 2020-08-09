@@ -24,6 +24,39 @@ use std::sync::{Arc, Mutex};
 
 pub type Result<T> = result::Result<T, ErrorReported>;
 
+pub enum RegisterLints {
+    Register(Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>),
+    Empty,
+}
+
+impl Default for RegisterLints {
+    fn default() -> Self {
+        RegisterLints::Empty
+    }
+}
+
+impl RegisterLints {
+    pub fn set(&mut self, reg: Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>) {
+        match core::mem::take(self) {
+            RegisterLints::Empty => {
+                *self = RegisterLints::Register(reg);
+            }
+            RegisterLints::Register(prev) => {
+                *self = RegisterLints::Register(Box::new(move |sess, lint_store| {
+                    (prev)(sess, lint_store);
+                    (reg)(sess, lint_store);
+                }));
+            }
+        }
+    }
+    pub fn on(&self, sess: &Session, lint_store: &mut LintStore) {
+        match self {
+            RegisterLints::Empty => (),
+            RegisterLints::Register(reg) => (reg)(sess, lint_store),
+        }
+    }
+}
+
 /// Represents a compiler session.
 /// Can be used to run `rustc_interface` queries.
 /// Created by passing `Config` to `run_compiler`.
@@ -35,7 +68,7 @@ pub struct Compiler {
     pub(crate) output_dir: Option<PathBuf>,
     pub(crate) output_file: Option<PathBuf>,
     pub(crate) crate_name: Option<String>,
-    pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
+    pub(crate) register_lints: RegisterLints,
     pub(crate) override_queries:
         Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::Providers)>,
 }
@@ -145,7 +178,7 @@ pub struct Config {
     ///
     /// Note that if you find a Some here you probably want to call that function in the new
     /// function being registered.
-    pub register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
+    pub register_lints: RegisterLints,
 
     /// This is a callback from the driver that is called just after we have populated
     /// the list of queries.

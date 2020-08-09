@@ -1,4 +1,4 @@
-use crate::interface::{Compiler, Result};
+use crate::interface::{Compiler, RegisterLints, Result};
 use crate::proc_macro_decls;
 use crate::util;
 
@@ -150,7 +150,7 @@ impl BoxedResolver {
 pub fn register_plugins<'a>(
     sess: &'a Session,
     metadata_loader: &'a dyn MetadataLoader,
-    register_lints: impl Fn(&Session, &mut LintStore),
+    register_lints: &RegisterLints,
     mut krate: ast::Crate,
     crate_name: &str,
 ) -> Result<(ast::Crate, Lrc<LintStore>)> {
@@ -193,7 +193,7 @@ pub fn register_plugins<'a>(
         sess.opts.debugging_opts.no_interleave_lints,
         sess.unstable_options(),
     );
-    register_lints(&sess, &mut lint_store);
+    register_lints.on(&sess, &mut lint_store);
 
     let registrars =
         sess.time("plugin_loading", || plugin::load::load_plugins(sess, metadata_loader, &krate));

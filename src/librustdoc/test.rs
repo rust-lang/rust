@@ -93,7 +93,7 @@ pub fn run(options: Options) -> Result<(), ErrorReported> {
         stderr: None,
         crate_name: options.crate_name.clone(),
         lint_caps,
-        register_lints: None,
+        register_lints: Default::default(),
         override_queries: None,
         registry: rustc_driver::diagnostics_registry(),
     };

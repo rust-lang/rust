@@ -376,7 +376,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         stderr: None,
         crate_name,
         lint_caps,
-        register_lints: None,
+        register_lints: Default::default(),
         override_queries: Some(|_sess, providers, _external_providers| {
             // Most lints will require typechecking, so just don't run them.
             providers.lint_mod = |_, _| {};

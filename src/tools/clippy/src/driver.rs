@@ -69,14 +69,7 @@ impl rustc_driver::Callbacks for DefaultCallbacks {}
 struct ClippyCallbacks;
 impl rustc_driver::Callbacks for ClippyCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
-        let previous = config.register_lints.take();
-        config.register_lints = Some(Box::new(move |sess, mut lint_store| {
-            // technically we're ~guaranteed that this is none but might as well call anything that
-            // is there already. Certainly it can't hurt.
-            if let Some(previous) = &previous {
-                (previous)(sess, lint_store);
-            }
-
+        config.register_lints.set(Box::new(move |sess, mut lint_store| {
             let conf = clippy_lints::read_conf(&[], &sess);
             clippy_lints::register_plugins(&mut lint_store, &sess, &conf);
             clippy_lints::register_pre_expansion_lints(&mut lint_store);
