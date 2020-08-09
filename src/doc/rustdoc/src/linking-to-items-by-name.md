@@ -22,7 +22,7 @@ pub struct Foo4;
 pub struct Bar;
 ```
 
-You can refer to anything in scope, and use paths, including `Self`, `self`, `super`, and `crate`. You may also use `foo()` and `foo!()` to refer to methods/functions and macros respectively.
+You can refer to anything in scope, and use paths, including `Self`, `self`, `super`, and `crate`. You may also use `foo()` and `foo!()` to refer to methods/functions and macros respectively. Backticks around the link will be stripped.
 
 ```rust,edition2018
 use std::sync::mpsc::Receiver;
