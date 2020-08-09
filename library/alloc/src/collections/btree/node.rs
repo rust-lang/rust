@@ -597,18 +597,17 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// # Safety
-    /// 'first' and 'after_last' must be in range.
-    unsafe fn correct_childrens_parent_links(&mut self, first: usize, after_last: usize) {
-        debug_assert!(first <= self.len());
-        debug_assert!(after_last <= self.len() + 1);
-        for i in first..after_last {
+    /// Every item returned by `range` is a valid edge index for the node.
+    unsafe fn correct_childrens_parent_links<R: Iterator<Item = usize>>(&mut self, range: R) {
+        for i in range {
+            debug_assert!(i <= self.len());
             unsafe { Handle::new_edge(self.reborrow_mut(), i) }.correct_parent_link();
         }
     }
 
     fn correct_all_childrens_parent_links(&mut self) {
         let len = self.len();
-        unsafe { self.correct_childrens_parent_links(0, len + 1) };
+        unsafe { self.correct_childrens_parent_links(0..=len) };
     }
 }
 
@@ -708,9 +707,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
                     new_root.node_as_mut().as_leaf_mut().parent = None;
 
-                    for i in 0..old_len {
-                        Handle::new_edge(internal.reborrow_mut(), i).correct_parent_link();
-                    }
+                    internal.correct_childrens_parent_links(0..old_len);
 
                     Some(new_root)
                 }
@@ -986,9 +983,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 edge.node,
             );
 
-            for i in (self.idx + 1)..(self.node.len() + 1) {
-                Handle::new_edge(self.node.reborrow_mut(), i).correct_parent_link();
-            }
+            self.node.correct_childrens_parent_links((self.idx + 1)..=self.node.len());
         }
     }
 
@@ -1215,9 +1210,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
 
             let mut new_root = Root { node: BoxedNode::from_internal(new_node), height };
 
-            for i in 0..(new_len + 1) {
-                Handle::new_edge(new_root.node_as_mut().cast_unchecked(), i).correct_parent_link();
-            }
+            new_root.node_as_mut().cast_unchecked().correct_childrens_parent_links(0..=new_len);
 
             (self.node, k, v, new_root)
         }
@@ -1261,9 +1254,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             );
 
             slice_remove(&mut self.node.as_internal_mut().edges, self.idx + 1);
-            for i in self.idx + 1..self.node.len() {
-                Handle::new_edge(self.node.reborrow_mut(), i).correct_parent_link();
-            }
+            let self_len = self.node.len();
+            self.node.correct_childrens_parent_links(self.idx + 1..self_len);
             self.node.as_leaf_mut().len -= 1;
 
             left_node.as_leaf_mut().len += right_len as u16 + 1;
@@ -1271,17 +1263,15 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             if self.node.height > 1 {
                 // SAFETY: the height of the nodes being merged is one below the height
                 // of the node of this edge, thus above zero, so they are internal.
-                let mut left_node = left_node.cast_unchecked();
-                let mut right_node = right_node.cast_unchecked();
+                let mut left_node = left_node.cast_unchecked::<marker::Internal>();
+                let mut right_node = right_node.cast_unchecked::<marker::Internal>();
                 ptr::copy_nonoverlapping(
                     right_node.as_internal().edges.as_ptr(),
                     left_node.as_internal_mut().edges.as_mut_ptr().add(left_len + 1),
                     right_len + 1,
                 );
 
-                for i in left_len + 1..left_len + right_len + 2 {
-                    Handle::new_edge(left_node.reborrow_mut(), i).correct_parent_link();
-                }
+                left_node.correct_childrens_parent_links(left_len + 1..=left_len + 1 + right_len);
 
                 Global.dealloc(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
             } else {
@@ -1371,7 +1361,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                     // Make room for stolen edges.
                     let right_edges = right.reborrow_mut().as_internal_mut().edges.as_mut_ptr();
                     ptr::copy(right_edges, right_edges.add(count), right_len + 1);
-                    right.correct_childrens_parent_links(count, count + right_len + 1);
+                    right.correct_childrens_parent_links(count..count + right_len + 1);
 
                     move_edges(left, new_left_len + 1, right, 0, count);
                 }
@@ -1430,7 +1420,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                     // Fix right indexing.
                     let right_edges = right.reborrow_mut().as_internal_mut().edges.as_mut_ptr();
                     ptr::copy(right_edges.add(count), right_edges, new_right_len + 1);
-                    right.correct_childrens_parent_links(0, new_right_len + 1);
+                    right.correct_childrens_parent_links(0..=new_right_len);
                 }
                 (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
                 _ => {
@@ -1466,7 +1456,7 @@ unsafe fn move_edges<K, V>(
     let dest_ptr = dest.as_internal_mut().edges.as_mut_ptr();
     unsafe {
         ptr::copy_nonoverlapping(source_ptr.add(source_offset), dest_ptr.add(dest_offset), count);
-        dest.correct_childrens_parent_links(dest_offset, dest_offset + count);
+        dest.correct_childrens_parent_links(dest_offset..dest_offset + count);
     }
 }
 
