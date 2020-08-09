@@ -1,5 +1,5 @@
 #![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+#![allow(incomplete_features)]
 
 struct ConstString<const T: &'static str>;
 struct ConstBytes<const T: &'static [u8]>;

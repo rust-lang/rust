@@ -1,0 +1,18 @@
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/wf-misc.rs:9:17
+   |
+LL |     let _: [u8; N + 1];
+   |                 ^ non-trivial anonymous constants must not depend on the parameter `N`
+   |
+   = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
+
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/wf-misc.rs:17:21
+   |
+LL |     let _: Const::<{N + 1}>;
+   |                     ^ non-trivial anonymous constants must not depend on the parameter `N`
+   |
+   = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
+
+error: aborting due to 2 previous errors
+
