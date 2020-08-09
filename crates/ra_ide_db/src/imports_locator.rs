@@ -61,5 +61,5 @@ fn get_name_definition<'a>(
         candidate_node
     };
     let name = ast::Name::cast(candidate_name_node)?;
-    classify_name(sema, &name)?.into_definition()
+    classify_name(sema, &name)?.into_definition(sema.db)
 }

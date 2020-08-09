@@ -83,9 +83,9 @@ impl Crate {
             .collect()
     }
 
-    pub fn root_module(self, db: &dyn HirDatabase) -> Option<Module> {
+    pub fn root_module(self, db: &dyn HirDatabase) -> Module {
         let module_id = db.crate_def_map(self.id).root;
-        Some(Module::new(self, module_id))
+        Module::new(self, module_id)
     }
 
     pub fn root_file(self, db: &dyn HirDatabase) -> FileId {

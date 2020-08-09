@@ -495,6 +495,7 @@ fn highlight_element(
             };
 
             match name_kind {
+                Some(NameClass::ExternCrate(_)) => HighlightTag::Module.into(),
                 Some(NameClass::Definition(def)) => {
                     highlight_name(db, def, false) | HighlightModifier::Definition
                 }
@@ -522,6 +523,7 @@ fn highlight_element(
             let possibly_unsafe = is_possibly_unsafe(&name_ref);
             match classify_name_ref(sema, &name_ref) {
                 Some(name_kind) => match name_kind {
+                    NameRefClass::ExternCrate(_) => HighlightTag::Module.into(),
                     NameRefClass::Definition(def) => {
                         if let Definition::Local(local) = &def {
                             if let Some(name) = local.name(db) {

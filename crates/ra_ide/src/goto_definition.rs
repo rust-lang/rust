@@ -1,6 +1,6 @@
 use hir::Semantics;
 use ra_ide_db::{
-    defs::{classify_name, classify_name_ref, NameClass},
+    defs::{classify_name, classify_name_ref},
     symbol_index, RootDatabase,
 };
 use ra_syntax::{
@@ -40,10 +40,7 @@ pub(crate) fn goto_definition(
                 reference_definition(&sema, &name_ref).to_vec()
             },
             ast::Name(name) => {
-                let def = match classify_name(&sema, &name)? {
-                    NameClass::Definition(def) | NameClass::ConstReference(def) => def,
-                    NameClass::FieldShorthand { local: _, field } => field,
-                };
+                let def = classify_name(&sema, &name)?.definition(sema.db);
                 let nav = def.try_to_nav(sema.db)?;
                 vec![nav]
             },
@@ -86,8 +83,7 @@ pub(crate) fn reference_definition(
 ) -> ReferenceResult {
     let name_kind = classify_name_ref(sema, name_ref);
     if let Some(def) = name_kind {
-        let def = def.definition();
-
+        let def = def.definition(sema.db);
         return match def.try_to_nav(sema.db) {
             Some(nav) => ReferenceResult::Exact(nav),
             None => ReferenceResult::Approximate(Vec::new()),
@@ -131,6 +127,32 @@ mod tests {
 
         let nav = navs.pop().unwrap();
         assert_eq!(expected, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() });
+    }
+
+    #[test]
+    fn goto_def_for_extern_crate() {
+        check(
+            r#"
+            //- /main.rs
+            extern crate std<|>;
+            //- /std/lib.rs
+            // empty
+            //^ file
+            "#,
+        )
+    }
+
+    #[test]
+    fn goto_def_for_renamed_extern_crate() {
+        check(
+            r#"
+            //- /main.rs
+            extern crate std as abc<|>;
+            //- /std/lib.rs
+            // empty
+            //^ file
+            "#,
+        )
     }
 
     #[test]

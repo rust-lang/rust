@@ -72,7 +72,7 @@ impl AnalysisStatsCmd {
             shuffle(&mut rng, &mut krates);
         }
         for krate in krates {
-            let module = krate.root_module(db).expect("crate without root module");
+            let module = krate.root_module(db);
             let file_id = module.definition_source(db).file_id;
             let file_id = file_id.original_file(db);
             let source_root = db.file_source_root(file_id);

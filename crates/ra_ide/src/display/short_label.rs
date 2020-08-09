@@ -47,6 +47,12 @@ impl ShortLabel for ast::Module {
     }
 }
 
+impl ShortLabel for ast::SourceFile {
+    fn short_label(&self) -> Option<String> {
+        None
+    }
+}
+
 impl ShortLabel for ast::TypeAlias {
     fn short_label(&self) -> Option<String> {
         short_label_from_node(self, "type ")
