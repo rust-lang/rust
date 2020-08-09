@@ -18,7 +18,7 @@ pub mod bar {
 }
 
 // @has 'foo/baz/struct.Baz.html'
-// @has '-' '//*[@class="stab portability"]' 'This is supported on crate feature sync and crate feature send only.'
+// @has '-' '//*[@class="stab portability"]' 'This is supported on crate features sync and send only.'
 #[doc(cfg(all(feature = "sync", feature = "send")))]
 pub mod baz {
     #[doc(cfg(feature = "sync"))]
@@ -26,7 +26,7 @@ pub mod baz {
 }
 
 // @has 'foo/qux/struct.Qux.html'
-// @has '-' '//*[@class="stab portability"]' 'This is supported on crate feature sync and crate feature send only.'
+// @has '-' '//*[@class="stab portability"]' 'This is supported on crate features sync and send only.'
 #[doc(cfg(feature = "sync"))]
 pub mod qux {
     #[doc(cfg(all(feature = "sync", feature = "send")))]
