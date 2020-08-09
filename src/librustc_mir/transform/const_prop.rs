@@ -26,7 +26,7 @@ use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
 use rustc_trait_selection::traits;
 
-use crate::const_eval::error_to_const_error;
+use crate::const_eval::ConstEvalErr;
 use crate::interpret::{
     self, compile_time_machine, truncate, AllocId, Allocation, Frame, ImmTy, Immediate, InterpCx,
     LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy,
@@ -451,7 +451,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ok(op) => Some(op),
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);
-                let err = error_to_const_error(&self.ecx, error, Some(c.span));
+                let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal.val {
                         // Promoteds must lint and not error as the user didn't ask for them
