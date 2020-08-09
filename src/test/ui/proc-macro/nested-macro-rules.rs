@@ -2,8 +2,10 @@
 // aux-build:nested-macro-rules.rs
 // aux-build:test-macros.rs
 // compile-flags: -Z span-debug
-// normalize-stdout-test "#\d+" -> "#CTXT"
 // edition:2018
+
+#![no_std] // Don't load unnecessary hygiene information from std
+extern crate std;
 
 extern crate nested_macro_rules;
 extern crate test_macros;
