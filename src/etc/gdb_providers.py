@@ -215,8 +215,17 @@ def children_of_node(boxed_node, height, want_values):
         return node.cast(internal_type.pointer())
 
     node_ptr = unwrap_unique_or_non_null(boxed_node["ptr"])
-    node_ptr = cast_to_internal(node_ptr) if height > 0 else node_ptr
-    leaf = node_ptr["data"] if height > 0 else node_ptr.dereference()
+    if height > 0:
+        node_ptr = cast_to_internal(node_ptr)
+        if node_ptr.type.has_key("_wraps"):
+            # Built with recent standard library.
+            node_ptr = node_ptr["_wraps"]
+            leaf = node_ptr["leaf"]
+        else:
+            # Built with older standard library.
+            leaf = node_ptr["data"]
+    else:
+        leaf = node_ptr.dereference()
     keys = leaf["keys"]
     values = leaf["vals"]
     length = int(leaf["len"])
