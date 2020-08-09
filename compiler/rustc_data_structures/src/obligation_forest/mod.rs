@@ -252,10 +252,6 @@ struct Node<O: ForestObligation> {
     obligation: O,
     state: Cell<NodeState>,
 
-    /// A predicate (and its key) can change during processing. If it does we need to register the
-    /// old predicate so that we can remove or mark it as done if this node errors or is done.
-    alternative_predicates: Vec<O::CacheKey>,
-
     /// Obligations that depend on this obligation for their completion. They
     /// must all be in a non-pending state.
     dependents: Vec<NodeIndex>,
@@ -291,7 +287,6 @@ where
         Node {
             obligation,
             state: Cell::new(NodeState::Pending),
-            alternative_predicates: vec![],
             dependents: if let Some(parent_index) = parent { vec![parent_index] } else { vec![] },
             reverse_dependents: vec![],
             has_parent: parent.is_some(),
@@ -316,7 +311,6 @@ where
             self.state
         );
         self.state.set(NodeState::Pending);
-        self.alternative_predicates.clear();
         self.dependents.clear();
         self.reverse_dependents.clear();
         if let Some(parent_index) = parent {
@@ -625,6 +619,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     .drain(..)
                     .map(|index| Unblocked { index, order: nodes[index].node_number }),
             );
+
             while let Some(Unblocked { index, .. }) = self.unblocked.pop() {
                 // Skip any duplicates since we only need to processes the node once
                 if self.unblocked.peek().map(|u| u.index) == Some(index) {
@@ -665,12 +660,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 // `self.active_cache`. This means that `self.active_cache` can get
                 // out of sync with `nodes`. It's not very common, but it does
                 // happen, and code in `compress` has to allow for it.
-                let before = node.obligation.as_cache_key();
                 let result = processor.process_obligation(&mut node.obligation);
-                let after = node.obligation.as_cache_key();
-                if before != after {
-                    node.alternative_predicates.push(before);
-                }
 
                 self.unblock_nodes(processor);
                 let node = &mut self.nodes[index];
@@ -940,16 +930,10 @@ impl<O: ForestObligation> ObligationForest<O> {
             match node.state.get() {
                 NodeState::Done => {
                     // Mark as done
-                    if let Some(opt) = self.active_cache.get_mut(&node.obligation.as_cache_key()) {
-                        *opt = CacheState::Done;
-                    }
-                    // If the node's predicate changed at some point we mark all its alternate
-                    // predicates as done as well
-                    for alt in &node.alternative_predicates {
-                        if let Some(opt) = self.active_cache.get_mut(alt) {
-                            *opt = CacheState::Done;
-                        }
-                    }
+                    *self
+                        .active_cache
+                        .entry(node.obligation.as_cache_key())
+                        .or_insert(CacheState::Done) = CacheState::Done;
 
                     if do_completed == DoCompleted::Yes {
                         // Extract the success stories.
@@ -965,11 +949,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                     // tests must come up with a different type on every type error they
                     // check against.
                     self.active_cache.remove(&node.obligation.as_cache_key());
-                    // If the node's predicate changed at some point we remove all its alternate
-                    // predicates as well
-                    for alt in &node.alternative_predicates {
-                        self.active_cache.remove(alt);
-                    }
                     self.insert_into_error_cache(index);
                     self.dead_nodes.push(index);
                 }
