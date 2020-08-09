@@ -1239,9 +1239,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34f595585f103464d8d2f6e9864682d74c1601fed5e07d62b1c9058dba8246fb"
+checksum = "e91b62f79061a0bc2e046024cb7ba44b08419ed238ecbd9adbd787434b9e8c25"
 dependencies = [
  "autocfg",
  "compiler_builtins",
@@ -4918,7 +4918,7 @@ dependencies = [
  "ansi_term 0.12.1",
  "lazy_static",
  "matchers",
- "parking_lot 0.9.0",
+ "parking_lot 0.10.2",
  "regex",
  "sharded-slab",
  "smallvec 1.4.0",
