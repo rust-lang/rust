@@ -301,6 +301,15 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Ok(())
     }
 
+    fn after_stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        // Enforce stack size limit.
+        if !ecx.tcx.sess.recursion_limit().value_within_limit(ecx.stack().len()) {
+            throw_exhaust!(StackFrameLimitReached)
+        } else {
+            Ok(())
+        }
+    }
+
     #[inline(always)]
     fn stack(
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
