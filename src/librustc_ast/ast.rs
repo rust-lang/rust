@@ -310,7 +310,7 @@ pub type GenericBounds = Vec<GenericBound>;
 /// Specifies the enforced ordering for generic parameters. In the future,
 /// if we wanted to relax this order, we could override `PartialEq` and
 /// `PartialOrd`, to allow the kinds to be unordered.
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Hash, Clone, Copy)]
 pub enum ParamKindOrd {
     Lifetime,
     Type,
@@ -340,6 +340,12 @@ impl PartialOrd for ParamKindOrd {
         Some(self.cmp(other))
     }
 }
+impl PartialEq for ParamKindOrd {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+impl Eq for ParamKindOrd {}
 
 impl fmt::Display for ParamKindOrd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -11,7 +11,7 @@ LL |     let _: AlsoBad<7, 'static, u32, 'static, 17, u16>;
    |                       ^^^^^^^
    |
    = note: lifetime arguments must be provided before type arguments
-   = help: reorder the arguments: lifetimes, then consts, then types, then consts, then types: `<'a, 'b, N, T, M, U>`
+   = help: reorder the arguments: lifetimes, then consts: `<'a, 'b, N, T, M, U>`
 
 error: aborting due to 2 previous errors
 
