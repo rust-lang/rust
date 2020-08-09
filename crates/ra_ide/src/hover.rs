@@ -509,6 +509,37 @@ fn main() { }
     }
 
     #[test]
+    fn hover_shows_fn_doc() {
+        check(
+            r#"
+/// # Example
+/// ```
+/// # use std::path::Path;
+/// #
+/// foo(Path::new("hello, world!"))
+/// ```
+pub fn foo<|>(_: &Path) {}
+
+fn main() { }
+"#,
+            expect![[r#"
+                *foo*
+                ```rust
+                pub fn foo(_: &Path)
+                ```
+                ___
+
+                # Example
+                ```
+                # use std::path::Path;
+                #
+                foo(Path::new("hello, world!"))
+                ```
+            "#]],
+        );
+    }
+
+    #[test]
     fn hover_shows_struct_field_info() {
         // Hovering over the field when instantiating
         check(
