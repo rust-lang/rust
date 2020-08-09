@@ -30,8 +30,8 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 /// nanosecond-level precision, APIs binding a system timeout will typically round up
 /// the number of nanoseconds.
 ///
-/// `Duration`s implement many common traits, including [`Add`], [`Sub`], and other
-/// [`ops`] traits. It implements `Default` by returning a zero-length `Duration`.
+/// [`Duration`]s implement many common traits, including [`Add`], [`Sub`], and other
+/// [`ops`] traits. It implements [`Default`] by returning a zero-length `Duration`.
 ///
 /// [`ops`]: crate::ops
 ///
