@@ -561,11 +561,15 @@ impl<T> [T] {
             while i + chunk - 1 < ln / 2 {
                 // SAFETY: An unaligned usize can be read from `i` if `i + 1 < ln`
                 // (and obviously `i < ln`), because each element is 1 byte and
-                // we're reading 2.
+                // we're reading `chunk`.
+                //
+                // Since we checked for the `x86` and `x86_64` target before
+                // getting here so `chunk` is at most 8 bytes.
                 //
                 // `i + chunk - 1 < ln / 2` # while condition
-                // `i + 2 - 1 < ln / 2`
-                // `i + 1 < ln / 2`
+                // `i + 8 - 1 < ln / 2`
+                // `i + 7 < ln / 2`
+                // so obviously `i + 1 < ln / 2`
                 //
                 // Since it's less than the length divided by 2, then it must be
                 // in bounds.
@@ -656,8 +660,9 @@ impl<T> [T] {
         let ptr = self.as_ptr();
         // SAFETY: There are several things here:
         //
-        // `ptr` has been checked for nullity before being passed to `NonNull` via
-        // `new_unchecked`.
+        // `ptr` has been obtained by `self.as_ptr()` where `self` is a valid
+        // reference thus it is non-NUL and safe to use and pass to
+        // `NonNull::new_unchecked` .
         //
         // Adding `self.len()` to the starting pointer gives a pointer
         // at the end of `self`. `end` will never be dereferenced, only checked
@@ -699,8 +704,9 @@ impl<T> [T] {
         let ptr = self.as_mut_ptr();
         // SAFETY: There are several things here:
         //
-        // `ptr` has been checked for nullity before being passed to `NonNull` via
-        // `new_unchecked`.
+        // `ptr` has been obtained by `self.as_ptr()` where `self` is a valid
+        // reference thus it is non-NUL and safe to use and pass to
+        // `NonNull::new_unchecked` .
         //
         // Adding `self.len()` to the starting pointer gives a pointer
         // at the end of `self`. `end` will never be dereferenced, only checked
@@ -2296,8 +2302,8 @@ impl<T> [T] {
         let k = self.len() - mid;
         let p = self.as_mut_ptr();
 
-        // SAFETY: `[mid; mid+k]` corresponds to the entire
-        // `self` slice, thus is valid for reads and writes.
+        // SAFETY: The range `[p.add(mid) - mid, p.add(mid) + k)` is trivially
+        // valid for reading and writing, as required by `ptr_rotate`.
         unsafe {
             rotate::ptr_rotate(mid, p.add(mid), k);
         }
@@ -2339,8 +2345,8 @@ impl<T> [T] {
         let mid = self.len() - k;
         let p = self.as_mut_ptr();
 
-        // SAFETY: `[mid; mid+k]` corresponds to the entire
-        // `self` slice, thus is valid for reads and writes.
+        // SAFETY: The range `[p.add(mid) - mid, p.add(mid) + k)` is trivially
+        // valid for reading and writing, as required by `ptr_rotate`.
         unsafe {
             rotate::ptr_rotate(mid, p.add(mid), k);
         }
