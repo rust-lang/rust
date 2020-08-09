@@ -9,7 +9,6 @@ use rustc_hash::FxHashSet;
 use crate::completion::{
     completion_context::CompletionContext,
     completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions},
-    unstable_feature_descriptor
 };
 
 use crate::completion::UNSTABLE_FEATURE_DESCRIPTOR;

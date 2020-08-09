@@ -5,9 +5,8 @@ use crate::{
 };
 use std::process::Command;
 use std::fs;
-use std::path::{Path, PathBuf};
-use walkdir::{DirEntry, WalkDir};
-use quote::{format_ident, quote};
+use walkdir::WalkDir;
+use quote::quote;
 use crate::codegen::update;
 
 pub fn generate_unstable_future_descriptor(mode: Mode) -> Result<()> {
