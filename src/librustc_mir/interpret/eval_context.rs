@@ -687,11 +687,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         M::after_stack_push(self)?;
         info!("ENTERING({}) {}", self.frame_idx(), self.frame().instance);
 
-        if !self.tcx.sess.recursion_limit().value_within_limit(self.stack().len()) {
-            throw_exhaust!(StackFrameLimitReached)
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 
     /// Jump to the given block.
