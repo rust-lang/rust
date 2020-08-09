@@ -21,17 +21,17 @@ mod complete_trait_impl;
 mod unstable_feature_descriptor;
 use ra_ide_db::RootDatabase;
 
-#[rustfmt::skip]
 use crate::{
     completion::{
         completion_context::CompletionContext,
         completion_item::{CompletionKind, Completions},
-
-        //TODO: cyclic imports caused by xtask generation, this should be better
-        unstable_feature_descriptor::UNSTABLE_FEATURE_DESCRIPTOR,
-        complete_attribute::LintCompletion,
     },
     FilePosition,
+};
+
+//TODO: cyclic imports caused by xtask generation, this should be better
+use crate::completion::{
+    complete_attribute::LintCompletion, unstable_feature_descriptor::UNSTABLE_FEATURE_DESCRIPTOR,
 };
 
 pub use crate::completion::{
