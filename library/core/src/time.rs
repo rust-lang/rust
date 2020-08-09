@@ -419,8 +419,6 @@ impl Duration {
     /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
     /// if overflow occurred.
     ///
-    /// [`None`]: crate::option::Option::None
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -454,8 +452,6 @@ impl Duration {
 
     /// Checked `Duration` subtraction. Computes `self - other`, returning [`None`]
     /// if the result would be negative or if overflow occurred.
-    ///
-    /// [`None`]: crate::option::Option::None
     ///
     /// # Examples
     ///
@@ -492,8 +488,6 @@ impl Duration {
     /// Checked `Duration` multiplication. Computes `self * other`, returning
     /// [`None`] if overflow occurred.
     ///
-    /// [`None`]: crate::option::Option::None
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -523,8 +517,6 @@ impl Duration {
 
     /// Checked `Duration` division. Computes `self / other`, returning [`None`]
     /// if `other == 0`.
-    ///
-    /// [`None`]: crate::option::Option::None
     ///
     /// # Examples
     ///
