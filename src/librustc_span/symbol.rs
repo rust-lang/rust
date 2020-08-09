@@ -1481,6 +1481,10 @@ impl<CTX> ToStableHashKey<CTX> for Symbol {
 }
 
 // The `&'static str`s in this type actually point into the arena.
+//
+// The `FxHashMap`+`Vec` pair could be replaced by `FxIndexSet`, but #75278
+// found that to regress performance up to 2% in some cases. This might be
+// revisited after further improvements to `indexmap`.
 #[derive(Default)]
 pub struct Interner {
     arena: DroplessArena,
