@@ -26,7 +26,7 @@ pub use self::{
     gen_unstable_future_descriptor::generate_unstable_future_descriptor,
 };
 
-// Directory used by xtask 
+// Directory used by xtask
 const STORAGE: &str = ".xtask";
 
 const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";

@@ -19,9 +19,7 @@ pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
         (Some(path), Some(token_tree)) if path.to_string() == "derive" => {
             complete_derive(acc, ctx, token_tree)
         }
-        (Some(path), Some(token_tree))
-            if path.to_string() == "feature" =>
-        {
+        (Some(path), Some(token_tree)) if path.to_string() == "feature" => {
             complete_lint(acc, ctx, token_tree, UNSTABLE_FEATURE_DESCRIPTOR);
         }
         (Some(path), Some(token_tree))
@@ -169,7 +167,12 @@ fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input:
     }
 }
 
-fn complete_lint(acc: &mut Completions, ctx: &CompletionContext, derive_input: ast::TokenTree, lints_completions: &[LintCompletion]) {
+fn complete_lint(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    derive_input: ast::TokenTree,
+    lints_completions: &[LintCompletion],
+) {
     if let Ok(existing_lints) = parse_comma_sep_input(derive_input) {
         for lint_completion in lints_completions
             .into_iter()

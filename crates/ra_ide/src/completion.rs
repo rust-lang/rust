@@ -21,12 +21,13 @@ mod complete_trait_impl;
 mod unstable_feature_descriptor;
 use ra_ide_db::RootDatabase;
 
+#[rustfmt::skip]
 use crate::{
     completion::{
         completion_context::CompletionContext,
         completion_item::{CompletionKind, Completions},
 
-        //TODO: rework 
+        //TODO: cyclic imports caused by xtask generation, this should be better
         unstable_feature_descriptor::UNSTABLE_FEATURE_DESCRIPTOR,
         complete_attribute::LintCompletion,
     },
