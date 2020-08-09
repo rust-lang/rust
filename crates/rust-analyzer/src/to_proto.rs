@@ -755,7 +755,8 @@ pub(crate) fn runnable(
 }
 
 pub(crate) fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
-    lsp_types::MarkupContent { kind: lsp_types::MarkupKind::Markdown, value: markup.into() }
+    let value = crate::markdown::format_docs(markup.as_str());
+    lsp_types::MarkupContent { kind: lsp_types::MarkupKind::Markdown, value }
 }
 
 #[cfg(test)]
