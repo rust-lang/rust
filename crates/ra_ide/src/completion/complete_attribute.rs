@@ -9,7 +9,10 @@ use rustc_hash::FxHashSet;
 use crate::completion::{
     completion_context::CompletionContext,
     completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions},
+    unstable_feature_descriptor
 };
+
+use crate::completion::UNSTABLE_FEATURE_DESCRIPTOR;
 
 pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let attribute = ctx.attribute_under_caret.as_ref()?;
@@ -20,11 +23,16 @@ pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             complete_derive(acc, ctx, token_tree)
         }
         (Some(path), Some(ast::AttrInput::TokenTree(token_tree)))
+            if path.to_string() == "feature" =>
+        {
+            complete_lint(acc, ctx, token_tree, UNSTABLE_FEATURE_DESCRIPTOR);
+        }
+        (Some(path), Some(ast::AttrInput::TokenTree(token_tree)))
             if ["allow", "warn", "deny", "forbid"]
                 .iter()
                 .any(|lint_level| lint_level == &path.to_string()) =>
         {
-            complete_lint(acc, ctx, token_tree)
+            complete_lint(acc, ctx, token_tree, DEFAULT_LINT_COMPLETIONS)
         }
         (_, Some(ast::AttrInput::TokenTree(_token_tree))) => {}
         _ => complete_attribute_start(acc, ctx, attribute),
@@ -87,7 +95,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr(r#"deprecated = "…""#, Some("deprecated"), Some(r#"deprecated = "${0:reason}""#)),
     attr("derive(…)", Some("derive"), Some(r#"derive(${0:Debug})"#)),
     attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
-    attr("feature(…)", Some("feature"), Some("feature(${0:flag})")).prefer_inner(),
+    attr("feature(…)", Some("feature"), Some("feature(${0:lint})")).prefer_inner(),
     attr("forbid(…)", Some("forbid"), Some("forbid(${0:lint})")),
     // FIXME: resolve through macro resolution?
     attr("global_allocator", None, None).prefer_inner(),
@@ -164,9 +172,9 @@ fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input:
     }
 }
 
-fn complete_lint(acc: &mut Completions, ctx: &CompletionContext, derive_input: ast::TokenTree) {
+fn complete_lint(acc: &mut Completions, ctx: &CompletionContext, derive_input: ast::TokenTree, lints_completions: &[LintCompletion]) {
     if let Ok(existing_lints) = parse_comma_sep_input(derive_input) {
-        for lint_completion in DEFAULT_LINT_COMPLETIONS
+        for lint_completion in lints_completions
             .into_iter()
             .filter(|completion| !existing_lints.contains(completion.label))
         {
@@ -250,9 +258,9 @@ const DEFAULT_DERIVE_COMPLETIONS: &[DeriveCompletion] = &[
     DeriveCompletion { label: "Ord", dependencies: &["PartialOrd", "Eq", "PartialEq"] },
 ];
 
-struct LintCompletion {
-    label: &'static str,
-    description: &'static str,
+pub struct LintCompletion {
+    pub label: &'static str,
+    pub description: &'static str,
 }
 
 #[rustfmt::skip]

@@ -4,7 +4,7 @@ members = [ "crates/*", "xtask/" ]
 [profile.dev]
 # disabling debug info speeds up builds a bunch,
 # and we don't rely on it for debugging that much.
-debug = 0
+debug = 2
 
 [profile.release]
 incremental = true

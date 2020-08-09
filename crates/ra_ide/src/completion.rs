@@ -18,13 +18,17 @@ mod complete_unqualified_path;
 mod complete_postfix;
 mod complete_macro_in_item_position;
 mod complete_trait_impl;
-
+mod unstable_feature_descriptor;
 use ra_ide_db::RootDatabase;
 
 use crate::{
     completion::{
         completion_context::CompletionContext,
         completion_item::{CompletionKind, Completions},
+
+        //TODO: rework 
+        unstable_feature_descriptor::UNSTABLE_FEATURE_DESCRIPTOR,
+        complete_attribute::LintCompletion,
     },
     FilePosition,
 };
