@@ -337,7 +337,7 @@ impl GlobalState {
     fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
         self.register_request(&req, request_received);
 
-        if self.status == Status::Loading {
+        if self.status == Status::Loading && req.method != "shutdown" {
             self.respond(lsp_server::Response::new_err(
                 req.id,
                 // FIXME: i32 should impl From<ErrorCode> (from() guarantees lossless conversion)
