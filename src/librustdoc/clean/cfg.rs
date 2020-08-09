@@ -413,6 +413,13 @@ impl<'a> fmt::Display for Html<'a> {
                             return write!(fmt, "target feature <code>{}</code>", feat);
                         }
                     }
+                    (sym::feature, Some(feat)) => {
+                        if self.1 {
+                            return write!(fmt, "<code>{}</code>", feat);
+                        } else {
+                            return write!(fmt, "crate feature <code>{}</code>", feat);
+                        }
+                    }
                     _ => "",
                 };
                 if !human_readable.is_empty() {
