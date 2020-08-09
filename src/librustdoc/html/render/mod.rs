@@ -3450,7 +3450,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> String {
                 if impl_.trait_.def_id().map_or(false, |d| c.traits[&d].is_spotlight) {
                     if out.is_empty() {
                         out.push_str(&format!(
-                            "<h3 class=\"important\">Important traits for {}</h3>\
+                            "<h3 class=\"notable\">Notable traits for {}</h3>\
                                       <code class=\"content\">",
                             impl_.for_.print()
                         ));
@@ -3485,7 +3485,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> String {
     if !out.is_empty() {
         out.insert_str(
             0,
-            "<span class=\"important-traits\"><span class=\"important-traits-tooltip\">ⓘ<div class='important-traits-tooltiptext'><span class=\"docblock\">"
+            "<span class=\"notable-traits\"><span class=\"notable-traits-tooltip\">ⓘ<div class='notable-traits-tooltiptext'><span class=\"docblock\">"
 
         );
         out.push_str("</code></span></div></span></span>");
