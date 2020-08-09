@@ -652,6 +652,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let frame = M::init_frame_extra(self, pre_frame)?;
         self.stack_mut().push(frame);
 
+        // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
+        for const_ in &body.required_consts {
+            let const_ =
+                self.subst_from_current_frame_and_normalize_erasing_regions(const_.literal);
+            self.const_to_op(const_, None)?;
+        }
+
         // Locals are initially uninitialized.
         let dummy = LocalState { value: LocalValue::Uninitialized, layout: Cell::new(None) };
         let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
