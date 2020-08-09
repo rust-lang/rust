@@ -351,7 +351,22 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     unsafe fn val_at(&self, idx: usize) -> &V {
         unsafe { self.reborrow().into_val_at(idx) }
     }
+}
 
+impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
+    /// Borrows a reference to the contents of one of the edges that delimit
+    /// the elements of the node, without invalidating other references.
+    ///
+    /// # Safety
+    /// The node has more than `idx` initialized elements.
+    unsafe fn edge_at(&self, idx: usize) -> &BoxedNode<K, V> {
+        debug_assert!(idx <= self.len());
+        let node = self.as_internal_ptr();
+        unsafe { (*node).edges.get_unchecked(idx).assume_init_ref() }
+    }
+}
+
+impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// Finds the parent of the current node. Returns `Ok(handle)` if the current
     /// node actually has a parent, where `handle` points to the edge of the parent
     /// that points to the current node. Returns `Err(self)` if the current node has
@@ -495,6 +510,17 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         // until the value slice reference is dropped, as we have unique access
         // for the lifetime of the borrow.
         unsafe { self.reborrow_mut().into_val_slice_mut() }
+    }
+}
+
+impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
+    fn edges_mut(&mut self) -> &mut [BoxedNode<K, V>] {
+        unsafe {
+            slice::from_raw_parts_mut(
+                MaybeUninit::slice_as_mut_ptr(&mut self.as_internal_mut().edges),
+                self.len() + 1,
+            )
+        }
     }
 }
 
@@ -669,9 +695,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
             let val = ptr::read(self.val_at(idx));
             let edge = match self.reborrow_mut().force() {
                 ForceResult::Leaf(_) => None,
-                ForceResult::Internal(mut internal) => {
-                    let edge =
-                        ptr::read(internal.as_internal().edges.get_unchecked(idx + 1).as_ptr());
+                ForceResult::Internal(internal) => {
+                    let edge = ptr::read(internal.edge_at(idx + 1));
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
                     new_root.node_as_mut().as_leaf_mut().parent = None;
                     Some(new_root)
@@ -696,14 +721,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
             let edge = match self.reborrow_mut().force() {
                 ForceResult::Leaf(_) => None,
                 ForceResult::Internal(mut internal) => {
-                    let edge = slice_remove(
-                        slice::from_raw_parts_mut(
-                            MaybeUninit::slice_as_mut_ptr(&mut internal.as_internal_mut().edges),
-                            old_len + 1,
-                        ),
-                        0,
-                    );
-
+                    let edge = slice_remove(internal.edges_mut(), 0);
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
                     new_root.node_as_mut().as_leaf_mut().parent = None;
 
@@ -972,16 +990,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         debug_assert!(edge.height == self.node.height - 1);
 
         unsafe {
+            slice_insert(self.node.edges_mut(), self.idx + 1, edge.node);
             self.leafy_insert_fit(key, val);
-
-            slice_insert(
-                slice::from_raw_parts_mut(
-                    MaybeUninit::slice_as_mut_ptr(&mut self.node.as_internal_mut().edges),
-                    self.node.len(),
-                ),
-                self.idx + 1,
-                edge.node,
-            );
 
             self.node.correct_childrens_parent_links((self.idx + 1)..=self.node.len());
         }
@@ -1253,7 +1263,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 right_len,
             );
 
-            slice_remove(&mut self.node.as_internal_mut().edges, self.idx + 1);
+            slice_remove(&mut self.node.edges_mut(), self.idx + 1);
             let self_len = self.node.len();
             self.node.correct_childrens_parent_links(self.idx + 1..self_len);
             self.node.as_leaf_mut().len -= 1;
@@ -1264,10 +1274,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 // SAFETY: the height of the nodes being merged is one below the height
                 // of the node of this edge, thus above zero, so they are internal.
                 let mut left_node = left_node.cast_unchecked::<marker::Internal>();
-                let mut right_node = right_node.cast_unchecked::<marker::Internal>();
+                let right_node = right_node.cast_unchecked::<marker::Internal>();
                 ptr::copy_nonoverlapping(
-                    right_node.as_internal().edges.as_ptr(),
-                    left_node.as_internal_mut().edges.as_mut_ptr().add(left_len + 1),
+                    right_node.edge_at(0),
+                    left_node.edges_mut().as_mut_ptr().add(left_len + 1),
                     right_len + 1,
                 );
 
