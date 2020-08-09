@@ -4,12 +4,13 @@
 // would otherwise be responsible for
 #![warn(clippy::useless_transmute)]
 #![warn(clippy::transmute_ptr_to_ptr)]
+#![allow(unused_unsafe)]
+#![allow(dead_code)]
 
 use std::mem::{size_of, transmute};
 
 // rustc_typeck::check::cast contains documentation about when a cast `e as U` is 
 // valid, which we quote from below.
-
 fn main() {
     // We should see an error message for each transmute, and no error messages for
     // the casts, since the casts are the recommended fixes.
