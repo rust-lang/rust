@@ -1188,6 +1188,9 @@ pub fn raw_encode_expn_id<E: Encoder>(
             let data = expn.expn_data();
             // We only need to serialize the ExpnData
             // if it comes from this crate.
+            // We currently don't serialize any hygiene information data for
+            // proc-macro crates: see the `SpecializedEncoder<Span>` impl
+            // for crate metadata.
             if data.krate == LOCAL_CRATE {
                 needs_data();
             }
