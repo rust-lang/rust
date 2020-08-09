@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::cstore::{EncodedMetadata, LibSource, NativeLib};
@@ -23,7 +24,7 @@ use super::rpath::{self, RPathConfig};
 use crate::{looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FILENAME};
 
 use cc::windows_registry;
-use tempfile::{Builder as TempFileBuilder, TempDir};
+use tempfile::Builder as TempFileBuilder;
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -70,27 +71,21 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             }
         });
 
-        let tmpdir = TempFileBuilder::new()
-            .prefix("rustc")
-            .tempdir()
-            .unwrap_or_else(|err| sess.fatal(&format!("couldn't create a temp dir: {}", err)));
-
         if outputs.outputs.should_codegen() {
+            let tmpdir = TempFileBuilder::new()
+                .prefix("rustc")
+                .tempdir()
+                .unwrap_or_else(|err| sess.fatal(&format!("couldn't create a temp dir: {}", err)));
+            let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
             let out_filename = out_filename(sess, crate_type, outputs, crate_name);
             match crate_type {
                 CrateType::Rlib => {
                     let _timer = sess.timer("link_rlib");
-                    link_rlib::<B>(
-                        sess,
-                        codegen_results,
-                        RlibFlavor::Normal,
-                        &out_filename,
-                        &tmpdir,
-                    )
-                    .build();
+                    link_rlib::<B>(sess, codegen_results, RlibFlavor::Normal, &out_filename, &path)
+                        .build();
                 }
                 CrateType::Staticlib => {
-                    link_staticlib::<B>(sess, codegen_results, &out_filename, &tmpdir);
+                    link_staticlib::<B>(sess, codegen_results, &out_filename, &path);
                 }
                 _ => {
                     link_natively::<B>(
@@ -98,7 +93,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                         crate_type,
                         &out_filename,
                         codegen_results,
-                        tmpdir.path(),
+                        path.as_ref(),
                         target_cpu,
                     );
                 }
@@ -106,10 +101,6 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             if sess.opts.json_artifact_notifications {
                 sess.parse_sess.span_diagnostic.emit_artifact_notification(&out_filename, "link");
             }
-        }
-
-        if sess.opts.cg.save_temps {
-            let _ = tmpdir.into_path();
         }
     }
 
@@ -279,8 +270,8 @@ pub fn each_linked_rlib(
 /// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
 /// directory being searched for `extern crate` (observing an incomplete file).
 /// The returned path is the temporary file containing the complete metadata.
-pub fn emit_metadata(sess: &Session, metadata: &EncodedMetadata, tmpdir: &TempDir) -> PathBuf {
-    let out_filename = tmpdir.path().join(METADATA_FILENAME);
+pub fn emit_metadata(sess: &Session, metadata: &EncodedMetadata, tmpdir: &MaybeTempDir) -> PathBuf {
+    let out_filename = tmpdir.as_ref().join(METADATA_FILENAME);
     let result = fs::write(&out_filename, &metadata.raw_data);
 
     if let Err(e) = result {
@@ -301,7 +292,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     codegen_results: &CodegenResults,
     flavor: RlibFlavor,
     out_filename: &Path,
-    tmpdir: &TempDir,
+    tmpdir: &MaybeTempDir,
 ) -> B {
     info!("preparing rlib to {:?}", out_filename);
     let mut ab = <B as ArchiveBuilder>::new(sess, out_filename, None);
@@ -406,7 +397,7 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     codegen_results: &CodegenResults,
     out_filename: &Path,
-    tempdir: &TempDir,
+    tempdir: &MaybeTempDir,
 ) {
     let mut ab =
         link_rlib::<B>(sess, codegen_results, RlibFlavor::StaticlibBase, out_filename, tempdir);
