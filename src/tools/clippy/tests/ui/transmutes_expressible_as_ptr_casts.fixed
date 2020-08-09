@@ -5,7 +5,7 @@
 #![warn(clippy::useless_transmute)]
 #![warn(clippy::transmute_ptr_to_ptr)]
 
-use std::mem::transmute;
+use std::mem::{size_of, transmute};
 
 // rustc_typeck::check::cast contains documentation about when a cast `e as U` is 
 // valid, which we quote from below.
@@ -74,4 +74,16 @@ fn main() {
 // fall through into `do_check`.
 fn trigger_do_check_to_emit_error(in_param: &[i32; 1]) -> *const u8 {
     unsafe { in_param as *const [i32; 1] as *const u8 }
+}
+
+#[repr(C)]
+struct Single(u64);
+
+#[repr(C)]
+struct Pair(u32, u32);
+
+fn cannot_be_expressed_as_pointer_cast(in_param: Single) -> Pair {
+    assert_eq!(size_of::<Single>(), size_of::<Pair>());
+
+    unsafe { transmute::<Single, Pair>(in_param) }
 }
