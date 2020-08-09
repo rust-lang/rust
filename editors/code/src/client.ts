@@ -129,7 +129,7 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                 );
             }
 
-        } as any
+        }
     };
 
     const client = new lc.LanguageClient(
