@@ -1,8 +1,11 @@
 // Check what token streams proc macros see when interpolated tokens are passed to them as input.
 
 // check-pass
-// normalize-stdout-test "#\d+" -> "#CTXT"
+// edition:2018
 // aux-build:test-macros.rs
+
+#![no_std] // Don't load unnecessary hygiene information from std
+extern crate std;
 
 #[macro_use]
 extern crate test_macros;
