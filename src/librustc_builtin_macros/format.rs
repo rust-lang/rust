@@ -149,7 +149,7 @@ fn parse_args<'a>(
                 return Err(err);
             } else {
                 // ...after that delegate to `expect` to also include the other expected tokens.
-                return Err(p.expect(&token::Comma).err().unwrap());
+                let _ = p.expect(&token::Comma)?;
             }
         }
         first = false;
@@ -359,24 +359,18 @@ impl<'a, 'b> Context<'a, 'b> {
             // for `println!("{7:7$}", 1);`
             refs.sort();
             refs.dedup();
-            let (arg_list, mut sp) = if refs.len() == 1 {
-                let spans: Vec<_> = spans.into_iter().filter_map(|sp| sp.copied()).collect();
-                (
-                    format!("argument {}", refs[0]),
-                    if spans.is_empty() {
-                        MultiSpan::from_span(self.fmtsp)
-                    } else {
-                        MultiSpan::from_spans(spans)
-                    },
-                )
+            let spans: Vec<_> = spans.into_iter().filter_map(|sp| sp.copied()).collect();
+            let sp = if self.arg_spans.is_empty() || spans.is_empty() {
+                MultiSpan::from_span(self.fmtsp)
             } else {
-                let pos = MultiSpan::from_spans(spans.into_iter().map(|s| *s.unwrap()).collect());
-                let reg = refs.pop().unwrap();
-                (format!("arguments {head} and {tail}", head = refs.join(", "), tail = reg,), pos)
+                MultiSpan::from_spans(spans)
             };
-            if self.arg_spans.is_empty() {
-                sp = MultiSpan::from_span(self.fmtsp);
-            }
+            let arg_list = if refs.len() == 1 {
+                format!("argument {}", refs[0])
+            } else {
+                let reg = refs.pop().unwrap();
+                format!("arguments {head} and {tail}", head = refs.join(", "), tail = reg)
+            };
 
             e = self.ecx.struct_span_err(
                 sp,
@@ -1067,10 +1061,9 @@ pub fn expand_preparsed_format_args(
         let args_unused = errs_len;
 
         let mut diag = {
-            if errs_len == 1 {
-                let (sp, msg) = errs.into_iter().next().unwrap();
-                let mut diag = cx.ecx.struct_span_err(sp, msg);
-                diag.span_label(sp, msg);
+            if let [(sp, msg)] = &errs[..] {
+                let mut diag = cx.ecx.struct_span_err(*sp, *msg);
+                diag.span_label(*sp, *msg);
                 diag
             } else {
                 let mut diag = cx.ecx.struct_span_err(
