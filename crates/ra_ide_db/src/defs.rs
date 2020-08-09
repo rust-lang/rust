@@ -93,19 +93,19 @@ pub enum NameClass {
 impl NameClass {
     pub fn into_definition(self, db: &dyn HirDatabase) -> Option<Definition> {
         Some(match self {
-            NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db)?.into()),
+            NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) => it,
             NameClass::ConstReference(_) => return None,
             NameClass::FieldShorthand { local, field: _ } => Definition::Local(local),
         })
     }
 
-    pub fn definition(self, db: &dyn HirDatabase) -> Option<Definition> {
-        Some(match self {
-            NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db)?.into()),
+    pub fn definition(self, db: &dyn HirDatabase) -> Definition {
+        match self {
+            NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) | NameClass::ConstReference(it) => it,
             NameClass::FieldShorthand { local: _, field } => field,
-        })
+        }
     }
 }
 
@@ -148,7 +148,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                         })
                         .and_then(|name_ref| classify_name_ref(sema, &name_ref))?;
 
-                    Some(NameClass::Definition(name_ref_class.definition(sema.db)?))
+                    Some(NameClass::Definition(name_ref_class.definition(sema.db)))
                 } else {
                     let extern_crate = it.syntax().parent().and_then(ast::ExternCrate::cast)?;
                     let resolved = sema.resolve_extern_crate(&extern_crate)?;
@@ -234,14 +234,12 @@ pub enum NameRefClass {
 }
 
 impl NameRefClass {
-    pub fn definition(self, db: &dyn HirDatabase) -> Option<Definition> {
-        Some(match self {
-            NameRefClass::ExternCrate(krate) => {
-                Definition::ModuleDef(krate.root_module(db)?.into())
-            }
+    pub fn definition(self, db: &dyn HirDatabase) -> Definition {
+        match self {
+            NameRefClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameRefClass::Definition(def) => def,
             NameRefClass::FieldShorthand { local, field: _ } => Definition::Local(local),
-        })
+        }
     }
 }
 

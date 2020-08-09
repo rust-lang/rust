@@ -257,7 +257,7 @@ pub use prelude::*;
             .find(|dep| &dep.name.to_string() == std_crate)?
             .krate;
 
-        let mut module = std_crate.root_module(db)?;
+        let mut module = std_crate.root_module(db);
         for segment in path {
             module = module.children(db).find_map(|child| {
                 let name = child.name(db)?;

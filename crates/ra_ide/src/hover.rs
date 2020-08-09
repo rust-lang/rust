@@ -85,8 +85,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     let node = token.parent();
     let definition = match_ast! {
         match node {
-            ast::NameRef(name_ref) => classify_name_ref(&sema, &name_ref).and_then(|d| d.definition(sema.db)),
-            ast::Name(name) => classify_name(&sema, &name).and_then(|d| d.definition(sema.db)),
+            ast::NameRef(name_ref) => classify_name_ref(&sema, &name_ref).map(|d| d.definition(sema.db)),
+            ast::Name(name) => classify_name(&sema, &name).map(|d| d.definition(sema.db)),
             _ => None,
         }
     };
