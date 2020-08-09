@@ -188,8 +188,23 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
                 .map(|v| (*v).clone())
                 .collect::<Vec<String>>();
             unused_extern_names.sort();
-            let unused_extern_json =
-                serde_json::to_string(&UnusedExterns { unused_extern_names }).unwrap();
+            // Take the most severe lint level
+            let lint_level = unused_extern_reports
+                .iter()
+                .map(|uexts| uexts.lint_level.as_str())
+                .max_by_key(|v| match *v {
+                    "warn" => 1,
+                    "deny" => 2,
+                    "forbid" => 3,
+                    // The allow lint level is not expected,
+                    // as if allow is specified, no message
+                    // is to be emitted.
+                    v => unreachable!("Invalid lint level '{}'", v),
+                })
+                .unwrap_or("warn")
+                .to_string();
+            let uext = UnusedExterns { lint_level, unused_extern_names };
+            let unused_extern_json = serde_json::to_string(&uext).unwrap();
             eprintln!("{}", unused_extern_json);
         }
     }
@@ -265,6 +280,8 @@ impl DirState {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct UnusedExterns {
+    /// Lint level of the unused_crate_dependencies lint
+    lint_level: String,
     /// List of unused externs by their names.
     unused_extern_names: Vec<String>,
 }
@@ -317,6 +334,7 @@ fn run_test(
         compiler.arg("--error-format=json");
         compiler.arg("--json").arg("unused-externs");
         compiler.arg("-Z").arg("unstable-options");
+        compiler.arg("-W").arg("unused_crate_dependencies");
     }
     for lib_str in &options.lib_strs {
         compiler.arg("-L").arg(&lib_str);

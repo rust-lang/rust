@@ -17,6 +17,7 @@ use rustc_hir::definitions::Definitions;
 use rustc_hir::Crate;
 use rustc_index::vec::IndexVec;
 use rustc_lint::LintStore;
+use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
@@ -836,6 +837,12 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 });
 
                 sess.time("looking_for_derive_registrar", || proc_macro_decls::find(tcx));
+
+                let cstore = tcx
+                    .cstore_as_any()
+                    .downcast_ref::<CStore>()
+                    .expect("`tcx.cstore` is not a `CStore`");
+                cstore.report_unused_deps(tcx);
             },
             {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {

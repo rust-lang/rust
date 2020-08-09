@@ -767,8 +767,8 @@ impl Handler {
         self.inner.borrow_mut().emitter.emit_future_breakage_report(diags)
     }
 
-    pub fn emit_unused_externs(&self, unused_externs: &[&str]) {
-        self.inner.borrow_mut().emit_unused_externs(unused_externs)
+    pub fn emit_unused_externs(&self, lint_level: &str, unused_externs: &[&str]) {
+        self.inner.borrow_mut().emit_unused_externs(lint_level, unused_externs)
     }
 
     pub fn delay_as_bug(&self, diagnostic: Diagnostic) {
@@ -845,8 +845,8 @@ impl HandlerInner {
         self.emitter.emit_artifact_notification(path, artifact_type);
     }
 
-    fn emit_unused_externs(&mut self, unused_externs: &[&str]) {
-        self.emitter.emit_unused_externs(unused_externs);
+    fn emit_unused_externs(&mut self, lint_level: &str, unused_externs: &[&str]) {
+        self.emitter.emit_unused_externs(lint_level, unused_externs);
     }
 
     fn treat_err_as_bug(&self) -> bool {

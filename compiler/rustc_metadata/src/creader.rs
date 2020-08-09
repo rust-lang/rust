@@ -46,6 +46,9 @@ pub struct CStore {
     /// This map is used to verify we get no hash conflicts between
     /// `StableCrateId` values.
     stable_crate_ids: FxHashMap<StableCrateId, CrateNum>,
+
+    /// Unused externs of the crate
+    unused_externs: Vec<Symbol>,
 }
 
 pub struct CrateLoader<'a> {
@@ -190,6 +193,21 @@ impl CStore {
     crate fn has_global_allocator(&self) -> bool {
         self.has_global_allocator
     }
+
+    pub fn report_unused_deps(&self, tcx: TyCtxt<'_>) {
+        let level = tcx
+            .lint_level_at_node(lint::builtin::UNUSED_CRATE_DEPENDENCIES, rustc_hir::CRATE_HIR_ID)
+            .0;
+        if level != lint::Level::Allow && tcx.sess.opts.json_unused_externs {
+            let unused_externs =
+                self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();
+            let unused_externs = unused_externs.iter().map(String::as_str).collect::<Vec<&str>>();
+            tcx.sess
+                .parse_sess
+                .span_diagnostic
+                .emit_unused_externs(level.as_str(), &unused_externs);
+        }
+    }
 }
 
 impl<'a> CrateLoader<'a> {
@@ -217,6 +235,7 @@ impl<'a> CrateLoader<'a> {
                 allocator_kind: None,
                 has_global_allocator: false,
                 stable_crate_ids,
+                unused_externs: Vec::new(),
             },
             used_extern_options: Default::default(),
         }
@@ -893,18 +912,23 @@ impl<'a> CrateLoader<'a> {
     fn report_unused_deps(&mut self, krate: &ast::Crate) {
         // Make a point span rather than covering the whole file
         let span = krate.span.shrink_to_lo();
-        let mut unused_externs = Vec::new();
         // Complain about anything left over
         for (name, entry) in self.sess.opts.externs.iter() {
             if let ExternLocation::FoundInLibrarySearchDirectories = entry.location {
                 // Don't worry about pathless `--extern foo` sysroot references
                 continue;
             }
-            if self.used_extern_options.contains(&Symbol::intern(name)) {
+            let name_interned = Symbol::intern(name);
+            if self.used_extern_options.contains(&name_interned) {
                 continue;
             }
 
             // Got a real unused --extern
+            if self.sess.opts.json_unused_externs {
+                self.cstore.unused_externs.push(name_interned);
+                continue;
+            }
+
             let diag = match self.sess.opts.extern_dep_specs.get(name) {
                 Some(loc) => BuiltinLintDiagnostics::ExternDepSpec(name.clone(), loc.into()),
                 None => {
@@ -918,7 +942,6 @@ impl<'a> CrateLoader<'a> {
                     )
                 }
             };
-            unused_externs.push(name as &str);
             self.sess.parse_sess.buffer_lint_with_diagnostic(
                     lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                     span,
@@ -931,9 +954,6 @@ impl<'a> CrateLoader<'a> {
                     diag,
                 );
         }
-        if self.sess.opts.json_unused_externs {
-            self.sess.parse_sess.span_diagnostic.emit_unused_externs(&unused_externs);
-        }
     }
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {
@@ -941,9 +961,9 @@ impl<'a> CrateLoader<'a> {
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
 
-        info!("{:?}", CrateDump(&self.cstore));
-
         self.report_unused_deps(krate);
+
+        info!("{:?}", CrateDump(&self.cstore));
     }
 
     pub fn process_extern_crate(

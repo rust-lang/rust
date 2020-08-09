@@ -159,8 +159,8 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn emit_unused_externs(&mut self, unused_externs: &[&str]) {
-        let data = UnusedExterns { unused_extern_names: unused_externs };
+    fn emit_unused_externs(&mut self, lint_level: &str, unused_externs: &[&str]) {
+        let data = UnusedExterns { lint_level, unused_extern_names: unused_externs };
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
         } else {
@@ -336,9 +336,11 @@ struct FutureIncompatReport {
 }
 
 #[derive(Encodable)]
-struct UnusedExterns<'a, 'b> {
+struct UnusedExterns<'a, 'b, 'c> {
+    /// The severity level of the unused dependencies lint
+    lint_level: &'a str,
     /// List of unused externs by their names.
-    unused_extern_names: &'a [&'b str],
+    unused_extern_names: &'b [&'c str],
 }
 
 impl Diagnostic {
