@@ -2087,7 +2087,8 @@ impl Path {
     /// assert!(path.starts_with("/etc"));
     /// assert!(path.starts_with("/etc/"));
     /// assert!(path.starts_with("/etc/passwd"));
-    /// assert!(path.starts_with("/etc/passwd/")); // extra slash(es) is okay
+    /// assert!(path.starts_with("/etc/passwd/")); // extra slash is okay
+    /// assert!(path.starts_with("/etc/passwd///")); // multiple extra slashes are okay
     ///
     /// assert!(!path.starts_with("/e"));
     /// assert!(!path.starts_with("/etc/passwd.txt"));
