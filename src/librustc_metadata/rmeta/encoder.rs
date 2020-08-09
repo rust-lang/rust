@@ -279,6 +279,10 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         // cross-crate inconsistencies (getting one behavior in the same
         // crate, and a different behavior in another crate) due to the
         // limited surface that proc-macros can expose.
+        //
+        // IMPORTANT: If this is ever changed, be sure to update
+        // `rustc_span::hygiene::raw_encode_expn_id` to handle
+        // encoding `ExpnData` for proc-macro crates.
         if self.is_proc_macro {
             SyntaxContext::root().encode(self)?;
         } else {

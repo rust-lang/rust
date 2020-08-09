@@ -1172,13 +1172,30 @@ pub fn raw_encode_expn_id<E: Encoder>(
     mode: ExpnDataEncodeMode,
     e: &mut E,
 ) -> Result<(), E::Error> {
-    if !context.serialized_expns.lock().contains(&expn) {
-        context.latest_expns.lock().insert(expn);
-    }
+    // Record the fact that we need to serialize the corresponding
+    // `ExpnData`
+    let needs_data = || {
+        if !context.serialized_expns.lock().contains(&expn) {
+            context.latest_expns.lock().insert(expn);
+        }
+    };
+
     match mode {
-        ExpnDataEncodeMode::IncrComp => expn.0.encode(e),
+        ExpnDataEncodeMode::IncrComp => {
+            // Always serialize the `ExpnData` in incr comp mode
+            needs_data();
+            expn.0.encode(e)
+        }
         ExpnDataEncodeMode::Metadata => {
             let data = expn.expn_data();
+            // We only need to serialize the ExpnData
+            // if it comes from this crate.
+            // We currently don't serialize any hygiene information data for
+            // proc-macro crates: see the `SpecializedEncoder<Span>` impl
+            // for crate metadata.
+            if data.krate == LOCAL_CRATE {
+                needs_data();
+            }
             data.orig_id.expect("Missing orig_id").encode(e)?;
             data.krate.encode(e)
         }
