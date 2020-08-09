@@ -4,7 +4,7 @@ import * as ra from '../src/lsp_ext';
 import * as Is from 'vscode-languageclient/lib/utils/is';
 
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
-import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-languageclient/lib/semanticTokens.proposed';
+import { SemanticTokensFeature } from 'vscode-languageclient/lib/semanticTokens.proposed';
 import { assert } from './util';
 
 function renderCommand(cmd: ra.CommandLink) {
@@ -44,12 +44,6 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
         diagnosticCollectionName: "rustc",
         traceOutputChannel,
         middleware: {
-            // Workaround for https://github.com/microsoft/vscode-languageserver-node/issues/576
-            async provideDocumentSemanticTokens(document: vscode.TextDocument, token: vscode.CancellationToken, next: DocumentSemanticsTokensSignature) {
-                const res = await next(document, token);
-                if (res === undefined) throw new Error('busy');
-                return res;
-            },
             async provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, _next: lc.ProvideHoverSignature) {
                 return client.sendRequest(lc.HoverRequest.type, client.code2ProtocolConverter.asTextDocumentPositionParams(document, position), token).then(
                     (result) => {
