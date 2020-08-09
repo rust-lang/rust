@@ -161,6 +161,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 return Some(res.map_id(|_| panic!("unexpected id")));
             }
             if let Some(module_id) = parent_id {
+                debug!("resolving {} as a macro in the module {:?}", path_str, module_id);
                 if let Ok((_, res)) =
                     resolver.resolve_str_path_error(DUMMY_SP, path_str, MacroNS, module_id)
                 {

@@ -222,6 +222,7 @@ impl<'a> CrateLoader<'a> {
         let mut ret = None;
         self.cstore.iter_crate_data(|cnum, data| {
             if data.name() != name {
+                tracing::trace!("{} did not match {}", data.name(), name);
                 return;
             }
 
@@ -230,7 +231,10 @@ impl<'a> CrateLoader<'a> {
                     ret = Some(cnum);
                     return;
                 }
-                Some(..) => return,
+                Some(hash) => {
+                    debug!("actual hash {} did not match expected {}", hash, data.hash());
+                    return;
+                }
                 None => {}
             }
 
@@ -273,6 +277,11 @@ impl<'a> CrateLoader<'a> {
                 .1;
             if kind.matches(prev_kind) {
                 ret = Some(cnum);
+            } else {
+                debug!(
+                    "failed to load existing crate {}; kind {:?} did not match prev_kind {:?}",
+                    name, kind, prev_kind
+                );
             }
         });
         ret

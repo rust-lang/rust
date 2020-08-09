@@ -439,6 +439,7 @@ pub fn run_core(
                 resolver.borrow_mut().access(|resolver| {
                     sess.time("load_extern_crates", || {
                         for extern_name in &extern_names {
+                            debug!("loading extern crate {}", extern_name);
                             resolver
                                 .resolve_str_path_error(
                                     DUMMY_SP,
