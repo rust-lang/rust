@@ -58,7 +58,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
         stderr: None,
         crate_name: None,
         lint_caps: Default::default(),
-        register_lints: None,
+        register_lints: Default::default(),
         override_queries: None,
         registry: rustc_driver::diagnostics_registry(),
     };

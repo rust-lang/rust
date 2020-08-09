@@ -49,7 +49,7 @@ impl RegisterLints {
             }
         }
     }
-    pub fn on(&self, sess: &Session, lint_store: &mut LintStore) {
+    pub fn call(&self, sess: &Session, lint_store: &mut LintStore) {
         match self {
             RegisterLints::Empty => (),
             RegisterLints::Register(reg) => (reg)(sess, lint_store),

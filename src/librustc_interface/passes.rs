@@ -193,7 +193,7 @@ pub fn register_plugins<'a>(
         sess.opts.debugging_opts.no_interleave_lints,
         sess.unstable_options(),
     );
-    register_lints.on(&sess, &mut lint_store);
+    register_lints.call(&sess, &mut lint_store);
 
     let registrars =
         sess.time("plugin_loading", || plugin::load::load_plugins(sess, metadata_loader, &krate));
