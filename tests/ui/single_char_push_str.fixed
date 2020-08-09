@@ -1,0 +1,10 @@
+// run-rustfix
+#![warn(clippy::single_char_push_str)]
+
+fn main() {
+    let mut string = String::new();
+    string.push('R');
+    string.push('\'');
+
+    string.push('u');
+}

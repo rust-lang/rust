@@ -1,0 +1,16 @@
+error: calling `push_str()` using a single-character string literal
+  --> $DIR/single_char_push_str.rs:6:5
+   |
+LL |     string.push_str("R");
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('R')`
+   |
+   = note: `-D clippy::single-char-push-str` implied by `-D warnings`
+
+error: calling `push_str()` using a single-character string literal
+  --> $DIR/single_char_push_str.rs:7:5
+   |
+LL |     string.push_str("'");
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('/'')`
+
+error: aborting due to 2 previous errors
+
