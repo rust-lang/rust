@@ -74,11 +74,11 @@ extern crate log;
 #[macro_use]
 extern crate rustc_middle;
 
-// This is used by Clippy.
+// These are used by Clippy.
+pub mod check;
 pub mod expr_use_visitor;
 
 mod astconv;
-mod check;
 mod check_unused;
 mod coherence;
 mod collect;
