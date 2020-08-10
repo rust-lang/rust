@@ -39,8 +39,8 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
             .collect_and_partition_mono_items(LOCAL_CRATE)
             .1
             .iter()
-            .map(|cgu| cgu.name())
-            .collect::<BTreeSet<Symbol>>();
+            .map(|cgu| cgu.name().to_string())
+            .collect::<BTreeSet<String>>();
 
         let ams = AssertModuleSource { tcx, available_cgus };
 
@@ -52,31 +52,32 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
 
 struct AssertModuleSource<'tcx> {
     tcx: TyCtxt<'tcx>,
-    available_cgus: BTreeSet<Symbol>,
+    available_cgus: BTreeSet<String>,
 }
 
 impl AssertModuleSource<'tcx> {
     fn check_attr(&self, attr: &ast::Attribute) {
-        let (expected_reuse, comp_kind) = if attr.check_name(sym::rustc_partition_reused) {
-            (CguReuse::PreLto, ComparisonKind::AtLeast)
-        } else if attr.check_name(sym::rustc_partition_codegened) {
-            (CguReuse::No, ComparisonKind::Exact)
-        } else if attr.check_name(sym::rustc_expected_cgu_reuse) {
-            match self.field(attr, sym::kind) {
-                sym::no => (CguReuse::No, ComparisonKind::Exact),
-                sym::pre_dash_lto => (CguReuse::PreLto, ComparisonKind::Exact),
-                sym::post_dash_lto => (CguReuse::PostLto, ComparisonKind::Exact),
-                sym::any => (CguReuse::PreLto, ComparisonKind::AtLeast),
-                other => {
-                    self.tcx.sess.span_fatal(
-                        attr.span,
-                        &format!("unknown cgu-reuse-kind `{}` specified", other),
-                    );
+        let (expected_reuse, comp_kind) =
+            if self.tcx.sess.check_name(attr, sym::rustc_partition_reused) {
+                (CguReuse::PreLto, ComparisonKind::AtLeast)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_partition_codegened) {
+                (CguReuse::No, ComparisonKind::Exact)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_expected_cgu_reuse) {
+                match self.field(attr, sym::kind) {
+                    sym::no => (CguReuse::No, ComparisonKind::Exact),
+                    sym::pre_dash_lto => (CguReuse::PreLto, ComparisonKind::Exact),
+                    sym::post_dash_lto => (CguReuse::PostLto, ComparisonKind::Exact),
+                    sym::any => (CguReuse::PreLto, ComparisonKind::AtLeast),
+                    other => {
+                        self.tcx.sess.span_fatal(
+                            attr.span,
+                            &format!("unknown cgu-reuse-kind `{}` specified", other),
+                        );
+                    }
                 }
-            }
-        } else {
-            return;
-        };
+            } else {
+                return;
+            };
 
         if !self.tcx.sess.opts.debugging_opts.query_dep_graph {
             self.tcx.sess.span_fatal(
@@ -121,12 +122,11 @@ impl AssertModuleSource<'tcx> {
 
         debug!("mapping '{}' to cgu name '{}'", self.field(attr, sym::module), cgu_name);
 
-        if !self.available_cgus.contains(&cgu_name) {
+        if !self.available_cgus.contains(&*cgu_name.as_str()) {
             self.tcx.sess.span_err(
                 attr.span,
                 &format!(
-                    "no module named `{}` (mangled: {}). \
-                          Available modules: {}",
+                    "no module named `{}` (mangled: {}). Available modules: {}",
                     user_path,
                     cgu_name,
                     self.available_cgus

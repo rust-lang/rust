@@ -180,9 +180,9 @@ pub struct DirtyCleanVisitor<'tcx> {
 impl DirtyCleanVisitor<'tcx> {
     /// Possibly "deserialize" the attribute into a clean/dirty assertion
     fn assertion_maybe(&mut self, item_id: hir::HirId, attr: &Attribute) -> Option<Assertion> {
-        let is_clean = if attr.check_name(sym::rustc_dirty) {
+        let is_clean = if self.tcx.sess.check_name(attr, sym::rustc_dirty) {
             false
-        } else if attr.check_name(sym::rustc_clean) {
+        } else if self.tcx.sess.check_name(attr, sym::rustc_clean) {
             true
         } else {
             // skip: not rustc_clean/dirty
@@ -523,7 +523,7 @@ pub struct FindAllAttrs<'tcx> {
 impl FindAllAttrs<'tcx> {
     fn is_active_attr(&mut self, attr: &Attribute) -> bool {
         for attr_name in &self.attr_names {
-            if attr.check_name(*attr_name) && check_config(self.tcx, attr) {
+            if self.tcx.sess.check_name(attr, *attr_name) && check_config(self.tcx, attr) {
                 return true;
             }
         }

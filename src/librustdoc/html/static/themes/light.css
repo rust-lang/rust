@@ -333,7 +333,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: transparent black transparent transparent;
 }
 
-.important-traits-tooltiptext {
+.notable-traits-tooltiptext {
 	background-color: #eee;
 	border-color: #999;
 }

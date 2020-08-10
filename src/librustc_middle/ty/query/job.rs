@@ -15,16 +15,12 @@ pub unsafe fn handle_deadlock() {
     rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_, '_>>();
     let icx: &tls::ImplicitCtxt<'_, '_> = &*(context as *const tls::ImplicitCtxt<'_, '_>);
 
-    let span_session_globals = rustc_span::SESSION_GLOBALS.with(|ssg| ssg as *const _);
-    let span_session_globals = &*span_session_globals;
-    let ast_session_globals = rustc_ast::attr::SESSION_GLOBALS.with(|asg| asg as *const _);
-    let ast_session_globals = &*ast_session_globals;
+    let session_globals = rustc_span::SESSION_GLOBALS.with(|sg| sg as *const _);
+    let session_globals = &*session_globals;
     thread::spawn(move || {
         tls::enter_context(icx, |_| {
-            rustc_ast::attr::SESSION_GLOBALS.set(ast_session_globals, || {
-                rustc_span::SESSION_GLOBALS
-                    .set(span_session_globals, || tls::with(|tcx| deadlock(tcx, &registry)))
-            });
+            rustc_span::SESSION_GLOBALS
+                .set(session_globals, || tls::with(|tcx| deadlock(tcx, &registry)))
         })
     });
 }

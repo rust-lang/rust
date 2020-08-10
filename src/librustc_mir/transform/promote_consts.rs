@@ -130,7 +130,7 @@ impl Candidate {
 
 fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<usize>> {
     let attrs = tcx.get_attrs(def_id);
-    let attr = attrs.iter().find(|a| a.check_name(sym::rustc_args_required_const))?;
+    let attr = attrs.iter().find(|a| tcx.sess.check_name(a, sym::rustc_args_required_const))?;
     let mut ret = vec![];
     for meta in attr.meta_item_list()? {
         match meta.literal()?.kind {

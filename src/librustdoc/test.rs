@@ -398,7 +398,7 @@ pub fn make_test(
     // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
-        rustc_ast::with_session_globals(edition, || {
+        rustc_span::with_session_globals(edition, || {
             use rustc_errors::emitter::EmitterWriter;
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
@@ -943,7 +943,12 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
-            self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
+            // Use the outermost invocation, so that doctest names come from where the docs were written.
+            let span = attrs
+                .span
+                .map(|span| span.ctxt().outer_expn().expansion_cause().unwrap_or(span))
+                .unwrap_or(DUMMY_SP);
+            self.collector.set_position(span);
             markdown::find_testable_code(
                 &doc,
                 self.collector,

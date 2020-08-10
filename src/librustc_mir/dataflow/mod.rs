@@ -1,5 +1,6 @@
 use rustc_ast::ast::{self, MetaItem};
 use rustc_middle::ty;
+use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 
 pub(crate) use self::drop_flag_effects::*;
@@ -28,9 +29,13 @@ pub struct MoveDataParamEnv<'tcx> {
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 }
 
-pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: Symbol) -> Option<MetaItem> {
+pub(crate) fn has_rustc_mir_with(
+    sess: &Session,
+    attrs: &[ast::Attribute],
+    name: Symbol,
+) -> Option<MetaItem> {
     for attr in attrs {
-        if attr.check_name(sym::rustc_mir) {
+        if sess.check_name(attr, sym::rustc_mir) {
             let items = attr.meta_item_list();
             for item in items.iter().flat_map(|l| l.iter()) {
                 match item.meta_item() {

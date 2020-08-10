@@ -8,10 +8,11 @@ use rustc_ast::ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, BinOpToken, CommentKind, DelimToken, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::util::classify;
+use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
-use rustc_ast::util::{classify, comments};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
@@ -50,17 +51,17 @@ impl PpAnn for NoAnn {}
 
 pub struct Comments<'a> {
     sm: &'a SourceMap,
-    comments: Vec<comments::Comment>,
+    comments: Vec<Comment>,
     current: usize,
 }
 
 impl<'a> Comments<'a> {
     pub fn new(sm: &'a SourceMap, filename: FileName, input: String) -> Comments<'a> {
-        let comments = comments::gather_comments(sm, filename, input);
+        let comments = gather_comments(sm, filename, input);
         Comments { sm, comments, current: 0 }
     }
 
-    pub fn next(&self) -> Option<comments::Comment> {
+    pub fn next(&self) -> Option<Comment> {
         self.comments.get(self.current).cloned()
     }
 
@@ -68,9 +69,9 @@ impl<'a> Comments<'a> {
         &mut self,
         span: rustc_span::Span,
         next_pos: Option<BytePos>,
-    ) -> Option<comments::Comment> {
+    ) -> Option<Comment> {
         if let Some(cmnt) = self.next() {
-            if cmnt.style != comments::Trailing {
+            if cmnt.style != CommentStyle::Trailing {
                 return None;
             }
             let span_line = self.sm.lookup_char_pos(span.hi());
@@ -152,8 +153,8 @@ pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
 // and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
     if let TokenTree::Token(token) = prev {
-        if let token::DocComment(s) = token.kind {
-            return !s.as_str().starts_with("//");
+        if let token::DocComment(comment_kind, ..) = token.kind {
+            return comment_kind != CommentKind::Line;
         }
     }
     match tt {
@@ -191,6 +192,19 @@ fn binop_to_string(op: BinOpToken) -> &'static str {
         token::Or => "|",
         token::Shl => "<<",
         token::Shr => ">>",
+    }
+}
+
+fn doc_comment_to_string(
+    comment_kind: CommentKind,
+    attr_style: ast::AttrStyle,
+    data: Symbol,
+) -> String {
+    match (comment_kind, attr_style) {
+        (CommentKind::Line, ast::AttrStyle::Outer) => format!("///{}", data),
+        (CommentKind::Line, ast::AttrStyle::Inner) => format!("//!{}", data),
+        (CommentKind::Block, ast::AttrStyle::Outer) => format!("/**{}*/", data),
+        (CommentKind::Block, ast::AttrStyle::Inner) => format!("/*!{}*/", data),
     }
 }
 
@@ -271,7 +285,9 @@ fn token_kind_to_string_ext(tok: &TokenKind, convert_dollar_crate: Option<Span>)
         token::Lifetime(s) => s.to_string(),
 
         /* Other */
-        token::DocComment(s) => s.to_string(),
+        token::DocComment(comment_kind, attr_style, data) => {
+            doc_comment_to_string(comment_kind, attr_style, data)
+        }
         token::Eof => "<eof>".to_string(),
         token::Whitespace => " ".to_string(),
         token::Comment => "/* */".to_string(),
@@ -447,9 +463,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn print_comment(&mut self, cmnt: &comments::Comment) {
+    fn print_comment(&mut self, cmnt: &Comment) {
         match cmnt.style {
-            comments::Mixed => {
+            CommentStyle::Mixed => {
                 if !self.is_beginning_of_line() {
                     self.zerobreak();
                 }
@@ -468,7 +484,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 }
                 self.zerobreak()
             }
-            comments::Isolated => {
+            CommentStyle::Isolated => {
                 self.hardbreak_if_not_bol();
                 for line in &cmnt.lines {
                     // Don't print empty lines because they will end up as trailing
@@ -479,7 +495,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     self.hardbreak();
                 }
             }
-            comments::Trailing => {
+            CommentStyle::Trailing => {
                 if !self.is_beginning_of_line() {
                     self.word(" ");
                 }
@@ -497,7 +513,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     self.end();
                 }
             }
-            comments::BlankLine => {
+            CommentStyle::BlankLine => {
                 // We need to do at least one, possibly two hardbreaks.
                 let twice = match self.last_token() {
                     pp::Token::String(s) => ";" == s,
@@ -516,7 +532,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn next_comment(&mut self) -> Option<comments::Comment> {
+    fn next_comment(&mut self) -> Option<Comment> {
         self.comments().as_mut().and_then(|c| c.next())
     }
 
@@ -599,8 +615,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.print_attr_item(&item, attr.span);
                 self.word("]");
             }
-            ast::AttrKind::DocComment(comment) => {
-                self.word(comment.to_string());
+            ast::AttrKind::DocComment(comment_kind, data) => {
+                self.word(doc_comment_to_string(comment_kind, attr.style, data));
                 self.hardbreak()
             }
         }

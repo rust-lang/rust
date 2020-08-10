@@ -1083,12 +1083,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
     /// between the now adjacent key/value pairs (if any) to the left and right of this handle.
     pub fn remove(
         mut self,
-    ) -> (Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>, K, V) {
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
         unsafe {
             let k = slice_remove(self.node.keys_mut(), self.idx);
             let v = slice_remove(self.node.vals_mut(), self.idx);
             (*self.node.as_leaf_mut()).len -= 1;
-            (self.left_edge(), k, v)
+            ((k, v), self.left_edge())
         }
     }
 }

@@ -742,7 +742,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         };
 
         SyntaxExtension::new(
-            &sess.parse_sess,
+            sess,
             kind,
             self.get_span(id, sess),
             helper_attrs,
@@ -1102,7 +1102,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 // for other constructors correct visibilities
                                 // were already encoded in metadata.
                                 let attrs = self.get_item_attrs(def_id.index, sess);
-                                if attr::contains_name(&attrs, sym::non_exhaustive) {
+                                if sess.contains_name(&attrs, sym::non_exhaustive) {
                                     let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }

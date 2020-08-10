@@ -2469,11 +2469,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // example).
         if let Some(all_facts) = all_facts {
             let _prof_timer = self.infcx.tcx.prof.generic_activity("polonius_fact_generation");
-            if let Some(borrow_index) = borrow_set.location_map.get(&location) {
+            if let Some(borrow_index) = borrow_set.get_index_of(&location) {
                 let region_vid = borrow_region.to_region_vid();
                 all_facts.borrow_region.push((
                     region_vid,
-                    *borrow_index,
+                    borrow_index,
                     location_table.mid_index(location),
                 ));
             }

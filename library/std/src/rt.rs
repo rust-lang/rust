@@ -48,9 +48,7 @@ fn lang_start_internal(
         sys::args::init(argc, argv);
 
         // Let's run some code!
-        let exit_code = panic::catch_unwind(|| {
-            sys_common::backtrace::__rust_begin_short_backtrace(move || main())
-        });
+        let exit_code = panic::catch_unwind(main);
 
         sys_common::cleanup();
         exit_code.unwrap_or(101) as isize
@@ -64,5 +62,9 @@ fn lang_start<T: crate::process::Termination + 'static>(
     argc: isize,
     argv: *const *const u8,
 ) -> isize {
-    lang_start_internal(&move || main().report(), argc, argv)
+    lang_start_internal(
+        &move || crate::sys_common::backtrace::__rust_begin_short_backtrace(main).report(),
+        argc,
+        argv,
+    )
 }

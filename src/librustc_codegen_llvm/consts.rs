@@ -253,7 +253,7 @@ impl CodegenCx<'ll, 'tcx> {
             debug!("get_static: sym={} attrs={:?}", sym, attrs);
 
             for attr in attrs {
-                if attr.check_name(sym::thread_local) {
+                if self.tcx.sess.check_name(attr, sym::thread_local) {
                     llvm::set_thread_local_mode(g, self.tls_model);
                 }
             }

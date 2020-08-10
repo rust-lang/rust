@@ -319,15 +319,9 @@ impl Ipv4Addr {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ipv4", since = "1.32.0")]
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
-        // FIXME: should just be u32::from_be_bytes([a, b, c, d]),
-        // once that method is no longer rustc_const_unstable
-        Ipv4Addr {
-            inner: c::in_addr {
-                s_addr: u32::to_be(
-                    ((a as u32) << 24) | ((b as u32) << 16) | ((c as u32) << 8) | (d as u32),
-                ),
-            },
-        }
+        // `s_addr` is stored as BE on all machine and the array is in BE order.
+        // So the native endian conversion method is used so that it's never swapped.
+        Ipv4Addr { inner: c::in_addr { s_addr: u32::from_ne_bytes([a, b, c, d]) } }
     }
 
     /// An IPv4 address with the address pointing to localhost: 127.0.0.1.
@@ -967,11 +961,6 @@ impl AsInner<c::in_addr> for Ipv4Addr {
         &self.inner
     }
 }
-impl FromInner<c::in_addr> for Ipv4Addr {
-    fn from_inner(addr: c::in_addr) -> Ipv4Addr {
-        Ipv4Addr { inner: addr }
-    }
-}
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<Ipv4Addr> for u32 {
@@ -982,8 +971,8 @@ impl From<Ipv4Addr> for u32 {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::new(13, 12, 11, 10);
-    /// assert_eq!(0x0d0c0b0au32, u32::from(addr));
+    /// let addr = Ipv4Addr::new(0xca, 0xfe, 0xba, 0xbe);
+    /// assert_eq!(0xcafebabe, u32::from(addr));
     /// ```
     fn from(ip: Ipv4Addr) -> u32 {
         let ip = ip.octets();
@@ -1000,8 +989,8 @@ impl From<u32> for Ipv4Addr {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::from(0x0d0c0b0au32);
-    /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
+    /// let addr = Ipv4Addr::from(0xcafebabe);
+    /// assert_eq!(Ipv4Addr::new(0xca, 0xfe, 0xba, 0xbe), addr);
     /// ```
     fn from(ip: u32) -> Ipv4Addr {
         Ipv4Addr::from(ip.to_be_bytes())

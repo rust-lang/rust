@@ -206,7 +206,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         //   the `borrow_set`, their `BorrowIndex` are synthesized as the universal region index
         //   added to the existing number of loans, as if they succeeded them in the set.
         //
-        let borrow_count = borrow_set.borrows.len();
+        let borrow_count = borrow_set.len();
         debug!(
             "compute_regions: polonius placeholders, num_universals={}, borrow_count={}",
             universal_regions.len(),

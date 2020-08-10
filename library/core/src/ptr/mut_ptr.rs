@@ -712,6 +712,38 @@ impl<T: ?Sized> *mut T {
         self.wrapping_offset((count as isize).wrapping_neg())
     }
 
+    /// Sets the pointer value to `ptr`.
+    ///
+    /// In case `self` is a (fat) pointer to an unsized type, this operation
+    /// will only affect the pointer part, whereas for (thin) pointers to
+    /// sized types, this has the same effect as a simple assignment.
+    ///
+    /// # Examples
+    ///
+    /// This function is primarily useful for allowing byte-wise pointer
+    /// arithmetic on potentially fat pointers:
+    ///
+    /// ```
+    /// #![feature(set_ptr_value)]
+    /// # use core::fmt::Debug;
+    /// let mut arr: [i32; 3] = [1, 2, 3];
+    /// let mut ptr = &mut arr[0] as *mut dyn Debug;
+    /// let thin = ptr as *mut u8;
+    /// ptr = ptr.set_ptr_value(unsafe { thin.add(8).cast() });
+    /// assert_eq!(unsafe { *(ptr as *mut i32) }, 3);
+    /// ```
+    #[unstable(feature = "set_ptr_value", issue = "75091")]
+    #[inline]
+    pub fn set_ptr_value(mut self, val: *mut ()) -> Self {
+        let thin = &mut self as *mut *mut T as *mut *mut ();
+        // SAFETY: In case of a thin pointer, this operations is identical
+        // to a simple assignment. In case of a fat pointer, with the current
+        // fat pointer layout implementation, the first field of such a
+        // pointer is always the data pointer, which is likewise assigned.
+        unsafe { *thin = val };
+        self
+    }
+
     /// Reads the value from `self` without moving it. This leaves the
     /// memory in `self` unchanged.
     ///

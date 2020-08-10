@@ -37,7 +37,6 @@
 
 use rustc_ast::ast;
 use rustc_ast::ast::*;
-use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
@@ -574,7 +573,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .resolver
             .trait_map()
             .iter()
-            .map(|(&k, v)| (self.node_id_to_hir_id[k].unwrap(), v.clone()))
+            .filter_map(|(&k, v)| {
+                self.node_id_to_hir_id.get(k).and_then(|id| id.as_ref()).map(|id| (*id, v.clone()))
+            })
             .collect();
 
         let mut def_id_to_hir_id = IndexVec::default();
@@ -981,7 +982,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 path: item.path.clone(),
                 args: self.lower_mac_args(&item.args),
             }),
-            AttrKind::DocComment(comment) => AttrKind::DocComment(comment),
+            AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
 
         Attribute { kind, id: attr.id, style: attr.style, span: attr.span }
@@ -2215,7 +2216,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     synthetic: param
                         .attrs
                         .iter()
-                        .filter(|attr| attr.check_name(sym::rustc_synthetic))
+                        .filter(|attr| self.sess.check_name(attr, sym::rustc_synthetic))
                         .map(|_| hir::SyntheticTyParamKind::ImplTrait)
                         .next(),
                 };
@@ -2236,7 +2237,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir_id: self.lower_node_id(param.id),
             name,
             span: param.ident.span,
-            pure_wrt_drop: attr::contains_name(&param.attrs, sym::may_dangle),
+            pure_wrt_drop: self.sess.contains_name(&param.attrs, sym::may_dangle),
             attrs: self.lower_attrs(&param.attrs),
             bounds: self.arena.alloc_from_iter(bounds),
             kind,

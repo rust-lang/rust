@@ -582,7 +582,7 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
             vis.visit_path(path);
             visit_mac_args(args, vis);
         }
-        AttrKind::DocComment(_) => {}
+        AttrKind::DocComment(..) => {}
     }
     vis.visit_span(span);
 }

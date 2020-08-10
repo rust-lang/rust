@@ -150,7 +150,7 @@ impl DefKind {
         }
     }
 
-    pub fn matches_ns(&self, ns: Namespace) -> bool {
+    pub fn ns(&self) -> Option<Namespace> {
         match self {
             DefKind::Mod
             | DefKind::Struct
@@ -163,7 +163,7 @@ impl DefKind {
             | DefKind::ForeignTy
             | DefKind::TraitAlias
             | DefKind::AssocTy
-            | DefKind::TyParam => ns == Namespace::TypeNS,
+            | DefKind::TyParam => Some(Namespace::TypeNS),
 
             DefKind::Fn
             | DefKind::Const
@@ -171,9 +171,9 @@ impl DefKind {
             | DefKind::Static
             | DefKind::Ctor(..)
             | DefKind::AssocFn
-            | DefKind::AssocConst => ns == Namespace::ValueNS,
+            | DefKind::AssocConst => Some(Namespace::ValueNS),
 
-            DefKind::Macro(..) => ns == Namespace::MacroNS,
+            DefKind::Macro(..) => Some(Namespace::MacroNS),
 
             // Not namespaced.
             DefKind::AnonConst
@@ -185,7 +185,7 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
-            | DefKind::Impl => false,
+            | DefKind::Impl => None,
         }
     }
 }
@@ -453,7 +453,7 @@ impl<Id> Res<Id> {
 
     pub fn matches_ns(&self, ns: Namespace) -> bool {
         match self {
-            Res::Def(kind, ..) => kind.matches_ns(ns),
+            Res::Def(kind, ..) => kind.ns() == Some(ns),
             Res::PrimTy(..) | Res::SelfTy(..) | Res::ToolMod => ns == Namespace::TypeNS,
             Res::SelfCtor(..) | Res::Local(..) => ns == Namespace::ValueNS,
             Res::NonMacroAttr(..) => ns == Namespace::MacroNS,

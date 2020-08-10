@@ -1,4 +1,6 @@
 // run-pass
+// compile-flags:-Zpolymorphize=on
+
 fn fop<T>() {}
 
 fn bar<T>() -> &'static fn() {

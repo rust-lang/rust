@@ -80,8 +80,6 @@ pub enum Transparency {
     Opaque,
 }
 
-pub(crate) const NUM_TRANSPARENCIES: usize = 3;
-
 impl ExpnId {
     pub fn fresh(expn_data: Option<ExpnData>) -> Self {
         HygieneData::with(|data| data.fresh_expn(expn_data))
@@ -619,6 +617,11 @@ impl SyntaxContext {
     }
 
     #[inline]
+    pub fn outer_mark(self) -> (ExpnId, Transparency) {
+        HygieneData::with(|data| data.outer_mark(self))
+    }
+
+    #[inline]
     pub fn outer_mark_with_data(self) -> (ExpnId, Transparency, ExpnData) {
         HygieneData::with(|data| {
             let (expn_id, transparency) = data.outer_mark(self);
@@ -667,7 +670,6 @@ pub struct ExpnData {
     /// The kind of this expansion - macro or compiler desugaring.
     pub kind: ExpnKind,
     /// The expansion that produced this expansion.
-    #[stable_hasher(ignore)]
     pub parent: ExpnId,
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
@@ -1030,7 +1032,7 @@ pub fn decode_expn_id<
         drop(expns);
         expn_id
     });
-    return Ok(expn_id);
+    Ok(expn_id)
 }
 
 // Decodes `SyntaxContext`, using the provided `HygieneDecodeContext`
@@ -1103,7 +1105,7 @@ pub fn decode_syntax_context<
         assert_eq!(dummy.dollar_crate_name, kw::Invalid);
     });
 
-    return Ok(new_ctxt);
+    Ok(new_ctxt)
 }
 
 pub fn num_syntax_ctxts() -> usize {
@@ -1170,13 +1172,30 @@ pub fn raw_encode_expn_id<E: Encoder>(
     mode: ExpnDataEncodeMode,
     e: &mut E,
 ) -> Result<(), E::Error> {
-    if !context.serialized_expns.lock().contains(&expn) {
-        context.latest_expns.lock().insert(expn);
-    }
+    // Record the fact that we need to serialize the corresponding
+    // `ExpnData`
+    let needs_data = || {
+        if !context.serialized_expns.lock().contains(&expn) {
+            context.latest_expns.lock().insert(expn);
+        }
+    };
+
     match mode {
-        ExpnDataEncodeMode::IncrComp => expn.0.encode(e),
+        ExpnDataEncodeMode::IncrComp => {
+            // Always serialize the `ExpnData` in incr comp mode
+            needs_data();
+            expn.0.encode(e)
+        }
         ExpnDataEncodeMode::Metadata => {
             let data = expn.expn_data();
+            // We only need to serialize the ExpnData
+            // if it comes from this crate.
+            // We currently don't serialize any hygiene information data for
+            // proc-macro crates: see the `SpecializedEncoder<Span>` impl
+            // for crate metadata.
+            if data.krate == LOCAL_CRATE {
+                needs_data();
+            }
             data.orig_id.expect("Missing orig_id").encode(e)?;
             data.krate.encode(e)
         }

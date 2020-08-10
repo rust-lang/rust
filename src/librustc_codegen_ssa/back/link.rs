@@ -1295,7 +1295,9 @@ fn crt_objects_fallback(sess: &Session, crate_type: CrateType) -> bool {
         Some(CrtObjectsFallback::Musl) => sess.crt_static(Some(crate_type)),
         // FIXME: Find some heuristic for "native mingw toolchain is available",
         // likely based on `get_crt_libs_path` (https://github.com/rust-lang/rust/pull/67429).
-        Some(CrtObjectsFallback::Mingw) => sess.target.target.target_vendor != "uwp",
+        Some(CrtObjectsFallback::Mingw) => {
+            sess.host == sess.target.target && sess.target.target.target_vendor != "uwp"
+        }
         // FIXME: Figure out cases in which WASM needs to link with a native toolchain.
         Some(CrtObjectsFallback::Wasm) => true,
         None => false,

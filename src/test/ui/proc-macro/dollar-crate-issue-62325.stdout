@@ -2,109 +2,109 @@ PRINT-ATTR INPUT (DISPLAY): struct A(identity ! ($crate :: S)) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: #CTXT bytes(LO..HI),
+        span: $DIR/dollar-crate-issue-62325.rs:19:5: 19:11 (#3),
     },
     Ident {
         ident: "A",
-        span: #CTXT bytes(LO..HI),
+        span: $DIR/dollar-crate-issue-62325.rs:19:12: 19:13 (#3),
     },
     Group {
         delimiter: Parenthesis,
         stream: TokenStream [
             Ident {
                 ident: "identity",
-                span: #CTXT bytes(LO..HI),
+                span: $DIR/dollar-crate-issue-62325.rs:19:14: 19:22 (#3),
             },
             Punct {
                 ch: '!',
                 spacing: Alone,
-                span: #CTXT bytes(LO..HI),
+                span: $DIR/dollar-crate-issue-62325.rs:19:22: 19:23 (#3),
             },
             Group {
                 delimiter: Parenthesis,
                 stream: TokenStream [
                     Ident {
                         ident: "$crate",
-                        span: #CTXT bytes(LO..HI),
+                        span: $DIR/dollar-crate-issue-62325.rs:19:24: 19:30 (#3),
                     },
                     Punct {
                         ch: ':',
                         spacing: Joint,
-                        span: #CTXT bytes(LO..HI),
+                        span: $DIR/dollar-crate-issue-62325.rs:19:30: 19:32 (#3),
                     },
                     Punct {
                         ch: ':',
                         spacing: Alone,
-                        span: #CTXT bytes(LO..HI),
+                        span: $DIR/dollar-crate-issue-62325.rs:19:30: 19:32 (#3),
                     },
                     Ident {
                         ident: "S",
-                        span: #CTXT bytes(LO..HI),
+                        span: $DIR/dollar-crate-issue-62325.rs:19:32: 19:33 (#3),
                     },
                 ],
-                span: #CTXT bytes(LO..HI),
+                span: $DIR/dollar-crate-issue-62325.rs:19:23: 19:34 (#3),
             },
         ],
-        span: #CTXT bytes(LO..HI),
+        span: $DIR/dollar-crate-issue-62325.rs:19:13: 19:35 (#3),
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #CTXT bytes(LO..HI),
+        span: $DIR/dollar-crate-issue-62325.rs:19:35: 19:36 (#3),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): struct B(identity ! ($crate :: S)) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: #CTXT bytes(LO..HI),
+        span: $DIR/auxiliary/dollar-crate-external.rs:21:5: 21:11 (#10),
     },
     Ident {
         ident: "B",
-        span: #CTXT bytes(LO..HI),
+        span: $DIR/auxiliary/dollar-crate-external.rs:21:12: 21:13 (#10),
     },
     Group {
         delimiter: Parenthesis,
         stream: TokenStream [
             Ident {
                 ident: "identity",
-                span: #CTXT bytes(LO..HI),
+                span: $DIR/auxiliary/dollar-crate-external.rs:21:14: 21:22 (#10),
             },
             Punct {
                 ch: '!',
                 spacing: Alone,
-                span: #CTXT bytes(LO..HI),
+                span: $DIR/auxiliary/dollar-crate-external.rs:21:22: 21:23 (#10),
             },
             Group {
                 delimiter: Parenthesis,
                 stream: TokenStream [
                     Ident {
                         ident: "$crate",
-                        span: #CTXT bytes(LO..HI),
+                        span: $DIR/auxiliary/dollar-crate-external.rs:21:24: 21:30 (#10),
                     },
                     Punct {
                         ch: ':',
                         spacing: Joint,
-                        span: #CTXT bytes(LO..HI),
+                        span: $DIR/auxiliary/dollar-crate-external.rs:21:30: 21:32 (#10),
                     },
                     Punct {
                         ch: ':',
                         spacing: Alone,
-                        span: #CTXT bytes(LO..HI),
+                        span: $DIR/auxiliary/dollar-crate-external.rs:21:30: 21:32 (#10),
                     },
                     Ident {
                         ident: "S",
-                        span: #CTXT bytes(LO..HI),
+                        span: $DIR/auxiliary/dollar-crate-external.rs:21:32: 21:33 (#10),
                     },
                 ],
-                span: #CTXT bytes(LO..HI),
+                span: $DIR/auxiliary/dollar-crate-external.rs:21:23: 21:34 (#10),
             },
         ],
-        span: #CTXT bytes(LO..HI),
+        span: $DIR/auxiliary/dollar-crate-external.rs:21:13: 21:35 (#10),
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #CTXT bytes(LO..HI),
+        span: $DIR/auxiliary/dollar-crate-external.rs:21:35: 21:36 (#10),
     },
 ]

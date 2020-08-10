@@ -21,7 +21,7 @@ fn test_lev_distance() {
 
 #[test]
 fn test_find_best_match_for_name() {
-    use crate::with_default_session_globals;
+    use rustc_span::with_default_session_globals;
     with_default_session_globals(|| {
         let input = vec![Symbol::intern("aaab"), Symbol::intern("aaabc")];
         assert_eq!(

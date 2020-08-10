@@ -4,5 +4,11 @@ error: missing `in` in `for` loop
 LL |     for _i 0..2 {
    |           ^ help: try adding `in` here
 
-error: aborting due to previous error
+error: missing `in` in `for` loop
+  --> $DIR/issue-40782.rs:6:12
+   |
+LL |     for _i of 0..2 {
+   |            ^^ help: try using `in` here instead
+
+error: aborting due to 2 previous errors
 

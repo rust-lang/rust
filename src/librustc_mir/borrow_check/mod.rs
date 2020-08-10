@@ -1131,11 +1131,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 (
                     Reservation(WriteKind::MutableBorrow(bk)),
                     BorrowKind::Shallow | BorrowKind::Shared,
-                ) if {
-                    tcx.migrate_borrowck() && this.borrow_set.location_map.contains_key(&location)
-                } =>
-                {
-                    let bi = this.borrow_set.location_map[&location];
+                ) if { tcx.migrate_borrowck() && this.borrow_set.contains(&location) } => {
+                    let bi = this.borrow_set.get_index_of(&location).unwrap();
                     debug!(
                         "recording invalid reservation of place: {:?} with \
                          borrow index {:?} as warning",

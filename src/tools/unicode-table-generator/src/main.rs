@@ -15,7 +15,7 @@
 //! We have two separate encoding schemes: a skiplist-like approach, and a
 //! compressed bitset. The datasets we consider mostly use the skiplist (it's
 //! smaller) but the lowercase and uppercase sets are sufficiently sparse for
-//! the bitset to be worthwhile -- for those sets the biset is a 2x size win.
+//! the bitset to be worthwhile -- for those sets the bitset is a 2x size win.
 //! Since the bitset is also faster, this seems an obvious choice. (As a
 //! historical note, the bitset was also the prior implementation, so its
 //! relative complexity had already been paid).

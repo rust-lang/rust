@@ -23,7 +23,7 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
 use crate::ptr::P;
-use crate::token::{self, DelimToken};
+use crate::token::{self, CommentKind, DelimToken};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -378,7 +378,7 @@ impl Default for Generics {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
     /// `true` if we ate a `where` token: this can happen
-    /// if we parsed no predicates (e.g. `struct Foo where {}
+    /// if we parsed no predicates (e.g. `struct Foo where {}`).
     /// This allows us to accurately pretty-print
     /// in `nt_to_tokenstream`
     pub has_where_token: bool,
@@ -1050,6 +1050,30 @@ impl Expr {
             // This is not a block, it is a value.
             true
         }
+    }
+
+    /// Is this expr either `N`, or `{ N }`.
+    ///
+    /// If this is not the case, name resolution does not resolve `N` when using
+    /// `feature(min_const_generics)` as more complex expressions are not supported.
+    pub fn is_potential_trivial_const_param(&self) -> bool {
+        let this = if let ExprKind::Block(ref block, None) = self.kind {
+            if block.stmts.len() == 1 {
+                if let StmtKind::Expr(ref expr) = block.stmts[0].kind { expr } else { self }
+            } else {
+                self
+            }
+        } else {
+            self
+        };
+
+        if let ExprKind::Path(None, ref path) = this.kind {
+            if path.segments.len() == 1 && path.segments[0].args.is_none() {
+                return true;
+            }
+        }
+
+        false
     }
 
     pub fn to_bound(&self) -> Option<GenericBound> {
@@ -2365,7 +2389,7 @@ pub enum AttrKind {
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
-    DocComment(Symbol),
+    DocComment(CommentKind, Symbol),
 }
 
 /// `TraitRef`s appear in impls.

@@ -1067,7 +1067,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .collect();
 
         // Stop if there were any errors when lowering the register classes
-        if operands.len() != asm.operands.len() {
+        if operands.len() != asm.operands.len() || sess.asm_arch.is_none() {
             return hir::ExprKind::Err;
         }
 

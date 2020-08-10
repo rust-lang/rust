@@ -43,7 +43,8 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
         }
 
         // Process all of the #[link(..)]-style arguments
-        for m in it.attrs.iter().filter(|a| a.check_name(sym::link)) {
+        let sess = &self.tcx.sess;
+        for m in it.attrs.iter().filter(|a| sess.check_name(a, sym::link)) {
             let items = match m.meta_item_list() {
                 Some(item) => item,
                 None => continue,
@@ -71,16 +72,10 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                         "framework" => NativeLibKind::Framework,
                         "raw-dylib" => NativeLibKind::RawDylib,
                         k => {
-                            struct_span_err!(
-                                self.tcx.sess,
-                                item.span(),
-                                E0458,
-                                "unknown kind: `{}`",
-                                k
-                            )
-                            .span_label(item.span(), "unknown kind")
-                            .span_label(m.span, "")
-                            .emit();
+                            struct_span_err!(sess, item.span(), E0458, "unknown kind: `{}`", k)
+                                .span_label(item.span(), "unknown kind")
+                                .span_label(m.span, "")
+                                .emit();
                             NativeLibKind::Unspecified
                         }
                     };
@@ -92,18 +87,18 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                         None => continue, // skip like historical compilers
                     };
                     if cfg.is_empty() {
-                        self.tcx.sess.span_err(item.span(), "`cfg()` must have an argument");
+                        sess.span_err(item.span(), "`cfg()` must have an argument");
                     } else if let cfg @ Some(..) = cfg[0].meta_item() {
                         lib.cfg = cfg.cloned();
                     } else {
-                        self.tcx.sess.span_err(cfg[0].span(), "invalid argument for `cfg(..)`");
+                        sess.span_err(cfg[0].span(), "invalid argument for `cfg(..)`");
                     }
                 } else if item.has_name(sym::wasm_import_module) {
                     match item.value_str() {
                         Some(s) => lib.wasm_import_module = Some(s),
                         None => {
                             let msg = "must be of the form `#[link(wasm_import_module = \"...\")]`";
-                            self.tcx.sess.span_err(item.span(), msg);
+                            sess.span_err(item.span(), msg);
                         }
                     }
                 } else {
@@ -117,7 +112,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
             let requires_name = kind_specified || lib.wasm_import_module.is_none();
             if lib.name.is_none() && requires_name {
                 struct_span_err!(
-                    self.tcx.sess,
+                    sess,
                     m.span,
                     E0459,
                     "`#[link(...)]` specified without \

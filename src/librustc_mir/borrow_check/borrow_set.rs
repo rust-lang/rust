@@ -3,9 +3,8 @@ use crate::borrow_check::path_utils::allow_two_phase_borrow;
 use crate::borrow_check::place_ext::PlaceExt;
 use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::MoveData;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location};
@@ -15,14 +14,11 @@ use std::ops::Index;
 
 crate struct BorrowSet<'tcx> {
     /// The fundamental map relating bitvector indexes to the borrows
-    /// in the MIR.
-    crate borrows: IndexVec<BorrowIndex, BorrowData<'tcx>>,
-
-    /// Each borrow is also uniquely identified in the MIR by the
-    /// `Location` of the assignment statement in which it appears on
-    /// the right hand side; we map each such location to the
-    /// corresponding `BorrowIndex`.
-    crate location_map: FxHashMap<Location, BorrowIndex>,
+    /// in the MIR. Each borrow is also uniquely identified in the MIR
+    /// by the `Location` of the assignment statement in which it
+    /// appears on the right hand side. Thus the location is the map
+    /// key, and its position in the map corresponds to `BorrowIndex`.
+    crate location_map: FxIndexMap<Location, BorrowData<'tcx>>,
 
     /// Locations which activate borrows.
     /// NOTE: a given location may activate more than one borrow in the future
@@ -40,7 +36,7 @@ impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
     type Output = BorrowData<'tcx>;
 
     fn index(&self, index: BorrowIndex) -> &BorrowData<'tcx> {
-        &self.borrows[index]
+        &self.location_map[index.as_usize()]
     }
 }
 
@@ -129,7 +125,6 @@ impl<'tcx> BorrowSet<'tcx> {
         let mut visitor = GatherBorrows {
             tcx,
             body: &body,
-            idx_vec: IndexVec::new(),
             location_map: Default::default(),
             activation_map: Default::default(),
             local_map: Default::default(),
@@ -146,7 +141,6 @@ impl<'tcx> BorrowSet<'tcx> {
         }
 
         BorrowSet {
-            borrows: visitor.idx_vec,
             location_map: visitor.location_map,
             activation_map: visitor.activation_map,
             local_map: visitor.local_map,
@@ -157,13 +151,32 @@ impl<'tcx> BorrowSet<'tcx> {
     crate fn activations_at_location(&self, location: Location) -> &[BorrowIndex] {
         self.activation_map.get(&location).map(|activations| &activations[..]).unwrap_or(&[])
     }
+
+    crate fn len(&self) -> usize {
+        self.location_map.len()
+    }
+
+    crate fn indices(&self) -> impl Iterator<Item = BorrowIndex> {
+        BorrowIndex::from_usize(0)..BorrowIndex::from_usize(self.len())
+    }
+
+    crate fn iter_enumerated(&self) -> impl Iterator<Item = (BorrowIndex, &BorrowData<'tcx>)> {
+        self.indices().zip(self.location_map.values())
+    }
+
+    crate fn get_index_of(&self, location: &Location) -> Option<BorrowIndex> {
+        self.location_map.get_index_of(location).map(BorrowIndex::from)
+    }
+
+    crate fn contains(&self, location: &Location) -> bool {
+        self.location_map.contains_key(location)
+    }
 }
 
 struct GatherBorrows<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
-    location_map: FxHashMap<Location, BorrowIndex>,
+    location_map: FxIndexMap<Location, BorrowData<'tcx>>,
     activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
     local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
 
@@ -203,8 +216,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 borrowed_place: *borrowed_place,
                 assigned_place: *assigned_place,
             };
-            let idx = self.idx_vec.push(borrow);
-            self.location_map.insert(location, idx);
+            let (idx, _) = self.location_map.insert_full(location, borrow);
+            let idx = BorrowIndex::from(idx);
 
             self.insert_as_pending_if_two_phase(location, assigned_place, kind, idx);
 
@@ -224,7 +237,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         //
         //     TMP = &mut place
         if let Some(&borrow_index) = self.pending_activations.get(temp) {
-            let borrow_data = &mut self.idx_vec[borrow_index];
+            let borrow_data = &mut self.location_map[borrow_index.as_usize()];
 
             // Watch out: the use of TMP in the borrow itself
             // doesn't count as an activation. =)
@@ -265,8 +278,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         if let mir::Rvalue::Ref(region, kind, ref place) = *rvalue {
             // double-check that we already registered a BorrowData for this
 
-            let borrow_index = self.location_map[&location];
-            let borrow_data = &self.idx_vec[borrow_index];
+            let borrow_data = &self.location_map[&location];
             assert_eq!(borrow_data.reserve_location, location);
             assert_eq!(borrow_data.kind, kind);
             assert_eq!(borrow_data.region, region.to_region_vid());
@@ -316,7 +328,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         // Consider the borrow not activated to start. When we find an activation, we'll update
         // this field.
         {
-            let borrow_data = &mut self.idx_vec[borrow_index];
+            let borrow_data = &mut self.location_map[borrow_index.as_usize()];
             borrow_data.activation_location = TwoPhaseActivation::NotActivated;
         }
 
@@ -332,7 +344,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
                        at borrow_index: {:?} with associated data {:?}",
                 temp,
                 old_index,
-                self.idx_vec[old_index]
+                self.location_map[old_index.as_usize()]
             );
         }
     }

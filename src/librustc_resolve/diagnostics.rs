@@ -466,6 +466,23 @@ impl<'a> Resolver<'a> {
                 );
                 err
             }
+            ResolutionError::ParamInNonTrivialAnonConst(name) => {
+                let mut err = self.session.struct_span_err(
+                    span,
+                    "generic parameters must not be used inside of non trivial constant values",
+                );
+                err.span_label(
+                    span,
+                    &format!(
+                        "non-trivial anonymous constants must not depend on the parameter `{}`",
+                        name
+                    ),
+                );
+                err.help(
+                    &format!("it is currently only allowed to use either `{0}` or `{{ {0} }}` as generic constants", name)
+                );
+                err
+            }
             ResolutionError::SelfInTyParamDefault => {
                 let mut err = struct_span_err!(
                     self.session,
@@ -1075,10 +1092,9 @@ impl<'a> Resolver<'a> {
         ) = binding.kind
         {
             let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
-            if let Some(fields) = self.field_names.get(&def_id) {
-                let first_field = fields.first().expect("empty field list in the map");
-                return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
-            }
+            let fields = self.field_names.get(&def_id)?;
+            let first_field = fields.first()?; // Handle `struct Foo()`
+            return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
         }
         None
     }

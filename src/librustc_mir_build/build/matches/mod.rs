@@ -11,7 +11,7 @@ use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::thir::{self, *};
 use rustc_data_structures::{
-    fx::{FxHashMap, FxHashSet},
+    fx::{FxHashSet, FxIndexMap},
     stack::ensure_sufficient_stack,
 };
 use rustc_hir::HirId;
@@ -817,9 +817,7 @@ enum TestKind<'tcx> {
         ///
         /// For `bool` we always generate two edges, one for `true` and one for
         /// `false`.
-        options: Vec<u128>,
-        /// Reverse map used to ensure that the values in `options` are unique.
-        indices: FxHashMap<&'tcx ty::Const<'tcx>, usize>,
+        options: FxIndexMap<&'tcx ty::Const<'tcx>, u128>,
     },
 
     /// Test for equality with value, possibly after an unsizing coercion to
@@ -1396,14 +1394,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // may want to add cases based on the candidates that are
         // available
         match test.kind {
-            TestKind::SwitchInt { switch_ty, ref mut options, ref mut indices } => {
+            TestKind::SwitchInt { switch_ty, ref mut options } => {
                 for candidate in candidates.iter() {
                     if !self.add_cases_to_switch(
                         &match_place,
                         candidate,
                         switch_ty,
                         options,
-                        indices,
                     ) {
                         break;
                     }

@@ -125,7 +125,7 @@ impl<'s> LintLevelsBuilder<'s> {
             };
 
             let meta = unwrap_or!(attr.meta(), continue);
-            attr::mark_used(attr);
+            self.sess.mark_attr_used(attr);
 
             let mut metas = unwrap_or!(meta.meta_item_list(), continue);
 

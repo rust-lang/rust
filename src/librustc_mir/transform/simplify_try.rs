@@ -361,7 +361,7 @@ fn optimization_applies<'tcx>(
     }
 
     trace!("SUCCESS: optimization applies!");
-    return true;
+    true
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {

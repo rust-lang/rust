@@ -8,8 +8,6 @@
 
 use itertools::{Either, Itertools};
 use rustc_ast::ast::*;
-use rustc_ast::attr;
-use rustc_ast::expand::is_proc_macro_attr;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
@@ -776,7 +774,13 @@ fn validate_generic_param_order<'a>(
             span,
             &format!(
                 "reorder the parameters: lifetimes, then types{}",
-                if sess.features_untracked().const_generics { ", then consts" } else { "" },
+                if sess.features_untracked().const_generics
+                    || sess.features_untracked().min_const_generics
+                {
+                    ", then consts"
+                } else {
+                    ""
+                },
             ),
             ordered_params.clone(),
             Applicability::MachineApplicable,
@@ -891,11 +895,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_item(&mut self, item: &'a Item) {
-        if item.attrs.iter().any(|attr| is_proc_macro_attr(attr)) {
+        if item.attrs.iter().any(|attr| self.session.is_proc_macro_attr(attr)) {
             self.has_proc_macro_decls = true;
         }
 
-        if attr::contains_name(&item.attrs, sym::no_mangle) {
+        if self.session.contains_name(&item.attrs, sym::no_mangle) {
             self.check_nomangle_item_asciionly(item.ident, item.span);
         }
 
@@ -1027,7 +1031,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Mod(Mod { inline, .. }) => {
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
-                if !inline && !attr::contains_name(&item.attrs, sym::path) {
+                if !inline && !self.session.contains_name(&item.attrs, sym::path) {
                     self.check_mod_file_item_asciionly(item.ident);
                 }
             }

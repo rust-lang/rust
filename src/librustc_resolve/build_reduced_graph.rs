@@ -541,7 +541,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
             ast::UseTreeKind::Glob => {
                 let kind = ImportKind::Glob {
-                    is_prelude: attr::contains_name(&item.attrs, sym::prelude_import),
+                    is_prelude: self.r.session.contains_name(&item.attrs, sym::prelude_import),
                     max_vis: Cell::new(ty::Visibility::Invisible),
                 };
                 self.add_import(prefix, kind, use_tree.span, id, item, root_span, item.id, vis);
@@ -712,7 +712,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let module_kind = ModuleKind::Def(DefKind::Mod, def_id.to_def_id(), ident.name);
                 let module = self.r.arenas.alloc_module(ModuleData {
                     no_implicit_prelude: parent.no_implicit_prelude || {
-                        attr::contains_name(&item.attrs, sym::no_implicit_prelude)
+                        self.r.session.contains_name(&item.attrs, sym::no_implicit_prelude)
                     },
                     ..ModuleData::new(
                         Some(parent),
@@ -789,7 +789,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     // If the structure is marked as non_exhaustive then lower the visibility
                     // to within the crate.
                     let mut ctor_vis = if vis == ty::Visibility::Public
-                        && attr::contains_name(&item.attrs, sym::non_exhaustive)
+                        && self.r.session.contains_name(&item.attrs, sym::non_exhaustive)
                     {
                         ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
                     } else {
@@ -991,7 +991,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let mut import_all = None;
         let mut single_imports = Vec::new();
         for attr in &item.attrs {
-            if attr.check_name(sym::macro_use) {
+            if self.r.session.check_name(attr, sym::macro_use) {
                 if self.parent_scope.module.parent.is_some() {
                     struct_span_err!(
                         self.r.session,
@@ -1097,7 +1097,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     /// Returns `true` if this attribute list contains `macro_use`.
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
-            if attr.check_name(sym::macro_escape) {
+            if self.r.session.check_name(attr, sym::macro_escape) {
                 let msg = "`#[macro_escape]` is a deprecated synonym for `#[macro_use]`";
                 let mut err = self.r.session.struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
@@ -1105,7 +1105,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 } else {
                     err.emit();
                 }
-            } else if !attr.check_name(sym::macro_use) {
+            } else if !self.r.session.check_name(attr, sym::macro_use) {
                 continue;
             }
 
@@ -1129,12 +1129,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         MacroRulesScope::Invocation(invoc_id)
     }
 
-    fn proc_macro_stub(item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
-        if attr::contains_name(&item.attrs, sym::proc_macro) {
+    fn proc_macro_stub(&self, item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
+        if self.r.session.contains_name(&item.attrs, sym::proc_macro) {
             return Some((MacroKind::Bang, item.ident, item.span));
-        } else if attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
+        } else if self.r.session.contains_name(&item.attrs, sym::proc_macro_attribute) {
             return Some((MacroKind::Attr, item.ident, item.span));
-        } else if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
+        } else if let Some(attr) = self.r.session.find_by_name(&item.attrs, sym::proc_macro_derive)
+        {
             if let Some(nested_meta) = attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
                 if let Some(ident) = nested_meta.ident() {
                     return Some((MacroKind::Derive, ident, ident.span));
@@ -1168,7 +1169,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let ext = Lrc::new(self.r.compile_macro(item, self.r.session.edition()));
                 (ext, item.ident, item.span, def.macro_rules)
             }
-            ItemKind::Fn(..) => match Self::proc_macro_stub(item) {
+            ItemKind::Fn(..) => match self.proc_macro_stub(item) {
                 Some((macro_kind, ident, span)) => {
                     self.r.proc_macro_stubs.insert(def_id);
                     (self.r.dummy_ext(macro_kind), ident, span, false)
@@ -1185,7 +1186,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         if macro_rules {
             let ident = ident.normalize_to_macros_2_0();
             self.r.macro_names.insert(ident);
-            let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
+            let is_macro_export = self.r.session.contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
                 ty::Visibility::Public
             } else {
@@ -1416,7 +1417,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         // If the variant is marked as non_exhaustive then lower the visibility to within the
         // crate.
         let mut ctor_vis = vis;
-        let has_non_exhaustive = attr::contains_name(&variant.attrs, sym::non_exhaustive);
+        let has_non_exhaustive = self.r.session.contains_name(&variant.attrs, sym::non_exhaustive);
         if has_non_exhaustive && vis == ty::Visibility::Public {
             ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
         }

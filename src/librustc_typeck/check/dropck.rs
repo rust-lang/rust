@@ -368,6 +368,6 @@ impl TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
         let anon_b = self.tcx.anonymize_late_bound_regions(&b);
         self.relate(anon_a.skip_binder(), anon_b.skip_binder())?;
 
-        Ok(a.clone())
+        Ok(a)
     }
 }
