@@ -318,10 +318,7 @@ impl<'a, K, V> RustcOccupiedEntry<'a, K, V> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
-        unsafe {
-            self.table.erase_no_drop(&self.elem);
-            self.elem.read()
-        }
+        unsafe { self.table.remove(self.elem) }
     }
 
     /// Gets a reference to the value in the entry.

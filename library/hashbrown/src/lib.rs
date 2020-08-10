@@ -19,12 +19,15 @@
         test,
         core_intrinsics,
         dropck_eyepatch,
+        min_specialization,
+        extend_one,
     )
 )]
 #![allow(
     clippy::doc_markdown,
     clippy::module_name_repetitions,
-    clippy::must_use_candidate
+    clippy::must_use_candidate,
+    clippy::option_if_let_else
 )]
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
@@ -106,14 +109,15 @@ pub mod hash_set {
 pub use crate::map::HashMap;
 pub use crate::set::HashSet;
 
-/// Augments `AllocErr` with a `CapacityOverflow` variant.
+/// The error type for `try_reserve` methods.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum CollectionAllocErr {
+pub enum TryReserveError {
     /// Error due to the computed capacity exceeding the collection's maximum
     /// (usually `isize::MAX` bytes).
     CapacityOverflow,
-    /// Error due to the allocator.
-    AllocErr {
+
+    /// The memory allocator returned an error
+    AllocError {
         /// The layout of the allocation request that failed.
         layout: alloc::alloc::Layout,
     },

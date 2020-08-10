@@ -30,9 +30,7 @@ impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> ParallelIterator
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map
-            .table
-            .par_iter()
+        unsafe { self.map.table.par_iter() }
             .map(|x| unsafe {
                 let r = x.as_ref();
                 (&r.0, &r.1)
@@ -77,9 +75,7 @@ impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> ParallelIterator
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map
-            .table
-            .par_iter()
+        unsafe { self.map.table.par_iter() }
             .map(|x| unsafe { &x.as_ref().0 })
             .drive_unindexed(consumer)
     }
@@ -121,9 +117,7 @@ impl<'a, K: Sync, V: Sync, S: Sync, A: AllocRef + Clone + Sync> ParallelIterator
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map
-            .table
-            .par_iter()
+        unsafe { self.map.table.par_iter() }
             .map(|x| unsafe { &x.as_ref().1 })
             .drive_unindexed(consumer)
     }
@@ -167,9 +161,7 @@ impl<'a, K: Send + Sync, V: Send, S: Send, A: AllocRef + Clone + Sync> ParallelI
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map
-            .table
-            .par_iter()
+        unsafe { self.map.table.par_iter() }
             .map(|x| unsafe {
                 let r = x.as_mut();
                 (&r.0, &mut r.1)
@@ -207,9 +199,7 @@ impl<'a, K: Send, V: Send, S: Send, A: AllocRef + Clone + Send> ParallelIterator
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map
-            .table
-            .par_iter()
+        unsafe { self.map.table.par_iter() }
             .map(|x| unsafe { &mut x.as_mut().1 })
             .drive_unindexed(consumer)
     }

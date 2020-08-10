@@ -25,6 +25,20 @@ impl BitMask {
         BitMask(self.0 ^ BITMASK_MASK)
     }
 
+    /// Flip the bit in the mask for the entry at the given index.
+    ///
+    /// Returns the bit's previous state.
+    #[inline]
+    #[allow(clippy::cast_ptr_alignment)]
+    #[cfg(feature = "raw")]
+    pub unsafe fn flip(&mut self, index: usize) -> bool {
+        // NOTE: The + BITMASK_STRIDE - 1 is to set the high bit.
+        let mask = 1 << (index * BITMASK_STRIDE + BITMASK_STRIDE - 1);
+        self.0 ^= mask;
+        // The bit was set if the bit is now 0.
+        self.0 & mask == 0
+    }
+
     /// Returns a new `BitMask` with the lowest bit removed.
     #[inline]
     #[must_use]

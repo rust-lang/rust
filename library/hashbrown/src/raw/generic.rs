@@ -27,11 +27,7 @@ pub const BITMASK_MASK: BitMaskWord = 0x8080_8080_8080_8080_u64 as GroupWord;
 /// Helper function to replicate a byte across a `GroupWord`.
 #[inline]
 fn repeat(byte: u8) -> GroupWord {
-    let repeat = GroupWord::from(byte);
-    let repeat = repeat | repeat.wrapping_shl(8);
-    let repeat = repeat | repeat.wrapping_shl(16);
-    // This last line is a no-op with a 32-bit GroupWord
-    repeat | repeat.wrapping_shl(32)
+    GroupWord::from_ne_bytes([byte; Group::WIDTH])
 }
 
 /// Abstraction over a group of control bytes which can be scanned in
@@ -132,7 +128,7 @@ impl Group {
 
     /// Returns a `BitMask` indicating all bytes in the group which are full.
     #[inline]
-    pub fn match_full(&self) -> BitMask {
+    pub fn match_full(self) -> BitMask {
         self.match_empty_or_deleted().invert()
     }
 

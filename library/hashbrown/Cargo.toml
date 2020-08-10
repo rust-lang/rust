@@ -1,6 +1,6 @@
 [package]
 name = "hashbrown"
-version = "0.7.0"
+version = "0.8.2"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]
 description = "A Rust port of Google's SwissTable hash map"
 license = "Apache-2.0/MIT"
@@ -32,21 +32,23 @@ autocfg = "1"
 lazy_static = "1.2"
 rand = { version = "0.7.3", features = ["small_rng"] }
 rayon = "1.0"
-rustc-hash = "1.0"
+rustc-hash = "=1.0"
 serde_test = "1.0"
 doc-comment = "0.3.1"
 
 [features]
-default = [
-    "ahash",
-    "ahash-compile-time-rng",
-    "inline-more",
-]
+default = ["ahash", "inline-more"]
 
-ahash-compile-time-rng = [ "ahash/compile-time-rng" ]
+ahash-compile-time-rng = ["ahash/compile-time-rng"]
 nightly = []
 rustc-internal-api = []
-rustc-dep-of-std = ["nightly", "core", "compiler_builtins", "alloc", "rustc-internal-api"]
+rustc-dep-of-std = [
+    "nightly",
+    "core",
+    "compiler_builtins",
+    "alloc",
+    "rustc-internal-api",
+]
 raw = []
 
 # Enables usage of `#[inline]` on far more functions than by default in this
