@@ -130,7 +130,7 @@ impl<T: Clone, S: Clone> Clone for HashSet<T, S> {
 }
 
 #[cfg(feature = "ahash")]
-impl<T: Hash + Eq> HashSet<T, DefaultHashBuilder> {
+impl<T> HashSet<T, DefaultHashBuilder> {
     /// Creates an empty `HashSet`.
     ///
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
@@ -170,6 +170,72 @@ impl<T: Hash + Eq> HashSet<T, DefaultHashBuilder> {
 }
 
 impl<T, S> HashSet<T, S> {
+    /// Creates a new empty hash set which will use the given hasher to hash
+    /// keys.
+    ///
+    /// The hash set is also created with the default initial capacity.
+    ///
+    /// Warning: `hasher` is normally randomly generated, and
+    /// is designed to allow `HashSet`s to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
+    ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    /// use hashbrown::hash_map::DefaultHashBuilder;
+    ///
+    /// let s = DefaultHashBuilder::default();
+    /// let mut set = HashSet::with_hasher(s);
+    /// set.insert(2);
+    /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn with_hasher(hasher: S) -> Self {
+        Self {
+            map: HashMap::with_hasher(hasher),
+        }
+    }
+
+    /// Creates an empty `HashSet` with the specified capacity, using
+    /// `hasher` to hash the keys.
+    ///
+    /// The hash set will be able to hold at least `capacity` elements without
+    /// reallocating. If `capacity` is 0, the hash set will not allocate.
+    ///
+    /// Warning: `hasher` is normally randomly generated, and
+    /// is designed to allow `HashSet`s to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
+    ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    /// use hashbrown::hash_map::DefaultHashBuilder;
+    ///
+    /// let s = DefaultHashBuilder::default();
+    /// let mut set = HashSet::with_capacity_and_hasher(10, s);
+    /// set.insert(1);
+    /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
+        Self {
+            map: HashMap::with_capacity_and_hasher(capacity, hasher),
+        }
+    }
+
     /// Returns the number of elements the set can hold without reallocating.
     ///
     /// # Examples
@@ -335,78 +401,6 @@ impl<T, S> HashSet<T, S> {
     pub fn clear(&mut self) {
         self.map.clear()
     }
-}
-
-impl<T, S> HashSet<T, S>
-where
-    T: Eq + Hash,
-    S: BuildHasher,
-{
-    /// Creates a new empty hash set which will use the given hasher to hash
-    /// keys.
-    ///
-    /// The hash set is also created with the default initial capacity.
-    ///
-    /// Warning: `hasher` is normally randomly generated, and
-    /// is designed to allow `HashSet`s to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
-    ///
-    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
-    ///
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
-    ///
-    /// let s = DefaultHashBuilder::default();
-    /// let mut set = HashSet::with_hasher(s);
-    /// set.insert(2);
-    /// ```
-    ///
-    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn with_hasher(hasher: S) -> Self {
-        Self {
-            map: HashMap::with_hasher(hasher),
-        }
-    }
-
-    /// Creates an empty `HashSet` with the specified capacity, using
-    /// `hasher` to hash the keys.
-    ///
-    /// The hash set will be able to hold at least `capacity` elements without
-    /// reallocating. If `capacity` is 0, the hash set will not allocate.
-    ///
-    /// Warning: `hasher` is normally randomly generated, and
-    /// is designed to allow `HashSet`s to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
-    ///
-    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
-    ///
-    /// let s = DefaultHashBuilder::default();
-    /// let mut set = HashSet::with_capacity_and_hasher(10, s);
-    /// set.insert(1);
-    /// ```
-    ///
-    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
-        Self {
-            map: HashMap::with_capacity_and_hasher(capacity, hasher),
-        }
-    }
 
     /// Returns a reference to the set's [`BuildHasher`].
     ///
@@ -426,7 +420,13 @@ where
     pub fn hasher(&self) -> &S {
         self.map.hasher()
     }
+}
 
+impl<T, S> HashSet<T, S>
+where
+    T: Eq + Hash,
+    S: BuildHasher,
+{
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to avoid
     /// frequent reallocations.
