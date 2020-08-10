@@ -1349,7 +1349,13 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 suggest_new(err, "'a");
             }
             (0, _, Some(snippet)) if !snippet.ends_with('>') && count == 1 => {
-                suggest_new(err, &format!("{}<'a>", snippet));
+                if snippet == "" {
+                    // This happens when we have `type Bar<'a> = Foo<T>` where we point at the space
+                    // before `T`. We will suggest `type Bar<'a> = Foo<'a, T>`.
+                    suggest_new(err, "'a, ");
+                } else {
+                    suggest_new(err, &format!("{}<'a>", snippet));
+                }
             }
             (n, ..) if n > 1 => {
                 let spans: Vec<Span> = lifetime_names.iter().map(|lt| lt.span).collect();
