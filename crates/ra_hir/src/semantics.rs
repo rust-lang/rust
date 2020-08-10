@@ -109,10 +109,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.parse(file_id)
     }
 
-    pub fn cache(&self, root_node: SyntaxNode, file_id: HirFileId) {
-        self.imp.cache(root_node, file_id)
-    }
-
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         self.imp.expand(macro_call)
     }
@@ -377,6 +373,7 @@ impl<'db> SemanticsImpl<'db> {
         let src = diagnostics.presentation();
         let root = self.db.parse_or_expand(src.file_id).unwrap();
         let node = src.value.to_node(&root);
+        self.cache(root, src.file_id);
         original_range(self.db, src.with_value(&node))
     }
 

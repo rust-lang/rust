@@ -72,9 +72,12 @@ impl<'a> DiagnosticSinkBuilder<'a> {
         self
     }
 
-    pub fn on<D: Diagnostic, F: FnMut(&D) -> Option<()> + 'a>(mut self, mut cb: F) -> Self {
+    pub fn on<D: Diagnostic, F: FnMut(&D) + 'a>(mut self, mut cb: F) -> Self {
         let cb = move |diag: &dyn Diagnostic| match diag.as_any().downcast_ref::<D>() {
-            Some(d) => cb(d).ok_or(()),
+            Some(d) => {
+                cb(d);
+                Ok(())
+            }
             None => Err(()),
         };
         self.callbacks.push(Box::new(cb));

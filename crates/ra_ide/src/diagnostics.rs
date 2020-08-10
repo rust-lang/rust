@@ -7,22 +7,20 @@
 use std::cell::RefCell;
 
 use hir::{
-    db::AstDatabase,
-    diagnostics::{Diagnostic as _, DiagnosticSinkBuilder},
-    HasSource, HirDisplay, Semantics, VariantDef,
+    diagnostics::{Diagnostic as HirDiagnostics, DiagnosticSinkBuilder},
+    Semantics,
 };
 use itertools::Itertools;
-use ra_db::{SourceDatabase, Upcast};
+use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
-    algo,
-    ast::{self, edit::IndentLevel, make, AstNode},
+    ast::{self, AstNode},
     SyntaxNode, TextRange, T,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
-use crate::{Diagnostic, FileId, FileSystemEdit, Fix, SourceFileEdit};
+use crate::{Diagnostic, FileId, Fix, SourceFileEdit};
 
 mod diagnostics_with_fix;
 use diagnostics_with_fix::DiagnosticWithFix;
@@ -58,96 +56,16 @@ pub(crate) fn diagnostics(
     let res = RefCell::new(res);
     let mut sink = DiagnosticSinkBuilder::new()
         .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
-            let fix = Fix::new(
-                "Create module",
-                FileSystemEdit::CreateFile {
-                    anchor: d.file.original_file(db),
-                    dst: d.candidate.clone(),
-                }
-                .into(),
-            );
-            let fix = diagnostic_fix_source(&sema, d)
-                .map(|unresolved_module| unresolved_module.syntax().text_range())
-                .map(|fix_range| (fix, fix_range));
-
-            res.borrow_mut().push(Diagnostic {
-                range: sema.diagnostics_presentation_range(d).range,
-                message: d.message(),
-                severity: Severity::Error,
-                fix,
-            });
-            Some(())
+            res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
         .on::<hir::diagnostics::MissingFields, _>(|d| {
-            // Note that although we could add a diagnostics to
-            // fill the missing tuple field, e.g :
-            // `struct A(usize);`
-            // `let a = A { 0: () }`
-            // but it is uncommon usage and it should not be encouraged.
-            let fix = if d.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
-                None
-            } else {
-                diagnostic_fix_source(&sema, d)
-                    .and_then(|record_expr| record_expr.record_expr_field_list())
-                    .map(|old_field_list| {
-                        let mut new_field_list = old_field_list.clone();
-                        for f in d.missed_fields.iter() {
-                            let field = make::record_expr_field(
-                                make::name_ref(&f.to_string()),
-                                Some(make::expr_unit()),
-                            );
-                            new_field_list = new_field_list.append_field(&field);
-                        }
-
-                        let edit = {
-                            let mut builder = TextEditBuilder::default();
-                            algo::diff(&old_field_list.syntax(), &new_field_list.syntax())
-                                .into_text_edit(&mut builder);
-                            builder.finish()
-                        };
-                        (
-                            Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()),
-                            sema.original_range(&old_field_list.syntax()).range,
-                            // old_field_list.syntax().text_range(),
-                        )
-                    })
-            };
-
-            res.borrow_mut().push(Diagnostic {
-                range: sema.diagnostics_presentation_range(d).range,
-                message: d.message(),
-                severity: Severity::Error,
-                fix,
-            });
-            Some(())
+            res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
         .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
-            let fix = diagnostic_fix_source(&sema, d).map(|tail_expr| {
-                let tail_expr_range = tail_expr.syntax().text_range();
-                let edit =
-                    TextEdit::replace(tail_expr_range, format!("Ok({})", tail_expr.syntax()));
-                let source_change = SourceFileEdit { file_id, edit }.into();
-                (Fix::new("Wrap with ok", source_change), tail_expr_range)
-            });
-
-            res.borrow_mut().push(Diagnostic {
-                range: sema.diagnostics_presentation_range(d).range,
-                message: d.message(),
-                severity: Severity::Error,
-                fix,
-            });
-            Some(())
+            res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
         .on::<hir::diagnostics::NoSuchField, _>(|d| {
-            res.borrow_mut().push(Diagnostic {
-                range: sema.diagnostics_presentation_range(d).range,
-                message: d.message(),
-                severity: Severity::Error,
-                fix: missing_struct_field_fix(&sema, file_id, d).and_then(|fix| {
-                    Some((fix, diagnostic_fix_source(&sema, d)?.syntax().text_range()))
-                }),
-            });
-            Some(())
+            res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !diag.is_experimental() || enable_experimental)
@@ -168,87 +86,15 @@ pub(crate) fn diagnostics(
     res.into_inner()
 }
 
-fn diagnostic_fix_source<T: DiagnosticWithFix + hir::diagnostics::Diagnostic>(
+fn diagnostic_with_fix<D: HirDiagnostics + DiagnosticWithFix>(
+    d: &D,
     sema: &Semantics<RootDatabase>,
-    d: &T,
-) -> Option<<T as DiagnosticWithFix>::AST> {
-    let file_id = d.presentation().file_id;
-    let root = sema.db.parse_or_expand(file_id)?;
-    sema.cache(root, file_id);
-    d.fix_source(sema.db.upcast())
-}
-
-fn missing_struct_field_fix(
-    sema: &Semantics<RootDatabase>,
-    usage_file_id: FileId,
-    d: &hir::diagnostics::NoSuchField,
-) -> Option<Fix> {
-    let record_expr_field = diagnostic_fix_source(&sema, d)?;
-
-    let record_lit = ast::RecordExpr::cast(record_expr_field.syntax().parent()?.parent()?)?;
-    let def_id = sema.resolve_variant(record_lit)?;
-    let module;
-    let def_file_id;
-    let record_fields = match VariantDef::from(def_id) {
-        VariantDef::Struct(s) => {
-            module = s.module(sema.db);
-            let source = s.source(sema.db);
-            def_file_id = source.file_id;
-            let fields = source.value.field_list()?;
-            record_field_list(fields)?
-        }
-        VariantDef::Union(u) => {
-            module = u.module(sema.db);
-            let source = u.source(sema.db);
-            def_file_id = source.file_id;
-            source.value.record_field_list()?
-        }
-        VariantDef::EnumVariant(e) => {
-            module = e.module(sema.db);
-            let source = e.source(sema.db);
-            def_file_id = source.file_id;
-            let fields = source.value.field_list()?;
-            record_field_list(fields)?
-        }
-    };
-    let def_file_id = def_file_id.original_file(sema.db);
-
-    let new_field_type = sema.type_of_expr(&record_expr_field.expr()?)?;
-    if new_field_type.is_unknown() {
-        return None;
-    }
-    let new_field = make::record_field(
-        record_expr_field.field_name()?,
-        make::ty(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
-    );
-
-    let last_field = record_fields.fields().last()?;
-    let last_field_syntax = last_field.syntax();
-    let indent = IndentLevel::from_node(last_field_syntax);
-
-    let mut new_field = new_field.to_string();
-    if usage_file_id != def_file_id {
-        new_field = format!("pub(crate) {}", new_field);
-    }
-    new_field = format!("\n{}{}", indent, new_field);
-
-    let needs_comma = !last_field_syntax.to_string().ends_with(',');
-    if needs_comma {
-        new_field = format!(",{}", new_field);
-    }
-
-    let source_change = SourceFileEdit {
-        file_id: def_file_id,
-        edit: TextEdit::insert(last_field_syntax.text_range().end(), new_field),
-    };
-    let fix = Fix::new("Create field", source_change.into());
-    return Some(fix);
-
-    fn record_field_list(field_def_list: ast::FieldList) -> Option<ast::RecordFieldList> {
-        match field_def_list {
-            ast::FieldList::RecordFieldList(it) => Some(it),
-            ast::FieldList::TupleFieldList(_) => None,
-        }
+) -> Diagnostic {
+    Diagnostic {
+        range: sema.diagnostics_presentation_range(d).range,
+        message: d.message(),
+        severity: Severity::Error,
+        fix: d.fix(&sema),
     }
 }
 
