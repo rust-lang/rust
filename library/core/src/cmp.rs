@@ -17,8 +17,8 @@
 //!
 //! For more details, see the respective documentation of each item in the list.
 //!
-//! [`max`]: fn.max.html
-//! [`min`]: fn.min.html
+//! [`max`]: Ord::max
+//! [`min`]: Ord::min
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
