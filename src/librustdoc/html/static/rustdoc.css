@@ -91,7 +91,7 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important),
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.notable),
 h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
@@ -528,7 +528,7 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div:not(.important-traits) {
+.content .methods > div:not(.notable-traits) {
 	margin-left: 40px;
 	margin-bottom: 15px;
 }
@@ -1099,17 +1099,17 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	font-size: 20px;
 }
 
-.important-traits-tooltip {
+.notable-traits-tooltip {
 	display: inline-block;
 	cursor: pointer;
 }
 
-.important-traits:hover .important-traits-tooltiptext,
-.important-traits .important-traits-tooltiptext.force-tooltip {
+.notable-traits:hover .notable-traits-tooltiptext,
+.notable-traits .notable-traits-tooltiptext.force-tooltip {
 	display: inline-block;
 }
 
-.important-traits .important-traits-tooltiptext {
+.notable-traits .notable-traits-tooltiptext {
 	display: none;
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
@@ -1121,18 +1121,18 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	border: 1px solid;
 }
 
-.important-traits-tooltip::after {
+.notable-traits-tooltip::after {
 	/* The margin on the tooltip does not capture hover events,
 	   this extends the area of hover enough so that mouse hover is not
 	   lost when moving the mouse to the tooltip */
 	content: "\00a0\00a0\00a0";
 }
 
-.important-traits .important, .important-traits .docblock {
+.notable-traits .notable, .notable-traits .docblock {
 	margin: 0;
 }
 
-.important-traits .docblock code.content{
+.notable-traits .docblock code.content{
 	margin: 0;
 	padding: 0;
 	font-size: 20px;
@@ -1183,13 +1183,13 @@ pre.rust {
 	font-size: 16px;
 }
 
-.important-traits {
+.notable-traits {
 	cursor: pointer;
 	z-index: 2;
 	margin-left: 5px;
 }
 
-h4 > .important-traits {
+h4 > .notable-traits {
 	position: absolute;
 	left: -44px;
 	top: 2px;
@@ -1431,7 +1431,7 @@ h4 > .important-traits {
 		z-index: 1;
 	}
 
-	h4 > .important-traits {
+	h4 > .notable-traits {
 		position: absolute;
 		left: -22px;
 		top: 24px;
@@ -1522,7 +1522,7 @@ h4 > .important-traits {
 		margin-top: 0;
 	}
 
-	.important-traits .important-traits-tooltiptext {
+	.notable-traits .notable-traits-tooltiptext {
 		left: 0;
 		top: 100%;
 	}
@@ -1544,7 +1544,7 @@ h4 > .important-traits {
 	}
 }
 
-h3.important {
+h3.notable {
 	margin: 0;
 	margin-bottom: 13px;
 	font-size: 19px;

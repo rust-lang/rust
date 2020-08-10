@@ -573,7 +573,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .resolver
             .trait_map()
             .iter()
-            .map(|(&k, v)| (self.node_id_to_hir_id[k].unwrap(), v.clone()))
+            .filter_map(|(&k, v)| {
+                self.node_id_to_hir_id.get(k).and_then(|id| id.as_ref()).map(|id| (*id, v.clone()))
+            })
             .collect();
 
         let mut def_id_to_hir_id = IndexVec::default();
