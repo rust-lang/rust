@@ -16,7 +16,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_session::config::nightly_options;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use log::debug;
@@ -1244,7 +1244,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         span: Span,
         count: usize,
-        lifetime_names: &FxHashSet<Ident>,
+        lifetime_names: &FxHashSet<Symbol>,
+        lifetime_spans: Vec<Span>,
         params: &[ElisionFailureInfo],
     ) {
         let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok();
@@ -1258,11 +1259,60 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             ),
         );
 
-        let suggest_existing = |err: &mut DiagnosticBuilder<'_>, sugg| {
+        let suggest_existing = |err: &mut DiagnosticBuilder<'_>,
+                                name: &str,
+                                formatter: &dyn Fn(&str) -> String| {
+            if let Some(MissingLifetimeSpot::HigherRanked { span: for_span, span_type }) =
+                self.missing_named_lifetime_spots.iter().rev().next()
+            {
+                // When we have `struct S<'a>(&'a dyn Fn(&X) -> &X);` we want to not only suggest
+                // using `'a`, but also introduce the concept of HRLTs by suggesting
+                // `struct S<'a>(&'a dyn for<'b> Fn(&X) -> &'b X);`. (#72404)
+                let mut introduce_suggestion = vec![];
+
+                let a_to_z_repeat_n = |n| {
+                    (b'a'..=b'z').map(move |c| {
+                        let mut s = '\''.to_string();
+                        s.extend(std::iter::repeat(char::from(c)).take(n));
+                        s
+                    })
+                };
+
+                // If all single char lifetime names are present, we wrap around and double the chars.
+                let lt_name = (1..)
+                    .flat_map(a_to_z_repeat_n)
+                    .find(|lt| !lifetime_names.contains(&Symbol::intern(&lt)))
+                    .unwrap();
+                let msg = format!(
+                    "consider making the {} lifetime-generic with a new `{}` lifetime",
+                    span_type.descr(),
+                    lt_name,
+                );
+                err.note(
+                    "for more information on higher-ranked polymorphism, visit \
+                    https://doc.rust-lang.org/nomicon/hrtb.html",
+                );
+                let for_sugg = span_type.suggestion(&lt_name);
+                for param in params {
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span) {
+                        if snippet.starts_with('&') && !snippet.starts_with("&'") {
+                            introduce_suggestion
+                                .push((param.span, format!("&{} {}", lt_name, &snippet[1..])));
+                        } else if snippet.starts_with("&'_ ") {
+                            introduce_suggestion
+                                .push((param.span, format!("&{} {}", lt_name, &snippet[4..])));
+                        }
+                    }
+                }
+                introduce_suggestion.push((*for_span, for_sugg.to_string()));
+                introduce_suggestion.push((span, formatter(&lt_name)));
+                err.multipart_suggestion(&msg, introduce_suggestion, Applicability::MaybeIncorrect);
+            }
+
             err.span_suggestion_verbose(
                 span,
                 &format!("consider using the `{}` lifetime", lifetime_names.iter().next().unwrap()),
-                sugg,
+                formatter(name),
                 Applicability::MaybeIncorrect,
             );
         };
@@ -1330,17 +1380,16 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
 
         match (lifetime_names.len(), lifetime_names.iter().next(), snippet.as_deref()) {
             (1, Some(name), Some("&")) => {
-                suggest_existing(err, format!("&{} ", name));
+                suggest_existing(err, &name.as_str()[..], &|name| format!("&{} ", name));
             }
             (1, Some(name), Some("'_")) => {
-                suggest_existing(err, name.to_string());
+                suggest_existing(err, &name.as_str()[..], &|n| n.to_string());
             }
             (1, Some(name), Some("")) => {
-                suggest_existing(err, format!("{}, ", name).repeat(count));
+                suggest_existing(err, &name.as_str()[..], &|n| format!("{}, ", n).repeat(count));
             }
             (1, Some(name), Some(snippet)) if !snippet.ends_with('>') => {
-                suggest_existing(
-                    err,
+                let f = |name: &str| {
                     format!(
                         "{}<{}>",
                         snippet,
@@ -1348,8 +1397,9 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                             .take(count)
                             .collect::<Vec<_>>()
                             .join(", ")
-                    ),
-                );
+                    )
+                };
+                suggest_existing(err, &name.as_str()[..], &f);
             }
             (0, _, Some("&")) if count == 1 => {
                 suggest_new(err, "&'a ");
@@ -1367,8 +1417,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 }
             }
             (n, ..) if n > 1 => {
-                let spans: Vec<Span> = lifetime_names.iter().map(|lt| lt.span).collect();
-                err.span_note(spans, "these named lifetimes are available to use");
+                err.span_note(lifetime_spans, "these named lifetimes are available to use");
                 if Some("") == snippet.as_deref() {
                     // This happens when we have `Foo<T>` where we point at the space before `T`,
                     // but this can be confusing so we give a suggestion with placeholders.
