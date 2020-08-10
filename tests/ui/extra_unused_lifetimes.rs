@@ -1,4 +1,10 @@
-#![allow(unused, dead_code, clippy::needless_lifetimes, clippy::needless_pass_by_value)]
+#![allow(
+    unused,
+    dead_code,
+    clippy::needless_lifetimes,
+    clippy::needless_pass_by_value,
+    clippy::needless_arbitrary_self_type
+)]
 #![warn(clippy::extra_unused_lifetimes)]
 
 fn empty() {}
