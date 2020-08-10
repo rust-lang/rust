@@ -1687,6 +1687,7 @@ Released 2018-09-13
 [`result_map_unit_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_map_unit_fn
 [`reversed_empty_ranges`]: https://rust-lang.github.io/rust-clippy/master/index.html#reversed_empty_ranges
 [`same_functions_in_if_condition`]: https://rust-lang.github.io/rust-clippy/master/index.html#same_functions_in_if_condition
+[`same_item_push`]: https://rust-lang.github.io/rust-clippy/master/index.html#same_item_push
 [`search_is_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#search_is_some
 [`serde_api_misuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#serde_api_misuse
 [`shadow_reuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_reuse

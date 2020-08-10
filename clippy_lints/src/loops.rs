@@ -5,8 +5,9 @@ use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
     is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
-    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_opt, snippet_with_applicability, span_lint,
-    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
+    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_opt, snippet_with_applicability,
+    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
+    SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -419,6 +420,39 @@ declare_clippy_lint! {
     "variables used within while expression are not mutated in the body"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks whether a for loop is being used to push a constant
+    /// value into a Vec.
+    ///
+    /// **Why is this bad?** This kind of operation can be expressed more succinctly with
+    /// `vec![item;SIZE]` or `vec.resize(NEW_SIZE, item)` and using these alternatives may also
+    /// have better performance.
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let item1 = 2;
+    /// let item2 = 3;
+    /// let mut vec: Vec<u8> = Vec::new();
+    /// for _ in 0..20 {
+    ///    vec.push(item1);
+    /// }
+    /// for _ in 0..30 {
+    ///     vec.push(item2);
+    /// }
+    /// ```
+    /// could be written as
+    /// ```rust
+    /// let item1 = 2;
+    /// let item2 = 3;
+    /// let mut vec: Vec<u8> = vec![item1; 20];
+    /// vec.resize(20 + 30, item2);
+    /// ```
+    pub SAME_ITEM_PUSH,
+    style,
+    "the same item is pushed inside of a for loop"
+}
+
 declare_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     NEEDLESS_RANGE_LOOP,
@@ -435,6 +469,7 @@ declare_lint_pass!(Loops => [
     NEVER_LOOP,
     MUT_RANGE_BOUND,
     WHILE_IMMUTABLE_CONDITION,
+    SAME_ITEM_PUSH,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -740,6 +775,7 @@ fn check_for_loop<'tcx>(
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
     check_for_mut_range_bound(cx, arg, body);
     detect_manual_memcpy(cx, pat, arg, body, expr);
+    detect_same_item_push(cx, pat, arg, body, expr);
 }
 
 fn same_var<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, var: HirId) -> bool {
@@ -1011,6 +1047,117 @@ fn detect_manual_memcpy<'tcx>(
                     big_sugg,
                     Applicability::Unspecified,
                 );
+            }
+        }
+    }
+}
+
+// Scans the body of the for loop and determines whether lint should be given
+struct SameItemPushVisitor<'a, 'tcx> {
+    should_lint: bool,
+    // this field holds the last vec push operation visited, which should be the only push seen
+    vec_push: Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>,
+    cx: &'a LateContext<'tcx>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+        match &expr.kind {
+            // Non-determinism may occur ... don't give a lint
+            ExprKind::Loop(_, _, _) | ExprKind::Match(_, _, _) => self.should_lint = false,
+            ExprKind::Block(block, _) => self.visit_block(block),
+            _ => {},
+        }
+    }
+
+    fn visit_block(&mut self, b: &'tcx Block<'_>) {
+        for stmt in b.stmts.iter() {
+            self.visit_stmt(stmt);
+        }
+    }
+
+    fn visit_stmt(&mut self, s: &'tcx Stmt<'_>) {
+        let vec_push_option = get_vec_push(self.cx, s);
+        if vec_push_option.is_none() {
+            // Current statement is not a push so visit inside
+            match &s.kind {
+                StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(&expr),
+                _ => {},
+            }
+        } else {
+            // Current statement is a push ...check whether another
+            // push had been previously done
+            if self.vec_push.is_none() {
+                self.vec_push = vec_push_option;
+            } else {
+                // There are multiple pushes ... don't lint
+                self.should_lint = false;
+            }
+        }
+    }
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+}
+
+// Given some statement, determine if that statement is a push on a Vec. If it is, return
+// the Vec being pushed into and the item being pushed
+fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
+    if_chain! {
+            // Extract method being called
+            if let StmtKind::Semi(semi_stmt) = &stmt.kind;
+            if let ExprKind::MethodCall(path, _, args, _) = &semi_stmt.kind;
+            // Figure out the parameters for the method call
+            if let Some(self_expr) = args.get(0);
+            if let Some(pushed_item) = args.get(1);
+            // Check that the method being called is push() on a Vec
+            if match_type(cx, cx.typeck_results().expr_ty(self_expr), &paths::VEC);
+            if path.ident.name.as_str() == "push";
+            then {
+                return Some((self_expr, pushed_item))
+            }
+    }
+    None
+}
+
+/// Detects for loop pushing the same item into a Vec
+fn detect_same_item_push<'tcx>(
+    cx: &LateContext<'tcx>,
+    pat: &'tcx Pat<'_>,
+    _: &'tcx Expr<'_>,
+    body: &'tcx Expr<'_>,
+    _: &'tcx Expr<'_>,
+) {
+    // Determine whether it is safe to lint the body
+    let mut same_item_push_visitor = SameItemPushVisitor {
+        should_lint: true,
+        vec_push: None,
+        cx,
+    };
+    walk_expr(&mut same_item_push_visitor, body);
+    if same_item_push_visitor.should_lint {
+        if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push {
+            // Make sure that the push does not involve possibly mutating values
+            if mutated_variables(pushed_item, cx).map_or(false, |mutvars| mutvars.is_empty()) {
+                if let PatKind::Wild = pat.kind {
+                    let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
+                    let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
+
+                    span_lint_and_help(
+                        cx,
+                        SAME_ITEM_PUSH,
+                        vec.span,
+                        "it looks like the same item is being pushed into this Vec",
+                        None,
+                        &format!(
+                            "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
+                            item_str, vec_str, item_str
+                        ),
+                    )
+                }
             }
         }
     }

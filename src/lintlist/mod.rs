@@ -1936,6 +1936,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "copies",
     },
     Lint {
+        name: "same_item_push",
+        group: "style",
+        desc: "the same item is pushed inside of a for loop",
+        deprecation: None,
+        module: "loops",
+    },
+    Lint {
         name: "search_is_some",
         group: "complexity",
         desc: "using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`",
