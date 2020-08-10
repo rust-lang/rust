@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests;
 
+use hashbrown::hash_set as base;
+
 use crate::borrow::Borrow;
 use crate::collections::TryReserveError;
 use crate::fmt;
@@ -8,7 +10,7 @@ use crate::hash::{BuildHasher, Hash};
 use crate::iter::{Chain, FromIterator, FusedIterator};
 use crate::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use super::map::{self, HashMap, Keys, RandomState};
+use super::map::{map_try_reserve_error, RandomState};
 
 // Future Optimization (FIXME!)
 // ============================
@@ -101,13 +103,14 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// // use the values stored in the set
 /// ```
 ///
+/// [`HashMap`]: crate::collections::HashMap
 /// [`RefCell`]: crate::cell::RefCell
 /// [`Cell`]: crate::cell::Cell
 #[derive(Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "hashset_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashSet<T, S = RandomState> {
-    map: HashMap<T, (), S>,
+    base: base::HashSet<T, S>,
 }
 
 impl<T> HashSet<T, RandomState> {
@@ -125,7 +128,7 @@ impl<T> HashSet<T, RandomState> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> HashSet<T, RandomState> {
-        HashSet { map: HashMap::new() }
+        Default::default()
     }
 
     /// Creates an empty `HashSet` with the specified capacity.
@@ -143,7 +146,7 @@ impl<T> HashSet<T, RandomState> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> HashSet<T, RandomState> {
-        HashSet { map: HashMap::with_capacity(capacity) }
+        HashSet { base: base::HashSet::with_capacity_and_hasher(capacity, Default::default()) }
     }
 }
 
@@ -160,7 +163,7 @@ impl<T, S> HashSet<T, S> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
-        self.map.capacity()
+        self.base.capacity()
     }
 
     /// An iterator visiting all elements in arbitrary order.
@@ -182,7 +185,7 @@ impl<T, S> HashSet<T, S> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, T> {
-        Iter { iter: self.map.keys() }
+        Iter { base: self.base.iter() }
     }
 
     /// Returns the number of elements in the set.
@@ -200,7 +203,7 @@ impl<T, S> HashSet<T, S> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
-        self.map.len()
+        self.base.len()
     }
 
     /// Returns `true` if the set contains no elements.
@@ -218,7 +221,7 @@ impl<T, S> HashSet<T, S> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
+        self.base.is_empty()
     }
 
     /// Clears the set, returning all elements in an iterator.
@@ -241,7 +244,7 @@ impl<T, S> HashSet<T, S> {
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<'_, T> {
-        Drain { iter: self.map.drain() }
+        Drain { base: self.base.drain() }
     }
 
     /// Clears the set, removing all values.
@@ -259,7 +262,7 @@ impl<T, S> HashSet<T, S> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
-        self.map.clear()
+        self.base.clear()
     }
 
     /// Creates a new empty hash set which will use the given hasher to hash
@@ -288,7 +291,7 @@ impl<T, S> HashSet<T, S> {
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_hasher(hasher: S) -> HashSet<T, S> {
-        HashSet { map: HashMap::with_hasher(hasher) }
+        HashSet { base: base::HashSet::with_hasher(hasher) }
     }
 
     /// Creates an empty `HashSet` with the specified capacity, using
@@ -318,7 +321,7 @@ impl<T, S> HashSet<T, S> {
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashSet<T, S> {
-        HashSet { map: HashMap::with_capacity_and_hasher(capacity, hasher) }
+        HashSet { base: base::HashSet::with_capacity_and_hasher(capacity, hasher) }
     }
 
     /// Returns a reference to the set's [`BuildHasher`].
@@ -336,7 +339,7 @@ impl<T, S> HashSet<T, S> {
     #[inline]
     #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
-        self.map.hasher()
+        self.base.hasher()
     }
 }
 
@@ -364,7 +367,7 @@ where
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
-        self.map.reserve(additional)
+        self.base.reserve(additional)
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -387,7 +390,7 @@ where
     #[inline]
     #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.map.try_reserve(additional)
+        self.base.try_reserve(additional).map_err(map_try_reserve_error)
     }
 
     /// Shrinks the capacity of the set as much as possible. It will drop
@@ -409,7 +412,7 @@ where
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
-        self.map.shrink_to_fit()
+        self.base.shrink_to_fit()
     }
 
     /// Shrinks the capacity of the set with a lower limit. It will drop
@@ -437,7 +440,7 @@ where
     #[inline]
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        self.map.shrink_to(min_capacity)
+        self.base.shrink_to(min_capacity)
     }
 
     /// Visits the values representing the difference,
@@ -577,7 +580,7 @@ where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.map.contains_key(value)
+        self.base.contains(value)
     }
 
     /// Returns a reference to the value in the set, if any, that is equal to the given value.
@@ -602,7 +605,7 @@ where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.map.get_key_value(value).map(|(k, _)| k)
+        self.base.get(value)
     }
 
     /// Inserts the given `value` into the set if it is not present, then
@@ -626,7 +629,7 @@ where
     pub fn get_or_insert(&mut self, value: T) -> &T {
         // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
         // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
-        self.map.raw_entry_mut().from_key(&value).or_insert(value, ()).0
+        self.base.get_or_insert(value)
     }
 
     /// Inserts an owned copy of the given `value` into the set if it is not
@@ -658,7 +661,7 @@ where
     {
         // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
         // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
-        self.map.raw_entry_mut().from_key(value).or_insert_with(|| (value.to_owned(), ())).0
+        self.base.get_or_insert_owned(value)
     }
 
     /// Inserts a value computed from `f` into the set if the given `value` is
@@ -691,7 +694,7 @@ where
     {
         // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
         // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
-        self.map.raw_entry_mut().from_key(value).or_insert_with(|| (f(value), ())).0
+        self.base.get_or_insert_with(value, f)
     }
 
     /// Returns `true` if `self` has no elements in common with `other`.
@@ -788,7 +791,7 @@ where
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, value: T) -> bool {
-        self.map.insert(value, ()).is_none()
+        self.base.insert(value)
     }
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
@@ -809,13 +812,7 @@ where
     #[inline]
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {
-        match self.map.entry(value) {
-            map::Entry::Occupied(occupied) => Some(occupied.replace_key()),
-            map::Entry::Vacant(vacant) => {
-                vacant.insert(());
-                None
-            }
-        }
+        self.base.replace(value)
     }
 
     /// Removes a value from the set. Returns whether the value was
@@ -843,7 +840,7 @@ where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.map.remove(value).is_some()
+        self.base.remove(value)
     }
 
     /// Removes and returns the value in the set, if any, that is equal to the given one.
@@ -868,7 +865,7 @@ where
         T: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.map.remove_entry(value).map(|(k, _)| k)
+        self.base.take(value)
     }
 
     /// Retains only the elements specified by the predicate.
@@ -886,11 +883,11 @@ where
     /// assert_eq!(set.len(), 3);
     /// ```
     #[stable(feature = "retain_hash_collection", since = "1.18.0")]
-    pub fn retain<F>(&mut self, mut f: F)
+    pub fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&T) -> bool,
     {
-        self.map.retain(|k, _| f(k));
+        self.base.retain(f)
     }
 }
 
@@ -949,17 +946,17 @@ where
 {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        self.map.extend(iter.into_iter().map(|k| (k, ())));
+        self.base.extend(iter);
     }
 
     #[inline]
     fn extend_one(&mut self, item: T) {
-        self.map.insert(item, ());
+        self.base.insert(item);
     }
 
     #[inline]
     fn extend_reserve(&mut self, additional: usize) {
-        self.map.extend_reserve(additional);
+        self.base.extend_reserve(additional);
     }
 }
 
@@ -976,7 +973,7 @@ where
 
     #[inline]
     fn extend_one(&mut self, &item: &'a T) {
-        self.map.insert(item, ());
+        self.base.insert(item);
     }
 
     #[inline]
@@ -993,7 +990,7 @@ where
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
     #[inline]
     fn default() -> HashSet<T, S> {
-        HashSet { map: HashMap::default() }
+        HashSet { base: Default::default() }
     }
 }
 
@@ -1137,7 +1134,7 @@ where
 /// [`iter`]: HashSet::iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a> {
-    iter: Keys<'a, K, ()>,
+    base: base::Iter<'a, K>,
 }
 
 /// An owning iterator over the items of a `HashSet`.
@@ -1148,7 +1145,7 @@ pub struct Iter<'a, K: 'a> {
 /// [`into_iter`]: IntoIterator::into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K> {
-    iter: map::IntoIter<K, ()>,
+    base: base::IntoIter<K>,
 }
 
 /// A draining iterator over the items of a `HashSet`.
@@ -1159,7 +1156,7 @@ pub struct IntoIter<K> {
 /// [`drain`]: HashSet::drain
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Drain<'a, K: 'a> {
-    iter: map::Drain<'a, K, ()>,
+    base: base::Drain<'a, K>,
 }
 
 /// A lazy iterator producing elements in the intersection of `HashSet`s.
@@ -1250,7 +1247,7 @@ impl<T, S> IntoIterator for HashSet<T, S> {
     /// ```
     #[inline]
     fn into_iter(self) -> IntoIter<T> {
-        IntoIter { iter: self.map.into_iter() }
+        IntoIter { base: self.base.into_iter() }
     }
 }
 
@@ -1258,7 +1255,7 @@ impl<T, S> IntoIterator for HashSet<T, S> {
 impl<K> Clone for Iter<'_, K> {
     #[inline]
     fn clone(&self) -> Self {
-        Iter { iter: self.iter.clone() }
+        Iter { base: self.base.clone() }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1267,18 +1264,18 @@ impl<'a, K> Iterator for Iter<'a, K> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a K> {
-        self.iter.next()
+        self.base.next()
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
+        self.base.size_hint()
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K> ExactSizeIterator for Iter<'_, K> {
     #[inline]
     fn len(&self) -> usize {
-        self.iter.len()
+        self.base.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1297,18 +1294,18 @@ impl<K> Iterator for IntoIter<K> {
 
     #[inline]
     fn next(&mut self) -> Option<K> {
-        self.iter.next().map(|(k, _)| k)
+        self.base.next()
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
+        self.base.size_hint()
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K> ExactSizeIterator for IntoIter<K> {
     #[inline]
     fn len(&self) -> usize {
-        self.iter.len()
+        self.base.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1317,8 +1314,7 @@ impl<K> FusedIterator for IntoIter<K> {}
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: fmt::Debug> fmt::Debug for IntoIter<K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let entries_iter = self.iter.iter().map(|(k, _)| k);
-        f.debug_list().entries(entries_iter).finish()
+        fmt::Debug::fmt(&self.base, f)
     }
 }
 
@@ -1328,18 +1324,18 @@ impl<'a, K> Iterator for Drain<'a, K> {
 
     #[inline]
     fn next(&mut self) -> Option<K> {
-        self.iter.next().map(|(k, _)| k)
+        self.base.next()
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
+        self.base.size_hint()
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K> ExactSizeIterator for Drain<'_, K> {
     #[inline]
     fn len(&self) -> usize {
-        self.iter.len()
+        self.base.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1348,8 +1344,7 @@ impl<K> FusedIterator for Drain<'_, K> {}
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: fmt::Debug> fmt::Debug for Drain<'_, K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let entries_iter = self.iter.iter().map(|(k, _)| k);
-        f.debug_list().entries(entries_iter).finish()
+        fmt::Debug::fmt(&self.base, f)
     }
 }
 

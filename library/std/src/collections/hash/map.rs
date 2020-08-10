@@ -2698,7 +2698,7 @@ fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, 
 }
 
 #[inline]
-fn map_try_reserve_error(err: hashbrown::TryReserveError) -> TryReserveError {
+pub(super) fn map_try_reserve_error(err: hashbrown::TryReserveError) -> TryReserveError {
     match err {
         hashbrown::TryReserveError::CapacityOverflow => TryReserveError::CapacityOverflow,
         hashbrown::TryReserveError::AllocError { layout } => {

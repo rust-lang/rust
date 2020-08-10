@@ -347,7 +347,7 @@ class StdHashMapProvider:
         self.valobj = valobj
         self.show_values = show_values
 
-        table = self.valobj["base"]["table"]
+        table = self.table()
         capacity = int(table["bucket_mask"]) + 1
         ctrl = table["ctrl"]["pointer"]
 
@@ -367,6 +367,18 @@ class StdHashMapProvider:
             is_presented = value & 128 == 0
             if is_presented:
                 self.valid_indices.append(idx)
+
+    def table(self):
+        if self.show_values:
+            hashbrown_hashmap = self.valobj["base"]
+        elif self.valobj.type.fields()[0].name == "map":
+            # BACKCOMPAT: rust 1.47
+            # HashSet wraps std::collections::HashMap, which wraps hashbrown::HashMap
+            hashbrown_hashmap = self.valobj["map"]["base"]
+        else:
+            # HashSet wraps hashbrown::HashSet, which wraps hashbrown::HashMap
+            hashbrown_hashmap = self.valobj["base"]["map"]
+        return hashbrown_hashmap["table"]
 
     def to_string(self):
         if self.show_values:
