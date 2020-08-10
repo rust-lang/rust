@@ -7,11 +7,12 @@
 use std::cell::RefCell;
 
 use hir::{
+    db::AstDatabase,
     diagnostics::{Diagnostic as _, DiagnosticSinkBuilder},
     HasSource, HirDisplay, Semantics, VariantDef,
 };
 use itertools::Itertools;
-use ra_db::SourceDatabase;
+use ra_db::{SourceDatabase, Upcast};
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
@@ -22,6 +23,9 @@ use ra_syntax::{
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
 use crate::{Diagnostic, FileId, FileSystemEdit, Fix, SourceFileEdit};
+
+mod diagnostics_with_fix;
+use diagnostics_with_fix::DiagnosticWithFix;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {
@@ -62,8 +66,7 @@ pub(crate) fn diagnostics(
                 }
                 .into(),
             );
-            let fix = sema
-                .diagnostic_fix_source(d)
+            let fix = diagnostic_fix_source(&sema, d)
                 .map(|unresolved_module| unresolved_module.syntax().text_range())
                 .map(|fix_range| (fix, fix_range));
 
@@ -84,7 +87,7 @@ pub(crate) fn diagnostics(
             let fix = if d.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
                 None
             } else {
-                sema.diagnostic_fix_source(d)
+                diagnostic_fix_source(&sema, d)
                     .and_then(|record_expr| record_expr.record_expr_field_list())
                     .map(|old_field_list| {
                         let mut new_field_list = old_field_list.clone();
@@ -105,6 +108,7 @@ pub(crate) fn diagnostics(
                         (
                             Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()),
                             sema.original_range(&old_field_list.syntax()).range,
+                            // old_field_list.syntax().text_range(),
                         )
                     })
             };
@@ -118,7 +122,7 @@ pub(crate) fn diagnostics(
             Some(())
         })
         .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
-            let fix = sema.diagnostic_fix_source(d).map(|tail_expr| {
+            let fix = diagnostic_fix_source(&sema, d).map(|tail_expr| {
                 let tail_expr_range = tail_expr.syntax().text_range();
                 let edit =
                     TextEdit::replace(tail_expr_range, format!("Ok({})", tail_expr.syntax()));
@@ -140,7 +144,7 @@ pub(crate) fn diagnostics(
                 message: d.message(),
                 severity: Severity::Error,
                 fix: missing_struct_field_fix(&sema, file_id, d).and_then(|fix| {
-                    Some((fix, sema.diagnostic_fix_source(d)?.syntax().text_range()))
+                    Some((fix, diagnostic_fix_source(&sema, d)?.syntax().text_range()))
                 }),
             });
             Some(())
@@ -164,12 +168,22 @@ pub(crate) fn diagnostics(
     res.into_inner()
 }
 
+fn diagnostic_fix_source<T: DiagnosticWithFix + hir::diagnostics::Diagnostic>(
+    sema: &Semantics<RootDatabase>,
+    d: &T,
+) -> Option<<T as DiagnosticWithFix>::AST> {
+    let file_id = d.presentation().file_id;
+    let root = sema.db.parse_or_expand(file_id)?;
+    sema.cache(root, file_id);
+    d.fix_source(sema.db.upcast())
+}
+
 fn missing_struct_field_fix(
     sema: &Semantics<RootDatabase>,
     usage_file_id: FileId,
     d: &hir::diagnostics::NoSuchField,
 ) -> Option<Fix> {
-    let record_expr_field = sema.diagnostic_fix_source(d)?;
+    let record_expr_field = diagnostic_fix_source(&sema, d)?;
 
     let record_lit = ast::RecordExpr::cast(record_expr_field.syntax().parent()?.parent()?)?;
     let def_id = sema.resolve_variant(record_lit)?;

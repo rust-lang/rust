@@ -18,7 +18,7 @@ use std::{any::Any, fmt};
 
 use ra_syntax::SyntaxNodePtr;
 
-use crate::{db::AstDatabase, InFile};
+use crate::InFile;
 
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn message(&self) -> String;
@@ -27,11 +27,6 @@ pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn is_experimental(&self) -> bool {
         false
     }
-}
-
-pub trait DiagnosticWithFix {
-    type AST;
-    fn fix_source(&self, db: &dyn AstDatabase) -> Option<Self::AST>;
 }
 
 pub struct DiagnosticSink<'a> {
