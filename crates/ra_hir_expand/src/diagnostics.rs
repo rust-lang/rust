@@ -29,15 +29,9 @@ pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     }
 }
 
-pub trait AstDiagnostic {
+pub trait DiagnosticWithFix {
     type AST;
-    fn fix_source(&self, db: &dyn AstDatabase) -> Self::AST;
-}
-
-impl dyn Diagnostic {
-    pub fn downcast_ref<D: Diagnostic>(&self) -> Option<&D> {
-        self.as_any().downcast_ref()
-    }
+    fn fix_source(&self, db: &dyn AstDatabase) -> Option<Self::AST>;
 }
 
 pub struct DiagnosticSink<'a> {
@@ -83,12 +77,9 @@ impl<'a> DiagnosticSinkBuilder<'a> {
         self
     }
 
-    pub fn on<D: Diagnostic, F: FnMut(&D) + 'a>(mut self, mut cb: F) -> Self {
-        let cb = move |diag: &dyn Diagnostic| match diag.downcast_ref::<D>() {
-            Some(d) => {
-                cb(d);
-                Ok(())
-            }
+    pub fn on<D: Diagnostic, F: FnMut(&D) -> Option<()> + 'a>(mut self, mut cb: F) -> Self {
+        let cb = move |diag: &dyn Diagnostic| match diag.as_any().downcast_ref::<D>() {
+            Some(d) => cb(d).ok_or(()),
             None => Err(()),
         };
         self.callbacks.push(Box::new(cb));

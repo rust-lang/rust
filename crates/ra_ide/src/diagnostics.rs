@@ -62,12 +62,18 @@ pub(crate) fn diagnostics(
                 }
                 .into(),
             );
+            let fix = sema
+                .diagnostic_fix_source(d)
+                .map(|unresolved_module| unresolved_module.syntax().text_range())
+                .map(|fix_range| (fix, fix_range));
+
             res.borrow_mut().push(Diagnostic {
                 range: sema.diagnostics_presentation_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
-                fix: Some((fix, sema.diagnostic_fix_source(d).syntax().text_range())),
-            })
+                fix,
+            });
+            Some(())
         })
         .on::<hir::diagnostics::MissingFields, _>(|d| {
             // Note that although we could add a diagnostics to
@@ -78,30 +84,29 @@ pub(crate) fn diagnostics(
             let fix = if d.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
                 None
             } else {
-                let record_expr = sema.diagnostic_fix_source(d);
-                if let Some(old_field_list) = record_expr.record_expr_field_list() {
-                    let mut new_field_list = old_field_list.clone();
-                    for f in d.missed_fields.iter() {
-                        let field = make::record_expr_field(
-                            make::name_ref(&f.to_string()),
-                            Some(make::expr_unit()),
-                        );
-                        new_field_list = new_field_list.append_field(&field);
-                    }
+                sema.diagnostic_fix_source(d)
+                    .and_then(|record_expr| record_expr.record_expr_field_list())
+                    .map(|old_field_list| {
+                        let mut new_field_list = old_field_list.clone();
+                        for f in d.missed_fields.iter() {
+                            let field = make::record_expr_field(
+                                make::name_ref(&f.to_string()),
+                                Some(make::expr_unit()),
+                            );
+                            new_field_list = new_field_list.append_field(&field);
+                        }
 
-                    let edit = {
-                        let mut builder = TextEditBuilder::default();
-                        algo::diff(&old_field_list.syntax(), &new_field_list.syntax())
-                            .into_text_edit(&mut builder);
-                        builder.finish()
-                    };
-                    Some((
-                        Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()),
-                        sema.original_range(&old_field_list.syntax()).range,
-                    ))
-                } else {
-                    None
-                }
+                        let edit = {
+                            let mut builder = TextEditBuilder::default();
+                            algo::diff(&old_field_list.syntax(), &new_field_list.syntax())
+                                .into_text_edit(&mut builder);
+                            builder.finish()
+                        };
+                        (
+                            Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()),
+                            sema.original_range(&old_field_list.syntax()).range,
+                        )
+                    })
             };
 
             res.borrow_mut().push(Diagnostic {
@@ -109,28 +114,36 @@ pub(crate) fn diagnostics(
                 message: d.message(),
                 severity: Severity::Error,
                 fix,
-            })
+            });
+            Some(())
         })
         .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
-            let tail_expr = sema.diagnostic_fix_source(d);
-            let tail_expr_range = tail_expr.syntax().text_range();
-            let edit = TextEdit::replace(tail_expr_range, format!("Ok({})", tail_expr.syntax()));
-            let source_change = SourceFileEdit { file_id, edit }.into();
+            let fix = sema.diagnostic_fix_source(d).map(|tail_expr| {
+                let tail_expr_range = tail_expr.syntax().text_range();
+                let edit =
+                    TextEdit::replace(tail_expr_range, format!("Ok({})", tail_expr.syntax()));
+                let source_change = SourceFileEdit { file_id, edit }.into();
+                (Fix::new("Wrap with ok", source_change), tail_expr_range)
+            });
+
             res.borrow_mut().push(Diagnostic {
                 range: sema.diagnostics_presentation_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
-                fix: Some((Fix::new("Wrap with ok", source_change), tail_expr_range)),
-            })
+                fix,
+            });
+            Some(())
         })
         .on::<hir::diagnostics::NoSuchField, _>(|d| {
             res.borrow_mut().push(Diagnostic {
                 range: sema.diagnostics_presentation_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
-                fix: missing_struct_field_fix(&sema, file_id, d)
-                    .map(|fix| (fix, sema.diagnostic_fix_source(d).syntax().text_range())),
-            })
+                fix: missing_struct_field_fix(&sema, file_id, d).and_then(|fix| {
+                    Some((fix, sema.diagnostic_fix_source(d)?.syntax().text_range()))
+                }),
+            });
+            Some(())
         })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !diag.is_experimental() || enable_experimental)
@@ -156,7 +169,7 @@ fn missing_struct_field_fix(
     usage_file_id: FileId,
     d: &hir::diagnostics::NoSuchField,
 ) -> Option<Fix> {
-    let record_expr_field = sema.diagnostic_fix_source(d);
+    let record_expr_field = sema.diagnostic_fix_source(d)?;
 
     let record_lit = ast::RecordExpr::cast(record_expr_field.syntax().parent()?.parent()?)?;
     let def_id = sema.resolve_variant(record_lit)?;

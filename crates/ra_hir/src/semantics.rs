@@ -8,7 +8,7 @@ use hir_def::{
     resolver::{self, HasResolver, Resolver},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
-use hir_expand::{diagnostics::AstDiagnostic, hygiene::Hygiene, name::AsName, ExpansionInfo};
+use hir_expand::{diagnostics::DiagnosticWithFix, hygiene::Hygiene, name::AsName, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
@@ -109,12 +109,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.parse(file_id)
     }
 
-    pub fn diagnostic_fix_source<T: AstDiagnostic + Diagnostic>(
+    pub fn diagnostic_fix_source<T: DiagnosticWithFix + Diagnostic>(
         &self,
         d: &T,
-    ) -> <T as AstDiagnostic>::AST {
+    ) -> Option<<T as DiagnosticWithFix>::AST> {
         let file_id = d.presentation().file_id;
-        let root = self.db.parse_or_expand(file_id).unwrap();
+        let root = self.db.parse_or_expand(file_id)?;
         self.imp.cache(root, file_id);
         d.fix_source(self.db.upcast())
     }

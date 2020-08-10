@@ -2,7 +2,7 @@
 
 use std::any::Any;
 
-use hir_expand::diagnostics::{AstDiagnostic, Diagnostic};
+use hir_expand::diagnostics::{Diagnostic, DiagnosticWithFix};
 use ra_syntax::{ast, AstPtr, SyntaxNodePtr};
 
 use hir_expand::{HirFileId, InFile};
@@ -26,10 +26,10 @@ impl Diagnostic for UnresolvedModule {
     }
 }
 
-impl AstDiagnostic for UnresolvedModule {
+impl DiagnosticWithFix for UnresolvedModule {
     type AST = ast::Module;
-    fn fix_source(&self, db: &dyn hir_expand::db::AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.file).unwrap();
-        self.decl.to_node(&root)
+    fn fix_source(&self, db: &dyn hir_expand::db::AstDatabase) -> Option<Self::AST> {
+        let root = db.parse_or_expand(self.file)?;
+        Some(self.decl.to_node(&root))
     }
 }

@@ -6,7 +6,7 @@ mod unsafe_check;
 use std::any::Any;
 
 use hir_def::DefWithBodyId;
-use hir_expand::diagnostics::{AstDiagnostic, Diagnostic, DiagnosticSink};
+use hir_expand::diagnostics::{Diagnostic, DiagnosticSink, DiagnosticWithFix};
 use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
 use ra_prof::profile;
 use ra_syntax::{ast, AstPtr, SyntaxNodePtr};
@@ -46,12 +46,12 @@ impl Diagnostic for NoSuchField {
     }
 }
 
-impl AstDiagnostic for NoSuchField {
+impl DiagnosticWithFix for NoSuchField {
     type AST = ast::RecordExprField;
 
-    fn fix_source(&self, db: &dyn AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.file).unwrap();
-        self.field.to_node(&root)
+    fn fix_source(&self, db: &dyn AstDatabase) -> Option<Self::AST> {
+        let root = db.parse_or_expand(self.file)?;
+        Some(self.field.to_node(&root))
     }
 }
 
@@ -88,12 +88,12 @@ impl Diagnostic for MissingFields {
     }
 }
 
-impl AstDiagnostic for MissingFields {
+impl DiagnosticWithFix for MissingFields {
     type AST = ast::RecordExpr;
 
-    fn fix_source(&self, db: &dyn AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.file).unwrap();
-        self.field_list_parent.to_node(&root)
+    fn fix_source(&self, db: &dyn AstDatabase) -> Option<Self::AST> {
+        let root = db.parse_or_expand(self.file)?;
+        Some(self.field_list_parent.to_node(&root))
     }
 }
 
@@ -163,12 +163,12 @@ impl Diagnostic for MissingOkInTailExpr {
     }
 }
 
-impl AstDiagnostic for MissingOkInTailExpr {
+impl DiagnosticWithFix for MissingOkInTailExpr {
     type AST = ast::Expr;
 
-    fn fix_source(&self, db: &dyn AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.file).unwrap();
-        self.expr.to_node(&root)
+    fn fix_source(&self, db: &dyn AstDatabase) -> Option<Self::AST> {
+        let root = db.parse_or_expand(self.file)?;
+        Some(self.expr.to_node(&root))
     }
 }
 
