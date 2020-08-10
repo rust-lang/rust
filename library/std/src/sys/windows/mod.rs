@@ -281,7 +281,11 @@ macro_rules! impl_is_zero {
 impl_is_zero! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
 
 pub fn cvt<I: IsZero>(i: I) -> crate::io::Result<I> {
-    if i.is_zero() { Err(crate::io::Error::last_os_error()) } else { Ok(i) }
+    if i.is_zero() {
+        Err(crate::io::Error::last_os_error())
+    } else {
+        Ok(i)
+    }
 }
 
 pub fn dur2timeout(dur: Duration) -> c::DWORD {
@@ -300,14 +304,10 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
         .unwrap_or(c::INFINITE)
 }
 
-// On Windows, use the processor-specific __fastfail mechanism.  In Windows 8
-// and later, this will terminate the process immediately without running any
-// in-process exception handlers.  In earlier versions of Windows, this
-// sequence of instructions will be treated as an access violation,
-// terminating the process but without necessarily bypassing all exception
-// handlers.
-//
-// https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
+/// Use `__fastfail` to abort the process
+///
+/// This is the same implementation as in libpanic_abort's `__rust_start_panic`. See
+/// that function for more information on `__fastfail`
 #[allow(unreachable_code)]
 pub fn abort_internal() -> ! {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
