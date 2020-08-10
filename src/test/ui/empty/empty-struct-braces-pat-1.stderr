@@ -13,8 +13,10 @@ error[E0532]: expected unit struct, unit variant or constant, found struct varia
 LL |         XE::XEmpty3 => ()
    |         ^^^^^^^^^^^
    | 
-  ::: $DIR/auxiliary/empty-struct.rs:7:5
+  ::: $DIR/auxiliary/empty-struct.rs:6:5
    |
+LL |     XEmpty3 {},
+   |     ------- `XE::XEmpty3` defined here
 LL |     XEmpty4,
    |     ------- similarly named unit variant `XEmpty4` defined here
    |

@@ -38,6 +38,8 @@ LL |         XE::XEmpty5 => (),
    |
 LL |     XEmpty4,
    |     ------- similarly named unit variant `XEmpty4` defined here
+LL |     XEmpty5(),
+   |     --------- `XE::XEmpty5` defined here
 
 error: aborting due to 4 previous errors
 

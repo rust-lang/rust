@@ -74,8 +74,10 @@ error[E0423]: expected value, found struct variant `xm7::V`
 LL |     check(xm7::V);
    |           ^^^^^^
    | 
-  ::: $DIR/auxiliary/namespace-mix.rs:7:9
+  ::: $DIR/auxiliary/namespace-mix.rs:6:9
    |
+LL |         V {},
+   |         - `xm7::V` defined here
 LL |         TV(),
    |         ---- similarly named tuple variant `TV` defined here
    |
