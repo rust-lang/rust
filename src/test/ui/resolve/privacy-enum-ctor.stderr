@@ -16,9 +16,6 @@ LL |         m::Z::Unit;
 error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
    |
-LL |     fn f() {
-   |     ------ similarly named function `f` defined here
-...
 LL |         Z;
    |         ^
    |
@@ -30,10 +27,6 @@ LL |         m::Z::Struct;
    |         ^^^^^^^^^^^^
 LL |         m::Z::Unit;
    |         ^^^^^^^^^^
-help: a function with a similar name exists
-   |
-LL |         f;
-   |         ^
 
 error[E0423]: expected value, found struct variant `Z::Struct`
   --> $DIR/privacy-enum-ctor.rs:29:20
