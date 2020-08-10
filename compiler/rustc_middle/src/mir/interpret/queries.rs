@@ -69,9 +69,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // improve caching of queries.
         let inputs = self.erase_regions(&param_env.and(cid));
         if let Some(span) = span {
-            self.at(span).const_eval_validated(inputs)
+            self.at(span).const_eval_for_ty(inputs)
         } else {
-            self.const_eval_validated(inputs)
+            self.const_eval_for_ty(inputs)
         }
     }
 
@@ -94,7 +94,7 @@ impl<'tcx> TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Result<&'tcx mir::Allocation, ErrorHandled> {
         trace!("eval_to_allocation: Need to compute {:?}", gid);
-        let raw_const = self.const_eval_raw(param_env.and(gid))?;
+        let raw_const = self.const_eval(param_env.and(gid))?;
         Ok(self.global_alloc(raw_const.alloc_id).unwrap_memory())
     }
 }

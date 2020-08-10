@@ -200,21 +200,21 @@ fn turn_into_const<'tcx>(
     );
     assert!(
         !is_static || cid.promoted.is_some(),
-        "the const eval query should not be used for statics, use `const_eval_raw` instead"
+        "the `const_eval_for_ty` query should not be used for statics, use `const_eval` instead"
     );
     // Turn this into a proper constant.
     op_to_const(&ecx, mplace.into())
 }
 
-pub fn const_eval_validated_provider<'tcx>(
+pub fn const_eval_for_ty_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::ConstEvalResult<'tcx> {
-    // see comment in const_eval_raw_provider for what we're doing here
+    // see comment in const_eval_provider for what we're doing here
     if key.param_env.reveal() == Reveal::All {
         let mut key = key;
         key.param_env = key.param_env.with_user_facing();
-        match tcx.const_eval_validated(key) {
+        match tcx.const_eval_for_ty(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
             // deduplicate calls
@@ -237,10 +237,10 @@ pub fn const_eval_validated_provider<'tcx>(
         });
     }
 
-    tcx.const_eval_raw(key).map(|val| turn_into_const(tcx, val, key))
+    tcx.const_eval(key).map(|val| turn_into_const(tcx, val, key))
 }
 
-pub fn const_eval_raw_provider<'tcx>(
+pub fn const_eval_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::ConstEvalRawResult<'tcx> {
@@ -255,7 +255,7 @@ pub fn const_eval_raw_provider<'tcx>(
     if key.param_env.reveal() == Reveal::All {
         let mut key = key;
         key.param_env = key.param_env.with_user_facing();
-        match tcx.const_eval_raw(key) {
+        match tcx.const_eval(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
             // deduplicate calls
