@@ -804,68 +804,51 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("move_spans: target_temp = {:?}", target_temp);
 
         if let Some(Terminator {
-            kind: TerminatorKind::Call { func, args, fn_span, from_hir_call, .. },
-            ..
+            kind: TerminatorKind::Call { fn_span, from_hir_call, .. }, ..
         }) = &self.body[location.block].terminator
         {
-            let mut method_did = None;
-            if let Operand::Constant(box Constant { literal: ty::Const { ty, .. }, .. }) = func {
-                if let ty::FnDef(def_id, _) = *ty.kind() {
-                    debug!("move_spans: fn = {:?}", def_id);
-                    if let Some(ty::AssocItem { fn_has_self_parameter, .. }) =
-                        self.infcx.tcx.opt_associated_item(def_id)
-                    {
-                        if *fn_has_self_parameter {
-                            method_did = Some(def_id);
-                        }
-                    }
-                }
-            }
+            let method_did = if let Some(method_did) =
+                crate::util::find_self_call(self.infcx.tcx, &self.body, target_temp, location.block)
+            {
+                method_did
+            } else {
+                return normal_ret;
+            };
 
             let tcx = self.infcx.tcx;
-            let method_did = if let Some(did) = method_did { did } else { return normal_ret };
 
-            if let [Operand::Move(self_place), ..] = **args {
-                if self_place.as_local() == Some(target_temp) {
-                    let parent = tcx.parent(method_did);
-                    let is_fn_once = parent == tcx.lang_items().fn_once_trait();
-                    let is_operator = !from_hir_call
-                        && parent.map_or(false, |p| {
-                            tcx.lang_items().group(LangItemGroup::Op).contains(&p)
-                        });
-                    let fn_call_span = *fn_span;
+            let parent = tcx.parent(method_did);
+            let is_fn_once = parent == tcx.lang_items().fn_once_trait();
+            let is_operator = !from_hir_call
+                && parent.map_or(false, |p| tcx.lang_items().group(LangItemGroup::Op).contains(&p));
+            let fn_call_span = *fn_span;
 
-                    let self_arg = tcx.fn_arg_names(method_did)[0];
+            let self_arg = tcx.fn_arg_names(method_did)[0];
 
-                    let kind = if is_fn_once {
-                        FnSelfUseKind::FnOnceCall
-                    } else if is_operator {
-                        FnSelfUseKind::Operator { self_arg }
-                    } else {
-                        debug!(
-                            "move_spans: method_did={:?}, fn_call_span={:?}",
-                            method_did, fn_call_span
-                        );
-                        let implicit_into_iter = matches!(
-                            fn_call_span.desugaring_kind(),
-                            Some(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
-                        );
-                        FnSelfUseKind::Normal { self_arg, implicit_into_iter }
-                    };
+            let kind = if is_fn_once {
+                FnSelfUseKind::FnOnceCall
+            } else if is_operator {
+                FnSelfUseKind::Operator { self_arg }
+            } else {
+                debug!("move_spans: method_did={:?}, fn_call_span={:?}", method_did, fn_call_span);
+                let implicit_into_iter = matches!(
+                    fn_call_span.desugaring_kind(),
+                    Some(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
+                );
+                FnSelfUseKind::Normal { self_arg, implicit_into_iter }
+            };
 
-                    return FnSelfUse {
-                        var_span: stmt.source_info.span,
-                        fn_call_span,
-                        fn_span: self
-                            .infcx
-                            .tcx
-                            .sess
-                            .source_map()
-                            .guess_head_span(self.infcx.tcx.def_span(method_did)),
-                        kind,
-                    };
-                }
-            }
+            return FnSelfUse {
+                var_span: stmt.source_info.span,
+                fn_call_span,
+                fn_span: self
+                    .infcx
+                    .tcx
+                    .sess
+                    .source_map()
+                    .guess_head_span(self.infcx.tcx.def_span(method_did)),
+                kind,
+            };
         }
         normal_ret
     }

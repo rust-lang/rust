@@ -16,6 +16,7 @@ use std::borrow::Cow;
 pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;
 pub mod add_retag;
+pub mod check_const_item_mutation;
 pub mod check_consts;
 pub mod check_packed_ref;
 pub mod check_unsafety;
@@ -307,6 +308,7 @@ fn mir_const<'tcx>(
         &[&[
             // MIR-level lints.
             &check_packed_ref::CheckPackedRef,
+            &check_const_item_mutation::CheckConstItemMutation,
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::new("initial"),
             &rustc_peek::SanityCheck,

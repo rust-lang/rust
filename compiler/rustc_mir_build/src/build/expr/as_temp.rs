@@ -76,6 +76,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     local_decl.local_info =
                         Some(box LocalInfo::StaticRef { def_id, is_thread_local: true });
                 }
+                ExprKind::Literal { const_id: Some(def_id), .. } => {
+                    local_decl.local_info = Some(box LocalInfo::ConstRef { def_id });
+                }
                 _ => {}
             }
             this.local_decls.push(local_decl)
