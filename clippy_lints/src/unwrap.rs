@@ -181,8 +181,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                             self.cx,
                             UNNECESSARY_UNWRAP,
                             expr.span,
-                            &format!("you checked before that `{}()` cannot fail. \
-                            Instead of checking and unwrapping, it's better to use `if let` or `match`",
+                            &format!("you checked before that `{}()` cannot fail, \
+                            instead of checking and unwrapping, it's better to use `if let` or `match`",
                             method_name.ident.name),
                             |diag| { diag.span_label(unwrappable.check.span, "the check is happening here"); },
                         );
