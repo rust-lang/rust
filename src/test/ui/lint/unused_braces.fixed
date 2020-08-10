@@ -23,18 +23,18 @@ fn main() {
         }
     }
 
-    if  true  {
+    if true {
         //~^ WARN unnecessary braces
     }
 
-    while  false  {
+    while false {
         //~^ WARN unnecessary braces
     }
 
-    let _: [u8;  3 ];
+    let _: [u8; 3];
     //~^ WARN unnecessary braces
 
-    consume( 7 );
+    consume(7);
     //~^ WARN unnecessary braces
 
     // Do not emit lint for multiline blocks.
