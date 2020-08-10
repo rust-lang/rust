@@ -188,26 +188,22 @@ fn turn_into_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: RawConst<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc_middle::mir::interpret::ConstEvalResult<'tcx> {
+) -> ConstValue<'tcx> {
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
     let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env, is_static);
 
-    let mplace = ecx.raw_const_to_mplace(constant).map_err(|error| {
-        // FIXME: Can the above ever error and not be a compiler bug or can we just ICE here?
-        let err = ConstEvalErr::new(&ecx, error, None);
-        err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
-            diag.note(note_on_undefined_behavior_error());
-            diag.emit();
-        })
-    })?;
+    let mplace = ecx.raw_const_to_mplace(constant).expect(
+        "can only fail if layout computation failed, \
+        which should have given a good error before ever invoking this function",
+    );
     assert!(
         !is_static || cid.promoted.is_some(),
         "the const eval query should not be used for statics, use `const_eval_raw` instead"
     );
     // Turn this into a proper constant.
-    Ok(op_to_const(&ecx, mplace.into()))
+    op_to_const(&ecx, mplace.into())
 }
 
 pub fn const_eval_validated_provider<'tcx>(
@@ -241,7 +237,7 @@ pub fn const_eval_validated_provider<'tcx>(
         });
     }
 
-    tcx.const_eval_raw(key).and_then(|val| turn_into_const(tcx, val, key))
+    tcx.const_eval_raw(key).map(|val| turn_into_const(tcx, val, key))
 }
 
 pub fn const_eval_raw_provider<'tcx>(
