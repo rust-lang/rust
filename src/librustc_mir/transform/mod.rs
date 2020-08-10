@@ -29,6 +29,7 @@ pub mod generator;
 pub mod inline;
 pub mod instcombine;
 pub mod instrument_coverage;
+pub mod match_branches;
 pub mod no_landing_pads;
 pub mod nrvo;
 pub mod promote_consts;
