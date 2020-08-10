@@ -1885,13 +1885,9 @@ impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
 impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<K, V> fmt::Debug for ValuesMut<'_, K, V>
-where
-    K: fmt::Debug,
-    V: fmt::Debug,
-{
+impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.inner.iter()).finish()
+        f.debug_list().entries(self.inner.iter().map(|(_, val)| val)).finish()
     }
 }
 
