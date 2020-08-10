@@ -50,7 +50,7 @@ declare_clippy_lint! {
     /// fn func<T: Clone + Default>(arg: T) {}
     /// ```
     /// or
-    ///  ///
+    ///
     /// ```rust
     /// fn func<T>(arg: T) where T: Clone + Default {}
     /// ```

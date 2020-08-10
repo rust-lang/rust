@@ -7,12 +7,12 @@ pub struct One;
 struct Wither;
 
 trait TraitsToo {
-    fn len(self: &Self) -> isize;
+    fn len(&self) -> isize;
     // No error; `len` is private; see issue #1085.
 }
 
 impl TraitsToo for One {
-    fn len(self: &Self) -> isize {
+    fn len(&self) -> isize {
         0
     }
 }
@@ -20,11 +20,11 @@ impl TraitsToo for One {
 pub struct HasIsEmpty;
 
 impl HasIsEmpty {
-    pub fn len(self: &Self) -> isize {
+    pub fn len(&self) -> isize {
         1
     }
 
-    fn is_empty(self: &Self) -> bool {
+    fn is_empty(&self) -> bool {
         false
     }
 }
@@ -32,26 +32,26 @@ impl HasIsEmpty {
 pub struct HasWrongIsEmpty;
 
 impl HasWrongIsEmpty {
-    pub fn len(self: &Self) -> isize {
+    pub fn len(&self) -> isize {
         1
     }
 
-    pub fn is_empty(self: &Self, x: u32) -> bool {
+    pub fn is_empty(&self, x: u32) -> bool {
         false
     }
 }
 
 pub trait WithIsEmpty {
-    fn len(self: &Self) -> isize;
-    fn is_empty(self: &Self) -> bool;
+    fn len(&self) -> isize;
+    fn is_empty(&self) -> bool;
 }
 
 impl WithIsEmpty for Wither {
-    fn len(self: &Self) -> isize {
+    fn len(&self) -> isize {
         1
     }
 
-    fn is_empty(self: &Self) -> bool {
+    fn is_empty(&self) -> bool {
         false
     }
 }

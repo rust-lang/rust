@@ -1460,6 +1460,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "bytecount",
     },
     Lint {
+        name: "needless_arbitrary_self_type",
+        group: "complexity",
+        desc: "type of `self` parameter is already by default `Self`",
+        deprecation: None,
+        module: "needless_arbitrary_self_type",
+    },
+    Lint {
         name: "needless_bool",
         group: "complexity",
         desc: "if-statements with plain booleans in the then- and else-clause, e.g., `if p { true } else { false }`",
@@ -1934,6 +1941,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "consecutive `if`s with the same function call",
         deprecation: None,
         module: "copies",
+    },
+    Lint {
+        name: "same_item_push",
+        group: "style",
+        desc: "the same item is pushed inside of a for loop",
+        deprecation: None,
+        module: "loops",
     },
     Lint {
         name: "search_is_some",
