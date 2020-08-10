@@ -17,6 +17,7 @@
 #![feature(panic_runtime)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
+#![feature(llvm_asm)]
 
 use core::any::Any;
 
@@ -54,6 +55,19 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
                     pub fn __rust_abort() -> !;
                 }
                 __rust_abort();
+            }
+        } else if #[cfg(all(windows, any(target_arch = "x86", target_arch = "x86_64")))] {
+            // On Windows, use the processor-specific __fastfail mechanism.  In Windows 8
+            // and later, this will terminate the process immediately without running any
+            // in-process exception handlers.  In earlier versions of Windows, this
+            // sequence of instructions will be treated as an access violation,
+            // terminating the process but without necessarily bypassing all exception
+            // handlers.
+            //
+            // https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
+            unsafe fn abort() -> ! {
+                llvm_asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+                core::intrinsics::unreachable();
             }
         } else {
             unsafe fn abort() -> ! {
