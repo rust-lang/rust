@@ -6,13 +6,13 @@ document.
 
 ## Unreleased / In Rust Nightly
 
-[c2c07fa...master](https://github.com/rust-lang/rust-clippy/compare/7ea7cd1...master)
+[c2c07fa...master](https://github.com/rust-lang/rust-clippy/compare/c2c07fa...master)
 
 ## Rust 1.46
 
 Current beta, release 2020-08-27
 
-[7ea7cd1...c2c07fa](https://github.com/rust-lang/rust-clippy/compare/7ea7cd1...master)
+[7ea7cd1...c2c07fa](https://github.com/rust-lang/rust-clippy/compare/7ea7cd1...c2c07fa)
 
 ### New lints
 
