@@ -17,4 +17,7 @@ fn returns_closure_of_array_3() -> impl Fn([i32; 3]) {
     |_| {}
 }
 
-fn main() {}
+fn main() {
+    takes_closure_of_array_3(returns_closure_of_array_3());
+    takes_closure_of_array_3_apit(returns_closure_of_array_3());
+}

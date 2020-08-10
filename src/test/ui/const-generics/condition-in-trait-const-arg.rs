@@ -1,4 +1,4 @@
-// Checks whether conditions in traits can be evaluated.
+// Checks that `impl Trait<{anon_const}> for Type` evaluates successfully.
 // run-pass
 // revisions: full min
 

@@ -1,4 +1,4 @@
-// Check `const fn` with const param is alright
+// Checks that `const fn` with const params can be used.
 // run-pass
 // revisions: full min
 

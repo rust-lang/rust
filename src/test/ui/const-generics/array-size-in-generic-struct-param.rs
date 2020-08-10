@@ -1,4 +1,4 @@
-// Tests that array sizes that depend on const-params does not yet work.
+// Tests that array sizes that depend on const-params are checked using `ConstEvaluatable`.
 // revisions: full min
 
 #![cfg_attr(full, feature(const_generics))]

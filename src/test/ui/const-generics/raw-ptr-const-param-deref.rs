@@ -1,4 +1,4 @@
-// Assert that cannot use const generics as ptrs and cannot deref them.
+// Checks that pointers must not be used as the type of const params.
 // revisions: full min
 
 #![cfg_attr(full, feature(const_generics))]

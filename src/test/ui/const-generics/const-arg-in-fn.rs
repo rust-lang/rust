@@ -1,4 +1,3 @@
-// Check that const args in functions can be used.
 // run-pass
 // revisions: full min
 
