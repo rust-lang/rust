@@ -590,16 +590,16 @@ fn main() {
     #[test]
     fn hover_const_static() {
         check(
-            r#"const foo<|>: u32 = 0;"#,
+            r#"const foo<|>: u32 = 123;"#,
             expect![[r#"
                 *foo*
                 ```rust
-                const foo: u32
+                const foo: u32 = 123
                 ```
             "#]],
         );
         check(
-            r#"static foo<|>: u32 = 0;"#,
+            r#"static foo<|>: u32 = 456;"#,
             expect![[r#"
                 *foo*
                 ```rust
@@ -834,7 +834,7 @@ fn main() {
             expect![[r#"
                 *C*
                 ```rust
-                const C: u32
+                const C: u32 = 1
                 ```
             "#]],
         )

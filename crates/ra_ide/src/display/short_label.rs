@@ -61,7 +61,15 @@ impl ShortLabel for ast::TypeAlias {
 
 impl ShortLabel for ast::Const {
     fn short_label(&self) -> Option<String> {
-        short_label_from_ty(self, self.ty(), "const ")
+        match short_label_from_ty(self, self.ty(), "const ") {
+            Some(buf) => {
+                let mut new_buf = buf;
+                let body = self.body().unwrap();
+                format_to!(new_buf, " = {}", body.syntax());
+                Some(new_buf)
+            }
+            None => None,
+        }
     }
 }
 
