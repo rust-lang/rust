@@ -13,7 +13,6 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{MultiSpan, Span, Symbol};
 
-use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::str;
 
@@ -64,7 +63,7 @@ impl GatedSpans {
 #[derive(Default)]
 pub struct SymbolGallery {
     /// All symbols occurred and their first occurrence span.
-    pub symbols: Lock<BTreeMap<Symbol, Span>>,
+    pub symbols: Lock<FxHashMap<Symbol, Span>>,
 }
 
 impl SymbolGallery {
