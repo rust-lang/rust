@@ -247,6 +247,47 @@ impl<T, S> HashSet<T, S> {
         Drain { base: self.base.drain() }
     }
 
+    /// Creates an iterator which uses a closure to determine if a value should be removed.
+    ///
+    /// If the closure returns true, then the value is removed and yielded.
+    /// If the closure returns false, the value will remain in the list and will not be yielded
+    /// by the iterator.
+    ///
+    /// If the iterator is only partially consumed or not consumed at all, each of the remaining
+    /// values will still be subjected to the closure and removed and dropped if it returns true.
+    ///
+    /// It is unspecified how many more values will be subjected to the closure
+    /// if a panic occurs in the closure, or if a panic occurs while dropping a value, or if the
+    /// `DrainFilter` itself is leaked.
+    ///
+    /// # Examples
+    ///
+    /// Splitting a set into even and odd values, reusing the original set:
+    ///
+    /// ```
+    /// #![feature(hash_drain_filter)]
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set: HashSet<i32> = (0..8).collect();
+    /// let drained: HashSet<i32> = set.drain_filter(|v| v % 2 == 0).collect();
+    ///
+    /// let mut evens = drained.into_iter().collect::<Vec<_>>();
+    /// let mut odds = set.into_iter().collect::<Vec<_>>();
+    /// evens.sort();
+    /// odds.sort();
+    ///
+    /// assert_eq!(evens, vec![0, 2, 4, 6]);
+    /// assert_eq!(odds, vec![1, 3, 5, 7]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_drain_filter", issue = "59618")]
+    pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        DrainFilter { base: self.base.drain_filter(pred) }
+    }
+
     /// Clears the set, removing all values.
     ///
     /// # Examples
@@ -1159,6 +1200,19 @@ pub struct Drain<'a, K: 'a> {
     base: base::Drain<'a, K>,
 }
 
+/// A draining, filtering iterator over the items of a `HashSet`.
+///
+/// This `struct` is created by the [`drain_filter`] method on [`HashSet`].
+///
+/// [`drain_filter`]: HashSet::drain_filter
+#[unstable(feature = "hash_drain_filter", issue = "59618")]
+pub struct DrainFilter<'a, K, F>
+where
+    F: FnMut(&K) -> bool,
+{
+    base: base::DrainFilter<'a, K, F>,
+}
+
 /// A lazy iterator producing elements in the intersection of `HashSet`s.
 ///
 /// This `struct` is created by the [`intersection`] method on [`HashSet`].
@@ -1345,6 +1399,36 @@ impl<K> FusedIterator for Drain<'_, K> {}
 impl<K: fmt::Debug> fmt::Debug for Drain<'_, K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.base, f)
+    }
+}
+
+#[unstable(feature = "hash_drain_filter", issue = "59618")]
+impl<K, F> Iterator for DrainFilter<'_, K, F>
+where
+    F: FnMut(&K) -> bool,
+{
+    type Item = K;
+
+    #[inline]
+    fn next(&mut self) -> Option<K> {
+        self.base.next()
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.base.size_hint()
+    }
+}
+
+#[unstable(feature = "hash_drain_filter", issue = "59618")]
+impl<K, F> FusedIterator for DrainFilter<'_, K, F> where F: FnMut(&K) -> bool {}
+
+#[unstable(feature = "hash_drain_filter", issue = "59618")]
+impl<'a, K, F> fmt::Debug for DrainFilter<'a, K, F>
+where
+    F: FnMut(&K) -> bool,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("DrainFilter { .. }")
     }
 }
 
