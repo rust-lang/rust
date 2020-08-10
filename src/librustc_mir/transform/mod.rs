@@ -39,6 +39,7 @@ pub mod required_consts;
 pub mod rustc_peek;
 pub mod simplify;
 pub mod simplify_branches;
+pub mod simplify_comparison_integral;
 pub mod simplify_try;
 pub mod uninhabited_enum_branching;
 pub mod unreachable_prop;
@@ -456,6 +457,7 @@ fn run_optimization_passes<'tcx>(
         &match_branches::MatchBranchSimplification,
         &const_prop::ConstProp,
         &simplify_branches::SimplifyBranches::new("after-const-prop"),
+        &simplify_comparison_integral::SimplifyComparisonIntegral,
         &simplify_try::SimplifyArmIdentity,
         &simplify_try::SimplifyBranchSame,
         &copy_prop::CopyPropagation,

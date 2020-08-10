@@ -1430,6 +1430,15 @@ pub enum StatementKind<'tcx> {
     Nop,
 }
 
+impl<'tcx> StatementKind<'tcx> {
+    pub fn as_assign_mut(&mut self) -> Option<&mut Box<(Place<'tcx>, Rvalue<'tcx>)>> {
+        match self {
+            StatementKind::Assign(x) => Some(x),
+            _ => None,
+        }
+    }
+}
+
 /// Describes what kind of retag is to be performed.
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, HashStable)]
 pub enum RetagKind {
@@ -1841,6 +1850,10 @@ impl<'tcx> Operand<'tcx> {
             user_ty: None,
             literal: ty::Const::zero_sized(tcx, ty),
         })
+    }
+
+    pub fn is_move(&self) -> bool {
+        matches!(self, Operand::Move(..))
     }
 
     /// Convenience helper to make a literal-like constant from a given scalar value.
