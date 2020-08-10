@@ -2031,9 +2031,13 @@ impl Path {
     /// assert!(path.starts_with("/etc"));
     /// assert!(path.starts_with("/etc/"));
     /// assert!(path.starts_with("/etc/passwd"));
-    /// assert!(path.starts_with("/etc/passwd/"));
+    /// assert!(path.starts_with("/etc/passwd/")); // extra slash is okay
+    /// assert!(path.starts_with("/etc/passwd///")); // multiple extra slashes are okay
     ///
     /// assert!(!path.starts_with("/e"));
+    /// assert!(!path.starts_with("/etc/passwd.txt"));
+    ///
+    /// assert!(!Path::new("/etc/foo.rs").starts_with("/etc/foo"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn starts_with<P: AsRef<Path>>(&self, base: P) -> bool {
