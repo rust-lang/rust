@@ -40,7 +40,6 @@
 /// provide a reference to related type `T`, it is often better to use
 /// [`AsRef<T>`] as more types can safely implement it.
 ///
-/// [`AsRef<T>`]: crate::convert::AsRef
 /// [`BorrowMut<T>`]: BorrowMut
 /// [`Box<T>`]: ../../std/boxed/struct.Box.html
 /// [`Mutex<T>`]: ../../std/sync/struct.Mutex.html
