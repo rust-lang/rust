@@ -294,8 +294,8 @@ pub fn const_eval_raw_provider<'tcx>(
     );
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
-    res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body))
-        .map_err(|error| {
+    match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
+        Err(error) => {
             let err = ConstEvalErr::new(&ecx, error, None);
             // errors in statics are always emitted as fatal errors
             if is_static {
@@ -317,7 +317,7 @@ pub fn const_eval_raw_provider<'tcx>(
                     );
                 }
 
-                v
+                Err(v)
             } else if let Some(def) = def.as_local() {
                 // constant defined in this crate, we can figure out a lint level!
                 match tcx.def_kind(def.did.to_def_id()) {
@@ -331,12 +331,12 @@ pub fn const_eval_raw_provider<'tcx>(
                     // compatibility hazard
                     DefKind::Const | DefKind::AssocConst => {
                         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-                        err.report_as_lint(
+                        Err(err.report_as_lint(
                             tcx.at(tcx.def_span(def.did)),
                             "any use of this value will cause an error",
                             hir_id,
                             Some(err.span),
-                        )
+                        ))
                     }
                     // promoting runtime code is only allowed to error if it references broken
                     // constants any other kind of error will be reported to the user as a
@@ -345,34 +345,34 @@ pub fn const_eval_raw_provider<'tcx>(
                         if let Some(p) = cid.promoted {
                             let span = tcx.promoted_mir_of_opt_const_arg(def.to_global())[p].span;
                             if let err_inval!(ReferencedConstant) = err.error {
-                                err.report_as_error(
+                                Err(err.report_as_error(
                                     tcx.at(span),
                                     "evaluation of constant expression failed",
-                                )
+                                ))
                             } else {
-                                err.report_as_lint(
+                                Err(err.report_as_lint(
                                     tcx.at(span),
                                     "reaching this expression at runtime will panic or abort",
                                     tcx.hir().local_def_id_to_hir_id(def.did),
                                     Some(err.span),
-                                )
+                                ))
                             }
                         // anything else (array lengths, enum initializers, constant patterns) are
                         // reported as hard errors
                         } else {
-                            err.report_as_error(
+                            Err(err.report_as_error(
                                 ecx.tcx.at(ecx.cur_span()),
                                 "evaluation of constant value failed",
-                            )
+                            ))
                         }
                     }
                 }
             } else {
                 // use of broken constant from other crate
-                err.report_as_error(ecx.tcx.at(ecx.cur_span()), "could not evaluate constant")
+                Err(err.report_as_error(ecx.tcx.at(ecx.cur_span()), "could not evaluate constant"))
             }
-        })
-        .and_then(|mplace| {
+        }
+        Ok(mplace) => {
             // Since evaluation had no errors, valiate the resulting constant:
             let validation = try {
                 // FIXME do not validate promoteds until a decision on
@@ -404,5 +404,6 @@ pub fn const_eval_raw_provider<'tcx>(
                 // Convert to raw constant
                 Ok(RawConst { alloc_id: mplace.ptr.assert_ptr().alloc_id, ty: mplace.layout.ty })
             }
-        })
+        }
+    }
 }
