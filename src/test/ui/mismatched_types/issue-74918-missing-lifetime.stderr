@@ -1,0 +1,30 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-74918-missing-lifetime.rs:9:31
+   |
+LL |     type Item = IteratorChunk<T, S>;
+   |                               ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL |     type Item<'a> = IteratorChunk<<'a>T, S>;
+   |              ^^^^                 ^^^^
+
+error: `impl` item signature doesn't match `trait` item signature
+  --> $DIR/issue-74918-missing-lifetime.rs:11:5
+   |
+LL |     fn next(&mut self) -> Option<IteratorChunk<T, S>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&mut ChunkingIterator<T, S>) -> std::option::Option<IteratorChunk<'_, T, S>>`
+   | 
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |     fn next(&mut self) -> Option<Self::Item>;
+   |     ----------------------------------------- expected `fn(&mut ChunkingIterator<T, S>) -> std::option::Option<IteratorChunk<'static, _, _>>`
+   |
+   = note: expected `fn(&mut ChunkingIterator<T, S>) -> std::option::Option<IteratorChunk<'static, _, _>>`
+              found `fn(&mut ChunkingIterator<T, S>) -> std::option::Option<IteratorChunk<'_, _, _>>`
+   = help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
+   = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.
