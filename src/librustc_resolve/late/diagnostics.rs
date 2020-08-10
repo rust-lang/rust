@@ -12,7 +12,7 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder}
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_session::config::nightly_options;
 use rustc_span::hygiene::MacroKind;
@@ -88,6 +88,18 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
 }
 
 impl<'a> LateResolutionVisitor<'a, '_, '_> {
+    fn def_span(&self, def_id: DefId) -> Option<Span> {
+        match def_id.krate {
+            LOCAL_CRATE => self.r.opt_span(def_id),
+            _ => Some(
+                self.r
+                    .session
+                    .source_map()
+                    .guess_head_span(self.r.cstore().get_span_untracked(def_id, self.r.session)),
+            ),
+        }
+    }
+
     /// Handles error reporting for `smart_resolve_path_fragment` function.
     /// Creates base error and amends it with one short label and possibly some longer helps/notes.
     pub(crate) fn smart_resolve_report_errors(
@@ -339,8 +351,6 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
 
         // Try Levenshtein algorithm.
         let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected, span);
-        let levenshtein_worked = self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
-
         // Try context-dependent help if relaxed lookup didn't work.
         if let Some(res) = res {
             if self.smart_resolve_context_dependent_help(
@@ -351,14 +361,18 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 &path_str,
                 &fallback_label,
             ) {
+                // We do this to avoid losing a secondary span when we override the main error span.
+                self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
                 return (err, candidates);
             }
         }
 
-        // Fallback label.
-        if !levenshtein_worked {
+        if !self.type_ascription_suggestion(&mut err, base_span)
+            && !self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span)
+        {
+            // Fallback label.
             err.span_label(base_span, fallback_label);
-            self.type_ascription_suggestion(&mut err, base_span);
+
             match self.diagnostic_metadata.current_let_binding {
                 Some((pat_sp, Some(ty_sp), None)) if ty_sp.contains(base_span) && could_be_expr => {
                     err.span_suggestion_short(
@@ -518,6 +532,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     }),
                 ) if followed_by_brace => {
                     if let Some(sp) = closing_brace {
+                        err.span_label(span, fallback_label);
                         err.multipart_suggestion(
                             "surround the struct literal with parentheses",
                             vec![
@@ -550,7 +565,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         }
                         _ => span,
                     };
-                    if let Some(span) = self.r.opt_span(def_id) {
+                    if let Some(span) = self.def_span(def_id) {
                         err.span_label(span, &format!("`{}` defined here", path_str));
                     }
                     let (tail, descr, applicability) = match source {
@@ -581,12 +596,15 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         applicability,
                     );
                 }
-                _ => {}
+                _ => {
+                    err.span_label(span, fallback_label);
+                }
             }
         };
 
         match (res, source) {
             (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
+                err.span_label(span, fallback_label);
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
                     "use `!` to invoke the macro",
@@ -602,7 +620,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 if nightly_options::is_nightly_build() {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
                                `type` alias";
-                    if let Some(span) = self.r.opt_span(def_id) {
+                    if let Some(span) = self.def_span(def_id) {
                         err.span_help(span, msg);
                     } else {
                         err.help(msg);
@@ -680,7 +698,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 bad_struct_syntax_suggestion(def_id);
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Fn), def_id), _) if ns == ValueNS => {
-                if let Some(span) = self.r.opt_span(def_id) {
+                if let Some(span) = self.def_span(def_id) {
                     err.span_label(span, &format!("`{}` defined here", path_str));
                 }
                 err.span_label(span, format!("did you mean `{}( /* fields */ )`?", path_str));
@@ -869,7 +887,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         start.to(sm.next_point(start))
     }
 
-    fn type_ascription_suggestion(&self, err: &mut DiagnosticBuilder<'_>, base_span: Span) {
+    fn type_ascription_suggestion(&self, err: &mut DiagnosticBuilder<'_>, base_span: Span) -> bool {
         let sm = self.r.session.source_map();
         let base_snippet = sm.span_to_snippet(base_span);
         if let Some(&sp) = self.diagnostic_metadata.current_type_ascription.last() {
@@ -939,9 +957,11 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                             "expecting a type here because of type ascription",
                         );
                     }
+                    return show_label;
                 }
             }
         }
+        false
     }
 
     fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {

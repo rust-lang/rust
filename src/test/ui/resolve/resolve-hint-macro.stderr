@@ -2,7 +2,7 @@ error[E0423]: expected function, found macro `assert`
   --> $DIR/resolve-hint-macro.rs:2:5
    |
 LL |     assert(true);
-   |     ^^^^^^
+   |     ^^^^^^ not a function
    |
 help: use `!` to invoke the macro
    |
