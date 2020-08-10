@@ -53,6 +53,9 @@ rustup-toolchain-install-master -f -n master -c rustc-dev -c llvm-tools
 rustup override set master
 ```
 
+_Note:_ Sometimes you may get compiler errors when building Clippy, even if you
+didn't change anything. Normally those will be fixed by a maintainer in a few hours. 
+
 ## Building and Testing
 
 Once the `master` toolchain is installed, you can build and test Clippy like

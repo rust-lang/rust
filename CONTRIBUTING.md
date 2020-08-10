@@ -28,11 +28,14 @@ All contributors are expected to follow the [Rust Code of Conduct].
 
 ## Getting started
 
-High level approach:
+**Note: If this is your first time contributing to Clippy, you should
+first read the [Basics docs](doc/basics.md).**
+
+### High level approach
 
 1. Find something to fix/improve
 2. Change code (likely some file in `clippy_lints/src/`)
-3. Follow the instructions in the [Basics docs](doc/basics.md) such as running the `setup-toolchain.sh` script
+3. Follow the instructions in the [Basics docs](doc/basics.md) to get set up
 4. Run `cargo test` in the root directory and wiggle code until it passes
 5. Open a PR (also can be done after 2. if you run into problems)
 
