@@ -553,11 +553,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Error(_) => throw_inval!(TypeckError(ErrorReported)),
             ty::ConstKind::Unevaluated(def, substs, promoted) => {
                 let instance = self.resolve(def.did, substs)?;
-                // We use `const_eval` here and `const_eval_raw` elsewhere in mir interpretation.
-                // The reason we use `const_eval` here is that there can never be a `ty::ConstKind`
-                // that directly mentions the initializer of a static. Statics are always encoded
-                // as constants with vaule `&STATIC`.
-                return Ok(self.const_eval(GlobalId { instance, promoted }, val.ty)?);
+                return Ok(self.const_eval(GlobalId { instance, promoted })?.into());
             }
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)
