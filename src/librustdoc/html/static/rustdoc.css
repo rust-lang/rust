@@ -674,7 +674,7 @@ a {
 }
 .search-container > div {
 	display: inline-flex;
-	width: calc(100% - 34px);
+	width: calc(100% - 63px);
 }
 #crate-search {
 	margin-top: 5px;
@@ -1250,14 +1250,24 @@ h4 > .notable-traits {
 	outline: none;
 }
 
-#settings-menu {
+#settings-menu, .help-button {
 	position: absolute;
-	right: 0;
 	top: 10px;
+}
+
+#settings-menu {
+	right: 0;
 	outline: none;
 }
 
-#theme-picker, #settings-menu {
+.help-button {
+	right: 30px;
+	font-family: "Fira Sans",sans-serif;
+	text-align: center;
+	font-size: 17px;
+}
+
+#theme-picker, #settings-menu, .help-button {
 	padding: 4px;
 	width: 27px;
 	height: 29px;
