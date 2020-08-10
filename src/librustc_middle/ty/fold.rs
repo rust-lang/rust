@@ -150,12 +150,6 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
     }
 
-    /// Does this value contain closures, generators or functions such that it may require
-    /// polymorphization?
-    fn may_polymorphize(&self) -> bool {
-        self.has_type_flags(TypeFlags::MAY_POLYMORPHIZE)
-    }
-
     /// A visitor that does not recurse into types, works like `fn walk_shallow` in `Ty`.
     fn visit_tys_shallow(&self, visit: impl FnMut(Ty<'tcx>) -> bool) -> bool {
         pub struct Visitor<F>(F);
