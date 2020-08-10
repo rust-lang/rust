@@ -53,14 +53,14 @@ LL |         TV(),
 LL |     check(m7::V);
    |           ^^^^^
    |
-help: a tuple variant with a similar name exists
-   |
-LL |     check(m7::TV);
-   |               ^^
 help: use struct literal syntax instead
    |
 LL |     check(m7::V {});
    |           ^^^^^^^^
+help: a tuple variant with a similar name exists
+   |
+LL |     check(m7::TV);
+   |               ^^
 help: consider importing one of these items instead
    |
 LL | use m8::V;
@@ -79,14 +79,14 @@ LL |     check(xm7::V);
 LL |         TV(),
    |         ---- similarly named tuple variant `TV` defined here
    |
-help: a tuple variant with a similar name exists
-   |
-LL |     check(xm7::TV);
-   |                ^^
 help: use struct literal syntax instead
    |
 LL |     check(xm7::V { /* fields */ });
    |           ^^^^^^^^^^^^^^^^^^^^^^^
+help: a tuple variant with a similar name exists
+   |
+LL |     check(xm7::TV);
+   |                ^^
 help: consider importing one of these items instead
    |
 LL | use m8::V;

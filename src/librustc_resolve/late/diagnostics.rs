@@ -339,8 +339,6 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
 
         // Try Levenshtein algorithm.
         let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected, span);
-        let levenshtein_worked = self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
-
         // Try context-dependent help if relaxed lookup didn't work.
         if let Some(res) = res {
             if self.smart_resolve_context_dependent_help(
@@ -351,14 +349,18 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 &path_str,
                 &fallback_label,
             ) {
+                // We do this to avoid losing a secondary span when we override the main error span.
+                self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
                 return (err, candidates);
             }
         }
 
-        // Fallback label.
-        if !levenshtein_worked {
+        if !self.type_ascription_suggestion(&mut err, base_span)
+            && !self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span)
+        {
+            // Fallback label.
             err.span_label(base_span, fallback_label);
-            self.type_ascription_suggestion(&mut err, base_span);
+
             match self.diagnostic_metadata.current_let_binding {
                 Some((pat_sp, Some(ty_sp), None)) if ty_sp.contains(base_span) && could_be_expr => {
                     err.span_suggestion_short(
@@ -869,7 +871,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         start.to(sm.next_point(start))
     }
 
-    fn type_ascription_suggestion(&self, err: &mut DiagnosticBuilder<'_>, base_span: Span) {
+    fn type_ascription_suggestion(&self, err: &mut DiagnosticBuilder<'_>, base_span: Span) -> bool {
         let sm = self.r.session.source_map();
         let base_snippet = sm.span_to_snippet(base_span);
         if let Some(&sp) = self.diagnostic_metadata.current_type_ascription.last() {
@@ -939,9 +941,11 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                             "expecting a type here because of type ascription",
                         );
                     }
+                    return show_label;
                 }
             }
         }
+        false
     }
 
     fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {
