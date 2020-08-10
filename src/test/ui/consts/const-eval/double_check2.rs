@@ -1,12 +1,8 @@
 // check-pass
 
-// This test exhibits undefined behavior, but it is impossible to prevent generally during
-// const eval, even if it could be prevented in the cases here if we added expensive and
-// complex checks in rustc.
-// The reason it's impossible in general
-// is that we run into query cycles even *without* UB, just because we're checking for UB.
-// We do not detect it if you create references to statics
-// in ways that are UB.
+// This test exhibits undefined behavior, but it is very expensive and complex to check for such
+// UB in constants.
+// Thus, we do not detect it if you create references to statics in ways that are UB.
 
 enum Foo {
     A = 5,
