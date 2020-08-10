@@ -473,7 +473,9 @@ function defocusSearchBar() {
     }());
 
     document.addEventListener("click", function(ev) {
-        if (hasClass(ev.target, "collapse-toggle")) {
+        if (hasClass(ev.target, "help-button")) {
+            displayHelp(true, ev);
+        } else if (hasClass(ev.target, "collapse-toggle")) {
             collapseDocs(ev.target, "toggle");
         } else if (hasClass(ev.target.parentNode, "collapse-toggle")) {
             collapseDocs(ev.target.parentNode, "toggle");
