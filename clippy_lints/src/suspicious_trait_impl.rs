@@ -86,7 +86,9 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
                 cx,
                 expr,
                 binop.node,
-                &["Add", "Sub", "Mul", "Div", "Rem", "BitAnd", "BitOr", "BitXor", "Shl", "Shr"],
+                &[
+                    "Add", "Sub", "Mul", "Div", "Rem", "BitAnd", "BitOr", "BitXor", "Shl", "Shr"
+                ],
                 &[
                     hir::BinOpKind::Add,
                     hir::BinOpKind::Sub,
