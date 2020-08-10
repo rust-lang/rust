@@ -532,6 +532,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     }),
                 ) if followed_by_brace => {
                     if let Some(sp) = closing_brace {
+                        err.span_label(span, fallback_label);
                         err.multipart_suggestion(
                             "surround the struct literal with parentheses",
                             vec![
@@ -595,12 +596,15 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         applicability,
                     );
                 }
-                _ => {}
+                _ => {
+                    err.span_label(span, fallback_label);
+                }
             }
         };
 
         match (res, source) {
             (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
+                err.span_label(span, fallback_label);
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
                     "use `!` to invoke the macro",
