@@ -76,7 +76,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
                 let impls = get_auto_trait_and_blanket_impls(cx, self_ty, def_id);
                 let mut renderinfo = cx.renderinfo.borrow_mut();
 
-                new_items.extend(impls.filter(|i| renderinfo.inlined.insert(i.def_id)));
+                new_items.extend(impls.inspect(|i| { renderinfo.inlined.insert(i.def_id); }));
             }
         }
     }
