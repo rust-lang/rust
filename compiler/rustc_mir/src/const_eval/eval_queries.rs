@@ -104,6 +104,8 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
     )
 }
 
+/// This function converts an interpreter value into a constant that is meant for use in the
+/// type system.
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: OpTy<'tcx>,
