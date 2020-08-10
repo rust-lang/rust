@@ -5,7 +5,7 @@ LL |     Tuple(i32),
    |     ---------- `MyEnum::Tuple` defined here
 ...
 LL |         MyEnum::Tuple => "",
-   |         ^^^^^^^^^^^^^ did you mean `MyEnum::Tuple( /* fields */ )`?
+   |         ^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `MyEnum::Tuple(_)`
 
 error[E0532]: expected unit struct, unit variant or constant, found struct variant `MyEnum::Struct`
   --> $DIR/issue-63983.rs:10:9
