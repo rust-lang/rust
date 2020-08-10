@@ -21,7 +21,6 @@ pub fn generate_unstable_future_descriptor(mode: Mode) -> Result<()> {
         .args(&["sparse-checkout", "set", "/src/doc/unstable-book/src/"])
         .output()?;
     Command::new("git").current_dir(path.clone()).args(&["pull", "origin", "master"]).output()?;
-    //TODO: check git, and do pull
 
     let src_dir = path.join("src/doc/unstable-book/src");
     let files = WalkDir::new(src_dir.join("language-features"))
@@ -50,7 +49,6 @@ pub fn generate_unstable_future_descriptor(mode: Mode) -> Result<()> {
     let ts = quote! {
         use crate::completion::LintCompletion;
 
-        #[rustfmt::skip]
         pub const UNSTABLE_FEATURE_DESCRIPTOR:  &[LintCompletion] = &[
             #(#definitions),*
         ];
