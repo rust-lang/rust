@@ -76,10 +76,6 @@ impl TextEdit {
         self.indels.iter()
     }
 
-    pub fn into_iter(self) -> vec::IntoIter<Indel> {
-        self.indels.into_iter()
-    }
-
     pub fn apply(&self, text: &mut String) {
         match self.len() {
             0 => return,
@@ -138,6 +134,15 @@ impl TextEdit {
             res -= indel.delete.len();
         }
         Some(res)
+    }
+}
+
+impl IntoIterator for TextEdit {
+    type Item = Indel;
+    type IntoIter = vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.indels.into_iter()
     }
 }
 

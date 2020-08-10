@@ -13,18 +13,18 @@ pub struct ArenaMap<ID, V> {
 
 impl<T, V> ArenaMap<Idx<T>, V> {
     pub fn insert(&mut self, id: Idx<T>, t: V) {
-        let idx = Self::to_idx(id);
+        let idx = Self::into_idx(id);
 
         self.v.resize_with((idx + 1).max(self.v.len()), || None);
         self.v[idx] = Some(t);
     }
 
     pub fn get(&self, id: Idx<T>) -> Option<&V> {
-        self.v.get(Self::to_idx(id)).and_then(|it| it.as_ref())
+        self.v.get(Self::into_idx(id)).and_then(|it| it.as_ref())
     }
 
     pub fn get_mut(&mut self, id: Idx<T>) -> Option<&mut V> {
-        self.v.get_mut(Self::to_idx(id)).and_then(|it| it.as_mut())
+        self.v.get_mut(Self::into_idx(id)).and_then(|it| it.as_mut())
     }
 
     pub fn values(&self) -> impl Iterator<Item = &V> {
@@ -39,7 +39,7 @@ impl<T, V> ArenaMap<Idx<T>, V> {
         self.v.iter().enumerate().filter_map(|(idx, o)| Some((Self::from_idx(idx), o.as_ref()?)))
     }
 
-    fn to_idx(id: Idx<T>) -> usize {
+    fn into_idx(id: Idx<T>) -> usize {
         u32::from(id.into_raw()) as usize
     }
 
@@ -51,7 +51,7 @@ impl<T, V> ArenaMap<Idx<T>, V> {
 impl<T, V> std::ops::Index<Idx<V>> for ArenaMap<Idx<V>, T> {
     type Output = T;
     fn index(&self, id: Idx<V>) -> &T {
-        self.v[Self::to_idx(id)].as_ref().unwrap()
+        self.v[Self::into_idx(id)].as_ref().unwrap()
     }
 }
 

@@ -276,7 +276,7 @@ impl<'a> TtIter<'a> {
         Ok(tt::Subtree {
             delimiter: None,
             token_trees: vec![
-                tt::Leaf::Punct(punct.clone()).into(),
+                tt::Leaf::Punct(*punct).into(),
                 tt::Leaf::Ident(ident.clone()).into(),
             ],
         }

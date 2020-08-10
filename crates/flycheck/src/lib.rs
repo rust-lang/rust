@@ -108,7 +108,7 @@ struct FlycheckActor {
 
 enum Event {
     Restart(Restart),
-    CheckEvent(Option<cargo_metadata::Message>),
+    CheckEvent(Option<Box<cargo_metadata::Message>>),
 }
 
 impl FlycheckActor {
@@ -123,7 +123,7 @@ impl FlycheckActor {
         let check_chan = self.cargo_handle.as_ref().map(|cargo| &cargo.receiver);
         select! {
             recv(inbox) -> msg => msg.ok().map(Event::Restart),
-            recv(check_chan.unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
+            recv(check_chan.unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok().map(Box::new))),
         }
     }
     fn run(mut self, inbox: Receiver<Restart>) {
@@ -149,7 +149,7 @@ impl FlycheckActor {
                     let res = cargo_handle.join();
                     self.send(Message::Progress(Progress::DidFinish(res)));
                 }
-                Event::CheckEvent(Some(message)) => match message {
+                Event::CheckEvent(Some(message)) => match *message {
                     cargo_metadata::Message::CompilerArtifact(msg) => {
                         self.send(Message::Progress(Progress::DidCheckCrate(msg.target.name)));
                     }
