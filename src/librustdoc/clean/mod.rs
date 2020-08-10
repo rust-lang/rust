@@ -1083,25 +1083,37 @@ impl Clean<TypeKind> for hir::def::DefKind {
 
 impl Clean<Item> for hir::TraitItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
+        let local_did = cx.tcx.hir().local_def_id(self.hir_id);
         let inner = match self.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
                 AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx, e)))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                MethodItem((sig, &self.generics, body, None).clean(cx))
+                let mut m = (sig, &self.generics, body, None).clean(cx);
+                if m.header.constness == hir::Constness::Const
+                    && !is_min_const_fn(cx.tcx, local_did.to_def_id())
+                {
+                    m.header.constness = hir::Constness::NotConst;
+                }
+                MethodItem(m)
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(ref names)) => {
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                 });
                 let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
-                TyMethodItem(TyMethod { header: sig.header, decl, generics, all_types, ret_types })
+                let mut t = TyMethod { header: sig.header, decl, generics, all_types, ret_types };
+                if t.header.constness == hir::Constness::Const
+                    && !is_min_const_fn(cx.tcx, local_did.to_def_id())
+                {
+                    t.header.constness = hir::Constness::NotConst;
+                }
+                TyMethodItem(t)
             }
             hir::TraitItemKind::Type(ref bounds, ref default) => {
                 AssocTypeItem(bounds.clean(cx), default.clean(cx))
             }
         };
-        let local_did = cx.tcx.hir().local_def_id(self.hir_id);
         Item {
             name: Some(self.ident.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -1117,12 +1129,19 @@ impl Clean<Item> for hir::TraitItem<'_> {
 
 impl Clean<Item> for hir::ImplItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
+        let local_did = cx.tcx.hir().local_def_id(self.hir_id);
         let inner = match self.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 AssocConstItem(ty.clean(cx), Some(print_const_expr(cx, expr)))
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
-                MethodItem((sig, &self.generics, body, Some(self.defaultness)).clean(cx))
+                let mut m = (sig, &self.generics, body, Some(self.defaultness)).clean(cx);
+                if m.header.constness == hir::Constness::Const
+                    && !is_min_const_fn(cx.tcx, local_did.to_def_id())
+                {
+                    m.header.constness = hir::Constness::NotConst;
+                }
+                MethodItem(m)
             }
             hir::ImplItemKind::TyAlias(ref ty) => {
                 let type_ = ty.clean(cx);
@@ -1130,7 +1149,6 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 TypedefItem(Typedef { type_, generics: Generics::default(), item_type }, true)
             }
         };
-        let local_did = cx.tcx.hir().local_def_id(self.hir_id);
         Item {
             name: Some(self.ident.name.clean(cx)),
             source: self.span.clean(cx),
