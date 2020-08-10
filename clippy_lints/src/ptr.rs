@@ -55,7 +55,7 @@ declare_clippy_lint! {
     /// type of the reference.
     ///
     /// Note that if the function is part of your public interface, there may be
-    /// other crates referencing it, of which you may not be aware. Carefully 
+    /// other crates referencing it, of which you may not be aware. Carefully
     /// deprecate the function before applying the lint suggestions in this case.
     ///
     /// **Example:**
