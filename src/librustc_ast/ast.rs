@@ -35,6 +35,7 @@ use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
+use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
 use std::iter;
@@ -309,19 +310,49 @@ pub type GenericBounds = Vec<GenericBound>;
 /// Specifies the enforced ordering for generic parameters. In the future,
 /// if we wanted to relax this order, we could override `PartialEq` and
 /// `PartialOrd`, to allow the kinds to be unordered.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+#[derive(Hash, Clone, Copy)]
 pub enum ParamKindOrd {
     Lifetime,
     Type,
-    Const,
+    // `unordered` is only `true` if `sess.has_features().const_generics`
+    // is active. Specifically, if it's only `min_const_generics`, it will still require
+    // ordering consts after types.
+    Const { unordered: bool },
 }
+
+impl Ord for ParamKindOrd {
+    fn cmp(&self, other: &Self) -> Ordering {
+        use ParamKindOrd::*;
+        let to_int = |v| match v {
+            Lifetime => 0,
+            Type | Const { unordered: true } => 1,
+            // technically both consts should be ordered equally,
+            // but only one is ever encountered at a time, so this is
+            // fine.
+            Const { unordered: false } => 2,
+        };
+
+        to_int(*self).cmp(&to_int(*other))
+    }
+}
+impl PartialOrd for ParamKindOrd {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl PartialEq for ParamKindOrd {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+impl Eq for ParamKindOrd {}
 
 impl fmt::Display for ParamKindOrd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ParamKindOrd::Lifetime => "lifetime".fmt(f),
             ParamKindOrd::Type => "type".fmt(f),
-            ParamKindOrd::Const => "const".fmt(f),
+            ParamKindOrd::Const { .. } => "const".fmt(f),
         }
     }
 }

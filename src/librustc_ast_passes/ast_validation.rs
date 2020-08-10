@@ -773,13 +773,13 @@ fn validate_generic_param_order<'a>(
         err.span_suggestion(
             span,
             &format!(
-                "reorder the parameters: lifetimes, then types{}",
-                if sess.features_untracked().const_generics
-                    || sess.features_untracked().min_const_generics
-                {
-                    ", then consts"
+                "reorder the parameters: lifetimes{}",
+                if sess.features_untracked().const_generics {
+                    ", then consts and types"
+                } else if sess.features_untracked().min_const_generics {
+                    ", then consts, then types"
                 } else {
-                    ""
+                    ", then types"
                 },
             ),
             ordered_params.clone(),
@@ -1156,7 +1156,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident),
                     GenericParamKind::Const { ref ty, kw_span: _ } => {
                         let ty = pprust::ty_to_string(ty);
-                        (ParamKindOrd::Const, Some(format!("const {}: {}", param.ident, ty)))
+                        let unordered = self.session.features_untracked().const_generics;
+                        (
+                            ParamKindOrd::Const { unordered },
+                            Some(format!("const {}: {}", param.ident, ty)),
+                        )
                     }
                 };
                 (kind, Some(&*param.bounds), param.ident.span, ident)
