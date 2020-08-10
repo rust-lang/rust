@@ -460,10 +460,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         use rustc_middle::ty::DefIdTree;
 
-        let parent_node = if item.is_fake() {
-            // FIXME: is this correct?
-            None
-        } else {
+        let parent_node = {
             let mut current = item.def_id;
             // The immediate parent might not always be a module.
             // Find the first parent which is.

@@ -6,7 +6,7 @@ use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::{Namespace::TypeNS, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::HirId;
 use rustc_hir::{
     intravisit::{self, NestedVisitorMap, Visitor},
@@ -14,7 +14,6 @@ use rustc_hir::{
 };
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
-use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_resolve as resolve;
@@ -31,7 +30,7 @@ use std::mem;
 use std::rc::Rc;
 
 use crate::clean;
-use crate::clean::{AttributesExt, MAX_DEF_ID};
+use crate::clean::AttributesExt;
 use crate::config::RenderInfo;
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::passes::{self, Condition::*, ConditionalPass};
@@ -61,8 +60,6 @@ pub struct DocContext<'tcx> {
     pub ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     pub impl_trait_bounds: RefCell<FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>>,
-    pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
-    pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     pub generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
@@ -107,50 +104,9 @@ impl<'tcx> DocContext<'tcx> {
         r
     }
 
-    // This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
-    // refactoring either librustdoc or librustc_middle. In particular, allowing new DefIds to be
-    // registered after the AST is constructed would require storing the defid mapping in a
-    // RefCell, decreasing the performance for normal compilation for very little gain.
-    //
-    // Instead, we construct 'fake' def ids, which start immediately after the last DefId.
-    // In the Debug impl for clean::Item, we explicitly check for fake
-    // def ids, as we'll end up with a panic if we use the DefId Debug impl for fake DefIds
-    pub fn next_def_id(&self, crate_num: CrateNum) -> DefId {
-        let start_def_id = {
-            let next_id = if crate_num == LOCAL_CRATE {
-                self.tcx.hir().definitions().def_path_table().next_id()
-            } else {
-                self.enter_resolver(|r| r.cstore().def_path_table(crate_num).next_id())
-            };
-
-            DefId { krate: crate_num, index: next_id }
-        };
-
-        let mut fake_ids = self.fake_def_ids.borrow_mut();
-
-        let def_id = *fake_ids.entry(crate_num).or_insert(start_def_id);
-        fake_ids.insert(
-            crate_num,
-            DefId { krate: crate_num, index: DefIndex::from(def_id.index.index() + 1) },
-        );
-
-        MAX_DEF_ID.with(|m| {
-            m.borrow_mut().entry(def_id.krate).or_insert(start_def_id);
-        });
-
-        self.all_fake_def_ids.borrow_mut().insert(def_id);
-
-        def_id
-    }
-
-    /// Like the function of the same name on the HIR map, but skips calling it on fake DefIds.
-    /// (This avoids a slice-index-out-of-bounds panic.)
+    /// Like the function of the same name on the HIR map, but more concisely.
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
-        if self.all_fake_def_ids.borrow().contains(&def_id) {
-            None
-        } else {
-            def_id.as_local().map(|def_id| self.tcx.hir().as_local_hir_id(def_id))
-        }
+        def_id.as_local().map(|def_id| self.tcx.hir().as_local_hir_id(def_id))
     }
 
     pub fn stability(&self, id: HirId) -> Option<attr::Stability> {
@@ -486,8 +442,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     lt_substs: Default::default(),
                     ct_substs: Default::default(),
                     impl_trait_bounds: Default::default(),
-                    fake_def_ids: Default::default(),
-                    all_fake_def_ids: Default::default(),
                     generated_synthetics: Default::default(),
                     auto_traits: tcx
                         .all_traits(LOCAL_CRATE)

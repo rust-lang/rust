@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::default::Default;
-use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::num::NonZeroU32;
@@ -70,7 +69,7 @@ pub struct ExternalCrate {
 /// Anything with a source location and set of attributes and, optionally, a
 /// name. That is, anything that can be documented. This doesn't correspond
 /// directly to the AST's concept of an item; it's a strict superset.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Item {
     /// Stringified span
     pub source: Span,
@@ -82,24 +81,6 @@ pub struct Item {
     pub def_id: DefId,
     pub stability: Option<Stability>,
     pub deprecation: Option<Deprecation>,
-}
-
-impl fmt::Debug for Item {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let fake = self.is_fake();
-        let def_id: &dyn fmt::Debug = if fake { &"**FAKE**" } else { &self.def_id };
-
-        fmt.debug_struct("Item")
-            .field("source", &self.source)
-            .field("name", &self.name)
-            .field("attrs", &self.attrs)
-            .field("inner", &self.inner)
-            .field("visibility", &self.visibility)
-            .field("def_id", def_id)
-            .field("stability", &self.stability)
-            .field("deprecation", &self.deprecation)
-            .finish()
-    }
 }
 
 impl Item {
@@ -229,13 +210,6 @@ impl Item {
             }
             _ => false,
         }
-    }
-
-    /// See comments on next_def_id
-    pub fn is_fake(&self) -> bool {
-        MAX_DEF_ID.with(|m| {
-            m.borrow().get(&self.def_id.krate).map(|id| self.def_id >= *id).unwrap_or(false)
-        })
     }
 }
 
