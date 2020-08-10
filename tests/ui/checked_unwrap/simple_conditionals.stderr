@@ -1,4 +1,4 @@
-error: you checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`
+error: you checked before that `unwrap()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/simple_conditionals.rs:39:9
    |
 LL |     if x.is_some() {
@@ -35,7 +35,7 @@ LL |     if x.is_none() {
 LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
-error: you checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`
+error: you checked before that `unwrap()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/simple_conditionals.rs:46:9
    |
 LL |     if x.is_none() {
@@ -44,7 +44,7 @@ LL |     if x.is_none() {
 LL |         x.unwrap(); // unnecessary
    |         ^^^^^^^^^^
 
-error: you checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`
+error: you checked before that `unwrap()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/simple_conditionals.rs:7:13
    |
 LL |         if $a.is_some() {
@@ -57,7 +57,7 @@ LL |     m!(x);
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: you checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`
+error: you checked before that `unwrap()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/simple_conditionals.rs:54:9
    |
 LL |     if x.is_ok() {
@@ -83,7 +83,7 @@ LL |     if x.is_ok() {
 LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
-error: you checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`
+error: you checked before that `unwrap_err()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/simple_conditionals.rs:58:9
    |
 LL |     if x.is_ok() {
@@ -100,7 +100,7 @@ LL |     if x.is_err() {
 LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
-error: you checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`
+error: you checked before that `unwrap_err()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/simple_conditionals.rs:62:9
    |
 LL |     if x.is_err() {
@@ -109,7 +109,7 @@ LL |         x.unwrap(); // will panic
 LL |         x.unwrap_err(); // unnecessary
    |         ^^^^^^^^^^^^^^
 
-error: you checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`
+error: you checked before that `unwrap()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/simple_conditionals.rs:64:9
    |
 LL |     if x.is_err() {
