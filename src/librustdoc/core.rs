@@ -452,10 +452,20 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 // Certain queries assume that some checks were run elsewhere
                 // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
                 // so type-check everything other than function bodies in this crate before running lints.
+
                 // NOTE: this does not call `tcx.analysis()` so that we won't
                 // typeck function bodies or run the default rustc lints.
                 // (see `override_queries` in the `config`)
-                let _ = rustc_typeck::check_crate(tcx);
+
+                // HACK(jynelson) this calls an _extremely_ limited subset of `typeck`
+                // and might break if queries change their assumptions in the future.
+
+                // NOTE: This is copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
+                tcx.sess.time("item_types_checking", || {
+                    for &module in tcx.hir().krate().modules.keys() {
+                        tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
+                    }
+                });
                 tcx.sess.abort_if_errors();
                 sess.time("missing_docs", || {
                     rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);

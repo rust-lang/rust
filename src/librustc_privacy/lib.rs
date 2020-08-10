@@ -784,11 +784,18 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             // The interface is empty.
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::OpaqueTy(..) => {
-                // FIXME: This is some serious pessimization intended to workaround deficiencies
-                // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
-                // reachable if they are returned via `impl Trait`, even from private functions.
-                let exist_level = cmp::max(item_level, Some(AccessLevel::ReachableFromImplTrait));
-                self.reach(item.hir_id, exist_level).generics().predicates().ty();
+                // HACK(jynelson): trying to infer the type of `impl trait` breaks `async-std` (and `pub async fn` in general)
+                // Since rustdoc never need to do codegen and doesn't care about link-time reachability,
+                // mark this as unreachable.
+                // See https://github.com/rust-lang/rust/issues/75100
+                if !self.tcx.sess.opts.actually_rustdoc {
+                    // FIXME: This is some serious pessimization intended to workaround deficiencies
+                    // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
+                    // reachable if they are returned via `impl Trait`, even from private functions.
+                    let exist_level =
+                        cmp::max(item_level, Some(AccessLevel::ReachableFromImplTrait));
+                    self.reach(item.hir_id, exist_level).generics().predicates().ty();
+                }
             }
             // Visit everything.
             hir::ItemKind::Const(..)

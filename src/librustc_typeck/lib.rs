@@ -390,6 +390,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
         tcx.sess.time("wf_checking", || check::check_wf_new(tcx));
     })?;
 
+    // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
     tcx.sess.time("item_types_checking", || {
         for &module in tcx.hir().krate().modules.keys() {
             tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
