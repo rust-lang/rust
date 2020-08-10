@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                     cx,
                     CMP_NULL,
                     expr.span,
-                    "Comparing with null is better expressed by the `.is_null()` method",
+                    "comparing with null is better expressed by the `.is_null()` method",
                 );
             }
         }

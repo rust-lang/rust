@@ -60,7 +60,7 @@ impl<'tcx> DoubleComparisons {
                     cx,
                     DOUBLE_COMPARISONS,
                     span,
-                    "This binary expression can be simplified",
+                    "this binary expression can be simplified",
                     "try",
                     sugg,
                     applicability,

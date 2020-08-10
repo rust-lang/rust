@@ -271,7 +271,7 @@ impl EarlyLintPass for MiscEarlyLints {
                         cx,
                         BUILTIN_TYPE_SHADOW,
                         param.ident.span,
-                        &format!("This generic shadows the built-in type `{}`", name),
+                        &format!("this generic shadows the built-in type `{}`", name),
                     );
                 }
             }
@@ -298,9 +298,9 @@ impl EarlyLintPass for MiscEarlyLints {
                     cx,
                     UNNEEDED_FIELD_PATTERN,
                     pat.span,
-                    "All the struct fields are matched to a wildcard pattern, consider using `..`.",
+                    "all the struct fields are matched to a wildcard pattern, consider using `..`",
                     None,
-                    &format!("Try with `{} {{ .. }}` instead", type_name),
+                    &format!("try with `{} {{ .. }}` instead", type_name),
                 );
                 return;
             }
@@ -313,7 +313,7 @@ impl EarlyLintPass for MiscEarlyLints {
                                 cx,
                                 UNNEEDED_FIELD_PATTERN,
                                 field.span,
-                                "You matched a field with a wildcard pattern. Consider using `..` instead",
+                                "you matched a field with a wildcard pattern, consider using `..` instead",
                             );
                         } else {
                             let mut normal = vec![];
@@ -333,10 +333,10 @@ impl EarlyLintPass for MiscEarlyLints {
                                 cx,
                                 UNNEEDED_FIELD_PATTERN,
                                 field.span,
-                                "You matched a field with a wildcard pattern. Consider using `..` \
+                                "you matched a field with a wildcard pattern, consider using `..` \
                                  instead",
                                 None,
-                                &format!("Try with `{} {{ {}, .. }}`", type_name, normal[..].join(", ")),
+                                &format!("try with `{} {{ {}, .. }}`", type_name, normal[..].join(", ")),
                             );
                         }
                     }

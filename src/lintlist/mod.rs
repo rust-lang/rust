@@ -412,7 +412,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "drop_bounds",
         group: "correctness",
-        desc: "Bounds of the form `T: Drop` are useless",
+        desc: "bounds of the form `T: Drop` are useless",
         deprecation: None,
         module: "drop_bounds",
     },
