@@ -20,6 +20,7 @@ enum AttrError {
     MultipleItem(String),
     UnknownMetaItem(String, &'static [&'static str]),
     MissingSince,
+    NonIdentFeature,
     MissingFeature,
     MultipleStabilityLevels,
     UnsupportedLiteral(&'static str, /* is_bytestr */ bool),
@@ -39,6 +40,9 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
         }
         AttrError::MissingSince => {
             struct_span_err!(diag, span, E0542, "missing 'since'").emit();
+        }
+        AttrError::NonIdentFeature => {
+            struct_span_err!(diag, span, E0546, "'feature' is not an identifier").emit();
         }
         AttrError::MissingFeature => {
             struct_span_err!(diag, span, E0546, "missing 'feature'").emit();
@@ -344,6 +348,14 @@ where
 
                     match (feature, reason, issue) {
                         (Some(feature), reason, Some(_)) => {
+                            if !rustc_lexer::is_ident(&feature.as_str()) {
+                                handle_errors(
+                                    &sess.parse_sess,
+                                    attr.span,
+                                    AttrError::NonIdentFeature,
+                                );
+                                continue;
+                            }
                             let level = Unstable { reason, issue: issue_num, is_soft };
                             if sym::unstable == meta_name {
                                 stab = Some(Stability { level, feature });

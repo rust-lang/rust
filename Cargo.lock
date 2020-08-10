@@ -3257,6 +3257,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
+ "rustc_lexer",
  "rustc_macros",
  "rustc_serialize",
  "rustc_session",

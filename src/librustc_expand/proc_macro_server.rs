@@ -319,18 +319,10 @@ pub struct Ident {
 }
 
 impl Ident {
-    fn is_valid(string: &str) -> bool {
-        let mut chars = string.chars();
-        if let Some(start) = chars.next() {
-            rustc_lexer::is_id_start(start) && chars.all(rustc_lexer::is_id_continue)
-        } else {
-            false
-        }
-    }
     fn new(sess: &ParseSess, sym: Symbol, is_raw: bool, span: Span) -> Ident {
         let sym = nfc_normalize(&sym.as_str());
         let string = sym.as_str();
-        if !Self::is_valid(&string) {
+        if !rustc_lexer::is_ident(&string) {
             panic!("`{:?}` is not a valid identifier", string)
         }
         if is_raw && !sym.can_be_raw() {
