@@ -1733,13 +1733,20 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(lo.to(self.prev_token.span), kind, attrs))
     }
 
-    fn error_missing_in_for_loop(&self) {
-        let in_span = self.prev_token.span.between(self.token.span);
-        self.struct_span_err(in_span, "missing `in` in `for` loop")
+    fn error_missing_in_for_loop(&mut self) {
+        let (span, msg, sugg) = if self.token.is_ident_named(sym::of) {
+            // Possibly using JS syntax (#75311).
+            let span = self.token.span;
+            self.bump();
+            (span, "try using `in` here instead", "in")
+        } else {
+            (self.prev_token.span.between(self.token.span), "try adding `in` here", " in ")
+        };
+        self.struct_span_err(span, "missing `in` in `for` loop")
             .span_suggestion_short(
-                in_span,
-                "try adding `in` here",
-                " in ".into(),
+                span,
+                msg,
+                sugg.into(),
                 // Has been misleading, at least in the past (closed Issue #48492).
                 Applicability::MaybeIncorrect,
             )

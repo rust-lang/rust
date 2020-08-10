@@ -737,6 +737,7 @@ symbols! {
         not,
         note,
         object_safe_for_dispatch,
+        of,
         offset,
         omit_gdb_pretty_printer_section,
         on,
