@@ -1,0 +1,15 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/missing-lifetime-in-assoc-const-type.rs:2:22
+   |
+LL |     const TYPE_NAME: &str = "";
+   |                      ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | trait ZstAssert<'a>: Sized {
+LL |     const TYPE_NAME: &'a str = "";
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0106`.

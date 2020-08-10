@@ -17,7 +17,7 @@ use rustc_hir::PrimTy;
 use rustc_session::config::nightly_options;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use log::debug;
 
@@ -1273,6 +1273,15 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 let should_break;
                 introduce_suggestion.push(match missing {
                     MissingLifetimeSpot::Generics(generics) => {
+                        if generics.span == DUMMY_SP {
+                            // Account for malformed generics in the HIR. This shouldn't happen,
+                            // but if we make a mistake elsewhere, mainly by keeping something in
+                            // `missing_named_lifetime_spots` that we shouldn't, like associated
+                            // `const`s or making a mistake in the AST lowering we would provide
+                            // non-sensical suggestions. Guard against that by skipping these.
+                            // (#74264)
+                            continue;
+                        }
                         msg = "consider introducing a named lifetime parameter".to_string();
                         should_break = true;
                         if let Some(param) = generics.params.iter().find(|p| match p.kind {
