@@ -1378,17 +1378,18 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             }
         };
 
-        match (lifetime_names.len(), lifetime_names.iter().next(), snippet.as_deref()) {
-            (1, Some(name), Some("&")) => {
+        let lifetime_names: Vec<_> = lifetime_names.into_iter().collect();
+        match (&lifetime_names[..], snippet.as_deref()) {
+            ([name], Some("&")) => {
                 suggest_existing(err, &name.as_str()[..], &|name| format!("&{} ", name));
             }
-            (1, Some(name), Some("'_")) => {
+            ([name], Some("'_")) => {
                 suggest_existing(err, &name.as_str()[..], &|n| n.to_string());
             }
-            (1, Some(name), Some("")) => {
+            ([name], Some("")) => {
                 suggest_existing(err, &name.as_str()[..], &|n| format!("{}, ", n).repeat(count));
             }
-            (1, Some(name), Some(snippet)) if !snippet.ends_with('>') => {
+            ([name], Some(snippet)) if !snippet.ends_with('>') => {
                 let f = |name: &str| {
                     format!(
                         "{}<{}>",
@@ -1401,13 +1402,13 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 };
                 suggest_existing(err, &name.as_str()[..], &f);
             }
-            (0, _, Some("&")) if count == 1 => {
+            ([], Some("&")) if count == 1 => {
                 suggest_new(err, "&'a ");
             }
-            (0, _, Some("'_")) if count == 1 => {
+            ([], Some("'_")) if count == 1 => {
                 suggest_new(err, "'a");
             }
-            (0, _, Some(snippet)) if !snippet.ends_with('>') && count == 1 => {
+            ([], Some(snippet)) if !snippet.ends_with('>') && count == 1 => {
                 if snippet == "" {
                     // This happens when we have `type Bar<'a> = Foo<T>` where we point at the space
                     // before `T`. We will suggest `type Bar<'a> = Foo<'a, T>`.
@@ -1416,7 +1417,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     suggest_new(err, &format!("{}<'a>", snippet));
                 }
             }
-            (n, ..) if n > 1 => {
+            (lts, ..) if lts.len() > 1 => {
                 err.span_note(lifetime_spans, "these named lifetimes are available to use");
                 if Some("") == snippet.as_deref() {
                     // This happens when we have `Foo<T>` where we point at the space before `T`,
