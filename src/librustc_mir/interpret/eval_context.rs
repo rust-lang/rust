@@ -16,7 +16,7 @@ use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{source_map::DUMMY_SP, Pos, Span};
+use rustc_span::{Pos, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
@@ -191,6 +191,10 @@ impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     pub fn current_source_info(&self) -> Option<&mir::SourceInfo> {
         self.loc.map(|loc| self.body.source_info(loc))
     }
+
+    pub fn current_span(&self) -> Span {
+        self.current_source_info().map(|si| si.span).unwrap_or(self.body.span)
+    }
 }
 
 impl<'tcx> fmt::Display for FrameInfo<'tcx> {
@@ -324,11 +328,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn cur_span(&self) -> Span {
-        self.stack()
-            .last()
-            .and_then(|f| f.current_source_info())
-            .map(|si| si.span)
-            .unwrap_or(self.tcx.span)
+        self.stack().last().map(|f| f.current_span()).unwrap_or(self.tcx.span)
     }
 
     #[inline(always)]
@@ -921,14 +921,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn generate_stacktrace(&self) -> Vec<FrameInfo<'tcx>> {
         let mut frames = Vec::new();
         for frame in self.stack().iter().rev() {
-            let source_info = frame.current_source_info();
-            let lint_root = source_info.and_then(|source_info| {
+            let lint_root = frame.current_source_info().and_then(|source_info| {
                 match &frame.body.source_scopes[source_info.scope].local_data {
                     mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
                     mir::ClearCrossCrate::Clear => None,
                 }
             });
-            let span = source_info.map_or(DUMMY_SP, |source_info| source_info.span);
+            let span = frame.current_span();
 
             frames.push(FrameInfo { span, instance: frame.instance, lint_root });
         }
