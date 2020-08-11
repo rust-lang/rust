@@ -559,7 +559,7 @@ impl<T> [T] {
             // Use the llvm.bswap intrinsic to reverse u8s in a usize
             let chunk = mem::size_of::<usize>();
             while i + chunk - 1 < ln / 2 {
-                // SAFETY:
+                // SAFETY: There are several things to check here:
                 //
                 // - Note that `chunk` is either 4 or 8 due to the cfg check
                 //   above. So `chunk - 1` is positive.
