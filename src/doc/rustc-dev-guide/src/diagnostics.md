@@ -58,7 +58,7 @@ multiple sentences are _needed_:
 error: the fobrulator needs to be krontrificated
 ```
 
-When code or an identifier must appear in an message or label, it should be
+When code or an identifier must appear in a message or label, it should be
 surrounded with single acute accents \`.
 
 ### Error explanations

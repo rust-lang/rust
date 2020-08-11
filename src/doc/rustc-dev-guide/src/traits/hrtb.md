@@ -107,7 +107,7 @@ impl<X,F> Foo<X> for F
 }
 ```
 
-Now let's say we have a obligation `Baz: for<'a> Foo<&'a isize>` and we match
+Now let's say we have an obligation `Baz: for<'a> Foo<&'a isize>` and we match
 this impl. What obligation is generated as a result? We want to get
 `Baz: for<'a> Bar<&'a isize>`, but how does that happen?
 

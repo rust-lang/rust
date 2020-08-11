@@ -32,7 +32,7 @@ rustc_interface::run_compiler(config, |compiler| {
                             if let Some(expr) = local.init {
                                 let hir_id = expr.hir_id; // hir_id identifies the string "Hello, world!"
                                 let def_id = tcx.hir().local_def_id(item.hir_id); // def_id identifies the main function
-                                let ty = tcx.typeck_tables_of(def_id).node_type(hir_id);
+                                let ty = tcx.typeck(def_id).node_type(hir_id);
                                 println!("{:?}: {:?}", expr, ty); // prints expr(HirId { owner: DefIndex(3), local_id: 4 }: "Hello, world!"): &'static str
                             }
                         }

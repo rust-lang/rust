@@ -282,7 +282,7 @@ We explain each term in more detail:
   providers may nest; see [trace of queries](#trace-of-queries) for more
   information about this nesting structure.
    _Example providers:_
-  - `typeck_tables_of` -- Typecheck a Def ID; produce "tables" of type
+  - `typeck` -- Typecheck a Def ID; produce "tables" of type
     information.
   - `borrowck` -- Borrow-check a Def ID.
   - `optimized_mir` -- Generate an optimized MIR for a Def ID; produce MIR.

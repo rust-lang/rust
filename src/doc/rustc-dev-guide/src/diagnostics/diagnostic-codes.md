@@ -1,5 +1,5 @@
 # Diagnostic Codes
-We generally try assign each error message a unique code like `E0123`. These
+We generally try to assign each error message a unique code like `E0123`. These
 codes are defined in the compiler in the `diagnostics.rs` files found in each
 crate, which basically consist of macros. The codes come in two varieties: those
 that have an extended write-up, and those that do not. Whenever possible, if you
