@@ -827,7 +827,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 ty::GenericParamDefKind::Type { has_default, .. } => {
                     Some((param.def_id, has_default))
                 }
-                ty::GenericParamDefKind::Const => None, // FIXME(const_generics:defaults)
+                ty::GenericParamDefKind::Const { .. } => None, // FIXME(const_generics:defaults)
             })
             .peekable();
         let has_default = {

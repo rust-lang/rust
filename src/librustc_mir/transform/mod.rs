@@ -452,6 +452,7 @@ fn run_optimization_passes<'tcx>(
         &simplify::SimplifyCfg::new("final"),
         &nrvo::RenameReturnPlace,
         &simplify::SimplifyLocals,
+        &match_branches::MatchBranchSimplification,
     ];
 
     let no_optimizations: &[&dyn MirPass<'tcx>] = &[
