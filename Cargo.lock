@@ -3367,6 +3367,7 @@ dependencies = [
  "smallvec 1.4.0",
  "stable_deref_trait",
  "stacker",
+ "tempfile",
  "tracing",
  "winapi 0.3.8",
 ]

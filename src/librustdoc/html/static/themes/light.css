@@ -45,8 +45,8 @@ pre {
 	scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
 }
 
-.logo-container > img {
-	filter: drop-shadow(0 0 5px #aaa);
+.logo-container.rust-logo > img {
+	/* No need for a border in here! */
 }
 
 /* Improve the scrollbar display on webkit-based browsers */
@@ -377,13 +377,14 @@ kbd {
 	box-shadow-color: #c6cbd1;
 }
 
-#theme-picker, #settings-menu {
+#theme-picker, #settings-menu, .help-button {
 	border-color: #e0e0e0;
 	background-color: #fff;
 }
 
 #theme-picker:hover, #theme-picker:focus,
-#settings-menu:hover, #settings-menu:focus {
+#settings-menu:hover, #settings-menu:focus,
+.help-button:hover, .help-button:focus {
 	border-color: #717171;
 }
 

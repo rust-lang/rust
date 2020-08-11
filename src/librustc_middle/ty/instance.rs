@@ -492,6 +492,20 @@ fn polymorphize<'tcx>(
     let unused = tcx.unused_generic_params(def_id);
     debug!("polymorphize: unused={:?}", unused);
 
+    // If this is a closure or generator then we need to handle the case where another closure
+    // from the function is captured as an upvar and hasn't been polymorphized. In this case,
+    // the unpolymorphized upvar closure would result in a polymorphized closure producing
+    // multiple mono items (and eventually symbol clashes).
+    let upvars_ty = if tcx.is_closure(def_id) {
+        Some(substs.as_closure().tupled_upvars_ty())
+    } else if tcx.type_of(def_id).is_generator() {
+        Some(substs.as_generator().tupled_upvars_ty())
+    } else {
+        None
+    };
+    let has_upvars = upvars_ty.map(|ty| ty.tuple_fields().count() > 0).unwrap_or(false);
+    debug!("polymorphize: upvars_ty={:?} has_upvars={:?}", upvars_ty, has_upvars);
+
     struct PolymorphizationFolder<'tcx> {
         tcx: TyCtxt<'tcx>,
     };
@@ -512,14 +526,6 @@ fn polymorphize<'tcx>(
                         self.tcx.mk_closure(def_id, polymorphized_substs)
                     }
                 }
-                ty::FnDef(def_id, substs) => {
-                    let polymorphized_substs = polymorphize(self.tcx, def_id, substs);
-                    if substs == polymorphized_substs {
-                        ty
-                    } else {
-                        self.tcx.mk_fn_def(def_id, polymorphized_substs)
-                    }
-                }
                 ty::Generator(def_id, substs, movability) => {
                     let polymorphized_substs = polymorphize(self.tcx, def_id, substs);
                     if substs == polymorphized_substs {
@@ -537,24 +543,31 @@ fn polymorphize<'tcx>(
         let is_unused = unused.contains(param.index).unwrap_or(false);
         debug!("polymorphize: param={:?} is_unused={:?}", param, is_unused);
         match param.kind {
-            // If parameter is a const or type parameter..
+            // Upvar case: If parameter is a type parameter..
+            ty::GenericParamDefKind::Type { .. } if
+                // ..and has upvars..
+                has_upvars &&
+                // ..and this param has the same type as the tupled upvars..
+                upvars_ty == Some(substs[param.index as usize].expect_ty()) => {
+                    // ..then double-check that polymorphization marked it used..
+                    debug_assert!(!is_unused);
+                    // ..and polymorphize any closures/generators captured as upvars.
+                    let upvars_ty = upvars_ty.unwrap();
+                    let polymorphized_upvars_ty = upvars_ty.fold_with(
+                        &mut PolymorphizationFolder { tcx });
+                    debug!("polymorphize: polymorphized_upvars_ty={:?}", polymorphized_upvars_ty);
+                    ty::GenericArg::from(polymorphized_upvars_ty)
+                },
+
+            // Simple case: If parameter is a const or type parameter..
             ty::GenericParamDefKind::Const | ty::GenericParamDefKind::Type { .. } if
                 // ..and is within range and unused..
                 unused.contains(param.index).unwrap_or(false) =>
                     // ..then use the identity for this parameter.
                     tcx.mk_param_from_def(param),
 
-            // If the parameter does not contain any closures or generators, then use the
-            // substitution directly.
-            _ if !substs.may_polymorphize() => substs[param.index as usize],
-
-            // Otherwise, use the substitution after polymorphizing.
-            _ => {
-                let arg = substs[param.index as usize];
-                let polymorphized_arg = arg.fold_with(&mut PolymorphizationFolder { tcx });
-                debug!("polymorphize: arg={:?} polymorphized_arg={:?}", arg, polymorphized_arg);
-                ty::GenericArg::from(polymorphized_arg)
-            }
+            // Otherwise, use the parameter as before.
+            _ => substs[param.index as usize],
         }
     })
 }
