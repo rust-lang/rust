@@ -481,25 +481,27 @@ trait UnusedDelimLint {
             let mut err = lint.build(&span_msg);
             let mut ate_left_paren = false;
             let mut ate_right_paren = false;
-            let parens_removed = pattern.trim_matches(|c| match c {
-                '(' | '{' => {
-                    if ate_left_paren {
-                        false
-                    } else {
-                        ate_left_paren = true;
-                        true
+            let parens_removed = pattern
+                .trim_matches(|c| match c {
+                    '(' | '{' => {
+                        if ate_left_paren {
+                            false
+                        } else {
+                            ate_left_paren = true;
+                            true
+                        }
                     }
-                }
-                ')' | '}' => {
-                    if ate_right_paren {
-                        false
-                    } else {
-                        ate_right_paren = true;
-                        true
+                    ')' | '}' => {
+                        if ate_right_paren {
+                            false
+                        } else {
+                            ate_right_paren = true;
+                            true
+                        }
                     }
-                }
-                _ => false,
-            });
+                    _ => false,
+                })
+                .trim();
 
             let replace = {
                 let mut replace = if keep_space.0 {
