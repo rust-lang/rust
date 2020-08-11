@@ -1,6 +1,7 @@
 use crate::traits::*;
 use rustc_hir::def_id::CrateNum;
 use rustc_index::vec::IndexVec;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_session::config::DebugInfo;
@@ -216,6 +217,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Operand(None) => return,
 
             LocalRef::Operand(Some(operand)) => {
+                // Don't spill operands onto the stack in naked functions.
+                // See: https://github.com/rust-lang/rust/issues/42779
+                let attrs = bx.tcx().codegen_fn_attrs(self.instance.def_id());
+                if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+                    return;
+                }
+
                 // "Spill" the value onto the stack, for debuginfo,
                 // without forcing non-debuginfo uses of the local
                 // to also load from the stack every single time.
