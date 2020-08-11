@@ -768,7 +768,8 @@ mod prim_tuple {}
 ///
 /// This type can represent a wide range of decimal numbers, like `3.5`, `27`,
 /// `-113.75`, `0.0078125`, `34359738368`, `0`, `-1`. So unlike integer types
-/// (like `i32`), floating point types can represent non-integer numbers, too.
+/// (such as `i32`), floating point types can represent non-integer numbers,
+/// too.
 ///
 /// However, being able to represent this wide range of numbers comes at the
 /// cost of precision: floats can only represent some of the real numbers and
@@ -779,15 +780,12 @@ mod prim_tuple {}
 /// often discard insignificant digits: `println!("{}", 1.0f32 / 5.0f32)` will
 /// print `0.2`.
 ///
-/// The precision is better for numbers near 0 and worse for large numbers. For
-/// example, above 2<sup>24</sup>, not even all integers are representable.
-///
 /// Additionally, `f32` can represent a couple of special values:
 ///
 /// - `-0`: this is just due to how floats are encoded. It is semantically
 ///   equivalent to `0` and `-0.0 == 0.0` results in `true`.
 /// - [∞](#associatedconstant.INFINITY) and
-///   [-∞](#associatedconstant.NEG_INFINITY): these result from calculations
+///   [−∞](#associatedconstant.NEG_INFINITY): these result from calculations
 ///   like `1.0 / 0.0`.
 /// - [NaN (not a number)](#associatedconstant.NAN): this value results from
 ///   calculations like `(-1.0).sqrt()`. NaN has some potentially unexpected
