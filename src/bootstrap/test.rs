@@ -2043,3 +2043,47 @@ impl Step for Bootstrap {
         run.builder.ensure(Bootstrap);
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct TierCheck {
+    pub compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for TierCheck {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/tier-check")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler_for(run.builder.top_stage, run.host, run.host);
+        run.builder.ensure(TierCheck { compiler, target: run.host });
+    }
+
+    /// Tests the Platform Support page in the rustc book.
+    fn run(self, builder: &Builder<'_>) {
+        builder.ensure(compile::Std { compiler: self.compiler, target: self.target });
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            self.compiler,
+            Mode::ToolRustc,
+            self.target,
+            "run",
+            "src/tools/tier-check",
+            SourceType::InTree,
+            &[],
+        );
+        cargo.arg(builder.src.join("src/doc/rustc/src/platform-support.md"));
+        cargo.arg(&builder.rustc(self.compiler));
+        if builder.is_verbose() {
+            cargo.arg("--verbose");
+        }
+
+        builder.info("platform support check");
+        try_run(builder, &mut cargo.into());
+    }
+}
