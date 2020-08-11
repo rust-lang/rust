@@ -11,6 +11,10 @@ pub fn opts() -> TargetOptions {
             "-fno-use-linker-plugin".to_string(),
             // Always enable DEP (NX bit) when it is available
             "-Wl,--nxcompat".to_string(),
+            // Enable ASLR
+            "-Wl,--dynamicbase".to_string(),
+            // ASLR will rebase it anyway so leaving that option enabled only leads to confusion
+            "-Wl,--disable-auto-image-base".to_string(),
         ],
     );
 
