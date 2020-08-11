@@ -1040,11 +1040,7 @@ impl<T> Binder<T> {
     where
         T: TypeFoldable<'tcx>,
     {
-        if self.0.has_escaping_bound_vars() {
-            None
-        } else {
-            Some(self.skip_binder())
-        }
+        if self.0.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
     }
 
     /// Given two things that have the same binder level,
@@ -1927,11 +1923,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
-        if let Adt(def, _) = self.kind() {
-            def.is_phantom_data()
-        } else {
-            false
-        }
+        if let Adt(def, _) = self.kind() { def.is_phantom_data() } else { false }
     }
 
     #[inline]

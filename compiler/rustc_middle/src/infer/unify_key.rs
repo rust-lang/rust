@@ -160,7 +160,7 @@ pub struct ConstVarValue<'tcx> {
     pub val: ConstVariableValue<'tcx>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 pub struct ConstVidEqKey<'tcx> {
     pub vid: ty::ConstVid,
     pub phantom: PhantomData<&'tcx ()>,
