@@ -368,8 +368,8 @@ array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T
 #[cfg(not(bootstrap))]
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
-    /// Returns an array of the same size as `self`, with function `f` applied to each element.
-    /// The closure will be called on elements 0 up to but excluding N.
+    /// Returns an array of the same size as `self`, with function `f` applied to each element
+    /// in order.
     ///
     /// # Examples
     ///
