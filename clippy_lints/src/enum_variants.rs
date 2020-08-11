@@ -227,7 +227,7 @@ fn check_variant(
         cx,
         lint,
         span,
-        &format!("All variants have the same {}fix: `{}`", what, value),
+        &format!("all variants have the same {}fix: `{}`", what, value),
         None,
         &format!(
             "remove the {}fixes and use full paths to \
