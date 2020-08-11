@@ -2144,7 +2144,7 @@ fn stability_tags(item: &clean::Item) -> String {
     if item
         .stability
         .as_ref()
-        .map(|s| s.level == stability::Unstable && s.feature.as_deref() != Some("rustc_private"))
+        .map(|s| s.level == stability::Unstable && s.feature != "rustc_private")
         == Some(true)
     {
         tags += &tag_html("unstable", "Experimental");
@@ -2195,24 +2195,24 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
-    if let Some(stab) = item.stability.as_ref().filter(|stab| {
-        stab.level == stability::Unstable && stab.feature.as_deref() != Some("rustc_private")
-    }) {
+    if let Some(stab) = item
+        .stability
+        .as_ref()
+        .filter(|stab| stab.level == stability::Unstable && stab.feature != "rustc_private")
+    {
         let mut message =
             "<span class='emoji'>🔬</span> This is a nightly-only experimental API.".to_owned();
 
-        if let Some(feature) = stab.feature.as_deref() {
-            let mut feature = format!("<code>{}</code>", Escape(&feature));
-            if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, stab.issue) {
-                feature.push_str(&format!(
-                    "&nbsp;<a href=\"{url}{issue}\">#{issue}</a>",
-                    url = url,
-                    issue = issue
-                ));
-            }
-
-            message.push_str(&format!(" ({})", feature));
+        let mut feature = format!("<code>{}</code>", Escape(&stab.feature));
+        if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, stab.issue) {
+            feature.push_str(&format!(
+                "&nbsp;<a href=\"{url}{issue}\">#{issue}</a>",
+                url = url,
+                issue = issue
+            ));
         }
+
+        message.push_str(&format!(" ({})", feature));
 
         if let Some(unstable_reason) = &stab.unstable_reason {
             let mut ids = cx.id_map.borrow_mut();
