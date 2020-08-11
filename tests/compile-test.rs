@@ -216,6 +216,10 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
         Ok(result)
     }
 
+    if cargo::is_rustc_test_suite() {
+        return;
+    }
+
     config.mode = TestMode::Ui;
     config.src_base = Path::new("tests").join("ui-cargo").canonicalize().unwrap();
 
