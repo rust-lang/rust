@@ -490,15 +490,17 @@ jobs:
 
           # 32/64-bit MinGW builds.
           #
-          # We are using MinGW with posix threads since LLVM does not compile with
-          # the win32 threads version due to missing support for C++'s std::thread.
+          # We are using MinGW with POSIX threads since LLVM requires
+          # C++'s std::thread which is disabled in libstdc++ with win32 threads.
+          # FIXME: Libc++ doesn't have this limitation so we can avoid 
+          # winpthreads if we switch to it.
           #
-          # Instead of relying on the MinGW version installed on appveryor we download
-          # and install one ourselves so we won't be surprised by changes to appveyor's
+          # Instead of relying on the MinGW version installed on CI we download
+          # and install one ourselves so we won't be surprised by changes to CI's
           # build image.
           #
           # Finally, note that the downloads below are all in the `rust-lang-ci` S3
-          # bucket, but they cleraly didn't originate there! The downloads originally
+          # bucket, but they clearly didn't originate there! The downloads originally
           # came from the mingw-w64 SourceForge download site. Unfortunately
           # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
 
