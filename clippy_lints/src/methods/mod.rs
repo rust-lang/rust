@@ -2280,7 +2280,7 @@ fn lint_iter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_
                     cx,
                     ITER_NEXT_SLICE,
                     expr.span,
-                    "Using `.iter().next()` on a Slice without end index.",
+                    "using `.iter().next()` on a Slice without end index",
                     "try calling",
                     format!("{}.get({})", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability), start_idx),
                     applicability,
@@ -2299,7 +2299,7 @@ fn lint_iter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_
             cx,
             ITER_NEXT_SLICE,
             expr.span,
-            "Using `.iter().next()` on an array",
+            "using `.iter().next()` on an array",
             "try calling",
             format!(
                 "{}.get(0)",
