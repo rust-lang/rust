@@ -2269,7 +2269,7 @@ impl<T> Vec<T> {
     /// with the given `replace_with` iterator and yields the removed items.
     /// `replace_with` does not need to be the same length as `range`.
     ///
-    /// The element range is removed even if the iterator is not consumed until the end.
+    /// `range` is removed even if the iterator is not consumed until the end.
     ///
     /// It is unspecified how many elements are removed from the vector
     /// if the `Splice` value is leaked.

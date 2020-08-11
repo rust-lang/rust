@@ -408,9 +408,7 @@ function defocusSearchBar() {
                 break;
 
             case "?":
-                if (ev.shiftKey) {
-                    displayHelp(true, ev);
-                }
+                displayHelp(true, ev);
                 break;
             }
         }
