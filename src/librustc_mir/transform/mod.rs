@@ -441,6 +441,7 @@ fn run_optimization_passes<'tcx>(
         // with async primitives.
         &generator::StateTransform,
         &instcombine::InstCombine,
+        &match_branches::MatchBranchSimplification,
         &const_prop::ConstProp,
         &simplify_branches::SimplifyBranches::new("after-const-prop"),
         &simplify_try::SimplifyArmIdentity,
@@ -452,7 +453,6 @@ fn run_optimization_passes<'tcx>(
         &simplify::SimplifyCfg::new("final"),
         &nrvo::RenameReturnPlace,
         &simplify::SimplifyLocals,
-        &match_branches::MatchBranchSimplification,
     ];
 
     let no_optimizations: &[&dyn MirPass<'tcx>] = &[
