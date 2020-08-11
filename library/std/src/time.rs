@@ -589,12 +589,9 @@ impl SystemTimeError {
     /// Returns the positive duration which represents how far forward the
     /// second system time was from the first.
     ///
-    /// A `SystemTimeError` is returned from the [`duration_since`] and [`elapsed`]
-    /// methods of [`SystemTime`] whenever the second system time represents a point later
-    /// in time than the `self` of the method call.
-    ///
-    /// [`duration_since`]: SystemTime::duration_since
-    /// [`elapsed`]: SystemTime::elapsed
+    /// A `SystemTimeError` is returned from the [`SystemTime::duration_since`]
+    /// and [`SystemTime::elapsed`] methods whenever the second system time
+    /// represents a point later in time than the `self` of the method call.
     ///
     /// # Examples
     ///
