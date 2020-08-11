@@ -51,7 +51,7 @@ impl<'a> SubstituteTypeParams<'a> {
             // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
             .skip(1)
             // The actual list of trait type parameters may be longer than the one
-            // used in the `impl` block due to trailing default type parametrs.
+            // used in the `impl` block due to trailing default type parameters.
             // For that case we extend the `substs` with an empty iterator so we
             // can still hit those trailing values and check if they actually have
             // a default type. If they do, go for that type from `hir` to `ast` so

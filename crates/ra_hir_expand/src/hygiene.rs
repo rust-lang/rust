@@ -17,7 +17,7 @@ pub struct Hygiene {
     // This is what `$crate` expands to
     def_crate: Option<CrateId>,
 
-    // Indiciate this is a local inner macro
+    // Indicate this is a local inner macro
     local_inner: bool,
 }
 
