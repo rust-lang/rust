@@ -1138,7 +1138,8 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EntryBuilder::encode_mir_for_ctfe({:?})", def_id);
         record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- self.tcx.mir_for_ctfe(def_id));
 
-        let unused = self.tcx.unused_generic_params(def_id);
+        let instance = ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id()));
+        let unused = self.tcx.unused_generic_params(instance);
         if !unused.is_empty() {
             record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
         }
@@ -1153,7 +1154,8 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EntryBuilder::encode_optimized_mir({:?})", def_id);
         record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
 
-        let unused = self.tcx.unused_generic_params(def_id);
+        let instance = ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id()));
+        let unused = self.tcx.unused_generic_params(instance);
         if !unused.is_empty() {
             record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
         }

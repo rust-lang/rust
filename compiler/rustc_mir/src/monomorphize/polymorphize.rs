@@ -16,7 +16,7 @@ use rustc_middle::ty::{
     fold::{TypeFoldable, TypeVisitor},
     query::Providers,
     subst::SubstsRef,
-    Const, Ty, TyCtxt,
+    Const, InstanceDef, Ty, TyCtxt,
 };
 use rustc_span::symbol::sym;
 use std::convert::TryInto;
@@ -27,21 +27,25 @@ pub fn provide(providers: &mut Providers) {
     providers.unused_generic_params = unused_generic_params;
 }
 
-/// Determine which generic parameters are used by the function/method/closure represented by
-/// `def_id`. Returns a bitset where bits representing unused parameters are set (`is_empty`
+/// Determine which generic parameters are used by the `instance`.
+///
+/// Returns a bitset where bits representing unused parameters are set (`is_empty`
 /// indicates all parameters are used).
-fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
-    debug!("unused_generic_params({:?})", def_id);
+fn unused_generic_params<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: InstanceDef<'tcx>,
+) -> FiniteBitSet<u32> {
+    debug!("unused_generic_params({:?})", instance);
 
+    // If polymorphization disabled, then all parameters are used.
     if !tcx.sess.opts.debugging_opts.polymorphize {
-        // If polymorphization disabled, then all parameters are used.
         return FiniteBitSet::new_empty();
     }
 
-    // Polymorphization results are stored in cross-crate metadata only when there are unused
-    // parameters, so assume that non-local items must have only used parameters (else this query
-    // would not be invoked, and the cross-crate metadata used instead).
-    if !def_id.is_local() {
+    // Exit early if this instance should not be polymorphized.
+    let def_id = instance.def_id();
+    if !should_polymorphize(tcx, def_id, instance) {
+        debug!("unused_generic_params: skipping");
         return FiniteBitSet::new_empty();
     }
 
@@ -53,36 +57,24 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
         return FiniteBitSet::new_empty();
     }
 
-    // Exit early when there is no MIR available.
-    let context = tcx.hir().body_const_context(def_id.expect_local());
-    match context {
-        Some(ConstContext::ConstFn) | None if !tcx.is_mir_available(def_id) => {
-            debug!("unused_generic_params: (no mir available) def_id={:?}", def_id);
-            return FiniteBitSet::new_empty();
-        }
-        Some(_) if !tcx.is_ctfe_mir_available(def_id) => {
-            debug!("unused_generic_params: (no ctfe mir available) def_id={:?}", def_id);
-            return FiniteBitSet::new_empty();
-        }
-        _ => {}
-    }
-
     // Create a bitset with N rightmost ones for each parameter.
     let generics_count: u32 =
         generics.count().try_into().expect("more generic parameters than can fit into a `u32`");
     let mut unused_parameters = FiniteBitSet::<u32>::new_empty();
     unused_parameters.set_range(0..generics_count);
     debug!("unused_generic_params: (start) unused_parameters={:?}", unused_parameters);
+
     mark_used_by_default_parameters(tcx, def_id, generics, &mut unused_parameters);
     debug!("unused_generic_params: (after default) unused_parameters={:?}", unused_parameters);
 
-    // Visit MIR and accumululate used generic parameters.
-    let body = match context {
+    let body = match tcx.hir().body_const_context(def_id.expect_local()) {
         // Const functions are actually called and should thus be considered for polymorphization
-        // via their runtime MIR
+        // via their runtime MIR.
         Some(ConstContext::ConstFn) | None => tcx.optimized_mir(def_id),
         Some(_) => tcx.mir_for_ctfe(def_id),
     };
+
+    // Visit MIR and accumululate used generic parameters.
     let mut vis = MarkUsedGenericParams { tcx, def_id, unused_parameters: &mut unused_parameters };
     vis.visit_body(body);
     debug!("unused_generic_params: (after visitor) unused_parameters={:?}", unused_parameters);
@@ -96,6 +88,48 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
     }
 
     unused_parameters
+}
+
+/// Returns `true` if the `InstanceDef` should be polymorphized.
+fn should_polymorphize<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    instance: ty::InstanceDef<'tcx>,
+) -> bool {
+    // If a instance's MIR body is not polymorphic then the modified substitutions that are derived
+    // from polymorphization's result won't make any difference.
+    if !instance.has_polymorphic_mir_body() {
+        return false;
+    }
+
+    // Don't polymorphize intrinsics or virtual calls - calling `instance_mir` will panic.
+    if matches!(instance, ty::InstanceDef::Intrinsic(..) | ty::InstanceDef::Virtual(..)) {
+        return false;
+    }
+
+    // Polymorphization results are stored in cross-crate metadata only when there are unused
+    // parameters, so assume that non-local items must have only used parameters (else this query
+    // would not be invoked, and the cross-crate metadata used instead).
+    if !def_id.is_local() {
+        return false;
+    }
+
+    // Foreign items don't have a body to analyze.
+    if tcx.is_foreign_item(def_id) {
+        return false;
+    }
+
+    // Without available MIR, polymorphization has nothing to analyze.
+    match tcx.hir().body_const_context(def_id.expect_local()) {
+        // FIXME(davidtwco): Disable polymorphization for any constant functions which, at the time
+        // of writing, can result in an ICE from typeck in one test and a cycle error in another.
+        Some(_) => false,
+        None if !tcx.is_mir_available(def_id) => {
+            debug!("should_polymorphize: (no mir available) def_id={:?}", def_id);
+            false
+        }
+        None => true,
+    }
 }
 
 /// Some parameters are considered used-by-default, such as non-generic parameters and the dummy
@@ -220,7 +254,9 @@ impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
     /// Invoke `unused_generic_params` on a body contained within the current item (e.g.
     /// a closure, generator or constant).
     fn visit_child_body(&mut self, def_id: DefId, substs: SubstsRef<'tcx>) {
-        let unused = self.tcx.unused_generic_params(def_id);
+        let unused = self
+            .tcx
+            .unused_generic_params(ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)));
         debug!(
             "visit_child_body: unused_parameters={:?} unused={:?}",
             self.unused_parameters, unused
