@@ -530,7 +530,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if tcx.is_foreign_item(def_id) {
                 throw_unsup_format!("foreign thread-local statics are not supported");
             }
-            let allocation = interpret::get_static(*tcx, def_id)?;
+            let allocation = tcx.eval_static_initializer(def_id)?;
             // Create a fresh allocation with this content.
             let new_alloc_id = this.memory.allocate_with(allocation.clone(), MiriMemoryKind::Tls.into()).alloc_id;
             this.machine.threads.set_thread_local_alloc_id(def_id, new_alloc_id);
