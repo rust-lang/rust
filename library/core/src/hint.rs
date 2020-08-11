@@ -99,7 +99,7 @@ pub fn spin_loop() {
 /// An identity function that *__hints__* to the compiler to be maximally pessimistic about what
 /// `black_box` could do.
 ///
-/// [`std::convert::identity`]: crate::convert::identity
+/// [`std::convert::identity`]: https://doc.rust-lang.org/core/convert/fn.identity.html
 ///
 /// Unlike [`std::convert::identity`], a Rust compiler is encouraged to assume that `black_box` can
 /// use `x` in any possible valid way that Rust code is allowed to without introducing undefined
