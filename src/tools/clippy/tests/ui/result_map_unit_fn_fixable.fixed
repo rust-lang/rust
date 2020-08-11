@@ -18,9 +18,9 @@ struct HasResult {
 }
 
 impl HasResult {
-    fn do_result_nothing(self: &Self, value: usize) {}
+    fn do_result_nothing(&self, value: usize) {}
 
-    fn do_result_plus_one(self: &Self, value: usize) -> usize {
+    fn do_result_plus_one(&self, value: usize) -> usize {
         value + 1
     }
 }

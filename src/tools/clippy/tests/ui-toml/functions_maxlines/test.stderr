@@ -1,4 +1,4 @@
-error: This function has a large number of lines.
+error: this function has a large number of lines
   --> $DIR/test.rs:18:1
    |
 LL | / fn too_many_lines() {
@@ -9,7 +9,7 @@ LL | | }
    |
    = note: `-D clippy::too-many-lines` implied by `-D warnings`
 
-error: This function has a large number of lines.
+error: this function has a large number of lines
   --> $DIR/test.rs:38:1
    |
 LL | / fn comment_before_code() {

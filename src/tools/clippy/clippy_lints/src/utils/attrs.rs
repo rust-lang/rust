@@ -75,12 +75,12 @@ pub fn get_attr<'a>(
                 })
                 .map_or_else(
                     || {
-                        sess.span_err(attr_segments[1].ident.span, "Usage of unknown attribute");
+                        sess.span_err(attr_segments[1].ident.span, "usage of unknown attribute");
                         false
                     },
                     |deprecation_status| {
                         let mut diag =
-                            sess.struct_span_err(attr_segments[1].ident.span, "Usage of deprecated attribute");
+                            sess.struct_span_err(attr_segments[1].ident.span, "usage of deprecated attribute");
                         match *deprecation_status {
                             DeprecationStatus::Deprecated => {
                                 diag.emit();
