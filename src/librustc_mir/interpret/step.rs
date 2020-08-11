@@ -47,8 +47,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         let loc = match self.frame().loc {
-            Some(loc) => loc,
-            None => {
+            Ok(loc) => loc,
+            Err(_) => {
                 // We are unwinding and this fn has no cleanup code.
                 // Just go on unwinding.
                 trace!("unwinding: skipping frame");
@@ -283,7 +283,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         self.eval_terminator(terminator)?;
         if !self.stack().is_empty() {
-            if let Some(loc) = self.frame().loc {
+            if let Ok(loc) = self.frame().loc {
                 info!("// executing {:?}", loc.block);
             }
         }
