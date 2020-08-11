@@ -147,9 +147,6 @@ fn run_ui_toml(config: &mut compiletest::Config) {
 }
 
 fn run_ui_cargo(config: &mut compiletest::Config) {
-    if cargo::is_rustc_test_suite() {
-        return;
-    }
     fn run_tests(
         config: &compiletest::Config,
         filter: &Option<String>,
@@ -215,6 +212,10 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
             }
         }
         Ok(result)
+    }
+
+    if cargo::is_rustc_test_suite() {
+        return;
     }
 
     config.mode = TestMode::Ui;

@@ -61,12 +61,14 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```rust,ignore
-    /// core::intrinsics::transmute::<*const [i32], *const [u16]>(p)
+    /// ```rust
+    /// # let p: *const [i32] = &[];
+    /// unsafe { std::mem::transmute::<*const [i32], *const [u16]>(p) };
     /// ```
     /// Use instead:
     /// ```rust
-    /// p as *const [u16]
+    /// # let p: *const [i32] = &[];
+    /// p as *const [u16];
     /// ```
     pub TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
     complexity,
@@ -704,14 +706,14 @@ fn can_be_expressed_as_pointer_cast<'tcx>(
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
 ) -> bool {
-    use CastKind::*;
+    use CastKind::{AddrPtrCast, ArrayPtrCast, FnPtrAddrCast, FnPtrPtrCast, PtrAddrCast, PtrPtrCast};
     matches!(
         check_cast(cx, e, from_ty, to_ty),
         Some(PtrPtrCast | PtrAddrCast | AddrPtrCast | ArrayPtrCast | FnPtrPtrCast | FnPtrAddrCast)
     )
 }
 
-/// If a cast from from_ty to to_ty is valid, returns an Ok containing the kind of
+/// If a cast from `from_ty` to `to_ty` is valid, returns an Ok containing the kind of
 /// the cast. In certain cases, including some invalid casts from array references
 /// to pointers, this may cause additional errors to be emitted and/or ICE error
 /// messages. This function will panic if that occurs.
