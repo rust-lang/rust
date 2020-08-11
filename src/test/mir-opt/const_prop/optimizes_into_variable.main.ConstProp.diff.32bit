@@ -173,13 +173,14 @@
           StorageDead(_4);                 // scope 1 at $DIR/optimizes_into_variable.rs:13:34: 13:35
           StorageLive(_8);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:9: 14:10
           StorageLive(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
-          _9 = Point { x: const 12_u32, y: const 42_u32 }; // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
+          (_9.0: u32) = const 12_u32;      // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
                                            // ty::Const
                                            // + ty: u32
                                            // + val: Value(Scalar(0x0000000c))
                                            // mir::Constant
                                            // + span: $DIR/optimizes_into_variable.rs:14:25: 14:27
                                            // + literal: Const { ty: u32, val: Value(Scalar(0x0000000c)) }
+          (_9.1: u32) = const 42_u32;      // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
                                            // ty::Const
                                            // + ty: u32
                                            // + val: Value(Scalar(0x0000002a))

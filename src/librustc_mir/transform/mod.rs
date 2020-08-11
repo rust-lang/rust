@@ -408,6 +408,9 @@ fn run_post_borrowck_cleanup_passes<'tcx>(
         // but before optimizations begin.
         &add_retag::AddRetag,
         &simplify::SimplifyCfg::new("elaborate-drops"),
+        // `Deaggregator` is conceptually part of MIR building, some backends rely on it happening
+        // and it can help optimizations.
+        &deaggregator::Deaggregator,
     ];
 
     run_passes(
@@ -439,11 +442,6 @@ fn run_optimization_passes<'tcx>(
         &instcombine::InstCombine,
         &const_prop::ConstProp,
         &simplify_branches::SimplifyBranches::new("after-const-prop"),
-        // Run deaggregation here because:
-        //   1. Some codegen backends require it
-        //   2. It creates additional possibilities for some MIR optimizations to trigger
-        // FIXME(#70073): Why is this done here and not in `post_borrowck_cleanup`?
-        &deaggregator::Deaggregator,
         &simplify_try::SimplifyArmIdentity,
         &simplify_try::SimplifyBranchSame,
         &copy_prop::CopyPropagation,
@@ -460,9 +458,6 @@ fn run_optimization_passes<'tcx>(
         &generator::StateTransform,
         // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
         &const_prop::ConstProp,
-        // Even if we don't do optimizations, still run deaggregation because some backends assume
-        // that deaggregation always occurs.
-        &deaggregator::Deaggregator,
     ];
 
     let pre_codegen_cleanup: &[&dyn MirPass<'tcx>] = &[
