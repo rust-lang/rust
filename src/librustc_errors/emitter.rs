@@ -362,7 +362,7 @@ pub trait Emitter {
                         format!(
                             "in this expansion of `{}`{}",
                             trace.kind.descr(),
-                            if macro_backtrace.len() > 2 {
+                            if macro_backtrace.len() > 1 {
                                 // if macro_backtrace.len() == 1 it'll be
                                 // pointed at by "in this macro invocation"
                                 format!(" (#{})", i + 1)
@@ -393,7 +393,7 @@ pub trait Emitter {
                         trace.call_site,
                         format!(
                             "in this macro invocation{}",
-                            if macro_backtrace.len() > 2 && always_backtrace {
+                            if macro_backtrace.len() > 1 && always_backtrace {
                                 // only specify order when the macro
                                 // backtrace is multiple levels deep
                                 format!(" (#{})", i + 1)

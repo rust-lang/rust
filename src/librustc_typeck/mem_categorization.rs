@@ -583,7 +583,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 self.tcx()
                     .sess
                     .delay_span_bug(span, "struct or tuple struct pattern not applied to an ADT");
-                return Err(());
+                Err(())
             }
         }
     }
@@ -596,7 +596,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             ty::Tuple(substs) => Ok(substs.len()),
             _ => {
                 self.tcx().sess.delay_span_bug(span, "tuple pattern not applied to a tuple");
-                return Err(());
+                Err(())
             }
         }
     }

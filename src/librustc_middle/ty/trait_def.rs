@@ -187,32 +187,38 @@ pub(super) fn all_local_trait_impls<'tcx>(
 pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> TraitImpls {
     let mut impls = TraitImpls::default();
 
-    {
-        let mut add_impl = |impl_def_id: DefId| {
-            let impl_self_ty = tcx.type_of(impl_def_id);
-            if impl_def_id.is_local() && impl_self_ty.references_error() {
-                return;
-            }
-
-            if let Some(simplified_self_ty) = fast_reject::simplify_type(tcx, impl_self_ty, false) {
-                impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
-            } else {
-                impls.blanket_impls.push(impl_def_id);
-            }
-        };
-
-        // Traits defined in the current crate can't have impls in upstream
-        // crates, so we don't bother querying the cstore.
-        if !trait_id.is_local() {
-            for &cnum in tcx.crates().iter() {
-                for &def_id in tcx.implementations_of_trait((cnum, trait_id)).iter() {
-                    add_impl(def_id);
+    // Traits defined in the current crate can't have impls in upstream
+    // crates, so we don't bother querying the cstore.
+    if !trait_id.is_local() {
+        for &cnum in tcx.crates().iter() {
+            for &(impl_def_id, simplified_self_ty) in
+                tcx.implementations_of_trait((cnum, trait_id)).iter()
+            {
+                if let Some(simplified_self_ty) = simplified_self_ty {
+                    impls
+                        .non_blanket_impls
+                        .entry(simplified_self_ty)
+                        .or_default()
+                        .push(impl_def_id);
+                } else {
+                    impls.blanket_impls.push(impl_def_id);
                 }
             }
         }
+    }
 
-        for &hir_id in tcx.hir().trait_impls(trait_id) {
-            add_impl(tcx.hir().local_def_id(hir_id).to_def_id());
+    for &hir_id in tcx.hir().trait_impls(trait_id) {
+        let impl_def_id = tcx.hir().local_def_id(hir_id).to_def_id();
+
+        let impl_self_ty = tcx.type_of(impl_def_id);
+        if impl_self_ty.references_error() {
+            continue;
+        }
+
+        if let Some(simplified_self_ty) = fast_reject::simplify_type(tcx, impl_self_ty, false) {
+            impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
+        } else {
+            impls.blanket_impls.push(impl_def_id);
         }
     }
 

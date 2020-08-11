@@ -2216,6 +2216,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "transmute",
     },
     Lint {
+        name: "transmutes_expressible_as_ptr_casts",
+        group: "complexity",
+        desc: "transmutes that could be a pointer cast",
+        deprecation: None,
+        module: "transmute",
+    },
+    Lint {
         name: "transmuting_null",
         group: "correctness",
         desc: "transmutes from a null pointer to a reference, which is undefined behavior",

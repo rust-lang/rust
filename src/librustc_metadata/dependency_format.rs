@@ -56,7 +56,7 @@ use crate::creader::CStore;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
-use rustc_middle::middle::cstore::{self, DepKind};
+use rustc_middle::middle::cstore::{self, CrateDepKind};
 use rustc_middle::middle::dependency_format::{Dependencies, DependencyList, Linkage};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
@@ -188,7 +188,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_none()
             && !formats.contains_key(&cnum)
-            && tcx.dep_kind(cnum) == DepKind::Explicit
+            && tcx.dep_kind(cnum) == CrateDepKind::Explicit
         {
             assert!(src.rlib.is_some() || src.rmeta.is_some());
             log::info!("adding staticlib: {}", tcx.crate_name(cnum));
@@ -284,7 +284,7 @@ fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
     let last_crate = tcx.crates().len();
     let mut ret = (1..last_crate + 1)
         .map(|cnum| {
-            if tcx.dep_kind(CrateNum::new(cnum)) == DepKind::Explicit {
+            if tcx.dep_kind(CrateNum::new(cnum)) == CrateDepKind::Explicit {
                 Linkage::Static
             } else {
                 Linkage::NotLinked

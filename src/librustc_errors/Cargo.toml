@@ -10,7 +10,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-log = "0.4"
+log = { package = "tracing", version = "0.1" }
 rustc_serialize = { path = "../librustc_serialize" }
 rustc_span = { path = "../librustc_span" }
 rustc_data_structures = { path = "../librustc_data_structures" }

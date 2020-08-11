@@ -6,3 +6,5 @@ fn main() {
     }
 }
 //~^^^^ ERROR `_x @` is not allowed in a tuple
+//~| ERROR: `..` patterns are not allowed here
+//~| ERROR: mismatched types

@@ -1,4 +1,4 @@
-error: use of item 'S' that will be deprecated in future version 99.99.99: effectively never
+error: use of unit struct `S` that will be deprecated in future version 99.99.99: effectively never
   --> $DIR/rustc_deprecation-in-future.rs:14:13
    |
 LL |     let _ = S;

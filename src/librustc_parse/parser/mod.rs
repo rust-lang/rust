@@ -1,16 +1,17 @@
 pub mod attr;
+mod diagnostics;
 mod expr;
+mod generics;
 mod item;
+mod nonterminal;
 mod pat;
 mod path;
-mod ty;
-pub use path::PathStyle;
-mod diagnostics;
-mod generics;
 mod stmt;
-use diagnostics::Error;
+mod ty;
 
 use crate::lexer::UnmatchedBrace;
+use diagnostics::Error;
+pub use path::PathStyle;
 
 use log::debug;
 use rustc_ast::ast::DUMMY_NODE_ID;
@@ -21,7 +22,6 @@ use rustc_ast::ast::{
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
-use rustc_ast::util::comments::{doc_comment_style, strip_doc_comment_decoration};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_session::parse::ParseSess;
@@ -103,6 +103,8 @@ pub struct Parser<'a> {
     /// error.
     pub(super) unclosed_delims: Vec<UnmatchedBrace>,
     last_unexpected_token_span: Option<Span>,
+    /// Span pointing at the `:` for the last type ascription the parser has seen, and whether it
+    /// looked like it could have been a mistyped path or literal `Option:Some(42)`).
     pub last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,
@@ -208,18 +210,18 @@ impl TokenCursor {
     }
 
     fn next_desugared(&mut self) -> Token {
-        let (name, sp) = match self.next() {
-            Token { kind: token::DocComment(name), span } => (name, span),
+        let (data, attr_style, sp) = match self.next() {
+            Token { kind: token::DocComment(_, attr_style, data), span } => {
+                (data, attr_style, span)
+            }
             tok => return tok,
         };
-
-        let stripped = strip_doc_comment_decoration(name);
 
         // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
         // required to wrap the text.
         let mut num_of_hashes = 0;
         let mut count = 0;
-        for ch in stripped.chars() {
+        for ch in data.as_str().chars() {
             count = match ch {
                 '"' => 1,
                 '#' if count > 0 => count + 1,
@@ -235,10 +237,7 @@ impl TokenCursor {
             [
                 TokenTree::token(token::Ident(sym::doc, false), sp),
                 TokenTree::token(token::Eq, sp),
-                TokenTree::token(
-                    TokenKind::lit(token::StrRaw(num_of_hashes), Symbol::intern(&stripped), None),
-                    sp,
-                ),
+                TokenTree::token(TokenKind::lit(token::StrRaw(num_of_hashes), data, None), sp),
             ]
             .iter()
             .cloned()
@@ -250,7 +249,7 @@ impl TokenCursor {
             TokenCursorFrame::new(
                 delim_span,
                 token::NoDelim,
-                &if doc_comment_style(name) == AttrStyle::Inner {
+                &if attr_style == AttrStyle::Inner {
                     [TokenTree::token(token::Pound, sp), TokenTree::token(token::Not, sp), body]
                         .iter()
                         .cloned()
@@ -958,7 +957,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a single token tree from the input.
-    pub fn parse_token_tree(&mut self) -> TokenTree {
+    pub(crate) fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {
             token::OpenDelim(..) => {
                 let frame = mem::replace(
@@ -1017,7 +1016,7 @@ impl<'a> Parser<'a> {
     /// If the following element can't be a tuple (i.e., it's a function definition), then
     /// it's not a tuple struct field), and the contents within the parentheses isn't valid,
     /// so emit a proper diagnostic.
-    pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
+    pub(crate) fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
         maybe_whole!(self, NtVis, |x| x);
 
         self.expected_tokens.push(TokenType::Keyword(kw::Crate));

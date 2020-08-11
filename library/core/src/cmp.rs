@@ -17,14 +17,8 @@
 //!
 //! For more details, see the respective documentation of each item in the list.
 //!
-//! [`Eq`]: trait.Eq.html
-//! [`PartialEq`]: trait.PartialEq.html
-//! [`Ord`]: trait.Ord.html
-//! [`PartialOrd`]: trait.PartialOrd.html
-//! [`Ordering`]: enum.Ordering.html
-//! [`Reverse`]: struct.Reverse.html
-//! [`max`]: fn.max.html
-//! [`min`]: fn.min.html
+//! [`max`]: Ord::max
+//! [`min`]: Ord::min
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

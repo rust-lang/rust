@@ -4,6 +4,7 @@
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
 #![feature(map_first_last)]
+#![feature(map_into_keys_values)]
 #![feature(new_uninit)]
 #![feature(pattern)]
 #![feature(str_split_once)]
@@ -13,6 +14,7 @@
 #![feature(associated_type_bounds)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(binary_heap_drain_sorted)]
+#![feature(slice_ptr_get)]
 #![feature(split_inclusive)]
 #![feature(binary_heap_retain)]
 

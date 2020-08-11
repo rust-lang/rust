@@ -1158,13 +1158,19 @@ impl Step for Compiletest {
             cmd.arg("--quiet");
         }
 
+        let mut llvm_components_passed = false;
+        let mut copts_passed = false;
         if builder.config.llvm_enabled() {
             let llvm_config = builder.ensure(native::Llvm { target: builder.config.build });
             if !builder.config.dry_run {
                 let llvm_version = output(Command::new(&llvm_config).arg("--version"));
+                let llvm_components = output(Command::new(&llvm_config).arg("--components"));
                 // Remove trailing newline from llvm-config output.
-                let llvm_version = llvm_version.trim_end();
-                cmd.arg("--llvm-version").arg(llvm_version);
+                cmd.arg("--llvm-version")
+                    .arg(llvm_version.trim())
+                    .arg("--llvm-components")
+                    .arg(llvm_components.trim());
+                llvm_components_passed = true;
             }
             if !builder.is_rust_llvm(target) {
                 cmd.arg("--system-llvm");
@@ -1182,15 +1188,13 @@ impl Step for Compiletest {
             // Only pass correct values for these flags for the `run-make` suite as it
             // requires that a C++ compiler was configured which isn't always the case.
             if !builder.config.dry_run && suite == "run-make-fulldeps" {
-                let llvm_components = output(Command::new(&llvm_config).arg("--components"));
                 cmd.arg("--cc")
                     .arg(builder.cc(target))
                     .arg("--cxx")
                     .arg(builder.cxx(target).unwrap())
                     .arg("--cflags")
-                    .arg(builder.cflags(target, GitRepo::Rustc).join(" "))
-                    .arg("--llvm-components")
-                    .arg(llvm_components.trim());
+                    .arg(builder.cflags(target, GitRepo::Rustc).join(" "));
+                copts_passed = true;
                 if let Some(ar) = builder.ar(target) {
                     cmd.arg("--ar").arg(ar);
                 }
@@ -1220,15 +1224,11 @@ impl Step for Compiletest {
             }
         }
 
-        if suite != "run-make-fulldeps" {
-            cmd.arg("--cc")
-                .arg("")
-                .arg("--cxx")
-                .arg("")
-                .arg("--cflags")
-                .arg("")
-                .arg("--llvm-components")
-                .arg("");
+        if !llvm_components_passed {
+            cmd.arg("--llvm-components").arg("");
+        }
+        if !copts_passed {
+            cmd.arg("--cc").arg("").arg("--cxx").arg("").arg("--cflags").arg("");
         }
 
         if builder.remote_tested(target) {

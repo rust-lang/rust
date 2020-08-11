@@ -1,22 +1,22 @@
 use std::cell::Cell;
+use std::fmt;
 use std::mem;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, def::DefKind, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{
-    sign_extend, truncate, FrameInfo, GlobalId, InterpResult, Pointer, Scalar,
+    sign_extend, truncate, GlobalId, InterpResult, Pointer, Scalar,
 };
 use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{source_map::DUMMY_SP, Span};
+use rustc_span::{source_map::DUMMY_SP, Pos, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
@@ -86,6 +86,14 @@ pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
     /// If this is `None`, we are unwinding and this function doesn't need any clean-up.
     /// Just continue the same as with `Resume`.
     pub loc: Option<mir::Location>,
+}
+
+/// What we store about a frame in an interpreter backtrace.
+#[derive(Debug)]
+pub struct FrameInfo<'tcx> {
+    pub instance: ty::Instance<'tcx>,
+    pub span: Span,
+    pub lint_root: Option<hir::HirId>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, HashStable)] // Miri debug-prints these
@@ -182,6 +190,25 @@ impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// Return the `SourceInfo` of the current instruction.
     pub fn current_source_info(&self) -> Option<&mir::SourceInfo> {
         self.loc.map(|loc| self.body.source_info(loc))
+    }
+}
+
+impl<'tcx> fmt::Display for FrameInfo<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        ty::tls::with(|tcx| {
+            if tcx.def_key(self.instance.def_id()).disambiguated_data.data
+                == DefPathData::ClosureExpr
+            {
+                write!(f, "inside closure")?;
+            } else {
+                write!(f, "inside `{}`", self.instance)?;
+            }
+            if !self.span.is_dummy() {
+                let lo = tcx.sess.source_map().lookup_char_pos(self.span.lo());
+                write!(f, " at {}:{}:{}", lo.file.name, lo.line, lo.col.to_usize() + 1)?;
+            }
+            Ok(())
+        })
     }
 }
 
@@ -625,6 +652,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let frame = M::init_frame_extra(self, pre_frame)?;
         self.stack_mut().push(frame);
 
+        // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
+        for const_ in &body.required_consts {
+            let const_ =
+                self.subst_from_current_frame_and_normalize_erasing_regions(const_.literal);
+            self.const_to_op(const_, None)?;
+        }
+
         // Locals are initially uninitialized.
         let dummy = LocalState { value: LocalValue::Uninitialized, layout: Cell::new(None) };
         let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
@@ -717,6 +751,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Some(loc) => self.body().basic_blocks()[loc.block].is_cleanup,
             }
         );
+
+        if unwinding && self.frame_idx() == 0 {
+            throw_ub_format!("unwinding past the topmost frame of the stack");
+        }
 
         ::log_settings::settings().indentation -= 1;
         let frame =
@@ -818,11 +856,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         // FIXME: should we tell the user that there was a local which was never written to?
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
-            trace!("deallocating local");
             // All locals have a backing allocation, even if the allocation is empty
             // due to the local having ZST type.
             let ptr = ptr.assert_ptr();
-            trace!("{:?}", self.memory.dump_alloc(ptr.alloc_id));
+            trace!("deallocating local: {:?}", self.memory.dump_alloc(ptr.alloc_id));
             self.memory.deallocate_local(ptr)?;
         };
         Ok(())

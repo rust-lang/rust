@@ -2,99 +2,117 @@
 + // MIR for `main` after InstrumentCoverage
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/instrument_coverage.rs:9:11: 9:11
-      let mut _1: ();                      // in scope 0 at $DIR/instrument_coverage.rs:9:1: 15:2
-      let mut _2: bool;                    // in scope 0 at $DIR/instrument_coverage.rs:11:12: 11:17
-      let mut _3: !;                       // in scope 0 at $DIR/instrument_coverage.rs:11:18: 13:10
-+     let mut _4: ();                      // in scope 0 at $DIR/instrument_coverage.rs:9:11: 9:11
+      let mut _0: ();                      // return place in scope 0 at /the/src/instrument_coverage.rs:10:11: 10:11
+      let mut _1: ();                      // in scope 0 at /the/src/instrument_coverage.rs:10:1: 16:2
+      let mut _2: bool;                    // in scope 0 at /the/src/instrument_coverage.rs:12:12: 12:17
+      let mut _3: !;                       // in scope 0 at /the/src/instrument_coverage.rs:12:18: 14:10
++     let mut _4: ();                      // in scope 0 at /the/src/instrument_coverage.rs:10:11: 10:11
   
       bb0: {
--         falseUnwind -> [real: bb1, cleanup: bb2]; // scope 0 at $DIR/instrument_coverage.rs:10:5: 14:6
-+         StorageLive(_4);                 // scope 0 at $DIR/instrument_coverage.rs:9:11: 9:11
-+         _4 = const std::intrinsics::count_code_region(const 16004455475339839479_u64, const 0_u32, const 425_u32, const 493_u32) -> bb7; // scope 0 at $DIR/instrument_coverage.rs:9:11: 9:11
+-         falseUnwind -> [real: bb1, cleanup: bb2]; // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
++         StorageLive(_4);                 // scope 0 at /the/src/instrument_coverage.rs:10:11: 10:11
++         _4 = const std::intrinsics::count_code_region(const 16004455475339839479_u64, const 0_u32, const "/the/src/instrument_coverage.rs", const 10_u32, const 11_u32, const 16_u32, const 2_u32) -> bb7; // scope 0 at /the/src/instrument_coverage.rs:10:11: 10:11
 +                                          // ty::Const
-+                                          // + ty: unsafe extern "rust-intrinsic" fn(u64, u32, u32, u32) {std::intrinsics::count_code_region}
++                                          // + ty: unsafe extern "rust-intrinsic" fn(u64, u32, &'static str, u32, u32, u32, u32) {std::intrinsics::count_code_region}
 +                                          // + val: Value(Scalar(<ZST>))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:9:11: 9:11
-+                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u64, u32, u32, u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
++                                          // + span: /the/src/instrument_coverage.rs:10:11: 10:11
++                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u64, u32, &'static str, u32, u32, u32, u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
 +                                          // ty::Const
 +                                          // + ty: u64
 +                                          // + val: Value(Scalar(0xde1b3f75a72fc7f7))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:9:11: 9:11
++                                          // + span: /the/src/instrument_coverage.rs:10:11: 10:11
 +                                          // + literal: Const { ty: u64, val: Value(Scalar(0xde1b3f75a72fc7f7)) }
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x00000000))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:9:11: 9:11
++                                          // + span: /the/src/instrument_coverage.rs:10:11: 10:11
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
 +                                          // ty::Const
-+                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x000001a9))
++                                          // + ty: &str
++                                          // + val: Value(Slice { data: Allocation { bytes: [47, 116, 104, 101, 47, 115, 114, 99, 47, 105, 110, 115, 116, 114, 117, 109, 101, 110, 116, 95, 99, 111, 118, 101, 114, 97, 103, 101, 46, 114, 115], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [2147483647], len: Size { raw: 31 } }, size: Size { raw: 31 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 31 })
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:9:11: 9:11
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x000001a9)) }
++                                          // + span: /the/src/instrument_coverage.rs:10:11: 10:11
++                                          // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [47, 116, 104, 101, 47, 115, 114, 99, 47, 105, 110, 115, 116, 114, 117, 109, 101, 110, 116, 95, 99, 111, 118, 101, 114, 97, 103, 101, 46, 114, 115], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [2147483647], len: Size { raw: 31 } }, size: Size { raw: 31 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 31 }) }
 +                                          // ty::Const
 +                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x000001ed))
++                                          // + val: Value(Scalar(0x0000000a))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:9:11: 9:11
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x000001ed)) }
++                                          // + span: /the/src/instrument_coverage.rs:10:11: 10:11
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000000a)) }
++                                          // ty::Const
++                                          // + ty: u32
++                                          // + val: Value(Scalar(0x0000000b))
++                                          // mir::Constant
++                                          // + span: /the/src/instrument_coverage.rs:10:11: 10:11
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000000b)) }
++                                          // ty::Const
++                                          // + ty: u32
++                                          // + val: Value(Scalar(0x00000010))
++                                          // mir::Constant
++                                          // + span: /the/src/instrument_coverage.rs:10:11: 10:11
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000010)) }
++                                          // ty::Const
++                                          // + ty: u32
++                                          // + val: Value(Scalar(0x00000002))
++                                          // mir::Constant
++                                          // + span: /the/src/instrument_coverage.rs:10:11: 10:11
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
       }
   
       bb1: {
-          StorageLive(_2);                 // scope 0 at $DIR/instrument_coverage.rs:11:12: 11:17
-          _2 = const bar() -> [return: bb3, unwind: bb2]; // scope 0 at $DIR/instrument_coverage.rs:11:12: 11:17
+          StorageLive(_2);                 // scope 0 at /the/src/instrument_coverage.rs:12:12: 12:17
+          _2 = const bar() -> [return: bb3, unwind: bb2]; // scope 0 at /the/src/instrument_coverage.rs:12:12: 12:17
                                            // ty::Const
                                            // + ty: fn() -> bool {bar}
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
-                                           // + span: $DIR/instrument_coverage.rs:11:12: 11:15
+                                           // + span: /the/src/instrument_coverage.rs:12:12: 12:15
                                            // + literal: Const { ty: fn() -> bool {bar}, val: Value(Scalar(<ZST>)) }
       }
   
       bb2 (cleanup): {
-          resume;                          // scope 0 at $DIR/instrument_coverage.rs:9:1: 15:2
+          resume;                          // scope 0 at /the/src/instrument_coverage.rs:10:1: 16:2
       }
   
       bb3: {
-          FakeRead(ForMatchedPlace, _2);   // scope 0 at $DIR/instrument_coverage.rs:11:12: 11:17
-          switchInt(_2) -> [false: bb5, otherwise: bb4]; // scope 0 at $DIR/instrument_coverage.rs:11:9: 13:10
+          FakeRead(ForMatchedPlace, _2);   // scope 0 at /the/src/instrument_coverage.rs:12:12: 12:17
+          switchInt(_2) -> [false: bb5, otherwise: bb4]; // scope 0 at /the/src/instrument_coverage.rs:12:9: 14:10
       }
   
       bb4: {
-          falseEdge -> [real: bb6, imaginary: bb5]; // scope 0 at $DIR/instrument_coverage.rs:11:9: 13:10
+          falseEdge -> [real: bb6, imaginary: bb5]; // scope 0 at /the/src/instrument_coverage.rs:12:9: 14:10
       }
   
       bb5: {
-          _1 = const ();                   // scope 0 at $DIR/instrument_coverage.rs:11:9: 13:10
+          _1 = const ();                   // scope 0 at /the/src/instrument_coverage.rs:12:9: 14:10
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
-                                           // + span: $DIR/instrument_coverage.rs:11:9: 13:10
+                                           // + span: /the/src/instrument_coverage.rs:12:9: 14:10
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          StorageDead(_2);                 // scope 0 at $DIR/instrument_coverage.rs:14:5: 14:6
-          goto -> bb0;                     // scope 0 at $DIR/instrument_coverage.rs:10:5: 14:6
+          StorageDead(_2);                 // scope 0 at /the/src/instrument_coverage.rs:15:5: 15:6
+          goto -> bb0;                     // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
       }
   
       bb6: {
-          _0 = const ();                   // scope 0 at $DIR/instrument_coverage.rs:12:13: 12:18
+          _0 = const ();                   // scope 0 at /the/src/instrument_coverage.rs:13:13: 13:18
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
-                                           // + span: $DIR/instrument_coverage.rs:12:13: 12:18
+                                           // + span: /the/src/instrument_coverage.rs:13:13: 13:18
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          StorageDead(_2);                 // scope 0 at $DIR/instrument_coverage.rs:14:5: 14:6
-          return;                          // scope 0 at $DIR/instrument_coverage.rs:15:2: 15:2
+          StorageDead(_2);                 // scope 0 at /the/src/instrument_coverage.rs:15:5: 15:6
+          return;                          // scope 0 at /the/src/instrument_coverage.rs:16:2: 16:2
 +     }
 + 
 +     bb7: {
-+         StorageDead(_4);                 // scope 0 at $DIR/instrument_coverage.rs:10:5: 14:6
-+         falseUnwind -> [real: bb1, cleanup: bb2]; // scope 0 at $DIR/instrument_coverage.rs:10:5: 14:6
++         StorageDead(_4);                 // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
++         falseUnwind -> [real: bb1, cleanup: bb2]; // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
       }
   }
   

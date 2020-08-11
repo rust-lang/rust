@@ -29,7 +29,7 @@ impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
             | ItemKind::Struct(..)
             | ItemKind::Union(..) => {
                 for attr in self.tcx.get_attrs(item_def_id.to_def_id()).iter() {
-                    if attr.check_name(sym::rustc_layout) {
+                    if self.tcx.sess.check_name(attr, sym::rustc_layout) {
                         self.dump_layout_of(item_def_id, item, attr);
                     }
                 }
@@ -82,8 +82,10 @@ impl LayoutTest<'tcx> {
                         }
 
                         sym::debug => {
-                            let normalized_ty =
-                                self.tcx.normalize_erasing_regions(param_env.with_reveal_all(), ty);
+                            let normalized_ty = self.tcx.normalize_erasing_regions(
+                                param_env.with_reveal_all_normalized(self.tcx),
+                                ty,
+                            );
                             self.tcx.sess.span_err(
                                 item.span,
                                 &format!("layout_of({:?}) = {:#?}", normalized_ty, *ty_layout),

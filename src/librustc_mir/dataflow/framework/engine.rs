@@ -335,11 +335,11 @@ impl RustcMirAttrs {
 
         let rustc_mir_attrs = attrs
             .iter()
-            .filter(|attr| attr.check_name(sym::rustc_mir))
+            .filter(|attr| tcx.sess.check_name(attr, sym::rustc_mir))
             .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
 
         for attr in rustc_mir_attrs {
-            let attr_result = if attr.check_name(sym::borrowck_graphviz_postflow) {
+            let attr_result = if attr.has_name(sym::borrowck_graphviz_postflow) {
                 Self::set_field(&mut ret.basename_and_suffix, tcx, &attr, |s| {
                     let path = PathBuf::from(s.to_string());
                     match path.file_name() {
@@ -350,7 +350,7 @@ impl RustcMirAttrs {
                         }
                     }
                 })
-            } else if attr.check_name(sym::borrowck_graphviz_format) {
+            } else if attr.has_name(sym::borrowck_graphviz_format) {
                 Self::set_field(&mut ret.formatter, tcx, &attr, |s| match s {
                     sym::gen_kill | sym::two_phase => Ok(s),
                     _ => {

@@ -23,11 +23,11 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV \
-    AR_i686_unknown_freebsd=i686-unknown-freebsd10-ar \
-    CC_i686_unknown_freebsd=i686-unknown-freebsd10-clang \
-    CXX_i686_unknown_freebsd=i686-unknown-freebsd10-clang++
+    AR_i686_unknown_freebsd=i686-unknown-freebsd11-ar \
+    CC_i686_unknown_freebsd=i686-unknown-freebsd11-clang \
+    CXX_i686_unknown_freebsd=i686-unknown-freebsd11-clang++
 
 ENV HOSTS=i686-unknown-freebsd
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
+ENV RUST_CONFIGURE_ARGS --enable-extended --enable-profiler --disable-docs
 ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS

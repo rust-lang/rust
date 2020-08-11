@@ -111,7 +111,7 @@ crate enum RibKind<'a> {
     ItemRibKind(HasGenericParams),
 
     /// We're in a constant item. Can't refer to dynamic stuff.
-    ConstantItemRibKind,
+    ConstantItemRibKind(bool),
 
     /// We passed through a module.
     ModuleRibKind(Module<'a>),
@@ -137,7 +137,7 @@ impl RibKind<'_> {
             NormalRibKind
             | ClosureOrAsyncRibKind
             | FnItemRibKind
-            | ConstantItemRibKind
+            | ConstantItemRibKind(_)
             | ModuleRibKind(_)
             | MacroDefinition(_)
             | ConstParamTyRibKind => false,
@@ -226,7 +226,7 @@ impl<'a> PathSource<'a> {
                 ValueNS => "method or associated constant",
                 MacroNS => bug!("associated macro"),
             },
-            PathSource::Expr(parent) => match &parent.as_ref().map(|p| &p.kind) {
+            PathSource::Expr(parent) => match parent.as_ref().map(|p| &p.kind) {
                 // "function" here means "anything callable" rather than `DefKind::Fn`,
                 // this is not precise but usually more helpful than just "value".
                 Some(ExprKind::Call(call_expr, _)) => match &call_expr.kind {
@@ -426,7 +426,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
         debug!("visit_anon_const {:?}", constant);
-        self.with_constant_rib(|this| {
+        self.with_constant_rib(constant.value.is_potential_trivial_const_param(), |this| {
             visit::walk_anon_const(this, constant);
         });
     }
@@ -628,7 +628,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         if !check_ns(TypeNS) && check_ns(ValueNS) {
                             // This must be equivalent to `visit_anon_const`, but we cannot call it
                             // directly due to visitor lifetimes so we have to copy-paste some code.
-                            self.with_constant_rib(|this| {
+                            self.with_constant_rib(true, |this| {
                                 this.smart_resolve_path(
                                     ty.id,
                                     qself.as_ref(),
@@ -829,7 +829,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | ClosureOrAsyncRibKind
                 | FnItemRibKind
                 | ItemRibKind(..)
-                | ConstantItemRibKind
+                | ConstantItemRibKind(_)
                 | ModuleRibKind(..)
                 | ForwardTyParamBanRibKind
                 | ConstParamTyRibKind => {
@@ -948,7 +948,14 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                         // Only impose the restrictions of `ConstRibKind` for an
                                         // actual constant expression in a provided default.
                                         if let Some(expr) = default {
-                                            this.with_constant_rib(|this| this.visit_expr(expr));
+                                            // We allow arbitrary const expressions inside of associated consts,
+                                            // even if they are potentially not const evaluatable.
+                                            //
+                                            // Type parameters can already be used and as associated consts are
+                                            // not used as part of the type system, this is far less surprising.
+                                            this.with_constant_rib(true, |this| {
+                                                this.visit_expr(expr)
+                                            });
                                         }
                                     }
                                     AssocItemKind::Fn(_, _, generics, _) => {
@@ -989,7 +996,9 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
                     if let Some(expr) = expr {
-                        this.with_constant_rib(|this| this.visit_expr(expr));
+                        this.with_constant_rib(expr.is_potential_trivial_const_param(), |this| {
+                            this.visit_expr(expr)
+                        });
                     }
                 });
             }
@@ -1086,11 +1095,11 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
     }
 
-    fn with_constant_rib(&mut self, f: impl FnOnce(&mut Self)) {
+    fn with_constant_rib(&mut self, trivial: bool, f: impl FnOnce(&mut Self)) {
         debug!("with_constant_rib");
-        self.with_rib(ValueNS, ConstantItemRibKind, |this| {
-            this.with_rib(TypeNS, ConstantItemRibKind, |this| {
-                this.with_label_rib(ConstantItemRibKind, f);
+        self.with_rib(ValueNS, ConstantItemRibKind(trivial), |this| {
+            this.with_rib(TypeNS, ConstantItemRibKind(trivial), |this| {
+                this.with_label_rib(ConstantItemRibKind(trivial), f);
             })
         });
     }
@@ -1220,7 +1229,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 for item in impl_items {
                                     use crate::ResolutionError::*;
                                     match &item.kind {
-                                        AssocItemKind::Const(..) => {
+                                        AssocItemKind::Const(_default, _ty, _expr) => {
                                             debug!("resolve_implementation AssocItemKind::Const",);
                                             // If this is a trait impl, ensure the const
                                             // exists in trait
@@ -1231,7 +1240,12 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 |n, s| ConstNotMemberOfTrait(n, s),
                                             );
 
-                                            this.with_constant_rib(|this| {
+                                            // We allow arbitrary const expressions inside of associated consts,
+                                            // even if they are potentially not const evaluatable.
+                                            //
+                                            // Type parameters can already be used and as associated consts are
+                                            // not used as part of the type system, this is far less surprising.
+                                            this.with_constant_rib(true, |this| {
                                                 visit::walk_assoc_item(this, item, AssocCtxt::Impl)
                                             });
                                         }
@@ -1510,30 +1524,18 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         pat_src: PatternSource,
         bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
     ) {
-        let is_tuple_struct_pat = matches!(pat.kind, PatKind::TupleStruct(_, _));
-
         // Visit all direct subpatterns of this pattern.
         pat.walk(&mut |pat| {
             debug!("resolve_pattern pat={:?} node={:?}", pat, pat.kind);
             match pat.kind {
                 PatKind::Ident(bmode, ident, ref sub) => {
-                    if is_tuple_struct_pat && sub.as_ref().filter(|p| p.is_rest()).is_some() {
-                        // In tuple struct patterns ignore the invalid `ident @ ...`.
-                        // It will be handled as an error by the AST lowering.
-                        self.r
-                            .session
-                            .delay_span_bug(ident.span, "ident in tuple pattern is invalid");
-                    } else {
-                        // First try to resolve the identifier as some existing entity,
-                        // then fall back to a fresh binding.
-                        let has_sub = sub.is_some();
-                        let res = self
-                            .try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
-                            .unwrap_or_else(|| {
-                                self.fresh_binding(ident, pat.id, pat_src, bindings)
-                            });
-                        self.r.record_partial_res(pat.id, PartialRes::new(res));
-                    }
+                    // First try to resolve the identifier as some existing entity,
+                    // then fall back to a fresh binding.
+                    let has_sub = sub.is_some();
+                    let res = self
+                        .try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
+                        .unwrap_or_else(|| self.fresh_binding(ident, pat.id, pat_src, bindings));
+                    self.r.record_partial_res(pat.id, PartialRes::new(res));
                 }
                 PatKind::TupleStruct(ref path, ..) => {
                     self.smart_resolve_path(pat.id, None, path, PathSource::TupleStruct(pat.span));
@@ -2241,8 +2243,15 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.resolve_expr(argument, None);
                 }
             }
-            ExprKind::Type(ref type_expr, _) => {
-                self.diagnostic_metadata.current_type_ascription.push(type_expr.span);
+            ExprKind::Type(ref type_expr, ref ty) => {
+                // `ParseSess::type_ascription_path_suggestions` keeps spans of colon tokens in
+                // type ascription. Here we are trying to retrieve the span of the colon token as
+                // well, but only if it's written without spaces `expr:Ty` and therefore confusable
+                // with `expr::Ty`, only in this case it will match the span from
+                // `type_ascription_path_suggestions`.
+                self.diagnostic_metadata
+                    .current_type_ascription
+                    .push(type_expr.span.between(ty.span));
                 visit::walk_expr(self, expr);
                 self.diagnostic_metadata.current_type_ascription.pop();
             }

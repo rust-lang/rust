@@ -1,5 +1,6 @@
+// run-rustfix
 struct X {}
 fn main() {
-    vec![X]; //…
+    let _ = vec![X]; //…
     //~^ ERROR expected value, found struct `X`
 }

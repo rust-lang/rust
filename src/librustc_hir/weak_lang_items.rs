@@ -20,8 +20,13 @@ lazy_static! {
     };
 }
 
-pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
-    lang_items::extract(attrs).and_then(|(name, _)| {
+/// The `check_name` argument avoids the need for `librustc_hir` to depend on
+/// `librustc_session`.
+pub fn link_name<'a, F>(check_name: F, attrs: &'a [ast::Attribute]) -> Option<Symbol>
+where
+    F: Fn(&'a ast::Attribute, Symbol) -> bool
+{
+    lang_items::extract(check_name, attrs).and_then(|(name, _)| {
         $(if name == sym::$name {
             Some(sym::$sym)
         } else)* {

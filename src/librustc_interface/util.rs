@@ -10,10 +10,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::jobserver;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
-use rustc_middle::ty;
 use rustc_resolve::{self, Resolver};
 use rustc_session as session;
 use rustc_session::config::{self, CrateType};
@@ -143,13 +142,11 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
     crate::callbacks::setup_callbacks();
 
     let main_handler = move || {
-        rustc_ast::with_session_globals(edition, || {
-            ty::tls::GCX_PTR.set(&Lock::new(0), || {
-                if let Some(stderr) = stderr {
-                    io::set_panic(Some(box Sink(stderr.clone())));
-                }
-                f()
-            })
+        rustc_span::with_session_globals(edition, || {
+            if let Some(stderr) = stderr {
+                io::set_panic(Some(box Sink(stderr.clone())));
+            }
+            f()
         })
     };
 
@@ -163,6 +160,7 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
+    use rustc_middle::ty;
     crate::callbacks::setup_callbacks();
 
     let mut config = rayon::ThreadPoolBuilder::new()
@@ -178,29 +176,21 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
 
     let with_pool = move |pool: &rayon::ThreadPool| pool.install(move || f());
 
-    rustc_ast::with_session_globals(edition, || {
-        rustc_ast::SESSION_GLOBALS.with(|ast_session_globals| {
-            rustc_span::SESSION_GLOBALS.with(|span_session_globals| {
-                // The main handler runs for each Rayon worker thread and sets
-                // up the thread local rustc uses. ast_session_globals and
-                // span_session_globals are captured and set on the new
-                // threads. ty::tls::with_thread_locals sets up thread local
-                // callbacks from librustc_ast.
-                let main_handler = move |thread: rayon::ThreadBuilder| {
-                    rustc_ast::SESSION_GLOBALS.set(ast_session_globals, || {
-                        rustc_span::SESSION_GLOBALS.set(span_session_globals, || {
-                            ty::tls::GCX_PTR.set(&Lock::new(0), || {
-                                if let Some(stderr) = stderr {
-                                    io::set_panic(Some(box Sink(stderr.clone())));
-                                }
-                                thread.run()
-                            })
-                        })
-                    })
-                };
+    rustc_span::with_session_globals(edition, || {
+        rustc_span::SESSION_GLOBALS.with(|session_globals| {
+            // The main handler runs for each Rayon worker thread and sets up
+            // the thread local rustc uses. `session_globals` is captured and set
+            // on the new threads.
+            let main_handler = move |thread: rayon::ThreadBuilder| {
+                rustc_span::SESSION_GLOBALS.set(session_globals, || {
+                    if let Some(stderr) = stderr {
+                        io::set_panic(Some(box Sink(stderr.clone())));
+                    }
+                    thread.run()
+                })
+            };
 
-                config.build_scoped(main_handler, with_pool).unwrap()
-            })
+            config.build_scoped(main_handler, with_pool).unwrap()
         })
     })
 }
@@ -411,10 +401,14 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
     CrateDisambiguator::from(hasher.finish::<Fingerprint>())
 }
 
-pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut LintBuffer) {
+pub(crate) fn check_attr_crate_type(
+    sess: &Session,
+    attrs: &[ast::Attribute],
+    lint_buffer: &mut LintBuffer,
+) {
     // Unconditionally collect crate types from attributes to make them used
     for a in attrs.iter() {
-        if a.check_name(sym::crate_type) {
+        if sess.check_name(a, sym::crate_type) {
             if let Some(n) = a.value_str() {
                 if categorize_crate_type(n).is_some() {
                     return;
@@ -469,7 +463,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     let attr_types: Vec<CrateType> = attrs
         .iter()
         .filter_map(|a| {
-            if a.check_name(sym::crate_type) {
+            if session.check_name(a, sym::crate_type) {
                 match a.value_str() {
                     Some(s) => categorize_crate_type(s),
                     _ => None,
@@ -535,7 +529,7 @@ pub fn build_output_filenames(
                 .opts
                 .crate_name
                 .clone()
-                .or_else(|| rustc_attr::find_crate_name(attrs).map(|n| n.to_string()))
+                .or_else(|| rustc_attr::find_crate_name(&sess, attrs).map(|n| n.to_string()))
                 .unwrap_or_else(|| input.filestem().to_owned());
 
             OutputFilenames::new(

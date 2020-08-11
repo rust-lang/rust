@@ -232,7 +232,7 @@ fn def_id_visibility<'tcx>(
                 Node::Item(item) => &item.vis,
                 Node::ForeignItem(foreign_item) => &foreign_item.vis,
                 Node::MacroDef(macro_def) => {
-                    if attr::contains_name(&macro_def.attrs, sym::macro_export) {
+                    if tcx.sess.contains_name(&macro_def.attrs, sym::macro_export) {
                         return (ty::Visibility::Public, macro_def.span, "public");
                     } else {
                         &macro_def.vis
@@ -271,8 +271,11 @@ fn def_id_visibility<'tcx>(
                                 ctor_vis =
                                     ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
                                 let attrs = tcx.get_attrs(variant.def_id);
-                                span =
-                                    attr::find_by_name(&attrs, sym::non_exhaustive).unwrap().span;
+                                span = tcx
+                                    .sess
+                                    .find_by_name(&attrs, sym::non_exhaustive)
+                                    .unwrap()
+                                    .span;
                                 descr = "crate-visible";
                             }
 
@@ -305,7 +308,9 @@ fn def_id_visibility<'tcx>(
                                 if adt_def.non_enum_variant().is_field_list_non_exhaustive() {
                                     ctor_vis =
                                         ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
-                                    span = attr::find_by_name(&item.attrs, sym::non_exhaustive)
+                                    span = tcx
+                                        .sess
+                                        .find_by_name(&item.attrs, sym::non_exhaustive)
                                         .unwrap()
                                         .span;
                                     descr = "crate-visible";
@@ -637,7 +642,7 @@ impl EmbargoVisitor<'tcx> {
         &mut self,
         segments: &[hir::PathSegment<'_>],
     ) {
-        if let Some([module, segment]) = segments.rchunks_exact(2).next() {
+        if let [.., module, segment] = segments {
             if let Some(item) = module
                 .res
                 .and_then(|res| res.mod_def_id())
@@ -779,11 +784,18 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             // The interface is empty.
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::OpaqueTy(..) => {
-                // FIXME: This is some serious pessimization intended to workaround deficiencies
-                // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
-                // reachable if they are returned via `impl Trait`, even from private functions.
-                let exist_level = cmp::max(item_level, Some(AccessLevel::ReachableFromImplTrait));
-                self.reach(item.hir_id, exist_level).generics().predicates().ty();
+                // HACK(jynelson): trying to infer the type of `impl trait` breaks `async-std` (and `pub async fn` in general)
+                // Since rustdoc never need to do codegen and doesn't care about link-time reachability,
+                // mark this as unreachable.
+                // See https://github.com/rust-lang/rust/issues/75100
+                if !self.tcx.sess.opts.actually_rustdoc {
+                    // FIXME: This is some serious pessimization intended to workaround deficiencies
+                    // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
+                    // reachable if they are returned via `impl Trait`, even from private functions.
+                    let exist_level =
+                        cmp::max(item_level, Some(AccessLevel::ReachableFromImplTrait));
+                    self.reach(item.hir_id, exist_level).generics().predicates().ty();
+                }
             }
             // Visit everything.
             hir::ItemKind::Const(..)
@@ -914,7 +926,9 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
-        if attr::find_transparency(&md.attrs, md.ast.macro_rules).0 != Transparency::Opaque {
+        if attr::find_transparency(&self.tcx.sess, &md.attrs, md.ast.macro_rules).0
+            != Transparency::Opaque
+        {
             self.update(md.hir_id, Some(AccessLevel::Public));
             return;
         }

@@ -11,7 +11,7 @@ use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_hir::lang_items;
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_middle::hir::exports::Export;
-use rustc_middle::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLib};
+use rustc_middle::middle::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, ReprOptions, Ty};
@@ -226,14 +226,14 @@ crate struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
     pub host_hash: Option<Svh>,
-    pub kind: DepKind,
+    pub kind: CrateDepKind,
     pub extra_filename: String,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct TraitImpls {
     trait_id: (u32, DefIndex),
-    impls: Lazy<[DefIndex]>,
+    impls: Lazy<[(DefIndex, Option<ty::fast_reject::SimplifiedType>)]>,
 }
 
 /// Define `LazyTables` and `TableBuilders` at the same time.
@@ -285,7 +285,7 @@ define_tables! {
     super_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
     mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
-    unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u64>>>,
+    unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u32>>>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]

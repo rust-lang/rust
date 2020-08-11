@@ -95,6 +95,7 @@ pub fn render<T: Print, S: Print>(
                            placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
                            type=\"search\">\
                 </div>\
+                <span class=\"help-button\">?</span>
                 <a id=\"settings-menu\" href=\"{root_path}settings.html\">\
                     <img src=\"{static_root_path}wheel{suffix}.svg\" \
                          width=\"18\" \
@@ -138,7 +139,7 @@ pub fn render<T: Print, S: Print>(
             if layout.logo.is_empty() {
                 format!(
                     "<a href='{path}index.html'>\
-                     <div class='logo-container'>\
+                     <div class='logo-container rust-logo'>\
                      <img src='{static_root_path}rust-logo{suffix}.png' alt='logo'></div></a>",
                     path = p,
                     static_root_path = static_root_path,

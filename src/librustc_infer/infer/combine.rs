@@ -166,7 +166,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
                 return self.unify_const_variable(!a_is_expected, vid, a);
             }
             (ty::ConstKind::Unevaluated(..), _) if self.tcx.lazy_normalization() => {
-                // FIXME(#59490): Need to remove the leak check to accomodate
+                // FIXME(#59490): Need to remove the leak check to accommodate
                 // escaping bound variables here.
                 if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
                     relation.const_equate_obligation(a, b);
@@ -174,7 +174,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
                 return Ok(b);
             }
             (_, ty::ConstKind::Unevaluated(..)) if self.tcx.lazy_normalization() => {
-                // FIXME(#59490): Need to remove the leak check to accomodate
+                // FIXME(#59490): Need to remove the leak check to accommodate
                 // escaping bound variables here.
                 if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
                     relation.const_equate_obligation(a, b);

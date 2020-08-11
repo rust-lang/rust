@@ -943,14 +943,30 @@ mod mod_keyword {}
 /// Capture a [closure]'s environment by value.
 ///
 /// `move` converts any variables captured by reference or mutable reference
-/// to owned by value variables. The three [`Fn` trait]'s mirror the ways to capture
-/// variables, when `move` is used, the closures is represented by the `FnOnce` trait.
+/// to owned by value variables.
 ///
 /// ```rust
 /// let capture = "hello";
 /// let closure = move || {
 ///     println!("rust says {}", capture);
 /// };
+/// ```
+///
+/// Note: `move` closures may still implement [`Fn`] or [`FnMut`], even though
+/// they capture variables by `move`. This is because the traits implemented by
+/// a closure type are determined by *what* the closure does with captured
+/// values, not *how* it captures them:
+///
+/// ```rust
+/// fn create_fn() -> impl Fn() {
+///     let text = "Fn".to_owned();
+///
+///     move || println!("This is a: {}", text)
+/// }
+///
+///     let fn_plain = create_fn();
+///
+///     fn_plain();
 /// ```
 ///
 /// `move` is often used when [threads] are involved.
@@ -1363,7 +1379,7 @@ mod self_upper_keyword {}
 ///
 /// let r1 = &FOO as *const _;
 /// let r2 = &FOO as *const _;
-/// // With a strictly read-only static, references will have the same adress
+/// // With a strictly read-only static, references will have the same address
 /// assert_eq!(r1, r2);
 /// // A static item can be used just like a variable in many cases
 /// println!("{:?}", FOO);

@@ -1,4 +1,5 @@
 #![feature(alloc_layout_extra)]
+#![feature(array_chunks)]
 #![feature(bool_to_option)]
 #![feature(bound_cloned)]
 #![feature(box_syntax)]
@@ -26,7 +27,6 @@
 #![feature(test)]
 #![feature(trusted_len)]
 #![feature(try_trait)]
-#![feature(inner_deref)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(int_error_matching)]

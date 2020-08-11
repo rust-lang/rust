@@ -1,5 +1,5 @@
 // This test is from #73976. We previously did not check if a type is monomorphized
-// before calculating its type id, which leads to the bizzare behaviour below that
+// before calculating its type id, which leads to the bizarre behaviour below that
 // TypeId of a generic type does not match itself.
 //
 // This test case should either run-pass or be rejected at compile time.

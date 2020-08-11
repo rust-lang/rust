@@ -72,7 +72,7 @@ fn default_substructure(
         },
         StaticEnum(..) => {
             struct_span_err!(
-                cx.parse_sess.span_diagnostic,
+                &cx.sess.parse_sess.span_diagnostic,
                 trait_span,
                 E0665,
                 "`Default` cannot be derived for enums, only structs"

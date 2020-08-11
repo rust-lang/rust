@@ -3,7 +3,6 @@ use super::{ImplTraitContext, ImplTraitPosition};
 use crate::Arena;
 
 use rustc_ast::ast::*;
-use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
@@ -17,9 +16,9 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 
-use log::debug;
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeSet;
+use tracing::debug;
 
 pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
     pub(super) lctx: &'a mut LoweringContext<'lowering, 'hir>,
@@ -205,7 +204,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let attrs = self.lower_attrs(&i.attrs);
 
         if let ItemKind::MacroDef(MacroDef { ref body, macro_rules }) = i.kind {
-            if !macro_rules || attr::contains_name(&i.attrs, sym::macro_export) {
+            if !macro_rules || self.sess.contains_name(&i.attrs, sym::macro_export) {
                 let hir_id = self.lower_node_id(i.id);
                 let body = P(self.lower_mac_args(body));
                 self.exported_macros.push(hir::MacroDef {

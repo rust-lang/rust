@@ -42,7 +42,7 @@ pub struct TestOptions {
     pub attrs: Vec<String>,
 }
 
-pub fn run(options: Options) -> Result<(), String> {
+pub fn run(options: Options) -> Result<(), ErrorReported> {
     let input = config::Input::File(options.input.clone());
 
     let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
@@ -150,7 +150,7 @@ pub fn run(options: Options) -> Result<(), String> {
     });
     let tests = match tests {
         Ok(tests) => tests,
-        Err(ErrorReported) => return Err(String::new()),
+        Err(ErrorReported) => return Err(ErrorReported),
     };
 
     test_args.insert(0, "rustdoctest".to_string());
@@ -175,17 +175,17 @@ fn scrape_test_config(krate: &::rustc_hir::Crate<'_>) -> TestOptions {
         .item
         .attrs
         .iter()
-        .filter(|a| a.check_name(sym::doc))
+        .filter(|a| a.has_name(sym::doc))
         .flat_map(|a| a.meta_item_list().unwrap_or_else(Vec::new))
-        .filter(|a| a.check_name(sym::test))
+        .filter(|a| a.has_name(sym::test))
         .collect();
     let attrs = test_attrs.iter().flat_map(|a| a.meta_item_list().unwrap_or(&[]));
 
     for attr in attrs {
-        if attr.check_name(sym::no_crate_inject) {
+        if attr.has_name(sym::no_crate_inject) {
             opts.no_crate_inject = true;
         }
-        if attr.check_name(sym::attr) {
+        if attr.has_name(sym::attr) {
             if let Some(l) = attr.meta_item_list() {
                 for item in l {
                     opts.attrs.push(pprust::meta_list_item_to_string(item));
@@ -398,7 +398,7 @@ pub fn make_test(
     // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
-        rustc_ast::with_session_globals(edition, || {
+        rustc_span::with_session_globals(edition, || {
             use rustc_errors::emitter::EmitterWriter;
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
@@ -943,7 +943,12 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
-            self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
+            // Use the outermost invocation, so that doctest names come from where the docs were written.
+            let span = attrs
+                .span
+                .map(|span| span.ctxt().outer_expn().expansion_cause().unwrap_or(span))
+                .unwrap_or(DUMMY_SP);
+            self.collector.set_position(span);
             markdown::find_testable_code(
                 &doc,
                 self.collector,

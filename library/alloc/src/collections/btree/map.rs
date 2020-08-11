@@ -1,13 +1,15 @@
+// ignore-tidy-filelength
+
 use core::borrow::Borrow;
 use core::cmp::Ordering;
-use core::fmt::Debug;
+use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::iter::{FromIterator, FusedIterator, Peekable};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{Index, RangeBounds};
-use core::{fmt, ptr};
+use core::ptr;
 
 use super::node::{self, marker, ForceResult::*, Handle, InsertResult::*, NodeRef};
 use super::search::{self, SearchResult::*};
@@ -152,7 +154,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
 
                     {
                         let root = out_tree.root.as_mut().unwrap(); // unwrap succeeds because we just wrapped
-                        let mut out_node = match root.as_mut().force() {
+                        let mut out_node = match root.node_as_mut().force() {
                             Leaf(leaf) => leaf,
                             Internal(_) => unreachable!(),
                         };
@@ -174,7 +176,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
 
                     {
                         let out_root = BTreeMap::ensure_is_owned(&mut out_tree.root);
-                        let mut out_node = out_root.push_level();
+                        let mut out_node = out_root.push_internal_level();
                         let mut in_edge = internal.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
                             let (k, v) = kv.into_kv();
@@ -208,7 +210,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
             // Ord` constraint, which this method lacks.
             BTreeMap { root: None, length: 0 }
         } else {
-            clone_subtree(self.root.as_ref().unwrap().as_ref()) // unwrap succeeds because not empty
+            clone_subtree(self.root.as_ref().unwrap().node_as_ref()) // unwrap succeeds because not empty
         }
     }
 }
@@ -221,14 +223,16 @@ where
     type Key = K;
 
     fn get(&self, key: &Q) -> Option<&K> {
-        match search::search_tree(self.root.as_ref()?.as_ref(), key) {
+        let root_node = self.root.as_ref()?.node_as_ref();
+        match search::search_tree(root_node, key) {
             Found(handle) => Some(handle.into_kv().0),
             GoDown(_) => None,
         }
     }
 
     fn take(&mut self, key: &Q) -> Option<K> {
-        match search::search_tree(self.root.as_mut()?.as_mut(), key) {
+        let root_node = self.root.as_mut()?.node_as_mut();
+        match search::search_tree(root_node, key) {
             Found(handle) => Some(
                 OccupiedEntry { handle, length: &mut self.length, _marker: PhantomData }
                     .remove_kv()
@@ -240,7 +244,7 @@ where
 
     fn replace(&mut self, key: K) -> Option<K> {
         let root = Self::ensure_is_owned(&mut self.root);
-        match search::search_tree::<marker::Mut<'_>, K, (), K>(root.as_mut(), &key) {
+        match search::search_tree::<marker::Mut<'_>, K, (), K>(root.node_as_mut(), &key) {
             Found(handle) => Some(mem::replace(handle.into_kv_mut().0, key)),
             GoDown(handle) => {
                 VacantEntry { key, handle, length: &mut self.length, _marker: PhantomData }
@@ -353,6 +357,30 @@ impl<K, V: fmt::Debug> fmt::Debug for Values<'_, K, V> {
 #[derive(Debug)]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
+}
+
+/// An owning iterator over the keys of a `BTreeMap`.
+///
+/// This `struct` is created by the [`into_keys`] method on [`BTreeMap`].
+/// See its documentation for more.
+///
+/// [`into_keys`]: BTreeMap::into_keys
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[derive(Debug)]
+pub struct IntoKeys<K, V> {
+    inner: IntoIter<K, V>,
+}
+
+/// An owning iterator over the values of a `BTreeMap`.
+///
+/// This `struct` is created by the [`into_values`] method on [`BTreeMap`].
+/// See its documentation for more.
+///
+/// [`into_values`]: BTreeMap::into_values
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[derive(Debug)]
+pub struct IntoValues<K, V> {
+    inner: IntoIter<K, V>,
 }
 
 /// An iterator over a sub-range of entries in a `BTreeMap`.
@@ -539,7 +567,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
         K: Borrow<Q>,
         Q: Ord,
     {
-        match search::search_tree(self.root.as_ref()?.as_ref(), key) {
+        let root_node = self.root.as_ref()?.node_as_ref();
+        match search::search_tree(root_node, key) {
             Found(handle) => Some(handle.into_kv().1),
             GoDown(_) => None,
         }
@@ -566,7 +595,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
         K: Borrow<Q>,
         Q: Ord,
     {
-        match search::search_tree(self.root.as_ref()?.as_ref(), k) {
+        let root_node = self.root.as_ref()?.node_as_ref();
+        match search::search_tree(root_node, k) {
             Found(handle) => Some(handle.into_kv()),
             GoDown(_) => None,
         }
@@ -591,8 +621,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn first_key_value(&self) -> Option<(&K, &V)> {
-        let front = self.root.as_ref()?.as_ref().first_leaf_edge();
-        front.right_kv().ok().map(Handle::into_kv)
+        let root_node = self.root.as_ref()?.node_as_ref();
+        root_node.first_leaf_edge().right_kv().ok().map(Handle::into_kv)
     }
 
     /// Returns the first entry in the map for in-place manipulation.
@@ -617,8 +647,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>> {
-        let front = self.root.as_mut()?.as_mut().first_leaf_edge();
-        let kv = front.right_kv().ok()?;
+        let root_node = self.root.as_mut()?.node_as_mut();
+        let kv = root_node.first_leaf_edge().right_kv().ok()?;
         Some(OccupiedEntry {
             handle: kv.forget_node_type(),
             length: &mut self.length,
@@ -668,8 +698,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn last_key_value(&self) -> Option<(&K, &V)> {
-        let back = self.root.as_ref()?.as_ref().last_leaf_edge();
-        back.left_kv().ok().map(Handle::into_kv)
+        let root_node = self.root.as_ref()?.node_as_ref();
+        root_node.last_leaf_edge().left_kv().ok().map(Handle::into_kv)
     }
 
     /// Returns the last entry in the map for in-place manipulation.
@@ -694,8 +724,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>> {
-        let back = self.root.as_mut()?.as_mut().last_leaf_edge();
-        let kv = back.left_kv().ok()?;
+        let root_node = self.root.as_mut()?.node_as_mut();
+        let kv = root_node.last_leaf_edge().left_kv().ok()?;
         Some(OccupiedEntry {
             handle: kv.forget_node_type(),
             length: &mut self.length,
@@ -779,7 +809,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
         K: Borrow<Q>,
         Q: Ord,
     {
-        match search::search_tree(self.root.as_mut()?.as_mut(), key) {
+        let root_node = self.root.as_mut()?.node_as_mut();
+        match search::search_tree(root_node, key) {
             Found(handle) => Some(handle.into_kv_mut().1),
             GoDown(_) => None,
         }
@@ -873,7 +904,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
         K: Borrow<Q>,
         Q: Ord,
     {
-        match search::search_tree(self.root.as_mut()?.as_mut(), key) {
+        let root_node = self.root.as_mut()?.node_as_mut();
+        match search::search_tree(root_node, key) {
             Found(handle) => Some(
                 OccupiedEntry { handle, length: &mut self.length, _marker: PhantomData }
                     .remove_entry(),
@@ -969,7 +1001,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         R: RangeBounds<T>,
     {
         if let Some(root) = &self.root {
-            let (f, b) = range_search(root.as_ref(), range);
+            let (f, b) = range_search(root.node_as_ref(), range);
 
             Range { front: Some(f), back: Some(b) }
         } else {
@@ -1015,7 +1047,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         R: RangeBounds<T>,
     {
         if let Some(root) = &mut self.root {
-            let (f, b) = range_search(root.as_mut(), range);
+            let (f, b) = range_search(root.node_as_mut(), range);
 
             RangeMut { front: Some(f), back: Some(b), _marker: PhantomData }
         } else {
@@ -1045,7 +1077,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
         // FIXME(@porglezomp) Avoid allocating if we don't insert
         let root = Self::ensure_is_owned(&mut self.root);
-        match search::search_tree(root.as_mut(), &key) {
+        match search::search_tree(root.node_as_mut(), &key) {
             Found(handle) => {
                 Occupied(OccupiedEntry { handle, length: &mut self.length, _marker: PhantomData })
             }
@@ -1057,7 +1089,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
     fn from_sorted_iter<I: Iterator<Item = (K, V)>>(&mut self, iter: I) {
         let root = Self::ensure_is_owned(&mut self.root);
-        let mut cur_node = root.as_mut().last_leaf_edge().into_node();
+        let mut cur_node = root.node_as_mut().last_leaf_edge().into_node();
         // Iterate through all key-value pairs, pushing them into nodes at the right level.
         for (key, value) in iter {
             // Try to push key-value pair into the current leaf node.
@@ -1080,9 +1112,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
                                 test_node = parent.forget_type();
                             }
                         }
-                        Err(node) => {
+                        Err(_) => {
                             // We are at the top, create a new root node and push there.
-                            open_node = node.into_root_mut().push_level();
+                            open_node = root.push_internal_level();
                             break;
                         }
                     }
@@ -1092,7 +1124,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 let tree_height = open_node.height() - 1;
                 let mut right_tree = node::Root::new_leaf();
                 for _ in 0..tree_height {
-                    right_tree.push_level();
+                    right_tree.push_internal_level();
                 }
                 open_node.push(key, value, right_tree);
 
@@ -1107,7 +1139,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
     fn fix_right_edge(root: &mut node::Root<K, V>) {
         // Handle underfull nodes, start from the top.
-        let mut cur_node = root.as_mut();
+        let mut cur_node = root.node_as_mut();
         while let Internal(internal) = cur_node.force() {
             // Check if right-most child is underfull.
             let mut last_edge = internal.last_edge();
@@ -1171,12 +1203,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let mut right = Self::new();
         let right_root = Self::ensure_is_owned(&mut right.root);
         for _ in 0..left_root.height() {
-            right_root.push_level();
+            right_root.push_internal_level();
         }
 
         {
-            let mut left_node = left_root.as_mut();
-            let mut right_node = right_root.as_mut();
+            let mut left_node = left_root.node_as_mut();
+            let mut right_node = right_root.node_as_mut();
 
             loop {
                 let mut split_edge = match search::search_node(left_node, key) {
@@ -1254,8 +1286,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
         DrainFilter { pred, inner: self.drain_filter_inner() }
     }
     pub(super) fn drain_filter_inner(&mut self) -> DrainFilterInner<'_, K, V> {
-        let front = self.root.as_mut().map(|r| r.as_mut().first_leaf_edge());
-        DrainFilterInner { length: &mut self.length, cur_leaf_edge: front }
+        let root_node = self.root.as_mut().map(|r| r.node_as_mut());
+        let front = root_node.map(|rn| rn.first_leaf_edge());
+        DrainFilterInner {
+            length: &mut self.length,
+            cur_leaf_edge: front,
+            emptied_internal_root: false,
+        }
     }
 
     /// Calculates the number of elements if it is incorrect.
@@ -1285,12 +1322,58 @@ impl<K: Ord, V> BTreeMap<K, V> {
             res
         }
 
-        self.length = dfs(self.root.as_ref().unwrap().as_ref());
+        self.length = dfs(self.root.as_ref().unwrap().node_as_ref());
+    }
+
+    /// Creates a consuming iterator visiting all the keys, in sorted order.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `K`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_into_keys_values)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(2, "b");
+    /// a.insert(1, "a");
+    ///
+    /// let keys: Vec<i32> = a.into_keys().collect();
+    /// assert_eq!(keys, [1, 2]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "map_into_keys_values", issue = "75294")]
+    pub fn into_keys(self) -> IntoKeys<K, V> {
+        IntoKeys { inner: self.into_iter() }
+    }
+
+    /// Creates a consuming iterator visiting all the values, in order by key.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `V`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_into_keys_values)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "hello");
+    /// a.insert(2, "goodbye");
+    ///
+    /// let values: Vec<&str> = a.into_values().collect();
+    /// assert_eq!(values, ["hello", "goodbye"]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "map_into_keys_values", issue = "75294")]
+    pub fn into_values(self) -> IntoValues<K, V> {
+        IntoValues { inner: self.into_iter() }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K: 'a, V: 'a> IntoIterator for &'a BTreeMap<K, V> {
+impl<'a, K, V> IntoIterator for &'a BTreeMap<K, V> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
@@ -1359,7 +1442,7 @@ impl<K, V> Clone for Iter<'_, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K: 'a, V: 'a> IntoIterator for &'a mut BTreeMap<K, V> {
+impl<'a, K, V> IntoIterator for &'a mut BTreeMap<K, V> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
@@ -1625,6 +1708,7 @@ where
 pub(super) struct DrainFilterInner<'a, K: 'a, V: 'a> {
     length: &'a mut usize,
     cur_leaf_edge: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
+    emptied_internal_root: bool,
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -1665,6 +1749,17 @@ where
     }
 }
 
+impl<K, V> Drop for DrainFilterInner<'_, K, V> {
+    fn drop(&mut self) {
+        if self.emptied_internal_root {
+            if let Some(handle) = self.cur_leaf_edge.take() {
+                let root = handle.into_node().into_root_mut();
+                root.pop_internal_level();
+            }
+        }
+    }
+}
+
 impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
     /// Allow Debug implementations to predict the next element.
     pub(super) fn peek(&self) -> Option<(&K, &V)> {
@@ -1681,9 +1776,9 @@ impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
             let (k, v) = kv.kv_mut();
             if pred(k, v) {
                 *self.length -= 1;
-                let (k, v, leaf_edge_location) = kv.remove_kv_tracking();
-                self.cur_leaf_edge = Some(leaf_edge_location);
-                return Some((k, v));
+                let (kv, pos) = kv.remove_kv_tracking(|_| self.emptied_internal_root = true);
+                self.cur_leaf_edge = Some(pos);
+                return Some(kv);
             }
             self.cur_leaf_edge = Some(kv.next_leaf_edge());
         }
@@ -1763,6 +1858,82 @@ impl<'a, K, V> Range<'a, K, V> {
         unsafe { unwrap_unchecked(self.front.as_mut()).next_unchecked() }
     }
 }
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> Iterator for IntoKeys<K, V> {
+    type Item = K;
+
+    fn next(&mut self) -> Option<K> {
+        self.inner.next().map(|(k, _)| k)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    fn last(mut self) -> Option<K> {
+        self.next_back()
+    }
+
+    fn min(mut self) -> Option<K> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<K> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> DoubleEndedIterator for IntoKeys<K, V> {
+    fn next_back(&mut self) -> Option<K> {
+        self.inner.next_back().map(|(k, _)| k)
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> FusedIterator for IntoKeys<K, V> {}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> Iterator for IntoValues<K, V> {
+    type Item = V;
+
+    fn next(&mut self) -> Option<V> {
+        self.inner.next().map(|(_, v)| v)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    fn last(mut self) -> Option<V> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> DoubleEndedIterator for IntoValues<K, V> {
+    fn next_back(&mut self) -> Option<V> {
+        self.inner.next_back().map(|(_, v)| v)
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> ExactSizeIterator for IntoValues<K, V> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+#[unstable(feature = "map_into_keys_values", issue = "75294")]
+impl<K, V> FusedIterator for IntoValues<K, V> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
@@ -2087,7 +2258,7 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, K, V> {
         if let Some(root) = &self.root {
-            let (f, b) = full_range_search(root.as_ref());
+            let (f, b) = full_range_search(root.node_as_ref());
 
             Iter { range: Range { front: Some(f), back: Some(b) }, length: self.length }
         } else {
@@ -2119,7 +2290,7 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         if let Some(root) = &mut self.root {
-            let (f, b) = full_range_search(root.as_mut());
+            let (f, b) = full_range_search(root.node_as_mut());
 
             IterMut {
                 range: RangeMut { front: Some(f), back: Some(b), _marker: PhantomData },
@@ -2448,40 +2619,17 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     pub fn insert(self, value: V) -> &'a mut V {
         *self.length += 1;
 
-        let out_ptr;
-
-        let mut ins_k;
-        let mut ins_v;
-        let mut ins_edge;
-
-        let mut cur_parent = match self.handle.insert(self.key, value) {
-            (Fit(handle), _) => return handle.into_kv_mut().1,
-            (Split(left, k, v, right), ptr) => {
-                ins_k = k;
-                ins_v = v;
-                ins_edge = right;
-                out_ptr = ptr;
-                left.ascend().map_err(|n| n.into_root_mut())
+        let out_ptr = match self.handle.insert_recursing(self.key, value) {
+            (Fit(_), val_ptr) => val_ptr,
+            (Split(ins), val_ptr) => {
+                let root = ins.left.into_root_mut();
+                root.push_internal_level().push(ins.k, ins.v, ins.right);
+                val_ptr
             }
         };
-
-        loop {
-            match cur_parent {
-                Ok(parent) => match parent.insert(ins_k, ins_v, ins_edge) {
-                    Fit(_) => return unsafe { &mut *out_ptr },
-                    Split(left, k, v, right) => {
-                        ins_k = k;
-                        ins_v = v;
-                        ins_edge = right;
-                        cur_parent = left.ascend().map_err(|n| n.into_root_mut());
-                    }
-                },
-                Err(root) => {
-                    root.push_level().push(ins_k, ins_v, ins_edge);
-                    return unsafe { &mut *out_ptr };
-                }
-            }
-        }
+        // Now that we have finished growing the tree using borrowed references,
+        // dereference the pointer to a part of it, that we picked up along the way.
+        unsafe { &mut *out_ptr }
     }
 }
 
@@ -2647,24 +2795,32 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
         self.remove_kv().1
     }
 
+    // Body of `remove_entry`, separate to keep the above implementations short.
     fn remove_kv(self) -> (K, V) {
         *self.length -= 1;
 
-        let (old_key, old_val, _) = self.handle.remove_kv_tracking();
-        (old_key, old_val)
+        let (old_kv, _) =
+            self.handle.remove_kv_tracking(|root| root.into_root_mut().pop_internal_level());
+        old_kv
     }
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
-    /// Removes a key/value-pair from the map, and returns that pair, as well as
-    /// the leaf edge corresponding to that former pair.
-    fn remove_kv_tracking(
+    /// Removes a key/value-pair from the tree, and returns that pair, as well as
+    /// the leaf edge corresponding to that former pair. It's possible this leaves
+    /// an empty internal root node, which the caller should subsequently pop from
+    /// the map holding the tree. The caller should also decrement the map's length.
+    fn remove_kv_tracking<F>(
         self,
-    ) -> (K, V, Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
-        let (mut pos, old_key, old_val, was_internal) = match self.force() {
+        handle_emptied_internal_root: F,
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>)
+    where
+        F: FnOnce(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
+    {
+        let (old_kv, mut pos, was_internal) = match self.force() {
             Leaf(leaf) => {
-                let (hole, old_key, old_val) = leaf.remove();
-                (hole, old_key, old_val, false)
+                let (old_kv, pos) = leaf.remove();
+                (old_kv, pos, false)
             }
             Internal(mut internal) => {
                 // Replace the location freed in the internal node with the next KV,
@@ -2679,12 +2835,12 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
                 let to_remove = internal.left_edge().descend().last_leaf_edge().left_kv().ok();
                 let to_remove = unsafe { unwrap_unchecked(to_remove) };
 
-                let (hole, key, val) = to_remove.remove();
+                let (kv, pos) = to_remove.remove();
 
-                let old_key = unsafe { mem::replace(&mut *key_loc, key) };
-                let old_val = unsafe { mem::replace(&mut *val_loc, val) };
+                let old_key = unsafe { mem::replace(&mut *key_loc, kv.0) };
+                let old_val = unsafe { mem::replace(&mut *val_loc, kv.1) };
 
-                (hole, old_key, old_val, true)
+                ((old_key, old_val), pos, true)
             }
         };
 
@@ -2709,8 +2865,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
 
                     let parent = edge.into_node();
                     if parent.len() == 0 {
-                        // We must be at the root
-                        parent.into_root_mut().pop_level();
+                        // The parent that was just emptied must be the root,
+                        // because nodes on a lower level would not have been
+                        // left underfull. It has to be popped off the tree soon.
+                        handle_emptied_internal_root(parent);
                         break;
                     } else {
                         cur_node = parent.forget_type();
@@ -2737,15 +2895,15 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
             pos = unsafe { unwrap_unchecked(pos.next_kv().ok()).next_leaf_edge() };
         }
 
-        (old_key, old_val, pos)
+        (old_kv, pos)
     }
 }
 
 impl<K, V> node::Root<K, V> {
     /// Removes empty levels on the top, but keep an empty leaf if the entire tree is empty.
     fn fix_top(&mut self) {
-        while self.height() > 0 && self.as_ref().len() == 0 {
-            self.pop_level();
+        while self.height() > 0 && self.node_as_ref().len() == 0 {
+            self.pop_internal_level();
         }
     }
 
@@ -2753,7 +2911,7 @@ impl<K, V> node::Root<K, V> {
         self.fix_top();
 
         {
-            let mut cur_node = self.as_mut();
+            let mut cur_node = self.node_as_mut();
 
             while let Internal(node) = cur_node.force() {
                 let mut last_kv = node.last_kv();
@@ -2779,7 +2937,7 @@ impl<K, V> node::Root<K, V> {
         self.fix_top();
 
         {
-            let mut cur_node = self.as_mut();
+            let mut cur_node = self.node_as_mut();
 
             while let Internal(node) = cur_node.force() {
                 let mut first_kv = node.first_kv();
@@ -2817,8 +2975,16 @@ fn handle_underfull_node<K, V>(
     let (is_left, mut handle) = match parent.left_kv() {
         Ok(left) => (true, left),
         Err(parent) => {
-            let right = unsafe { unwrap_unchecked(parent.right_kv().ok()) };
-            (false, right)
+            match parent.right_kv() {
+                Ok(right) => (false, right),
+                Err(_) => {
+                    // The underfull node has an empty parent, so it is the only child
+                    // of an empty root. It is destined to become the new root, thus
+                    // allowed to be underfull. The empty parent should be removed later
+                    // by `pop_internal_level`.
+                    return AtRoot;
+                }
+            }
         }
     };
 

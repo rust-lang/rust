@@ -3,4 +3,6 @@
 fn main() {
     for _i in 0..2 { //~ ERROR missing `in`
     }
+    for _i in 0..2 { //~ ERROR missing `in`
+    }
 }

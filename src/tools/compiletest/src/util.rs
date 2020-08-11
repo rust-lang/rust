@@ -99,6 +99,20 @@ pub const MSAN_SUPPORTED_TARGETS: &'static [&'static str] =
 pub const TSAN_SUPPORTED_TARGETS: &'static [&'static str] =
     &["aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
 
+const BIG_ENDIAN: &'static [&'static str] = &[
+    "armebv7r",
+    "mips",
+    "mips64",
+    "mipsisa32r6",
+    "mipsisa64r6",
+    "powerpc",
+    "powerpc64",
+    "s390x",
+    "sparc",
+    "sparc64",
+    "sparcv9",
+];
+
 pub fn matches_os(triple: &str, name: &str) -> bool {
     // For the wasm32 bare target we ignore anything also ignored on emscripten
     // and then we also recognize `wasm32-bare` as the os for the target
@@ -123,6 +137,12 @@ pub fn get_arch(triple: &str) -> &'static str {
         }
     }
     panic!("Cannot determine Architecture from triple");
+}
+
+/// Determine the endianness from `triple`
+pub fn is_big_endian(triple: &str) -> bool {
+    let triple_arch = triple.split('-').next().unwrap();
+    BIG_ENDIAN.contains(&triple_arch)
 }
 
 pub fn matches_env(triple: &str, name: &str) -> bool {

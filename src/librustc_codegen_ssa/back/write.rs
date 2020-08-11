@@ -9,7 +9,6 @@ use crate::{
 
 use crate::traits::*;
 use jobserver::{Acquired, Client};
-use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::profiling::TimingGuard;
@@ -416,11 +415,12 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
 
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
-    let no_builtins = attr::contains_name(&tcx.hir().krate().item.attrs, sym::no_builtins);
+    let no_builtins = tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::no_builtins);
     let is_compiler_builtins =
-        attr::contains_name(&tcx.hir().krate().item.attrs, sym::compiler_builtins);
-    let subsystem =
-        attr::first_attr_value_str_by_name(&tcx.hir().krate().item.attrs, sym::windows_subsystem);
+        tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::compiler_builtins);
+    let subsystem = tcx
+        .sess
+        .first_attr_value_str_by_name(&tcx.hir().krate().item.attrs, sym::windows_subsystem);
     let windows_subsystem = subsystem.map(|subsystem| {
         if subsystem != sym::windows && subsystem != sym::console {
             tcx.sess.fatal(&format!(
@@ -490,7 +490,7 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
 
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
-        let path = module.object.as_ref().map(|path| path.clone());
+        let path = module.object.as_ref().cloned();
 
         if let Some((id, product)) =
             copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, &path)

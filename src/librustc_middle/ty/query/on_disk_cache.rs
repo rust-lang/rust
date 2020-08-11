@@ -5,7 +5,7 @@ use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
@@ -212,7 +212,6 @@ impl<'sess> OnDiskCache<'sess> {
                 type_shorthands: Default::default(),
                 predicate_shorthands: Default::default(),
                 interpret_allocs: Default::default(),
-                interpret_allocs_inverse: Vec::new(),
                 source_map: CachingSourceMapView::new(tcx.sess.source_map()),
                 file_to_file_index,
                 hygiene_context: &hygiene_encode_context,
@@ -267,7 +266,7 @@ impl<'sess> OnDiskCache<'sess> {
                 let mut interpret_alloc_index = Vec::new();
                 let mut n = 0;
                 loop {
-                    let new_n = encoder.interpret_allocs_inverse.len();
+                    let new_n = encoder.interpret_allocs.len();
                     // If we have found new IDs, serialize those too.
                     if n == new_n {
                         // Otherwise, abort.
@@ -275,7 +274,7 @@ impl<'sess> OnDiskCache<'sess> {
                     }
                     interpret_alloc_index.reserve(new_n - n);
                     for idx in n..new_n {
-                        let id = encoder.interpret_allocs_inverse[idx];
+                        let id = encoder.interpret_allocs[idx];
                         let pos = encoder.position() as u32;
                         interpret_alloc_index.push(pos);
                         interpret::specialized_encode_alloc_id(&mut encoder, tcx, id)?;
@@ -767,8 +766,7 @@ struct CacheEncoder<'a, 'tcx, E: ty_codec::TyEncoder> {
     encoder: &'a mut E,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
-    interpret_allocs: FxHashMap<interpret::AllocId, usize>,
-    interpret_allocs_inverse: Vec<interpret::AllocId>,
+    interpret_allocs: FxIndexSet<interpret::AllocId>,
     source_map: CachingSourceMapView<'tcx>,
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
     hygiene_context: &'a HygieneEncodeContext,
@@ -807,17 +805,7 @@ where
     E: 'a + TyEncoder,
 {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
-        use std::collections::hash_map::Entry;
-        let index = match self.interpret_allocs.entry(*alloc_id) {
-            Entry::Occupied(e) => *e.get(),
-            Entry::Vacant(e) => {
-                let idx = self.interpret_allocs_inverse.len();
-                self.interpret_allocs_inverse.push(*alloc_id);
-                e.insert(idx);
-                idx
-            }
-        };
-
+        let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
         index.encode(self)
     }
 }

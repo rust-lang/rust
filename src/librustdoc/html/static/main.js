@@ -473,7 +473,9 @@ function defocusSearchBar() {
     }());
 
     document.addEventListener("click", function(ev) {
-        if (hasClass(ev.target, "collapse-toggle")) {
+        if (hasClass(ev.target, "help-button")) {
+            displayHelp(true, ev);
+        } else if (hasClass(ev.target, "collapse-toggle")) {
             collapseDocs(ev.target, "toggle");
         } else if (hasClass(ev.target.parentNode, "collapse-toggle")) {
             collapseDocs(ev.target.parentNode, "toggle");
@@ -2636,9 +2638,9 @@ function defocusSearchBar() {
         });
     }());
 
-    onEachLazy(document.getElementsByClassName("important-traits"), function(e) {
+    onEachLazy(document.getElementsByClassName("notable-traits"), function(e) {
         e.onclick = function() {
-            this.getElementsByClassName('important-traits-tooltiptext')[0]
+            this.getElementsByClassName('notable-traits-tooltiptext')[0]
                 .classList.toggle("force-tooltip");
         };
     });

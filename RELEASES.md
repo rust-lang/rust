@@ -1,3 +1,12 @@
+Version 1.45.2 (2020-08-03)
+==========================
+
+* [Fix bindings in tuple struct patterns][74954]
+* [Fix track_caller integration with trait objects][74784]
+
+[74954]: https://github.com/rust-lang/rust/issues/74954
+[74784]: https://github.com/rust-lang/rust/issues/74784
+
 Version 1.45.1 (2020-07-30)
 ==========================
 

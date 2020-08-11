@@ -44,12 +44,8 @@ error[E0412]: cannot find type `Y` in this scope
   --> $DIR/attributes-on-modules-fail.rs:10:14
    |
 LL |     type A = Y;
-   |     ---------^- similarly named type alias `A` defined here
+   |              ^ not found in this scope
    |
-help: a type alias with a similar name exists
-   |
-LL |     type A = A;
-   |              ^
 help: consider importing this struct
    |
 LL |     use Y;
@@ -59,12 +55,8 @@ error[E0412]: cannot find type `X` in this scope
   --> $DIR/attributes-on-modules-fail.rs:14:10
    |
 LL | type A = X;
-   | ---------^- similarly named type alias `A` defined here
+   |          ^ not found in this scope
    |
-help: a type alias with a similar name exists
-   |
-LL | type A = A;
-   |          ^
 help: consider importing this struct
    |
 LL | use m::X;

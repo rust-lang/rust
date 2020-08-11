@@ -3,9 +3,8 @@ use crate::rmeta::*;
 
 use log::{debug, trace};
 use rustc_ast::ast;
-use rustc_ast::attr;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, Lrc};
 use rustc_hir as hir;
@@ -49,8 +48,7 @@ struct EncodeContext<'a, 'tcx> {
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
 
-    interpret_allocs: FxHashMap<interpret::AllocId, usize>,
-    interpret_allocs_inverse: Vec<interpret::AllocId>,
+    interpret_allocs: FxIndexSet<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
     // The `usize` is an index into the `MonotonicVec`
@@ -162,7 +160,7 @@ impl<'a, 'tcx> SpecializedEncoder<ExpnId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, expn: &ExpnId) -> Result<(), Self::Error> {
         rustc_span::hygiene::raw_encode_expn_id(
             *expn,
-            &mut self.hygiene_ctxt,
+            &self.hygiene_ctxt,
             ExpnDataEncodeMode::Metadata,
             self,
         )
@@ -267,7 +265,7 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         // real code should never need to care about this.
         //
         // 2. Using `Span::def_site` or `Span::mixed_site` will not
-        // include any hygiene information associated with the defintion
+        // include any hygiene information associated with the definition
         // site. This means that a proc-macro cannot emit a `$crate`
         // identifier which resolves to one of its dependencies,
         // which also should never come up in practice.
@@ -280,6 +278,10 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         // cross-crate inconsistencies (getting one behavior in the same
         // crate, and a different behavior in another crate) due to the
         // limited surface that proc-macros can expose.
+        //
+        // IMPORTANT: If this is ever changed, be sure to update
+        // `rustc_span::hygiene::raw_encode_expn_id` to handle
+        // encoding `ExpnData` for proc-macro crates.
         if self.is_proc_macro {
             SyntaxContext::root().encode(self)?;
         } else {
@@ -328,17 +330,7 @@ impl<'a, 'b, 'tcx> SpecializedEncoder<ty::Predicate<'b>> for EncodeContext<'a, '
 
 impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
-        use std::collections::hash_map::Entry;
-        let index = match self.interpret_allocs.entry(*alloc_id) {
-            Entry::Occupied(e) => *e.get(),
-            Entry::Vacant(e) => {
-                let idx = self.interpret_allocs_inverse.len();
-                self.interpret_allocs_inverse.push(*alloc_id);
-                e.insert(idx);
-                idx
-            }
-        };
-
+        let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
         index.encode(self)
     }
 }
@@ -580,7 +572,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let mut n = 0;
             trace!("beginning to encode alloc ids");
             loop {
-                let new_n = self.interpret_allocs_inverse.len();
+                let new_n = self.interpret_allocs.len();
                 // if we have found new ids, serialize those, too
                 if n == new_n {
                     // otherwise, abort
@@ -588,7 +580,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
                 trace!("encoding {} further alloc ids", new_n - n);
                 for idx in n..new_n {
-                    let id = self.interpret_allocs_inverse[idx];
+                    let id = self.interpret_allocs[idx];
                     let pos = self.position() as u32;
                     interpret_alloc_index.push(pos);
                     interpret::specialized_encode_alloc_id(self, tcx, id).unwrap();
@@ -633,7 +625,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let source_map_bytes = self.position() - i;
 
         let attrs = tcx.hir().krate_attrs();
-        let has_default_lib_allocator = attr::contains_name(&attrs, sym::default_lib_allocator);
+        let has_default_lib_allocator = tcx.sess.contains_name(&attrs, sym::default_lib_allocator);
 
         let root = self.lazy(CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
@@ -659,12 +651,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             } else {
                 None
             },
-            compiler_builtins: attr::contains_name(&attrs, sym::compiler_builtins),
-            needs_allocator: attr::contains_name(&attrs, sym::needs_allocator),
-            needs_panic_runtime: attr::contains_name(&attrs, sym::needs_panic_runtime),
-            no_builtins: attr::contains_name(&attrs, sym::no_builtins),
-            panic_runtime: attr::contains_name(&attrs, sym::panic_runtime),
-            profiler_runtime: attr::contains_name(&attrs, sym::profiler_runtime),
+            compiler_builtins: tcx.sess.contains_name(&attrs, sym::compiler_builtins),
+            needs_allocator: tcx.sess.contains_name(&attrs, sym::needs_allocator),
+            needs_panic_runtime: tcx.sess.contains_name(&attrs, sym::needs_panic_runtime),
+            no_builtins: tcx.sess.contains_name(&attrs, sym::no_builtins),
+            panic_runtime: tcx.sess.contains_name(&attrs, sym::panic_runtime),
+            profiler_runtime: tcx.sess.contains_name(&attrs, sym::profiler_runtime),
             symbol_mangling_version: tcx.sess.opts.debugging_opts.symbol_mangling_version,
 
             crate_deps,
@@ -1134,8 +1126,11 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
             record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
-            record!(self.tables.unused_generic_params[def_id.to_def_id()] <-
-                    self.tcx.unused_generic_params(def_id));
+
+            let unused = self.tcx.unused_generic_params(def_id);
+            if !unused.is_empty() {
+                record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
+            }
         }
     }
 
@@ -1607,7 +1602,7 @@ impl EncodeContext<'a, 'tcx> {
             .into_iter()
             .map(|(trait_def_id, mut impls)| {
                 // Bring everything into deterministic order for hashing
-                impls.sort_by_cached_key(|&index| {
+                impls.sort_by_cached_key(|&(index, _)| {
                     tcx.hir().definitions().def_path_hash(LocalDefId { local_def_index: index })
                 });
 
@@ -1849,7 +1844,7 @@ impl EncodeContext<'a, 'tcx> {
 
 struct ImplVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    impls: FxHashMap<DefId, Vec<DefIndex>>,
+    impls: FxHashMap<DefId, Vec<(DefIndex, Option<ty::fast_reject::SimplifiedType>)>>,
 }
 
 impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
@@ -1857,7 +1852,13 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
         if let hir::ItemKind::Impl { .. } = item.kind {
             let impl_id = self.tcx.hir().local_def_id(item.hir_id);
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id.to_def_id()) {
-                self.impls.entry(trait_ref.def_id).or_default().push(impl_id.local_def_index);
+                let simplified_self_ty =
+                    ty::fast_reject::simplify_type(self.tcx, trait_ref.self_ty(), false);
+
+                self.impls
+                    .entry(trait_ref.def_id)
+                    .or_default()
+                    .push((impl_id.local_def_index, simplified_self_ty));
             }
         }
     }
@@ -2007,7 +2008,6 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
         predicate_shorthands: Default::default(),
         source_file_cache: (source_map_files[0].clone(), 0),
         interpret_allocs: Default::default(),
-        interpret_allocs_inverse: Default::default(),
         required_source_files: Some(GrowableBitSet::with_capacity(source_map_files.len())),
         is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,

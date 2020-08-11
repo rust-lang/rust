@@ -26,7 +26,7 @@ use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
 use rustc_trait_selection::traits;
 
-use crate::const_eval::error_to_const_error;
+use crate::const_eval::ConstEvalErr;
 use crate::interpret::{
     self, compile_time_machine, truncate, AllocId, Allocation, Frame, ImmTy, Immediate, InterpCx,
     LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy,
@@ -34,7 +34,9 @@ use crate::interpret::{
 };
 use crate::transform::{MirPass, MirSource};
 
-/// The maximum number of bytes that we'll allocate space for a return value.
+/// The maximum number of bytes that we'll allocate space for a local or the return value.
+/// Needed for #66397, because otherwise we eval into large places and that can cause OOM or just
+/// Severely regress performance.
 const MAX_ALLOC_LIMIT: u64 = 1024;
 
 /// Macro for machine-specific `InterpError` without allocation.
@@ -155,14 +157,19 @@ struct ConstPropMachine<'mir, 'tcx> {
     written_only_inside_own_block_locals: FxHashSet<Local>,
     /// Locals that need to be cleared after every block terminates.
     only_propagate_inside_block_locals: BitSet<Local>,
+    can_const_prop: IndexVec<Local, ConstPropMode>,
 }
 
 impl<'mir, 'tcx> ConstPropMachine<'mir, 'tcx> {
-    fn new(only_propagate_inside_block_locals: BitSet<Local>) -> Self {
+    fn new(
+        only_propagate_inside_block_locals: BitSet<Local>,
+        can_const_prop: IndexVec<Local, ConstPropMode>,
+    ) -> Self {
         Self {
             stack: Vec::new(),
             written_only_inside_own_block_locals: Default::default(),
             only_propagate_inside_block_locals,
+            can_const_prop,
         }
     }
 }
@@ -241,6 +248,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         local: Local,
     ) -> InterpResult<'tcx, Result<&'a mut LocalValue<Self::PointerTag>, MemPlace<Self::PointerTag>>>
     {
+        if ecx.machine.can_const_prop[local] == ConstPropMode::NoPropagation {
+            throw_machine_stop_str!("tried to write to a local that is marked as not propagatable")
+        }
         if frame == 0 && ecx.machine.only_propagate_inside_block_locals.contains(local) {
             ecx.machine.written_only_inside_own_block_locals.insert(local);
         }
@@ -285,7 +295,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
 struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
-    can_const_prop: IndexVec<Local, ConstPropMode>,
     param_env: ParamEnv<'tcx>,
     // FIXME(eddyb) avoid cloning these two fields more than once,
     // by accessing them through `ecx` instead.
@@ -328,10 +337,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> ConstPropagator<'mir, 'tcx> {
         let def_id = source.def_id();
         let substs = &InternalSubsts::identity_for_item(tcx, def_id);
-        let param_env = tcx.param_env(def_id).with_reveal_all();
+        let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
         let span = tcx.def_span(def_id);
-        let can_const_prop = CanConstProp::check(body);
+        // FIXME: `CanConstProp::check` computes the layout of all locals, return those layouts
+        // so we can write them to `ecx.frame_mut().locals.layout, reducing the duplication in
+        // `layout_of` query invocations.
+        let can_const_prop = CanConstProp::check(tcx, param_env, body);
         let mut only_propagate_inside_block_locals = BitSet::new_empty(can_const_prop.len());
         for (l, mode) in can_const_prop.iter_enumerated() {
             if *mode == ConstPropMode::OnlyInsideOwnBlock {
@@ -342,7 +354,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             tcx,
             span,
             param_env,
-            ConstPropMachine::new(only_propagate_inside_block_locals),
+            ConstPropMachine::new(only_propagate_inside_block_locals, can_const_prop),
             (),
         );
 
@@ -368,7 +380,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             ecx,
             tcx,
             param_env,
-            can_const_prop,
             // FIXME(eddyb) avoid cloning these two fields more than once,
             // by accessing them through `ecx` instead.
             source_scopes: body.source_scopes.clone(),
@@ -440,7 +451,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ok(op) => Some(op),
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);
-                let err = error_to_const_error(&self.ecx, error, Some(c.span));
+                let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal.val {
                         // Promoteds must lint and not error as the user didn't ask for them
@@ -612,15 +623,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn const_prop(
         &mut self,
         rvalue: &Rvalue<'tcx>,
-        place_layout: TyAndLayout<'tcx>,
         source_info: SourceInfo,
         place: Place<'tcx>,
     ) -> Option<()> {
-        // #66397: Don't try to eval into large places as that can cause an OOM
-        if place_layout.size >= Size::from_bytes(MAX_ALLOC_LIMIT) {
-            return None;
-        }
-
         // Perform any special handling for specific Rvalue types.
         // Generally, checks here fall into one of two categories:
         //   1. Additional checking to provide useful lints to the user
@@ -893,7 +898,11 @@ struct CanConstProp {
 
 impl CanConstProp {
     /// Returns true if `local` can be propagated
-    fn check(body: &Body<'_>) -> IndexVec<Local, ConstPropMode> {
+    fn check(
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        body: &Body<'tcx>,
+    ) -> IndexVec<Local, ConstPropMode> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
             found_assignment: BitSet::new_empty(body.local_decls.len()),
@@ -903,6 +912,16 @@ impl CanConstProp {
             ),
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
+            let ty = body.local_decls[local].ty;
+            match tcx.layout_of(param_env.and(ty)) {
+                Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
+                // Either the layout fails to compute, then we can't use this local anyway
+                // or the local is too large, then we don't want to.
+                _ => {
+                    *val = ConstPropMode::NoPropagation;
+                    continue;
+                }
+            }
             // Cannot use args at all
             // Cannot use locals because if x < y { y - x } else { x - y } would
             //        lint for x != y
@@ -1018,61 +1037,52 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         let source_info = statement.source_info;
         self.source_info = Some(source_info);
         if let StatementKind::Assign(box (place, ref mut rval)) = statement.kind {
-            let place_ty: Ty<'tcx> = place.ty(&self.local_decls, self.tcx).ty;
-            if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
-                let can_const_prop = self.can_const_prop[place.local];
-                if let Some(()) = self.const_prop(rval, place_layout, source_info, place) {
-                    // This will return None if the above `const_prop` invocation only "wrote" a
-                    // type whose creation requires no write. E.g. a generator whose initial state
-                    // consists solely of uninitialized memory (so it doesn't capture any locals).
-                    if let Some(value) = self.get_const(place) {
-                        if self.should_const_prop(value) {
-                            trace!("replacing {:?} with {:?}", rval, value);
-                            self.replace_with_const(rval, value, source_info);
-                            if can_const_prop == ConstPropMode::FullConstProp
-                                || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
-                            {
-                                trace!("propagated into {:?}", place);
-                            }
+            let can_const_prop = self.ecx.machine.can_const_prop[place.local];
+            if let Some(()) = self.const_prop(rval, source_info, place) {
+                // This will return None if the above `const_prop` invocation only "wrote" a
+                // type whose creation requires no write. E.g. a generator whose initial state
+                // consists solely of uninitialized memory (so it doesn't capture any locals).
+                if let Some(value) = self.get_const(place) {
+                    if self.should_const_prop(value) {
+                        trace!("replacing {:?} with {:?}", rval, value);
+                        self.replace_with_const(rval, value, source_info);
+                        if can_const_prop == ConstPropMode::FullConstProp
+                            || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
+                        {
+                            trace!("propagated into {:?}", place);
                         }
                     }
-                    match can_const_prop {
-                        ConstPropMode::OnlyInsideOwnBlock => {
-                            trace!(
-                                "found local restricted to its block. \
+                }
+                match can_const_prop {
+                    ConstPropMode::OnlyInsideOwnBlock => {
+                        trace!(
+                            "found local restricted to its block. \
                                 Will remove it from const-prop after block is finished. Local: {:?}",
-                                place.local
-                            );
-                        }
-                        ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
-                            trace!("can't propagate into {:?}", place);
-                            if place.local != RETURN_PLACE {
-                                Self::remove_const(&mut self.ecx, place.local);
-                            }
-                        }
-                        ConstPropMode::FullConstProp => {}
+                            place.local
+                        );
                     }
-                } else {
-                    // Const prop failed, so erase the destination, ensuring that whatever happens
-                    // from here on, does not know about the previous value.
-                    // This is important in case we have
-                    // ```rust
-                    // let mut x = 42;
-                    // x = SOME_MUTABLE_STATIC;
-                    // // x must now be undefined
-                    // ```
-                    // FIXME: we overzealously erase the entire local, because that's easier to
-                    // implement.
-                    trace!(
-                        "propagation into {:?} failed.
-                        Nuking the entire site from orbit, it's the only way to be sure",
-                        place,
-                    );
-                    Self::remove_const(&mut self.ecx, place.local);
+                    ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
+                        trace!("can't propagate into {:?}", place);
+                        if place.local != RETURN_PLACE {
+                            Self::remove_const(&mut self.ecx, place.local);
+                        }
+                    }
+                    ConstPropMode::FullConstProp => {}
                 }
             } else {
+                // Const prop failed, so erase the destination, ensuring that whatever happens
+                // from here on, does not know about the previous value.
+                // This is important in case we have
+                // ```rust
+                // let mut x = 42;
+                // x = SOME_MUTABLE_STATIC;
+                // // x must now be undefined
+                // ```
+                // FIXME: we overzealously erase the entire local, because that's easier to
+                // implement.
                 trace!(
-                    "cannot propagate into {:?}, because the type of the local is generic.",
+                    "propagation into {:?} failed.
+                        Nuking the entire site from orbit, it's the only way to be sure",
                     place,
                 );
                 Self::remove_const(&mut self.ecx, place.local);

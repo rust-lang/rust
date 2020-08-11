@@ -276,6 +276,10 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
 }
 
+fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
+    tcx.param_env(def_id).with_reveal_all_normalized(tcx)
+}
+
 fn crate_disambiguator(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CrateDisambiguator {
     assert_eq!(crate_num, LOCAL_CRATE);
     tcx.sess.local_crate_disambiguator()
@@ -439,7 +443,7 @@ fn opaque_type_projection_predicates(
 
     let bounds = tcx.predicates_of(def_id);
     let predicates =
-        util::elaborate_predicates(tcx, bounds.predicates.into_iter().map(|&(pred, _)| pred));
+        util::elaborate_predicates(tcx, bounds.predicates.iter().map(|&(pred, _)| pred));
 
     let filtered_predicates = predicates.filter_map(|obligation| {
         let pred = obligation.predicate;
@@ -502,6 +506,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         adt_sized_constraint,
         def_span,
         param_env,
+        param_env_reveal_all_normalized,
         trait_of_item,
         crate_disambiguator,
         original_crate_name,

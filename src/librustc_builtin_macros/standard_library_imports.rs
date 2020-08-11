@@ -1,8 +1,8 @@
+use rustc_ast::ast;
 use rustc_ast::ptr::P;
-use rustc_ast::{ast, attr};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::ExpansionConfig;
-use rustc_session::parse::ParseSess;
+use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::AstPass;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -11,16 +11,16 @@ use rustc_span::DUMMY_SP;
 pub fn inject(
     mut krate: ast::Crate,
     resolver: &mut dyn ResolverExpand,
-    sess: &ParseSess,
+    sess: &Session,
     alt_std_name: Option<Symbol>,
 ) -> (ast::Crate, Option<Symbol>) {
-    let rust_2018 = sess.edition >= Edition::Edition2018;
+    let rust_2018 = sess.parse_sess.edition >= Edition::Edition2018;
 
     // the first name in this list is the crate name of the crate with the prelude
-    let names: &[Symbol] = if attr::contains_name(&krate.attrs, sym::no_core) {
+    let names: &[Symbol] = if sess.contains_name(&krate.attrs, sym::no_core) {
         return (krate, None);
-    } else if attr::contains_name(&krate.attrs, sym::no_std) {
-        if attr::contains_name(&krate.attrs, sym::compiler_builtins) {
+    } else if sess.contains_name(&krate.attrs, sym::no_std) {
+        if sess.contains_name(&krate.attrs, sym::compiler_builtins) {
             &[sym::core]
         } else {
             &[sym::core, sym::compiler_builtins]

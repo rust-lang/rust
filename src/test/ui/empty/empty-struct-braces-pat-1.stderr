@@ -13,19 +13,21 @@ error[E0532]: expected unit struct, unit variant or constant, found struct varia
 LL |         XE::XEmpty3 => ()
    |         ^^^^^^^^^^^
    | 
-  ::: $DIR/auxiliary/empty-struct.rs:7:5
+  ::: $DIR/auxiliary/empty-struct.rs:6:5
    |
+LL |     XEmpty3 {},
+   |     ------- `XE::XEmpty3` defined here
 LL |     XEmpty4,
    |     ------- similarly named unit variant `XEmpty4` defined here
    |
-help: a unit variant with a similar name exists
-   |
-LL |         XE::XEmpty4 => ()
-   |             ^^^^^^^
 help: use struct pattern syntax instead
    |
 LL |         XE::XEmpty3 { /* fields */ } => ()
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: a unit variant with a similar name exists
+   |
+LL |         XE::XEmpty4 => ()
+   |             ^^^^^^^
 
 error: aborting due to 2 previous errors
 

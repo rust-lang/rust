@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
@@ -193,26 +193,25 @@ impl<N: Idx> LivenessValues<N> {
 /// NLL.
 #[derive(Default)]
 crate struct PlaceholderIndices {
-    to_index: FxHashMap<ty::PlaceholderRegion, PlaceholderIndex>,
-    from_index: IndexVec<PlaceholderIndex, ty::PlaceholderRegion>,
+    indices: FxIndexSet<ty::PlaceholderRegion>,
 }
 
 impl PlaceholderIndices {
     crate fn insert(&mut self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
-        let PlaceholderIndices { to_index, from_index } = self;
-        *to_index.entry(placeholder).or_insert_with(|| from_index.push(placeholder))
+        let (index, _) = self.indices.insert_full(placeholder);
+        index.into()
     }
 
     crate fn lookup_index(&self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
-        self.to_index[&placeholder]
+        self.indices.get_index_of(&placeholder).unwrap().into()
     }
 
     crate fn lookup_placeholder(&self, placeholder: PlaceholderIndex) -> ty::PlaceholderRegion {
-        self.from_index[placeholder]
+        self.indices[placeholder.index()]
     }
 
     crate fn len(&self) -> usize {
-        self.from_index.len()
+        self.indices.len()
     }
 }
 

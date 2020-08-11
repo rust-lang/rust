@@ -12,12 +12,12 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder}
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_session::config::nightly_options;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 
 use log::debug;
 
@@ -88,6 +88,18 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
 }
 
 impl<'a> LateResolutionVisitor<'a, '_, '_> {
+    fn def_span(&self, def_id: DefId) -> Option<Span> {
+        match def_id.krate {
+            LOCAL_CRATE => self.r.opt_span(def_id),
+            _ => Some(
+                self.r
+                    .session
+                    .source_map()
+                    .guess_head_span(self.r.cstore().get_span_untracked(def_id, self.r.session)),
+            ),
+        }
+    }
+
     /// Handles error reporting for `smart_resolve_path_fragment` function.
     /// Creates base error and amends it with one short label and possibly some longer helps/notes.
     pub(crate) fn smart_resolve_report_errors(
@@ -223,13 +235,31 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
             let enum_candidates =
                 self.r.lookup_import_candidates(ident, ns, &self.parent_scope, is_enum_variant);
-            let mut enum_candidates = enum_candidates
-                .iter()
-                .map(|suggestion| import_candidate_to_enum_paths(&suggestion))
-                .collect::<Vec<_>>();
-            enum_candidates.sort();
 
             if !enum_candidates.is_empty() {
+                if let (PathSource::Type, Some(span)) =
+                    (source, self.diagnostic_metadata.current_type_ascription.last())
+                {
+                    if self
+                        .r
+                        .session
+                        .parse_sess
+                        .type_ascription_path_suggestions
+                        .borrow()
+                        .contains(span)
+                    {
+                        // Already reported this issue on the lhs of the type ascription.
+                        err.delay_as_bug();
+                        return (err, candidates);
+                    }
+                }
+
+                let mut enum_candidates = enum_candidates
+                    .iter()
+                    .map(|suggestion| import_candidate_to_enum_paths(&suggestion))
+                    .collect::<Vec<_>>();
+                enum_candidates.sort();
+
                 // Contextualize for E0412 "cannot find type", but don't belabor the point
                 // (that it's a variant) for E0573 "expected type, found variant".
                 let preamble = if res.is_none() {
@@ -321,8 +351,6 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
 
         // Try Levenshtein algorithm.
         let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected, span);
-        let levenshtein_worked = self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
-
         // Try context-dependent help if relaxed lookup didn't work.
         if let Some(res) = res {
             if self.smart_resolve_context_dependent_help(
@@ -333,14 +361,18 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 &path_str,
                 &fallback_label,
             ) {
+                // We do this to avoid losing a secondary span when we override the main error span.
+                self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
                 return (err, candidates);
             }
         }
 
-        // Fallback label.
-        if !levenshtein_worked {
+        if !self.type_ascription_suggestion(&mut err, base_span)
+            && !self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span)
+        {
+            // Fallback label.
             err.span_label(base_span, fallback_label);
-            self.type_ascription_suggestion(&mut err, base_span);
+
             match self.diagnostic_metadata.current_let_binding {
                 Some((pat_sp, Some(ty_sp), None)) if ty_sp.contains(base_span) && could_be_expr => {
                     err.span_suggestion_short(
@@ -484,11 +516,23 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             match source {
                 PathSource::Expr(Some(
                     parent @ Expr { kind: ExprKind::Field(..) | ExprKind::MethodCall(..), .. },
-                )) => {
-                    path_sep(err, &parent);
-                }
-                PathSource::Expr(None) if followed_by_brace => {
+                )) if path_sep(err, &parent) => {}
+                PathSource::Expr(
+                    None
+                    | Some(Expr {
+                        kind:
+                            ExprKind::Path(..)
+                            | ExprKind::Binary(..)
+                            | ExprKind::Unary(..)
+                            | ExprKind::If(..)
+                            | ExprKind::While(..)
+                            | ExprKind::ForLoop(..)
+                            | ExprKind::Match(..),
+                        ..
+                    }),
+                ) if followed_by_brace => {
                     if let Some(sp) = closing_brace {
+                        err.span_label(span, fallback_label);
                         err.multipart_suggestion(
                             "surround the struct literal with parentheses",
                             vec![
@@ -508,11 +552,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         );
                     }
                 }
-                PathSource::Expr(
-                    None | Some(Expr { kind: ExprKind::Call(..) | ExprKind::Path(..), .. }),
-                )
-                | PathSource::TupleStruct(_)
-                | PathSource::Pat => {
+                PathSource::Expr(_) | PathSource::TupleStruct(_) | PathSource::Pat => {
                     let span = match &source {
                         PathSource::Expr(Some(Expr {
                             span, kind: ExprKind::Call(_, _), ..
@@ -525,7 +565,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         }
                         _ => span,
                     };
-                    if let Some(span) = self.r.opt_span(def_id) {
+                    if let Some(span) = self.def_span(def_id) {
                         err.span_label(span, &format!("`{}` defined here", path_str));
                     }
                     let (tail, descr, applicability) = match source {
@@ -556,12 +596,15 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         applicability,
                     );
                 }
-                _ => {}
+                _ => {
+                    err.span_label(span, fallback_label);
+                }
             }
         };
 
         match (res, source) {
             (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
+                err.span_label(span, fallback_label);
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
                     "use `!` to invoke the macro",
@@ -577,7 +620,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 if nightly_options::is_nightly_build() {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
                                `type` alias";
-                    if let Some(span) = self.r.opt_span(def_id) {
+                    if let Some(span) = self.def_span(def_id) {
                         err.span_help(span, msg);
                     } else {
                         err.help(msg);
@@ -593,6 +636,24 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 Res::Def(DefKind::Enum, def_id),
                 PathSource::TupleStruct(_) | PathSource::Expr(..),
             ) => {
+                if self
+                    .diagnostic_metadata
+                    .current_type_ascription
+                    .last()
+                    .map(|sp| {
+                        self.r
+                            .session
+                            .parse_sess
+                            .type_ascription_path_suggestions
+                            .borrow()
+                            .contains(&sp)
+                    })
+                    .unwrap_or(false)
+                {
+                    err.delay_as_bug();
+                    // We already suggested changing `:` into `::` during parsing.
+                    return false;
+                }
                 if let Some(variants) = self.collect_enum_variants(def_id) {
                     if !variants.is_empty() {
                         let msg = if variants.len() == 1 {
@@ -609,7 +670,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         );
                     }
                 } else {
-                    err.note("did you mean to use one of the enum's variants?");
+                    err.note("you might have meant to use one of the enum's variants");
                 }
             }
             (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
@@ -637,7 +698,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 bad_struct_syntax_suggestion(def_id);
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Fn), def_id), _) if ns == ValueNS => {
-                if let Some(span) = self.r.opt_span(def_id) {
+                if let Some(span) = self.def_span(def_id) {
                     err.span_label(span, &format!("`{}` defined here", path_str));
                 }
                 err.span_label(span, format!("did you mean `{}( /* fields */ )`?", path_str));
@@ -826,83 +887,81 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         start.to(sm.next_point(start))
     }
 
-    fn type_ascription_suggestion(&self, err: &mut DiagnosticBuilder<'_>, base_span: Span) {
+    fn type_ascription_suggestion(&self, err: &mut DiagnosticBuilder<'_>, base_span: Span) -> bool {
         let sm = self.r.session.source_map();
         let base_snippet = sm.span_to_snippet(base_span);
-        if let Some(sp) = self.diagnostic_metadata.current_type_ascription.last() {
-            let mut sp = *sp;
-            loop {
-                // Try to find the `:`; bail on first non-':' / non-whitespace.
-                sp = sm.next_point(sp);
-                if let Ok(snippet) = sm.span_to_snippet(sp.to(sm.next_point(sp))) {
-                    let line_sp = sm.lookup_char_pos(sp.hi()).line;
-                    let line_base_sp = sm.lookup_char_pos(base_span.lo()).line;
-                    if snippet == ":" {
-                        let mut show_label = true;
-                        if line_sp != line_base_sp {
-                            err.span_suggestion_short(
-                                sp,
-                                "did you mean to use `;` here instead?",
-                                ";".to_string(),
+        if let Some(&sp) = self.diagnostic_metadata.current_type_ascription.last() {
+            if let Ok(snippet) = sm.span_to_snippet(sp) {
+                let len = snippet.trim_end().len() as u32;
+                if snippet.trim() == ":" {
+                    let colon_sp =
+                        sp.with_lo(sp.lo() + BytePos(len - 1)).with_hi(sp.lo() + BytePos(len));
+                    let mut show_label = true;
+                    if sm.is_multiline(sp) {
+                        err.span_suggestion_short(
+                            colon_sp,
+                            "maybe you meant to write `;` here",
+                            ";".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        let after_colon_sp =
+                            self.get_colon_suggestion_span(colon_sp.shrink_to_hi());
+                        if snippet.len() == 1 {
+                            // `foo:bar`
+                            err.span_suggestion(
+                                colon_sp,
+                                "maybe you meant to write a path separator here",
+                                "::".to_string(),
                                 Applicability::MaybeIncorrect,
                             );
-                        } else {
-                            let colon_sp = self.get_colon_suggestion_span(sp);
-                            let after_colon_sp =
-                                self.get_colon_suggestion_span(colon_sp.shrink_to_hi());
-                            if !sm
-                                .span_to_snippet(after_colon_sp)
-                                .map(|s| s == " ")
-                                .unwrap_or(false)
+                            show_label = false;
+                            if !self
+                                .r
+                                .session
+                                .parse_sess
+                                .type_ascription_path_suggestions
+                                .borrow_mut()
+                                .insert(colon_sp)
                             {
-                                err.span_suggestion(
-                                    colon_sp,
-                                    "maybe you meant to write a path separator here",
-                                    "::".to_string(),
-                                    Applicability::MaybeIncorrect,
-                                );
-                                show_label = false;
+                                err.delay_as_bug();
                             }
-                            if let Ok(base_snippet) = base_snippet {
-                                let mut sp = after_colon_sp;
-                                for _ in 0..100 {
-                                    // Try to find an assignment
-                                    sp = sm.next_point(sp);
-                                    let snippet = sm.span_to_snippet(sp.to(sm.next_point(sp)));
-                                    match snippet {
-                                        Ok(ref x) if x.as_str() == "=" => {
-                                            err.span_suggestion(
-                                                base_span,
-                                                "maybe you meant to write an assignment here",
-                                                format!("let {}", base_snippet),
-                                                Applicability::MaybeIncorrect,
-                                            );
-                                            show_label = false;
-                                            break;
-                                        }
-                                        Ok(ref x) if x.as_str() == "\n" => break,
-                                        Err(_) => break,
-                                        Ok(_) => {}
+                        }
+                        if let Ok(base_snippet) = base_snippet {
+                            let mut sp = after_colon_sp;
+                            for _ in 0..100 {
+                                // Try to find an assignment
+                                sp = sm.next_point(sp);
+                                let snippet = sm.span_to_snippet(sp.to(sm.next_point(sp)));
+                                match snippet {
+                                    Ok(ref x) if x.as_str() == "=" => {
+                                        err.span_suggestion(
+                                            base_span,
+                                            "maybe you meant to write an assignment here",
+                                            format!("let {}", base_snippet),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                        show_label = false;
+                                        break;
                                     }
+                                    Ok(ref x) if x.as_str() == "\n" => break,
+                                    Err(_) => break,
+                                    Ok(_) => {}
                                 }
                             }
                         }
-                        if show_label {
-                            err.span_label(
-                                base_span,
-                                "expecting a type here because of type ascription",
-                            );
-                        }
-                        break;
-                    } else if !snippet.trim().is_empty() {
-                        debug!("tried to find type ascription `:` token, couldn't find it");
-                        break;
                     }
-                } else {
-                    break;
+                    if show_label {
+                        err.span_label(
+                            base_span,
+                            "expecting a type here because of type ascription",
+                        );
+                    }
+                    return show_label;
                 }
             }
         }
+        false
     }
 
     fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {

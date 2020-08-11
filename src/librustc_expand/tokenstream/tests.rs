@@ -2,7 +2,7 @@ use crate::tests::string_to_stream;
 
 use rustc_ast::token;
 use rustc_ast::tokenstream::{TokenStream, TokenStreamBuilder, TokenTree};
-use rustc_ast::with_default_session_globals;
+use rustc_span::with_default_session_globals;
 use rustc_span::{BytePos, Span, Symbol};
 use smallvec::smallvec;
 

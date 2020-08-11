@@ -217,7 +217,7 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
                             let places_conflict = places_conflict::places_conflict(
                                 self.infcx.tcx,
                                 self.body,
-                                self.borrow_set.borrows[borrow_index].borrowed_place,
+                                self.borrow_set[borrow_index].borrowed_place,
                                 place,
                                 places_conflict::PlaceConflictBias::NoOverlap,
                             );

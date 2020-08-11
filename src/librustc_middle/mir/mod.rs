@@ -2,7 +2,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
-use crate::mir::interpret::{GlobalAlloc, Scalar};
+use crate::mir::interpret::{Allocation, ConstValue, GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -1837,6 +1837,33 @@ impl<'tcx> Operand<'tcx> {
             Operand::Constant(constant) => match constant.literal.val.try_to_scalar() {
                 Some(scalar) => scalar,
                 _ => panic!("{:?}: Scalar value expected", constant.literal.val),
+            },
+            _ => panic!("{:?}: Constant expected", operand),
+        }
+    }
+
+    /// Convenience helper to make a literal-like constant from a given `&str` slice.
+    /// Since this is used to synthesize MIR, assumes `user_ty` is None.
+    pub fn const_from_str(tcx: TyCtxt<'tcx>, val: &str, span: Span) -> Operand<'tcx> {
+        let tcx = tcx;
+        let allocation = Allocation::from_byte_aligned_bytes(val.as_bytes());
+        let allocation = tcx.intern_const_alloc(allocation);
+        let const_val = ConstValue::Slice { data: allocation, start: 0, end: val.len() };
+        let ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, tcx.types.str_);
+        Operand::Constant(box Constant {
+            span,
+            user_ty: None,
+            literal: ty::Const::from_value(tcx, const_val, ty),
+        })
+    }
+
+    /// Convenience helper to make a `ConstValue` from the given `Operand`, assuming that `Operand`
+    /// wraps a constant value (such as a `&str` slice). Panics if this is not the case.
+    pub fn value_from_const(operand: &Operand<'tcx>) -> ConstValue<'tcx> {
+        match operand {
+            Operand::Constant(constant) => match constant.literal.val.try_to_value() {
+                Some(const_value) => const_value,
+                _ => panic!("{:?}: ConstValue expected", constant.literal.val),
             },
             _ => panic!("{:?}: Constant expected", operand),
         }

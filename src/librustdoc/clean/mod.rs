@@ -113,7 +113,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 let mut prim = None;
                 for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
-                        if attr.check_name(sym::primitive) {
+                        if attr.has_name(sym::primitive) {
                             prim = PrimitiveType::from_symbol(v);
                             if prim.is_some() {
                                 break;
@@ -168,7 +168,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 let mut keyword = None;
                 for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
-                        if attr.check_name(sym::keyword) {
+                        if attr.has_name(sym::keyword) {
                             if v.is_doc_keyword() {
                                 keyword = Some(v.to_string());
                                 break;
@@ -716,11 +716,11 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
         // Bounds in the type_params and lifetimes fields are repeated in the
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
         // them.
-        let stripped_typarams = gens
+        let stripped_params = gens
             .params
             .iter()
             .filter_map(|param| match param.kind {
-                ty::GenericParamDefKind::Lifetime => None,
+                ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
                 ty::GenericParamDefKind::Type { synthetic, .. } => {
                     if param.name == kw::SelfUpper {
                         assert_eq!(param.index, 0);
@@ -732,7 +732,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                     }
                     Some(param.clean(cx))
                 }
-                ty::GenericParamDefKind::Const { .. } => None,
+                ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
             })
             .collect::<Vec<GenericParamDef>>();
 
@@ -844,8 +844,10 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
 
         // Run through the type parameters again and insert a ?Sized
         // unbound for any we didn't find to be Sized.
-        for tp in &stripped_typarams {
-            if !sized_params.contains(&tp.name) {
+        for tp in &stripped_params {
+            if matches!(tp.kind, types::GenericParamDefKind::Type { .. })
+                && !sized_params.contains(&tp.name)
+            {
                 where_predicates.push(WP::BoundPredicate {
                     ty: Type::Generic(tp.name.clone()),
                     bounds: vec![GenericBound::maybe_sized(cx)],
@@ -858,16 +860,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
         // and instead see `where T: Foo + Bar + Sized + 'a`
 
         Generics {
-            params: gens
-                .params
-                .iter()
-                .flat_map(|param| match param.kind {
-                    ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
-                    ty::GenericParamDefKind::Type { .. } => None,
-                    ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
-                })
-                .chain(simplify::ty_params(stripped_typarams).into_iter())
-                .collect(),
+            params: stripped_params,
             where_predicates: simplify::where_clauses(cx, where_predicates),
         }
     }
@@ -1090,25 +1083,37 @@ impl Clean<TypeKind> for hir::def::DefKind {
 
 impl Clean<Item> for hir::TraitItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
+        let local_did = cx.tcx.hir().local_def_id(self.hir_id);
         let inner = match self.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
                 AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx, e)))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                MethodItem((sig, &self.generics, body, None).clean(cx))
+                let mut m = (sig, &self.generics, body, None).clean(cx);
+                if m.header.constness == hir::Constness::Const
+                    && !is_min_const_fn(cx.tcx, local_did.to_def_id())
+                {
+                    m.header.constness = hir::Constness::NotConst;
+                }
+                MethodItem(m)
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(ref names)) => {
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                 });
                 let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
-                TyMethodItem(TyMethod { header: sig.header, decl, generics, all_types, ret_types })
+                let mut t = TyMethod { header: sig.header, decl, generics, all_types, ret_types };
+                if t.header.constness == hir::Constness::Const
+                    && !is_min_const_fn(cx.tcx, local_did.to_def_id())
+                {
+                    t.header.constness = hir::Constness::NotConst;
+                }
+                TyMethodItem(t)
             }
             hir::TraitItemKind::Type(ref bounds, ref default) => {
                 AssocTypeItem(bounds.clean(cx), default.clean(cx))
             }
         };
-        let local_did = cx.tcx.hir().local_def_id(self.hir_id);
         Item {
             name: Some(self.ident.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -1124,12 +1129,19 @@ impl Clean<Item> for hir::TraitItem<'_> {
 
 impl Clean<Item> for hir::ImplItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
+        let local_did = cx.tcx.hir().local_def_id(self.hir_id);
         let inner = match self.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 AssocConstItem(ty.clean(cx), Some(print_const_expr(cx, expr)))
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
-                MethodItem((sig, &self.generics, body, Some(self.defaultness)).clean(cx))
+                let mut m = (sig, &self.generics, body, Some(self.defaultness)).clean(cx);
+                if m.header.constness == hir::Constness::Const
+                    && !is_min_const_fn(cx.tcx, local_did.to_def_id())
+                {
+                    m.header.constness = hir::Constness::NotConst;
+                }
+                MethodItem(m)
             }
             hir::ImplItemKind::TyAlias(ref ty) => {
                 let type_ = ty.clean(cx);
@@ -1137,7 +1149,6 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 TypedefItem(Typedef { type_, generics: Generics::default(), item_type }, true)
             }
         };
-        let local_did = cx.tcx.hir().local_def_id(self.hir_id);
         Item {
             name: Some(self.ident.name.clean(cx)),
             source: self.span.clean(cx),
@@ -1402,10 +1413,13 @@ impl Clean<Type> for hir::Ty<'_> {
                                             _ => None,
                                         });
                                     if let Some(lt) = lifetime.cloned() {
-                                        if !lt.is_elided() {
-                                            let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
-                                            lt_substs.insert(lt_def_id.to_def_id(), lt.clean(cx));
-                                        }
+                                        let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
+                                        let cleaned = if !lt.is_elided() {
+                                            lt.clean(cx)
+                                        } else {
+                                            self::types::Lifetime::elided()
+                                        };
+                                        lt_substs.insert(lt_def_id.to_def_id(), cleaned);
                                     }
                                     indices.lifetimes += 1;
                                 }
@@ -1964,21 +1978,17 @@ impl Clean<GenericArgs> for hir::GenericArgs<'_> {
                 output: if output != Type::Tuple(Vec::new()) { Some(output) } else { None },
             }
         } else {
-            let elide_lifetimes = self.args.iter().all(|arg| match arg {
-                hir::GenericArg::Lifetime(lt) => lt.is_elided(),
-                _ => true,
-            });
             GenericArgs::AngleBracketed {
                 args: self
                     .args
                     .iter()
-                    .filter_map(|arg| match arg {
-                        hir::GenericArg::Lifetime(lt) if !elide_lifetimes => {
-                            Some(GenericArg::Lifetime(lt.clean(cx)))
+                    .map(|arg| match arg {
+                        hir::GenericArg::Lifetime(lt) if !lt.is_elided() => {
+                            GenericArg::Lifetime(lt.clean(cx))
                         }
-                        hir::GenericArg::Lifetime(_) => None,
-                        hir::GenericArg::Type(ty) => Some(GenericArg::Type(ty.clean(cx))),
-                        hir::GenericArg::Const(ct) => Some(GenericArg::Const(ct.clean(cx))),
+                        hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
+                        hir::GenericArg::Type(ty) => GenericArg::Type(ty.clean(cx)),
+                        hir::GenericArg::Const(ct) => GenericArg::Const(ct.clean(cx)),
                     })
                     .collect(),
                 bindings: self.bindings.clean(cx),
@@ -2164,7 +2174,7 @@ impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
         let please_inline = self.vis.node.is_pub()
             && self.attrs.iter().any(|a| {
-                a.check_name(sym::doc)
+                a.has_name(sym::doc)
                     && match a.meta_item_list() {
                         Some(l) => attr::list_contains_name(&l, sym::inline),
                         None => false,
@@ -2204,7 +2214,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let mut denied = !self.vis.node.is_pub()
             || self.attrs.iter().any(|a| {
-                a.check_name(sym::doc)
+                a.has_name(sym::doc)
                     && match a.meta_item_list() {
                         Some(l) => {
                             attr::list_contains_name(&l, sym::no_inline)

@@ -195,7 +195,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
         if let (Some(ident), true) = (override_error_code, fn_returns.is_empty()) {
-            // Provide a more targetted error code and description.
+            // Provide a more targeted error code and description.
             err.code(rustc_errors::error_code!(E0772));
             err.set_primary_message(&format!(
                 "{} has {} but calling `{}` introduces an implicit `'static` lifetime \
@@ -257,7 +257,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             param.param_ty.to_string(),
                             Applicability::MaybeIncorrect,
                         );
-                    } else if let Some(_) = opaque
+                    } else if opaque
                         .bounds
                         .iter()
                         .filter_map(|arg| match arg {
@@ -269,6 +269,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             _ => None,
                         })
                         .next()
+                        .is_some()
                     {
                     } else {
                         err.span_suggestion_verbose(

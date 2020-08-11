@@ -9,7 +9,7 @@ name = "rustc_passes"
 path = "lib.rs"
 
 [dependencies]
-log = "0.4"
+log = { package = "tracing", version = "0.1" }
 rustc_middle = { path = "../librustc_middle" }
 rustc_attr = { path = "../librustc_attr" }
 rustc_data_structures = { path = "../librustc_data_structures" }

@@ -7,8 +7,10 @@ use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, GenericArg, Mutability, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, cast::CastKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::DUMMY_SP;
+use rustc_typeck::check::{cast::CastCheck, FnCtxt, Inherited};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -46,6 +48,29 @@ declare_clippy_lint! {
     pub USELESS_TRANSMUTE,
     nursery,
     "transmutes that have the same to and from types or could be a cast/coercion"
+}
+
+// FIXME: Merge this lint with USELESS_TRANSMUTE once that is out of the nursery.
+declare_clippy_lint! {
+    /// **What it does:**Checks for transmutes that could be a pointer cast.
+    ///
+    /// **Why is this bad?** Readability. The code tricks people into thinking that
+    /// something complex is going on.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust,ignore
+    /// core::intrinsics::transmute::<*const [i32], *const [u16]>(p)
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// p as *const [u16]
+    /// ```
+    pub TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
+    complexity,
+    "transmutes that could be a pointer cast"
 }
 
 declare_clippy_lint! {
@@ -269,6 +294,7 @@ declare_clippy_lint! {
     correctness,
     "transmute between collections of layout-incompatible types"
 }
+
 declare_lint_pass!(Transmute => [
     CROSSPOINTER_TRANSMUTE,
     TRANSMUTE_PTR_TO_REF,
@@ -281,6 +307,7 @@ declare_lint_pass!(Transmute => [
     TRANSMUTE_INT_TO_FLOAT,
     TRANSMUTE_FLOAT_TO_INT,
     UNSOUND_COLLECTION_TRANSMUTE,
+    TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
 ]);
 
 // used to check for UNSOUND_COLLECTION_TRANSMUTE
@@ -601,7 +628,25 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             );
                         }
                     },
-                    _ => return,
+                    (_, _) if can_be_expressed_as_pointer_cast(cx, e, from_ty, to_ty) => span_lint_and_then(
+                        cx,
+                        TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
+                        e.span,
+                        &format!(
+                            "transmute from `{}` to `{}` which could be expressed as a pointer cast instead",
+                            from_ty,
+                            to_ty
+                        ),
+                        |diag| {
+                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                let sugg = arg.as_ty(&to_ty.to_string()).to_string();
+                                diag.span_suggestion(e.span, "try", sugg, Applicability::MachineApplicable);
+                            }
+                        }
+                    ),
+                    _ => {
+                        return;
+                    },
                 }
             }
         }
@@ -647,4 +692,60 @@ fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx>, to: Ty<'
         // no idea about layout, so don't lint
         false
     }
+}
+
+/// Check if the type conversion can be expressed as a pointer cast, instead of
+/// a transmute. In certain cases, including some invalid casts from array
+/// references to pointers, this may cause additional errors to be emitted and/or
+/// ICE error messages. This function will panic if that occurs.
+fn can_be_expressed_as_pointer_cast<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx Expr<'_>,
+    from_ty: Ty<'tcx>,
+    to_ty: Ty<'tcx>,
+) -> bool {
+    use CastKind::*;
+    matches!(
+        check_cast(cx, e, from_ty, to_ty),
+        Some(PtrPtrCast | PtrAddrCast | AddrPtrCast | ArrayPtrCast | FnPtrPtrCast | FnPtrAddrCast)
+    )
+}
+
+/// If a cast from from_ty to to_ty is valid, returns an Ok containing the kind of
+/// the cast. In certain cases, including some invalid casts from array references
+/// to pointers, this may cause additional errors to be emitted and/or ICE error
+/// messages. This function will panic if that occurs.
+fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> Option<CastKind> {
+    let hir_id = e.hir_id;
+    let local_def_id = hir_id.owner;
+
+    Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
+        let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, hir_id);
+
+        // If we already have errors, we can't be sure we can pointer cast.
+        assert!(
+            !fn_ctxt.errors_reported_since_creation(),
+            "Newly created FnCtxt contained errors"
+        );
+
+        if let Ok(check) = CastCheck::new(
+            &fn_ctxt, e, from_ty, to_ty,
+            // We won't show any error to the user, so we don't care what the span is here.
+            DUMMY_SP, DUMMY_SP,
+        ) {
+            let res = check.do_check(&fn_ctxt);
+
+            // do_check's documentation says that it might return Ok and create
+            // errors in the fcx instead of returing Err in some cases. Those cases
+            // should be filtered out before getting here.
+            assert!(
+                !fn_ctxt.errors_reported_since_creation(),
+                "`fn_ctxt` contained errors after cast check!"
+            );
+
+            res.ok()
+        } else {
+            None
+        }
+    })
 }

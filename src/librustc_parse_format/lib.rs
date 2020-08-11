@@ -820,7 +820,7 @@ fn find_skips_from_snippet(
     }
 
     let r_start = str_style.map(|r| r + 1).unwrap_or(0);
-    let r_end = str_style.map(|r| r).unwrap_or(0);
+    let r_end = str_style.unwrap_or(0);
     let s = &snippet[r_start + 1..snippet.len() - r_end - 1];
     (find_skips(s, str_style.is_some()), true)
 }

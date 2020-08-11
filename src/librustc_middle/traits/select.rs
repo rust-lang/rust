@@ -6,29 +6,18 @@ use self::EvaluationResult::*;
 
 use super::{SelectionError, SelectionResult};
 
-use crate::dep_graph::DepNodeIndex;
-use crate::ty::{self, TyCtxt};
+use crate::ty;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lock;
 use rustc_hir::def_id::DefId;
+use rustc_query_system::cache::Cache;
 
-#[derive(Clone, Default)]
-pub struct SelectionCache<'tcx> {
-    pub hashmap: Lock<
-        FxHashMap<
-            ty::ParamEnvAnd<'tcx, ty::TraitRef<'tcx>>,
-            WithDepNode<SelectionResult<'tcx, SelectionCandidate<'tcx>>>,
-        >,
-    >,
-}
+pub type SelectionCache<'tcx> = Cache<
+    ty::ParamEnvAnd<'tcx, ty::TraitRef<'tcx>>,
+    SelectionResult<'tcx, SelectionCandidate<'tcx>>,
+>;
 
-impl<'tcx> SelectionCache<'tcx> {
-    /// Actually frees the underlying memory in contrast to what stdlib containers do on `clear`
-    pub fn clear(&self) {
-        *self.hashmap.borrow_mut() = Default::default();
-    }
-}
+pub type EvaluationCache<'tcx> =
+    Cache<ty::ParamEnvAnd<'tcx, ty::PolyTraitRef<'tcx>>, EvaluationResult>;
 
 /// The selection process begins by considering all impls, where
 /// clauses, and so forth that might resolve an obligation. Sometimes
@@ -262,77 +251,5 @@ pub struct OverflowError;
 impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
     fn from(OverflowError: OverflowError) -> SelectionError<'tcx> {
         SelectionError::Overflow
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct EvaluationCache<'tcx> {
-    pub hashmap: Lock<
-        FxHashMap<ty::ParamEnvAnd<'tcx, ty::PolyTraitRef<'tcx>>, WithDepNode<EvaluationResult>>,
-    >,
-}
-
-impl<'tcx> EvaluationCache<'tcx> {
-    /// Actually frees the underlying memory in contrast to what stdlib containers do on `clear`
-    pub fn clear(&self) {
-        *self.hashmap.borrow_mut() = Default::default();
-    }
-}
-
-#[derive(Clone, Eq, PartialEq)]
-pub struct WithDepNode<T> {
-    dep_node: DepNodeIndex,
-    cached_value: T,
-}
-
-impl<T: Clone> WithDepNode<T> {
-    pub fn new(dep_node: DepNodeIndex, cached_value: T) -> Self {
-        WithDepNode { dep_node, cached_value }
-    }
-
-    pub fn get(&self, tcx: TyCtxt<'_>) -> T {
-        tcx.dep_graph.read_index(self.dep_node);
-        self.cached_value.clone()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum IntercrateAmbiguityCause {
-    DownstreamCrate { trait_desc: String, self_desc: Option<String> },
-    UpstreamCrateUpdate { trait_desc: String, self_desc: Option<String> },
-    ReservationImpl { message: String },
-}
-
-impl IntercrateAmbiguityCause {
-    /// Emits notes when the overlap is caused by complex intercrate ambiguities.
-    /// See #23980 for details.
-    pub fn add_intercrate_ambiguity_hint(&self, err: &mut rustc_errors::DiagnosticBuilder<'_>) {
-        err.note(&self.intercrate_ambiguity_hint());
-    }
-
-    pub fn intercrate_ambiguity_hint(&self) -> String {
-        match self {
-            &IntercrateAmbiguityCause::DownstreamCrate { ref trait_desc, ref self_desc } => {
-                let self_desc = if let &Some(ref ty) = self_desc {
-                    format!(" for type `{}`", ty)
-                } else {
-                    String::new()
-                };
-                format!("downstream crates may implement trait `{}`{}", trait_desc, self_desc)
-            }
-            &IntercrateAmbiguityCause::UpstreamCrateUpdate { ref trait_desc, ref self_desc } => {
-                let self_desc = if let &Some(ref ty) = self_desc {
-                    format!(" for type `{}`", ty)
-                } else {
-                    String::new()
-                };
-                format!(
-                    "upstream crates may add a new impl of trait `{}`{} \
-                     in future versions",
-                    trait_desc, self_desc
-                )
-            }
-            &IntercrateAmbiguityCause::ReservationImpl { ref message } => message.clone(),
-        }
     }
 }

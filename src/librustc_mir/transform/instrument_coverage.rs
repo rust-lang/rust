@@ -5,18 +5,19 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::lang_items;
 use rustc_middle::hir;
 use rustc_middle::ich::StableHashingContext;
+use rustc_middle::mir;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::traversal;
 use rustc_middle::mir::{
-    self, traversal, BasicBlock, BasicBlockData, CoverageInfo, Operand, Place, SourceInfo,
-    SourceScope, StatementKind, Terminator, TerminatorKind,
+    BasicBlock, BasicBlockData, CoverageInfo, Operand, Place, SourceInfo, SourceScope,
+    StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::FnDef;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{FnDef, TyCtxt};
 use rustc_span::def_id::DefId;
-use rustc_span::{Pos, Span};
+use rustc_span::{FileName, Pos, RealFileName, Span};
 
 /// Inserts call to count_code_region() as a placeholder to be replaced during code generation with
 /// the intrinsic llvm.instrprof.increment.
@@ -112,6 +113,7 @@ enum Op {
 struct InjectedCall<'tcx> {
     func: Operand<'tcx>,
     args: Vec<Operand<'tcx>>,
+    span: Span,
     inject_at: Span,
 }
 
@@ -179,12 +181,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let _ignore = mir_body;
         let id = self.next_counter();
         let function_source_hash = self.function_source_hash();
-        let code_region = body_span;
         let scope = rustc_middle::mir::OUTERMOST_SOURCE_SCOPE;
         let is_cleanup = false;
         let next_block = rustc_middle::mir::START_BLOCK;
         self.inject_call(
-            self.make_counter(id, function_source_hash, code_region),
+            self.make_counter(id, function_source_hash, body_span),
             scope,
             is_cleanup,
             next_block,
@@ -201,14 +202,13 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             let op = if add { Op::Add } else { Op::Subtract };
             let rhs = 2;
 
-            let code_region = body_span;
             let scope = rustc_middle::mir::OUTERMOST_SOURCE_SCOPE;
             let is_cleanup = false;
             let next_block = rustc_middle::mir::START_BLOCK;
 
             let id = self.next_expression();
             self.inject_call(
-                self.make_expression(id, code_region, lhs, op, rhs),
+                self.make_expression(id, body_span, lhs, op, rhs),
                 scope,
                 is_cleanup,
                 next_block,
@@ -216,13 +216,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
     }
 
-    fn make_counter(
-        &self,
-        id: u32,
-        function_source_hash: u64,
-        code_region: Span,
-    ) -> InjectedCall<'tcx> {
-        let inject_at = code_region.shrink_to_lo();
+    fn make_counter(&self, id: u32, function_source_hash: u64, span: Span) -> InjectedCall<'tcx> {
+        let inject_at = span.shrink_to_lo();
 
         let func = function_handle(
             self.tcx,
@@ -239,24 +234,18 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         debug_assert_eq!(COUNTER_ID, args.len());
         args.push(self.const_u32(id, inject_at));
 
-        debug_assert_eq!(START_BYTE_POS, args.len());
-        args.push(self.const_u32(code_region.lo().to_u32(), inject_at));
-
-        debug_assert_eq!(END_BYTE_POS, args.len());
-        args.push(self.const_u32(code_region.hi().to_u32(), inject_at));
-
-        InjectedCall { func, args, inject_at }
+        InjectedCall { func, args, span, inject_at }
     }
 
     fn make_expression(
         &self,
         id: u32,
-        code_region: Span,
+        span: Span,
         lhs: u32,
         op: Op,
         rhs: u32,
     ) -> InjectedCall<'tcx> {
-        let inject_at = code_region.shrink_to_lo();
+        let inject_at = span.shrink_to_lo();
 
         let func = function_handle(
             self.tcx,
@@ -282,13 +271,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         debug_assert_eq!(RIGHT_ID, args.len());
         args.push(self.const_u32(rhs, inject_at));
 
-        debug_assert_eq!(START_BYTE_POS, args.len());
-        args.push(self.const_u32(code_region.lo().to_u32(), inject_at));
-
-        debug_assert_eq!(END_BYTE_POS, args.len());
-        args.push(self.const_u32(code_region.hi().to_u32(), inject_at));
-
-        InjectedCall { func, args, inject_at }
+        InjectedCall { func, args, span, inject_at }
     }
 
     fn inject_call(
@@ -298,7 +281,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         is_cleanup: bool,
         next_block: BasicBlock,
     ) {
-        let InjectedCall { func, args, inject_at } = call;
+        let InjectedCall { func, mut args, span, inject_at } = call;
         debug!(
             "  injecting {}call to {:?}({:?}) at: {:?}, scope: {:?}",
             if is_cleanup { "cleanup " } else { "" },
@@ -309,6 +292,14 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         );
 
         let mut patch = MirPatch::new(self.mir_body);
+
+        let (file_name, start_line, start_col, end_line, end_col) = self.code_region(&span);
+
+        args.push(self.const_str(&file_name, inject_at));
+        args.push(self.const_u32(start_line, inject_at));
+        args.push(self.const_u32(start_col, inject_at));
+        args.push(self.const_u32(end_line, inject_at));
+        args.push(self.const_u32(end_col, inject_at));
 
         let temp = patch.new_temp(self.tcx.mk_unit(), inject_at);
         let new_block = patch.new_block(placeholder_block(inject_at, scope, is_cleanup));
@@ -333,6 +324,43 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // To insert the `new_block` in front of the first block in the counted branch (the
         // `next_block`), just swap the indexes, leaving the rest of the graph unchanged.
         self.mir_body.basic_blocks_mut().swap(next_block, new_block);
+    }
+
+    /// Convert the Span into its file name, start line and column, and end line and column
+    fn code_region(&self, span: &Span) -> (String, u32, u32, u32, u32) {
+        let source_map = self.tcx.sess.source_map();
+        let start = source_map.lookup_char_pos(span.lo());
+        let end = if span.hi() == span.lo() {
+            start.clone()
+        } else {
+            let end = source_map.lookup_char_pos(span.hi());
+            debug_assert_eq!(
+                start.file.name,
+                end.file.name,
+                "Region start ({:?} -> {:?}) and end ({:?} -> {:?}) don't come from the same source file!",
+                span.lo(),
+                start,
+                span.hi(),
+                end
+            );
+            end
+        };
+        match &start.file.name {
+            FileName::Real(RealFileName::Named(path)) => (
+                path.to_string_lossy().to_string(),
+                start.line as u32,
+                start.col.to_u32() + 1,
+                end.line as u32,
+                end.col.to_u32() + 1,
+            ),
+            _ => {
+                bug!("start.file.name should be a RealFileName, but it was: {:?}", start.file.name)
+            }
+        }
+    }
+
+    fn const_str(&self, value: &str, span: Span) -> Operand<'tcx> {
+        Operand::const_from_str(self.tcx, value, span)
     }
 
     fn const_u32(&self, value: u32, span: Span) -> Operand<'tcx> {

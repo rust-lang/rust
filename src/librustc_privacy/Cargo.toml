@@ -17,4 +17,4 @@ rustc_typeck = { path = "../librustc_typeck" }
 rustc_session = { path = "../librustc_session" }
 rustc_span = { path = "../librustc_span" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-log = "0.4"
+log = { package = "tracing", version = "0.1" }

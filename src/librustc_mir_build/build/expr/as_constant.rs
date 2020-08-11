@@ -1,7 +1,7 @@
 //! See docs in build/expr/mod.rs
 
 use crate::build::Builder;
-use crate::hair::*;
+use crate::thir::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 

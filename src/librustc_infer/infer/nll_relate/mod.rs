@@ -719,7 +719,7 @@ where
             self.a_scopes.pop().unwrap();
         }
 
-        Ok(a.clone())
+        Ok(a)
     }
 }
 

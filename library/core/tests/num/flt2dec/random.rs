@@ -188,7 +188,7 @@ fn exact_f32_random_equivalence_test() {
 fn exact_f64_random_equivalence_test() {
     use core::num::flt2dec::strategy::dragon::format_exact as fallback;
     // Miri is too slow
-    let n = if cfg!(miri) { 3 } else { 1_000 };
+    let n = if cfg!(miri) { 2 } else { 1_000 };
 
     for k in 1..21 {
         f64_random_equivalence_test(

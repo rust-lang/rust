@@ -56,6 +56,15 @@ impl<'tcx> ConstValue<'tcx> {
         }
     }
 
+    pub fn try_to_str_slice(&self) -> Option<&'tcx str> {
+        if let ConstValue::Slice { data, start, end } = *self {
+            ::std::str::from_utf8(data.inspect_with_undef_and_ptr_outside_interpreter(start..end))
+                .ok()
+        } else {
+            None
+        }
+    }
+
     pub fn try_to_bits(&self, size: Size) -> Option<u128> {
         self.try_to_scalar()?.to_bits(size).ok()
     }
@@ -78,7 +87,7 @@ impl<'tcx> ConstValue<'tcx> {
         param_env: ParamEnv<'tcx>,
         ty: Ty<'tcx>,
     ) -> Option<u128> {
-        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
+        let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
         self.try_to_bits(size)
     }
 

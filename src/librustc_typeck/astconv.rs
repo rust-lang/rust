@@ -489,10 +489,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             kind,
         );
 
+        let unordered = sess.features_untracked().const_generics;
         let kind_ord = match kind {
             "lifetime" => ParamKindOrd::Lifetime,
             "type" => ParamKindOrd::Type,
-            "constant" => ParamKindOrd::Const,
+            "constant" => ParamKindOrd::Const { unordered },
             // It's more concise to match on the string representation, though it means
             // the match is non-exhaustive.
             _ => bug!("invalid generic parameter kind {}", kind),
@@ -500,17 +501,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let arg_ord = match arg {
             GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
             GenericArg::Type(_) => ParamKindOrd::Type,
-            GenericArg::Const(_) => ParamKindOrd::Const,
+            GenericArg::Const(_) => ParamKindOrd::Const { unordered },
         };
 
-        // This note will be true as long as generic parameters are strictly ordered by their kind.
-        let (first, last) =
-            if kind_ord < arg_ord { (kind, arg.descr()) } else { (arg.descr(), kind) };
-        err.note(&format!("{} arguments must be provided before {} arguments", first, last));
-
-        if let Some(help) = help {
-            err.help(help);
+        // This note is only true when generic parameters are strictly ordered by their kind.
+        if kind_ord.cmp(&arg_ord) != core::cmp::Ordering::Equal {
+            let (first, last) =
+                if kind_ord < arg_ord { (kind, arg.descr()) } else { (arg.descr(), kind) };
+            err.note(&format!("{} arguments must be provided before {} arguments", first, last));
+            if let Some(help) = help {
+                err.help(help);
+            }
         }
+
         err.emit();
     }
 
@@ -672,7 +675,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                                         ParamKindOrd::Type
                                                     }
                                                     GenericParamDefKind::Const => {
-                                                        ParamKindOrd::Const
+                                                        ParamKindOrd::Const {
+                                                            unordered: tcx
+                                                                .sess
+                                                                .features_untracked()
+                                                                .const_generics,
+                                                        }
                                                     }
                                                 },
                                                 param,

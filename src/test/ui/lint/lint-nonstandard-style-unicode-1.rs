@@ -23,7 +23,7 @@ struct _ヒb;
 struct __χa;
 //~^ ERROR type `__χa` should have an upper camel case name
 
-// Besides this, we cannot have two continous underscores in the middle.
+// Besides this, we cannot have two continuous underscores in the middle.
 
 struct 对__否;
 //~^ ERROR type `对__否` should have an upper camel case name

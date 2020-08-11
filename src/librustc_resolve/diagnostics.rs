@@ -466,6 +466,23 @@ impl<'a> Resolver<'a> {
                 );
                 err
             }
+            ResolutionError::ParamInNonTrivialAnonConst(name) => {
+                let mut err = self.session.struct_span_err(
+                    span,
+                    "generic parameters must not be used inside of non trivial constant values",
+                );
+                err.span_label(
+                    span,
+                    &format!(
+                        "non-trivial anonymous constants must not depend on the parameter `{}`",
+                        name
+                    ),
+                );
+                err.help(
+                    &format!("it is currently only allowed to use either `{0}` or `{{ {0} }}` as generic constants", name)
+                );
+                err
+            }
             ResolutionError::SelfInTyParamDefault => {
                 let mut err = struct_span_err!(
                     self.session,
@@ -925,6 +942,45 @@ impl<'a> Resolver<'a> {
             Some(suggestion) if suggestion.candidate == kw::Underscore => return false,
             Some(suggestion) => suggestion,
         };
+        let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
+            LOCAL_CRATE => self.opt_span(def_id),
+            _ => Some(
+                self.session
+                    .source_map()
+                    .guess_head_span(self.cstore().get_span_untracked(def_id, self.session)),
+            ),
+        });
+        if let Some(def_span) = def_span {
+            if span.overlaps(def_span) {
+                // Don't suggest typo suggestion for itself like in the followoing:
+                // error[E0423]: expected function, tuple struct or tuple variant, found struct `X`
+                //   --> $DIR/issue-64792-bad-unicode-ctor.rs:3:14
+                //    |
+                // LL | struct X {}
+                //    | ----------- `X` defined here
+                // LL |
+                // LL | const Y: X = X("ö");
+                //    | -------------^^^^^^- similarly named constant `Y` defined here
+                //    |
+                // help: use struct literal syntax instead
+                //    |
+                // LL | const Y: X = X {};
+                //    |              ^^^^
+                // help: a constant with a similar name exists
+                //    |
+                // LL | const Y: X = Y("ö");
+                //    |              ^
+                return false;
+            }
+            err.span_label(
+                self.session.source_map().guess_head_span(def_span),
+                &format!(
+                    "similarly named {} `{}` defined here",
+                    suggestion.res.descr(),
+                    suggestion.candidate.as_str(),
+                ),
+            );
+        }
         let msg = format!(
             "{} {} with a similar name exists",
             suggestion.res.article(),
@@ -936,24 +992,6 @@ impl<'a> Resolver<'a> {
             suggestion.candidate.to_string(),
             Applicability::MaybeIncorrect,
         );
-        let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
-            LOCAL_CRATE => self.opt_span(def_id),
-            _ => Some(
-                self.session
-                    .source_map()
-                    .guess_head_span(self.cstore().get_span_untracked(def_id, self.session)),
-            ),
-        });
-        if let Some(span) = def_span {
-            err.span_label(
-                self.session.source_map().guess_head_span(span),
-                &format!(
-                    "similarly named {} `{}` defined here",
-                    suggestion.res.descr(),
-                    suggestion.candidate.as_str(),
-                ),
-            );
-        }
         true
     }
 
@@ -1075,10 +1113,9 @@ impl<'a> Resolver<'a> {
         ) = binding.kind
         {
             let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
-            if let Some(fields) = self.field_names.get(&def_id) {
-                let first_field = fields.first().expect("empty field list in the map");
-                return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
-            }
+            let fields = self.field_names.get(&def_id)?;
+            let first_field = fields.first()?; // Handle `struct Foo()`
+            return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
         }
         None
     }

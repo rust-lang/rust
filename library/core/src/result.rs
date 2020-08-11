@@ -1145,7 +1145,6 @@ impl<T, E: Into<!>> Result<T, E> {
     }
 }
 
-#[unstable(feature = "inner_deref", issue = "50264")]
 impl<T: Deref, E> Result<T, E> {
     /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&<T as Deref>::Target, &E>`.
     ///
@@ -1155,7 +1154,6 @@ impl<T: Deref, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(inner_deref)]
     /// let x: Result<String, u32> = Ok("hello".to_string());
     /// let y: Result<&str, &u32> = Ok("hello");
     /// assert_eq!(x.as_deref(), y);
@@ -1164,23 +1162,12 @@ impl<T: Deref, E> Result<T, E> {
     /// let y: Result<&str, &u32> = Err(&42);
     /// assert_eq!(x.as_deref(), y);
     /// ```
+    #[stable(feature = "inner_deref", since = "1.47.0")]
     pub fn as_deref(&self) -> Result<&T::Target, &E> {
         self.as_ref().map(|t| t.deref())
     }
 }
 
-#[unstable(feature = "inner_deref", issue = "50264")]
-impl<T, E: Deref> Result<T, E> {
-    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&T, &<E as Deref>::Target>`.
-    ///
-    /// Coerces the [`Err`] variant of the original [`Result`] via [`Deref`](crate::ops::Deref)
-    /// and returns the new [`Result`].
-    pub fn as_deref_err(&self) -> Result<&T, &E::Target> {
-        self.as_ref().map_err(|e| e.deref())
-    }
-}
-
-#[unstable(feature = "inner_deref", issue = "50264")]
 impl<T: DerefMut, E> Result<T, E> {
     /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut <T as DerefMut>::Target, &mut E>`.
     ///
@@ -1190,7 +1177,6 @@ impl<T: DerefMut, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(inner_deref)]
     /// let mut s = "HELLO".to_string();
     /// let mut x: Result<String, u32> = Ok("hello".to_string());
     /// let y: Result<&mut str, &mut u32> = Ok(&mut s);
@@ -1201,19 +1187,9 @@ impl<T: DerefMut, E> Result<T, E> {
     /// let y: Result<&mut str, &mut u32> = Err(&mut i);
     /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
     /// ```
+    #[stable(feature = "inner_deref", since = "1.47.0")]
     pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E> {
         self.as_mut().map(|t| t.deref_mut())
-    }
-}
-
-#[unstable(feature = "inner_deref", issue = "50264")]
-impl<T, E: DerefMut> Result<T, E> {
-    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut T, &mut <E as DerefMut>::Target>`.
-    ///
-    /// Coerces the [`Err`] variant of the original [`Result`] via [`DerefMut`](crate::ops::DerefMut)
-    /// and returns the new [`Result`].
-    pub fn as_deref_mut_err(&mut self) -> Result<&mut T, &mut E::Target> {
-        self.as_mut().map_err(|e| e.deref_mut())
     }
 }
 

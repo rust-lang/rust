@@ -67,7 +67,7 @@ type parameter).
 pub mod _match;
 mod autoderef;
 mod callee;
-mod cast;
+pub mod cast;
 mod closure;
 pub mod coercion;
 mod compare_method;
@@ -648,7 +648,7 @@ impl Inherited<'_, 'tcx> {
 }
 
 impl<'tcx> InheritedBuilder<'tcx> {
-    fn enter<F, R>(&mut self, f: F) -> R
+    pub fn enter<F, R>(&mut self, f: F) -> R
     where
         F: for<'a> FnOnce(Inherited<'a, 'tcx>) -> R,
     {
@@ -1967,10 +1967,16 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             check_union(tcx, it.hir_id, it.span);
         }
         hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
-            let def_id = tcx.hir().local_def_id(it.hir_id);
+            // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
+            // `async-std` (and `pub async fn` in general).
+            // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at it!
+            // See https://github.com/rust-lang/rust/issues/75100
+            if !tcx.sess.opts.actually_rustdoc {
+                let def_id = tcx.hir().local_def_id(it.hir_id);
 
-            let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-            check_opaque(tcx, def_id, substs, it.span, &origin);
+                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                check_opaque(tcx, def_id, substs, it.span, &origin);
+            }
         }
         hir::ItemKind::TyAlias(..) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
@@ -2603,7 +2609,7 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
     let repr = def.repr;
     if repr.packed() {
         for attr in tcx.get_attrs(def.did).iter() {
-            for r in attr::find_repr_attrs(&tcx.sess.parse_sess, attr) {
+            for r in attr::find_repr_attrs(&tcx.sess, attr) {
                 if let attr::ReprPacked(pack) = r {
                     if let Some(repr_pack) = repr.pack {
                         if pack as u64 != repr_pack.bytes() {
@@ -2814,7 +2820,7 @@ pub fn check_enum<'tcx>(
 
     if vs.is_empty() {
         let attributes = tcx.get_attrs(def_id.to_def_id());
-        if let Some(attr) = attr::find_by_name(&attributes, sym::repr) {
+        if let Some(attr) = tcx.sess.find_by_name(&attributes, sym::repr) {
             struct_span_err!(
                 tcx.sess,
                 attr.span,

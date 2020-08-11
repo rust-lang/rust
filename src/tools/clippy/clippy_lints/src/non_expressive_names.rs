@@ -2,7 +2,6 @@ use crate::utils::{span_lint, span_lint_and_then};
 use rustc_ast::ast::{
     Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, MacCall, Pat, PatKind,
 };
-use rustc_ast::attr;
 use rustc_ast::visit::{walk_block, walk_expr, walk_pat, Visitor};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -385,7 +384,7 @@ impl EarlyLintPass for NonExpressiveNames {
 }
 
 fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
-    if !attr::contains_name(attrs, sym!(test)) {
+    if !attrs.iter().any(|attr| attr.has_name(sym!(test))) {
         let mut visitor = SimilarNamesLocalVisitor {
             names: Vec::new(),
             cx,

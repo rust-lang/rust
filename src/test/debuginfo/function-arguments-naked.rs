@@ -3,6 +3,9 @@
 // We have to ignore android because of this issue:
 // https://github.com/rust-lang/rust/issues/74847
 // ignore-android
+//
+// We need to use inline assembly, so just use one platform
+// only-x86_64
 
 // compile-flags:-g
 
@@ -24,6 +27,7 @@
 // lldb-command:continue
 
 
+#![feature(asm)]
 #![feature(naked_functions)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
@@ -33,8 +37,6 @@ fn main() {
 }
 
 #[naked]
-fn naked(x: usize, y: usize) {
-    zzz(); // #break
+extern "C" fn naked(x: usize, y: usize) {
+    unsafe { asm!("ret"); } // #break
 }
-
-fn zzz() { () }

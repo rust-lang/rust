@@ -425,8 +425,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for T {
         substs: &[GenericArg<'tcx>],
         span: Option<Span>,
     ) -> T {
-        let mut folder =
-            SubstFolder { tcx, substs, span, root_ty: None, ty_stack_depth: 0, binders_passed: 0 };
+        let mut folder = SubstFolder { tcx, substs, span, binders_passed: 0 };
         (*self).fold_with(&mut folder)
     }
 }
@@ -440,12 +439,6 @@ struct SubstFolder<'a, 'tcx> {
 
     /// The location for which the substitution is performed, if available.
     span: Option<Span>,
-
-    /// The root type that is being substituted, if available.
-    root_ty: Option<Ty<'tcx>>,
-
-    /// Depth of type stack
-    ty_stack_depth: usize,
 
     /// Number of region binders we have passed through while doing the substitution
     binders_passed: u32,
@@ -478,9 +471,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                         let span = self.span.unwrap_or(DUMMY_SP);
                         let msg = format!(
                             "Region parameter out of range \
-                             when substituting in region {} (root type={:?}) \
-                             (index={})",
-                            data.name, self.root_ty, data.index
+                             when substituting in region {} (index={})",
+                            data.name, data.index
                         );
                         span_bug!(span, "{}", msg);
                     }
@@ -495,25 +487,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
             return t;
         }
 
-        // track the root type we were asked to substitute
-        let depth = self.ty_stack_depth;
-        if depth == 0 {
-            self.root_ty = Some(t);
-        }
-        self.ty_stack_depth += 1;
-
-        let t1 = match t.kind {
+        match t.kind {
             ty::Param(p) => self.ty_for_param(p, t),
             _ => t.super_fold_with(self),
-        };
-
-        assert_eq!(depth + 1, self.ty_stack_depth);
-        self.ty_stack_depth -= 1;
-        if depth == 0 {
-            self.root_ty = None;
         }
-
-        t1
     }
 
     fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
@@ -540,12 +517,11 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
                 span_bug!(
                     span,
                     "expected type for `{:?}` ({:?}/{}) but found {:?} \
-                     when substituting (root type={:?}) substs={:?}",
+                     when substituting, substs={:?}",
                     p,
                     source_ty,
                     p.index,
                     kind,
-                    self.root_ty,
                     self.substs,
                 );
             }
@@ -554,11 +530,10 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
                 span_bug!(
                     span,
                     "type parameter `{:?}` ({:?}/{}) out of range \
-                     when substituting (root type={:?}) substs={:?}",
+                     when substituting, substs={:?}",
                     p,
                     source_ty,
                     p.index,
-                    self.root_ty,
                     self.substs,
                 );
             }
