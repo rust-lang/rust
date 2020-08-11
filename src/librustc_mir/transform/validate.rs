@@ -120,7 +120,8 @@ pub fn equal_up_to_regions(
     }
 
     // Instantiate and run relation.
-    let mut relator: LifetimeIgnoreRelation<'tcx> = LifetimeIgnoreRelation { tcx: tcx, param_env };
+    let param_env = param_env.with_reveal_all_normalized(tcx);
+    let mut relator: LifetimeIgnoreRelation<'tcx> = LifetimeIgnoreRelation { tcx, param_env };
     relator.relate(src, dest).is_ok()
 }
 
