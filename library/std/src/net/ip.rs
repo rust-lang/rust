@@ -767,10 +767,8 @@ impl Ipv4Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv6_compatible(&self) -> Ipv6Addr {
-        let octets = self.octets();
-        Ipv6Addr::from([
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, octets[0], octets[1], octets[2], octets[3],
-        ])
+        let [a, b, c, d] = self.octets();
+        Ipv6Addr::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, a, b, c, d])
     }
 
     /// Converts this address to an IPv4-mapped [IPv6 address].
@@ -789,10 +787,8 @@ impl Ipv4Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv6_mapped(&self) -> Ipv6Addr {
-        let octets = self.octets();
-        Ipv6Addr::from([
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, octets[0], octets[1], octets[2], octets[3],
-        ])
+        let [a, b, c, d] = self.octets();
+        Ipv6Addr::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, a, b, c, d])
     }
 }
 
@@ -1498,11 +1494,12 @@ impl Ipv6Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv4(&self) -> Option<Ipv4Addr> {
-        match self.segments() {
-            [0, 0, 0, 0, 0, f, g, h] if f == 0 || f == 0xffff => {
-                Some(Ipv4Addr::new((g >> 8) as u8, g as u8, (h >> 8) as u8, h as u8))
-            }
-            _ => None,
+        if let [0, 0, 0, 0, 0, 0 | 0xffff, ab, cd] = self.segments() {
+            let [a, b] = ab.to_be_bytes();
+            let [c, d] = cd.to_be_bytes();
+            Some(Ipv4Addr::new(a, b, c, d))
+        } else {
+            None
         }
     }
 
