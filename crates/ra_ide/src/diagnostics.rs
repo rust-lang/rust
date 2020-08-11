@@ -6,10 +6,7 @@
 
 use std::cell::RefCell;
 
-use hir::{
-    diagnostics::{Diagnostic as HirDiagnostics, DiagnosticSinkBuilder},
-    Semantics,
-};
+use hir::{diagnostics::DiagnosticSinkBuilder, Semantics};
 use itertools::Itertools;
 use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
@@ -73,7 +70,7 @@ pub(crate) fn diagnostics(
         .build(|d| {
             res.borrow_mut().push(Diagnostic {
                 message: d.message(),
-                range: sema.diagnostics_presentation_range(d).range,
+                range: sema.diagnostics_display_range(d).range,
                 severity: Severity::Error,
                 fix: None,
             })
@@ -86,12 +83,9 @@ pub(crate) fn diagnostics(
     res.into_inner()
 }
 
-fn diagnostic_with_fix<D: HirDiagnostics + DiagnosticWithFix>(
-    d: &D,
-    sema: &Semantics<RootDatabase>,
-) -> Diagnostic {
+fn diagnostic_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabase>) -> Diagnostic {
     Diagnostic {
-        range: sema.diagnostics_presentation_range(d).range,
+        range: sema.diagnostics_display_range(d).range,
         message: d.message(),
         severity: Severity::Error,
         fix: d.fix(&sema),
@@ -120,8 +114,9 @@ fn check_unnecessary_braces_in_use_statement(
             range: use_range,
             message: "Unnecessary braces in use statement".to_string(),
             severity: Severity::WeakWarning,
-            fix: Some((
-                Fix::new("Remove unnecessary braces", SourceFileEdit { file_id, edit }.into()),
+            fix: Some(Fix::new(
+                "Remove unnecessary braces",
+                SourceFileEdit { file_id, edit }.into(),
                 use_range,
             )),
         });
@@ -165,11 +160,9 @@ fn check_struct_shorthand_initialization(
                     range: field_range,
                     message: "Shorthand struct initialization".to_string(),
                     severity: Severity::WeakWarning,
-                    fix: Some((
-                        Fix::new(
-                            "Use struct shorthand initialization",
-                            SourceFileEdit { file_id, edit }.into(),
-                        ),
+                    fix: Some(Fix::new(
+                        "Use struct shorthand initialization",
+                        SourceFileEdit { file_id, edit }.into(),
                         field_range,
                     )),
                 });
@@ -197,7 +190,7 @@ mod tests {
 
         let (analysis, file_position) = analysis_and_position(ra_fixture_before);
         let diagnostic = analysis.diagnostics(file_position.file_id, true).unwrap().pop().unwrap();
-        let (mut fix, fix_range) = diagnostic.fix.unwrap();
+        let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_change.source_file_edits.pop().unwrap().edit;
         let target_file_contents = analysis.file_text(file_position.file_id).unwrap();
         let actual = {
@@ -208,9 +201,10 @@ mod tests {
 
         assert_eq_text!(&after, &actual);
         assert!(
-            fix_range.start() <= file_position.offset && fix_range.end() >= file_position.offset,
+            fix.fix_trigger_range.start() <= file_position.offset
+                && fix.fix_trigger_range.end() >= file_position.offset,
             "diagnostic fix range {:?} does not touch cursor position {:?}",
-            fix_range,
+            fix.fix_trigger_range,
             file_position.offset
         );
     }
@@ -222,7 +216,7 @@ mod tests {
         let (analysis, file_pos) = analysis_and_position(ra_fixture_before);
         let current_file_id = file_pos.file_id;
         let diagnostic = analysis.diagnostics(current_file_id, true).unwrap().pop().unwrap();
-        let mut fix = diagnostic.fix.unwrap().0;
+        let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_change.source_file_edits.pop().unwrap();
         let changed_file_id = edit.file_id;
         let before = analysis.file_text(changed_file_id).unwrap();
@@ -513,24 +507,22 @@ fn test_fn() {
                         range: 0..8,
                         severity: Error,
                         fix: Some(
-                            (
-                                Fix {
-                                    label: "Create module",
-                                    source_change: SourceChange {
-                                        source_file_edits: [],
-                                        file_system_edits: [
-                                            CreateFile {
-                                                anchor: FileId(
-                                                    1,
-                                                ),
-                                                dst: "foo.rs",
-                                            },
-                                        ],
-                                        is_snippet: false,
-                                    },
+                            Fix {
+                                label: "Create module",
+                                source_change: SourceChange {
+                                    source_file_edits: [],
+                                    file_system_edits: [
+                                        CreateFile {
+                                            anchor: FileId(
+                                                1,
+                                            ),
+                                            dst: "foo.rs",
+                                        },
+                                    ],
+                                    is_snippet: false,
                                 },
-                                0..8,
-                            ),
+                                fix_trigger_range: 0..8,
+                            },
                         ),
                     },
                 ]

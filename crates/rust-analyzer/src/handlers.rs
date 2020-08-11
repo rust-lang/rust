@@ -773,12 +773,11 @@ fn handle_fixes(
 
     let diagnostics = snap.analysis.diagnostics(file_id, snap.config.experimental_diagnostics)?;
 
-    let fixes_from_diagnostics = diagnostics
+    for fix in diagnostics
         .into_iter()
         .filter_map(|d| d.fix)
-        .filter(|(_fix, fix_range)| fix_range.intersect(range).is_some())
-        .map(|(fix, _range)| fix);
-    for fix in fixes_from_diagnostics {
+        .filter(|fix| fix.fix_trigger_range.intersect(range).is_some())
+    {
         let title = fix.label;
         let edit = to_proto::snippet_workspace_edit(&snap, fix.source_change)?;
         let action = lsp_ext::CodeAction {

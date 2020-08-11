@@ -1,9 +1,9 @@
-//! Provides a way to derive fixes based on the diagnostic data.
+//! Provides a way to attach fix actions to the
 use crate::Fix;
 use ast::{edit::IndentLevel, make};
 use hir::{
     db::AstDatabase,
-    diagnostics::{MissingFields, MissingOkInTailExpr, NoSuchField, UnresolvedModule},
+    diagnostics::{Diagnostic, MissingFields, MissingOkInTailExpr, NoSuchField, UnresolvedModule},
     HasSource, HirDisplay, Semantics, VariantDef,
 };
 use ra_db::FileId;
@@ -11,94 +11,90 @@ use ra_ide_db::{
     source_change::{FileSystemEdit, SourceFileEdit},
     RootDatabase,
 };
-use ra_syntax::{algo, ast, AstNode, TextRange};
+use ra_syntax::{algo, ast, AstNode};
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
-/// A trait to implement fot the Diagnostic that has a fix available.
-pub trait DiagnosticWithFix {
-    /// Provides a fix with the fix range, if applicable in the current semantics.
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<(Fix, TextRange)>;
+/// A [Diagnostic] that potentially has a fix available.
+///
+/// [Diagnostic]: hir::diagnostics::Diagnostic
+pub trait DiagnosticWithFix: Diagnostic {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix>;
 }
 
 impl DiagnosticWithFix for UnresolvedModule {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<(Fix, TextRange)> {
-        let fix = Fix::new(
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+        let root = sema.db.parse_or_expand(self.file)?;
+        let unresolved_module = self.decl.to_node(&root);
+        Some(Fix::new(
             "Create module",
             FileSystemEdit::CreateFile {
                 anchor: self.file.original_file(sema.db),
                 dst: self.candidate.clone(),
             }
             .into(),
-        );
-
-        let root = sema.db.parse_or_expand(self.file)?;
-        let unresolved_module = self.decl.to_node(&root);
-        Some((fix, unresolved_module.syntax().text_range()))
+            unresolved_module.syntax().text_range(),
+        ))
     }
 }
 
 impl DiagnosticWithFix for NoSuchField {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<(Fix, TextRange)> {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
         let root = sema.db.parse_or_expand(self.file)?;
-        let record_expr_field = self.field.to_node(&root);
-        let fix =
-            missing_struct_field_fix(&sema, self.file.original_file(sema.db), &record_expr_field)?;
-        Some((fix, record_expr_field.syntax().text_range()))
+        missing_record_expr_field_fix(
+            &sema,
+            self.file.original_file(sema.db),
+            &self.field.to_node(&root),
+        )
     }
 }
 
 impl DiagnosticWithFix for MissingFields {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<(Fix, TextRange)> {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
         // Note that although we could add a diagnostics to
         // fill the missing tuple field, e.g :
         // `struct A(usize);`
         // `let a = A { 0: () }`
         // but it is uncommon usage and it should not be encouraged.
         if self.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
-            None
-        } else {
-            let root = sema.db.parse_or_expand(self.file)?;
-            let old_field_list = self.field_list_parent.to_node(&root).record_expr_field_list()?;
-            let mut new_field_list = old_field_list.clone();
-            for f in self.missed_fields.iter() {
-                let field = make::record_expr_field(
-                    make::name_ref(&f.to_string()),
-                    Some(make::expr_unit()),
-                );
-                new_field_list = new_field_list.append_field(&field);
-            }
-
-            let edit = {
-                let mut builder = TextEditBuilder::default();
-                algo::diff(&old_field_list.syntax(), &new_field_list.syntax())
-                    .into_text_edit(&mut builder);
-                builder.finish()
-            };
-            Some((
-                Fix::new(
-                    "Fill struct fields",
-                    SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into(),
-                ),
-                sema.original_range(&old_field_list.syntax()).range,
-                // old_field_list.syntax().text_range(),
-            ))
+            return None;
         }
+
+        let root = sema.db.parse_or_expand(self.file)?;
+        let old_field_list = self.field_list_parent.to_node(&root).record_expr_field_list()?;
+        let mut new_field_list = old_field_list.clone();
+        for f in self.missed_fields.iter() {
+            let field =
+                make::record_expr_field(make::name_ref(&f.to_string()), Some(make::expr_unit()));
+            new_field_list = new_field_list.append_field(&field);
+        }
+
+        let edit = {
+            let mut builder = TextEditBuilder::default();
+            algo::diff(&old_field_list.syntax(), &new_field_list.syntax())
+                .into_text_edit(&mut builder);
+            builder.finish()
+        };
+        Some(Fix::new(
+            "Fill struct fields",
+            SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into(),
+            sema.original_range(&old_field_list.syntax()).range,
+        ))
     }
 }
 
 impl DiagnosticWithFix for MissingOkInTailExpr {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<(Fix, TextRange)> {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
         let root = sema.db.parse_or_expand(self.file)?;
         let tail_expr = self.expr.to_node(&root);
         let tail_expr_range = tail_expr.syntax().text_range();
         let edit = TextEdit::replace(tail_expr_range, format!("Ok({})", tail_expr.syntax()));
         let source_change =
             SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
-        Some((Fix::new("Wrap with ok", source_change), tail_expr_range))
+        Some(Fix::new("Wrap with ok", source_change, tail_expr_range))
     }
 }
 
-fn missing_struct_field_fix(
+fn missing_record_expr_field_fix(
     sema: &Semantics<RootDatabase>,
     usage_file_id: FileId,
     record_expr_field: &ast::RecordExprField,
@@ -159,8 +155,11 @@ fn missing_struct_field_fix(
         file_id: def_file_id,
         edit: TextEdit::insert(last_field_syntax.text_range().end(), new_field),
     };
-    let fix = Fix::new("Create field", source_change.into());
-    return Some(fix);
+    return Some(Fix::new(
+        "Create field",
+        source_change.into(),
+        record_expr_field.syntax().text_range(),
+    ));
 
     fn record_field_list(field_def_list: ast::FieldList) -> Option<ast::RecordFieldList> {
         match field_def_list {
