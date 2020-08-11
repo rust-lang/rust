@@ -864,7 +864,7 @@ pub(crate) fn handle_resolve_code_action(
     let (id_string, index) = split_once(&params.id, ':').unwrap();
     let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];
-    assert!(assist.assist.id.0 == id_string);
+    assert!(assist.assist.id().0 == id_string);
     Ok(to_proto::resolved_code_action(&snap, assist.clone())?.edit)
 }
 

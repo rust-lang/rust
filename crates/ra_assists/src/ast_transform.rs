@@ -2,6 +2,7 @@
 use rustc_hash::FxHashMap;
 
 use hir::{HirDisplay, PathResolution, SemanticsScope};
+use hir_expand::hygiene::Hygiene;
 use ra_syntax::{
     algo::SyntaxRewriter,
     ast::{self, AstNode},
@@ -51,7 +52,7 @@ impl<'a> SubstituteTypeParams<'a> {
             // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
             .skip(1)
             // The actual list of trait type parameters may be longer than the one
-            // used in the `impl` block due to trailing default type parametrs.
+            // used in the `impl` block due to trailing default type parameters.
             // For that case we extend the `substs` with an empty iterator so we
             // can still hit those trailing values and check if they actually have
             // a default type. If they do, go for that type from `hir` to `ast` so
@@ -110,9 +111,7 @@ impl<'a> SubstituteTypeParams<'a> {
             ast::Type::PathType(path_type) => path_type.path()?,
             _ => return None,
         };
-        // FIXME: use `hir::Path::from_src` instead.
-        #[allow(deprecated)]
-        let path = hir::Path::from_ast(path)?;
+        let path = hir::Path::from_src(path, &Hygiene::new_unhygienic())?;
         let resolution = self.source_scope.resolve_hir_path(&path)?;
         match resolution {
             hir::PathResolution::TypeParam(tp) => Some(self.substs.get(&tp)?.syntax().clone()),
@@ -152,10 +151,8 @@ impl<'a> QualifyPaths<'a> {
             // don't try to qualify `Fn(Foo) -> Bar` paths, they are in prelude anyway
             return None;
         }
-        // FIXME: use `hir::Path::from_src` instead.
-        #[allow(deprecated)]
-        let hir_path = hir::Path::from_ast(p.clone());
-        let resolution = self.source_scope.resolve_hir_path(&hir_path?)?;
+        let hir_path = hir::Path::from_src(p.clone(), &Hygiene::new_unhygienic())?;
+        let resolution = self.source_scope.resolve_hir_path(&hir_path)?;
         match resolution {
             PathResolution::Def(def) => {
                 let found_path = from.find_use_path(self.source_scope.db.upcast(), def)?;
