@@ -44,7 +44,7 @@ mod test_db;
 /// containing the call plus the offset of the macro call in the file. Note that
 /// this is a recursive definition! However, the size_of of `HirFileId` is
 /// finite (because everything bottoms out at the real `FileId`) and small
-/// (`MacroCallId` uses the location interner).
+/// (`MacroCallId` uses the location internal).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HirFileId(HirFileIdRepr);
 
