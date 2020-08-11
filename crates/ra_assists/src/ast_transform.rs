@@ -2,7 +2,6 @@
 use rustc_hash::FxHashMap;
 
 use hir::{HirDisplay, PathResolution, SemanticsScope};
-use hir_expand::hygiene::Hygiene;
 use ra_syntax::{
     algo::SyntaxRewriter,
     ast::{self, AstNode},
@@ -111,7 +110,7 @@ impl<'a> SubstituteTypeParams<'a> {
             ast::Type::PathType(path_type) => path_type.path()?,
             _ => return None,
         };
-        let path = hir::Path::from_src(path, &Hygiene::new_unhygienic())?;
+        let path = hir::Path::from_src(path, &hir::Hygiene::new_unhygienic())?;
         let resolution = self.source_scope.resolve_hir_path(&path)?;
         match resolution {
             hir::PathResolution::TypeParam(tp) => Some(self.substs.get(&tp)?.syntax().clone()),
@@ -151,7 +150,7 @@ impl<'a> QualifyPaths<'a> {
             // don't try to qualify `Fn(Foo) -> Bar` paths, they are in prelude anyway
             return None;
         }
-        let hir_path = hir::Path::from_src(p.clone(), &Hygiene::new_unhygienic())?;
+        let hir_path = hir::Path::from_src(p.clone(), &hir::Hygiene::new_unhygienic())?;
         let resolution = self.source_scope.resolve_hir_path(&hir_path)?;
         match resolution {
             PathResolution::Def(def) => {
