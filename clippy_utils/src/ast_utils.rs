@@ -408,6 +408,10 @@ pub fn eq_use_tree(l: &UseTree, r: &UseTree) -> bool {
     eq_path(&l.prefix, &r.prefix) && eq_use_tree_kind(&l.kind, &r.kind)
 }
 
+pub fn eq_anon_const(l: &AnonConst, r: &AnonConst) -> bool {
+  eq_expr(&l.value, &r.value)
+}
+
 pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
     use UseTreeKind::*;
     match (l, r) {
@@ -416,10 +420,6 @@ pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
         (Nested(l), Nested(r)) => over(l, r, |(l, _), (r, _)| eq_use_tree(l, r)),
         _ => false,
     }
-}
-
-pub fn eq_anon_const(l: &AnonConst, r: &AnonConst) -> bool {
-    eq_expr(&l.value, &r.value)
 }
 
 pub fn eq_defaultness(l: Defaultness, r: Defaultness) -> bool {
