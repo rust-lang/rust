@@ -392,15 +392,15 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
     /// return the span of whole call and the span for all arguments expect the first one (`self`).
     fn call_has_self_arg(&self, source: PathSource<'_>) -> Option<(Span, Option<Span>)> {
         let mut has_self_arg = None;
-        if let PathSource::Expr(parent) = source {
-            match &parent?.kind {
+        if let PathSource::Expr(Some(parent)) = source {
+            match &parent.kind {
                 ExprKind::Call(_, args) if !args.is_empty() => {
                     let mut expr_kind = &args[0].kind;
                     loop {
                         match expr_kind {
                             ExprKind::Path(_, arg_name) if arg_name.segments.len() == 1 => {
                                 if arg_name.segments[0].ident.name == kw::SelfLower {
-                                    let call_span = parent.unwrap().span;
+                                    let call_span = parent.span;
                                     let tail_args_span = if args.len() > 1 {
                                         Some(Span::new(
                                             args[1].span.lo(),
