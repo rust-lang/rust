@@ -16,17 +16,11 @@ error: `#[doc(alias = "...")]` isn't allowed on implementation block
 LL | #[doc(alias = "foobar")]
    |       ^^^^^^^^^^^^^^^^
 
-error: `#[doc(alias = "...")]` isn't allowed on const in implementation block
-  --> $DIR/check-doc-alias-attr-location.rs:14:11
-   |
-LL |     #[doc(alias = "const")]
-   |           ^^^^^^^^^^^^^^^
-
 error: `#[doc(alias = "...")]` isn't allowed on type alias in implementation block
   --> $DIR/check-doc-alias-attr-location.rs:20:11
    |
 LL |     #[doc(alias = "assoc")]
    |           ^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
