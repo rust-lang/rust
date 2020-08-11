@@ -12,7 +12,7 @@ extern {}
 
 #[doc(alias = "bar")] //~ ERROR
 impl Bar {
-    #[doc(alias = "const")] //~ ERROR
+    #[doc(alias = "const")]
     const A: u32 = 0;
 }
 

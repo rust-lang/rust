@@ -7,6 +7,8 @@ pub struct Struct {
 }
 
 impl Struct {
+    #[doc(alias = "StructImplConstItem")]
+    pub const ImplConstItem: i32 = 0;
     #[doc(alias = "StructMethodItem")]
     pub fn method(&self) {}
 }

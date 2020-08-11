@@ -241,15 +241,11 @@ impl CheckAttrVisitor<'tcx> {
                         if let Some(err) = match target {
                             Target::Impl => Some("implementation block"),
                             Target::ForeignMod => Some("extern block"),
-                            Target::AssocConst | Target::AssocTy => {
+                            Target::AssocTy => {
                                 let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
                                 let containing_item = self.tcx.hir().expect_item(parent_hir_id);
                                 if Target::from_item(containing_item) == Target::Impl {
-                                    Some(if target == Target::AssocConst {
-                                        "const in implementation block"
-                                    } else {
-                                        "type alias in implementation block"
-                                    })
+                                    Some("type alias in implementation block")
                                 } else {
                                     None
                                 }

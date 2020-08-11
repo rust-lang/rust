@@ -11,8 +11,8 @@ extern {}
 
 #[doc(alias = "bar")] //~ ERROR
 impl Bar {
-    #[doc(alias = "const")] //~ ERROR
-    const A: u32 = 0;
+    #[doc(alias = "const")]
+    pub const A: u32 = 0;
 }
 
 #[doc(alias = "foobar")] //~ ERROR
