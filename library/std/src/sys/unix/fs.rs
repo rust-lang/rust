@@ -1162,7 +1162,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             };
             if let Err(ref copy_err) = copy_result {
                 match copy_err.raw_os_error() {
-                    Some(libc::ENOSYS) | Some(libc::EPERM) => {
+                    Some(libc::ENOSYS) | Some(libc::EPERM) | Some(libc::EOPNOTSUPP) => {
                         HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
                     }
                     _ => {}
@@ -1180,11 +1180,13 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                         if os_err == libc::ENOSYS
                             || os_err == libc::EXDEV
                             || os_err == libc::EINVAL
-                            || os_err == libc::EPERM =>
+                            || os_err == libc::EPERM
+                            || os_err == libc::EOPNOTSUPP =>
                     {
                         // Try fallback io::copy if either:
                         // - Kernel version is < 4.5 (ENOSYS)
                         // - Files are mounted on different fs (EXDEV)
+                        // - copy_file_range is broken in various ways on RHEL/CentOS 7 (EOPNOTSUPP)
                         // - copy_file_range is disallowed, for example by seccomp (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
                         assert_eq!(written, 0);
