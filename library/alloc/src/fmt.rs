@@ -239,7 +239,7 @@
 //! println!("{}, `{name:>8.*}` has 3 right-aligned characters", "Hello", 3, name="1234.56");
 //! ```
 //!
-//! print two significantly different things:
+//! print three significantly different things:
 //!
 //! ```text
 //! Hello, `1234.560` has 3 fractional digits
