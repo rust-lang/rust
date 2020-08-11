@@ -366,7 +366,6 @@ LLVMRustBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Target,
 }
 
 enum class LLVMRustSynchronizationScope {
-  Other,
   SingleThread,
   CrossThread,
 };

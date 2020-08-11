@@ -337,9 +337,6 @@ impl AtomicOrdering {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum SynchronizationScope {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
     SingleThread,
     CrossThread,
 }
@@ -347,7 +344,6 @@ pub enum SynchronizationScope {
 impl SynchronizationScope {
     pub fn from_generic(sc: rustc_codegen_ssa::common::SynchronizationScope) -> Self {
         match sc {
-            rustc_codegen_ssa::common::SynchronizationScope::Other => SynchronizationScope::Other,
             rustc_codegen_ssa::common::SynchronizationScope::SingleThread => {
                 SynchronizationScope::SingleThread
             }

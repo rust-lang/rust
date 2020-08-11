@@ -72,9 +72,6 @@ pub enum AtomicOrdering {
 }
 
 pub enum SynchronizationScope {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
     SingleThread,
     CrossThread,
 }
