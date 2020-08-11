@@ -559,27 +559,24 @@ impl<T> [T] {
             // Use the llvm.bswap intrinsic to reverse u8s in a usize
             let chunk = mem::size_of::<usize>();
             while i + chunk - 1 < ln / 2 {
-                // SAFETY: An unaligned usize can be read from `i` if `i + 1 < ln`
-                // (and obviously `i < ln`), because each element is 1 byte and
-                // we're reading `chunk`.
+                // SAFETY:
                 //
-                // Since we checked for the `x86` and `x86_64` target before
-                // getting here so `chunk` is at most 8 bytes.
-                //
-                // `i + chunk - 1 < ln / 2` # while condition
-                // `i + 8 - 1 < ln / 2`
-                // `i + 7 < ln / 2`
-                // so obviously `i + 1 < ln / 2`
-                //
-                // Since it's less than the length divided by 2, then it must be
-                // in bounds.
-                //
-                // This also means that the condition `0 < i + chunk <= ln` is
-                // always respected, ensuring the `pb` pointer can be used
-                // safely.
-                //
-                // Note: when updating this comment, update the others in the
-                // function too.
+                // - Note that `chunk` is either 4 or 8 due to the cfg check
+                //   above. So `chunk - 1` is positive.
+                // - Indexing with index `i` is fine as the loop check guarantees
+                //   `i + chunk - 1 < ln / 2`
+                //   <=> `i < ln / 2 - (chunk - 1) < ln / 2 < ln`.
+                // - Indexing with index `ln - i - chunk = ln - (i + chunk)` is fine:
+                //   - `i + chunk > 0` is trivially true.
+                //   - The loop check guarantees:
+                //     `i + chunk - 1 < ln / 2`
+                //     <=> `i + chunk ≤ ln / 2 ≤ ln`, thus subtraction does not underflow.
+                // - The `read_unaligned` and `write_unaligned` calls are fine:
+                //   - `pa` points to index `i` where `i < ln / 2 - (chunk - 1)`
+                //     (see above) and `pb` points to index `ln - i - chunk`, so
+                //     both are at least `chunk`
+                //     many bytes away from the end of `self`.
+                //   - Any initialized memory is valid `usize`.
                 unsafe {
                     let pa: *mut T = self.get_unchecked_mut(i);
                     let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
@@ -610,9 +607,6 @@ impl<T> [T] {
                 // This also means that the condition `0 < i + chunk <= ln` is
                 // always respected, ensuring the `pb` pointer can be used
                 // safely.
-                //
-                // Note: when updating this comment, update the others in the
-                // function too.
                 unsafe {
                     let pa: *mut T = self.get_unchecked_mut(i);
                     let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
