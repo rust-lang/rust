@@ -7,8 +7,8 @@ impl<T> PrintName<T> {
     //~^ WARN this operation will panic at runtime
 }
 
-const fn no_codegen<T>() {
-    if false { //~ERROR evaluation of constant value failed
+const fn no_codegen<T>() { //~ERROR evaluation of constant value failed
+    if false {
         let _ = PrintName::<T>::VOID;
     }
 }
