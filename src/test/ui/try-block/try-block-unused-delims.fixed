@@ -11,7 +11,7 @@ fn main() {
     consume(try {});
     //~^ WARN unnecessary parentheses
 
-    consume( try {} );
+    consume(try {});
     //~^ WARN unnecessary braces
 
     match try {} {
