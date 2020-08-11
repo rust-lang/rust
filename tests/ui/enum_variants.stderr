@@ -1,4 +1,4 @@
-error: Variant name ends with the enum's name
+error: variant name ends with the enum's name
   --> $DIR/enum_variants.rs:16:5
    |
 LL |     cFoo,
@@ -6,19 +6,19 @@ LL |     cFoo,
    |
    = note: `-D clippy::enum-variant-names` implied by `-D warnings`
 
-error: Variant name starts with the enum's name
+error: variant name starts with the enum's name
   --> $DIR/enum_variants.rs:27:5
    |
 LL |     FoodGood,
    |     ^^^^^^^^
 
-error: Variant name starts with the enum's name
+error: variant name starts with the enum's name
   --> $DIR/enum_variants.rs:28:5
    |
 LL |     FoodMiddle,
    |     ^^^^^^^^^^
 
-error: Variant name starts with the enum's name
+error: variant name starts with the enum's name
   --> $DIR/enum_variants.rs:29:5
    |
 LL |     FoodBad,
