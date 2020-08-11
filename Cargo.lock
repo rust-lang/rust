@@ -1586,7 +1586,7 @@ checksum = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
 [[package]]
 name = "libc"
 version = "0.2.74"
-source = "git+https://github.com/leo60228/libc.git?branch=bindgen-horizon#84597a8e80fbb7bb058a35677846006fc2bafa5c"
+source = "git+https://github.com/leo60228/libc.git?branch=bindgen-horizon#d4a706f30bc0be2b6d4827a017e86a275c3dc611"
 dependencies = [
  "rustc-std-workspace-core",
 ]
