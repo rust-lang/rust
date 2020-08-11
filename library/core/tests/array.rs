@@ -301,3 +301,32 @@ fn array_map() {
     let b = a.map(|v| v as u64);
     assert_eq!(b, [1, 2, 3]);
 }
+
+// See note on above test for why `should_panic` is used.
+#[test]
+#[should_panic(expected = "test succeeded")]
+fn array_map_drop_safety() {
+    use core::sync::atomic::AtomicUsize;
+    use core::sync::atomic::Ordering;
+    static DROPPED: AtomicUsize = AtomicUsize::new(0);
+    struct DropCounter;
+    impl Drop for DropCounter {
+        fn drop(&mut self) {
+            DROPPED.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    let num_to_create = 5;
+    let success = std::panic::catch_unwind(|| {
+        let items = [0; 10];
+        let mut nth = 0;
+        items.map(|_| {
+            assert!(nth < num_to_create);
+            nth += 1;
+            DropCounter
+        });
+    });
+    assert!(success.is_err());
+    assert_eq!(DROPPED.load(Ordering::SeqCst), num_to_create);
+    panic!("test succeeded")
+}
