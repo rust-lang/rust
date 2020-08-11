@@ -6,7 +6,7 @@ use std::path::Path;
 /// List of allowed sources for packages.
 const ALLOWED_SOURCES: &[&str] = &[
     "\"registry+https://github.com/rust-lang/crates.io-index\"",
-    "\"git+https://github.com/leo60228/libc.git?branch=bindgen-horizon#9db9538ce95d61b75964b3223cf03cafe1023327\"",
+    "\"git+https://github.com/leo60228/libc.git?branch=bindgen-horizon#9f1d51f1276ac6967065b0fd7c3d814ec86dd391\"",
 ];
 
 /// Checks for external package sources. `root` is the path to the directory that contains the
