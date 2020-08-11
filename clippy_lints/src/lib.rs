@@ -250,6 +250,7 @@ mod mut_mut;
 mod mut_reference;
 mod mutable_debug_assertion;
 mod mutex_atomic;
+mod needless_arbitrary_self_type;
 mod needless_bool;
 mod needless_borrow;
 mod needless_borrowed_ref;
@@ -288,6 +289,7 @@ mod serde_api;
 mod shadow;
 mod single_component_path_imports;
 mod slow_vector_initialization;
+mod stable_sort_primitive;
 mod strings;
 mod suspicious_trait_impl;
 mod swap;
@@ -321,10 +323,6 @@ mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
 pub use crate::utils::conf::Conf;
-
-mod reexport {
-    pub use rustc_span::Symbol as Name;
-}
 
 /// Register all pre expansion lints
 ///
@@ -513,6 +511,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &default_trait_access::DEFAULT_TRAIT_ACCESS,
         &dereference::EXPLICIT_DEREF_METHODS,
         &derive::DERIVE_HASH_XOR_EQ,
+        &derive::DERIVE_ORD_XOR_PARTIAL_ORD,
         &derive::EXPL_IMPL_CLONE_ON_COPY,
         &derive::UNSAFE_DERIVE_DESERIALIZE,
         &doc::DOC_MARKDOWN,
@@ -610,6 +609,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &loops::NEEDLESS_COLLECT,
         &loops::NEEDLESS_RANGE_LOOP,
         &loops::NEVER_LOOP,
+        &loops::SAME_ITEM_PUSH,
         &loops::WHILE_IMMUTABLE_CONDITION,
         &loops::WHILE_LET_LOOP,
         &loops::WHILE_LET_ON_ITERATOR,
@@ -719,6 +719,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL,
         &mutex_atomic::MUTEX_ATOMIC,
         &mutex_atomic::MUTEX_INTEGER,
+        &needless_arbitrary_self_type::NEEDLESS_ARBITRARY_SELF_TYPE,
         &needless_bool::BOOL_COMPARISON,
         &needless_bool::NEEDLESS_BOOL,
         &needless_borrow::NEEDLESS_BORROW,
@@ -776,6 +777,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &shadow::SHADOW_UNRELATED,
         &single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS,
         &slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,
+        &stable_sort_primitive::STABLE_SORT_PRIMITIVE,
         &strings::STRING_ADD,
         &strings::STRING_ADD_ASSIGN,
         &strings::STRING_LIT_AS_BYTES,
@@ -786,6 +788,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &tabs_in_doc_comments::TABS_IN_DOC_COMMENTS,
         &temporary_assignment::TEMPORARY_ASSIGNMENT,
         &to_digit_is_some::TO_DIGIT_IS_SOME,
+        &trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS,
         &trait_bounds::TYPE_REPETITION_IN_BOUNDS,
         &transmute::CROSSPOINTER_TRANSMUTE,
         &transmute::TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
@@ -1028,6 +1031,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box items_after_statements::ItemsAfterStatements);
     store.register_early_pass(|| box precedence::Precedence);
     store.register_early_pass(|| box needless_continue::NeedlessContinue);
+    store.register_early_pass(|| box needless_arbitrary_self_type::NeedlessArbitrarySelfType);
     store.register_early_pass(|| box redundant_static_lifetimes::RedundantStaticLifetimes);
     store.register_late_pass(|| box cargo_common_metadata::CargoCommonMetadata);
     store.register_late_pass(|| box multiple_crate_versions::MultipleCrateVersions);
@@ -1079,6 +1083,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box macro_use::MacroUseImports::default());
     store.register_late_pass(|| box map_identity::MapIdentity);
     store.register_late_pass(|| box pattern_type_mismatch::PatternTypeMismatch);
+    store.register_late_pass(|| box stable_sort_primitive::StableSortPrimitive);
     store.register_late_pass(|| box repeat_once::RepeatOnce);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
@@ -1175,6 +1180,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&ranges::RANGE_PLUS_ONE),
         LintId::of(&shadow::SHADOW_UNRELATED),
         LintId::of(&strings::STRING_ADD_ASSIGN),
+        LintId::of(&trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS),
         LintId::of(&trait_bounds::TYPE_REPETITION_IN_BOUNDS),
         LintId::of(&trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF),
         LintId::of(&types::CAST_LOSSLESS),
@@ -1231,6 +1237,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&copies::IFS_SAME_COND),
         LintId::of(&copies::IF_SAME_THEN_ELSE),
         LintId::of(&derive::DERIVE_HASH_XOR_EQ),
+        LintId::of(&derive::DERIVE_ORD_XOR_PARTIAL_ORD),
         LintId::of(&doc::MISSING_SAFETY_DOC),
         LintId::of(&doc::NEEDLESS_DOCTEST_MAIN),
         LintId::of(&double_comparison::DOUBLE_COMPARISONS),
@@ -1293,6 +1300,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::NEEDLESS_COLLECT),
         LintId::of(&loops::NEEDLESS_RANGE_LOOP),
         LintId::of(&loops::NEVER_LOOP),
+        LintId::of(&loops::SAME_ITEM_PUSH),
         LintId::of(&loops::WHILE_IMMUTABLE_CONDITION),
         LintId::of(&loops::WHILE_LET_LOOP),
         LintId::of(&loops::WHILE_LET_ON_ITERATOR),
@@ -1369,6 +1377,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&mut_key::MUTABLE_KEY_TYPE),
         LintId::of(&mut_reference::UNNECESSARY_MUT_PASSED),
         LintId::of(&mutex_atomic::MUTEX_ATOMIC),
+        LintId::of(&needless_arbitrary_self_type::NEEDLESS_ARBITRARY_SELF_TYPE),
         LintId::of(&needless_bool::BOOL_COMPARISON),
         LintId::of(&needless_bool::NEEDLESS_BOOL),
         LintId::of(&needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE),
@@ -1409,6 +1418,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&serde_api::SERDE_API_MISUSE),
         LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(&slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
+        LintId::of(&stable_sort_primitive::STABLE_SORT_PRIMITIVE),
         LintId::of(&strings::STRING_LIT_AS_BYTES),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
@@ -1495,6 +1505,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::EMPTY_LOOP),
         LintId::of(&loops::FOR_KV_MAP),
         LintId::of(&loops::NEEDLESS_RANGE_LOOP),
+        LintId::of(&loops::SAME_ITEM_PUSH),
         LintId::of(&loops::WHILE_LET_ON_ITERATOR),
         LintId::of(&main_recursion::MAIN_RECURSION),
         LintId::of(&manual_async_fn::MANUAL_ASYNC_FN),
@@ -1600,6 +1611,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&misc::SHORT_CIRCUIT_STATEMENT),
         LintId::of(&misc_early::UNNEEDED_WILDCARD_PATTERN),
         LintId::of(&misc_early::ZERO_PREFIXED_LITERAL),
+        LintId::of(&needless_arbitrary_self_type::NEEDLESS_ARBITRARY_SELF_TYPE),
         LintId::of(&needless_bool::BOOL_COMPARISON),
         LintId::of(&needless_bool::NEEDLESS_BOOL),
         LintId::of(&needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE),
@@ -1651,6 +1663,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&copies::IFS_SAME_COND),
         LintId::of(&copies::IF_SAME_THEN_ELSE),
         LintId::of(&derive::DERIVE_HASH_XOR_EQ),
+        LintId::of(&derive::DERIVE_ORD_XOR_PARTIAL_ORD),
         LintId::of(&drop_bounds::DROP_BOUNDS),
         LintId::of(&drop_forget_ref::DROP_COPY),
         LintId::of(&drop_forget_ref::DROP_REF),
@@ -1726,6 +1739,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&mutex_atomic::MUTEX_ATOMIC),
         LintId::of(&redundant_clone::REDUNDANT_CLONE),
         LintId::of(&slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
+        LintId::of(&stable_sort_primitive::STABLE_SORT_PRIMITIVE),
         LintId::of(&types::BOX_VEC),
         LintId::of(&types::REDUNDANT_ALLOCATION),
         LintId::of(&vec::USELESS_VEC),

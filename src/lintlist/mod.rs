@@ -361,6 +361,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "derive",
     },
     Lint {
+        name: "derive_ord_xor_partial_ord",
+        group: "correctness",
+        desc: "deriving `Ord` but implementing `PartialOrd` explicitly",
+        deprecation: None,
+        module: "derive",
+    },
+    Lint {
         name: "diverging_sub_expression",
         group: "complexity",
         desc: "whether an expression contains a diverging sub expression",
@@ -405,7 +412,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "drop_bounds",
         group: "correctness",
-        desc: "Bounds of the form `T: Drop` are useless",
+        desc: "bounds of the form `T: Drop` are useless",
         deprecation: None,
         module: "drop_bounds",
     },
@@ -1453,6 +1460,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "bytecount",
     },
     Lint {
+        name: "needless_arbitrary_self_type",
+        group: "complexity",
+        desc: "type of `self` parameter is already by default `Self`",
+        deprecation: None,
+        module: "needless_arbitrary_self_type",
+    },
+    Lint {
         name: "needless_bool",
         group: "complexity",
         desc: "if-statements with plain booleans in the then- and else-clause, e.g., `if p { true } else { false }`",
@@ -1929,6 +1943,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "copies",
     },
     Lint {
+        name: "same_item_push",
+        group: "style",
+        desc: "the same item is pushed inside of a for loop",
+        deprecation: None,
+        module: "loops",
+    },
+    Lint {
         name: "search_is_some",
         group: "complexity",
         desc: "using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`",
@@ -2025,6 +2046,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "slow vector initialization",
         deprecation: None,
         module: "slow_vector_initialization",
+    },
+    Lint {
+        name: "stable_sort_primitive",
+        group: "perf",
+        desc: "use of sort() when sort_unstable() is equivalent",
+        deprecation: None,
+        module: "stable_sort_primitive",
     },
     Lint {
         name: "string_add",
@@ -2165,6 +2193,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "an entire binding declared as `ref`, in a function argument or a `let` statement",
         deprecation: None,
         module: "misc",
+    },
+    Lint {
+        name: "trait_duplication_in_bounds",
+        group: "pedantic",
+        desc: "Check if the same trait bounds are specified twice during a function declaration",
+        deprecation: None,
+        module: "trait_bounds",
     },
     Lint {
         name: "transmute_bytes_to_str",

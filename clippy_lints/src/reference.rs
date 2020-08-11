@@ -92,7 +92,7 @@ impl EarlyLintPass for RefInDeref {
                     cx,
                     REF_IN_DEREF,
                     object.span,
-                    "Creating a reference that is immediately dereferenced.",
+                    "creating a reference that is immediately dereferenced",
                     "try this",
                     snippet_with_applicability(cx, inner.span, "_", &mut applicability).to_string(),
                     applicability,
