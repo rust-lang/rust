@@ -10,6 +10,7 @@ use crate::cmp::Ordering;
 use crate::fmt::{self, Write as FmtWrite};
 use crate::hash;
 use crate::io::Write as IoWrite;
+use crate::mem::transmute;
 use crate::sys::net::netc as c;
 use crate::sys_common::{AsInner, FromInner};
 
@@ -1045,27 +1046,23 @@ impl Ipv6Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
+    #[allow_internal_unstable(const_fn_transmute)]
     pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr {
+        let addr16 = [
+            a.to_be(),
+            b.to_be(),
+            c.to_be(),
+            d.to_be(),
+            e.to_be(),
+            f.to_be(),
+            g.to_be(),
+            h.to_be(),
+        ];
         Ipv6Addr {
             inner: c::in6_addr {
-                s6_addr: [
-                    (a >> 8) as u8,
-                    a as u8,
-                    (b >> 8) as u8,
-                    b as u8,
-                    (c >> 8) as u8,
-                    c as u8,
-                    (d >> 8) as u8,
-                    d as u8,
-                    (e >> 8) as u8,
-                    e as u8,
-                    (f >> 8) as u8,
-                    f as u8,
-                    (g >> 8) as u8,
-                    g as u8,
-                    (h >> 8) as u8,
-                    h as u8,
-                ],
+                // All elements in `addr16` are big endian.
+                // SAFETY: `[u16; 8]` is always safe to transmute to `[u8; 16]`.
+                s6_addr: unsafe { transmute::<_, [u8; 16]>(addr16) },
             },
         }
     }
@@ -1108,16 +1105,19 @@ impl Ipv6Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn segments(&self) -> [u16; 8] {
-        let arr = &self.inner.s6_addr;
+        // All elements in `s6_addr` must be big endian.
+        // SAFETY: `[u8; 16]` is always safe to transmute to `[u16; 8]`.
+        let [a, b, c, d, e, f, g, h] = unsafe { transmute::<_, [u16; 8]>(self.inner.s6_addr) };
+        // We want native endian u16
         [
-            u16::from_be_bytes([arr[0], arr[1]]),
-            u16::from_be_bytes([arr[2], arr[3]]),
-            u16::from_be_bytes([arr[4], arr[5]]),
-            u16::from_be_bytes([arr[6], arr[7]]),
-            u16::from_be_bytes([arr[8], arr[9]]),
-            u16::from_be_bytes([arr[10], arr[11]]),
-            u16::from_be_bytes([arr[12], arr[13]]),
-            u16::from_be_bytes([arr[14], arr[15]]),
+            u16::from_be(a),
+            u16::from_be(b),
+            u16::from_be(c),
+            u16::from_be(d),
+            u16::from_be(e),
+            u16::from_be(f),
+            u16::from_be(g),
+            u16::from_be(h),
         ]
     }
 
