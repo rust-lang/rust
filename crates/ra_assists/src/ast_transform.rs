@@ -110,7 +110,9 @@ impl<'a> SubstituteTypeParams<'a> {
             ast::Type::PathType(path_type) => path_type.path()?,
             _ => return None,
         };
-        let path = hir::Path::from_src(path, &hir::Hygiene::new_unhygienic())?;
+        // FIXME: use `hir::Path::from_src` instead.
+        #[allow(deprecated)]
+        let path = hir::Path::from_ast(path)?;
         let resolution = self.source_scope.resolve_hir_path(&path)?;
         match resolution {
             hir::PathResolution::TypeParam(tp) => Some(self.substs.get(&tp)?.syntax().clone()),
@@ -150,8 +152,10 @@ impl<'a> QualifyPaths<'a> {
             // don't try to qualify `Fn(Foo) -> Bar` paths, they are in prelude anyway
             return None;
         }
-        let hir_path = hir::Path::from_src(p.clone(), &hir::Hygiene::new_unhygienic())?;
-        let resolution = self.source_scope.resolve_hir_path(&hir_path)?;
+        // FIXME: use `hir::Path::from_src` instead.
+        #[allow(deprecated)]
+        let hir_path = hir::Path::from_ast(p.clone());
+        let resolution = self.source_scope.resolve_hir_path(&hir_path?)?;
         match resolution {
             PathResolution::Def(def) => {
                 let found_path = from.find_use_path(self.source_scope.db.upcast(), def)?;
