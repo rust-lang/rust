@@ -384,6 +384,7 @@ symbols! {
         const_fn_fn_ptr_basics,
         const_fn_transmute,
         const_fn_union,
+        const_generic_defaults,
         const_generics,
         const_generics_defaults,
         const_if_match,

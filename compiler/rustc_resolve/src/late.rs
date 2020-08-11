@@ -616,6 +616,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     self.visit_ty(ty);
                     self.ribs[TypeNS].pop().unwrap();
                     self.ribs[ValueNS].pop().unwrap();
+                    // FIXME(const_generics:default) do something with default here?
                 }
             }
         }

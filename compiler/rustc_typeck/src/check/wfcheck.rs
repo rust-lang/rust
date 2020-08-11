@@ -758,7 +758,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                 fcx.tcx.mk_param_from_def(param)
             }
 
-            GenericParamDefKind::Type { .. } => {
+            GenericParamDefKind::Const { .. } | GenericParamDefKind::Type { .. } => {
                 // If the param has a default, ...
                 if is_our_default(param) {
                     let default_ty = fcx.tcx.type_of(param.def_id);
@@ -769,11 +769,6 @@ fn check_where_clauses<'tcx, 'fcx>(
                     }
                 }
 
-                fcx.tcx.mk_param_from_def(param)
-            }
-
-            GenericParamDefKind::Const => {
-                // FIXME(const_generics_defaults)
                 fcx.tcx.mk_param_from_def(param)
             }
         }

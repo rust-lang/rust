@@ -614,11 +614,12 @@ impl<'hir> Sig for hir::Generics<'hir> {
                 start: offset + text.len(),
                 end: offset + text.len() + param_text.as_str().len(),
             });
-            if let hir::GenericParamKind::Const { ref ty, ref default } = param.kind {
+            if let hir::GenericParamKind::Const { ref ty, default } = param.kind {
                 param_text.push_str(": ");
                 param_text.push_str(&ty_to_string(&ty));
-                if let Some(ref _default) = default {
-                    // FIXME(const_generics_defaults): push the `default` value here
+                if let Some(default) = default {
+                    param_text.push_str(" = ");
+                    param_text.push_str(&id_to_string(&scx.tcx.hir(), default.hir_id));
                 }
             }
             if !param.bounds.is_empty() {

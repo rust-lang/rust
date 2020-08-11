@@ -443,7 +443,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             self.astconv.ast_ty_to_ty(&ty).into()
                         }
                     }
-                    (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
                         ty::Const::from_opt_const_arg_anon_const(
                             tcx,
                             ty::WithOptConstParam {
@@ -504,16 +504,34 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             tcx.ty_error().into()
                         }
                     }
-                    GenericParamDefKind::Const => {
+                    GenericParamDefKind::Const { has_default } => {
                         let ty = tcx.at(self.span).type_of(param.def_id);
-                        // FIXME(const_generics_defaults)
-                        if infer_args {
+                        if !infer_args && has_default {
+                            let c = ty::Const::from_anon_const(tcx, param.def_id.expect_local());
+                            ty::subst::GenericArg::from(c)
+                        } else if infer_args {
+                            self.astconv.ct_infer(ty, Some(param), self.span).into()
+                        } else {
+                            // We've already errored above about the mismatch.
+                            tcx.const_error(ty).into()
+                        }
+                        /*
+                        if !infer_args && has_default {
+                            /*
+                            if default_needs_object_self(param) {
+                                missing_type_params.push(param.name.to_string());
+                                tcx.const_error(ty).into()
+                            } else {
+                            }
+                            */
+                        } else if infer_args {
                             // No const parameters were provided, we can infer all.
                             self.astconv.ct_infer(ty, Some(param), self.span).into()
                         } else {
                             // We've already errored above about the mismatch.
                             tcx.const_error(ty).into()
                         }
+                        */
                     }
                 }
             }
