@@ -640,7 +640,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
-            loc: Some(mir::Location::START),
+            loc: None, // `None` for errors generated before we start evaluating.
             return_to_block,
             return_place,
             // empty local array, we fill it in below, after we are inside the stack frame and
@@ -683,6 +683,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         // done
         self.frame_mut().locals = locals;
+        self.frame_mut().loc = Some(mir::Location::START);
 
         M::after_stack_push(self)?;
         info!("ENTERING({}) {}", self.frame_idx(), self.frame().instance);
