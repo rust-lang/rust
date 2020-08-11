@@ -184,11 +184,15 @@ impl<'a> DiagnosticBuilder<'a> {
     }
 
     /// Adds a span/label to be included in the resulting snippet.
-    /// This is pushed onto the `MultiSpan` that was created when the
-    /// diagnostic was first built. If you don't call this function at
-    /// all, and you just supplied a `Span` to create the diagnostic,
-    /// then the snippet will just include that `Span`, which is
-    /// called the primary span.
+    ///
+    /// This is pushed onto the [`MultiSpan`] that was created when the diagnostic
+    /// was first built. That means it will be shown together with the original
+    /// span/label, *not* a span added by one of the `span_{note,warn,help,suggestions}` methods.
+    ///
+    /// This span is *not* considered a ["primary span"][`MultiSpan`]; only
+    /// the `Span` supplied when creating the diagnostic is primary.
+    ///
+    /// [`MultiSpan`]: ../rustc_span/struct.MultiSpan.html
     pub fn span_label(&mut self, span: Span, label: impl Into<String>) -> &mut Self {
         self.0.diagnostic.span_label(span, label);
         self
