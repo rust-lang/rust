@@ -1,4 +1,5 @@
-//! Provides a way to attach fix actions to the
+//! Provides a way to attach fixes to the diagnostics.
+//! The same module also has all curret custom fixes for the diagnostics implemented.
 use crate::Fix;
 use ast::{edit::IndentLevel, make};
 use hir::{

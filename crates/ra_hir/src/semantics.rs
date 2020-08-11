@@ -138,8 +138,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.original_range(node)
     }
 
-    pub fn diagnostics_presentation_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
-        self.imp.diagnostics_presentation_range(diagnostics)
+    pub fn diagnostics_display_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
+        self.imp.diagnostics_display_range(diagnostics)
     }
 
     pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
@@ -369,8 +369,8 @@ impl<'db> SemanticsImpl<'db> {
         original_range(self.db, node.as_ref())
     }
 
-    fn diagnostics_presentation_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
-        let src = diagnostics.presentation();
+    fn diagnostics_display_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
+        let src = diagnostics.display_source();
         let root = self.db.parse_or_expand(src.file_id).unwrap();
         let node = src.value.to_node(&root);
         self.cache(root, src.file_id);

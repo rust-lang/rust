@@ -37,7 +37,7 @@ impl Diagnostic for NoSuchField {
         "no such field".to_string()
     }
 
-    fn presentation(&self) -> InFile<SyntaxNodePtr> {
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
         InFile::new(self.file, self.field.clone().into())
     }
 
@@ -63,7 +63,7 @@ impl Diagnostic for MissingFields {
         buf
     }
 
-    fn presentation(&self) -> InFile<SyntaxNodePtr> {
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
         InFile {
             file_id: self.file,
             value: self
@@ -95,13 +95,15 @@ impl Diagnostic for MissingPatFields {
         }
         buf
     }
-    fn presentation(&self) -> InFile<SyntaxNodePtr> {
-        let value = self
-            .field_list_parent_path
-            .clone()
-            .map(SyntaxNodePtr::from)
-            .unwrap_or_else(|| self.field_list_parent.clone().into());
-        InFile { file_id: self.file, value }
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile {
+            file_id: self.file,
+            value: self
+                .field_list_parent_path
+                .clone()
+                .map(SyntaxNodePtr::from)
+                .unwrap_or_else(|| self.field_list_parent.clone().into()),
+        }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -119,7 +121,7 @@ impl Diagnostic for MissingMatchArms {
     fn message(&self) -> String {
         String::from("Missing match arm")
     }
-    fn presentation(&self) -> InFile<SyntaxNodePtr> {
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.match_expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -137,7 +139,7 @@ impl Diagnostic for MissingOkInTailExpr {
     fn message(&self) -> String {
         "wrap return expression in Ok".to_string()
     }
-    fn presentation(&self) -> InFile<SyntaxNodePtr> {
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -155,7 +157,7 @@ impl Diagnostic for BreakOutsideOfLoop {
     fn message(&self) -> String {
         "break outside of loop".to_string()
     }
-    fn presentation(&self) -> InFile<SyntaxNodePtr> {
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -173,7 +175,7 @@ impl Diagnostic for MissingUnsafe {
     fn message(&self) -> String {
         format!("This operation is unsafe and requires an unsafe function or block")
     }
-    fn presentation(&self) -> InFile<SyntaxNodePtr> {
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -194,7 +196,7 @@ impl Diagnostic for MismatchedArgCount {
         let s = if self.expected == 1 { "" } else { "s" };
         format!("Expected {} argument{}, found {}", self.expected, s, self.found)
     }
-    fn presentation(&self) -> InFile<SyntaxNodePtr> {
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.call_expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -256,12 +258,11 @@ mod tests {
 
         let mut actual: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
         db.diagnostics(|d| {
+            let src = d.display_source();
+            let root = db.parse_or_expand(src.file_id).unwrap();
             // FIXME: macros...
-            let diagnostics_presentation = d.presentation();
-            let root = db.parse_or_expand(diagnostics_presentation.file_id).unwrap();
-
-            let file_id = diagnostics_presentation.file_id.original_file(&db);
-            let range = diagnostics_presentation.value.to_node(&root).text_range();
+            let file_id = src.file_id.original_file(&db);
+            let range = src.value.to_node(&root).text_range();
             let message = d.message().to_owned();
             actual.entry(file_id).or_default().push((range, message));
         });
