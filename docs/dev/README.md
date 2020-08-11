@@ -256,9 +256,9 @@ Release steps:
    * checkout the `release` branch
    * reset it to `upstream/nightly`
    * push it to `upstream`. This triggers GitHub Actions which:
-    ** runs `cargo xtask dist` to package binaries and VS Code extension
-    ** makes a GitHub release
-    ** pushes VS Code extension to the marketplace
+     * runs `cargo xtask dist` to package binaries and VS Code extension
+     * makes a GitHub release
+     * pushes VS Code extension to the marketplace
    * create new changelog in `rust-analyzer.github.io`
    * create `rust-analyzer.github.io/git.log` file with the log of merge commits since last release
 2. While the release is in progress, fill-in the changelog using `git.log`
