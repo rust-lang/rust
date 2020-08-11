@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- `drain_filter` now removes and yields items that do match the predicate,
+  rather than items that don't.  This is a **breaking change** to match the
+  behavior of the `drain_filter` methods in `std`.
+
 ## [v0.8.2] - 2020-08-08
 
 ### Changed

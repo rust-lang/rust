@@ -584,13 +584,13 @@ impl<K, V, S> HashMap<K, V, S> {
         }
     }
 
-    /// Drains elements which are false under the given predicate,
+    /// Drains elements which are true under the given predicate,
     /// and returns an iterator over the removed items.
     ///
-    /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `false` out
+    /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `true` out
     /// into another iterator.
     ///
-    /// When the returned DrainedFilter is dropped, the elements that don't satisfy
+    /// When the returned DrainedFilter is dropped, any remaining elements that satisfy
     /// the predicate are dropped from the table.
     ///
     /// # Examples
@@ -598,10 +598,16 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use hashbrown::HashMap;
     ///
-    /// let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
-    /// let drained = map.drain_filter(|&k, _| k % 2 == 0);
-    /// assert_eq!(drained.count(), 4);
-    /// assert_eq!(map.len(), 4);
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
+    /// let drained: HashMap<i32, i32> = map.drain_filter(|k, _v| k % 2 == 0).collect();
+    ///
+    /// let mut evens = drained.keys().cloned().collect::<Vec<_>>();
+    /// let mut odds = map.keys().cloned().collect::<Vec<_>>();
+    /// evens.sort();
+    /// odds.sort();
+    ///
+    /// assert_eq!(evens, vec![0, 2, 4, 6]);
+    /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F>
@@ -1401,7 +1407,7 @@ impl<K, V> DrainFilterInner<'_, K, V> {
         unsafe {
             while let Some(item) = self.iter.next() {
                 let &mut (ref key, ref mut value) = item.as_mut();
-                if !f(key, value) {
+                if f(key, value) {
                     return Some(self.table.remove(item));
                 }
             }
@@ -3763,7 +3769,7 @@ mod test_map {
             let drained = map.drain_filter(|&k, _| k % 2 == 0);
             let mut out = drained.collect::<Vec<_>>();
             out.sort_unstable();
-            assert_eq!(vec![(1, 10), (3, 30), (5, 50), (7, 70)], out);
+            assert_eq!(vec![(0, 0), (2, 20), (4, 40), (6, 60)], out);
             assert_eq!(map.len(), 4);
         }
         {
