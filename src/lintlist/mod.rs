@@ -2498,7 +2498,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "use_self",
         group: "nursery",
-        desc: "Unnecessary structure name repetition whereas `Self` is applicable",
+        desc: "unnecessary structure name repetition whereas `Self` is applicable",
         deprecation: None,
         module: "use_self",
     },
