@@ -1,4 +1,4 @@
-//! cargo_check provides the functionality needed to run `cargo check` or
+//! Flycheck provides the functionality needed to run `cargo check` or
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
 
@@ -147,6 +147,12 @@ impl FlycheckActor {
                     // avoid busy-waiting.
                     let cargo_handle = self.cargo_handle.take().unwrap();
                     let res = cargo_handle.join();
+                    if res.is_err() {
+                        log::error!(
+                            "Flycheck failed to run the following command: {:?}",
+                            self.check_command()
+                        )
+                    }
                     self.send(Message::Progress(Progress::DidFinish(res)));
                 }
                 Event::CheckEvent(Some(message)) => match message {
@@ -253,7 +259,7 @@ impl CargoHandle {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
                 format!(
-                    "Cargo watcher failed,the command produced no valid metadata (exit code: {:?})",
+                    "Cargo watcher failed, the command produced no valid metadata (exit code: {:?})",
                     exit_status
                 ),
             ));
