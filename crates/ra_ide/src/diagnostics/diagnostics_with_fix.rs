@@ -1,3 +1,4 @@
+//! Provides a way to derive fixes based on the diagnostic data.
 use crate::Fix;
 use ast::{edit::IndentLevel, make};
 use hir::{
@@ -13,8 +14,9 @@ use ra_ide_db::{
 use ra_syntax::{algo, ast, AstNode, TextRange};
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
-// TODO kb
+/// A trait to implement fot the Diagnostic that has a fix available.
 pub trait DiagnosticWithFix {
+    /// Provides a fix with the fix range, if applicable in the current semantics.
     fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<(Fix, TextRange)>;
 }
 
