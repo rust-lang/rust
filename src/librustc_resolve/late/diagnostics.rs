@@ -33,6 +33,7 @@ enum AssocSuggestion {
 crate enum MissingLifetimeSpot<'tcx> {
     Generics(&'tcx hir::Generics<'tcx>),
     HigherRanked { span: Span, span_type: ForLifetimeSpanType },
+    Static,
 }
 
 crate enum ForLifetimeSpanType {
@@ -1186,6 +1187,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                             https://doc.rust-lang.org/nomicon/hrtb.html",
                     );
                 }
+                _ => {}
             }
         }
         if nightly_options::is_nightly_build()
@@ -1358,6 +1360,42 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         );
                         (*span, span_type.suggestion("'a"))
                     }
+                    MissingLifetimeSpot::Static => {
+                        let (span, sugg) = match snippet.as_deref() {
+                            Some("&") => (span.shrink_to_hi(), "'static ".to_owned()),
+                            Some("'_") => (span, "'static".to_owned()),
+                            Some(snippet) if !snippet.ends_with('>') => {
+                                if snippet == "" {
+                                    (
+                                        span,
+                                        std::iter::repeat("'static")
+                                            .take(count)
+                                            .collect::<Vec<_>>()
+                                            .join(", "),
+                                    )
+                                } else {
+                                    (
+                                        span.shrink_to_hi(),
+                                        format!(
+                                            "<{}>",
+                                            std::iter::repeat("'static")
+                                                .take(count)
+                                                .collect::<Vec<_>>()
+                                                .join(", ")
+                                        ),
+                                    )
+                                }
+                            }
+                            _ => continue,
+                        };
+                        err.span_suggestion_verbose(
+                            span,
+                            "consider using the `'static` lifetime",
+                            sugg.to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                        continue;
+                    }
                 });
                 for param in params {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span) {
@@ -1408,13 +1446,23 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             ([], Some("'_")) if count == 1 => {
                 suggest_new(err, "'a");
             }
-            ([], Some(snippet)) if !snippet.ends_with('>') && count == 1 => {
+            ([], Some(snippet)) if !snippet.ends_with('>') => {
                 if snippet == "" {
                     // This happens when we have `type Bar<'a> = Foo<T>` where we point at the space
                     // before `T`. We will suggest `type Bar<'a> = Foo<'a, T>`.
-                    suggest_new(err, "'a, ");
+                    suggest_new(
+                        err,
+                        &std::iter::repeat("'a, ").take(count).collect::<Vec<_>>().join(""),
+                    );
                 } else {
-                    suggest_new(err, &format!("{}<'a>", snippet));
+                    suggest_new(
+                        err,
+                        &format!(
+                            "{}<{}>",
+                            snippet,
+                            std::iter::repeat("'a").take(count).collect::<Vec<_>>().join(", ")
+                        ),
+                    );
                 }
             }
             (lts, ..) if lts.len() > 1 => {

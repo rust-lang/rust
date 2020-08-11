@@ -764,26 +764,30 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             Const(_, _) => {
                 // Only methods and types support generics.
                 assert!(trait_item.generics.params.is_empty());
+                self.missing_named_lifetime_spots.push(MissingLifetimeSpot::Static);
                 intravisit::walk_trait_item(self, trait_item);
+                self.missing_named_lifetime_spots.pop();
             }
         }
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         use self::hir::ImplItemKind::*;
-        self.missing_named_lifetime_spots.push((&impl_item.generics).into());
         match impl_item.kind {
             Fn(ref sig, _) => {
+                self.missing_named_lifetime_spots.push((&impl_item.generics).into());
                 let tcx = self.tcx;
                 self.visit_early_late(
                     Some(tcx.hir().get_parent_item(impl_item.hir_id)),
                     &sig.decl,
                     &impl_item.generics,
                     |this| intravisit::walk_impl_item(this, impl_item),
-                )
+                );
+                self.missing_named_lifetime_spots.pop();
             }
             TyAlias(ref ty) => {
                 let generics = &impl_item.generics;
+                self.missing_named_lifetime_spots.push(generics.into());
                 let mut index = self.next_early_index();
                 let mut non_lifetime_count = 0;
                 debug!("visit_ty: index = {}", index);
@@ -812,14 +816,16 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     this.visit_generics(generics);
                     this.visit_ty(ty);
                 });
+                self.missing_named_lifetime_spots.pop();
             }
             Const(_, _) => {
                 // Only methods and types support generics.
                 assert!(impl_item.generics.params.is_empty());
+                self.missing_named_lifetime_spots.push(MissingLifetimeSpot::Static);
                 intravisit::walk_impl_item(self, impl_item);
+                self.missing_named_lifetime_spots.pop();
             }
         }
-        self.missing_named_lifetime_spots.pop();
     }
 
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
