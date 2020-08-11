@@ -2,9 +2,14 @@
 
 `rustc` ships with the ability to compile to many targets automatically, we
 call these "built-in" targets, and they generally correspond to targets that
-the team is supporting directly.
+the team is supporting directly. To see the list of built-in targets, you can
+run `rustc --print target-list`.
 
-To see the list of built-in targets, you can run `rustc --print target-list`,
-or look at [the API
-docs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_target/spec/index.html#modules).
-Each module there defines a builder for a particular target.
+Typically, a target needs a compiled copy of the Rust standard library to
+work. If using [rustup], then check out the documentation on
+[Cross-compilation][rustup-cross] on how to download a pre-built standard
+library built by the official Rust distributions. Most targets will need a
+system linker, and possibly other things.
+
+[rustup]: https://github.com/rust-lang/rustup
+[rustup-cross]: https://github.com/rust-lang/rustup#cross-compilation
