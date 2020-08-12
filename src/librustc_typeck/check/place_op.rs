@@ -9,6 +9,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::autoderef::Autoderef;
+use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type-check `*oprnd_expr` with `oprnd_expr` type-checked already.
@@ -243,19 +244,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             match expr.kind {
-                hir::ExprKind::Index(ref base_expr, ref index_expr) => {
-                    // We need to get the final type in case dereferences were needed for the trait
-                    // to apply (#72002).
-                    let index_expr_ty = self.typeck_results.borrow().expr_ty_adjusted(index_expr);
-                    self.convert_place_op_to_mutable(
-                        PlaceOp::Index,
-                        expr,
-                        base_expr,
-                        &[index_expr_ty],
-                    );
+                hir::ExprKind::Index(ref base_expr, ..) => {
+                    self.convert_place_op_to_mutable(PlaceOp::Index, expr, base_expr);
                 }
                 hir::ExprKind::Unary(hir::UnOp::UnDeref, ref base_expr) => {
-                    self.convert_place_op_to_mutable(PlaceOp::Deref, expr, base_expr, &[]);
+                    self.convert_place_op_to_mutable(PlaceOp::Deref, expr, base_expr);
                 }
                 _ => {}
             }
@@ -267,9 +260,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         op: PlaceOp,
         expr: &hir::Expr<'_>,
         base_expr: &hir::Expr<'_>,
-        arg_tys: &[Ty<'tcx>],
     ) {
-        debug!("convert_place_op_to_mutable({:?}, {:?}, {:?}, {:?})", op, expr, base_expr, arg_tys);
+        debug!("convert_place_op_to_mutable({:?}, {:?}, {:?})", op, expr, base_expr);
         if !self.typeck_results.borrow().is_method_call(expr) {
             debug!("convert_place_op_to_mutable - builtin, nothing to do");
             return;
@@ -283,6 +275,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .builtin_deref(false)
             .expect("place op takes something that is not a ref")
             .ty;
+
+        let arg_ty = match op {
+            PlaceOp::Deref => None,
+            PlaceOp::Index => {
+                // We would need to recover the `T` used when we resolve `<_ as Index<T>>::index`
+                // in try_index_step. This is the subst at index 1.
+                //
+                // Note: we should *not* use `expr_ty` of index_expr here because autoderef
+                // during coercions can cause type of index_expr to differ from `T` (#72002).
+                // We also could not use `expr_ty_adjusted` of index_expr because reborrowing
+                // during coercions can also cause type of index_expr to differ from `T`,
+                // which can potentially cause regionck failure (#74933).
+                Some(self.typeck_results.borrow().node_substs(expr.hir_id).type_at(1))
+            }
+        };
+        let arg_tys = match arg_ty {
+            None => &[],
+            Some(ref ty) => slice::from_ref(ty),
+        };
 
         let method = self.try_mutable_overloaded_place_op(expr.span, base_ty, arg_tys, op);
         let method = match method {
