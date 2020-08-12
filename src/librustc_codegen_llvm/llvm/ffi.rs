@@ -358,9 +358,6 @@ impl SynchronizationScope {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum FileType {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
     AssemblyFile,
     ObjectFile,
 }

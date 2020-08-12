@@ -597,7 +597,6 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
 }
 
 enum class LLVMRustFileType {
-  Other,
   AssemblyFile,
   ObjectFile,
 };
