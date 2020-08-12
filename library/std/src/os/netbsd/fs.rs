@@ -8,7 +8,7 @@ use crate::os::netbsd::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
+/// [`fs::Metadata`]: crate::fs::Metadata
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
