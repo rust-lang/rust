@@ -64,5 +64,11 @@ error: useless conversion to the same type
 LL |     let _: String = format!("Hello {}", "world").into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `format!("Hello {}", "world")`
 
-error: aborting due to 10 previous errors
+error: useless conversion to the same type
+  --> $DIR/useless_conversion.rs:71:13
+   |
+LL |     let _ = i32::from(a + b) * 3;
+   |             ^^^^^^^^^^^^^^^^ help: consider removing `i32::from()`: `(a + b)`
+
+error: aborting due to 11 previous errors
 
