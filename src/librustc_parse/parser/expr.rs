@@ -195,6 +195,29 @@ impl<'a> Parser<'a> {
                     return Ok(expr);
                 }
             }
+
+            if (op.node == AssocOp::Equal || op.node == AssocOp::NotEqual)
+                && self.token.kind == token::Eq
+                && self.prev_token.span.hi() == self.token.span.lo()
+            {
+                // Look for JS' `===` and `!==` and recover 😇
+                let sp = op.span.to(self.token.span);
+                let sugg = match op.node {
+                    AssocOp::Equal => "==",
+                    AssocOp::NotEqual => "!=",
+                    _ => unreachable!(),
+                };
+                self.struct_span_err(sp, &format!("invalid comparison operator `{}=`", sugg))
+                    .span_suggestion_short(
+                        sp,
+                        &format!("`{s}=` is not a valid comparison operator, use `{s}`", s = sugg),
+                        sugg.to_string(),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                self.bump();
+            }
+
             let op = op.node;
             // Special cases:
             if op == AssocOp::As {
