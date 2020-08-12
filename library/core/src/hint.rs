@@ -24,7 +24,6 @@ use crate::intrinsics;
 /// Otherwise, consider using the [`unreachable!`] macro, which does not allow
 /// optimizations but will panic when executed.
 ///
-/// [`unreachable!`]: unreachable
 ///
 /// # Example
 ///
