@@ -357,7 +357,7 @@ impl Ordering {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reverse(self) -> Ordering {
+    pub const fn reverse(self) -> Ordering {
         match self {
             Less => Greater,
             Equal => Equal,
@@ -395,7 +395,7 @@ impl Ordering {
     #[inline]
     #[must_use]
     #[stable(feature = "ordering_chaining", since = "1.17.0")]
-    pub fn then(self, other: Ordering) -> Ordering {
+    pub const fn then(self, other: Ordering) -> Ordering {
         match self {
             Equal => other,
             _ => self,
