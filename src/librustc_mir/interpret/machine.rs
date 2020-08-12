@@ -119,6 +119,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// that is added to the memory so that the work is not done twice.
     const GLOBAL_KIND: Option<Self::MemoryKind>;
 
+    /// Whether this machine allow const evaluation of `mir::Operand` to fail.
+    /// Usually machines do not, as frame pushing already makes sure that all consts evaluated.
+    /// However, ConstProp does not do regular frame pushing.
+    const PERMIT_LATE_CONST_EVAL_FAIL: bool = false;
+
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(memory_extra: &Self::MemoryExtra) -> bool;
 

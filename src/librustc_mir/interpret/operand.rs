@@ -517,7 +517,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Constant(ref constant) => {
                 let val =
                     self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal);
-                self.const_to_op(val, layout)?
+                // This should not raise any errors, except for TooGeneric (during ConstProp).
+                self.const_to_op(val, layout).map_err(|err|
+                    if M::PERMIT_LATE_CONST_EVAL_FAIL {
+                        err
+                    } else {
+                        err.print_backtrace();
+                        span_bug!(self.cur_span(), "const eval should have failed already when evaluating required_consts, so this error is unexpected: {:?}", err)
+                    }
+                )?
             }
         };
         trace!("{:?}: {:?}", mir_op, *op);
