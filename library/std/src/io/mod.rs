@@ -1212,6 +1212,7 @@ impl Initializer {
 ///
 /// [`write`]: Self::write
 /// [`flush`]: Self::flush
+/// [`std::io`]: self
 ///
 /// # Examples
 ///
