@@ -132,6 +132,8 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         }
     }
 
+    // test existential_type
+    // existential type Foo: Fn() -> usize;
     if p.at(IDENT) && p.at_contextual_kw("existential") && p.nth(1) == T![type] {
         p.bump_remap(T![existential]);
         has_mods = true;
@@ -139,79 +141,31 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
 
     // items
     match p.current() {
-        // test async_fn
-        // async fn foo() {}
-
-        // test extern_fn
-        // extern fn foo() {}
-
-        // test const_fn
-        // const fn foo() {}
-
-        // test const_unsafe_fn
-        // const unsafe fn foo() {}
-
-        // test unsafe_extern_fn
-        // unsafe extern "C" fn foo() {}
-
-        // test unsafe_fn
-        // unsafe fn foo() {}
-
-        // test combined_fns
-        // async unsafe fn foo() {}
-        // const unsafe fn bar() {}
-
-        // test_err wrong_order_fns
-        // unsafe async fn foo() {}
-        // unsafe const fn bar() {}
+        // test fn
+        // fn foo() {}
         T![fn] => {
             fn_def(p);
             m.complete(p, FN);
         }
 
-        // test unsafe_trait
-        // unsafe trait T {}
-
-        // test auto_trait
-        // auto trait T {}
-
-        // test unsafe_auto_trait
-        // unsafe auto trait T {}
+        // test trait
+        // trait T {}
         T![trait] => {
             traits::trait_def(p);
             m.complete(p, TRAIT);
         }
 
-        // test unsafe_impl
-        // unsafe impl Foo {}
-
-        // test default_impl
-        // default impl Foo {}
-
-        // test_err default_fn_type
-        // trait T {
-        //     default type T = Bar;
-        //     default fn foo() {}
-        // }
-
-        // test default_fn_type
-        // impl T for Foo {
-        //     default type T = Bar;
-        //     default fn foo() {}
-        // }
         T![const] => {
             consts::const_def(p, m);
         }
 
-        // test unsafe_default_impl
-        // unsafe default impl Foo {}
+        // test impl
+        // impl T for S {}
         T![impl] => {
             traits::impl_def(p);
             m.complete(p, IMPL);
         }
 
-        // test existential_type
-        // existential type Foo: Fn() -> usize;
         T![type] => {
             type_def(p, m);
         }
