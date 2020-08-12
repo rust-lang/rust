@@ -36,7 +36,7 @@ pub(super) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionConte
     snippet(
         ctx,
         cap,
-        "Test module",
+        "tmod (Test module)",
         "\
 #[cfg(test)]
 mod tests {
@@ -54,7 +54,7 @@ mod tests {
     snippet(
         ctx,
         cap,
-        "Test function",
+        "tfn (Test function)",
         "\
 #[test]
 fn ${1:feature}() {
@@ -106,10 +106,10 @@ mod tests {
 }
 "#,
             expect![[r#"
-                sn Test function
-                sn Test module
                 sn macro_rules
                 sn pub(crate)
+                sn tfn (Test function)
+                sn tmod (Test module)
             "#]],
         )
     }
