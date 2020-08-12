@@ -227,7 +227,7 @@ impl<'a> Parser<'a> {
             (Ident::invalid(), ItemKind::Use(P(tree)))
         } else if self.check_fn_front_matter() {
             // FUNCTION ITEM
-            let (ident, sig, generics, body) = self.parse_fn(attrs, req_name)?;
+            let (ident, sig, generics, body) = self.parse_fn(attrs, req_name, lo)?;
             (ident, ItemKind::Fn(def(), sig, generics, body))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
@@ -1492,21 +1492,31 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: &mut Vec<Attribute>,
         req_name: ReqName,
+        sig_lo: Span,
     ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<Block>>)> {
         let header = self.parse_fn_front_matter()?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
         let mut generics = self.parse_generics()?; // `<'a, T, ...>`
         let decl = self.parse_fn_decl(req_name, AllowPlus::Yes)?; // `(p: u8, ...)`
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
-        let body = self.parse_fn_body(attrs)?; // `;` or `{ ... }`.
-        Ok((ident, FnSig { header, decl }, generics, body))
+
+        let mut sig_hi = self.prev_token.span;
+        let body = self.parse_fn_body(attrs, &mut sig_hi)?; // `;` or `{ ... }`.
+        let fn_sig_span = sig_lo.to(sig_hi);
+        Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, body))
     }
 
     /// Parse the "body" of a function.
     /// This can either be `;` when there's no body,
     /// or e.g. a block when the function is a provided one.
-    fn parse_fn_body(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, Option<P<Block>>> {
+    fn parse_fn_body(
+        &mut self,
+        attrs: &mut Vec<Attribute>,
+        sig_hi: &mut Span,
+    ) -> PResult<'a, Option<P<Block>>> {
         let (inner_attrs, body) = if self.check(&token::Semi) {
+            // Include the trailing semicolon in the span of the signature
+            *sig_hi = self.token.span;
             self.bump(); // `;`
             (Vec::new(), None)
         } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {

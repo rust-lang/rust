@@ -29,7 +29,7 @@ LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | fn bar() {}
-   | ----------- not an `unsafe` function
+   | -------- not an `unsafe` function
    |
    = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
    = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
@@ -113,7 +113,7 @@ LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     fn foo() {}
-   |     ----------- not an `unsafe` function
+   |     -------- not an `unsafe` function
    |
    = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
    = help: add `#![feature(target_feature_11)]` to the crate attributes to enable

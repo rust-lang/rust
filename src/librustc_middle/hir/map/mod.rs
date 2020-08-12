@@ -828,13 +828,24 @@ impl<'hir> Map<'hir> {
         attrs.unwrap_or(&[])
     }
 
+    /// Gets the span of the definition of the specified HIR node.
+    /// This is used by `tcx.get_span`
     pub fn span(&self, hir_id: HirId) -> Span {
         match self.find_entry(hir_id).map(|entry| entry.node) {
             Some(Node::Param(param)) => param.span,
-            Some(Node::Item(item)) => item.span,
+            Some(Node::Item(item)) => match &item.kind {
+                ItemKind::Fn(sig, _, _) => sig.span,
+                _ => item.span,
+            },
             Some(Node::ForeignItem(foreign_item)) => foreign_item.span,
-            Some(Node::TraitItem(trait_method)) => trait_method.span,
-            Some(Node::ImplItem(impl_item)) => impl_item.span,
+            Some(Node::TraitItem(trait_item)) => match &trait_item.kind {
+                TraitItemKind::Fn(sig, _) => sig.span,
+                _ => trait_item.span,
+            },
+            Some(Node::ImplItem(impl_item)) => match &impl_item.kind {
+                ImplItemKind::Fn(sig, _) => sig.span,
+                _ => impl_item.span,
+            },
             Some(Node::Variant(variant)) => variant.span,
             Some(Node::Field(field)) => field.span,
             Some(Node::AnonConst(constant)) => self.body(constant.body).value.span,
@@ -863,6 +874,18 @@ impl<'hir> Map<'hir> {
             Some(Node::MacroDef(macro_def)) => macro_def.span,
             Some(Node::Crate(item)) => item.span,
             None => bug!("hir::map::Map::span: id not in map: {:?}", hir_id),
+        }
+    }
+
+    /// Like `hir.span()`, but includes the body of function items
+    /// (instead of just the function header)
+    pub fn span_with_body(&self, hir_id: HirId) -> Span {
+        match self.find_entry(hir_id).map(|entry| entry.node) {
+            Some(Node::TraitItem(item)) => item.span,
+            Some(Node::ImplItem(impl_item)) => impl_item.span,
+            Some(Node::Item(item)) => item.span,
+            Some(_) => self.span(hir_id),
+            _ => bug!("hir::map::Map::span_with_body: id not in map: {:?}", hir_id),
         }
     }
 

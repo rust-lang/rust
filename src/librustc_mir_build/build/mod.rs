@@ -37,22 +37,29 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     let id = tcx.hir().local_def_id_to_hir_id(def.did);
 
     // Figure out what primary body this item has.
-    let (body_id, return_ty_span) = match tcx.hir().get(id) {
+    let (body_id, return_ty_span, span_with_body) = match tcx.hir().get(id) {
         Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, decl, body_id, _, _), .. }) => {
-            (*body_id, decl.output.span())
+            (*body_id, decl.output.span(), None)
         }
         Node::Item(hir::Item {
             kind: hir::ItemKind::Fn(hir::FnSig { decl, .. }, _, body_id),
+            span,
             ..
         })
         | Node::ImplItem(hir::ImplItem {
             kind: hir::ImplItemKind::Fn(hir::FnSig { decl, .. }, body_id),
+            span,
             ..
         })
         | Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, hir::TraitFn::Provided(body_id)),
+            span,
             ..
-        }) => (*body_id, decl.output.span()),
+        }) => {
+            // Use the `Span` of the `Item/ImplItem/TraitItem` as the body span,
+            // since the def span of a function does not include the body
+            (*body_id, decl.output.span(), Some(*span))
+        }
         Node::Item(hir::Item {
             kind: hir::ItemKind::Static(ty, _, body_id) | hir::ItemKind::Const(ty, body_id),
             ..
@@ -61,11 +68,15 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
         | Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Const(ty, Some(body_id)),
             ..
-        }) => (*body_id, ty.span),
-        Node::AnonConst(hir::AnonConst { body, hir_id, .. }) => (*body, tcx.hir().span(*hir_id)),
+        }) => (*body_id, ty.span, None),
+        Node::AnonConst(hir::AnonConst { body, hir_id, .. }) => (*body, tcx.hir().span(*hir_id), None),
 
         _ => span_bug!(tcx.hir().span(id), "can't build MIR for {:?}", def.did),
     };
+
+    // If we don't have a specialized span for the body, just use the
+    // normal def span.
+    let span_with_body = span_with_body.unwrap_or_else(|| tcx.hir().span(id));
 
     tcx.infer_ctxt().enter(|infcx| {
         let cx = Cx::new(&infcx, def, id);
@@ -167,6 +178,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 return_ty,
                 return_ty_span,
                 body,
+                span_with_body
             );
             mir.yield_ty = yield_ty;
             mir
@@ -571,6 +583,7 @@ fn construct_fn<'a, 'tcx, A>(
     return_ty: Ty<'tcx>,
     return_ty_span: Span,
     body: &'tcx hir::Body<'tcx>,
+    span_with_body: Span
 ) -> Body<'tcx>
 where
     A: Iterator<Item = ArgInfo<'tcx>>,
@@ -585,7 +598,7 @@ where
 
     let mut builder = Builder::new(
         hir,
-        span,
+        span_with_body,
         arguments.len(),
         safety,
         return_ty,
@@ -628,7 +641,7 @@ where
                 )
             );
             // Attribute epilogue to function's closing brace
-            let fn_end = span.shrink_to_hi();
+            let fn_end = span_with_body.shrink_to_hi();
             let source_info = builder.source_info(fn_end);
             let return_block = builder.return_block();
             builder.cfg.goto(block, source_info, return_block);

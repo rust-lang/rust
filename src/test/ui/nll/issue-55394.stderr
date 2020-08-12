@@ -7,10 +7,8 @@ LL |         Foo { bar }
 note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 8:5...
   --> $DIR/issue-55394.rs:8:5
    |
-LL | /     fn new(bar: &mut Bar) -> Self {
-LL | |         Foo { bar }
-LL | |     }
-   | |_____^
+LL |     fn new(bar: &mut Bar) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...so that reference does not outlive borrowed content
   --> $DIR/issue-55394.rs:9:15
    |

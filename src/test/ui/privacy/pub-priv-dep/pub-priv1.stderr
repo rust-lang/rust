@@ -14,7 +14,7 @@ error: type `priv_dep::OtherType` from private dependency 'priv_dep' in public i
   --> $DIR/pub-priv1.rs:27:5
    |
 LL |     pub fn pub_fn(param: OtherType) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: trait `priv_dep::OtherTrait` from private dependency 'priv_dep' in public interface
   --> $DIR/pub-priv1.rs:33:1

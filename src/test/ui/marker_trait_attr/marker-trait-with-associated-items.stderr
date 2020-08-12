@@ -32,7 +32,7 @@ error[E0714]: marker traits cannot have associated items
   --> $DIR/marker-trait-with-associated-items.rs:36:5
    |
 LL |     fn foo() {}
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^
 
 error: aborting due to 6 previous errors
 

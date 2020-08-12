@@ -318,7 +318,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     };
 
     let decl = ecx.fn_decl(vec![], ast::FnRetTy::Ty(main_ret_ty));
-    let sig = ast::FnSig { decl, header: ast::FnHeader::default() };
+    let sig = ast::FnSig { decl, header: ast::FnHeader::default(), span: sp };
     let def = ast::Defaultness::Final;
     let main = ast::ItemKind::Fn(def, sig, ast::Generics::default(), Some(main_body));
 

@@ -1,14 +1,8 @@
 error: fatal error triggered by #[rustc_error]
   --> $DIR/hr-subtype.rs:102:1
    |
-LL | / fn main() {
-LL | |
-LL | |
-LL | |
-...  |
-LL | |
-LL | | }
-   | |_^
+LL | fn main() {
+   | ^^^^^^^^^
 
 error: aborting due to previous error
 

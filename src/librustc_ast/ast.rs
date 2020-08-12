@@ -1671,6 +1671,7 @@ pub struct MutTy {
 pub struct FnSig {
     pub header: FnHeader,
     pub decl: P<FnDecl>,
+    pub span: Span,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]

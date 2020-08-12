@@ -1,12 +1,10 @@
 error: `start` is not allowed to be `#[track_caller]`
   --> $DIR/error-with-start.rs:4:1
    |
-LL |   #[track_caller]
-   |   ^^^^^^^^^^^^^^^
-LL | / fn start(_argc: isize, _argv: *const *const u8) -> isize {
-LL | |     panic!("{}: oh no", std::panic::Location::caller());
-LL | | }
-   | |_- `start` is not allowed to be `#[track_caller]`
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+LL | fn start(_argc: isize, _argv: *const *const u8) -> isize {
+   | -------------------------------------------------------- `start` is not allowed to be `#[track_caller]`
 
 error: aborting due to previous error
 

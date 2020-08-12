@@ -363,9 +363,10 @@ pub fn visit_bounds<T: MutVisitor>(bounds: &mut GenericBounds, vis: &mut T) {
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-pub fn visit_fn_sig<T: MutVisitor>(FnSig { header, decl }: &mut FnSig, vis: &mut T) {
+pub fn visit_fn_sig<T: MutVisitor>(FnSig { header, decl, span }: &mut FnSig, vis: &mut T) {
     vis.visit_fn_header(header);
     vis.visit_fn_decl(decl);
+    vis.visit_span(span);
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
