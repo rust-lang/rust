@@ -1,13 +1,13 @@
 use std::fmt::Write;
 
 use ::parser::FragmentKind;
-use ra_syntax::{ast, AstNode, NodeOrToken, SyntaxKind::IDENT, SyntaxNode, WalkEvent, T};
+use syntax::{ast, AstNode, NodeOrToken, SyntaxKind::IDENT, SyntaxNode, WalkEvent, T};
 use test_utils::assert_eq_text;
 
 use super::*;
 
 mod rule_parsing {
-    use ra_syntax::{ast, AstNode};
+    use syntax::{ast, AstNode};
 
     use crate::ast_to_token_tree;
 
@@ -1698,7 +1698,7 @@ pub(crate) fn parse_to_token_tree_by_syntax(ra_fixture: &str) -> tt::Subtree {
     parsed
 }
 
-fn debug_dump_ignore_spaces(node: &ra_syntax::SyntaxNode) -> String {
+fn debug_dump_ignore_spaces(node: &syntax::SyntaxNode) -> String {
     let mut level = 0;
     let mut buf = String::new();
     macro_rules! indent {
@@ -1718,7 +1718,7 @@ fn debug_dump_ignore_spaces(node: &ra_syntax::SyntaxNode) -> String {
                         writeln!(buf, "{:?}", node.kind()).unwrap();
                     }
                     NodeOrToken::Token(token) => match token.kind() {
-                        ra_syntax::SyntaxKind::WHITESPACE => {}
+                        syntax::SyntaxKind::WHITESPACE => {}
                         _ => {
                             indent!();
                             writeln!(buf, "{:?}", token.kind()).unwrap();

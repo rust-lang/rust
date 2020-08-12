@@ -103,7 +103,7 @@ pub fn run_clippy() -> Result<()> {
 }
 
 pub fn run_fuzzer() -> Result<()> {
-    let _d = pushd("./crates/ra_syntax");
+    let _d = pushd("./crates/syntax");
     let _e = pushenv("RUSTUP_TOOLCHAIN", "nightly");
     if run!("cargo fuzz --help").is_err() {
         run!("cargo install cargo-fuzz")?;

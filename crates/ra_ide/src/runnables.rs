@@ -4,7 +4,7 @@ use hir::{AsAssocItem, Attrs, HirFileId, InFile, Semantics};
 use itertools::Itertools;
 use ra_cfg::CfgExpr;
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode, AttrsOwner, DocCommentsOwner, ModuleItemOwner, NameOwner},
     match_ast, SyntaxNode,
 };

@@ -8,7 +8,7 @@ use either::Either;
 use mbe::parse_to_token_tree;
 use parser::FragmentKind;
 use ra_db::FileId;
-use ra_syntax::ast::{self, AstToken, HasStringValue};
+use syntax::ast::{self, AstToken, HasStringValue};
 
 macro_rules! register_builtin {
     ( LAZY: $(($name:ident, $kind: ident) => $expand:ident),* , EAGER: $(($e_name:ident, $e_kind: ident) => $e_expand:ident),*  ) => {
@@ -427,8 +427,8 @@ mod tests {
         MacroCallLoc,
     };
     use ra_db::{fixture::WithFixture, SourceDatabase};
-    use ra_syntax::ast::NameOwner;
     use std::sync::Arc;
+    use syntax::ast::NameOwner;
 
     fn expand_builtin_macro(ra_fixture: &str) -> String {
         let (db, file_id) = TestDB::with_single_file(&ra_fixture);

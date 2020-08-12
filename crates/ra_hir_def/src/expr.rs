@@ -14,7 +14,7 @@
 
 use arena::{Idx, RawId};
 use hir_expand::name::Name;
-use ra_syntax::ast::RangeOp;
+use syntax::ast::RangeOp;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt},
@@ -197,7 +197,7 @@ pub enum ArithOp {
     BitAnd,
 }
 
-pub use ra_syntax::ast::PrefixOp as UnaryOp;
+pub use syntax::ast::PrefixOp as UnaryOp;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Array {
     ElementList(Vec<ExprId>),

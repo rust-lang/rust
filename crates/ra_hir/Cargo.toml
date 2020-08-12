@@ -17,7 +17,7 @@ arrayvec = "0.5.1"
 itertools = "0.9.0"
 
 stdx = { path = "../stdx" }
-ra_syntax = { path = "../ra_syntax" }
+syntax = { path = "../syntax" }
 ra_db = { path = "../ra_db" }
 profile = { path = "../profile" }
 hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }

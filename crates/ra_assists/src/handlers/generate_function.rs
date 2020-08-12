@@ -1,6 +1,7 @@
 use hir::HirDisplay;
 use ra_db::FileId;
-use ra_syntax::{
+use rustc_hash::{FxHashMap, FxHashSet};
+use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
@@ -8,7 +9,6 @@ use ra_syntax::{
     },
     SyntaxKind, SyntaxNode, TextSize,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     assist_config::SnippetCap,

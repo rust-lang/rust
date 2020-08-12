@@ -58,7 +58,7 @@ use hir_expand::{
     MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use ra_db::{impl_intern_key, salsa, CrateId};
-use ra_syntax::ast;
+use syntax::ast;
 
 use crate::builtin_type::BuiltinType;
 use item_tree::{

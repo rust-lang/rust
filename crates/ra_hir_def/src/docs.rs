@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use either::Either;
-use ra_syntax::ast;
+use syntax::ast;
 
 use crate::{
     db::DefDatabase,

@@ -6,12 +6,12 @@ use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
 };
-use ra_syntax::{
+use std::convert::TryInto;
+use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
     lex_single_valid_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken,
 };
-use std::convert::TryInto;
 use test_utils::mark;
 use text_edit::TextEdit;
 

@@ -4,7 +4,7 @@ use either::Either;
 use hir::{original_range, AssocItem, FieldSource, HasSource, InFile, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_ide_db::{defs::Definition, RootDatabase};
-use ra_syntax::{
+use syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
     match_ast, AstNode, SmolStr,
     SyntaxKind::{self, IDENT_PAT, TYPE_PARAM},

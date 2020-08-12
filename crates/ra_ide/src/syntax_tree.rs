@@ -1,6 +1,6 @@
 use ra_db::{FileId, SourceDatabase};
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
+use syntax::{
     algo, AstNode, NodeOrToken, SourceFile,
     SyntaxKind::{RAW_STRING, STRING},
     SyntaxToken, TextRange, TextSize,

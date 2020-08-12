@@ -1,6 +1,6 @@
 use std::iter::successors;
 
-use ra_syntax::{ast, AstNode, T};
+use syntax::{ast, AstNode, T};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

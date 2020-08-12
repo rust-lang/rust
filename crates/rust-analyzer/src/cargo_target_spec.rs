@@ -179,7 +179,7 @@ mod tests {
 
     use mbe::ast_to_token_tree;
     use ra_cfg::CfgExpr;
-    use ra_syntax::{
+    use syntax::{
         ast::{self, AstNode},
         SmolStr,
     };

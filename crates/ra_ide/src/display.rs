@@ -4,7 +4,7 @@
 mod navigation_target;
 mod short_label;
 
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode, AttrsOwner, GenericParamsOwner, NameOwner},
     SyntaxKind::{ATTR, COMMENT},
 };

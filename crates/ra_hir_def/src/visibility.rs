@@ -1,7 +1,7 @@
 //! Defines hir-level representation of visibility (e.g. `pub` and `pub(crate)`).
 
 use hir_expand::{hygiene::Hygiene, InFile};
-use ra_syntax::ast;
+use syntax::ast;
 
 use crate::{
     db::DefDatabase,

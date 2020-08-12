@@ -1,8 +1,8 @@
-use ra_syntax::{
+use rustc_hash::FxHashSet;
+use syntax::{
     ast::{self, GenericParamsOwner, NameOwner},
     AstNode, SyntaxKind, TextRange, TextSize,
 };
-use rustc_hash::FxHashSet;
 
 use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, Assists};
 

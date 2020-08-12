@@ -6,11 +6,11 @@ use hir::{
     Type,
 };
 use ra_ide_db::{imports_locator, RootDatabase};
-use ra_syntax::{
+use rustc_hash::FxHashSet;
+use syntax::{
     ast::{self, AstNode},
     SyntaxNode,
 };
-use rustc_hash::FxHashSet;
 
 use crate::{
     utils::insert_use_statement, AssistContext, AssistId, AssistKind, Assists, GroupLabel,

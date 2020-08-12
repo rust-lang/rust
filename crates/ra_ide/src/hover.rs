@@ -8,8 +8,8 @@ use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
 };
-use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
 use stdx::format_to;
+use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
 use test_utils::mark;
 
 use crate::{

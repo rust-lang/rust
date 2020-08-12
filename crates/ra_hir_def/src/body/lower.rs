@@ -10,14 +10,14 @@ use hir_expand::{
     name::{name, AsName, Name},
     HirFileId, MacroDefId, MacroDefKind,
 };
-use ra_syntax::{
+use rustc_hash::FxHashMap;
+use syntax::{
     ast::{
         self, ArgListOwner, ArrayExprKind, AstChildren, LiteralKind, LoopBodyOwner, NameOwner,
         SlicePatComponents,
     },
     AstNode, AstPtr,
 };
-use rustc_hash::FxHashMap;
 use test_utils::mark;
 
 use crate::{

@@ -5,8 +5,8 @@ pub mod fixture;
 
 use std::{panic, sync::Arc};
 
-use ra_syntax::{ast, Parse, SourceFile, TextRange, TextSize};
 use rustc_hash::FxHashSet;
+use syntax::{ast, Parse, SourceFile, TextRange, TextSize};
 
 pub use crate::{
     cancellation::Canceled,

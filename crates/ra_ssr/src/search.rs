@@ -10,8 +10,8 @@ use ra_ide_db::{
     defs::Definition,
     search::{Reference, SearchScope},
 };
-use ra_syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
 use rustc_hash::FxHashSet;
+use syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
 use test_utils::mark;
 
 /// A cache for the results of find_usages. This is for when we have multiple patterns that have the

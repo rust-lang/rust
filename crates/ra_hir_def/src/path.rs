@@ -13,7 +13,7 @@ use hir_expand::{
     name::{AsName, Name},
 };
 use ra_db::CrateId;
-use ra_syntax::ast;
+use syntax::ast;
 
 use crate::{
     type_ref::{TypeBound, TypeRef},

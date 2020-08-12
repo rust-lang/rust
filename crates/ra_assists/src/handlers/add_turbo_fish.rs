@@ -1,5 +1,5 @@
 use ra_ide_db::defs::{classify_name_ref, Definition, NameRefClass};
-use ra_syntax::{ast, AstNode, SyntaxKind, T};
+use syntax::{ast, AstNode, SyntaxKind, T};
 use test_utils::mark;
 
 use crate::{

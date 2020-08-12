@@ -1,4 +1,4 @@
-use ra_syntax::{algo::non_trivia_sibling, Direction, T};
+use syntax::{algo::non_trivia_sibling, Direction, T};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

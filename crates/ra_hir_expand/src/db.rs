@@ -5,7 +5,7 @@ use std::sync::Arc;
 use mbe::{ExpandResult, MacroRules};
 use parser::FragmentKind;
 use ra_db::{salsa, SourceDatabase};
-use ra_syntax::{algo::diff, AstNode, GreenNode, Parse, SyntaxKind::*, SyntaxNode};
+use syntax::{algo::diff, AstNode, GreenNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{
     ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallLoc, EagerMacroId,
@@ -92,9 +92,9 @@ pub trait AstDatabase: SourceDatabase {
 pub fn expand_hypothetical(
     db: &dyn AstDatabase,
     actual_macro_call: MacroCallId,
-    hypothetical_args: &ra_syntax::ast::TokenTree,
-    token_to_map: ra_syntax::SyntaxToken,
-) -> Option<(SyntaxNode, ra_syntax::SyntaxToken)> {
+    hypothetical_args: &syntax::ast::TokenTree,
+    token_to_map: syntax::SyntaxToken,
+) -> Option<(SyntaxNode, syntax::SyntaxToken)> {
     let macro_file = MacroFile { macro_call_id: actual_macro_call };
     let (tt, tmap_1) = mbe::syntax_node_to_token_tree(hypothetical_args.syntax()).unwrap();
     let range =
@@ -105,7 +105,7 @@ pub fn expand_hypothetical(
         parse_macro_with_arg(db, macro_file, Some(std::sync::Arc::new((tt, tmap_1))))?;
     let token_id = macro_def.0.map_id_down(token_id);
     let range = tmap_2.range_by_token(token_id)?.by_kind(token_to_map.kind())?;
-    let token = ra_syntax::algo::find_covering_element(&node.syntax_node(), range).into_token()?;
+    let token = syntax::algo::find_covering_element(&node.syntax_node(), range).into_token()?;
     Some((node.syntax_node(), token))
 }
 

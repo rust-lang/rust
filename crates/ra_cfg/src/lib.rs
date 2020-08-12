@@ -2,8 +2,8 @@
 
 mod cfg_expr;
 
-use ra_syntax::SmolStr;
 use rustc_hash::FxHashSet;
+use syntax::SmolStr;
 
 pub use cfg_expr::CfgExpr;
 

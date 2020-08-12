@@ -10,8 +10,8 @@ use ra_ide_db::{
     symbol_index::{LibrarySymbolsQuery, SymbolIndex},
     RootDatabase,
 };
-use ra_syntax::{ast, Parse, SyntaxNode};
 use rustc_hash::FxHashMap;
+use syntax::{ast, Parse, SyntaxNode};
 
 use crate::FileId;
 

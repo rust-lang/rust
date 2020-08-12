@@ -1,10 +1,10 @@
 use hir::Adt;
 use itertools::Itertools;
-use ra_syntax::{
+use stdx::format_to;
+use syntax::{
     ast::{self, AstNode, GenericParamsOwner, NameOwner, StructKind, VisibilityOwner},
     T,
 };
-use stdx::format_to;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

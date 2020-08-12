@@ -11,7 +11,7 @@ use hir_expand::{
     InFile,
 };
 use ra_db::FileId;
-use ra_syntax::ast::{self, GenericParamsOwner, NameOwner, TypeBoundsOwner};
+use syntax::ast::{self, GenericParamsOwner, NameOwner, TypeBoundsOwner};
 
 use crate::{
     body::LowerCtx,

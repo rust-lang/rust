@@ -1,4 +1,4 @@
-use ra_syntax::ast::{self, AstNode};
+use syntax::ast::{self, AstNode};
 
 use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKind, Assists};
 

@@ -3,8 +3,8 @@
 use std::marker::PhantomData;
 
 use hir_expand::{InFile, MacroDefId};
-use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
+use syntax::{ast, AstNode, AstPtr};
 
 use crate::{
     dyn_map::{DynMap, Policy},

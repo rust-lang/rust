@@ -1,5 +1,5 @@
 use ra_fmt::unwrap_trivial_block;
-use ra_syntax::{
+use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},

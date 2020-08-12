@@ -543,7 +543,7 @@ fn bar() -> u32 {0}
 #[test]
 #[ignore]
 fn include_accidentally_quadratic() {
-    let file = project_dir().join("crates/ra_syntax/test_data/accidentally_quadratic");
+    let file = project_dir().join("crates/syntax/test_data/accidentally_quadratic");
     let big_file = fs::read_to_string(file).unwrap();
     let big_file = vec![big_file; 10].join("\n");
 

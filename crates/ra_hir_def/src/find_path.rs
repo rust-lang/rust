@@ -294,7 +294,7 @@ fn find_local_import_locations(
 mod tests {
     use hir_expand::hygiene::Hygiene;
     use ra_db::fixture::WithFixture;
-    use ra_syntax::ast::AstNode;
+    use syntax::ast::AstNode;
     use test_utils::mark;
 
     use crate::test_db::TestDB;
@@ -307,12 +307,9 @@ mod tests {
     fn check_found_path(ra_fixture: &str, path: &str) {
         let (db, pos) = TestDB::with_position(ra_fixture);
         let module = db.module_for_file(pos.file_id);
-        let parsed_path_file = ra_syntax::SourceFile::parse(&format!("use {};", path));
-        let ast_path = parsed_path_file
-            .syntax_node()
-            .descendants()
-            .find_map(ra_syntax::ast::Path::cast)
-            .unwrap();
+        let parsed_path_file = syntax::SourceFile::parse(&format!("use {};", path));
+        let ast_path =
+            parsed_path_file.syntax_node().descendants().find_map(syntax::ast::Path::cast).unwrap();
         let mod_path = ModPath::from_src(ast_path, &Hygiene::new_unhygienic()).unwrap();
 
         let crate_def_map = db.crate_def_map(module.krate);
@@ -441,12 +438,12 @@ mod tests {
         // already in scope.
         check_found_path(
             r#"
-            //- /main.rs crate:main deps:ra_syntax
+            //- /main.rs crate:main deps:syntax
 
-            use ra_syntax::ast;
+            use syntax::ast;
             <|>
 
-            //- /lib.rs crate:ra_syntax
+            //- /lib.rs crate:syntax
             pub mod ast {
                 pub enum ModuleItem {
                     A, B, C,
@@ -458,18 +455,18 @@ mod tests {
 
         check_found_path(
             r#"
-            //- /main.rs crate:main deps:ra_syntax
+            //- /main.rs crate:main deps:syntax
 
             <|>
 
-            //- /lib.rs crate:ra_syntax
+            //- /lib.rs crate:syntax
             pub mod ast {
                 pub enum ModuleItem {
                     A, B, C,
                 }
             }
         "#,
-            "ra_syntax::ast::ModuleItem",
+            "syntax::ast::ModuleItem",
         );
     }
 

@@ -6,7 +6,7 @@ use hir_def::{
     src::{HasChildSource, HasSource as _},
     Lookup, VariantId,
 };
-use ra_syntax::ast;
+use syntax::ast;
 
 use crate::{
     db::HirDatabase, Const, Enum, EnumVariant, Field, FieldSource, Function, ImplDef, MacroDef,

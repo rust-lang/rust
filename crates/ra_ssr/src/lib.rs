@@ -21,9 +21,9 @@ use crate::matching::MatchFailureReason;
 use hir::Semantics;
 use ra_db::{FileId, FilePosition, FileRange};
 use ra_ide_db::source_change::SourceFileEdit;
-use ra_syntax::{ast, AstNode, SyntaxNode, TextRange};
 use resolving::ResolvedRule;
 use rustc_hash::FxHashMap;
+use syntax::{ast, AstNode, SyntaxNode, TextRange};
 
 // A structured search replace rule. Create by calling `parse` on a str.
 #[derive(Debug)]

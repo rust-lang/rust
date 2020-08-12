@@ -8,8 +8,8 @@ use std::any::Any;
 use hir_def::DefWithBodyId;
 use hir_expand::diagnostics::{Diagnostic, DiagnosticSink};
 use hir_expand::{name::Name, HirFileId, InFile};
-use ra_syntax::{ast, AstPtr, SyntaxNodePtr};
 use stdx::format_to;
+use syntax::{ast, AstPtr, SyntaxNodePtr};
 
 use crate::db::HirDatabase;
 
@@ -214,8 +214,8 @@ mod tests {
         diagnostics::{Diagnostic, DiagnosticSinkBuilder},
     };
     use ra_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
-    use ra_syntax::{TextRange, TextSize};
     use rustc_hash::FxHashMap;
+    use syntax::{TextRange, TextSize};
 
     use crate::{diagnostics::validate_body, test_db::TestDB};
 

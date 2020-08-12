@@ -9,7 +9,7 @@ use hir::{
     db::HirDatabase, Crate, Field, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef,
     Name, PathResolution, Semantics, TypeParam, Visibility,
 };
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode},
     match_ast, SyntaxNode,
 };

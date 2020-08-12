@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, convert::TryFrom};
 use ast::{HasQuotes, HasStringValue};
 use hir::Semantics;
 use itertools::Itertools;
-use ra_syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
+use syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
 
 use crate::{
     call_info::ActiveParameter, Analysis, Highlight, HighlightModifier, HighlightTag,

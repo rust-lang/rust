@@ -12,11 +12,11 @@ use hir_expand::{hygiene::Hygiene, name::AsName, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
-use ra_syntax::{
+use rustc_hash::{FxHashMap, FxHashSet};
+use syntax::{
     algo::{find_node_at_offset, skip_trivia_token},
     ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     db::HirDatabase,

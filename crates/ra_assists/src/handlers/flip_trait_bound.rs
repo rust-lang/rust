@@ -1,4 +1,4 @@
-use ra_syntax::{
+use syntax::{
     algo::non_trivia_sibling,
     ast::{self, AstNode},
     Direction, T,

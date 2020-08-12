@@ -21,7 +21,7 @@ oorandom = "11.1.2"
 
 stdx = { path = "../stdx" }
 
-ra_syntax = { path = "../ra_syntax" }
+syntax = { path = "../syntax" }
 text_edit = { path = "../text_edit" }
 ra_db = { path = "../ra_db" }
 ra_ide_db = { path = "../ra_ide_db" }

@@ -3,7 +3,7 @@ mod generated;
 use hir::Semantics;
 use ra_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
 use ra_ide_db::RootDatabase;
-use ra_syntax::TextRange;
+use syntax::TextRange;
 use test_utils::{assert_eq_text, extract_offset, extract_range};
 
 use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, AssistKind, Assists};

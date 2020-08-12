@@ -1,4 +1,4 @@
-use ra_syntax::{
+use syntax::{
     ast::{self, NameOwner, VisibilityOwner},
     AstNode,
     SyntaxKind::{CONST, ENUM, FN, MODULE, STATIC, STRUCT, TRAIT, VISIBILITY},

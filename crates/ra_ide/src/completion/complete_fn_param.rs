@@ -1,10 +1,10 @@
 //! See `complete_fn_param`.
 
-use ra_syntax::{
+use rustc_hash::FxHashMap;
+use syntax::{
     ast::{self, ModuleItemOwner},
     match_ast, AstNode,
 };
-use rustc_hash::FxHashMap;
 
 use crate::completion::{CompletionContext, CompletionItem, CompletionKind, Completions};
 

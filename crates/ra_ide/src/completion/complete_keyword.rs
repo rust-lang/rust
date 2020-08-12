@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_syntax::{ast, SyntaxKind};
+use syntax::{ast, SyntaxKind};
 use test_utils::mark;
 
 use crate::completion::{

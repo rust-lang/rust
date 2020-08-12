@@ -1,7 +1,7 @@
 use hir::Semantics;
 use ra_db::{CrateId, FileId, FilePosition};
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
+use syntax::{
     algo::find_node_at_offset,
     ast::{self, AstNode},
 };

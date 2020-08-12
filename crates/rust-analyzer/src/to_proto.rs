@@ -12,7 +12,7 @@ use ra_ide::{
     Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget,
     ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
-use ra_syntax::{SyntaxKind, TextRange, TextSize};
+use syntax::{SyntaxKind, TextRange, TextSize};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec, global_state::GlobalStateSnapshot,

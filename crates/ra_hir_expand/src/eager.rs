@@ -27,8 +27,8 @@ use crate::{
 
 use parser::FragmentKind;
 use ra_db::CrateId;
-use ra_syntax::{algo::SyntaxRewriter, SyntaxNode};
 use std::sync::Arc;
+use syntax::{algo::SyntaxRewriter, SyntaxNode};
 
 pub fn expand_eager_macro(
     db: &dyn AstDatabase,

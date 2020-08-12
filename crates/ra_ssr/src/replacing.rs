@@ -2,9 +2,9 @@
 
 use crate::matching::Var;
 use crate::{resolving::ResolvedRule, Match, SsrMatches};
-use ra_syntax::ast::{self, AstToken};
-use ra_syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize};
 use rustc_hash::{FxHashMap, FxHashSet};
+use syntax::ast::{self, AstToken};
+use syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize};
 use text_edit::TextEdit;
 
 /// Returns a text edit that will replace each match in `matches` with its corresponding replacement
@@ -92,7 +92,7 @@ impl ReplacementRenderer<'_> {
     }
 
     fn render_node(&mut self, node: &SyntaxNode) {
-        use ra_syntax::ast::AstNode;
+        use syntax::ast::AstNode;
         if let Some(mod_path) = self.match_info.rendered_template_paths.get(&node) {
             self.out.push_str(&mod_path.to_string());
             // Emit everything except for the segment's name-ref, since we already effectively
@@ -180,7 +180,7 @@ impl ReplacementRenderer<'_> {
 }
 
 fn parse_as_kind(code: &str, kind: SyntaxKind) -> Option<SyntaxNode> {
-    use ra_syntax::ast::AstNode;
+    use syntax::ast::AstNode;
     if ast::Expr::can_cast(kind) {
         if let Ok(expr) = ast::Expr::parse(code) {
             return Some(expr.syntax().clone());

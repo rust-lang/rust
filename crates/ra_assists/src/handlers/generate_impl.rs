@@ -1,6 +1,6 @@
 use itertools::Itertools;
-use ra_syntax::ast::{self, AstNode, GenericParamsOwner, NameOwner};
 use stdx::format_to;
+use syntax::ast::{self, AstNode, GenericParamsOwner, NameOwner};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

@@ -2,13 +2,13 @@
 use rustc_hash::FxHashMap;
 
 use hir::{HirDisplay, PathResolution, SemanticsScope};
-use ra_syntax::{
+use syntax::{
     algo::SyntaxRewriter,
     ast::{self, AstNode},
 };
 
 pub trait AstTransform<'a> {
-    fn get_substitution(&self, node: &ra_syntax::SyntaxNode) -> Option<ra_syntax::SyntaxNode>;
+    fn get_substitution(&self, node: &syntax::SyntaxNode) -> Option<syntax::SyntaxNode>;
 
     fn chain_before(self, other: Box<dyn AstTransform<'a> + 'a>) -> Box<dyn AstTransform<'a> + 'a>;
     fn or<T: AstTransform<'a> + 'a>(self, other: T) -> Box<dyn AstTransform<'a> + 'a>
@@ -22,7 +22,7 @@ pub trait AstTransform<'a> {
 struct NullTransformer;
 
 impl<'a> AstTransform<'a> for NullTransformer {
-    fn get_substitution(&self, _node: &ra_syntax::SyntaxNode) -> Option<ra_syntax::SyntaxNode> {
+    fn get_substitution(&self, _node: &syntax::SyntaxNode) -> Option<syntax::SyntaxNode> {
         None
     }
     fn chain_before(self, other: Box<dyn AstTransform<'a> + 'a>) -> Box<dyn AstTransform<'a> + 'a> {
@@ -101,10 +101,7 @@ impl<'a> SubstituteTypeParams<'a> {
             Some(result)
         }
     }
-    fn get_substitution_inner(
-        &self,
-        node: &ra_syntax::SyntaxNode,
-    ) -> Option<ra_syntax::SyntaxNode> {
+    fn get_substitution_inner(&self, node: &syntax::SyntaxNode) -> Option<syntax::SyntaxNode> {
         let type_ref = ast::Type::cast(node.clone())?;
         let path = match &type_ref {
             ast::Type::PathType(path_type) => path_type.path()?,
@@ -122,7 +119,7 @@ impl<'a> SubstituteTypeParams<'a> {
 }
 
 impl<'a> AstTransform<'a> for SubstituteTypeParams<'a> {
-    fn get_substitution(&self, node: &ra_syntax::SyntaxNode) -> Option<ra_syntax::SyntaxNode> {
+    fn get_substitution(&self, node: &syntax::SyntaxNode) -> Option<syntax::SyntaxNode> {
         self.get_substitution_inner(node).or_else(|| self.previous.get_substitution(node))
     }
     fn chain_before(self, other: Box<dyn AstTransform<'a> + 'a>) -> Box<dyn AstTransform<'a> + 'a> {
@@ -141,10 +138,7 @@ impl<'a> QualifyPaths<'a> {
         Self { target_scope, source_scope, previous: Box::new(NullTransformer) }
     }
 
-    fn get_substitution_inner(
-        &self,
-        node: &ra_syntax::SyntaxNode,
-    ) -> Option<ra_syntax::SyntaxNode> {
+    fn get_substitution_inner(&self, node: &syntax::SyntaxNode) -> Option<syntax::SyntaxNode> {
         // FIXME handle value ns?
         let from = self.target_scope.module()?;
         let p = ast::Path::cast(node.clone())?;
@@ -183,7 +177,7 @@ impl<'a> QualifyPaths<'a> {
 
 pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: N) -> N {
     SyntaxRewriter::from_fn(|element| match element {
-        ra_syntax::SyntaxElement::Node(n) => {
+        syntax::SyntaxElement::Node(n) => {
             let replacement = transformer.get_substitution(&n)?;
             Some(replacement.into())
         }
@@ -193,7 +187,7 @@ pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: N) -> N {
 }
 
 impl<'a> AstTransform<'a> for QualifyPaths<'a> {
-    fn get_substitution(&self, node: &ra_syntax::SyntaxNode) -> Option<ra_syntax::SyntaxNode> {
+    fn get_substitution(&self, node: &syntax::SyntaxNode) -> Option<syntax::SyntaxNode> {
         self.get_substitution_inner(node).or_else(|| self.previous.get_substitution(node))
     }
     fn chain_before(self, other: Box<dyn AstTransform<'a> + 'a>) -> Box<dyn AstTransform<'a> + 'a> {

@@ -3,7 +3,7 @@
 
 use hir::{Docs, HasAttrs, HasSource, HirDisplay, ModPath, ScopeDef, StructKind, Type};
 use itertools::Itertools;
-use ra_syntax::ast::NameOwner;
+use syntax::ast::NameOwner;
 use test_utils::mark;
 
 use crate::{

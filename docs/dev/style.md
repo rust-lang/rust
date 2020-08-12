@@ -97,13 +97,13 @@ Qualify items from `hir` and `ast`.
 
 ```rust
 // Good
-use ra_syntax::ast;
+use syntax::ast;
 
 fn frobnicate(func: hir::Function, strukt: ast::StructDef) {}
 
 // Not as good
 use hir::Function;
-use ra_syntax::ast::StructDef;
+use syntax::ast::StructDef;
 
 fn frobnicate(func: Function, strukt: StructDef) {}
 ```

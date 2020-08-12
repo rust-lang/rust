@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use ra_syntax::{ast, SmolStr};
+use syntax::{ast, SmolStr};
 
 /// `Name` is a wrapper around string, which is used in hir for both references
 /// and declarations. In theory, names should also carry hygiene info, but we are
@@ -37,8 +37,8 @@ impl Name {
         Name(Repr::TupleField(idx))
     }
 
-    pub fn new_lifetime(lt: &ra_syntax::SyntaxToken) -> Name {
-        assert!(lt.kind() == ra_syntax::SyntaxKind::LIFETIME);
+    pub fn new_lifetime(lt: &syntax::SyntaxToken) -> Name {
+        assert!(lt.kind() == syntax::SyntaxKind::LIFETIME);
         Name(Repr::Text(lt.text().clone()))
     }
 

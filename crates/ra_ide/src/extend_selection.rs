@@ -2,7 +2,7 @@ use std::iter::successors;
 
 use hir::Semantics;
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
+use syntax::{
     algo::{self, find_covering_element, skip_trivia_token},
     ast::{self, AstNode, AstToken},
     Direction, NodeOrToken,

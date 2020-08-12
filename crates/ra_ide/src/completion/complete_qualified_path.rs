@@ -1,8 +1,8 @@
 //! Completion of paths, i.e. `some::prefix::<|>`.
 
 use hir::{Adt, HasVisibility, PathResolution, ScopeDef};
-use ra_syntax::AstNode;
 use rustc_hash::FxHashSet;
+use syntax::AstNode;
 use test_utils::mark;
 
 use crate::completion::{CompletionContext, Completions};

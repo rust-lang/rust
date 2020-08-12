@@ -135,7 +135,7 @@ fn bar() {
 
 #[test]
 fn accidentally_quadratic() {
-    let file = project_dir().join("crates/ra_syntax/test_data/accidentally_quadratic");
+    let file = project_dir().join("crates/syntax/test_data/accidentally_quadratic");
     let src = fs::read_to_string(file).unwrap();
 
     let (analysis, file_id) = single_file(&src);

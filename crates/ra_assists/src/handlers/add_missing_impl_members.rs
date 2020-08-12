@@ -1,5 +1,5 @@
 use hir::HasSource;
-use ra_syntax::{
+use syntax::{
     ast::{
         self,
         edit::{self, AstNodeEdit, IndentLevel},

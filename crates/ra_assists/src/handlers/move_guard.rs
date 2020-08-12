@@ -1,4 +1,4 @@
-use ra_syntax::{
+use syntax::{
     ast::{AstNode, IfExpr, MatchArm},
     SyntaxKind::WHITESPACE,
 };

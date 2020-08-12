@@ -16,7 +16,7 @@
 
 use std::{any::Any, fmt};
 
-use ra_syntax::SyntaxNodePtr;
+use syntax::SyntaxNodePtr;
 
 use crate::InFile;
 

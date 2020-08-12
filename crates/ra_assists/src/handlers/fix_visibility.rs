@@ -1,6 +1,6 @@
 use hir::{db::HirDatabase, HasSource, HasVisibility, PathResolution};
 use ra_db::FileId;
-use ra_syntax::{ast, AstNode, TextRange, TextSize};
+use syntax::{ast, AstNode, TextRange, TextSize};
 
 use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
 use ast::VisibilityOwner;

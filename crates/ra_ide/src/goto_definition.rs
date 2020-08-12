@@ -3,7 +3,7 @@ use ra_ide_db::{
     defs::{classify_name, classify_name_ref},
     symbol_index, RootDatabase,
 };
-use ra_syntax::{
+use syntax::{
     ast::{self},
     match_ast, AstNode,
     SyntaxKind::*,
@@ -101,7 +101,7 @@ pub(crate) fn reference_definition(
 #[cfg(test)]
 mod tests {
     use ra_db::FileRange;
-    use ra_syntax::{TextRange, TextSize};
+    use syntax::{TextRange, TextSize};
 
     use crate::mock_analysis::MockAnalysis;
 

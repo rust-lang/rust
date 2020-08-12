@@ -1,8 +1,8 @@
 //! Parser recognizes special macro syntax, `$var` and `$(repeat)*`, in token
 //! trees.
 
-use ra_syntax::SmolStr;
 use smallvec::SmallVec;
+use syntax::SmolStr;
 
 use crate::{tt_iter::TtIter, ExpandError};
 

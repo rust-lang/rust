@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use ra_syntax::{
+use syntax::{
     ast::{self, HasQuotes, HasStringValue},
     AstToken,
     SyntaxKind::{RAW_STRING, STRING},

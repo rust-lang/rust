@@ -13,8 +13,8 @@ use hir_expand::{
 };
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId, ProcMacroId};
-use ra_syntax::ast;
 use rustc_hash::FxHashMap;
+use syntax::ast;
 use test_utils::mark;
 
 use crate::{

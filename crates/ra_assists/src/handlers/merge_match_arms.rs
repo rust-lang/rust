@@ -1,6 +1,6 @@
 use std::iter::successors;
 
-use ra_syntax::{
+use syntax::{
     algo::neighbor,
     ast::{self, AstNode},
     Direction,

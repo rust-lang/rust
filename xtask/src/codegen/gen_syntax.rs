@@ -1,7 +1,7 @@
 //! This module generates AST datatype used by rust-analyzer.
 //!
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
-//! wrappers around `SyntaxNode` which implement `ra_syntax::AstNode`.
+//! wrappers around `SyntaxNode` which implement `syntax::AstNode`.
 
 use std::{
     collections::{BTreeSet, HashSet},

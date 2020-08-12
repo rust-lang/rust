@@ -34,14 +34,14 @@ use ra_db::{
     salsa::{self, ParallelDatabase},
     CrateId, FileId, SourceDatabaseExt, SourceRootId,
 };
-use ra_syntax::{
+use rayon::prelude::*;
+use rustc_hash::{FxHashMap, FxHashSet};
+use syntax::{
     ast::{self, NameOwner},
     match_ast, AstNode, Parse, SmolStr, SourceFile,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxNodePtr, TextRange, WalkEvent,
 };
-use rayon::prelude::*;
-use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::RootDatabase;
 

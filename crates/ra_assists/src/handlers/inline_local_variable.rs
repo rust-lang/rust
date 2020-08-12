@@ -1,5 +1,5 @@
 use ra_ide_db::defs::Definition;
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,
 };

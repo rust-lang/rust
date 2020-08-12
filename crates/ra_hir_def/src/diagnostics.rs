@@ -3,7 +3,7 @@
 use std::any::Any;
 
 use hir_expand::diagnostics::Diagnostic;
-use ra_syntax::{ast, AstPtr, SyntaxNodePtr};
+use syntax::{ast, AstPtr, SyntaxNodePtr};
 
 use hir_expand::{HirFileId, InFile};
 

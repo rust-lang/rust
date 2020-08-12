@@ -1,11 +1,11 @@
-use ra_syntax::{
+use stdx::format_to;
+use syntax::{
     ast::{self, AstNode},
     SyntaxKind::{
         BLOCK_EXPR, BREAK_EXPR, CLOSURE_EXPR, COMMENT, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR,
     },
     SyntaxNode,
 };
-use stdx::format_to;
 use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

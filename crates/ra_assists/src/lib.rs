@@ -20,7 +20,7 @@ pub mod ast_transform;
 use hir::Semantics;
 use ra_db::FileRange;
 use ra_ide_db::{source_change::SourceChange, RootDatabase};
-use ra_syntax::TextRange;
+use syntax::TextRange;
 
 pub(crate) use crate::assist_context::{AssistContext, Assists};
 

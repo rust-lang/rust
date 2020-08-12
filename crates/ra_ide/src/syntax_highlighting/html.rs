@@ -2,7 +2,7 @@
 
 use oorandom::Rand32;
 use ra_db::SourceDatabase;
-use ra_syntax::{AstNode, TextRange, TextSize};
+use syntax::{AstNode, TextRange, TextSize};
 
 use crate::{syntax_highlighting::highlight, FileId, RootDatabase};
 

@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use hir_def::{path::path, resolver::HasResolver, AdtId, DefWithBodyId};
 use hir_expand::diagnostics::DiagnosticSink;
-use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashSet;
+use syntax::{ast, AstPtr};
 
 use crate::{
     db::HirDatabase,

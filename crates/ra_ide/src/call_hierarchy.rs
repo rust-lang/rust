@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 
 use hir::Semantics;
 use ra_ide_db::RootDatabase;
-use ra_syntax::{ast, match_ast, AstNode, TextRange};
+use syntax::{ast, match_ast, AstNode, TextRange};
 
 use crate::{
     call_info::FnCallNode, display::ToNav, goto_definition, references, FilePosition,

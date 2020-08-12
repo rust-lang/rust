@@ -9,8 +9,8 @@
 use std::{fmt, iter::FromIterator, ops, str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
-use ra_syntax::SmolStr;
 use rustc_hash::{FxHashMap, FxHashSet};
+use syntax::SmolStr;
 use tt::TokenExpander;
 use vfs::file_set::FileSet;
 

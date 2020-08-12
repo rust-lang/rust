@@ -22,12 +22,12 @@ use hir_def::{
 };
 use hir_expand::{db::AstDatabase, InFile};
 use ra_db::{fixture::WithFixture, FileRange, SourceDatabase, SourceDatabaseExt};
-use ra_syntax::{
+use stdx::format_to;
+use syntax::{
     algo,
     ast::{self, AstNode},
     SyntaxNode,
 };
-use stdx::format_to;
 
 use crate::{
     db::HirDatabase, display::HirDisplay, infer::TypeMismatch, test_db::TestDB, InferenceResult, Ty,

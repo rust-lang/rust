@@ -11,7 +11,7 @@ use hir_def::{
     AdtId, AssocContainerId, FieldId, Lookup,
 };
 use hir_expand::name::{name, Name};
-use ra_syntax::ast::RangeOp;
+use syntax::ast::RangeOp;
 
 use crate::{
     autoderef, method_resolution, op,

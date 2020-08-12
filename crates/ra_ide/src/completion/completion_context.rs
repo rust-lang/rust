@@ -3,7 +3,7 @@
 use hir::{Semantics, SemanticsScope, Type};
 use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
+use syntax::{
     algo::{find_covering_element, find_node_at_offset},
     ast, match_ast, AstNode, NodeOrToken,
     SyntaxKind::*,
