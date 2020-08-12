@@ -357,13 +357,13 @@ impl Types {
                             let box_ty = match &last_path_segment(qpath).args.unwrap().args[0] {
                                 GenericArg::Type(ty) => match &ty.kind {
                                     TyKind::Path(qpath) => qpath,
-                                    _ => panic!("Box that isn't a type"),
+                                    _ => return,
                                 },
-                                _ => panic!("Rc without type argument"),
+                                _ => return,
                             };
                             let inner_span = match &last_path_segment(&box_ty).args.unwrap().args[0] {
                                 GenericArg::Type(ty) => ty.span,
-                                _ => panic!("Box without type argument"),
+                                _ => return,
                             };
                             span_lint_and_sugg(
                                 cx,
