@@ -358,8 +358,8 @@ dependencies = [
  "crossbeam-channel",
  "jod-thread",
  "log",
- "ra_toolchain",
  "serde_json",
+ "toolchain",
 ]
 
 [[package]]
@@ -927,10 +927,10 @@ dependencies = [
  "ra_hir",
  "ra_ide_db",
  "ra_syntax",
- "ra_text_edit",
  "rustc-hash",
  "stdx",
  "test_utils",
+ "text_edit",
 ]
 
 [[package]]
@@ -1075,10 +1075,10 @@ dependencies = [
  "ra_ide_db",
  "ra_ssr",
  "ra_syntax",
- "ra_text_edit",
  "rustc-hash",
  "stdx",
  "test_utils",
+ "text_edit",
 ]
 
 [[package]]
@@ -1093,11 +1093,11 @@ dependencies = [
  "ra_db",
  "ra_hir",
  "ra_syntax",
- "ra_text_edit",
  "rayon",
  "rustc-hash",
  "stdx",
  "test_utils",
+ "text_edit",
 ]
 
 [[package]]
@@ -1143,9 +1143,9 @@ dependencies = [
  "memmap",
  "ra_mbe",
  "ra_proc_macro",
- "ra_toolchain",
  "serde_derive",
  "test_utils",
+ "toolchain",
  "tt",
 ]
 
@@ -1161,11 +1161,11 @@ dependencies = [
  "ra_cfg",
  "ra_db",
  "ra_proc_macro",
- "ra_toolchain",
  "rustc-hash",
  "serde",
  "serde_json",
  "stdx",
+ "toolchain",
 ]
 
 [[package]]
@@ -1177,9 +1177,9 @@ dependencies = [
  "ra_hir",
  "ra_ide_db",
  "ra_syntax",
- "ra_text_edit",
  "rustc-hash",
  "test_utils",
+ "text_edit",
 ]
 
 [[package]]
@@ -1191,7 +1191,6 @@ dependencies = [
  "itertools",
  "once_cell",
  "ra_parser",
- "ra_text_edit",
  "rayon",
  "rowan",
  "rustc-ap-rustc_lexer",
@@ -1200,21 +1199,8 @@ dependencies = [
  "smol_str",
  "stdx",
  "test_utils",
+ "text_edit",
  "walkdir",
-]
-
-[[package]]
-name = "ra_text_edit"
-version = "0.1.0"
-dependencies = [
- "text-size",
-]
-
-[[package]]
-name = "ra_toolchain"
-version = "0.1.0"
-dependencies = [
- "home",
 ]
 
 [[package]]
@@ -1319,15 +1305,15 @@ dependencies = [
  "ra_project_model",
  "ra_ssr",
  "ra_syntax",
- "ra_text_edit",
- "ra_toolchain",
  "rayon",
  "rustc-hash",
  "serde",
  "serde_json",
  "stdx",
  "test_utils",
+ "text_edit",
  "threadpool",
+ "toolchain",
  "tt",
  "vfs",
  "vfs-notify",
@@ -1573,6 +1559,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f03e7efdedc3bc78cb2337f1e2785c39e45f5ef762d9e4ebb137fff7380a6d8a"
 
 [[package]]
+name = "text_edit"
+version = "0.0.0"
+dependencies = [
+ "text-size",
+]
+
+[[package]]
 name = "thin-dst"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1611,6 +1604,13 @@ name = "tinyvec"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53953d2d3a5ad81d9f844a32f14ebb121f50b650cd59d0ee2a07cf13c617efed"
+
+[[package]]
+name = "toolchain"
+version = "0.0.0"
+dependencies = [
+ "home",
+]
 
 [[package]]
 name = "tracing"

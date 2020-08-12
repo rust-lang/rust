@@ -3,8 +3,6 @@
 //! `rust-analyzer` never mutates text itself and only sends diffs to clients,
 //! so `TextEdit` is the ultimate representation of the work done by
 //! rust-analyzer.
-use std::{slice, vec};
-
 pub use text_size::{TextRange, TextSize};
 
 /// `InsertDelete` -- a single "atomic" change to text
@@ -46,20 +44,24 @@ impl Indel {
 }
 
 impl TextEdit {
+    pub fn builder() -> TextEditBuilder {
+        TextEditBuilder::default()
+    }
+
     pub fn insert(offset: TextSize, text: String) -> TextEdit {
-        let mut builder = TextEditBuilder::default();
+        let mut builder = TextEdit::builder();
         builder.insert(offset, text);
         builder.finish()
     }
 
     pub fn delete(range: TextRange) -> TextEdit {
-        let mut builder = TextEditBuilder::default();
+        let mut builder = TextEdit::builder();
         builder.delete(range);
         builder.finish()
     }
 
     pub fn replace(range: TextRange, replace_with: String) -> TextEdit {
-        let mut builder = TextEditBuilder::default();
+        let mut builder = TextEdit::builder();
         builder.replace(range, replace_with);
         builder.finish()
     }
@@ -72,8 +74,8 @@ impl TextEdit {
         self.indels.is_empty()
     }
 
-    pub fn iter(&self) -> slice::Iter<'_, Indel> {
-        self.indels.iter()
+    pub fn iter(&self) -> std::slice::Iter<'_, Indel> {
+        self.into_iter()
     }
 
     pub fn apply(&self, text: &mut String) {
@@ -139,10 +141,19 @@ impl TextEdit {
 
 impl IntoIterator for TextEdit {
     type Item = Indel;
-    type IntoIter = vec::IntoIter<Self::Item>;
+    type IntoIter = std::vec::IntoIter<Indel>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.indels.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a TextEdit {
+    type Item = &'a Indel;
+    type IntoIter = std::slice::Iter<'a, Indel>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.indels.iter()
     }
 }
 

@@ -15,7 +15,7 @@ use ra_syntax::{
     AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
     TokenAtOffset,
 };
-use ra_text_edit::TextEditBuilder;
+use text_edit::{TextEdit, TextEditBuilder};
 
 use crate::{
     assist_config::{AssistConfig, SnippetCap},
@@ -214,7 +214,7 @@ pub(crate) struct AssistBuilder {
 impl AssistBuilder {
     pub(crate) fn new(file_id: FileId) -> AssistBuilder {
         AssistBuilder {
-            edit: TextEditBuilder::default(),
+            edit: TextEdit::builder(),
             file_id,
             is_snippet: false,
             change: SourceChange::default(),

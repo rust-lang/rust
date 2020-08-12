@@ -121,12 +121,12 @@ export class Cargo {
     }
 }
 
-/** Mirrors `ra_toolchain::cargo()` implementation */
+/** Mirrors `toolchain::cargo()` implementation */
 export function cargoPath(): string {
     return getPathForExecutable("cargo");
 }
 
-/** Mirrors `ra_toolchain::get_path_for_executable()` implementation */
+/** Mirrors `toolchain::get_path_for_executable()` implementation */
 export const getPathForExecutable = memoize(
     // We apply caching to decrease file-system interactions
     (executableName: "cargo" | "rustc" | "rustup"): string => {

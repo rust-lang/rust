@@ -140,7 +140,7 @@ impl CargoWorkspace {
         cargo_features: &CargoConfig,
     ) -> Result<CargoWorkspace> {
         let mut meta = MetadataCommand::new();
-        meta.cargo_path(ra_toolchain::cargo());
+        meta.cargo_path(toolchain::cargo());
         meta.manifest_path(cargo_toml.to_path_buf());
         if cargo_features.all_features {
             meta.features(CargoOpt::AllFeatures);
@@ -288,7 +288,7 @@ pub fn load_extern_resources(
     cargo_toml: &Path,
     cargo_features: &CargoConfig,
 ) -> Result<ExternResources> {
-    let mut cmd = Command::new(ra_toolchain::cargo());
+    let mut cmd = Command::new(toolchain::cargo());
     cmd.args(&["check", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
     if cargo_features.all_features {
         cmd.arg("--all-features");

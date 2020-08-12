@@ -4,7 +4,7 @@
 //! It can be viewed as a dual for `AnalysisChange`.
 
 use ra_db::FileId;
-use ra_text_edit::TextEdit;
+use text_edit::TextEdit;
 
 #[derive(Default, Debug, Clone)]
 pub struct SourceChange {

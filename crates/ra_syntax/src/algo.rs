@@ -6,8 +6,8 @@ use std::{
 };
 
 use itertools::Itertools;
-use ra_text_edit::TextEditBuilder;
 use rustc_hash::FxHashMap;
+use text_edit::TextEditBuilder;
 
 use crate::{
     AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxNodePtr,

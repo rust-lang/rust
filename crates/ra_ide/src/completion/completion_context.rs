@@ -9,7 +9,7 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
-use ra_text_edit::Indel;
+use text_edit::Indel;
 
 use super::patterns::{
     has_bind_pat_parent, has_block_expr_parent, has_impl_as_prev_sibling, has_impl_parent,

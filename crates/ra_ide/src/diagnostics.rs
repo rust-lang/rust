@@ -14,7 +14,7 @@ use ra_syntax::{
     ast::{self, AstNode},
     SyntaxNode, TextRange, T,
 };
-use ra_text_edit::{TextEdit, TextEditBuilder};
+use text_edit::TextEdit;
 
 use crate::{Diagnostic, FileId, Fix, SourceFileEdit};
 
@@ -103,7 +103,7 @@ fn check_unnecessary_braces_in_use_statement(
             text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(&single_use_tree)
                 .unwrap_or_else(|| {
                     let to_replace = single_use_tree.syntax().text().to_string();
-                    let mut edit_builder = TextEditBuilder::default();
+                    let mut edit_builder = TextEdit::builder();
                     edit_builder.delete(use_range);
                     edit_builder.insert(use_range.start(), to_replace);
                     edit_builder.finish()
@@ -149,7 +149,7 @@ fn check_struct_shorthand_initialization(
             let field_expr = expr.syntax().text().to_string();
             let field_name_is_tup_index = name_ref.as_tuple_field().is_some();
             if field_name == field_expr && !field_name_is_tup_index {
-                let mut edit_builder = TextEditBuilder::default();
+                let mut edit_builder = TextEdit::builder();
                 edit_builder.delete(record_field.syntax().text_range());
                 edit_builder.insert(record_field.syntax().text_range().start(), field_name);
                 let edit = edit_builder.finish();

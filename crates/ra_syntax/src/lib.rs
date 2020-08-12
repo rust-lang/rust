@@ -39,8 +39,8 @@ pub mod fuzz;
 
 use std::{marker::PhantomData, sync::Arc};
 
-use ra_text_edit::Indel;
 use stdx::format_to;
+use text_edit::Indel;
 
 pub use crate::{
     algo::InsertPosition,

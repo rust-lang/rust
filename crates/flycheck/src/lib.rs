@@ -193,7 +193,7 @@ impl FlycheckActor {
                 extra_args,
                 features,
             } => {
-                let mut cmd = Command::new(ra_toolchain::cargo());
+                let mut cmd = Command::new(toolchain::cargo());
                 cmd.arg(command);
                 cmd.args(&["--workspace", "--message-format=json", "--manifest-path"])
                     .arg(self.workspace_root.join("Cargo.toml"));

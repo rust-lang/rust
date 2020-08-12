@@ -11,9 +11,9 @@ use ra_syntax::{
     ast::{self, NameOwner},
     lex_single_valid_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken,
 };
-use ra_text_edit::TextEdit;
 use std::convert::TryInto;
 use test_utils::mark;
+use text_edit::TextEdit;
 
 use crate::{
     references::find_all_refs, FilePosition, FileSystemEdit, RangeInfo, Reference, ReferenceKind,
@@ -271,9 +271,9 @@ fn rename_reference(
 #[cfg(test)]
 mod tests {
     use expect::{expect, Expect};
-    use ra_text_edit::TextEditBuilder;
     use stdx::trim_indent;
     use test_utils::{assert_eq_text, mark};
+    use text_edit::TextEdit;
 
     use crate::{mock_analysis::analysis_and_position, FileId};
 
@@ -281,7 +281,7 @@ mod tests {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = analysis_and_position(ra_fixture_before);
         let source_change = analysis.rename(position, new_name).unwrap();
-        let mut text_edit_builder = TextEditBuilder::default();
+        let mut text_edit_builder = TextEdit::builder();
         let mut file_id: Option<FileId> = None;
         if let Some(change) = source_change {
             for edit in change.info.source_file_edits {

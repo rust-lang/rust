@@ -7,7 +7,7 @@
 //!     and try to parse only this block.
 
 use ra_parser::Reparser;
-use ra_text_edit::Indel;
+use text_edit::Indel;
 
 use crate::{
     algo,

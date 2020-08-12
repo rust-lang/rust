@@ -96,7 +96,7 @@ pub use ra_ide_db::{
     RootDatabase,
 };
 pub use ra_ssr::SsrError;
-pub use ra_text_edit::{Indel, TextEdit};
+pub use text_edit::{Indel, TextEdit};
 
 pub type Cancelable<T> = Result<T, Canceled>;
 

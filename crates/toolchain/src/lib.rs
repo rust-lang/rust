@@ -1,6 +1,4 @@
-//! This crate contains a single public function
-//! [`get_path_for_executable`](fn.get_path_for_executable.html).
-//! See docs there for more information.
+//! Discovery of `cargo` & `rustc` executables.
 use std::{env, iter, path::PathBuf};
 
 pub fn cargo() -> PathBuf {

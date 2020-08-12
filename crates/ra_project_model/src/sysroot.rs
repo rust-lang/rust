@@ -101,13 +101,13 @@ fn get_or_install_rust_src(cargo_toml: &AbsPath) -> Result<AbsPathBuf> {
         return Ok(path);
     }
     let current_dir = cargo_toml.parent().unwrap();
-    let mut rustc = Command::new(ra_toolchain::rustc());
+    let mut rustc = Command::new(toolchain::rustc());
     rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
     let stdout = utf8_stdout(rustc)?;
     let sysroot_path = AbsPath::assert(Path::new(stdout.trim()));
     let mut src = get_rust_src(sysroot_path);
     if src.is_none() {
-        let mut rustup = Command::new(ra_toolchain::rustup());
+        let mut rustup = Command::new(toolchain::rustup());
         rustup.current_dir(current_dir).args(&["component", "add", "rust-src"]);
         utf8_stdout(rustup)?;
         src = get_rust_src(sysroot_path);

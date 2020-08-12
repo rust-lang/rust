@@ -39,11 +39,11 @@ ra_ide = { path = "../ra_ide" }
 profile = { path = "../profile" }
 ra_project_model = { path = "../ra_project_model" }
 ra_syntax = { path = "../ra_syntax" }
-ra_text_edit = { path = "../ra_text_edit" }
+text_edit = { path = "../text_edit" }
 vfs = { path = "../vfs" }
 vfs-notify = { path = "../vfs-notify" }
 ra_cfg = { path = "../ra_cfg" }
-ra_toolchain = { path = "../ra_toolchain" }
+toolchain = { path = "../toolchain" }
 
 # This should only be used in CLI
 ra_db = { path = "../ra_db" }
