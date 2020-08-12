@@ -121,7 +121,7 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
             Some(cap) => match current_visibility {
                 Some(current_visibility) => builder.replace_snippet(
                     cap,
-                    dbg!(current_visibility.syntax()).text_range(),
+                    current_visibility.syntax().text_range(),
                     format!("$0{}", missing_visibility),
                 ),
                 None => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),

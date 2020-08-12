@@ -8,7 +8,7 @@ use hir_def::{
     resolver::{self, HasResolver, Resolver},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
-use hir_expand::{diagnostics::AstDiagnostic, hygiene::Hygiene, name::AsName, ExpansionInfo};
+use hir_expand::{hygiene::Hygiene, name::AsName, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
@@ -110,13 +110,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.parse(file_id)
     }
 
-    pub fn ast<T: AstDiagnostic + Diagnostic>(&self, d: &T) -> <T as AstDiagnostic>::AST {
-        let file_id = d.source().file_id;
-        let root = self.db.parse_or_expand(file_id).unwrap();
-        self.imp.cache(root, file_id);
-        d.ast(self.db.upcast())
-    }
-
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         self.imp.expand(macro_call)
     }
@@ -146,8 +139,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.original_range(node)
     }
 
-    pub fn diagnostics_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
-        self.imp.diagnostics_range(diagnostics)
+    pub fn diagnostics_display_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
+        self.imp.diagnostics_display_range(diagnostics)
     }
 
     pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
@@ -389,10 +382,11 @@ impl<'db> SemanticsImpl<'db> {
         original_range(self.db, node.as_ref())
     }
 
-    fn diagnostics_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
-        let src = diagnostics.source();
+    fn diagnostics_display_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
+        let src = diagnostics.display_source();
         let root = self.db.parse_or_expand(src.file_id).unwrap();
         let node = src.value.to_node(&root);
+        self.cache(root, src.file_id);
         original_range(self.db, src.with_value(&node))
     }
 
