@@ -384,9 +384,6 @@ pub enum MetadataType {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum AsmDialect {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
     Att,
     Intel,
 }

@@ -388,7 +388,6 @@ LLVMRustBuildAtomicFence(LLVMBuilderRef B, LLVMAtomicOrdering Order,
 }
 
 enum class LLVMRustAsmDialect {
-  Other,
   Att,
   Intel,
 };
