@@ -333,6 +333,55 @@ impl<T> Vec<T> {
     /// explanation of the difference between length and capacity, see
     /// *[Capacity and reallocation]*.
     ///
+    /// # Why is this useful?
+    ///
+    /// `with_capacity` is a performance optimization that can turn O(n^2)
+    /// memory allocation patterns into O(1). Consider the following (toy) hot loop:
+    ///
+    /// ```rust
+    /// let mut vec = Vec::new();
+    /// for i in 0..100_000_000 {
+    ///   vec.push(i);
+    /// }
+    /// ```
+    ///
+    /// On each iteration, this will add a new element to the vector.
+    /// [`Vec::new`] creates a buffer with capacity 0, so this will start
+    /// at 0 and gradually increase the capacity as needed to hold all the
+    /// elements. Since the standard library doesn't know how many elements you
+    /// plan to allocate, it will double the capacity each time, for a total of
+    /// `ceil(log_2(100_000_000)) = 27` reallocations. Each reallocation requires
+    /// copying the entire buffer - the last one will require copying 67 MB.
+    ///
+    /// On my machine this runs in 148 ms:
+    ///
+    /// ```text
+    /// $ hyperfine ./allocate --warmup 1
+    /// Benchmark #1: ./allocate
+    ///   Time (mean ± σ):     147.6 ms ±   0.5 ms    [User: 121.9 ms, System: 25.8 ms]
+    ///   Range (min … max):   146.7 ms … 148.7 ms    20 runs
+    /// ```
+    ///
+    /// This exponential growth can be avoided by pre-allocating the vec:
+    ///
+    /// ```
+    /// let capacity = 100_000_000;
+    /// let mut vec = Vec::with_capacity(capacity);
+    /// for i in 0..capacity {
+    ///   vec.push(i);
+    /// }
+    /// ```
+    ///
+    /// This runs in only 140 ms:
+    ///
+    /// ```text
+    /// $ hyperfine ./preallocate --warmup 1
+    /// Benchmark #1: ./preallocate
+    ///  Time (mean ± σ):     139.8 ms ±   0.5 ms    [User: 121.1 ms, System: 18.8 ms]
+    ///  Range (min … max):   139.1 ms … 140.8 ms    21 runs
+    /// ```
+    ///
+    ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
     ///
     /// # Examples
