@@ -24,6 +24,9 @@ pub fn ty(text: &str) -> ast::Type {
 pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
     ast_from_text(&format!("use {};", name_ref))
 }
+pub fn path_segment_self() -> ast::PathSegment {
+    ast_from_text("use self;")
+}
 pub fn path_unqualified(segment: ast::PathSegment) -> ast::Path {
     path_from_text(&format!("use {}", segment))
 }
