@@ -128,9 +128,9 @@ impl Expander {
     pub fn expand(
         &self,
         macro_name: &str,
-        macro_body: &ra_tt::Subtree,
-        attributes: Option<&ra_tt::Subtree>,
-    ) -> Result<ra_tt::Subtree, bridge::PanicMessage> {
+        macro_body: &tt::Subtree,
+        attributes: Option<&tt::Subtree>,
+    ) -> Result<tt::Subtree, bridge::PanicMessage> {
         let parsed_body = TokenStream::with_subtree(macro_body.clone());
 
         let parsed_attributes = attributes

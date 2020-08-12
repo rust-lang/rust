@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 doctest = false
 
 [dependencies]
-ra_tt = { path = "../ra_tt" }
+tt = { path = "../tt" }
 ra_mbe = { path = "../ra_mbe" }
 ra_proc_macro = { path = "../ra_proc_macro" }
 goblin = "0.2.1"

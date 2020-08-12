@@ -1,15 +1,14 @@
-//! Rustc proc-macro server implementation with ra_tt
+//! Rustc proc-macro server implementation with tt
 //!
 //! Based on idea from https://github.com/fedochet/rust-proc-macro-expander
 //! The lib-proc-macro server backend is `TokenStream`-agnostic, such that
 //! we could provide any TokenStream implementation.
 //! The original idea from fedochet is using proc-macro2 as backend,
-//! we use ra_tt instead for better intergation with RA.
+//! we use tt instead for better intergation with RA.
 //!
 //! FIXME: No span and source file information is implemented yet
 
 use crate::proc_macro::bridge::{self, server};
-use ra_tt as tt;
 
 use std::collections::{Bound, HashMap};
 use std::hash::Hash;
@@ -153,8 +152,9 @@ pub struct TokenStreamBuilder {
 
 /// Public implementation details for the `TokenStream` type, such as iterators.
 pub mod token_stream {
-    use super::{tt, TokenStream, TokenTree};
     use std::str::FromStr;
+
+    use super::{TokenStream, TokenTree};
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
     /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,

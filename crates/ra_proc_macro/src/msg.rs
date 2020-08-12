@@ -5,11 +5,12 @@ use std::{
     io::{self, BufRead, Write},
 };
 
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
 use crate::{
     rpc::{ListMacrosResult, ListMacrosTask},
     ExpansionResult, ExpansionTask,
 };
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Request {
