@@ -7,10 +7,10 @@ LL |     let len = sample.iter().collect::<Vec<_>>().len();
    = note: `-D clippy::needless-collect` implied by `-D warnings`
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect.rs:12:15
+  --> $DIR/needless_collect.rs:12:22
    |
 LL |     if sample.iter().collect::<Vec<_>>().is_empty() {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `get(0).is_none()`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
 
 error: avoid using `collect()` when not needed
   --> $DIR/needless_collect.rs:15:28

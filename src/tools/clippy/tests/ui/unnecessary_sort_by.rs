@@ -1,5 +1,7 @@
 // run-rustfix
 
+#![allow(clippy::stable_sort_primitive)]
+
 use std::cmp::Reverse;
 
 fn unnecessary_sort_by() {

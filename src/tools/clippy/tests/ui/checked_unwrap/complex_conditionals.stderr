@@ -1,4 +1,4 @@
-error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+error: you checked before that `unwrap()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/complex_conditionals.rs:8:9
    |
 LL |     if x.is_ok() && y.is_err() {
@@ -12,7 +12,7 @@ note: the lint level is defined here
 LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: This call to `unwrap_err()` will always panic.
+error: this call to `unwrap_err()` will always panic
   --> $DIR/complex_conditionals.rs:9:9
    |
 LL |     if x.is_ok() && y.is_err() {
@@ -27,7 +27,7 @@ note: the lint level is defined here
 LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: This call to `unwrap()` will always panic.
+error: this call to `unwrap()` will always panic
   --> $DIR/complex_conditionals.rs:10:9
    |
 LL |     if x.is_ok() && y.is_err() {
@@ -36,7 +36,7 @@ LL |     if x.is_ok() && y.is_err() {
 LL |         y.unwrap(); // will panic
    |         ^^^^^^^^^^
 
-error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+error: you checked before that `unwrap_err()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/complex_conditionals.rs:11:9
    |
 LL |     if x.is_ok() && y.is_err() {
@@ -45,7 +45,7 @@ LL |     if x.is_ok() && y.is_err() {
 LL |         y.unwrap_err(); // unnecessary
    |         ^^^^^^^^^^^^^^
 
-error: This call to `unwrap()` will always panic.
+error: this call to `unwrap()` will always panic
   --> $DIR/complex_conditionals.rs:25:9
    |
 LL |     if x.is_ok() || y.is_ok() {
@@ -54,7 +54,7 @@ LL |     if x.is_ok() || y.is_ok() {
 LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
-error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+error: you checked before that `unwrap_err()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/complex_conditionals.rs:26:9
    |
 LL |     if x.is_ok() || y.is_ok() {
@@ -63,7 +63,7 @@ LL |     if x.is_ok() || y.is_ok() {
 LL |         x.unwrap_err(); // unnecessary
    |         ^^^^^^^^^^^^^^
 
-error: This call to `unwrap()` will always panic.
+error: this call to `unwrap()` will always panic
   --> $DIR/complex_conditionals.rs:27:9
    |
 LL |     if x.is_ok() || y.is_ok() {
@@ -72,7 +72,7 @@ LL |     if x.is_ok() || y.is_ok() {
 LL |         y.unwrap(); // will panic
    |         ^^^^^^^^^^
 
-error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+error: you checked before that `unwrap_err()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/complex_conditionals.rs:28:9
    |
 LL |     if x.is_ok() || y.is_ok() {
@@ -81,7 +81,7 @@ LL |     if x.is_ok() || y.is_ok() {
 LL |         y.unwrap_err(); // unnecessary
    |         ^^^^^^^^^^^^^^
 
-error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+error: you checked before that `unwrap()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/complex_conditionals.rs:32:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
@@ -89,7 +89,7 @@ LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
 LL |         x.unwrap(); // unnecessary
    |         ^^^^^^^^^^
 
-error: This call to `unwrap_err()` will always panic.
+error: this call to `unwrap_err()` will always panic
   --> $DIR/complex_conditionals.rs:33:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
@@ -98,7 +98,7 @@ LL |         x.unwrap(); // unnecessary
 LL |         x.unwrap_err(); // will panic
    |         ^^^^^^^^^^^^^^
 
-error: This call to `unwrap()` will always panic.
+error: this call to `unwrap()` will always panic
   --> $DIR/complex_conditionals.rs:34:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
@@ -107,7 +107,7 @@ LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
 LL |         y.unwrap(); // will panic
    |         ^^^^^^^^^^
 
-error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+error: you checked before that `unwrap_err()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/complex_conditionals.rs:35:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
@@ -116,7 +116,7 @@ LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
 LL |         y.unwrap_err(); // unnecessary
    |         ^^^^^^^^^^^^^^
 
-error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+error: you checked before that `unwrap()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/complex_conditionals.rs:36:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
@@ -125,7 +125,7 @@ LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
 LL |         z.unwrap(); // unnecessary
    |         ^^^^^^^^^^
 
-error: This call to `unwrap_err()` will always panic.
+error: this call to `unwrap_err()` will always panic
   --> $DIR/complex_conditionals.rs:37:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
@@ -134,7 +134,7 @@ LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
 LL |         z.unwrap_err(); // will panic
    |         ^^^^^^^^^^^^^^
 
-error: This call to `unwrap()` will always panic.
+error: this call to `unwrap()` will always panic
   --> $DIR/complex_conditionals.rs:45:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
@@ -143,7 +143,7 @@ LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
 LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
-error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+error: you checked before that `unwrap_err()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/complex_conditionals.rs:46:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
@@ -152,7 +152,7 @@ LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
 LL |         x.unwrap_err(); // unnecessary
    |         ^^^^^^^^^^^^^^
 
-error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+error: you checked before that `unwrap()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/complex_conditionals.rs:47:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
@@ -161,7 +161,7 @@ LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
 LL |         y.unwrap(); // unnecessary
    |         ^^^^^^^^^^
 
-error: This call to `unwrap_err()` will always panic.
+error: this call to `unwrap_err()` will always panic
   --> $DIR/complex_conditionals.rs:48:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
@@ -170,7 +170,7 @@ LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
 LL |         y.unwrap_err(); // will panic
    |         ^^^^^^^^^^^^^^
 
-error: This call to `unwrap()` will always panic.
+error: this call to `unwrap()` will always panic
   --> $DIR/complex_conditionals.rs:49:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
@@ -179,7 +179,7 @@ LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
 LL |         z.unwrap(); // will panic
    |         ^^^^^^^^^^
 
-error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+error: you checked before that `unwrap_err()` cannot fail, instead of checking and unwrapping, it's better to use `if let` or `match`
   --> $DIR/complex_conditionals.rs:50:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {

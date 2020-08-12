@@ -28,11 +28,14 @@ All contributors are expected to follow the [Rust Code of Conduct].
 
 ## Getting started
 
-High level approach:
+**Note: If this is your first time contributing to Clippy, you should
+first read the [Basics docs](doc/basics.md).**
+
+### High level approach
 
 1. Find something to fix/improve
 2. Change code (likely some file in `clippy_lints/src/`)
-3. Follow the instructions in the [docs for writing lints](doc/adding_lints.md) such as running the `setup-toolchain.sh` script
+3. Follow the instructions in the [Basics docs](doc/basics.md) to get set up
 4. Run `cargo test` in the root directory and wiggle code until it passes
 5. Open a PR (also can be done after 2. if you run into problems)
 
@@ -95,16 +98,16 @@ quick read.
 
 ## Getting code-completion for rustc internals to work
 
-Unfortunately, [`rust-analyzer`][ra_homepage] does not (yet?) understand how Clippy uses compiler-internals 
-using `extern crate` and it also needs to be able to read the source files of the rustc-compiler which are not 
-available via a `rustup` component at the time of writing.  
-To work around this, you need to have a copy of the [rustc-repo][rustc_repo] available which can be obtained via  
-`git clone https://github.com/rust-lang/rust/`.  
-Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies 
-which rust-analyzer will be able to understand.  
-Run `cargo dev ra-setup --repo-path <repo-path>` where `<repo-path>` is an absolute path to the rustc repo 
-you just cloned.  
-The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to 
+Unfortunately, [`rust-analyzer`][ra_homepage] does not (yet?) understand how Clippy uses compiler-internals
+using `extern crate` and it also needs to be able to read the source files of the rustc-compiler which are not
+available via a `rustup` component at the time of writing.
+To work around this, you need to have a copy of the [rustc-repo][rustc_repo] available which can be obtained via
+`git clone https://github.com/rust-lang/rust/`.
+Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies
+which rust-analyzer will be able to understand.
+Run `cargo dev ra-setup --repo-path <repo-path>` where `<repo-path>` is an absolute path to the rustc repo
+you just cloned.
+The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
 Clippys `Cargo.toml`s and should allow rust-analyzer to understand most of the types that Clippy uses.
 Just make sure to remove the dependencies again before finally making a pull request!
 
