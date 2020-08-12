@@ -2,11 +2,11 @@
 
 use std::sync::Arc;
 
+use arena::map::ArenaMap;
 use hir_def::{
     db::DefDatabase, expr::ExprId, DefWithBodyId, FunctionId, GenericDefId, ImplId, LocalFieldId,
     TypeParamId, VariantId,
 };
-use ra_arena::map::ArenaMap;
 use ra_db::{impl_intern_key, salsa, CrateId, Upcast};
 use ra_prof::profile;
 

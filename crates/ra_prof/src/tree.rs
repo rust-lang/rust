@@ -1,7 +1,7 @@
 //! A simple tree implementation which tries to not allocate all over the place.
 use std::ops;
 
-use ra_arena::Arena;
+use arena::Arena;
 
 #[derive(Default)]
 pub struct Tree<T> {
@@ -9,7 +9,7 @@ pub struct Tree<T> {
     current_path: Vec<(Idx<T>, Option<Idx<T>>)>,
 }
 
-pub type Idx<T> = ra_arena::Idx<Node<T>>;
+pub type Idx<T> = arena::Idx<Node<T>>;
 
 impl<T> Tree<T> {
     pub fn start(&mut self)

@@ -1,0 +1,9 @@
+[package]
+name = "arena"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false

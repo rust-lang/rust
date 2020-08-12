@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 doctest = false
 
 [dependencies]
-ra_arena = { path = "../ra_arena" }
+arena = { path = "../arena" }
 once_cell = "1.3.1"
 backtrace = { version = "0.3.44", optional = true }
 cfg-if = "0.1.10"

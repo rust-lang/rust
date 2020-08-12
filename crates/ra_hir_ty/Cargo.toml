@@ -20,7 +20,7 @@ stdx = { path = "../stdx" }
 
 hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
 hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
-ra_arena = { path = "../ra_arena" }
+arena = { path = "../arena" }
 ra_db = { path = "../ra_db" }
 ra_prof = { path = "../ra_prof" }
 ra_syntax = { path = "../ra_syntax" }

@@ -5,10 +5,10 @@ pub mod scope;
 
 use std::{mem, ops::Index, sync::Arc};
 
+use arena::{map::ArenaMap, Arena};
 use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId};
-use ra_arena::{map::ArenaMap, Arena};
 use ra_cfg::CfgOptions;
 use ra_db::CrateId;
 use ra_prof::profile;

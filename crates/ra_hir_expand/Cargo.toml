@@ -13,7 +13,7 @@ log = "0.4.8"
 either = "1.5.3"
 rustc-hash = "1.0.0"
 
-ra_arena = { path = "../ra_arena" }
+arena = { path = "../arena" }
 ra_db = { path = "../ra_db" }
 ra_syntax = { path = "../ra_syntax" }
 ra_parser = { path = "../ra_parser" }

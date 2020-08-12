@@ -2,12 +2,12 @@
 
 use std::sync::Arc;
 
+use arena::{map::ArenaMap, Arena};
 use either::Either;
 use hir_expand::{
     name::{AsName, Name},
     InFile,
 };
-use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::ast::{self, NameOwner, VisibilityOwner};
 use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 

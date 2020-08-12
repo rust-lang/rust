@@ -22,7 +22,7 @@ smallvec = "1.4.0"
 
 stdx = { path = "../stdx" }
 
-ra_arena = { path = "../ra_arena" }
+arena = { path = "../arena" }
 ra_db = { path = "../ra_db" }
 ra_syntax = { path = "../ra_syntax" }
 ra_prof = { path = "../ra_prof" }

@@ -3,13 +3,13 @@
 
 use std::{any::type_name, sync::Arc};
 
+use arena::Arena;
 use either::Either;
 use hir_expand::{
     hygiene::Hygiene,
     name::{name, AsName, Name},
     HirFileId, MacroDefId, MacroDefKind,
 };
-use ra_arena::Arena;
 use ra_syntax::{
     ast::{
         self, ArgListOwner, ArrayExprKind, AstChildren, LiteralKind, LoopBodyOwner, NameOwner,

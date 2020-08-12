@@ -46,6 +46,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33954243bd79057c2de7338850b85983a44588021f8a5fee574a8888c6de4344"
 
 [[package]]
+name = "arena"
+version = "0.0.0"
+
+[[package]]
 name = "arrayvec"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -900,10 +904,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_arena"
-version = "0.1.0"
-
-[[package]]
 name = "ra_assists"
 version = "0.1.0"
 dependencies = [
@@ -977,6 +977,7 @@ name = "ra_hir_def"
 version = "0.1.0"
 dependencies = [
  "anymap",
+ "arena",
  "drop_bomb",
  "either",
  "expect",
@@ -985,7 +986,6 @@ dependencies = [
  "itertools",
  "log",
  "once_cell",
- "ra_arena",
  "ra_cfg",
  "ra_db",
  "ra_hir_expand",
@@ -1003,9 +1003,9 @@ dependencies = [
 name = "ra_hir_expand"
 version = "0.1.0"
 dependencies = [
+ "arena",
  "either",
  "log",
- "ra_arena",
  "ra_db",
  "ra_mbe",
  "ra_parser",
@@ -1020,6 +1020,7 @@ dependencies = [
 name = "ra_hir_ty"
 version = "0.1.0"
 dependencies = [
+ "arena",
  "arrayvec",
  "chalk-ir",
  "chalk-recursive",
@@ -1028,7 +1029,6 @@ dependencies = [
  "expect",
  "itertools",
  "log",
- "ra_arena",
  "ra_db",
  "ra_hir_def",
  "ra_hir_expand",
@@ -1141,12 +1141,12 @@ dependencies = [
 name = "ra_prof"
 version = "0.1.0"
 dependencies = [
+ "arena",
  "backtrace",
  "cfg-if",
  "libc",
  "once_cell",
  "perf-event",
- "ra_arena",
 ]
 
 [[package]]
@@ -1154,10 +1154,10 @@ name = "ra_project_model"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arena",
  "cargo_metadata",
  "log",
  "paths",
- "ra_arena",
  "ra_cfg",
  "ra_db",
  "ra_proc_macro",
