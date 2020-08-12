@@ -1162,7 +1162,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             };
             if let Err(ref copy_err) = copy_result {
                 match copy_err.raw_os_error() {
-                    Some(libc::ENOSYS) | Some(libc::EPERM) | Some(libc::EOPNOTSUPP) => {
+                    Some(libc::ENOSYS | libc::EPERM | libc::EOPNOTSUPP) => {
                         HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
                     }
                     _ => {}
@@ -1176,13 +1176,9 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             Ok(ret) => written += ret as u64,
             Err(err) => {
                 match err.raw_os_error() {
-                    Some(os_err)
-                        if os_err == libc::ENOSYS
-                            || os_err == libc::EXDEV
-                            || os_err == libc::EINVAL
-                            || os_err == libc::EPERM
-                            || os_err == libc::EOPNOTSUPP =>
-                    {
+                    Some(
+                        libc::ENOSYS | libc::EXDEV | libc::EINVAL | libc::EPERM | libc::EOPNOTSUPP,
+                    ) => {
                         // Try fallback io::copy if either:
                         // - Kernel version is < 4.5 (ENOSYS)
                         // - Files are mounted on different fs (EXDEV)
