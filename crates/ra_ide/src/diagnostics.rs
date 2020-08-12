@@ -6,22 +6,21 @@
 
 use std::cell::RefCell;
 
-use hir::{
-    diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSinkBuilder},
-    HasSource, HirDisplay, Semantics, VariantDef,
-};
+use hir::{diagnostics::DiagnosticSinkBuilder, Semantics};
 use itertools::Itertools;
 use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
-    algo,
-    ast::{self, edit::IndentLevel, make, AstNode},
+    ast::{self, AstNode},
     SyntaxNode, TextRange, T,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
-use crate::{AnalysisConfig, Diagnostic, FileId, FileSystemEdit, Fix, SourceFileEdit};
+use crate::{AnalysisConfig, Diagnostic, FileId, Fix, SourceFileEdit};
+
+mod diagnostics_with_fix;
+use diagnostics_with_fix::DiagnosticWithFix;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {
@@ -56,77 +55,16 @@ pub(crate) fn diagnostics(
     let res = RefCell::new(res);
     let mut sink_builder = DiagnosticSinkBuilder::new()
         .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
-            let original_file = d.source().file_id.original_file(db);
-            let fix = Fix::new(
-                "Create module",
-                FileSystemEdit::CreateFile { anchor: original_file, dst: d.candidate.clone() }
-                    .into(),
-            );
-            res.borrow_mut().push(Diagnostic {
-                name: Some(d.name().into()),
-                range: sema.diagnostics_range(d).range,
-                message: d.message(),
-                severity: Severity::Error,
-                fix: Some(fix),
-            })
+            res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
         .on::<hir::diagnostics::MissingFields, _>(|d| {
-            // Note that although we could add a diagnostics to
-            // fill the missing tuple field, e.g :
-            // `struct A(usize);`
-            // `let a = A { 0: () }`
-            // but it is uncommon usage and it should not be encouraged.
-            let fix = if d.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
-                None
-            } else {
-                let mut field_list = d.ast(db);
-                for f in d.missed_fields.iter() {
-                    let field = make::record_expr_field(
-                        make::name_ref(&f.to_string()),
-                        Some(make::expr_unit()),
-                    );
-                    field_list = field_list.append_field(&field);
-                }
-
-                let edit = {
-                    let mut builder = TextEditBuilder::default();
-                    algo::diff(&d.ast(db).syntax(), &field_list.syntax())
-                        .into_text_edit(&mut builder);
-                    builder.finish()
-                };
-                Some(Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()))
-            };
-
-            res.borrow_mut().push(Diagnostic {
-                name: Some(d.name().into()),
-                range: sema.diagnostics_range(d).range,
-                message: d.message(),
-                severity: Severity::Error,
-                fix,
-            })
+            res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
         .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
-            let node = d.ast(db);
-            let replacement = format!("Ok({})", node.syntax());
-            let edit = TextEdit::replace(node.syntax().text_range(), replacement);
-            let source_change = SourceFileEdit { file_id, edit }.into();
-            let fix = Fix::new("Wrap with ok", source_change);
-            res.borrow_mut().push(Diagnostic {
-                name: Some(d.name().into()),
-                range: sema.diagnostics_range(d).range,
-                message: d.message(),
-                severity: Severity::Error,
-                fix: Some(fix),
-            })
+            res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
         .on::<hir::diagnostics::NoSuchField, _>(|d| {
-            res.borrow_mut().push(Diagnostic {
-                name: Some(d.name().into()),
-                range: sema.diagnostics_range(d).range,
-                message: d.message(),
-                severity: Severity::Error,
-                fix: missing_struct_field_fix(&sema, file_id, d),
-            })
+            res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !diag.is_experimental() || enable_experimental);
@@ -144,7 +82,7 @@ pub(crate) fn diagnostics(
             res.borrow_mut().push(Diagnostic {
                 name: Some(d.name().into()),
                 message: d.message(),
-                range: sema.diagnostics_range(d).range,
+                range: sema.diagnostics_display_range(d).range,
                 severity: Severity::Error,
                 fix: None,
             })
@@ -157,77 +95,13 @@ pub(crate) fn diagnostics(
     res.into_inner()
 }
 
-fn missing_struct_field_fix(
-    sema: &Semantics<RootDatabase>,
-    usage_file_id: FileId,
-    d: &hir::diagnostics::NoSuchField,
-) -> Option<Fix> {
-    let record_expr = sema.ast(d);
-
-    let record_lit = ast::RecordExpr::cast(record_expr.syntax().parent()?.parent()?)?;
-    let def_id = sema.resolve_variant(record_lit)?;
-    let module;
-    let def_file_id;
-    let record_fields = match VariantDef::from(def_id) {
-        VariantDef::Struct(s) => {
-            module = s.module(sema.db);
-            let source = s.source(sema.db);
-            def_file_id = source.file_id;
-            let fields = source.value.field_list()?;
-            record_field_list(fields)?
-        }
-        VariantDef::Union(u) => {
-            module = u.module(sema.db);
-            let source = u.source(sema.db);
-            def_file_id = source.file_id;
-            source.value.record_field_list()?
-        }
-        VariantDef::EnumVariant(e) => {
-            module = e.module(sema.db);
-            let source = e.source(sema.db);
-            def_file_id = source.file_id;
-            let fields = source.value.field_list()?;
-            record_field_list(fields)?
-        }
-    };
-    let def_file_id = def_file_id.original_file(sema.db);
-
-    let new_field_type = sema.type_of_expr(&record_expr.expr()?)?;
-    if new_field_type.is_unknown() {
-        return None;
-    }
-    let new_field = make::record_field(
-        record_expr.field_name()?,
-        make::ty(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
-    );
-
-    let last_field = record_fields.fields().last()?;
-    let last_field_syntax = last_field.syntax();
-    let indent = IndentLevel::from_node(last_field_syntax);
-
-    let mut new_field = new_field.to_string();
-    if usage_file_id != def_file_id {
-        new_field = format!("pub(crate) {}", new_field);
-    }
-    new_field = format!("\n{}{}", indent, new_field);
-
-    let needs_comma = !last_field_syntax.to_string().ends_with(',');
-    if needs_comma {
-        new_field = format!(",{}", new_field);
-    }
-
-    let source_change = SourceFileEdit {
-        file_id: def_file_id,
-        edit: TextEdit::insert(last_field_syntax.text_range().end(), new_field),
-    };
-    let fix = Fix::new("Create field", source_change.into());
-    return Some(fix);
-
-    fn record_field_list(field_def_list: ast::FieldList) -> Option<ast::RecordFieldList> {
-        match field_def_list {
-            ast::FieldList::RecordFieldList(it) => Some(it),
-            ast::FieldList::TupleFieldList(_) => None,
-        }
+fn diagnostic_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabase>) -> Diagnostic {
+    Diagnostic {
+        name: Some(d.name().into()),
+        range: sema.diagnostics_display_range(d).range,
+        message: d.message(),
+        severity: Severity::Error,
+        fix: d.fix(&sema),
     }
 }
 
@@ -238,25 +112,26 @@ fn check_unnecessary_braces_in_use_statement(
 ) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node.clone())?;
     if let Some((single_use_tree,)) = use_tree_list.use_trees().collect_tuple() {
-        let range = use_tree_list.syntax().text_range();
+        let use_range = use_tree_list.syntax().text_range();
         let edit =
             text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(&single_use_tree)
                 .unwrap_or_else(|| {
                     let to_replace = single_use_tree.syntax().text().to_string();
                     let mut edit_builder = TextEditBuilder::default();
-                    edit_builder.delete(range);
-                    edit_builder.insert(range.start(), to_replace);
+                    edit_builder.delete(use_range);
+                    edit_builder.insert(use_range.start(), to_replace);
                     edit_builder.finish()
                 });
 
         acc.push(Diagnostic {
             name: None,
-            range,
+            range: use_range,
             message: "Unnecessary braces in use statement".to_string(),
             severity: Severity::WeakWarning,
             fix: Some(Fix::new(
                 "Remove unnecessary braces",
                 SourceFileEdit { file_id, edit }.into(),
+                use_range,
             )),
         });
     }
@@ -271,8 +146,7 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
     if single_use_tree.path()?.segment()?.syntax().first_child_or_token()?.kind() == T![self] {
         let start = use_tree_list_node.prev_sibling_or_token()?.text_range().start();
         let end = use_tree_list_node.text_range().end();
-        let range = TextRange::new(start, end);
-        return Some(TextEdit::delete(range));
+        return Some(TextEdit::delete(TextRange::new(start, end)));
     }
     None
 }
@@ -295,14 +169,16 @@ fn check_struct_shorthand_initialization(
                 edit_builder.insert(record_field.syntax().text_range().start(), field_name);
                 let edit = edit_builder.finish();
 
+                let field_range = record_field.syntax().text_range();
                 acc.push(Diagnostic {
                     name: None,
-                    range: record_field.syntax().text_range(),
+                    range: field_range,
                     message: "Shorthand struct initialization".to_string(),
                     severity: Severity::WeakWarning,
                     fix: Some(Fix::new(
                         "Use struct shorthand initialization",
                         SourceFileEdit { file_id, edit }.into(),
+                        field_range,
                     )),
                 });
             }
@@ -326,7 +202,7 @@ mod tests {
     /// Takes a multi-file input fixture with annotated cursor positions,
     /// and checks that:
     ///  * a diagnostic is produced
-    ///  * this diagnostic touches the input cursor position
+    ///  * this diagnostic fix trigger range touches the input cursor position
     ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
     fn check_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
         let after = trim_indent(ra_fixture_after);
@@ -344,10 +220,10 @@ mod tests {
 
         assert_eq_text!(&after, &actual);
         assert!(
-            diagnostic.range.start() <= file_position.offset
-                && diagnostic.range.end() >= file_position.offset,
-            "diagnostic range {:?} does not touch cursor position {:?}",
-            diagnostic.range,
+            fix.fix_trigger_range.start() <= file_position.offset
+                && fix.fix_trigger_range.end() >= file_position.offset,
+            "diagnostic fix range {:?} does not touch cursor position {:?}",
+            fix.fix_trigger_range,
             file_position.offset
         );
     }
@@ -712,6 +588,7 @@ fn test_fn() {
                                     ],
                                     is_snippet: false,
                                 },
+                                fix_trigger_range: 0..8,
                             },
                         ),
                     },

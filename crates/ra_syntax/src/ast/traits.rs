@@ -1,7 +1,7 @@
 //! Various traits that are implemented by ast nodes.
 //!
 //! The implementations are usually trivial, and live in generated.rs
-use stdx::SepBy;
+use itertools::Itertools;
 
 use crate::{
     ast::{self, support, AstChildren, AstNode, AstToken},
@@ -119,8 +119,7 @@ impl CommentIter {
                 // of a line in markdown.
                 line[pos..end].to_owned()
             })
-            .sep_by("\n")
-            .to_string();
+            .join("\n");
 
         if has_comments {
             Some(docs)

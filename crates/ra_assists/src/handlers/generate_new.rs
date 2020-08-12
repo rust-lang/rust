@@ -1,9 +1,10 @@
 use hir::Adt;
+use itertools::Itertools;
 use ra_syntax::{
     ast::{self, AstNode, GenericParamsOwner, NameOwner, StructKind, VisibilityOwner},
     T,
 };
-use stdx::{format_to, SepBy};
+use stdx::format_to;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -52,8 +53,8 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         let params = field_list
             .fields()
             .filter_map(|f| Some(format!("{}: {}", f.name()?.syntax(), f.ty()?.syntax())))
-            .sep_by(", ");
-        let fields = field_list.fields().filter_map(|f| f.name()).sep_by(", ");
+            .format(", ");
+        let fields = field_list.fields().filter_map(|f| f.name()).format(", ");
 
         format_to!(buf, "    {}fn new({}) -> Self {{ Self {{ {} }} }}", vis, params, fields);
 
@@ -102,7 +103,7 @@ fn generate_impl_text(strukt: &ast::Struct, code: &str) -> String {
             .map(|it| it.text().clone());
         let type_params =
             type_params.type_params().filter_map(|it| it.name()).map(|it| it.text().clone());
-        format_to!(buf, "<{}>", lifetime_params.chain(type_params).sep_by(", "))
+        format_to!(buf, "<{}>", lifetime_params.chain(type_params).format(", "))
     }
 
     format_to!(buf, " {{\n{}\n}}\n", code);

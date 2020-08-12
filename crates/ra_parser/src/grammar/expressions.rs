@@ -73,7 +73,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
 
     // test block_items
     // fn a() { fn b() {} }
-    let m = match items::maybe_item(p, m, items::ItemFlavor::Mod) {
+    let m = match items::maybe_item(p, m) {
         Ok(()) => return,
         Err(m) => m,
     };
@@ -509,7 +509,6 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 //     x.1i32;
 //     x.0x01;
 // }
-#[allow(clippy::if_same_then_else)]
 fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]));
     let m = lhs.precede(p);

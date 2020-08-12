@@ -16,33 +16,18 @@
 
 use std::{any::Any, fmt};
 
-use ra_syntax::{SyntaxNode, SyntaxNodePtr};
+use ra_syntax::SyntaxNodePtr;
 
-use crate::{db::AstDatabase, InFile};
+use crate::InFile;
 
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn name(&self) -> &'static str;
     fn message(&self) -> String;
-    fn source(&self) -> InFile<SyntaxNodePtr>;
+    /// Used in highlighting and related purposes
+    fn display_source(&self) -> InFile<SyntaxNodePtr>;
     fn as_any(&self) -> &(dyn Any + Send + 'static);
     fn is_experimental(&self) -> bool {
         false
-    }
-}
-
-pub trait AstDiagnostic {
-    type AST;
-    fn ast(&self, db: &dyn AstDatabase) -> Self::AST;
-}
-
-impl dyn Diagnostic {
-    pub fn syntax_node(&self, db: &impl AstDatabase) -> SyntaxNode {
-        let node = db.parse_or_expand(self.source().file_id).unwrap();
-        self.source().value.to_node(&node)
-    }
-
-    pub fn downcast_ref<D: Diagnostic>(&self) -> Option<&D> {
-        self.as_any().downcast_ref()
     }
 }
 
@@ -90,7 +75,7 @@ impl<'a> DiagnosticSinkBuilder<'a> {
     }
 
     pub fn on<D: Diagnostic, F: FnMut(&D) + 'a>(mut self, mut cb: F) -> Self {
-        let cb = move |diag: &dyn Diagnostic| match diag.downcast_ref::<D>() {
+        let cb = move |diag: &dyn Diagnostic| match diag.as_any().downcast_ref::<D>() {
             Some(d) => {
                 cb(d);
                 Ok(())

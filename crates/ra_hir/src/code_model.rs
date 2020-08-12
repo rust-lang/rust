@@ -4,6 +4,7 @@ use std::{iter, sync::Arc};
 use arrayvec::ArrayVec;
 use either::Either;
 use hir_def::{
+    adt::ReprKind,
     adt::StructKind,
     adt::VariantData,
     builtin_type::BuiltinType,
@@ -83,9 +84,9 @@ impl Crate {
             .collect()
     }
 
-    pub fn root_module(self, db: &dyn HirDatabase) -> Option<Module> {
+    pub fn root_module(self, db: &dyn HirDatabase) -> Module {
         let module_id = db.crate_def_map(self.id).root;
-        Some(Module::new(self, module_id))
+        Module::new(self, module_id)
     }
 
     pub fn root_file(self, db: &dyn HirDatabase) -> FileId {
@@ -429,6 +430,10 @@ impl Struct {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id.lookup(db.upcast()).container.module(db.upcast()).krate, self.id)
+    }
+
+    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprKind> {
+        db.struct_data(self.id).repr.clone()
     }
 
     fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
@@ -1251,6 +1256,19 @@ impl Type {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(..), .. }) |
             Ty::Apply(ApplicationTy { ctor: TypeCtor::FnPtr { .. }, .. })
         )
+    }
+
+    pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {
+        let adt_id = match self.ty.value {
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Adt(adt_id), .. }) => adt_id,
+            _ => return false,
+        };
+
+        let adt = adt_id.into();
+        match adt {
+            Adt::Struct(s) => matches!(s.repr(db), Some(ReprKind::Packed)),
+            _ => false,
+        }
     }
 
     pub fn is_raw_ptr(&self) -> bool {

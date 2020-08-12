@@ -265,8 +265,7 @@ impl SourceAnalyzer {
         }
 
         // This must be a normal source file rather than macro file.
-        let hir_path =
-            crate::Path::from_src(path.clone(), &Hygiene::new(db.upcast(), self.file_id))?;
+        let hir_path = Path::from_src(path.clone(), &Hygiene::new(db.upcast(), self.file_id))?;
 
         // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we
         // trying to resolve foo::bar.
@@ -451,7 +450,7 @@ fn adjust(
 pub(crate) fn resolve_hir_path(
     db: &dyn HirDatabase,
     resolver: &Resolver,
-    path: &crate::Path,
+    path: &Path,
 ) -> Option<PathResolution> {
     let types =
         resolver.resolve_path_in_type_ns_fully(db.upcast(), path.mod_path()).map(|ty| match ty {
@@ -512,7 +511,7 @@ pub(crate) fn resolve_hir_path(
 pub(crate) fn resolve_hir_path_qualifier(
     db: &dyn HirDatabase,
     resolver: &Resolver,
-    path: &crate::Path,
+    path: &Path,
 ) -> Option<PathResolution> {
     let items = resolver
         .resolve_module_path_in_items(db.upcast(), path.mod_path())

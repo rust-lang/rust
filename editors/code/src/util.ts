@@ -64,7 +64,8 @@ export async function sendRequestWithRetry<TParam, TRet>(
     param: TParam,
     token?: vscode.CancellationToken,
 ): Promise<TRet> {
-    for (const delay of [2, 4, 6, 8, 10, null]) {
+    // The sequence is `10 * (2 ** (2 * n))` where n is 1, 2, 3...
+    for (const delay of [40, 160, 640, 2560, 10240, null]) {
         try {
             return await (token
                 ? client.sendRequest(reqType, param, token)
@@ -84,8 +85,7 @@ export async function sendRequestWithRetry<TParam, TRet>(
                 log.warn("LSP request failed", { method: reqType.method, param, error });
                 throw error;
             }
-
-            await sleep(10 * (1 << delay));
+            await sleep(delay);
         }
     }
     throw 'unreachable';

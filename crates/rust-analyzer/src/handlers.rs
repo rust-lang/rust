@@ -773,12 +773,11 @@ fn handle_fixes(
 
     let diagnostics = snap.analysis.diagnostics(file_id, snap.config.experimental_diagnostics)?;
 
-    let fixes_from_diagnostics = diagnostics
+    for fix in diagnostics
         .into_iter()
-        .filter_map(|d| Some((d.range, d.fix?)))
-        .filter(|(diag_range, _fix)| diag_range.intersect(range).is_some())
-        .map(|(_range, fix)| fix);
-    for fix in fixes_from_diagnostics {
+        .filter_map(|d| d.fix)
+        .filter(|fix| fix.fix_trigger_range.intersect(range).is_some())
+    {
         let title = fix.label;
         let edit = to_proto::snippet_workspace_edit(&snap, fix.source_change)?;
         let action = lsp_ext::CodeAction {
@@ -864,7 +863,7 @@ pub(crate) fn handle_resolve_code_action(
     let (id_string, index) = split_once(&params.id, ':').unwrap();
     let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];
-    assert!(assist.assist.id.0 == id_string);
+    assert!(assist.assist.id().0 == id_string);
     Ok(to_proto::resolved_code_action(&snap, assist.clone())?.edit)
 }
 
@@ -892,7 +891,7 @@ pub(crate) fn handle_code_lens(
             }
 
             let action = runnable.action();
-            let range = to_proto::range(&line_index, runnable.nav.focus_or_full_range());
+            let range = to_proto::range(&line_index, runnable.nav.full_range);
             let r = to_proto::runnable(&snap, file_id, runnable)?;
             if snap.config.lens.run {
                 let lens = CodeLens {

@@ -85,8 +85,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     let node = token.parent();
     let definition = match_ast! {
         match node {
-            ast::NameRef(name_ref) => classify_name_ref(&sema, &name_ref).map(|d| d.definition()),
-            ast::Name(name) => classify_name(&sema, &name).map(|d| d.definition()),
+            ast::NameRef(name_ref) => classify_name_ref(&sema, &name_ref).map(|d| d.definition(sema.db)),
+            ast::Name(name) => classify_name(&sema, &name).map(|d| d.definition(sema.db)),
             _ => None,
         }
     };
@@ -304,7 +304,10 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
                     let docs = Documentation::from_ast(&it).map(Into::into);
                     hover_markup(docs, it.short_label(), mod_path)
                 }
-                _ => None,
+                ModuleSource::SourceFile(it) => {
+                    let docs = Documentation::from_ast(&it).map(Into::into);
+                    hover_markup(docs, it.short_label(), mod_path)
+                }
             },
             ModuleDef::Function(it) => from_def_source(db, it, mod_path),
             ModuleDef::Adt(Adt::Struct(it)) => from_def_source(db, it, mod_path),
@@ -509,6 +512,37 @@ fn main() { }
     }
 
     #[test]
+    fn hover_shows_fn_doc() {
+        check(
+            r#"
+/// # Example
+/// ```
+/// # use std::path::Path;
+/// #
+/// foo(Path::new("hello, world!"))
+/// ```
+pub fn foo<|>(_: &Path) {}
+
+fn main() { }
+"#,
+            expect![[r#"
+                *foo*
+                ```rust
+                pub fn foo(_: &Path)
+                ```
+                ___
+
+                # Example
+                ```
+                # use std::path::Path;
+                #
+                foo(Path::new("hello, world!"))
+                ```
+            "#]],
+        );
+    }
+
+    #[test]
     fn hover_shows_struct_field_info() {
         // Hovering over the field when instantiating
         check(
@@ -556,16 +590,16 @@ fn main() {
     #[test]
     fn hover_const_static() {
         check(
-            r#"const foo<|>: u32 = 0;"#,
+            r#"const foo<|>: u32 = 123;"#,
             expect![[r#"
                 *foo*
                 ```rust
-                const foo: u32
+                const foo: u32 = 123
                 ```
             "#]],
         );
         check(
-            r#"static foo<|>: u32 = 0;"#,
+            r#"static foo<|>: u32 = 456;"#,
             expect![[r#"
                 *foo*
                 ```rust
@@ -800,7 +834,7 @@ fn main() {
             expect![[r#"
                 *C*
                 ```rust
-                const C: u32
+                const C: u32 = 1
                 ```
             "#]],
         )
@@ -1102,6 +1136,46 @@ fn bar() { fo<|>o(); }
                         },
                     ),
                 ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_extern_crate() {
+        check(
+            r#"
+//- /main.rs
+extern crate st<|>d;
+//- /std/lib.rs
+//! Standard library for this test
+//!
+//! Printed?
+//! abc123
+            "#,
+            expect![[r#"
+            *std*
+            Standard library for this test
+
+            Printed?
+            abc123
+            "#]],
+        );
+        check(
+            r#"
+//- /main.rs
+extern crate std as ab<|>c;
+//- /std/lib.rs
+//! Standard library for this test
+//!
+//! Printed?
+//! abc123
+            "#,
+            expect![[r#"
+            *abc*
+            Standard library for this test
+
+            Printed?
+            abc123
             "#]],
         );
     }

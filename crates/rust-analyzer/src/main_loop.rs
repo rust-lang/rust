@@ -47,7 +47,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
-    GlobalState::new(connection.sender.clone(), config).run(connection.receiver)
+    GlobalState::new(connection.sender, config).run(connection.receiver)
 }
 
 enum Event {
@@ -337,11 +337,34 @@ impl GlobalState {
     fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
         self.register_request(&req, request_received);
 
+        if self.shutdown_requested {
+            self.respond(Response::new_err(
+                req.id,
+                lsp_server::ErrorCode::InvalidRequest as i32,
+                "Shutdown already requested.".to_owned(),
+            ));
+
+            return Ok(());
+        }
+
+        if self.status == Status::Loading && req.method != "shutdown" {
+            self.respond(lsp_server::Response::new_err(
+                req.id,
+                // FIXME: i32 should impl From<ErrorCode> (from() guarantees lossless conversion)
+                lsp_server::ErrorCode::ContentModified as i32,
+                "Rust Analyzer is still loading...".to_owned(),
+            ));
+            return Ok(());
+        }
+
         RequestDispatcher { req: Some(req), global_state: self }
             .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| Ok(s.fetch_workspaces()))?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
-            .on_sync::<lsp_types::request::Shutdown>(|_, ()| Ok(()))?
+            .on_sync::<lsp_types::request::Shutdown>(|s, ()| {
+                s.shutdown_requested = true;
+                Ok(())
+            })?
             .on_sync::<lsp_types::request::SelectionRangeRequest>(|s, p| {
                 handlers::handle_selection_range(s.snapshot(), p)
             })?

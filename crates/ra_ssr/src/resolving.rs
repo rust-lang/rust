@@ -5,7 +5,7 @@ use crate::{parsing, SsrError};
 use parsing::Placeholder;
 use ra_db::FilePosition;
 use ra_syntax::{ast, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken};
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use test_utils::mark;
 
 pub(crate) struct ResolutionScope<'db> {
@@ -124,8 +124,10 @@ impl Resolver<'_, '_> {
                     .resolution_scope
                     .resolve_path(&path)
                     .ok_or_else(|| error!("Failed to resolve path `{}`", node.text()))?;
-                resolved_paths.insert(node, ResolvedPath { resolution, depth });
-                return Ok(());
+                if self.ok_to_use_path_resolution(&resolution) {
+                    resolved_paths.insert(node, ResolvedPath { resolution, depth });
+                    return Ok(());
+                }
             }
         }
         for node in node.children() {
@@ -148,6 +150,27 @@ impl Resolver<'_, '_> {
             return self.path_contains_placeholder(&qualifier);
         }
         false
+    }
+
+    fn ok_to_use_path_resolution(&self, resolution: &hir::PathResolution) -> bool {
+        match resolution {
+            hir::PathResolution::AssocItem(hir::AssocItem::Function(function)) => {
+                if function.has_self_param(self.resolution_scope.scope.db) {
+                    // If we don't use this path resolution, then we won't be able to match method
+                    // calls. e.g. `Foo::bar($s)` should match `x.bar()`.
+                    true
+                } else {
+                    mark::hit!(replace_associated_trait_default_function_call);
+                    false
+                }
+            }
+            hir::PathResolution::AssocItem(_) => {
+                // Not a function. Could be a constant or an associated type.
+                mark::hit!(replace_associated_trait_constant);
+                false
+            }
+            _ => true,
+        }
     }
 }
 
@@ -195,7 +218,7 @@ impl<'db> ResolutionScope<'db> {
             adt.ty(self.scope.db).iterate_path_candidates(
                 self.scope.db,
                 self.scope.module()?.krate(),
-                &FxHashSet::default(),
+                &self.scope.traits_in_scope(),
                 Some(hir_path.segments().last()?.name),
                 |_ty, assoc_item| Some(hir::PathResolution::AssocItem(assoc_item)),
             )

@@ -20,7 +20,7 @@ pub(crate) fn check_assist(assist: Handler, ra_fixture_before: &str, ra_fixture_
 
 // FIXME: instead of having a separate function here, maybe use
 // `extract_ranges` and mark the target as `<target> </target>` in the
-// fixuture?
+// fixture?
 pub(crate) fn check_assist_target(assist: Handler, ra_fixture: &str, target: &str) {
     check(assist, ra_fixture, ExpectedResult::Target(target));
 }

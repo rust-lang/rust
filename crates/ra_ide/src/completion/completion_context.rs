@@ -27,7 +27,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) scope: SemanticsScope<'a>,
     pub(super) db: &'a RootDatabase,
     pub(super) config: &'a CompletionConfig,
-    pub(super) offset: TextSize,
+    pub(super) position: FilePosition,
     /// The token before the cursor, in the original file.
     pub(super) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
@@ -117,7 +117,7 @@ impl<'a> CompletionContext<'a> {
             config,
             original_token,
             token,
-            offset: position.offset,
+            position,
             krate,
             expected_type: None,
             name_ref_syntax: None,
@@ -209,7 +209,7 @@ impl<'a> CompletionContext<'a> {
             mark::hit!(completes_if_prefix_is_keyword);
             self.original_token.text_range()
         } else {
-            TextRange::empty(self.offset)
+            TextRange::empty(self.position.offset)
         }
     }
 
@@ -379,8 +379,8 @@ impl<'a> CompletionContext<'a> {
             self.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
             self.has_type_args = segment.generic_arg_list().is_some();
 
-            #[allow(deprecated)]
-            if let Some(path) = hir::Path::from_ast(path.clone()) {
+            let hygiene = hir::Hygiene::new(self.db, self.position.file_id.into());
+            if let Some(path) = hir::Path::from_src(path.clone(), &hygiene) {
                 if let Some(path_prefix) = path.qualifier() {
                     self.path_prefix = Some(path_prefix);
                     return;

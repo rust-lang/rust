@@ -334,16 +334,44 @@ fn infer_union() {
             bar: f32,
         }
 
+        fn test() {
+            let u = MyUnion { foo: 0 };
+            unsafe { baz(u); }
+            let u = MyUnion { bar: 0.0 };
+            unsafe { baz(u); }
+        }
+
         unsafe fn baz(u: MyUnion) {
             let inner = u.foo;
+            let inner = u.bar;
         }
         "#,
         expect![[r#"
-            61..62 'u': MyUnion
-            73..99 '{     ...foo; }': ()
-            83..88 'inner': u32
-            91..92 'u': MyUnion
-            91..96 'u.foo': u32
+            57..172 '{     ...); } }': ()
+            67..68 'u': MyUnion
+            71..89 'MyUnio...o: 0 }': MyUnion
+            86..87 '0': u32
+            95..113 'unsafe...(u); }': ()
+            102..113 '{ baz(u); }': ()
+            104..107 'baz': fn baz(MyUnion)
+            104..110 'baz(u)': ()
+            108..109 'u': MyUnion
+            122..123 'u': MyUnion
+            126..146 'MyUnio... 0.0 }': MyUnion
+            141..144 '0.0': f32
+            152..170 'unsafe...(u); }': ()
+            159..170 '{ baz(u); }': ()
+            161..164 'baz': fn baz(MyUnion)
+            161..167 'baz(u)': ()
+            165..166 'u': MyUnion
+            188..189 'u': MyUnion
+            200..249 '{     ...bar; }': ()
+            210..215 'inner': u32
+            218..219 'u': MyUnion
+            218..223 'u.foo': u32
+            233..238 'inner': f32
+            241..242 'u': MyUnion
+            241..246 'u.bar': f32
         "#]],
     );
 }

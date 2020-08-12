@@ -22,13 +22,8 @@ use super::*;
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
     while !(stop_on_r_curly && p.at(T!['}']) || p.at(EOF)) {
-        item_or_macro(p, stop_on_r_curly, ItemFlavor::Mod)
+        item_or_macro(p, stop_on_r_curly)
     }
-}
-
-pub(super) enum ItemFlavor {
-    Mod,
-    Trait,
 }
 
 pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
@@ -36,10 +31,10 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
     CRATE_KW, USE_KW, MACRO_KW
 ];
 
-pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemFlavor) {
+pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
     let m = p.start();
     attributes::outer_attributes(p);
-    let m = match maybe_item(p, m, flavor) {
+    let m = match maybe_item(p, m) {
         Ok(()) => {
             if p.at(T![;]) {
                 p.err_and_bump(
@@ -76,7 +71,7 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemF
     }
 }
 
-pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Result<(), Marker> {
+pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     // test_err pub_expr
     // fn foo() { pub 92; }
     let has_visibility = opt_visibility(p);
@@ -114,38 +109,31 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         has_mods = true;
     }
 
-    if p.at(IDENT)
-        && p.at_contextual_kw("default")
-        && (match p.nth(1) {
-            T![impl] => true,
+    // test default_item
+    // default impl T for Foo {}
+    if p.at(IDENT) && p.at_contextual_kw("default") {
+        match p.nth(1) {
+            T![fn] | T![type] | T![const] | T![impl] => {
+                p.bump_remap(T![default]);
+                has_mods = true;
+            }
             T![unsafe] => {
-                // test default_unsafe_impl
-                // default unsafe impl Foo {}
-
-                // test default_unsafe_fn
-                // impl T for Foo {
+                // test default_unsafe_item
+                // default unsafe impl T for Foo {
                 //     default unsafe fn foo() {}
                 // }
-                if p.nth(2) == T![impl] || p.nth(2) == T![fn] {
+                if matches!(p.nth(2), T![impl] | T![fn]) {
                     p.bump_remap(T![default]);
                     p.bump(T![unsafe]);
                     has_mods = true;
                 }
-                false
             }
-            T![fn] | T![type] | T![const] => {
-                if let ItemFlavor::Mod = flavor {
-                    true
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        })
-    {
-        p.bump_remap(T![default]);
-        has_mods = true;
+            _ => (),
+        }
     }
+
+    // test existential_type
+    // existential type Foo: Fn() -> usize;
     if p.at(IDENT) && p.at_contextual_kw("existential") && p.nth(1) == T![type] {
         p.bump_remap(T![existential]);
         has_mods = true;
@@ -153,79 +141,31 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
 
     // items
     match p.current() {
-        // test async_fn
-        // async fn foo() {}
-
-        // test extern_fn
-        // extern fn foo() {}
-
-        // test const_fn
-        // const fn foo() {}
-
-        // test const_unsafe_fn
-        // const unsafe fn foo() {}
-
-        // test unsafe_extern_fn
-        // unsafe extern "C" fn foo() {}
-
-        // test unsafe_fn
-        // unsafe fn foo() {}
-
-        // test combined_fns
-        // async unsafe fn foo() {}
-        // const unsafe fn bar() {}
-
-        // test_err wrong_order_fns
-        // unsafe async fn foo() {}
-        // unsafe const fn bar() {}
+        // test fn
+        // fn foo() {}
         T![fn] => {
             fn_def(p);
             m.complete(p, FN);
         }
 
-        // test unsafe_trait
-        // unsafe trait T {}
-
-        // test auto_trait
-        // auto trait T {}
-
-        // test unsafe_auto_trait
-        // unsafe auto trait T {}
+        // test trait
+        // trait T {}
         T![trait] => {
             traits::trait_def(p);
             m.complete(p, TRAIT);
         }
 
-        // test unsafe_impl
-        // unsafe impl Foo {}
-
-        // test default_impl
-        // default impl Foo {}
-
-        // test_err default_fn_type
-        // trait T {
-        //     default type T = Bar;
-        //     default fn foo() {}
-        // }
-
-        // test default_fn_type
-        // impl T for Foo {
-        //     default type T = Bar;
-        //     default fn foo() {}
-        // }
         T![const] => {
             consts::const_def(p, m);
         }
 
-        // test unsafe_default_impl
-        // unsafe default impl Foo {}
+        // test impl
+        // impl T for S {}
         T![impl] => {
             traits::impl_def(p);
             m.complete(p, IMPL);
         }
 
-        // test existential_type
-        // existential type Foo: Fn() -> usize;
         T![type] => {
             type_def(p, m);
         }

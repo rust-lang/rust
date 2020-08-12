@@ -275,19 +275,64 @@ fn test_unsafe_highlighting() {
         r#"
 unsafe fn unsafe_fn() {}
 
+union Union {
+    a: u32,
+    b: f32,
+}
+
 struct HasUnsafeFn;
 
 impl HasUnsafeFn {
     unsafe fn unsafe_method(&self) {}
 }
 
+struct TypeForStaticMut {
+    a: u8
+}
+
+static mut global_mut: TypeForStaticMut = TypeForStaticMut { a: 0 };
+
+#[repr(packed)]
+struct Packed {
+    a: u16,
+}
+
+trait DoTheAutoref {
+    fn calls_autoref(&self);
+}
+
+impl DoTheAutoref for u16 {
+    fn calls_autoref(&self) {}
+}
+
 fn main() {
-    let x = &5 as *const usize;
+    let x = &5 as *const _ as *const usize;
+    let u = Union { b: 0 };
     unsafe {
+        // unsafe fn and method calls
         unsafe_fn();
+        let b = u.b;
+        match u {
+            Union { b: 0 } => (),
+            Union { a } => (),
+        }
         HasUnsafeFn.unsafe_method();
-        let y = *(x);
-        let z = -x;
+
+        // unsafe deref
+        let y = *x;
+
+        // unsafe access to a static mut
+        let a = global_mut.a;
+
+        // unsafe ref of packed fields
+        let packed = Packed { a: 0 };
+        let a = &packed.a;
+        let ref a = packed.a;
+        let Packed { ref a } = packed;
+        let Packed { a: ref _a } = packed;
+
+        // unsafe auto ref of packed field
+        packed.a.calls_autoref();
     }
 }
 "#
@@ -369,6 +414,23 @@ macro_rules! noop {
 "#
         .trim(),
         expect_file!["crates/ra_ide/test_data/highlight_doctest.html"],
+        false,
+    );
+}
+
+#[test]
+fn test_extern_crate() {
+    check_highlighting(
+        r#"
+        //- /main.rs
+        extern crate std;
+        extern crate alloc as abc;
+        //- /std/lib.rs
+        pub struct S;
+        //- /alloc/lib.rs
+        pub struct A
+        "#,
+        expect_file!["crates/ra_ide/test_data/highlight_extern_crate.html"],
         false,
     );
 }

@@ -1,0 +1,1 @@
+impl T for S {}

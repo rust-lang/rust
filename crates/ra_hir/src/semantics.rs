@@ -8,7 +8,7 @@ use hir_def::{
     resolver::{self, HasResolver, Resolver},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
-use hir_expand::{diagnostics::AstDiagnostic, hygiene::Hygiene, ExpansionInfo};
+use hir_expand::{hygiene::Hygiene, name::AsName, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
@@ -24,8 +24,9 @@ use crate::{
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, resolve_hir_path_qualifier, SourceAnalyzer},
-    AssocItem, Callable, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module,
-    ModuleDef, Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    AssocItem, Callable, Crate, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef,
+    Module, ModuleDef, Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, TypeRef,
+    VariantDef,
 };
 use resolver::TypeNs;
 
@@ -109,13 +110,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.parse(file_id)
     }
 
-    pub fn ast<T: AstDiagnostic + Diagnostic>(&self, d: &T) -> <T as AstDiagnostic>::AST {
-        let file_id = d.source().file_id;
-        let root = self.db.parse_or_expand(file_id).unwrap();
-        self.imp.cache(root, file_id);
-        d.ast(self.db.upcast())
-    }
-
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         self.imp.expand(macro_call)
     }
@@ -145,8 +139,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.original_range(node)
     }
 
-    pub fn diagnostics_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
-        self.imp.diagnostics_range(diagnostics)
+    pub fn diagnostics_display_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
+        self.imp.diagnostics_display_range(diagnostics)
     }
 
     pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
@@ -228,6 +222,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_path(path)
     }
 
+    pub fn resolve_extern_crate(&self, extern_crate: &ast::ExternCrate) -> Option<Crate> {
+        self.imp.resolve_extern_crate(extern_crate)
+    }
+
     pub fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantDef> {
         self.imp.resolve_variant(record_lit).map(VariantDef::from)
     }
@@ -274,6 +272,18 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn assert_contains_node(&self, node: &SyntaxNode) {
         self.imp.assert_contains_node(node)
+    }
+
+    pub fn is_unsafe_method_call(&self, method_call_expr: ast::MethodCallExpr) -> bool {
+        self.imp.is_unsafe_method_call(method_call_expr)
+    }
+
+    pub fn is_unsafe_ref_expr(&self, ref_expr: &ast::RefExpr) -> bool {
+        self.imp.is_unsafe_ref_expr(ref_expr)
+    }
+
+    pub fn is_unsafe_ident_pat(&self, ident_pat: &ast::IdentPat) -> bool {
+        self.imp.is_unsafe_ident_pat(ident_pat)
     }
 }
 
@@ -372,10 +382,11 @@ impl<'db> SemanticsImpl<'db> {
         original_range(self.db, node.as_ref())
     }
 
-    fn diagnostics_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
-        let src = diagnostics.source();
+    fn diagnostics_display_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
+        let src = diagnostics.display_source();
         let root = self.db.parse_or_expand(src.file_id).unwrap();
         let node = src.value.to_node(&root);
+        self.cache(root, src.file_id);
         original_range(self.db, src.with_value(&node))
     }
 
@@ -441,6 +452,17 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.analyze(path.syntax()).resolve_path(self.db, path)
+    }
+
+    fn resolve_extern_crate(&self, extern_crate: &ast::ExternCrate) -> Option<Crate> {
+        let krate = self.scope(extern_crate.syntax()).krate()?;
+        krate.dependencies(self.db).into_iter().find_map(|dep| {
+            if dep.name == extern_crate.name_ref()?.as_name() {
+                Some(dep.krate)
+            } else {
+                None
+            }
+        })
     }
 
     fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {
@@ -559,6 +581,90 @@ impl<'db> SemanticsImpl<'db> {
         });
         InFile::new(file_id, node)
     }
+
+    pub fn is_unsafe_method_call(&self, method_call_expr: ast::MethodCallExpr) -> bool {
+        method_call_expr
+            .expr()
+            .and_then(|expr| {
+                let field_expr = if let ast::Expr::FieldExpr(field_expr) = expr {
+                    field_expr
+                } else {
+                    return None;
+                };
+                let ty = self.type_of_expr(&field_expr.expr()?)?;
+                if !ty.is_packed(self.db) {
+                    return None;
+                }
+
+                let func = self.resolve_method_call(&method_call_expr).map(Function::from)?;
+                let is_unsafe = func.has_self_param(self.db)
+                    && matches!(func.params(self.db).first(), Some(TypeRef::Reference(..)));
+                Some(is_unsafe)
+            })
+            .unwrap_or(false)
+    }
+
+    pub fn is_unsafe_ref_expr(&self, ref_expr: &ast::RefExpr) -> bool {
+        ref_expr
+            .expr()
+            .and_then(|expr| {
+                let field_expr = match expr {
+                    ast::Expr::FieldExpr(field_expr) => field_expr,
+                    _ => return None,
+                };
+                let expr = field_expr.expr()?;
+                self.type_of_expr(&expr)
+            })
+            // Binding a reference to a packed type is possibly unsafe.
+            .map(|ty| ty.is_packed(self.db))
+            .unwrap_or(false)
+
+        // FIXME This needs layout computation to be correct. It will highlight
+        // more than it should with the current implementation.
+    }
+
+    pub fn is_unsafe_ident_pat(&self, ident_pat: &ast::IdentPat) -> bool {
+        if !ident_pat.ref_token().is_some() {
+            return false;
+        }
+
+        ident_pat
+            .syntax()
+            .parent()
+            .and_then(|parent| {
+                // `IdentPat` can live under `RecordPat` directly under `RecordPatField` or
+                // `RecordPatFieldList`. `RecordPatField` also lives under `RecordPatFieldList`,
+                // so this tries to lookup the `IdentPat` anywhere along that structure to the
+                // `RecordPat` so we can get the containing type.
+                let record_pat = ast::RecordPatField::cast(parent.clone())
+                    .and_then(|record_pat| record_pat.syntax().parent())
+                    .or_else(|| Some(parent.clone()))
+                    .and_then(|parent| {
+                        ast::RecordPatFieldList::cast(parent)?
+                            .syntax()
+                            .parent()
+                            .and_then(ast::RecordPat::cast)
+                    });
+
+                // If this doesn't match a `RecordPat`, fallback to a `LetStmt` to see if
+                // this is initialized from a `FieldExpr`.
+                if let Some(record_pat) = record_pat {
+                    self.type_of_pat(&ast::Pat::RecordPat(record_pat))
+                } else if let Some(let_stmt) = ast::LetStmt::cast(parent) {
+                    let field_expr = match let_stmt.initializer()? {
+                        ast::Expr::FieldExpr(field_expr) => field_expr,
+                        _ => return None,
+                    };
+
+                    self.type_of_expr(&field_expr.expr()?)
+                } else {
+                    None
+                }
+            })
+            // Binding a reference to a packed type is possibly unsafe.
+            .map(|ty| ty.is_packed(self.db))
+            .unwrap_or(false)
+    }
 }
 
 pub trait ToDef: AstNode + Clone {
@@ -610,6 +716,10 @@ pub struct SemanticsScope<'a> {
 impl<'a> SemanticsScope<'a> {
     pub fn module(&self) -> Option<Module> {
         Some(Module { id: self.resolver.module()? })
+    }
+
+    pub fn krate(&self) -> Option<Crate> {
+        Some(Crate { id: self.resolver.krate()? })
     }
 
     /// Note: `FxHashSet<TraitId>` should be treated as an opaque type, passed into `Type

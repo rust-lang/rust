@@ -518,6 +518,7 @@ impl Ty {
         let (segment, generic_def) = match resolved {
             ValueTyDefId::FunctionId(it) => (last, Some(it.into())),
             ValueTyDefId::StructId(it) => (last, Some(it.into())),
+            ValueTyDefId::UnionId(it) => (last, Some(it.into())),
             ValueTyDefId::ConstId(it) => (last, Some(it.into())),
             ValueTyDefId::StaticId(_) => (last, None),
             ValueTyDefId::EnumVariantId(var) => {
@@ -1148,11 +1149,12 @@ impl_from!(BuiltinType, AdtId(StructId, EnumId, UnionId), TypeAliasId for TyDefI
 pub enum ValueTyDefId {
     FunctionId(FunctionId),
     StructId(StructId),
+    UnionId(UnionId),
     EnumVariantId(EnumVariantId),
     ConstId(ConstId),
     StaticId(StaticId),
 }
-impl_from!(FunctionId, StructId, EnumVariantId, ConstId, StaticId for ValueTyDefId);
+impl_from!(FunctionId, StructId, UnionId, EnumVariantId, ConstId, StaticId for ValueTyDefId);
 
 /// Build the declared type of an item. This depends on the namespace; e.g. for
 /// `struct Foo(usize)`, we have two types: The type of the struct itself, and
@@ -1179,6 +1181,7 @@ pub(crate) fn value_ty_query(db: &dyn HirDatabase, def: ValueTyDefId) -> Binders
     match def {
         ValueTyDefId::FunctionId(it) => type_for_fn(db, it),
         ValueTyDefId::StructId(it) => type_for_struct_constructor(db, it),
+        ValueTyDefId::UnionId(it) => type_for_adt(db, it.into()),
         ValueTyDefId::EnumVariantId(it) => type_for_enum_variant_constructor(db, it),
         ValueTyDefId::ConstId(it) => type_for_const(db, it),
         ValueTyDefId::StaticId(it) => type_for_static(db, it),

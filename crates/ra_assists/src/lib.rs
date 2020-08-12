@@ -66,13 +66,13 @@ pub struct GroupLabel(pub String);
 
 #[derive(Debug, Clone)]
 pub struct Assist {
-    pub id: AssistId,
+    id: AssistId,
     /// Short description of the assist, as shown in the UI.
-    pub label: String,
-    pub group: Option<GroupLabel>,
+    label: String,
+    group: Option<GroupLabel>,
     /// Target ranges are used to sort assists: the smaller the target range,
     /// the more specific assist is, and so it should be sorted first.
-    pub target: TextRange,
+    target: TextRange,
 }
 
 #[derive(Debug, Clone)]
@@ -120,9 +120,24 @@ impl Assist {
         group: Option<GroupLabel>,
         target: TextRange,
     ) -> Assist {
-        // FIXME: make fields private, so that this invariant can't be broken
         assert!(label.starts_with(|c: char| c.is_uppercase()));
         Assist { id, label, group, target }
+    }
+
+    pub fn id(&self) -> AssistId {
+        self.id
+    }
+
+    pub fn label(&self) -> String {
+        self.label.clone()
+    }
+
+    pub fn group(&self) -> Option<GroupLabel> {
+        self.group.clone()
+    }
+
+    pub fn target(&self) -> TextRange {
+        self.target
     }
 }
 

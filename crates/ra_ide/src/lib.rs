@@ -119,13 +119,19 @@ pub struct Diagnostic {
 pub struct Fix {
     pub label: String,
     pub source_change: SourceChange,
+    /// Allows to trigger the fix only when the caret is in the range given
+    pub fix_trigger_range: TextRange,
 }
 
 impl Fix {
-    pub fn new(label: impl Into<String>, source_change: SourceChange) -> Self {
+    pub fn new(
+        label: impl Into<String>,
+        source_change: SourceChange,
+        fix_trigger_range: TextRange,
+    ) -> Self {
         let label = label.into();
         assert!(label.starts_with(char::is_uppercase) && !label.ends_with('.'));
-        Self { label, source_change }
+        Self { label, source_change, fix_trigger_range }
     }
 }
 

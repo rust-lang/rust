@@ -1,1 +1,0 @@
-async fn foo() {}

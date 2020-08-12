@@ -4,7 +4,7 @@ use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKin
 
 // Assist: apply_demorgan
 //
-// Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws).
+// Apply https://en.wikipedia.org/wiki/De_Morgan%27s_laws[De Morgan's law].
 // This transforms expressions of the form `!l || !r` into `!(l && r)`.
 // This also works with `&&`. This assist can only be applied with the cursor
 // on either `||` or `&&`, with both operands being a negation of some kind.
