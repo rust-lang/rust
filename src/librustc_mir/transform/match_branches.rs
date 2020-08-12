@@ -52,8 +52,11 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                         if let Some(f_c) = f_c.literal.try_eval_bool(tcx, param_env) {
                             // This should also be a bool because it's writing to the same place
                             let s_c = s_c.literal.try_eval_bool(tcx, param_env).unwrap();
-                            assert_ne!(f_c, s_c, "Unexpected match would've compared eq earlier");
-                            continue;
+                            if f_c != s_c {
+                                // have to check this here because f_c & s_c might have
+                                // different spans.
+                                continue;
+                            }
                         }
                         continue 'outer;
                     }
@@ -63,9 +66,9 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             }
             // Take owenership of items now that we know we can optimize.
             let discr = discr.clone();
+            let (from, first) = bbs.pick2_mut(bb_idx, first);
 
-            bbs[bb_idx].terminator_mut().kind = TerminatorKind::Goto { target: first };
-            for s in bbs[first].statements.iter_mut() {
+            let new_stmts = first.statements.iter().cloned().map(|mut s| {
                 if let StatementKind::Assign(box (_, ref mut rhs)) = s.kind {
                     if let Rvalue::Use(Operand::Constant(c)) = rhs {
                         let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
@@ -81,7 +84,10 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                         }
                     }
                 }
-            }
+                s
+            });
+            from.statements.extend(new_stmts);
+            from.terminator_mut().kind = first.terminator().kind.clone();
         }
     }
 }
