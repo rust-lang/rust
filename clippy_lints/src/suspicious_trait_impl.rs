@@ -86,12 +86,20 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
                 cx,
                 expr,
                 binop.node,
-                &["Add", "Sub", "Mul", "Div"],
+                &[
+                    "Add", "Sub", "Mul", "Div", "Rem", "BitAnd", "BitOr", "BitXor", "Shl", "Shr",
+                ],
                 &[
                     hir::BinOpKind::Add,
                     hir::BinOpKind::Sub,
                     hir::BinOpKind::Mul,
                     hir::BinOpKind::Div,
+                    hir::BinOpKind::Rem,
+                    hir::BinOpKind::BitAnd,
+                    hir::BinOpKind::BitOr,
+                    hir::BinOpKind::BitXor,
+                    hir::BinOpKind::Shl,
+                    hir::BinOpKind::Shr,
                 ],
             ) {
                 span_lint(
