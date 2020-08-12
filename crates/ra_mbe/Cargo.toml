@@ -10,7 +10,7 @@ doctest = false
 
 [dependencies]
 ra_syntax = { path = "../ra_syntax" }
-ra_parser = { path = "../ra_parser" }
+parser = { path = "../parser" }
 tt = { path = "../tt" }
 rustc-hash = "1.1.0"
 smallvec = "1.2.0"

@@ -1,10 +1,10 @@
 //! See `TextTokenSource` docs.
 
-use ra_parser::TokenSource;
+use parser::TokenSource;
 
 use crate::{parsing::lexer::Token, SyntaxKind::EOF, TextRange, TextSize};
 
-/// Implementation of `ra_parser::TokenSource` that takes tokens from source code text.
+/// Implementation of `parser::TokenSource` that takes tokens from source code text.
 pub(crate) struct TextTokenSource<'t> {
     text: &'t str,
     /// token and its start position (non-whitespace/comment tokens)
@@ -20,15 +20,15 @@ pub(crate) struct TextTokenSource<'t> {
     token_offset_pairs: Vec<(Token, TextSize)>,
 
     /// Current token and position
-    curr: (ra_parser::Token, usize),
+    curr: (parser::Token, usize),
 }
 
 impl<'t> TokenSource for TextTokenSource<'t> {
-    fn current(&self) -> ra_parser::Token {
+    fn current(&self) -> parser::Token {
         self.curr.0
     }
 
-    fn lookahead_nth(&self, n: usize) -> ra_parser::Token {
+    fn lookahead_nth(&self, n: usize) -> parser::Token {
         mk_token(self.curr.1 + n, &self.token_offset_pairs)
     }
 
@@ -49,7 +49,7 @@ impl<'t> TokenSource for TextTokenSource<'t> {
     }
 }
 
-fn mk_token(pos: usize, token_offset_pairs: &[(Token, TextSize)]) -> ra_parser::Token {
+fn mk_token(pos: usize, token_offset_pairs: &[(Token, TextSize)]) -> parser::Token {
     let (kind, is_jointed_to_next) = match token_offset_pairs.get(pos) {
         Some((token, offset)) => (
             token.kind,
@@ -60,7 +60,7 @@ fn mk_token(pos: usize, token_offset_pairs: &[(Token, TextSize)]) -> ra_parser::
         ),
         None => (EOF, false),
     };
-    ra_parser::Token { kind, is_jointed_to_next }
+    parser::Token { kind, is_jointed_to_next }
 }
 
 impl<'t> TextTokenSource<'t> {

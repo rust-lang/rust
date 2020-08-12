@@ -1,4 +1,4 @@
-//! Lexing, bridging to ra_parser (which does the actual parsing) and
+//! Lexing, bridging to parser (which does the actual parsing) and
 //! incremental reparsing.
 
 mod lexer;
@@ -13,7 +13,7 @@ use text_tree_sink::TextTreeSink;
 pub use lexer::*;
 
 pub(crate) use self::reparsing::incremental_reparse;
-use ra_parser::SyntaxKind;
+use parser::SyntaxKind;
 
 pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
     let (tokens, lexer_errors) = tokenize(&text);
@@ -21,7 +21,7 @@ pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
     let mut token_source = TextTokenSource::new(text, &tokens);
     let mut tree_sink = TextTreeSink::new(text, &tokens);
 
-    ra_parser::parse(&mut token_source, &mut tree_sink);
+    parser::parse(&mut token_source, &mut tree_sink);
 
     let (tree, mut parser_errors) = tree_sink.finish();
     parser_errors.extend(lexer_errors);
@@ -32,7 +32,7 @@ pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
 /// Returns `text` parsed as a `T` provided there are no parse errors.
 pub(crate) fn parse_text_fragment<T: AstNode>(
     text: &str,
-    fragment_kind: ra_parser::FragmentKind,
+    fragment_kind: parser::FragmentKind,
 ) -> Result<T, ()> {
     let (tokens, lexer_errors) = tokenize(&text);
     if !lexer_errors.is_empty() {
@@ -44,13 +44,13 @@ pub(crate) fn parse_text_fragment<T: AstNode>(
 
     // TextTreeSink assumes that there's at least some root node to which it can attach errors and
     // tokens. We arbitrarily give it a SourceFile.
-    use ra_parser::TreeSink;
+    use parser::TreeSink;
     tree_sink.start_node(SyntaxKind::SOURCE_FILE);
-    ra_parser::parse_fragment(&mut token_source, &mut tree_sink, fragment_kind);
+    parser::parse_fragment(&mut token_source, &mut tree_sink, fragment_kind);
     tree_sink.finish_node();
 
     let (tree, parser_errors) = tree_sink.finish();
-    use ra_parser::TokenSource;
+    use parser::TokenSource;
     if !parser_errors.is_empty() || token_source.current().kind != SyntaxKind::EOF {
         return Err(());
     }

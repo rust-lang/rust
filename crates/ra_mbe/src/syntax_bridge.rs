@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_parser::{FragmentKind, ParseError, TreeSink};
+use parser::{FragmentKind, ParseError, TreeSink};
 use ra_syntax::{
     ast::{self, make::tokens::doc_comment},
     tokenize, AstToken, Parse, SmolStr, SyntaxKind,
@@ -81,7 +81,7 @@ pub fn token_tree_to_syntax_node(
     let buffer = TokenBuffer::new(&tokens);
     let mut token_source = SubtreeTokenSource::new(&buffer);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
-    ra_parser::parse_fragment(&mut token_source, &mut tree_sink, fragment_kind);
+    parser::parse_fragment(&mut token_source, &mut tree_sink, fragment_kind);
     if tree_sink.roots.len() != 1 {
         return Err(ExpandError::ConversionError);
     }
@@ -715,7 +715,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
 mod tests {
     use super::*;
     use crate::tests::parse_macro;
-    use ra_parser::TokenSource;
+    use parser::TokenSource;
     use ra_syntax::{
         algo::{insert_children, InsertPosition},
         ast::AstNode,

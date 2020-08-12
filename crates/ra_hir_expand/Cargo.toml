@@ -16,7 +16,7 @@ rustc-hash = "1.0.0"
 arena = { path = "../arena" }
 ra_db = { path = "../ra_db" }
 ra_syntax = { path = "../ra_syntax" }
-ra_parser = { path = "../ra_parser" }
+parser = { path = "../parser" }
 profile = { path = "../profile" }
 tt = { path = "../tt" }
 mbe = { path = "../ra_mbe", package = "ra_mbe" }

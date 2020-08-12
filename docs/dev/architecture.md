@@ -64,7 +64,7 @@ The source for 1 and 2 is in [`ast_src.rs`](https://github.com/rust-analyzer/rus
 
 ## Code Walk-Through
 
-### `crates/ra_syntax`, `crates/ra_parser`
+### `crates/ra_syntax`, `crates/parser`
 
 Rust syntax tree structure and parser. See
 [RFC](https://github.com/rust-lang/rfcs/pull/2256) and [./syntax.md](./syntax.md) for some design notes.

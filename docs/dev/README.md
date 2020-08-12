@@ -92,11 +92,11 @@ This is primarily useful for performance optimizations, or for bug minimization.
 
 ## Parser Tests
 
-Tests for the parser (`ra_parser`) live in the `ra_syntax` crate (see `test_data` directory).
+Tests for the parser (`parser`) live in the `ra_syntax` crate (see `test_data` directory).
 There are two kinds of tests:
 
 * Manually written test cases in `parser/ok` and `parser/err`
-* "Inline" tests in `parser/inline` (these are generated) from comments in `ra_parser` crate.
+* "Inline" tests in `parser/inline` (these are generated) from comments in `parser` crate.
 
 The purpose of inline tests is not to achieve full coverage by test cases, but to explain to the reader of the code what each particular `if` and `match` is responsible for.
 If you are tempted to add a large inline test, it might be a good idea to leave only the simplest example in place, and move the test to a manual `parser/ok` test.

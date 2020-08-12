@@ -317,7 +317,7 @@ pub struct ExpansionInfo {
 }
 
 pub use mbe::Origin;
-use ra_parser::FragmentKind;
+use parser::FragmentKind;
 
 impl ExpansionInfo {
     pub fn call_node(&self) -> Option<InFile<SyntaxNode>> {

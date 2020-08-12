@@ -21,7 +21,7 @@ once_cell = "1.3.1"
 stdx = { path = "../stdx" }
 
 text_edit = { path = "../text_edit" }
-ra_parser = { path = "../ra_parser" }
+parser = { path = "../parser" }
 
 # This crate transitively depends on `smol_str` via `rowan`.
 # ideally, `serde` should be enabled by `rust-analyzer`, but we enable it here

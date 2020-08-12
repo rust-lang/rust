@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use mbe::{ExpandResult, MacroRules};
+use parser::FragmentKind;
 use ra_db::{salsa, SourceDatabase};
-use ra_parser::FragmentKind;
 use ra_syntax::{algo::diff, AstNode, GreenNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{

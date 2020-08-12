@@ -6,8 +6,8 @@ use crate::{
 
 use either::Either;
 use mbe::parse_to_token_tree;
+use parser::FragmentKind;
 use ra_db::FileId;
-use ra_parser::FragmentKind;
 use ra_syntax::ast::{self, AstToken, HasStringValue};
 
 macro_rules! register_builtin {

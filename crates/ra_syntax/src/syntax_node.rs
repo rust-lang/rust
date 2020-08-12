@@ -71,7 +71,7 @@ impl SyntaxTreeBuilder {
         self.inner.finish_node()
     }
 
-    pub fn error(&mut self, error: ra_parser::ParseError, text_pos: TextSize) {
+    pub fn error(&mut self, error: parser::ParseError, text_pos: TextSize) {
         self.errors.push(SyntaxError::new_at_offset(*error.0, text_pos))
     }
 }

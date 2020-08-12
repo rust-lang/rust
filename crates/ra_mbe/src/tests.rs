@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use ra_parser::FragmentKind;
+use ::parser::FragmentKind;
 use ra_syntax::{ast, AstNode, NodeOrToken, SyntaxKind::IDENT, SyntaxNode, WalkEvent, T};
 use test_utils::assert_eq_text;
 
@@ -9,8 +9,9 @@ use super::*;
 mod rule_parsing {
     use ra_syntax::{ast, AstNode};
 
-    use super::*;
     use crate::ast_to_token_tree;
+
+    use super::*;
 
     #[test]
     fn test_valid_arms() {
