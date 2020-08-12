@@ -74,16 +74,16 @@ impl std::error::Error for LspError {}
 fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs) {
     let mut mem = host.per_query_memory_usage();
 
-    let before = ra_prof::memory_usage();
+    let before = profile::memory_usage();
     drop(vfs);
-    let vfs = before.allocated - ra_prof::memory_usage().allocated;
+    let vfs = before.allocated - profile::memory_usage().allocated;
     mem.push(("VFS".into(), vfs));
 
-    let before = ra_prof::memory_usage();
+    let before = profile::memory_usage();
     drop(host);
-    mem.push(("Unaccounted".into(), before.allocated - ra_prof::memory_usage().allocated));
+    mem.push(("Unaccounted".into(), before.allocated - profile::memory_usage().allocated));
 
-    mem.push(("Remaining".into(), ra_prof::memory_usage().allocated));
+    mem.push(("Remaining".into(), profile::memory_usage().allocated));
 
     for (name, bytes) in mem {
         eprintln!("{:>8} {}", bytes, name);

@@ -13,6 +13,7 @@ use std::{
     sync::Arc,
 };
 
+use arena::{Arena, Idx, RawId};
 use ast::{AstNode, AttrsOwner, NameOwner, StructKind};
 use either::Either;
 use hir_expand::{
@@ -21,7 +22,6 @@ use hir_expand::{
     name::{name, AsName, Name},
     HirFileId, InFile,
 };
-use ra_arena::{Arena, Idx, RawId};
 use ra_syntax::{ast, match_ast};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
@@ -77,7 +77,7 @@ pub struct ItemTree {
 
 impl ItemTree {
     pub fn item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
-        let _p = ra_prof::profile("item_tree_query").detail(|| format!("{:?}", file_id));
+        let _p = profile::span("item_tree_query").detail(|| format!("{:?}", file_id));
         let syntax = if let Some(node) = db.parse_or_expand(file_id) {
             node
         } else {

@@ -12,8 +12,8 @@
 //!
 //! See also a neighboring `body` module.
 
+use arena::{Idx, RawId};
 use hir_expand::name::Name;
-use ra_arena::{Idx, RawId};
 use ra_syntax::ast::RangeOp;
 
 use crate::{

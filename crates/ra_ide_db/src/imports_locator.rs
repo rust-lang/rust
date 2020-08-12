@@ -2,7 +2,6 @@
 //! Later, this should be moved away to a separate crate that is accessible from the ra_assists module.
 
 use hir::{Crate, MacroDef, ModuleDef, Semantics};
-use ra_prof::profile;
 use ra_syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
@@ -18,7 +17,7 @@ pub fn find_imports<'a>(
     krate: Crate,
     name_to_import: &str,
 ) -> Vec<Either<ModuleDef, MacroDef>> {
-    let _p = profile("search_for_imports");
+    let _p = profile::span("search_for_imports");
     let db = sema.db;
 
     // Query dependencies first.
@@ -51,7 +50,7 @@ fn get_name_definition<'a>(
     sema: &Semantics<'a, RootDatabase>,
     import_candidate: &FileSymbol,
 ) -> Option<Definition> {
-    let _p = profile("get_name_definition");
+    let _p = profile::span("get_name_definition");
     let file_id = import_candidate.file_id;
 
     let candidate_node = import_candidate.ptr.to_node(sema.parse(file_id).syntax());

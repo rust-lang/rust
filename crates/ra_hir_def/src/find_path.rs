@@ -1,7 +1,6 @@
 //! An algorithm to find a path to refer to a certain item.
 
 use hir_expand::name::{known, AsName, Name};
-use ra_prof::profile;
 use rustc_hash::FxHashSet;
 use test_utils::mark;
 
@@ -18,7 +17,7 @@ use crate::{
 /// Find a path that can be used to refer to a certain item. This can depend on
 /// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
-    let _p = profile("find_path");
+    let _p = profile::span("find_path");
     find_path_inner(db, item, from, MAX_PATH_LEN)
 }
 
@@ -215,7 +214,7 @@ fn find_local_import_locations(
     item: ItemInNs,
     from: ModuleId,
 ) -> Vec<(ModuleId, Name)> {
-    let _p = profile("find_local_import_locations");
+    let _p = profile::span("find_local_import_locations");
 
     // `from` can import anything below `from` with visibility of at least `from`, and anything
     // above `from` with any visibility. That means we do not need to descend into private siblings

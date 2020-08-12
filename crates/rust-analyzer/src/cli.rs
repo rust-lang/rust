@@ -11,7 +11,6 @@ use std::io::Read;
 
 use anyhow::Result;
 use ra_ide::Analysis;
-use ra_prof::profile;
 use ra_syntax::{AstNode, SourceFile};
 
 pub use analysis_bench::{BenchCmd, BenchWhat, Position};
@@ -38,7 +37,7 @@ impl Verbosity {
 }
 
 pub fn parse(no_dump: bool) -> Result<()> {
-    let _p = profile("parsing");
+    let _p = profile::span("parsing");
     let file = file()?;
     if !no_dump {
         println!("{:#?}", file.syntax());

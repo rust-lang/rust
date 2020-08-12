@@ -12,7 +12,6 @@ use hir_expand::{hygiene::Hygiene, name::AsName, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
-use ra_prof::profile;
 use ra_syntax::{
     algo::{find_node_at_offset, skip_trivia_token},
     ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -334,7 +333,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
-        let _p = profile("descend_into_macros");
+        let _p = profile::span("descend_into_macros");
         let parent = token.parent();
         let parent = self.find_file(parent);
         let sa = self.analyze2(parent.as_ref(), None);
@@ -523,7 +522,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn analyze2(&self, src: InFile<&SyntaxNode>, offset: Option<TextSize>) -> SourceAnalyzer {
-        let _p = profile("Semantics::analyze2");
+        let _p = profile::span("Semantics::analyze2");
 
         let container = match self.with_ctx(|ctx| ctx.find_container(src)) {
             Some(it) => it,

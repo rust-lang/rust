@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use hir_expand::{name::Name, InFile};
-use ra_prof::profile;
 use ra_syntax::ast;
 
 use crate::{
@@ -133,7 +132,7 @@ pub struct ImplData {
 
 impl ImplData {
     pub(crate) fn impl_data_query(db: &dyn DefDatabase, id: ImplId) -> Arc<ImplData> {
-        let _p = profile("impl_data_query");
+        let _p = profile::span("impl_data_query");
         let impl_loc = id.lookup(db);
 
         let item_tree = db.item_tree(impl_loc.id.file_id);

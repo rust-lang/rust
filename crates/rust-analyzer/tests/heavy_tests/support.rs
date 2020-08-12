@@ -62,7 +62,7 @@ impl<'a> Project<'a> {
         static INIT: Once = Once::new();
         INIT.call_once(|| {
             env_logger::builder().is_test(true).try_init().unwrap();
-            ra_prof::init_from(crate::PROFILE);
+            profile::init_from(crate::PROFILE);
         });
 
         for entry in Fixture::parse(self.fixture) {

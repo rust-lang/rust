@@ -6,7 +6,6 @@ use hir::{
     Type,
 };
 use ra_ide_db::{imports_locator, RootDatabase};
-use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxNode,
@@ -130,7 +129,7 @@ impl AutoImportAssets {
     }
 
     fn search_for_imports(&self, ctx: &AssistContext) -> BTreeSet<ModPath> {
-        let _p = profile("auto_import::search_for_imports");
+        let _p = profile::span("auto_import::search_for_imports");
         let db = ctx.db();
         let current_crate = self.module_with_name_to_import.krate();
         imports_locator::find_imports(&ctx.sema, current_crate, &self.get_search_query())

@@ -4,14 +4,13 @@
 //! in rustc.
 use std::sync::Arc;
 
+use arena::{map::ArenaMap, Arena};
 use either::Either;
 use hir_expand::{
     name::{name, AsName, Name},
     InFile,
 };
-use ra_arena::{map::ArenaMap, Arena};
 use ra_db::FileId;
-use ra_prof::profile;
 use ra_syntax::ast::{self, GenericParamsOwner, NameOwner, TypeBoundsOwner};
 
 use crate::{
@@ -73,7 +72,7 @@ impl GenericParams {
         db: &dyn DefDatabase,
         def: GenericDefId,
     ) -> Arc<GenericParams> {
-        let _p = profile("generic_params_query");
+        let _p = profile::span("generic_params_query");
 
         let generics = match def {
             GenericDefId::FunctionId(id) => {

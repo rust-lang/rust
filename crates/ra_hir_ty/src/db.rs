@@ -2,13 +2,12 @@
 
 use std::sync::Arc;
 
+use arena::map::ArenaMap;
 use hir_def::{
     db::DefDatabase, expr::ExprId, DefWithBodyId, FunctionId, GenericDefId, ImplId, LocalFieldId,
     TypeParamId, VariantId,
 };
-use ra_arena::map::ArenaMap;
 use ra_db::{impl_intern_key, salsa, CrateId, Upcast};
-use ra_prof::profile;
 
 use crate::{
     method_resolution::{InherentImpls, TraitImpls},
@@ -123,7 +122,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 }
 
 fn infer_wait(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
-    let _p = profile("infer:wait").detail(|| match def {
+    let _p = profile::span("infer:wait").detail(|| match def {
         DefWithBodyId::FunctionId(it) => db.function_data(it).name.to_string(),
         DefWithBodyId::StaticId(it) => {
             db.static_data(it).name.clone().unwrap_or_else(Name::missing).to_string()

@@ -34,7 +34,6 @@ use ra_db::{
     salsa::{self, ParallelDatabase},
     CrateId, FileId, SourceDatabaseExt, SourceRootId,
 };
-use ra_prof::profile;
 use ra_syntax::{
     ast::{self, NameOwner},
     match_ast, AstNode, Parse, SmolStr, SourceFile,
@@ -101,7 +100,7 @@ pub trait SymbolsDatabase: hir::db::HirDatabase + SourceDatabaseExt {
 }
 
 fn library_symbols(db: &dyn SymbolsDatabase) -> Arc<FxHashMap<SourceRootId, SymbolIndex>> {
-    let _p = profile("library_symbols");
+    let _p = profile::span("library_symbols");
 
     let roots = db.library_roots();
     let res = roots
@@ -162,7 +161,7 @@ impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
 // | VS Code | kbd:[Ctrl+T]
 // |===
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
-    let _p = ra_prof::profile("world_symbols").detail(|| query.query.clone());
+    let _p = profile::span("world_symbols").detail(|| query.query.clone());
 
     let tmp1;
     let tmp2;

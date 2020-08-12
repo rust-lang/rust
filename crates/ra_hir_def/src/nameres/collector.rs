@@ -1208,7 +1208,7 @@ fn is_macro_rules(path: &ModPath) -> bool {
 #[cfg(test)]
 mod tests {
     use crate::{db::DefDatabase, test_db::TestDB};
-    use ra_arena::Arena;
+    use arena::Arena;
     use ra_db::{fixture::WithFixture, SourceDatabase};
 
     use super::*;

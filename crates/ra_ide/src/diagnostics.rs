@@ -10,7 +10,6 @@ use hir::{diagnostics::DiagnosticSinkBuilder, Semantics};
 use itertools::Itertools;
 use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
-use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxNode, TextRange, T,
@@ -33,7 +32,7 @@ pub(crate) fn diagnostics(
     file_id: FileId,
     enable_experimental: bool,
 ) -> Vec<Diagnostic> {
-    let _p = profile("diagnostics");
+    let _p = profile::span("diagnostics");
     let sema = Semantics::new(db);
     let parse = db.parse(file_id);
     let mut res = Vec::new();

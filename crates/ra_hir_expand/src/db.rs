@@ -5,7 +5,6 @@ use std::sync::Arc;
 use mbe::{ExpandResult, MacroRules};
 use ra_db::{salsa, SourceDatabase};
 use ra_parser::FragmentKind;
-use ra_prof::profile;
 use ra_syntax::{algo::diff, AstNode, GreenNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{
@@ -278,7 +277,7 @@ pub fn parse_macro_with_arg(
     macro_file: MacroFile,
     arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
 ) -> Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)> {
-    let _p = profile("parse_macro_query");
+    let _p = profile::span("parse_macro_query");
 
     let macro_call_id = macro_file.macro_call_id;
     let (tt, err) = if let Some(arg) = arg {

@@ -5,13 +5,12 @@ pub mod scope;
 
 use std::{mem, ops::Index, sync::Arc};
 
+use arena::{map::ArenaMap, Arena};
 use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId};
-use ra_arena::{map::ArenaMap, Arena};
 use ra_cfg::CfgOptions;
 use ra_db::CrateId;
-use ra_prof::profile;
 use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
 use test_utils::mark;
@@ -228,7 +227,7 @@ impl Body {
         db: &dyn DefDatabase,
         def: DefWithBodyId,
     ) -> (Arc<Body>, Arc<BodySourceMap>) {
-        let _p = profile("body_with_source_map_query");
+        let _p = profile::span("body_with_source_map_query");
         let mut params = None;
 
         let (file_id, module, body) = match def {

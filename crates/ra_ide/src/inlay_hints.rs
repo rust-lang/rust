@@ -1,6 +1,5 @@
 use hir::{Adt, Callable, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
-use ra_prof::profile;
 use ra_syntax::{
     ast::{self, ArgListOwner, AstNode},
     match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
@@ -64,7 +63,7 @@ pub(crate) fn inlay_hints(
     file_id: FileId,
     config: &InlayHintsConfig,
 ) -> Vec<InlayHint> {
-    let _p = profile("inlay_hints");
+    let _p = profile::span("inlay_hints");
     let sema = Semantics::new(db);
     let file = sema.parse(file_id);
 

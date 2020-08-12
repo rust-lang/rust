@@ -9,7 +9,6 @@ use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
 };
-use ra_prof::profile;
 use ra_syntax::{
     ast::{self, HasFormatSpecifier},
     AstNode, AstToken, Direction, NodeOrToken, SyntaxElement,
@@ -46,7 +45,7 @@ pub(crate) fn highlight(
     range_to_highlight: Option<TextRange>,
     syntactic_name_ref_highlighting: bool,
 ) -> Vec<HighlightedRange> {
-    let _p = profile("highlight");
+    let _p = profile::span("highlight");
     let sema = Semantics::new(db);
 
     // Determine the root based on the given range.

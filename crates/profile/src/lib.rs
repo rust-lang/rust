@@ -10,7 +10,7 @@ mod tree;
 use std::cell::RefCell;
 
 pub use crate::{
-    hprof::{init, init_from, profile},
+    hprof::{init, init_from, span},
     memory_usage::{Bytes, MemoryUsage},
     stop_watch::{StopWatch, StopWatchSpan},
 };
@@ -25,7 +25,7 @@ pub fn print_backtrace() {
 pub fn print_backtrace() {
     eprintln!(
         r#"enable the backtrace feature:
-    ra_prof = {{ path = "../ra_prof", features = [ "backtrace"] }}
+    profile = {{ path = "../profile", features = [ "backtrace"] }}
 "#
     );
 }
@@ -76,12 +76,12 @@ impl Drop for Scope {
 ///
 /// https://github.com/rust-analyzer/rust-analyzer/pull/5306
 #[derive(Debug)]
-pub struct CpuProfiler {
+pub struct CpuSpan {
     _private: (),
 }
 
 #[must_use]
-pub fn cpu_profiler() -> CpuProfiler {
+pub fn cpu_span() -> CpuSpan {
     #[cfg(feature = "cpu_profiler")]
     {
         google_cpu_profiler::start("./out.profile".as_ref())
@@ -92,10 +92,10 @@ pub fn cpu_profiler() -> CpuProfiler {
         eprintln!("cpu_profiler feature is disabled")
     }
 
-    CpuProfiler { _private: () }
+    CpuSpan { _private: () }
 }
 
-impl Drop for CpuProfiler {
+impl Drop for CpuSpan {
     fn drop(&mut self) {
         #[cfg(feature = "cpu_profiler")]
         {

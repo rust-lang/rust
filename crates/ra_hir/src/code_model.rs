@@ -31,7 +31,6 @@ use hir_ty::{
     InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, Edition, FileId};
-use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
     AstNode,
@@ -304,7 +303,7 @@ impl Module {
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
-        let _p = profile("Module::diagnostics");
+        let _p = profile::span("Module::diagnostics");
         let crate_def_map = db.crate_def_map(self.id.krate);
         crate_def_map.add_diagnostics(db.upcast(), self.id.local_id, sink);
         for decl in self.declarations(db) {

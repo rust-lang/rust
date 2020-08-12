@@ -10,7 +10,6 @@ use hir_def::{
 };
 use hir_expand::{name::AsName, AstId, MacroDefKind};
 use ra_db::FileId;
-use ra_prof::profile;
 use ra_syntax::{
     ast::{self, NameOwner},
     match_ast, AstNode, SyntaxNode,
@@ -29,7 +28,7 @@ pub(super) struct SourceToDefCtx<'a, 'b> {
 
 impl SourceToDefCtx<'_, '_> {
     pub(super) fn file_to_def(&mut self, file: FileId) -> Option<ModuleId> {
-        let _p = profile("SourceBinder::to_module_def");
+        let _p = profile::span("SourceBinder::to_module_def");
         let (krate, local_id) = self.db.relevant_crates(file).iter().find_map(|&crate_id| {
             let crate_def_map = self.db.crate_def_map(crate_id);
             let local_id = crate_def_map.modules_for_file(file).next()?;
@@ -39,7 +38,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn module_to_def(&mut self, src: InFile<ast::Module>) -> Option<ModuleId> {
-        let _p = profile("module_to_def");
+        let _p = profile::span("module_to_def");
         let parent_declaration = src
             .as_ref()
             .map(|it| it.syntax())

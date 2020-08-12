@@ -56,10 +56,9 @@ mod tests;
 
 use std::sync::Arc;
 
+use arena::Arena;
 use hir_expand::{diagnostics::DiagnosticSink, name::Name, InFile};
-use ra_arena::Arena;
 use ra_db::{CrateId, Edition, FileId};
-use ra_prof::profile;
 use ra_syntax::ast;
 use rustc_hash::FxHashMap;
 use stdx::format_to;
@@ -172,7 +171,7 @@ pub struct ModuleData {
 
 impl CrateDefMap {
     pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
-        let _p = profile("crate_def_map_query").detail(|| {
+        let _p = profile::span("crate_def_map_query").detail(|| {
             db.crate_graph()[krate]
                 .display_name
                 .as_ref()

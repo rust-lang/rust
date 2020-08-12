@@ -27,7 +27,7 @@ ra_db = { path = "../ra_db" }
 ra_ide_db = { path = "../ra_ide_db" }
 ra_cfg = { path = "../ra_cfg" }
 ra_fmt = { path = "../ra_fmt" }
-ra_prof = { path = "../ra_prof" }
+profile = { path = "../profile" }
 test_utils = { path = "../test_utils" }
 ra_assists = { path = "../ra_assists" }
 ra_ssr = { path = "../ra_ssr" }

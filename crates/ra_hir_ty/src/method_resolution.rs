@@ -13,7 +13,6 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use ra_db::CrateId;
-use ra_prof::profile;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::Substs;
@@ -109,7 +108,7 @@ pub struct TraitImpls {
 
 impl TraitImpls {
     pub(crate) fn trait_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let _p = profile("trait_impls_in_crate_query");
+        let _p = profile::span("trait_impls_in_crate_query");
         let mut impls = Self { map: FxHashMap::default() };
 
         let crate_def_map = db.crate_def_map(krate);
@@ -135,7 +134,7 @@ impl TraitImpls {
     }
 
     pub(crate) fn trait_impls_in_deps_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let _p = profile("trait_impls_in_deps_query");
+        let _p = profile::span("trait_impls_in_deps_query");
         let crate_graph = db.crate_graph();
         let mut res = Self { map: FxHashMap::default() };
 

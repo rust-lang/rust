@@ -46,6 +46,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33954243bd79057c2de7338850b85983a44588021f8a5fee574a8888c6de4344"
 
 [[package]]
+name = "arena"
+version = "0.0.0"
+
+[[package]]
 name = "arrayvec"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -891,6 +895,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "profile"
+version = "0.0.0"
+dependencies = [
+ "arena",
+ "backtrace",
+ "cfg-if",
+ "libc",
+ "once_cell",
+ "perf-event",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -900,20 +916,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_arena"
-version = "0.1.0"
-
-[[package]]
 name = "ra_assists"
 version = "0.1.0"
 dependencies = [
  "either",
  "itertools",
+ "profile",
  "ra_db",
  "ra_fmt",
  "ra_hir",
  "ra_ide_db",
- "ra_prof",
  "ra_syntax",
  "ra_text_edit",
  "rustc-hash",
@@ -935,8 +947,8 @@ dependencies = [
 name = "ra_db"
 version = "0.1.0"
 dependencies = [
+ "profile",
  "ra_cfg",
- "ra_prof",
  "ra_syntax",
  "ra_tt",
  "rustc-hash",
@@ -962,11 +974,11 @@ dependencies = [
  "either",
  "itertools",
  "log",
+ "profile",
  "ra_db",
  "ra_hir_def",
  "ra_hir_expand",
  "ra_hir_ty",
- "ra_prof",
  "ra_syntax",
  "rustc-hash",
  "stdx",
@@ -977,6 +989,7 @@ name = "ra_hir_def"
 version = "0.1.0"
 dependencies = [
  "anymap",
+ "arena",
  "drop_bomb",
  "either",
  "expect",
@@ -985,12 +998,11 @@ dependencies = [
  "itertools",
  "log",
  "once_cell",
- "ra_arena",
+ "profile",
  "ra_cfg",
  "ra_db",
  "ra_hir_expand",
  "ra_mbe",
- "ra_prof",
  "ra_syntax",
  "ra_tt",
  "rustc-hash",
@@ -1003,13 +1015,13 @@ dependencies = [
 name = "ra_hir_expand"
 version = "0.1.0"
 dependencies = [
+ "arena",
  "either",
  "log",
- "ra_arena",
+ "profile",
  "ra_db",
  "ra_mbe",
  "ra_parser",
- "ra_prof",
  "ra_syntax",
  "ra_tt",
  "rustc-hash",
@@ -1020,6 +1032,7 @@ dependencies = [
 name = "ra_hir_ty"
 version = "0.1.0"
 dependencies = [
+ "arena",
  "arrayvec",
  "chalk-ir",
  "chalk-recursive",
@@ -1028,11 +1041,10 @@ dependencies = [
  "expect",
  "itertools",
  "log",
- "ra_arena",
+ "profile",
  "ra_db",
  "ra_hir_def",
  "ra_hir_expand",
- "ra_prof",
  "ra_syntax",
  "rustc-hash",
  "scoped-tls",
@@ -1054,13 +1066,13 @@ dependencies = [
  "itertools",
  "log",
  "oorandom",
+ "profile",
  "ra_assists",
  "ra_cfg",
  "ra_db",
  "ra_fmt",
  "ra_hir",
  "ra_ide_db",
- "ra_prof",
  "ra_ssr",
  "ra_syntax",
  "ra_text_edit",
@@ -1077,9 +1089,9 @@ dependencies = [
  "fst",
  "log",
  "once_cell",
+ "profile",
  "ra_db",
  "ra_hir",
- "ra_prof",
  "ra_syntax",
  "ra_text_edit",
  "rayon",
@@ -1138,26 +1150,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_prof"
-version = "0.1.0"
-dependencies = [
- "backtrace",
- "cfg-if",
- "libc",
- "once_cell",
- "perf-event",
- "ra_arena",
-]
-
-[[package]]
 name = "ra_project_model"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arena",
  "cargo_metadata",
  "log",
  "paths",
- "ra_arena",
  "ra_cfg",
  "ra_db",
  "ra_proc_macro",
@@ -1314,6 +1314,7 @@ dependencies = [
  "oorandom",
  "parking_lot",
  "pico-args",
+ "profile",
  "ra_cfg",
  "ra_db",
  "ra_hir",
@@ -1323,7 +1324,6 @@ dependencies = [
  "ra_ide_db",
  "ra_mbe",
  "ra_proc_macro_srv",
- "ra_prof",
  "ra_project_model",
  "ra_ssr",
  "ra_syntax",

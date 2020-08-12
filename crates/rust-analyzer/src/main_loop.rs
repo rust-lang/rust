@@ -10,7 +10,6 @@ use lsp_server::{Connection, Notification, Request, Response};
 use lsp_types::notification::Notification as _;
 use ra_db::VfsPath;
 use ra_ide::{Canceled, FileId};
-use ra_prof::profile;
 
 use crate::{
     config::Config,
@@ -173,7 +172,7 @@ impl GlobalState {
     fn handle_event(&mut self, event: Event) -> Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = profile("GlobalState::handle_event");
+        let _p = profile::span("GlobalState::handle_event");
 
         log::info!("handle_event({:?})", event);
         let queue_count = self.task_pool.handle.len();
@@ -204,7 +203,7 @@ impl GlobalState {
                 self.analysis_host.maybe_collect_garbage();
             }
             Event::Vfs(mut task) => {
-                let _p = profile("GlobalState::handle_event/vfs");
+                let _p = profile::span("GlobalState::handle_event/vfs");
                 loop {
                     match task {
                         vfs::loader::Message::Loaded { files } => {

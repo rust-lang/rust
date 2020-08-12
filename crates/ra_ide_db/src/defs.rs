@@ -9,7 +9,6 @@ use hir::{
     db::HirDatabase, Crate, Field, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef,
     Name, PathResolution, Semantics, TypeParam, Visibility,
 };
-use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode},
     match_ast, SyntaxNode,
@@ -110,7 +109,7 @@ impl NameClass {
 }
 
 pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameClass> {
-    let _p = profile("classify_name");
+    let _p = profile::span("classify_name");
 
     let parent = name.syntax().parent()?;
 
@@ -249,7 +248,7 @@ pub fn classify_name_ref(
     sema: &Semantics<RootDatabase>,
     name_ref: &ast::NameRef,
 ) -> Option<NameRefClass> {
-    let _p = profile("classify_name_ref");
+    let _p = profile::span("classify_name_ref");
 
     let parent = name_ref.syntax().parent()?;
 
