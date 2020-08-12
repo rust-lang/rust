@@ -1,6 +1,6 @@
 //! Rustdoc's JSON output interface
 //!
-//! These types are the public API exposed through the `--output-format json` flag. The [`Crate`][]
+//! These types are the public API exposed through the `--output-format json` flag. The [`Crate`]
 //! struct is the root of the JSON blob and all other items are contained within.
 
 use std::path::PathBuf;
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// tools to find or link to them.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Crate {
-    /// The id of the root [`Module`][] item of the local crate.
+    /// The id of the root [`Module`] item of the local crate.
     pub root: Id,
     /// The version string given to `--crate-version`, if any.
     pub version: Option<String>,
@@ -22,10 +22,9 @@ pub struct Crate {
     /// A collection of all items in the local crate as well as some external traits and their
     /// items that are referenced locally.
     pub index: FxHashMap<Id, Item>,
-    /// Maps ids to fully qualified paths (e.g. `["std", "io", "lazy", "Lazy"]` for
-    /// `std::io::lazy::Lazy`) as well as their `ItemKind`
+    /// Maps IDs to fully qualified paths and other info helpful for generating links.
     pub paths: FxHashMap<Id, ItemSummary>,
-    /// Maps `crate_num` of items to a crate name and html_root_url if it exists
+    /// Maps `crate_id` of items to a crate name and html_root_url if it exists.
     pub external_crates: FxHashMap<u32, ExternalCrate>,
     /// A single version number to be used in the future when making backwards incompatible changes
     /// to the JSON output.
@@ -38,31 +37,36 @@ pub struct ExternalCrate {
     pub html_root_url: Option<String>,
 }
 
-/// For external items (stuff not defined in the local crate), you don't get the same level of
+/// For external (not defined in the local crate) items, you don't get the same level of
 /// information. This struct should contain enough to generate a link/reference to the item in
 /// question, or can be used by a tool that takes the json output of multiple crates to find
 /// the actual item definition with all the relevant info.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ItemSummary {
-    pub crate_num: u32,
+    /// Can be used to look up the name and html_root_url of the crate this item came from in the
+    /// `external_crates` map.
+    pub crate_id: u32,
+    /// The list of path components for the fully qualified path of this item (e.g.
+    /// `["std", "io", "lazy", "Lazy"]` for `std::io::lazy::Lazy`).
     pub path: Vec<String>,
+    /// Whether this item is a struct, trait, macro, etc.
     pub kind: ItemKind,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Item {
-    /// This can be used as a key to the `external_crates` map of [`Crate`][] to see which crate
+    /// This can be used as a key to the `external_crates` map of [`Crate`] to see which crate
     /// this item came from.
-    pub crate_num: u32,
+    pub crate_id: u32,
     /// Some items such as impls don't have names.
     pub name: Option<String>,
-    /// The source location of this item. May not be present if it came from a macro expansion,
-    /// inline assembly, other "virtual" files.
+    /// The source location of this item (absent if it came from a macro expansion or inline
+    /// assembly).
     pub source: Option<Span>,
-    /// Usually documented items are all public, but you can tell rustdoc to output private items
+    /// By default all documented items are public, but you can tell rustdoc to output private items
     /// so this field is needed to differentiate.
     pub visibility: Visibility,
-    /// The full docstring of this item.
+    /// The full markdown docstring of this item.
     pub docs: String,
     /// This mapping resolves [intradoc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
     pub links: FxHashMap<String, Id>,
@@ -71,10 +75,6 @@ pub struct Item {
     pub deprecation: Option<Deprecation>,
     pub kind: ItemKind,
     pub inner: ItemEnum,
-    // TODO: should we stringify the cfg attrs as well, or should we preserve their structure so
-    // the consumer doesn't have to parse an arbitrarily nested tree to figure out what platforms
-    // the item is available on?
-    // TODO: should we have a "stability" field if it's only used by the standard library?
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -97,6 +97,8 @@ pub struct Deprecation {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Visibility {
     Public,
+    /// For the most part items are private by default. The exceptions are associated items of
+    /// public traits and variants of public enums.
     Default,
     Crate,
     // TODO: Restricted(Id, String),
@@ -336,7 +338,7 @@ pub enum Type {
     ResolvedPath {
         name: String,
         id: Id,
-        args: Box<Option<GenericArgs>>,
+        args: Option<Box<GenericArgs>>,
         param_names: Vec<GenericBound>,
     },
     /// Parameterized types
@@ -429,9 +431,6 @@ pub struct Impl {
     pub blanket_impl: Option<Type>,
 }
 
-// TODO: this is currently broken because imports have the same ID as the module that contains
-// them. The only obvious fix is to modify the clean types to renumber imports so that IDs are
-// actually unique.
 #[serde(rename_all = "snake_case")]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Import {

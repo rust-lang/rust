@@ -1,8 +1,15 @@
+//! Rustdoc's JSON backend
+//!
+//! This module contains the logic for rendering a crate as JSON rather than the normal static HTML
+//! output. See [the RFC](https://github.com/rust-lang/rfcs/pull/2963) and the [`types`] module
+//! docs for usage and details.
+
 mod conversions;
 mod types;
 
 use std::cell::RefCell;
 use std::fs::File;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -17,10 +24,17 @@ use crate::html::render::cache::ExternalLocation;
 
 #[derive(Clone)]
 pub struct JsonRenderer {
+    /// A mapping of IDs that contains all local items for this crate which gets output as a top
+    /// level field of the JSON blob.
     index: Rc<RefCell<FxHashMap<types::Id, types::Item>>>,
+    /// The directory where the blob will be written to.
+    out_path: PathBuf,
 }
 
 impl JsonRenderer {
+    /// Inserts an item into the index. This should be used rather than directly calling insert on
+    /// the hashmap because certain items (traits and types) need to have their mappings for trait
+    /// implementations filled out before they're inserted.
     fn insert(&self, item: clean::Item, cache: &Cache) {
         let id = item.def_id;
         let mut new_item: types::Item = item.into();
@@ -75,33 +89,74 @@ impl JsonRenderer {
             })
             .unwrap_or_default()
     }
+
+    fn get_trait_items(&self, cache: &Cache) -> Vec<(types::Id, types::Item)> {
+        cache
+            .traits
+            .iter()
+            .filter_map(|(id, trait_item)| {
+                // only need to synthesize items for external traits
+                if !id.is_local() {
+                    trait_item.items.clone().into_iter().for_each(|i| self.insert(i, cache));
+                    Some((
+                        (*id).into(),
+                        types::Item {
+                            crate_id: id.krate.as_u32(),
+                            name: cache
+                                .paths
+                                .get(&id)
+                                .unwrap_or_else(|| {
+                                    cache
+                                        .external_paths
+                                        .get(&id)
+                                        .expect("Trait should either be in local or external paths")
+                                })
+                                .0
+                                .last()
+                                .map(Clone::clone),
+                            visibility: types::Visibility::Public,
+                            kind: types::ItemKind::Trait,
+                            inner: types::ItemEnum::TraitItem(trait_item.clone().into()),
+                            source: None,
+                            docs: Default::default(),
+                            links: Default::default(),
+                            attrs: Default::default(),
+                            deprecation: Default::default(),
+                        },
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
 
 impl FormatRenderer for JsonRenderer {
     fn init(
         krate: clean::Crate,
-        _options: RenderOptions,
+        options: RenderOptions,
         _render_info: RenderInfo,
         _edition: Edition,
         _cache: &mut Cache,
     ) -> Result<(Self, clean::Crate), Error> {
         debug!("Initializing json renderer");
-        Ok((JsonRenderer { index: Rc::new(RefCell::new(FxHashMap::default())) }, krate))
+        Ok((
+            JsonRenderer {
+                index: Rc::new(RefCell::new(FxHashMap::default())),
+                out_path: options.output,
+            },
+            krate,
+        ))
     }
 
     fn item(&mut self, item: clean::Item, cache: &Cache) -> Result<(), Error> {
         use clean::ItemEnum::*;
-        // Flatten items that recursively store other items by putting their children in the index
-        match item.inner.clone() {
-            StructItem(s) => s.fields.into_iter().for_each(|i| self.insert(i, cache)),
-            UnionItem(u) => u.fields.into_iter().for_each(|i| self.insert(i, cache)),
-            VariantItem(clean::Variant { kind: clean::VariantKind::Struct(v) }) => {
-                v.fields.into_iter().for_each(|i| self.insert(i, cache));
-            }
-            EnumItem(e) => e.variants.into_iter().for_each(|i| self.item(i, cache).unwrap()),
-            TraitItem(t) => t.items.into_iter().for_each(|i| self.insert(i, cache)),
-            ImplItem(i) => i.items.into_iter().for_each(|i| self.insert(i, cache)),
-            _ => {}
+        // Flatten items that recursively store other items by inserting them into the index
+        if let ModuleItem(_) = &item.inner {
+            // but ignore modules because we handle recursing into them separately
+        } else {
+            item.inner.inner_items().for_each(|i| self.item(i.clone(), cache).unwrap())
         }
         self.insert(item.clone(), cache);
         Ok(())
@@ -124,41 +179,7 @@ impl FormatRenderer for JsonRenderer {
     fn after_krate(&mut self, krate: &clean::Crate, cache: &Cache) -> Result<(), Error> {
         debug!("Done with crate");
         let mut index = (*self.index).clone().into_inner();
-        let trait_items = cache.traits.iter().filter_map(|(id, trait_item)| {
-            // only need to synthesize items for external traits
-            if !id.is_local() {
-                trait_item.items.clone().into_iter().for_each(|i| self.insert(i, cache));
-                Some((
-                    (*id).into(),
-                    types::Item {
-                        crate_num: id.krate.as_u32(),
-                        name: cache
-                            .paths
-                            .get(&id)
-                            .unwrap_or_else(|| {
-                                cache
-                                    .external_paths
-                                    .get(&id)
-                                    .expect("Trait should either be in local or external paths")
-                            })
-                            .0
-                            .last()
-                            .map(Clone::clone),
-                        visibility: types::Visibility::Public,
-                        kind: types::ItemKind::Trait,
-                        inner: types::ItemEnum::TraitItem(trait_item.clone().into()),
-                        source: None,
-                        docs: Default::default(),
-                        links: Default::default(),
-                        attrs: Default::default(),
-                        deprecation: Default::default(),
-                    },
-                ))
-            } else {
-                None
-            }
-        });
-        index.extend(trait_items);
+        index.extend(self.get_trait_items(cache));
         let output = types::Crate {
             root: types::Id(String::from("0:0")),
             version: krate.version.clone(),
@@ -172,7 +193,7 @@ impl FormatRenderer for JsonRenderer {
                 .map(|(k, (path, kind))| {
                     (
                         k.into(),
-                        types::ItemSummary { crate_num: k.krate.as_u32(), path, kind: kind.into() },
+                        types::ItemSummary { crate_id: k.krate.as_u32(), path, kind: kind.into() },
                     )
                 })
                 .collect(),
@@ -194,7 +215,10 @@ impl FormatRenderer for JsonRenderer {
                 .collect(),
             format_version: 1,
         };
-        serde_json::ser::to_writer_pretty(&File::create("test.json").unwrap(), &output).unwrap();
+        let mut p = self.out_path.clone();
+        p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());
+        p.set_extension("json");
+        serde_json::ser::to_writer_pretty(&File::create(p).unwrap(), &output).unwrap();
         Ok(())
     }
 

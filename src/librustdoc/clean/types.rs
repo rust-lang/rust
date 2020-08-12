@@ -287,6 +287,42 @@ pub enum ItemEnum {
 }
 
 impl ItemEnum {
+    /// Some items contain others such as structs (for their fields) and Enums
+    /// (for their variants). This method returns those contained items.
+    pub fn inner_items(&self) -> impl Iterator<Item = &Item> {
+        match self {
+            StructItem(s) => s.fields.iter(),
+            UnionItem(u) => u.fields.iter(),
+            VariantItem(Variant { kind: VariantKind::Struct(v) }) => v.fields.iter(),
+            EnumItem(e) => e.variants.iter(),
+            TraitItem(t) => t.items.iter(),
+            ImplItem(i) => i.items.iter(),
+            ModuleItem(m) => m.items.iter(),
+            ExternCrateItem(_, _)
+            | ImportItem(_)
+            | FunctionItem(_)
+            | TypedefItem(_, _)
+            | OpaqueTyItem(_, _)
+            | StaticItem(_)
+            | ConstantItem(_)
+            | TraitAliasItem(_)
+            | TyMethodItem(_)
+            | MethodItem(_)
+            | StructFieldItem(_)
+            | VariantItem(_)
+            | ForeignFunctionItem(_)
+            | ForeignStaticItem(_)
+            | ForeignTypeItem
+            | MacroItem(_)
+            | ProcMacroItem(_)
+            | PrimitiveItem(_)
+            | AssocConstItem(_,_)
+            | AssocTypeItem(_,_)
+            | StrippedItem(_)
+            | KeywordItem(_) => [].iter(),
+        }
+    }
+
     pub fn is_type_alias(&self) -> bool {
         match *self {
             ItemEnum::TypedefItem(_, _) | ItemEnum::AssocTypeItem(_, _) => true,

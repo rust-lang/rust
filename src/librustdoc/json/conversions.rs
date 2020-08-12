@@ -1,3 +1,7 @@
+//! These from impls are used to create the JSON types which get serialized. They're very close to
+//! the `clean` types but with some fields removed or stringified to simplify the output and not
+//! expose unstable compiler internals.
+
 use std::convert::From;
 
 use rustc_ast::ast;
@@ -22,7 +26,7 @@ impl From<clean::Item> for Item {
             deprecation,
         } = item;
         Item {
-            crate_num: def_id.krate.as_u32(),
+            crate_id: def_id.krate.as_u32(),
             name,
             source: source.into(),
             visibility: visibility.into(),
@@ -329,14 +333,13 @@ impl From<clean::Type> for Type {
             ResolvedPath { path, param_names, did, is_generic: _ } => Type::ResolvedPath {
                 name: path.whole_name(),
                 id: did.into(),
-                args: Box::new(path.segments.last().map(|args| args.clone().args.into())),
+                args: path.segments.last().map(|args| Box::new(args.clone().args.into())),
                 param_names: param_names
                     .map(|v| v.into_iter().map(Into::into).collect())
                     .unwrap_or_default(),
             },
             Generic(s) => Type::Generic(s),
             Primitive(p) => Type::Primitive(p.as_str().to_string()),
-            // TODO: check if there's a more idiomatic way of calling `into` on Box<T>
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into())),
             Tuple(t) => Type::Tuple(t.into_iter().map(Into::into).collect()),
             Slice(t) => Type::Slice(Box::new((*t).into())),
