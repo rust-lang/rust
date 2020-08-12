@@ -11,7 +11,7 @@ repository = "https://github.com/rust-analyzer/rust-analyzer"
 doctest = false
 
 [dependencies]
-ra_text_edit = { path = "../ra_text_edit" }
+text_edit = { path = "../text_edit" }
 ra_syntax = { path = "../ra_syntax" }
 ra_db = { path = "../ra_db" }
 ra_ide_db = { path = "../ra_ide_db" }

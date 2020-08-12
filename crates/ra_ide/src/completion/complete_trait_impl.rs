@@ -37,7 +37,7 @@ use ra_syntax::{
     ast::{self, edit, Impl},
     AstNode, SyntaxKind, SyntaxNode, TextRange, T,
 };
-use ra_text_edit::TextEdit;
+use text_edit::TextEdit;
 
 use crate::{
     completion::{

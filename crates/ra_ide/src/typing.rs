@@ -26,7 +26,7 @@ use ra_syntax::{
     TextRange, TextSize,
 };
 
-use ra_text_edit::TextEdit;
+use text_edit::TextEdit;
 
 use crate::SourceChange;
 

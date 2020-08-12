@@ -2,6 +2,7 @@
 // FIXME: rewrite according to the plan, outlined in
 // https://github.com/rust-analyzer/rust-analyzer/issues/3301#issuecomment-592931553
 
+use either::Either;
 use hir::{self, ModPath};
 use ra_syntax::{
     ast::{self, NameOwner, VisibilityOwner},
@@ -9,10 +10,9 @@ use ra_syntax::{
     SyntaxKind::{PATH, PATH_SEGMENT},
     SyntaxNode, T,
 };
-use ra_text_edit::TextEditBuilder;
+use text_edit::TextEditBuilder;
 
 use crate::assist_context::AssistContext;
-use either::Either;
 
 /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
 pub(crate) fn find_insert_use_container(

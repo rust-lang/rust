@@ -9,8 +9,8 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxToken, TextRange, TextSize, TokenAtOffset,
 };
-use ra_text_edit::TextEdit;
 use test_utils::mark;
+use text_edit::TextEdit;
 
 // Feature: On Enter
 //

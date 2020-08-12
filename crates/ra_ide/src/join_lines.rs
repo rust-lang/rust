@@ -7,7 +7,7 @@ use ra_syntax::{
     SyntaxKind::{self, WHITESPACE},
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
-use ra_text_edit::{TextEdit, TextEditBuilder};
+use text_edit::{TextEdit, TextEditBuilder};
 
 // Feature: Join Lines
 //

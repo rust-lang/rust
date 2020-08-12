@@ -4,8 +4,8 @@ use crate::matching::Var;
 use crate::{resolving::ResolvedRule, Match, SsrMatches};
 use ra_syntax::ast::{self, AstToken};
 use ra_syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize};
-use ra_text_edit::TextEdit;
 use rustc_hash::{FxHashMap, FxHashSet};
+use text_edit::TextEdit;
 
 /// Returns a text edit that will replace each match in `matches` with its corresponding replacement
 /// template. Placeholders in the template will have been substituted with whatever they matched to

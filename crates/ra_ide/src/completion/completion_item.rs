@@ -4,7 +4,7 @@ use std::fmt;
 
 use hir::Documentation;
 use ra_syntax::TextRange;
-use ra_text_edit::TextEdit;
+use text_edit::TextEdit;
 
 use crate::completion::completion_config::SnippetCap;
 

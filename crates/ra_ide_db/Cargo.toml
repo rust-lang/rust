@@ -22,7 +22,7 @@ either = "1.5.3"
 stdx = { path = "../stdx" }
 
 ra_syntax = { path = "../ra_syntax" }
-ra_text_edit = { path = "../ra_text_edit" }
+text_edit = { path = "../text_edit" }
 ra_db = { path = "../ra_db" }
 profile = { path = "../profile" }
 test_utils = { path = "../test_utils" }

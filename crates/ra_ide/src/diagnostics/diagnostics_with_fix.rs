@@ -13,7 +13,7 @@ use ra_ide_db::{
     RootDatabase,
 };
 use ra_syntax::{algo, ast, AstNode};
-use ra_text_edit::TextEdit;
+use text_edit::TextEdit;
 
 /// A [Diagnostic] that potentially has a fix available.
 ///

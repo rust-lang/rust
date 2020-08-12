@@ -5,7 +5,7 @@ use std::{
     str::{self, FromStr},
 };
 
-use ra_text_edit::Indel;
+use text_edit::Indel;
 
 use crate::{validation, AstNode, SourceFile, TextRange};
 

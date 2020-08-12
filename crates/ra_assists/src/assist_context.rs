@@ -15,7 +15,7 @@ use ra_syntax::{
     AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
     TokenAtOffset,
 };
-use ra_text_edit::{TextEdit, TextEditBuilder};
+use text_edit::{TextEdit, TextEditBuilder};
 
 use crate::{
     assist_config::{AssistConfig, SnippetCap},

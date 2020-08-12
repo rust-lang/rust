@@ -4,7 +4,7 @@ use ra_syntax::{
     ast::{self, AstNode},
     TextRange, TextSize,
 };
-use ra_text_edit::TextEdit;
+use text_edit::TextEdit;
 
 use crate::{
     completion::{

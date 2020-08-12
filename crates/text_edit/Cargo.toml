@@ -1,5 +1,5 @@
 [package]
-name = "ra_text_edit"
+name = "text_edit"
 version = "0.0.0"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer developers"]
