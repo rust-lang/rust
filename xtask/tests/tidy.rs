@@ -200,7 +200,7 @@ impl TidyDocs {
             "profile",
             "ra_project_model",
             "ra_syntax",
-            "ra_tt",
+            "tt",
             "ra_hir_ty",
         ];
 

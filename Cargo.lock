@@ -939,8 +939,8 @@ version = "0.1.0"
 dependencies = [
  "ra_mbe",
  "ra_syntax",
- "ra_tt",
  "rustc-hash",
+ "tt",
 ]
 
 [[package]]
@@ -950,11 +950,11 @@ dependencies = [
  "profile",
  "ra_cfg",
  "ra_syntax",
- "ra_tt",
  "rustc-hash",
  "salsa",
  "stdx",
  "test_utils",
+ "tt",
  "vfs",
 ]
 
@@ -1004,11 +1004,11 @@ dependencies = [
  "ra_hir_expand",
  "ra_mbe",
  "ra_syntax",
- "ra_tt",
  "rustc-hash",
  "smallvec",
  "stdx",
  "test_utils",
+ "tt",
 ]
 
 [[package]]
@@ -1023,9 +1023,9 @@ dependencies = [
  "ra_mbe",
  "ra_parser",
  "ra_syntax",
- "ra_tt",
  "rustc-hash",
  "test_utils",
+ "tt",
 ]
 
 [[package]]
@@ -1107,10 +1107,10 @@ dependencies = [
  "log",
  "ra_parser",
  "ra_syntax",
- "ra_tt",
  "rustc-hash",
  "smallvec",
  "test_utils",
+ "tt",
 ]
 
 [[package]]
@@ -1127,9 +1127,9 @@ dependencies = [
  "crossbeam-channel",
  "jod-thread",
  "log",
- "ra_tt",
  "serde",
  "serde_json",
+ "tt",
 ]
 
 [[package]]
@@ -1144,9 +1144,9 @@ dependencies = [
  "ra_mbe",
  "ra_proc_macro",
  "ra_toolchain",
- "ra_tt",
  "serde_derive",
  "test_utils",
+ "tt",
 ]
 
 [[package]]
@@ -1215,14 +1215,6 @@ name = "ra_toolchain"
 version = "0.1.0"
 dependencies = [
  "home",
-]
-
-[[package]]
-name = "ra_tt"
-version = "0.1.0"
-dependencies = [
- "smol_str",
- "stdx",
 ]
 
 [[package]]
@@ -1329,7 +1321,6 @@ dependencies = [
  "ra_syntax",
  "ra_text_edit",
  "ra_toolchain",
- "ra_tt",
  "rayon",
  "rustc-hash",
  "serde",
@@ -1337,6 +1328,7 @@ dependencies = [
  "stdx",
  "test_utils",
  "threadpool",
+ "tt",
  "vfs",
  "vfs-notify",
  "winapi 0.3.9",
@@ -1704,6 +1696,14 @@ dependencies = [
  "termcolor",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "tt"
+version = "0.0.0"
+dependencies = [
+ "smol_str",
+ "stdx",
 ]
 
 [[package]]

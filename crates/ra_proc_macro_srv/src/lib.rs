@@ -5,7 +5,7 @@
 //!
 //! But we adapt it to better fit RA needs:
 //!
-//! * We use `ra_tt` for proc-macro `TokenStream` server, it is easier to manipulate and interact with
+//! * We use `tt` for proc-macro `TokenStream` server, it is easier to manipulate and interact with
 //!   RA than `proc-macro2` token stream.
 //! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
 //!   rustc rather than `unstable`. (Although in gerenal ABI compatibility is still an issue)

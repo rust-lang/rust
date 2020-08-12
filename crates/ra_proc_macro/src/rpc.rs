@@ -1,17 +1,18 @@
 //! Data struture serialization related stuff for RPC
 //!
 //! Defines all necessary rpc serialization data structures,
-//! which includes `ra_tt` related data and some task messages.
-//! Although adding `Serialize` and `Deserialize` traits to `ra_tt` directly seems
-//! to be much easier, we deliberately duplicate `ra_tt` structs with `#[serde(with = "XXDef")]`
+//! which includes `tt` related data and some task messages.
+//! Although adding `Serialize` and `Deserialize` traits to `tt` directly seems
+//! to be much easier, we deliberately duplicate `tt` structs with `#[serde(with = "XXDef")]`
 //! for separation of code responsibility.
 
-use ra_tt::{
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+use tt::{
     Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, SmolStr, Spacing, Subtree, TokenId,
     TokenTree,
 };
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ListMacrosTask {

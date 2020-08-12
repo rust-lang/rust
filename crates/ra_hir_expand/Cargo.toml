@@ -18,6 +18,6 @@ ra_db = { path = "../ra_db" }
 ra_syntax = { path = "../ra_syntax" }
 ra_parser = { path = "../ra_parser" }
 profile = { path = "../profile" }
-tt = { path = "../ra_tt", package = "ra_tt" }
+tt = { path = "../tt" }
 mbe = { path = "../ra_mbe", package = "ra_mbe" }
 test_utils = { path = "../test_utils"}

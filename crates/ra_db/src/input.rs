@@ -10,8 +10,8 @@ use std::{fmt, iter::FromIterator, ops, str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
-use ra_tt::TokenExpander;
 use rustc_hash::{FxHashMap, FxHashSet};
+use tt::TokenExpander;
 use vfs::file_set::FileSet;
 
 pub use vfs::FileId;
@@ -156,7 +156,7 @@ impl CrateGraph {
         display_name: Option<String>,
         cfg_options: CfgOptions,
         env: Env,
-        proc_macro: Vec<(SmolStr, Arc<dyn ra_tt::TokenExpander>)>,
+        proc_macro: Vec<(SmolStr, Arc<dyn tt::TokenExpander>)>,
     ) -> CrateId {
         let proc_macro =
             proc_macro.into_iter().map(|(name, it)| ProcMacro { name, expander: it }).collect();
