@@ -579,7 +579,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             {
                                 if let ty::Adt(def, _) = p.trait_ref.self_ty().kind {
                                     let node = def.did.as_local().map(|def_id| {
-                                        self.tcx.hir().get(self.tcx.hir().as_local_hir_id(def_id))
+                                        self.tcx
+                                            .hir()
+                                            .get(self.tcx.hir().local_def_id_to_hir_id(def_id))
                                     });
                                     if let Some(hir::Node::Item(hir::Item { kind, .. })) = node {
                                         if let Some(g) = kind.generics() {
@@ -859,7 +861,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         candidates: Vec<DefId>,
     ) {
         let module_did = self.tcx.parent_module(self.body_id);
-        let module_id = self.tcx.hir().as_local_hir_id(module_did);
+        let module_id = self.tcx.hir().local_def_id_to_hir_id(module_did);
         let krate = self.tcx.hir().krate();
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
         if let Some(span) = span {
@@ -975,7 +977,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let id = item
                                     .def_id
                                     .as_local()
-                                    .map(|def_id| self.tcx.hir().as_local_hir_id(def_id));
+                                    .map(|def_id| self.tcx.hir().local_def_id_to_hir_id(def_id));
                                 if let Some(hir::Node::TraitItem(hir::TraitItem {
                                     kind: hir::TraitItemKind::Fn(fn_sig, method),
                                     ..
@@ -1062,7 +1064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let type_param = generics.type_param(param, self.tcx);
                 let hir = &self.tcx.hir();
                 if let Some(def_id) = type_param.def_id.as_local() {
-                    let id = hir.as_local_hir_id(def_id);
+                    let id = hir.local_def_id_to_hir_id(def_id);
                     // Get the `hir::Param` to verify whether it already has any bounds.
                     // We do this to avoid suggesting code that ends up as `T: FooBar`,
                     // instead we suggest `T: Foo + Bar` in that case.

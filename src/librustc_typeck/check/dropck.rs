@@ -70,7 +70,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId,
 ) -> Result<(), ErrorReported> {
-    let drop_impl_hir_id = tcx.hir().as_local_hir_id(drop_impl_did);
+    let drop_impl_hir_id = tcx.hir().local_def_id_to_hir_id(drop_impl_did);
 
     // check that the impl type can be made to match the trait type.
 
@@ -183,7 +183,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
 
-    let self_type_hir_id = tcx.hir().as_local_hir_id(self_type_did);
+    let self_type_hir_id = tcx.hir().local_def_id_to_hir_id(self_type_did);
 
     // We can assume the predicates attached to struct/enum definition
     // hold.

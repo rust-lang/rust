@@ -144,7 +144,7 @@ fn msg_span_from_early_bound_and_free_regions(
     let sm = tcx.sess.source_map();
 
     let scope = region.free_region_binding_scope(tcx);
-    let node = tcx.hir().as_local_hir_id(scope.expect_local());
+    let node = tcx.hir().local_def_id_to_hir_id(scope.expect_local());
     let tag = match tcx.hir().find(node) {
         Some(Node::Block(_) | Node::Expr(_)) => "body",
         Some(Node::Item(it)) => item_scope_tag(&it),
@@ -1707,7 +1707,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .in_progress_typeck_results
             .map(|typeck_results| typeck_results.borrow().hir_owner)
             .map(|owner| {
-                let hir_id = hir.as_local_hir_id(owner);
+                let hir_id = hir.local_def_id_to_hir_id(owner);
                 let parent_id = hir.get_parent_item(hir_id);
                 (
                     // Parent item could be a `mod`, so we check the HIR before calling:
@@ -1733,7 +1733,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // Get the `hir::Param` to verify whether it already has any bounds.
                         // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                         // instead we suggest `T: 'a + 'b` in that case.
-                        let id = hir.as_local_hir_id(def_id);
+                        let id = hir.local_def_id_to_hir_id(def_id);
                         let mut has_bounds = false;
                         if let Node::GenericParam(param) = hir.get(id) {
                             has_bounds = !param.bounds.is_empty();
@@ -1786,7 +1786,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .and_then(|(_, g)| g.params.first())
             .and_then(|param| param.def_id.as_local())
             .map(|def_id| {
-                (hir.span(hir.as_local_hir_id(def_id)).shrink_to_lo(), format!("{}, ", new_lt))
+                (
+                    hir.span(hir.local_def_id_to_hir_id(def_id)).shrink_to_lo(),
+                    format!("{}, ", new_lt),
+                )
             });
 
         let labeled_user_string = match bound_kind {

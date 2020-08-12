@@ -781,7 +781,7 @@ fn convert_path_expr<'a, 'tcx>(
         }
 
         Res::Def(DefKind::ConstParam, def_id) => {
-            let hir_id = cx.tcx.hir().as_local_hir_id(def_id.expect_local());
+            let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
             let item_id = cx.tcx.hir().get_parent_node(hir_id);
             let item_def_id = cx.tcx.hir().local_def_id(item_id);
             let generics = cx.tcx.generics_of(item_def_id);

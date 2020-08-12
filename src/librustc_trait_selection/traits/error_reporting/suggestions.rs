@@ -535,7 +535,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             };
 
         let hir = self.tcx.hir();
-        let hir_id = hir.as_local_hir_id(def_id.as_local()?);
+        let hir_id = hir.local_def_id_to_hir_id(def_id.as_local()?);
         let parent_node = hir.get_parent_node(hir_id);
         match hir.find(parent_node) {
             Some(hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(local), .. })) => {
@@ -1383,7 +1383,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let generator_body = generator_did
             .as_local()
-            .map(|def_id| hir.as_local_hir_id(def_id))
+            .map(|def_id| hir.local_def_id_to_hir_id(def_id))
             .and_then(|hir_id| hir.maybe_body_owned_by(hir_id))
             .map(|body_id| hir.body(body_id));
         let mut visitor = AwaitsVisitor::default();
@@ -1535,7 +1535,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             .tcx
                             .parent(generator_did)
                             .and_then(|parent_did| parent_did.as_local())
-                            .map(|parent_did| hir.as_local_hir_id(parent_did))
+                            .map(|parent_did| hir.local_def_id_to_hir_id(parent_did))
                             .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
                             .map(|name| {
                                 format!("future returned by `{}` is not {}", name, trait_name)

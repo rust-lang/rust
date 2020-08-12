@@ -71,7 +71,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
 /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
 /// the types first.
 pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let hir_id = tcx.hir().as_local_hir_id(def_id);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let item = tcx.hir().expect_item(hir_id);
 
     debug!(
@@ -190,7 +190,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 }
 
 pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let hir_id = tcx.hir().as_local_hir_id(def_id);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let trait_item = tcx.hir().expect_trait_item(hir_id);
 
     let method_sig = match trait_item.kind {
@@ -264,7 +264,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
 }
 
 pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let hir_id = tcx.hir().as_local_hir_id(def_id);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let impl_item = tcx.hir().expect_impl_item(hir_id);
 
     let method_sig = match impl_item.kind {
@@ -902,7 +902,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                 let generics = tcx.generics_of(def_id);
 
                 let opaque_hir_id = if let Some(local_id) = def_id.as_local() {
-                    tcx.hir().as_local_hir_id(local_id)
+                    tcx.hir().local_def_id_to_hir_id(local_id)
                 } else {
                     // Opaque types from other crates won't have defining uses in this crate.
                     return ty;

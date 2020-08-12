@@ -1,0 +1,17 @@
+warning: unnecessary parentheses around function argument
+  --> $DIR/what.rs:7:10
+   |
+LL |       test((
+   |  __________^
+LL | |         7
+LL | |     ));
+   | |_____^ help: remove these parentheses
+   |
+note: the lint level is defined here
+  --> $DIR/what.rs:3:9
+   |
+LL | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

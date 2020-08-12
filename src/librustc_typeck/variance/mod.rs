@@ -39,7 +39,7 @@ fn crate_variances(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CrateVariancesMap<'_
 }
 
 fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
-    let id = tcx.hir().as_local_hir_id(item_def_id.expect_local());
+    let id = tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local());
     let unsupported = || {
         // Variance not relevant.
         span_bug!(tcx.hir().span(id), "asked to compute variance for wrong kind of item")
