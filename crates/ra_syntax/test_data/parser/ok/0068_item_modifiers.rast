@@ -1,0 +1,218 @@
+SOURCE_FILE@0..304
+  FN@0..17
+    ASYNC_KW@0..5 "async"
+    WHITESPACE@5..6 " "
+    FN_KW@6..8 "fn"
+    WHITESPACE@8..9 " "
+    NAME@9..12
+      IDENT@9..12 "foo"
+    PARAM_LIST@12..14
+      L_PAREN@12..13 "("
+      R_PAREN@13..14 ")"
+    WHITESPACE@14..15 " "
+    BLOCK_EXPR@15..17
+      L_CURLY@15..16 "{"
+      R_CURLY@16..17 "}"
+  WHITESPACE@17..18 "\n"
+  FN@18..36
+    ABI@18..24
+      EXTERN_KW@18..24 "extern"
+    WHITESPACE@24..25 " "
+    FN_KW@25..27 "fn"
+    WHITESPACE@27..28 " "
+    NAME@28..31
+      IDENT@28..31 "foo"
+    PARAM_LIST@31..33
+      L_PAREN@31..32 "("
+      R_PAREN@32..33 ")"
+    WHITESPACE@33..34 " "
+    BLOCK_EXPR@34..36
+      L_CURLY@34..35 "{"
+      R_CURLY@35..36 "}"
+  WHITESPACE@36..37 "\n"
+  FN@37..54
+    CONST_KW@37..42 "const"
+    WHITESPACE@42..43 " "
+    FN_KW@43..45 "fn"
+    WHITESPACE@45..46 " "
+    NAME@46..49
+      IDENT@46..49 "foo"
+    PARAM_LIST@49..51
+      L_PAREN@49..50 "("
+      R_PAREN@50..51 ")"
+    WHITESPACE@51..52 " "
+    BLOCK_EXPR@52..54
+      L_CURLY@52..53 "{"
+      R_CURLY@53..54 "}"
+  WHITESPACE@54..55 "\n"
+  FN@55..79
+    CONST_KW@55..60 "const"
+    WHITESPACE@60..61 " "
+    UNSAFE_KW@61..67 "unsafe"
+    WHITESPACE@67..68 " "
+    FN_KW@68..70 "fn"
+    WHITESPACE@70..71 " "
+    NAME@71..74
+      IDENT@71..74 "foo"
+    PARAM_LIST@74..76
+      L_PAREN@74..75 "("
+      R_PAREN@75..76 ")"
+    WHITESPACE@76..77 " "
+    BLOCK_EXPR@77..79
+      L_CURLY@77..78 "{"
+      R_CURLY@78..79 "}"
+  WHITESPACE@79..80 "\n"
+  FN@80..109
+    UNSAFE_KW@80..86 "unsafe"
+    WHITESPACE@86..87 " "
+    ABI@87..97
+      EXTERN_KW@87..93 "extern"
+      WHITESPACE@93..94 " "
+      STRING@94..97 "\"C\""
+    WHITESPACE@97..98 " "
+    FN_KW@98..100 "fn"
+    WHITESPACE@100..101 " "
+    NAME@101..104
+      IDENT@101..104 "foo"
+    PARAM_LIST@104..106
+      L_PAREN@104..105 "("
+      R_PAREN@105..106 ")"
+    WHITESPACE@106..107 " "
+    BLOCK_EXPR@107..109
+      L_CURLY@107..108 "{"
+      R_CURLY@108..109 "}"
+  WHITESPACE@109..110 "\n"
+  FN@110..128
+    UNSAFE_KW@110..116 "unsafe"
+    WHITESPACE@116..117 " "
+    FN_KW@117..119 "fn"
+    WHITESPACE@119..120 " "
+    NAME@120..123
+      IDENT@120..123 "foo"
+    PARAM_LIST@123..125
+      L_PAREN@123..124 "("
+      R_PAREN@124..125 ")"
+    WHITESPACE@125..126 " "
+    BLOCK_EXPR@126..128
+      L_CURLY@126..127 "{"
+      R_CURLY@127..128 "}"
+  WHITESPACE@128..129 "\n"
+  FN@129..153
+    ASYNC_KW@129..134 "async"
+    WHITESPACE@134..135 " "
+    UNSAFE_KW@135..141 "unsafe"
+    WHITESPACE@141..142 " "
+    FN_KW@142..144 "fn"
+    WHITESPACE@144..145 " "
+    NAME@145..148
+      IDENT@145..148 "foo"
+    PARAM_LIST@148..150
+      L_PAREN@148..149 "("
+      R_PAREN@149..150 ")"
+    WHITESPACE@150..151 " "
+    BLOCK_EXPR@151..153
+      L_CURLY@151..152 "{"
+      R_CURLY@152..153 "}"
+  WHITESPACE@153..154 "\n"
+  FN@154..178
+    CONST_KW@154..159 "const"
+    WHITESPACE@159..160 " "
+    UNSAFE_KW@160..166 "unsafe"
+    WHITESPACE@166..167 " "
+    FN_KW@167..169 "fn"
+    WHITESPACE@169..170 " "
+    NAME@170..173
+      IDENT@170..173 "bar"
+    PARAM_LIST@173..175
+      L_PAREN@173..174 "("
+      R_PAREN@174..175 ")"
+    WHITESPACE@175..176 " "
+    BLOCK_EXPR@176..178
+      L_CURLY@176..177 "{"
+      R_CURLY@177..178 "}"
+  WHITESPACE@178..180 "\n\n"
+  TRAIT@180..197
+    UNSAFE_KW@180..186 "unsafe"
+    WHITESPACE@186..187 " "
+    TRAIT_KW@187..192 "trait"
+    WHITESPACE@192..193 " "
+    NAME@193..194
+      IDENT@193..194 "T"
+    WHITESPACE@194..195 " "
+    ASSOC_ITEM_LIST@195..197
+      L_CURLY@195..196 "{"
+      R_CURLY@196..197 "}"
+  WHITESPACE@197..198 "\n"
+  TRAIT@198..213
+    AUTO_KW@198..202 "auto"
+    WHITESPACE@202..203 " "
+    TRAIT_KW@203..208 "trait"
+    WHITESPACE@208..209 " "
+    NAME@209..210
+      IDENT@209..210 "T"
+    WHITESPACE@210..211 " "
+    ASSOC_ITEM_LIST@211..213
+      L_CURLY@211..212 "{"
+      R_CURLY@212..213 "}"
+  WHITESPACE@213..214 "\n"
+  TRAIT@214..236
+    UNSAFE_KW@214..220 "unsafe"
+    WHITESPACE@220..221 " "
+    AUTO_KW@221..225 "auto"
+    WHITESPACE@225..226 " "
+    TRAIT_KW@226..231 "trait"
+    WHITESPACE@231..232 " "
+    NAME@232..233
+      IDENT@232..233 "T"
+    WHITESPACE@233..234 " "
+    ASSOC_ITEM_LIST@234..236
+      L_CURLY@234..235 "{"
+      R_CURLY@235..236 "}"
+  WHITESPACE@236..238 "\n\n"
+  IMPL@238..256
+    UNSAFE_KW@238..244 "unsafe"
+    WHITESPACE@244..245 " "
+    IMPL_KW@245..249 "impl"
+    WHITESPACE@249..250 " "
+    PATH_TYPE@250..253
+      PATH@250..253
+        PATH_SEGMENT@250..253
+          NAME_REF@250..253
+            IDENT@250..253 "Foo"
+    WHITESPACE@253..254 " "
+    ASSOC_ITEM_LIST@254..256
+      L_CURLY@254..255 "{"
+      R_CURLY@255..256 "}"
+  WHITESPACE@256..257 "\n"
+  IMPL@257..276
+    DEFAULT_KW@257..264 "default"
+    WHITESPACE@264..265 " "
+    IMPL_KW@265..269 "impl"
+    WHITESPACE@269..270 " "
+    PATH_TYPE@270..273
+      PATH@270..273
+        PATH_SEGMENT@270..273
+          NAME_REF@270..273
+            IDENT@270..273 "Foo"
+    WHITESPACE@273..274 " "
+    ASSOC_ITEM_LIST@274..276
+      L_CURLY@274..275 "{"
+      R_CURLY@275..276 "}"
+  WHITESPACE@276..277 "\n"
+  IMPL@277..303
+    UNSAFE_KW@277..283 "unsafe"
+    WHITESPACE@283..284 " "
+    DEFAULT_KW@284..291 "default"
+    WHITESPACE@291..292 " "
+    IMPL_KW@292..296 "impl"
+    WHITESPACE@296..297 " "
+    PATH_TYPE@297..300
+      PATH@297..300
+        PATH_SEGMENT@297..300
+          NAME_REF@297..300
+            IDENT@297..300 "Foo"
+    WHITESPACE@300..301 " "
+    ASSOC_ITEM_LIST@301..303
+      L_CURLY@301..302 "{"
+      R_CURLY@302..303 "}"
+  WHITESPACE@303..304 "\n"

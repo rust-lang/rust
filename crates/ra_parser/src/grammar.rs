@@ -110,7 +110,7 @@ pub(crate) mod fragments {
     }
 
     pub(crate) fn item(p: &mut Parser) {
-        items::item_or_macro(p, true, items::ItemFlavor::Mod)
+        items::item_or_macro(p, true)
     }
 
     pub(crate) fn macro_items(p: &mut Parser) {

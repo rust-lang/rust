@@ -1,0 +1,11 @@
+SOURCE_FILE@0..11
+  TRAIT@0..10
+    TRAIT_KW@0..5 "trait"
+    WHITESPACE@5..6 " "
+    NAME@6..7
+      IDENT@6..7 "T"
+    WHITESPACE@7..8 " "
+    ASSOC_ITEM_LIST@8..10
+      L_CURLY@8..9 "{"
+      R_CURLY@9..10 "}"
+  WHITESPACE@10..11 "\n"

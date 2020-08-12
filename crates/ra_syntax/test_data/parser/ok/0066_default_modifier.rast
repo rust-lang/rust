@@ -1,0 +1,218 @@
+SOURCE_FILE@0..294
+  TRAIT@0..113
+    TRAIT_KW@0..5 "trait"
+    WHITESPACE@5..6 " "
+    NAME@6..7
+      IDENT@6..7 "T"
+    WHITESPACE@7..8 " "
+    ASSOC_ITEM_LIST@8..113
+      L_CURLY@8..9 "{"
+      WHITESPACE@9..12 "\n  "
+      TYPE_ALIAS@12..33
+        DEFAULT_KW@12..19 "default"
+        WHITESPACE@19..20 " "
+        TYPE_KW@20..24 "type"
+        WHITESPACE@24..25 " "
+        NAME@25..26
+          IDENT@25..26 "T"
+        WHITESPACE@26..27 " "
+        EQ@27..28 "="
+        WHITESPACE@28..29 " "
+        PATH_TYPE@29..32
+          PATH@29..32
+            PATH_SEGMENT@29..32
+              NAME_REF@29..32
+                IDENT@29..32 "Bar"
+        SEMICOLON@32..33 ";"
+      WHITESPACE@33..36 "\n  "
+      CONST@36..60
+        DEFAULT_KW@36..43 "default"
+        WHITESPACE@43..44 " "
+        CONST_KW@44..49 "const"
+        WHITESPACE@49..50 " "
+        NAME@50..51
+          IDENT@50..51 "f"
+        COLON@51..52 ":"
+        WHITESPACE@52..53 " "
+        PATH_TYPE@53..55
+          PATH@53..55
+            PATH_SEGMENT@53..55
+              NAME_REF@53..55
+                IDENT@53..55 "u8"
+        WHITESPACE@55..56 " "
+        EQ@56..57 "="
+        WHITESPACE@57..58 " "
+        LITERAL@58..59
+          INT_NUMBER@58..59 "0"
+        SEMICOLON@59..60 ";"
+      WHITESPACE@60..63 "\n  "
+      FN@63..82
+        DEFAULT_KW@63..70 "default"
+        WHITESPACE@70..71 " "
+        FN_KW@71..73 "fn"
+        WHITESPACE@73..74 " "
+        NAME@74..77
+          IDENT@74..77 "foo"
+        PARAM_LIST@77..79
+          L_PAREN@77..78 "("
+          R_PAREN@78..79 ")"
+        WHITESPACE@79..80 " "
+        BLOCK_EXPR@80..82
+          L_CURLY@80..81 "{"
+          R_CURLY@81..82 "}"
+      WHITESPACE@82..85 "\n  "
+      FN@85..111
+        DEFAULT_KW@85..92 "default"
+        WHITESPACE@92..93 " "
+        UNSAFE_KW@93..99 "unsafe"
+        WHITESPACE@99..100 " "
+        FN_KW@100..102 "fn"
+        WHITESPACE@102..103 " "
+        NAME@103..106
+          IDENT@103..106 "bar"
+        PARAM_LIST@106..108
+          L_PAREN@106..107 "("
+          R_PAREN@107..108 ")"
+        WHITESPACE@108..109 " "
+        BLOCK_EXPR@109..111
+          L_CURLY@109..110 "{"
+          R_CURLY@110..111 "}"
+      WHITESPACE@111..112 "\n"
+      R_CURLY@112..113 "}"
+  WHITESPACE@113..115 "\n\n"
+  IMPL@115..235
+    IMPL_KW@115..119 "impl"
+    WHITESPACE@119..120 " "
+    PATH_TYPE@120..121
+      PATH@120..121
+        PATH_SEGMENT@120..121
+          NAME_REF@120..121
+            IDENT@120..121 "T"
+    WHITESPACE@121..122 " "
+    FOR_KW@122..125 "for"
+    WHITESPACE@125..126 " "
+    PATH_TYPE@126..129
+      PATH@126..129
+        PATH_SEGMENT@126..129
+          NAME_REF@126..129
+            IDENT@126..129 "Foo"
+    WHITESPACE@129..130 " "
+    ASSOC_ITEM_LIST@130..235
+      L_CURLY@130..131 "{"
+      WHITESPACE@131..134 "\n  "
+      TYPE_ALIAS@134..155
+        DEFAULT_KW@134..141 "default"
+        WHITESPACE@141..142 " "
+        TYPE_KW@142..146 "type"
+        WHITESPACE@146..147 " "
+        NAME@147..148
+          IDENT@147..148 "T"
+        WHITESPACE@148..149 " "
+        EQ@149..150 "="
+        WHITESPACE@150..151 " "
+        PATH_TYPE@151..154
+          PATH@151..154
+            PATH_SEGMENT@151..154
+              NAME_REF@151..154
+                IDENT@151..154 "Bar"
+        SEMICOLON@154..155 ";"
+      WHITESPACE@155..158 "\n  "
+      CONST@158..182
+        DEFAULT_KW@158..165 "default"
+        WHITESPACE@165..166 " "
+        CONST_KW@166..171 "const"
+        WHITESPACE@171..172 " "
+        NAME@172..173
+          IDENT@172..173 "f"
+        COLON@173..174 ":"
+        WHITESPACE@174..175 " "
+        PATH_TYPE@175..177
+          PATH@175..177
+            PATH_SEGMENT@175..177
+              NAME_REF@175..177
+                IDENT@175..177 "u8"
+        WHITESPACE@177..178 " "
+        EQ@178..179 "="
+        WHITESPACE@179..180 " "
+        LITERAL@180..181
+          INT_NUMBER@180..181 "0"
+        SEMICOLON@181..182 ";"
+      WHITESPACE@182..185 "\n  "
+      FN@185..204
+        DEFAULT_KW@185..192 "default"
+        WHITESPACE@192..193 " "
+        FN_KW@193..195 "fn"
+        WHITESPACE@195..196 " "
+        NAME@196..199
+          IDENT@196..199 "foo"
+        PARAM_LIST@199..201
+          L_PAREN@199..200 "("
+          R_PAREN@200..201 ")"
+        WHITESPACE@201..202 " "
+        BLOCK_EXPR@202..204
+          L_CURLY@202..203 "{"
+          R_CURLY@203..204 "}"
+      WHITESPACE@204..207 "\n  "
+      FN@207..233
+        DEFAULT_KW@207..214 "default"
+        WHITESPACE@214..215 " "
+        UNSAFE_KW@215..221 "unsafe"
+        WHITESPACE@221..222 " "
+        FN_KW@222..224 "fn"
+        WHITESPACE@224..225 " "
+        NAME@225..228
+          IDENT@225..228 "bar"
+        PARAM_LIST@228..230
+          L_PAREN@228..229 "("
+          R_PAREN@229..230 ")"
+        WHITESPACE@230..231 " "
+        BLOCK_EXPR@231..233
+          L_CURLY@231..232 "{"
+          R_CURLY@232..233 "}"
+      WHITESPACE@233..234 "\n"
+      R_CURLY@234..235 "}"
+  WHITESPACE@235..237 "\n\n"
+  IMPL@237..261
+    DEFAULT_KW@237..244 "default"
+    WHITESPACE@244..245 " "
+    IMPL_KW@245..249 "impl"
+    WHITESPACE@249..250 " "
+    PATH_TYPE@250..251
+      PATH@250..251
+        PATH_SEGMENT@250..251
+          NAME_REF@250..251
+            IDENT@250..251 "T"
+    WHITESPACE@251..252 " "
+    FOR_KW@252..255 "for"
+    WHITESPACE@255..256 " "
+    TUPLE_TYPE@256..258
+      L_PAREN@256..257 "("
+      R_PAREN@257..258 ")"
+    WHITESPACE@258..259 " "
+    ASSOC_ITEM_LIST@259..261
+      L_CURLY@259..260 "{"
+      R_CURLY@260..261 "}"
+  WHITESPACE@261..262 "\n"
+  IMPL@262..293
+    DEFAULT_KW@262..269 "default"
+    WHITESPACE@269..270 " "
+    UNSAFE_KW@270..276 "unsafe"
+    WHITESPACE@276..277 " "
+    IMPL_KW@277..281 "impl"
+    WHITESPACE@281..282 " "
+    PATH_TYPE@282..283
+      PATH@282..283
+        PATH_SEGMENT@282..283
+          NAME_REF@282..283
+            IDENT@282..283 "T"
+    WHITESPACE@283..284 " "
+    FOR_KW@284..287 "for"
+    WHITESPACE@287..288 " "
+    TUPLE_TYPE@288..290
+      L_PAREN@288..289 "("
+      R_PAREN@289..290 ")"
+    WHITESPACE@290..291 " "
+    ASSOC_ITEM_LIST@291..293
+      L_CURLY@291..292 "{"
+      R_CURLY@292..293 "}"
+  WHITESPACE@293..294 "\n"
