@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// this lint on them will fix the problem, but they may be in other crates.
     ///
     /// One notable example of a function that may cause issues, and which cannot
-    /// easily be changed due to beinng in the standard library is `Vec::contains`.
+    /// easily be changed due to being in the standard library is `Vec::contains`.
     /// when called on a `Vec<Vec<T>>`. If a `&Vec` is passed to that method then
     /// it will compile, but if a `&[T]` is passed then it will not compile.
     ///
