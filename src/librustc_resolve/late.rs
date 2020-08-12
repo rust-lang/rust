@@ -29,10 +29,10 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 
-use log::debug;
 use rustc_span::source_map::{respan, Spanned};
 use std::collections::BTreeSet;
 use std::mem::{replace, take};
+use tracing::debug;
 
 mod diagnostics;
 crate mod lifetimes;
@@ -1732,7 +1732,12 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         source: PathSource<'ast>,
         crate_lint: CrateLint,
     ) -> PartialRes {
-        log::debug!("smart_resolve_path_fragment(id={:?},qself={:?},path={:?}", id, qself, path);
+        tracing::debug!(
+            "smart_resolve_path_fragment(id={:?},qself={:?},path={:?}",
+            id,
+            qself,
+            path
+        );
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 

@@ -37,13 +37,13 @@ use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, hygiene::MacroKind, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
-use log::debug;
 use proc_macro::bridge::client::ProcMacro;
 use std::cell::Cell;
 use std::io;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::path::Path;
+use tracing::debug;
 
 pub use cstore_impl::{provide, provide_extern};
 use rustc_span::hygiene::HygieneDecodeContext;

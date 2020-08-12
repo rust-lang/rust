@@ -25,10 +25,10 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
 
-use log::debug;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::{mem, slice};
+use tracing::debug;
 
 crate struct ParserAnyMacro<'a> {
     parser: Parser<'a>,

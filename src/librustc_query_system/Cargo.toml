@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 rustc_arena = { path = "../librustc_arena" }
-log = { package = "tracing", version = "0.1" }
+tracing = "0.1"
 rustc-rayon-core = "0.3.0"
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }

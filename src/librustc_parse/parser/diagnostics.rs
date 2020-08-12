@@ -16,7 +16,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 
-use log::{debug, trace};
+use tracing::{debug, trace};
 
 const TURBOFISH: &str = "use `::<...>` instead of `<...>` to specify type arguments";
 

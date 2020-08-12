@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 rustc_graphviz = { path = "../librustc_graphviz" }
-log = { package = "tracing", version = "0.1" }
+tracing = "0.1"
 rand = "0.7"
 rustc_middle = { path = "../librustc_middle" }
 rustc_data_structures = { path = "../librustc_data_structures" }

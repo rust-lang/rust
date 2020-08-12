@@ -1,5 +1,4 @@
 use crate::Resolver;
-use log::debug;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Token};
 use rustc_ast::visit::{self, FnKind};
@@ -11,6 +10,7 @@ use rustc_hir::definitions::*;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
+use tracing::debug;
 
 crate fn collect_definitions(
     resolver: &mut Resolver<'_>,

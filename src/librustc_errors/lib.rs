@@ -8,7 +8,7 @@
 
 pub use emitter::ColorConfig;
 
-use log::debug;
+use tracing::debug;
 use Level::*;
 
 use emitter::{is_case_difference, Emitter, EmitterWriter};

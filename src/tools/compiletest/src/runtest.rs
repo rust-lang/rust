@@ -2099,11 +2099,7 @@ impl<'test> TestCx<'test> {
             Some(ref s) => s
                 .split(' ')
                 .filter_map(|s| {
-                    if s.chars().all(|c| c.is_whitespace()) {
-                        None
-                    } else {
-                        Some(s.to_owned())
-                    }
+                    if s.chars().all(|c| c.is_whitespace()) { None } else { Some(s.to_owned()) }
                 })
                 .collect(),
             None => Vec::new(),
@@ -2162,11 +2158,7 @@ impl<'test> TestCx<'test> {
     /// The revision, ignored for incremental compilation since it wants all revisions in
     /// the same directory.
     fn safe_revision(&self) -> Option<&str> {
-        if self.config.mode == Incremental {
-            None
-        } else {
-            self.revision
-        }
+        if self.config.mode == Incremental { None } else { self.revision }
     }
 
     /// Gets the absolute path to the directory where all output for the given
@@ -2303,11 +2295,7 @@ impl<'test> TestCx<'test> {
 
     fn charset() -> &'static str {
         // FreeBSD 10.1 defaults to GDB 6.1.1 which doesn't support "auto" charset
-        if cfg!(target_os = "freebsd") {
-            "ISO-8859-1"
-        } else {
-            "UTF-8"
-        }
+        if cfg!(target_os = "freebsd") { "ISO-8859-1" } else { "UTF-8" }
     }
 
     fn run_rustdoc_test(&self) {
@@ -3521,11 +3509,7 @@ impl<'test> TestCx<'test> {
         for output_file in files {
             println!("Actual {} saved to {}", kind, output_file.display());
         }
-        if self.config.bless {
-            0
-        } else {
-            1
-        }
+        if self.config.bless { 0 } else { 1 }
     }
 
     fn prune_duplicate_output(&self, mode: CompareMode, kind: &str, canon_content: &str) {

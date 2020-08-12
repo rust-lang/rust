@@ -902,11 +902,7 @@ impl SourceMap {
         }
         debug!("find_width_of_character_at_span: final target=`{:?}`", target);
 
-        if forwards {
-            (target - end_index) as u32
-        } else {
-            (end_index - target) as u32
-        }
+        if forwards { (target - end_index) as u32 } else { (end_index - target) as u32 }
     }
 
     pub fn get_source_file(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {

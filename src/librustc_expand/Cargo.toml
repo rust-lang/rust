@@ -12,7 +12,7 @@ doctest = false
 
 [dependencies]
 rustc_serialize = { path = "../librustc_serialize" }
-log = { package = "tracing", version = "0.1" }
+tracing = "0.1"
 rustc_span = { path = "../librustc_span" }
 rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_ast_passes = { path = "../librustc_ast_passes" }

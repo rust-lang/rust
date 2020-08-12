@@ -26,7 +26,7 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::mem::take;
 
-use log::debug;
+use tracing::debug;
 
 // This counts the no of times a lifetime is used
 #[derive(Clone, Copy, Debug)]

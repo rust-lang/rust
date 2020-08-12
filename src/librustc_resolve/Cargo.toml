@@ -12,7 +12,7 @@ doctest = false
 
 [dependencies]
 bitflags = "1.2.1"
-log = { package = "tracing", version = "0.1" }
+tracing = "0.1"
 rustc_ast = { path = "../librustc_ast" }
 rustc_arena = { path = "../librustc_arena" }
 rustc_middle = { path = "../librustc_middle" }

@@ -8,8 +8,8 @@ use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Pos, Span};
 
-use log::debug;
 use std::char;
+use tracing::debug;
 
 mod tokentrees;
 mod unescape_error_reporting;

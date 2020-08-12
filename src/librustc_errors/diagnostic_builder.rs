@@ -1,11 +1,11 @@
 use crate::{Applicability, Handler, Level, StashKey};
 use crate::{Diagnostic, DiagnosticId, DiagnosticStyledString};
 
-use log::debug;
 use rustc_span::{MultiSpan, Span};
 use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
+use tracing::debug;
 
 /// Used for emitting structured error messages and other diagnostic information.
 ///

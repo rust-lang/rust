@@ -19,7 +19,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span};
 
-use log::debug;
+use tracing::debug;
 
 type Res = def::Res<ast::NodeId>;
 

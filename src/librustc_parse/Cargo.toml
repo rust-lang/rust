@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 bitflags = "1.0"
-log = { package = "tracing", version = "0.1" }
+tracing = "0.1"
 rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_feature = { path = "../librustc_feature" }
