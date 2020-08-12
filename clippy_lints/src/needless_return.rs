@@ -2,12 +2,14 @@ use rustc_lint::{LateLintPass, LateContext};
 use rustc_ast::ast::Attribute;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::FnKind;
+use rustc_hir::intravisit::{FnKind, walk_expr, NestedVisitorMap, Visitor};
 use rustc_span::source_map::Span;
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, HirId, MatchSource, StmtKind};
 
-use crate::utils::{snippet_opt, span_lint_and_sugg, span_lint_and_then};
+use crate::utils::{fn_def_id, snippet_opt, span_lint_and_sugg, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for return statements at the end of a block.
@@ -164,3 +166,42 @@ fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, inner_span: Option<Spa
         },
     }
 }
+
+fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    let mut visitor = BorrowVisitor { cx, borrows: false };
+    walk_expr(&mut visitor, expr);
+    visitor.borrows
+}
+
+struct BorrowVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    borrows: bool,
+}
+
+impl<'tcx> Visitor<'tcx> for BorrowVisitor<'_, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+        if self.borrows {
+            return;
+        }
+
+        if let Some(def_id) = fn_def_id(self.cx, expr) {
+            self.borrows = self
+                .cx
+                .tcx
+                .fn_sig(def_id)
+                .output()
+                .skip_binder()
+                .walk()
+                .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)));
+        }
+
+        walk_expr(self, expr);
+    }
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+}
+
