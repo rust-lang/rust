@@ -47,7 +47,7 @@ pub(crate) fn trait_item_list(p: &mut Parser) {
             error_block(p, "expected an item");
             continue;
         }
-        item_or_macro(p, true, ItemFlavor::Trait);
+        item_or_macro(p, true);
     }
     p.expect(T!['}']);
     m.complete(p, ASSOC_ITEM_LIST);
@@ -104,7 +104,7 @@ pub(crate) fn impl_item_list(p: &mut Parser) {
             error_block(p, "expected an item");
             continue;
         }
-        item_or_macro(p, true, ItemFlavor::Mod);
+        item_or_macro(p, true);
     }
     p.expect(T!['}']);
     m.complete(p, ASSOC_ITEM_LIST);

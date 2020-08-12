@@ -22,13 +22,8 @@ use super::*;
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
     while !(stop_on_r_curly && p.at(T!['}']) || p.at(EOF)) {
-        item_or_macro(p, stop_on_r_curly, ItemFlavor::Mod)
+        item_or_macro(p, stop_on_r_curly)
     }
-}
-
-pub(super) enum ItemFlavor {
-    Mod,
-    Trait,
 }
 
 pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
@@ -36,10 +31,10 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
     CRATE_KW, USE_KW, MACRO_KW
 ];
 
-pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemFlavor) {
+pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
     let m = p.start();
     attributes::outer_attributes(p);
-    let m = match maybe_item(p, m, flavor) {
+    let m = match maybe_item(p, m) {
         Ok(()) => {
             if p.at(T![;]) {
                 p.err_and_bump(
@@ -76,7 +71,7 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemF
     }
 }
 
-pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Result<(), Marker> {
+pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     // test_err pub_expr
     // fn foo() { pub 92; }
     let has_visibility = opt_visibility(p);
@@ -114,38 +109,29 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         has_mods = true;
     }
 
-    if p.at(IDENT)
-        && p.at_contextual_kw("default")
-        && (match p.nth(1) {
-            T![impl] => true,
+    // test default_item
+    // default impl T for Foo {}
+    if p.at(IDENT) && p.at_contextual_kw("default") {
+        match p.nth(1) {
+            T![fn] | T![type] | T![const] | T![impl] => {
+                p.bump_remap(T![default]);
+                has_mods = true;
+            }
             T![unsafe] => {
-                // test default_unsafe_impl
-                // default unsafe impl Foo {}
-
-                // test default_unsafe_fn
-                // impl T for Foo {
+                // test default_unsafe_item
+                // default unsafe impl T for Foo {
                 //     default unsafe fn foo() {}
                 // }
-                if p.nth(2) == T![impl] || p.nth(2) == T![fn] {
+                if matches!(p.nth(2), T![impl] | T![fn]) {
                     p.bump_remap(T![default]);
                     p.bump(T![unsafe]);
                     has_mods = true;
                 }
-                false
             }
-            T![fn] | T![type] | T![const] => {
-                if let ItemFlavor::Mod = flavor {
-                    true
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        })
-    {
-        p.bump_remap(T![default]);
-        has_mods = true;
+            _ => (),
+        }
     }
+
     if p.at(IDENT) && p.at_contextual_kw("existential") && p.nth(1) == T![type] {
         p.bump_remap(T![existential]);
         has_mods = true;

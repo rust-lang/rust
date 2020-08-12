@@ -73,7 +73,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
 
     // test block_items
     // fn a() { fn b() {} }
-    let m = match items::maybe_item(p, m, items::ItemFlavor::Mod) {
+    let m = match items::maybe_item(p, m) {
         Ok(()) => return,
         Err(m) => m,
     };
