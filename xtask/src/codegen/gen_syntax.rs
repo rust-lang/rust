@@ -91,16 +91,18 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
                             support::children(&self.syntax)
                         }
                     }
-                } else if let Some(token_kind) = field.token_kind() {
-                    quote! {
-                        pub fn #method_name(&self) -> Option<#ty> {
-                            support::token(&self.syntax, #token_kind)
-                        }
-                    }
                 } else {
-                    quote! {
-                        pub fn #method_name(&self) -> Option<#ty> {
-                            support::child(&self.syntax)
+                    if let Some(token_kind) = field.token_kind() {
+                        quote! {
+                            pub fn #method_name(&self) -> Option<#ty> {
+                                support::token(&self.syntax, #token_kind)
+                            }
+                        }
+                    } else {
+                        quote! {
+                            pub fn #method_name(&self) -> Option<#ty> {
+                                support::child(&self.syntax)
+                            }
                         }
                     }
                 }

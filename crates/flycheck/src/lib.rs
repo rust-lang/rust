@@ -106,7 +106,6 @@ struct FlycheckActor {
     cargo_handle: Option<CargoHandle>,
 }
 
-#[allow(clippy::large_enum_variant)]
 enum Event {
     Restart(Restart),
     CheckEvent(Option<cargo_metadata::Message>),

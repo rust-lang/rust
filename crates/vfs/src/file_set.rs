@@ -19,9 +19,6 @@ impl FileSet {
     pub fn len(&self) -> usize {
         self.files.len()
     }
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
     pub fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
         let mut base = self.paths[&anchor].clone();
         base.pop();
