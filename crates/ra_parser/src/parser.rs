@@ -269,8 +269,8 @@ impl Marker {
     pub(crate) fn complete(mut self, p: &mut Parser, kind: SyntaxKind) -> CompletedMarker {
         self.bomb.defuse();
         let idx = self.pos as usize;
-        match p.events[idx] {
-            Event::Start { kind: ref mut slot, .. } => {
+        match &mut p.events[idx] {
+            Event::Start { kind: slot, .. } => {
                 *slot = kind;
             }
             _ => unreachable!(),
@@ -320,8 +320,8 @@ impl CompletedMarker {
     pub(crate) fn precede(self, p: &mut Parser) -> Marker {
         let new_pos = p.start();
         let idx = self.start_pos as usize;
-        match p.events[idx] {
-            Event::Start { ref mut forward_parent, .. } => {
+        match &mut p.events[idx] {
+            Event::Start { forward_parent, .. } => {
                 *forward_parent = Some(new_pos.pos - self.start_pos);
             }
             _ => unreachable!(),
@@ -333,12 +333,12 @@ impl CompletedMarker {
     pub(crate) fn undo_completion(self, p: &mut Parser) -> Marker {
         let start_idx = self.start_pos as usize;
         let finish_idx = self.finish_pos as usize;
-        match p.events[start_idx] {
-            Event::Start { ref mut kind, forward_parent: None } => *kind = TOMBSTONE,
+        match &mut p.events[start_idx] {
+            Event::Start { kind, forward_parent: None } => *kind = TOMBSTONE,
             _ => unreachable!(),
         }
-        match p.events[finish_idx] {
-            ref mut slot @ Event::Finish => *slot = Event::tombstone(),
+        match &mut p.events[finish_idx] {
+            slot @ Event::Finish => *slot = Event::tombstone(),
             _ => unreachable!(),
         }
         Marker::new(self.start_pos)
