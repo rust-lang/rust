@@ -903,6 +903,44 @@ impl fmt::Debug for StderrLock<'_> {
     }
 }
 
+/// Prints the given `str` and reads a [`String`] from
+/// [standard input](Stdin). The trailing newline is stripped.
+/// Gives an error on EOF (end of file).
+///
+/// # Note
+///
+/// If you require more explicit control over capturing
+/// user input, see the [`Stdin::read_line`] method.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(input)]
+/// use std::io;
+///
+/// fn main() {
+///     let name = io::input("Enter name: ").expect("input failed!");
+///
+///     println!("Your name is {}!", name);
+/// }
+/// ```
+#[unstable(
+    feature = "input",
+    reason = "this function may be replaced with a more general mechanism",
+    issue = "none"
+)]
+pub fn input(prompt: &str) -> Result<String> {
+    let stdout = stdout();
+    let mut lock = stdout.lock();
+    lock.write_all(prompt.as_bytes())?;
+    lock.flush()?;
+    let mut input = String::new();
+    match stdin().read_line(&mut input)? {
+        0 => Err(Error::new(ErrorKind::UnexpectedEof, "input reached eof unexpectedly")),
+        _ => Ok(String::from(input.trim_end_matches(&['\n', '\r'][..]))),
+    }
+}
+
 /// Resets the thread-local stderr handle to the specified writer
 ///
 /// This will replace the current thread's stderr handle, returning the old
