@@ -56,6 +56,7 @@ fn deny_clippy(path: &PathBuf, text: &String) {
             "\n\nallowing lints is forbidden: {}.
 rust-analyzer intentionally doesn't check clippy on CI.
 You can allow lint globally via `xtask clippy`.
+See https://github.com/rust-lang/rust-clippy/issues/5537 for discussion.
 
 ",
             path.display()
