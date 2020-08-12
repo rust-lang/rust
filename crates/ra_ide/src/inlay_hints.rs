@@ -156,15 +156,15 @@ fn get_param_name_hints(
         .params(sema.db)
         .into_iter()
         .zip(args)
-        .filter_map(|((param, _ty), arg)| match param? {
-            Either::Left(self_param) => Some((self_param.to_string(), arg)),
-            Either::Right(pat) => {
-                let param_name = match pat {
+        .filter_map(|((param, _ty), arg)| {
+            let param_name = match param? {
+                Either::Left(self_param) => self_param.to_string(),
+                Either::Right(pat) => match pat {
                     ast::Pat::IdentPat(it) => it.name()?.to_string(),
-                    it => it.to_string(),
-                };
-                Some((param_name, arg))
-            }
+                    _ => return None,
+                },
+            };
+            Some((param_name, arg))
         })
         .filter(|(param_name, arg)| should_show_param_name_hint(sema, &callable, &param_name, &arg))
         .map(|(param_name, arg)| InlayHint {
@@ -707,6 +707,8 @@ fn different_order(param: &Param) {}
 fn different_order_mut(param: &mut Param) {}
 fn has_underscore(_param: bool) {}
 fn enum_matches_param_name(completion_kind: CompletionKind) {}
+fn param_destructuring_omitted_1((a, b): (u32, u32)) {}
+fn param_destructuring_omitted_2(TestVarContainer { test_var: _ }: TestVarContainer) {}
 
 fn twiddle(twiddle: bool) {}
 fn doo(_doo: bool) {}
@@ -746,6 +748,10 @@ fn main() {
     let b: f64 = 4.0;
     let _: f64 = a.div_euclid(b);
     let _: f64 = a.abs_sub(b);
+
+    let range: (u32, u32) = (3, 5);
+    param_destructuring_omitted_1(range);
+    param_destructuring_omitted_2(container);
 }"#,
         );
     }
