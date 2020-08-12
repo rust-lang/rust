@@ -379,7 +379,7 @@ fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
         param_env: ty::ParamEnv::empty(),
         access_levels,
         lint_store: unerased_lint_store(tcx),
-        last_node_with_lint_attrs: tcx.hir().as_local_hir_id(module_def_id),
+        last_node_with_lint_attrs: tcx.hir().local_def_id_to_hir_id(module_def_id),
         generics: None,
         only_module: true,
     };

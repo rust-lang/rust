@@ -1382,7 +1382,7 @@ impl Clean<Type> for hir::Ty<'_> {
                 if let Res::Def(DefKind::TyAlias, def_id) = path.res {
                     // Substitute private type aliases
                     if let Some(def_id) = def_id.as_local() {
-                        let hir_id = cx.tcx.hir().as_local_hir_id(def_id);
+                        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
                         if !cx.renderinfo.borrow().access_levels.is_exported(def_id.to_def_id()) {
                             alias = Some(&cx.tcx.hir().expect_item(hir_id).kind);
                         }

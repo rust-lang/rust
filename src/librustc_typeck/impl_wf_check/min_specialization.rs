@@ -336,7 +336,7 @@ fn check_predicates<'tcx>(
         if let Some(obligations) = wf::obligations(
             infcx,
             tcx.param_env(impl1_def_id),
-            tcx.hir().as_local_hir_id(impl1_def_id),
+            tcx.hir().local_def_id_to_hir_id(impl1_def_id),
             arg,
             span,
         ) {
