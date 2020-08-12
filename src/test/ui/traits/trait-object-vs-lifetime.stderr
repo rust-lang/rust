@@ -14,7 +14,10 @@ error[E0107]: wrong number of type arguments: expected 1, found 0
   --> $DIR/trait-object-vs-lifetime.rs:11:12
    |
 LL |     let _: S<'static, 'static>;
-   |            ^^^^^^^^^^^^^^^^^^^ expected 1 type argument
+   |            ^^^^^^^^^^^^^^^^^^^
+   |            |          |
+   |            |          expected type, found lifetime
+   |            expected 1 type argument
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/trait-object-vs-lifetime.rs:14:14

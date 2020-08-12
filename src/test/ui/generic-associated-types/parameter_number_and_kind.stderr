@@ -8,7 +8,10 @@ error[E0107]: wrong number of type arguments: expected 1, found 0
   --> $DIR/parameter_number_and_kind.rs:13:18
    |
 LL |     type FErr1 = Self::E<'static, 'static>;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 type argument
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  |                |
+   |                  |                expected type, found lifetime
+   |                  expected 1 type argument
 
 error[E0107]: wrong number of type arguments: expected 1, found 2
   --> $DIR/parameter_number_and_kind.rs:16:41

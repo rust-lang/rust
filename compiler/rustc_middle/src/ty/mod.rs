@@ -826,6 +826,8 @@ pub struct GenericParamCount {
     pub lifetimes: usize,
     pub types: usize,
     pub consts: usize,
+
+    pub type_defaults: usize,
 }
 
 /// Information about the formal type/lifetime parameters associated
@@ -861,7 +863,10 @@ impl<'tcx> Generics {
         for param in &self.params {
             match param.kind {
                 GenericParamDefKind::Lifetime => own_counts.lifetimes += 1,
-                GenericParamDefKind::Type { .. } => own_counts.types += 1,
+                GenericParamDefKind::Type { has_default, .. } => {
+                    own_counts.types += 1;
+                    own_counts.type_defaults += has_default as usize;
+                }
                 GenericParamDefKind::Const => own_counts.consts += 1,
             };
         }

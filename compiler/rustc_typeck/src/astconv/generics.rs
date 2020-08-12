@@ -354,19 +354,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let arg_counts = args.own_counts();
         let infer_lifetimes = position != GenericArgPosition::Type && arg_counts.lifetimes == 0;
 
-        let mut defaults: ty::GenericParamCount = Default::default();
-        for param in &def.params {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {}
-                GenericParamDefKind::Type { has_default, .. } => {
-                    defaults.types += has_default as usize
-                }
-                GenericParamDefKind::Const => {
-                    // FIXME(const_generics:defaults)
-                }
-            };
-        }
-
         if position != GenericArgPosition::Type && !args.bindings.is_empty() {
             AstConv::prohibit_assoc_ty_binding(tcx, args.bindings[0].span);
         }
@@ -374,163 +361,280 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let explicit_late_bound =
             Self::prohibit_explicit_late_bound_lifetimes(tcx, def, args, position);
 
-        let check_kind_count = |kind,
-                                required,
-                                permitted,
-                                provided,
-                                offset,
-                                unexpected_spans: &mut Vec<Span>,
-                                silent| {
-            debug!(
-                "check_kind_count: kind: {} required: {} permitted: {} provided: {} offset: {}",
-                kind, required, permitted, provided, offset
-            );
-            // We enforce the following: `required` <= `provided` <= `permitted`.
-            // For kinds without defaults (e.g.., lifetimes), `required == permitted`.
-            // For other kinds (i.e., types), `permitted` may be greater than `required`.
-            if required <= provided && provided <= permitted {
-                return Ok(());
-            }
-
-            if silent {
-                return Err((0i32, None));
-            }
-
-            // Unfortunately lifetime and type parameter mismatches are typically styled
-            // differently in diagnostics, which means we have a few cases to consider here.
-            let (bound, quantifier) = if required != permitted {
-                if provided < required {
-                    (required, "at least ")
-                } else {
-                    // provided > permitted
-                    (permitted, "at most ")
+        let check_lifetime_count =
+            |required, provided, unexpected_spans: &mut Vec<Span>, silent| {
+                if required == provided {
+                    return Ok(());
+                } else if silent {
+                    return Err(());
                 }
-            } else {
-                (required, "")
-            };
 
-            let (spans, label) = if required == permitted && provided > permitted {
-                // In the case when the user has provided too many arguments,
-                // we want to point to the unexpected arguments.
-                let spans: Vec<Span> = args.args[offset + permitted..offset + provided]
-                    .iter()
-                    .map(|arg| arg.span())
-                    .collect();
-                unexpected_spans.extend(spans.clone());
-                (spans, format!("unexpected {} argument", kind))
-            } else {
-                (
-                    vec![span],
-                    format!(
-                        "expected {}{} {} argument{}",
-                        quantifier,
-                        bound,
-                        kind,
-                        pluralize!(bound),
+                let (spans, label) = if provided > required {
+                    // In the case when the user has provided too many arguments,
+                    // we want to point to the unexpected arguments.
+                    let spans: Vec<Span> = args
+                        .args
+                        .iter()
+                        .skip(required)
+                        .filter_map(|arg| match arg {
+                            GenericArg::Lifetime(_) => Some(arg.span()),
+                            _ => None,
+                        })
+                        .take(provided - required)
+                        .collect();
+                    unexpected_spans.extend(spans.clone());
+                    (spans, format!("unexpected lifetime argument"))
+                } else {
+                    (
+                        vec![span],
+                        format!("expected {} lifetime argument{}", required, pluralize!(required)),
+                    )
+                };
+
+                let mut err = tcx.sess.struct_span_err_with_code(
+                    spans.clone(),
+                    &format!(
+                        "wrong number of lifetime arguments: expected {}, found {}",
+                        required, provided,
                     ),
-                )
+                    DiagnosticId::Error("E0107".into()),
+                );
+                for span in spans {
+                    err.span_label(span, label.as_str());
+                }
+                err.emit();
+
+                Err(())
             };
 
+        let mut unexpected_spans = vec![];
+
+        let lifetime_count_correct =
+            if !infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes {
+                check_lifetime_count(
+                    param_counts.lifetimes,
+                    arg_counts.lifetimes,
+                    &mut unexpected_spans,
+                    explicit_late_bound == ExplicitLateBound::Yes,
+                )
+            } else {
+                Ok(())
+            };
+
+        // Emit a help message if it's possible that a type could be surrounded in braces
+        let add_suggestion_type_const_mismatch = move |arg: &hir::GenericArg<'_>| {
+            if !matches!(arg, &GenericArg::Type(hir::Ty { kind: hir::TyKind::Path { .. }, .. })) {
+                return None;
+            }
+            let span = arg.span();
+            Some(move |err: &mut rustc_errors::DiagnosticBuilder<'_>| {
+                let suggestions = vec![
+                    (span.shrink_to_lo(), String::from("{ ")),
+                    (span.shrink_to_hi(), String::from(" }")),
+                ];
+                err.multipart_suggestion(
+                    "If this generic argument was intended as a const parameter, \
+                  try surrounding it with braces:",
+                    suggestions,
+                    Applicability::MaybeIncorrect,
+                );
+            })
+        };
+
+        // FIXME(const_generics:defaults)
+        let has_self = has_self as usize;
+        let permitted_types = param_counts.types - has_self;
+        let required_types = permitted_types - param_counts.type_defaults;
+        let requires_type_check =
+            arg_counts.types > permitted_types || arg_counts.types < required_types;
+        let requires_const_check = arg_counts.consts != param_counts.consts;
+        let mut arg_count_correct = Ok(());
+
+        let handle_mismatch = |param: &ty::GenericParamDef,
+                               arg: &hir::GenericArg<'_>,
+                               const_mismatches: &mut Vec<(Span, String)>,
+                               type_mismatches: &mut Vec<(Span, String)>,
+                               type_notes: &mut Vec<Box<_>>| {
+            let (mismatches, label) = match (&param.kind, arg) {
+                // No error if the types line up
+                (GenericParamDefKind::Lifetime, GenericArg::Lifetime(_))
+                | (GenericParamDefKind::Const, GenericArg::Const(_))
+                | (GenericParamDefKind::Type { .. }, GenericArg::Type(_)) => return,
+
+                (GenericParamDefKind::Lifetime, GenericArg::Const(_)) => {
+                    let label = format!("expected lifetime, found {}", arg.descr());
+                    (const_mismatches, label)
+                }
+                (GenericParamDefKind::Lifetime, GenericArg::Type(_)) => {
+                    let label = format!("expected lifetime, found {}", arg.descr());
+                    (type_mismatches, label)
+                }
+
+                (GenericParamDefKind::Const, GenericArg::Type(_)) => {
+                    if let Some(note) = add_suggestion_type_const_mismatch(arg) {
+                        type_notes.push(Box::new(note));
+                    }
+                    let label = format!("expected const, found {}", arg.descr());
+                    (type_mismatches, label)
+                }
+                (GenericParamDefKind::Const, GenericArg::Lifetime(_)) => {
+                    let label = format!("expected const, found {}", arg.descr());
+                    (const_mismatches, label)
+                }
+                (GenericParamDefKind::Type { .. }, GenericArg::Const(_)) => {
+                    (const_mismatches, format!("expected type, found const"))
+                }
+                (GenericParamDefKind::Type { .. }, GenericArg::Lifetime(_)) => {
+                    (type_mismatches, format!("expected type, found lifetime"))
+                }
+            };
+            mismatches.push((arg.span(), label));
+        };
+
+        let handle_extra_arg =
+            |arg: &hir::GenericArg<'_>,
+             const_mismatches: &mut Vec<(Span, String)>,
+             type_mismatches: &mut Vec<(Span, String)>| match arg {
+                GenericArg::Const(_) => {
+                    let label = String::from("unexpected const argument");
+                    const_mismatches.push((arg.span(), label));
+                }
+                GenericArg::Type(_) => {
+                    let label = String::from("unexpected type argument");
+                    type_mismatches.push((arg.span(), label));
+                }
+                _ => {}
+            };
+
+        let misplaced_err = |mismatches: Vec<_>, unexpected_spans: &mut Vec<_>, kind| {
+            let (spans, labels): (Vec<Span>, Vec<String>) = mismatches.into_iter().unzip();
+            let mut err = tcx.sess.struct_span_err_with_code(
+                spans.clone(),
+                &format!("misplaced {} arguments", kind),
+                DiagnosticId::Error("E0107".into()),
+            );
+            for (span, label) in spans.iter().cloned().zip(labels.iter()) {
+                err.span_label(span, label.as_str());
+            }
+            unexpected_spans.extend(spans.into_iter());
+            err
+        };
+
+        let unexpected_err = |mismatches: Vec<(Span, String)>,
+                              unexpected_spans: &mut Vec<_>,
+                              kind,
+                              quantifier,
+                              expected,
+                              given| {
+            let spans: Vec<_> = mismatches.iter().map(|(span, _)| *span).collect();
             let mut err = tcx.sess.struct_span_err_with_code(
                 spans.clone(),
                 &format!(
                     "wrong number of {} arguments: expected {}{}, found {}",
-                    kind, quantifier, bound, provided,
+                    kind, quantifier, expected, given,
                 ),
                 DiagnosticId::Error("E0107".into()),
             );
-            for span in spans {
-                err.span_label(span, label.as_str());
+            for (span, label) in mismatches.iter() {
+                err.span_label(*span, label.as_str());
             }
-
-            assert_ne!(bound, provided);
-            Err((bound as i32 - provided as i32, Some(err)))
+            unexpected_spans.extend(spans.into_iter());
+            err
         };
 
-        let mut unexpected_spans = vec![];
-
-        let mut lifetime_count_correct = Ok(());
-        if !infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes {
-            lifetime_count_correct = check_kind_count(
-                "lifetime",
-                param_counts.lifetimes,
-                param_counts.lifetimes,
-                arg_counts.lifetimes,
-                0,
-                &mut unexpected_spans,
-                explicit_late_bound == ExplicitLateBound::Yes,
-            );
-        }
-
-        // FIXME(const_generics:defaults)
-        let mut const_count_correct = Ok(());
-        if !infer_args || arg_counts.consts > param_counts.consts {
-            const_count_correct = check_kind_count(
-                "const",
-                param_counts.consts,
-                param_counts.consts,
-                arg_counts.consts,
-                arg_counts.lifetimes + arg_counts.types,
-                &mut unexpected_spans,
-                false,
-            );
-        }
-
-        // Note that type errors are currently be emitted *after* const errors.
-        let mut type_count_correct = Ok(());
-        if !infer_args || arg_counts.types > param_counts.types - defaults.types - has_self as usize
+        if !infer_args
+            || arg_counts.consts > param_counts.consts
+            || arg_counts.types > permitted_types
         {
-            type_count_correct = check_kind_count(
-                "type",
-                param_counts.types - defaults.types - has_self as usize,
-                param_counts.types - has_self as usize,
-                arg_counts.types,
-                arg_counts.lifetimes,
-                &mut unexpected_spans,
-                false,
-            );
-        }
+            if requires_const_check || requires_type_check {
+                arg_count_correct = Err(());
 
-        // Emit a help message if it's possible that a type could be surrounded in braces
-        if let Err((c_mismatch, Some(ref mut _const_err))) = const_count_correct {
-            if let Err((_, Some(ref mut type_err))) = type_count_correct {
-                let possible_matches = args.args[arg_counts.lifetimes..]
-                    .iter()
-                    .filter(|arg| {
-                        matches!(
-                            arg,
-                            GenericArg::Type(hir::Ty { kind: hir::TyKind::Path { .. }, .. })
+                let mut const_mismatches = vec![];
+                let mut type_mismatches = vec![];
+                let mut type_notes = vec![];
+
+                let lifetimes = arg_counts.lifetimes.min(param_counts.lifetimes);
+                let max_len = args.args.len().max(def.params.len());
+                for i in lifetimes..max_len {
+                    match (def.params.get(i + has_self), args.args.get(i)) {
+                        (Some(param), Some(arg)) => {
+                            handle_mismatch(
+                                param,
+                                arg,
+                                &mut const_mismatches,
+                                &mut type_mismatches,
+                                &mut type_notes,
+                            );
+                        }
+                        (None, Some(arg)) => {
+                            handle_extra_arg(arg, &mut const_mismatches, &mut type_mismatches);
+                        }
+                        (Some(_param), None) => {}
+                        (None, None) => {}
+                    }
+                }
+
+                if requires_const_check {
+                    if arg_counts.consts < param_counts.consts {
+                        let label = format!(
+                            "expected {} const argument{}",
+                            param_counts.consts,
+                            pluralize!(param_counts.consts)
+                        );
+                        const_mismatches.push((span, label));
+                    };
+                    let mut err = if requires_const_check {
+                        unexpected_err(
+                            const_mismatches,
+                            &mut unexpected_spans,
+                            "const",
+                            "",
+                            param_counts.consts,
+                            arg_counts.consts,
                         )
-                    })
-                    .take(c_mismatch.max(0) as usize);
-                for arg in possible_matches {
-                    let suggestions = vec![
-                        (arg.span().shrink_to_lo(), String::from("{ ")),
-                        (arg.span().shrink_to_hi(), String::from(" }")),
-                    ];
-                    type_err.multipart_suggestion(
-                        "If this generic argument was intended as a const parameter, \
-                        try surrounding it with braces:",
-                        suggestions,
-                        Applicability::MaybeIncorrect,
-                    );
+                    } else {
+                        misplaced_err(const_mismatches, &mut unexpected_spans, "const")
+                    };
+                    err.emit();
+                }
+
+                if requires_type_check || !type_mismatches.is_empty() {
+                    let (bound, quantifier) = if required_types == permitted_types {
+                        (required_types, "")
+                    } else if arg_counts.types < required_types {
+                        (required_types, "at least ")
+                    } else {
+                        (permitted_types, "at most ")
+                    };
+                    if !(arg_counts.types > permitted_types && permitted_types == required_types) {
+                        let label = format!(
+                            "expected {}{} type argument{}",
+                            quantifier,
+                            bound,
+                            pluralize!(bound)
+                        );
+                        type_mismatches.push((span, label));
+                    };
+                    let mut err = if requires_type_check {
+                        unexpected_err(
+                            type_mismatches,
+                            &mut unexpected_spans,
+                            "type",
+                            quantifier,
+                            bound,
+                            arg_counts.types,
+                        )
+                    } else {
+                        misplaced_err(type_mismatches, &mut unexpected_spans, "type")
+                    };
+                    for note in type_notes {
+                        note(&mut err);
+                    }
+                    err.emit();
                 }
             }
         }
-
-        let emit_correct =
-            |correct: Result<(), (_, Option<rustc_errors::DiagnosticBuilder<'_>>)>| match correct {
-                Ok(()) => Ok(()),
-                Err((_, None)) => Err(()),
-                Err((_, Some(mut err))) => {
-                    err.emit();
-                    Err(())
-                }
-            };
-
-        let arg_count_correct = emit_correct(lifetime_count_correct)
-            .and(emit_correct(const_count_correct))
-            .and(emit_correct(type_count_correct));
+        arg_count_correct = lifetime_count_correct.and(arg_count_correct);
 
         GenericArgCountResult {
             explicit_late_bound,

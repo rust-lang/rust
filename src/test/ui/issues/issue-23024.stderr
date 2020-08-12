@@ -17,7 +17,7 @@ error[E0191]: the value of the associated type `Output` (from trait `FnOnce`) mu
   --> $DIR/issue-23024.rs:9:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
-   |                                       ^^ help: specify the associated type: `Fn<Output = Type>`
+   |                                       ^^ help: specify the associated type: `Output = Fn`
 
 error: aborting due to 3 previous errors
 

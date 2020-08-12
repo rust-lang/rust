@@ -56,7 +56,7 @@ error[E0107]: wrong number of const arguments: expected 0, found 1
   --> $DIR/privacy-ns1.rs:35:17
    |
 LL |     let _x: Box<Bar>;
-   |                 ^^^ unexpected const argument
+   |                 ^^^ expected type, found const
 
 error[E0107]: wrong number of type arguments: expected at least 1, found 0
   --> $DIR/privacy-ns1.rs:35:13

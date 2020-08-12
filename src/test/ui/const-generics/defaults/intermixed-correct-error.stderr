@@ -1,0 +1,407 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/intermixed-correct-error.rs:10:23
+   |
+LL | type Consts = Example<3, 3, 3>;
+   |                       ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type Consts<'a> = Example<'a, 3, 3, 3>;
+   |            ^^^^           ^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/intermixed-correct-error.rs:13:22
+   |
+LL | type Types = Example<f32, f32, f32>;
+   |                      ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type Types<'a> = Example<'a, f32, f32, f32>;
+   |           ^^^^           ^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/intermixed-correct-error.rs:39:25
+   |
+LL | type ConstTy1 = Example<3, f32, f32>;
+   |                         ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type ConstTy1<'a> = Example<'a, 3, f32, f32>;
+   |              ^^^^           ^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/intermixed-correct-error.rs:42:25
+   |
+LL | type ConstTy2 = Example<f32, 3, f32>;
+   |                         ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type ConstTy2<'a> = Example<'a, f32, 3, f32>;
+   |              ^^^^           ^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/intermixed-correct-error.rs:45:25
+   |
+LL | type ConstTy3 = Example<f32, f32, 3>;
+   |                         ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type ConstTy3<'a> = Example<'a, f32, f32, 3>;
+   |              ^^^^           ^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/intermixed-correct-error.rs:68:25
+   |
+LL | type TyConst1 = Example<f32, 3, 3>;
+   |                         ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type TyConst1<'a> = Example<'a, f32, 3, 3>;
+   |              ^^^^           ^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/intermixed-correct-error.rs:72:25
+   |
+LL | type TyConst2 = Example<3, f32, 3>;
+   |                         ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type TyConst2<'a> = Example<'a, 3, f32, 3>;
+   |              ^^^^           ^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/intermixed-correct-error.rs:75:25
+   |
+LL | type TyConst3 = Example<3, 3, f32>;
+   |                         ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type TyConst3<'a> = Example<'a, 3, 3, f32>;
+   |              ^^^^           ^^^
+
+error[E0107]: wrong number of const arguments: expected 1, found 3
+  --> $DIR/intermixed-correct-error.rs:10:26
+   |
+LL | type Consts = Example<3, 3, 3>;
+   |                          ^  ^ unexpected const argument
+   |                          |
+   |                          expected type, found const
+
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/intermixed-correct-error.rs:13:14
+   |
+LL | type Types = Example<f32, f32, f32>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
+
+error[E0107]: wrong number of type arguments: expected at most 1, found 3
+  --> $DIR/intermixed-correct-error.rs:13:14
+   |
+LL | type Types = Example<f32, f32, f32>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+   |              |       |         |
+   |              |       |         unexpected type argument
+   |              |       expected const, found type
+   |              expected at most 1 type argument
+   |
+help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+   |
+LL | type Types = Example<{ f32 }, f32, f32>;
+   |                      ^     ^
+
+error[E0107]: wrong number of lifetime arguments: expected 1, found 3
+  --> $DIR/intermixed-correct-error.rs:17:35
+   |
+LL | type Lifetimes = Example<'static, 'static, 'static>;
+   |                                   ^^^^^^^  ^^^^^^^ unexpected lifetime argument
+   |                                   |
+   |                                   unexpected lifetime argument
+
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/intermixed-correct-error.rs:17:18
+   |
+LL | type Lifetimes = Example<'static, 'static, 'static>;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  |                |
+   |                  |                expected const, found lifetime
+   |                  expected 1 const argument
+
+error[E0107]: misplaced type arguments
+  --> $DIR/intermixed-correct-error.rs:17:18
+   |
+LL | type Lifetimes = Example<'static, 'static, 'static>;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  |                         |
+   |                  |                         expected type, found lifetime
+   |                  expected at most 1 type argument
+
+error[E0107]: wrong number of const arguments: expected 1, found 2
+  --> $DIR/intermixed-correct-error.rs:22:37
+   |
+LL | type LtConst1 = Example<'static, 3, 3>;
+   |                                     ^ expected type, found const
+
+error[E0107]: wrong number of const arguments: expected 1, found 2
+  --> $DIR/intermixed-correct-error.rs:24:28
+   |
+LL | type LtConst2 = Example<3, 'static, 3>;
+   |                            ^^^^^^^  ^ expected type, found const
+   |                            |
+   |                            expected const, found lifetime
+
+error[E0107]: wrong number of const arguments: expected 1, found 2
+
+error[E0107]: misplaced type arguments
+  --> $DIR/intermixed-correct-error.rs:26:17
+   |
+LL | type LtConst3 = Example<3, 3, 'static>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^
+   |                 |             |
+   |                 |             expected type, found lifetime
+   |                 expected at most 1 type argument
+
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/intermixed-correct-error.rs:29:14
+   |
+LL | type LtTy1 = Example<'static, f32, f32>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
+
+error[E0107]: wrong number of type arguments: expected at most 1, found 2
+  --> $DIR/intermixed-correct-error.rs:29:14
+   |
+LL | type LtTy1 = Example<'static, f32, f32>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |                |
+   |              |                expected const, found type
+   |              expected at most 1 type argument
+   |
+help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+   |
+LL | type LtTy1 = Example<'static, { f32 }, f32>;
+   |                               ^     ^
+
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/intermixed-correct-error.rs:32:14
+   |
+LL | type LtTy2 = Example<f32, 'static, f32>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |            |
+   |              |            expected const, found lifetime
+   |              expected 1 const argument
+
+error[E0107]: wrong number of type arguments: expected at most 1, found 2
+  --> $DIR/intermixed-correct-error.rs:32:14
+   |
+LL | type LtTy2 = Example<f32, 'static, f32>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected at most 1 type argument
+
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/intermixed-correct-error.rs:35:14
+   |
+LL | type LtTy3 = Example<f32, f32, 'static>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
+
+error[E0107]: wrong number of type arguments: expected at most 1, found 2
+  --> $DIR/intermixed-correct-error.rs:35:14
+   |
+LL | type LtTy3 = Example<f32, f32, 'static>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |            |    |
+   |              |            |    expected type, found lifetime
+   |              |            expected const, found type
+   |              expected at most 1 type argument
+   |
+help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+   |
+LL | type LtTy3 = Example<f32, { f32 }, 'static>;
+   |                           ^     ^
+
+error[E0107]: wrong number of type arguments: expected at most 1, found 2
+  --> $DIR/intermixed-correct-error.rs:39:17
+   |
+LL | type ConstTy1 = Example<3, f32, f32>;
+   |                 ^^^^^^^^^^^^^^^^^^^^
+   |                 |               |
+   |                 |               unexpected type argument
+   |                 expected at most 1 type argument
+
+error[E0107]: wrong number of type arguments: expected at most 1, found 2
+  --> $DIR/intermixed-correct-error.rs:42:17
+   |
+LL | type ConstTy2 = Example<f32, 3, f32>;
+   |                 ^^^^^^^^^^^^^^^^^^^^
+   |                 |       |       |
+   |                 |       |       unexpected type argument
+   |                 |       expected const, found type
+   |                 expected at most 1 type argument
+   |
+help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+   |
+LL | type ConstTy2 = Example<{ f32 }, 3, f32>;
+   |                         ^     ^
+
+error[E0107]: wrong number of type arguments: expected at most 1, found 2
+  --> $DIR/intermixed-correct-error.rs:45:17
+   |
+LL | type ConstTy3 = Example<f32, f32, 3>;
+   |                 ^^^^^^^^^^^^^^^^^^^^
+   |                 |       |
+   |                 |       expected const, found type
+   |                 expected at most 1 type argument
+   |
+help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+   |
+LL | type ConstTy3 = Example<{ f32 }, f32, 3>;
+   |                         ^     ^
+
+error[E0107]: wrong number of lifetime arguments: expected 1, found 2
+  --> $DIR/intermixed-correct-error.rs:49:28
+   |
+LL | type ConstLt1 = Example<3, 'static, 'static>;
+   |                            ^^^^^^^ unexpected lifetime argument
+
+error[E0107]: wrong number of lifetime arguments: expected 1, found 2
+  --> $DIR/intermixed-correct-error.rs:51:37
+   |
+LL | type ConstLt2 = Example<'static, 3, 'static>;
+   |                                     ^^^^^^^ unexpected lifetime argument
+
+error[E0107]: wrong number of lifetime arguments: expected 1, found 2
+  --> $DIR/intermixed-correct-error.rs:53:34
+   |
+LL | type ConstLt3 = Example<'static, 'static, 3>;
+   |                                  ^^^^^^^ unexpected lifetime argument
+
+error[E0107]: wrong number of lifetime arguments: expected 1, found 2
+  --> $DIR/intermixed-correct-error.rs:56:27
+   |
+LL | type TyLt1 = Example<f32, 'static, 'static>;
+   |                           ^^^^^^^ unexpected lifetime argument
+
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/intermixed-correct-error.rs:56:14
+   |
+LL | type TyLt1 = Example<f32, 'static, 'static>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |            |
+   |              |            expected const, found lifetime
+   |              expected 1 const argument
+
+error[E0107]: misplaced type arguments
+  --> $DIR/intermixed-correct-error.rs:56:14
+   |
+LL | type TyLt1 = Example<f32, 'static, 'static>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |                     |
+   |              |                     expected type, found lifetime
+   |              expected at most 1 type argument
+
+error[E0107]: wrong number of lifetime arguments: expected 1, found 2
+  --> $DIR/intermixed-correct-error.rs:60:36
+   |
+LL | type TyLt2 = Example<'static, f32, 'static>;
+   |                                    ^^^^^^^ unexpected lifetime argument
+
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/intermixed-correct-error.rs:60:14
+   |
+LL | type TyLt2 = Example<'static, f32, 'static>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
+
+error[E0107]: misplaced type arguments
+  --> $DIR/intermixed-correct-error.rs:60:14
+   |
+LL | type TyLt2 = Example<'static, f32, 'static>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |                |    |
+   |              |                |    expected type, found lifetime
+   |              |                expected const, found type
+   |              expected at most 1 type argument
+   |
+help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+   |
+LL | type TyLt2 = Example<'static, { f32 }, 'static>;
+   |                               ^     ^
+
+error[E0107]: wrong number of lifetime arguments: expected 1, found 2
+  --> $DIR/intermixed-correct-error.rs:64:31
+   |
+LL | type TyLt3 = Example<'static, 'static, f32>;
+   |                               ^^^^^^^ unexpected lifetime argument
+
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/intermixed-correct-error.rs:64:14
+   |
+LL | type TyLt3 = Example<'static, 'static, f32>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |                |
+   |              |                expected const, found lifetime
+   |              expected 1 const argument
+
+error[E0107]: wrong number of const arguments: expected 1, found 2
+  --> $DIR/intermixed-correct-error.rs:68:30
+   |
+LL | type TyConst1 = Example<f32, 3, 3>;
+   |                              ^  ^ unexpected const argument
+   |                              |
+   |                              expected type, found const
+
+error[E0107]: misplaced type arguments
+  --> $DIR/intermixed-correct-error.rs:68:17
+   |
+LL | type TyConst1 = Example<f32, 3, 3>;
+   |                 ^^^^^^^^^^^^^^^^^^
+   |                 |       |
+   |                 |       expected const, found type
+   |                 expected at most 1 type argument
+   |
+help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+   |
+LL | type TyConst1 = Example<{ f32 }, 3, 3>;
+   |                         ^     ^
+
+error[E0107]: wrong number of const arguments: expected 1, found 2
+  --> $DIR/intermixed-correct-error.rs:72:33
+   |
+LL | type TyConst2 = Example<3, f32, 3>;
+   |                                 ^ unexpected const argument
+
+error[E0107]: wrong number of const arguments: expected 1, found 2
+  --> $DIR/intermixed-correct-error.rs:75:28
+   |
+LL | type TyConst3 = Example<3, 3, f32>;
+   |                            ^ expected type, found const
+
+error[E0107]: misplaced type arguments
+  --> $DIR/intermixed-correct-error.rs:75:17
+   |
+LL | type TyConst3 = Example<3, 3, f32>;
+   |                 ^^^^^^^^^^^^^^^^^^
+   |                 |             |
+   |                 |             unexpected type argument
+   |                 expected at most 1 type argument
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/intermixed-correct-error.rs:83:28
+   |
+LL | type Intermixed2 = Example<f32, 'static, 3>;
+   |                            ^^^
+
+error[E0747]: constant provided when a lifetime was expected
+  --> $DIR/intermixed-correct-error.rs:85:28
+   |
+LL | type Intermixed3 = Example<3, f32, 'static>;
+   |                            ^
+   |
+   = note: lifetime arguments must be provided before constant arguments
+
+error: aborting due to 45 previous errors
+
+Some errors have detailed explanations: E0106, E0107, E0747.
+For more information about an error, try `rustc --explain E0106`.
