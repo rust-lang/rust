@@ -852,9 +852,9 @@ dependencies = [
 
 [[package]]
 name = "perf-event-open-sys"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95db63e37862bc1b842135d2234ef9418f222cc660c6752f45e7cf9ddfb97f96"
+checksum = "83e7183862f36d10263d0a1ccaef50fef734ade948bf026afd1bd97355c78273"
 dependencies = [
  "libc",
 ]
