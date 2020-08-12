@@ -2,7 +2,7 @@ error: item `PubOne` has a public `len` method but no corresponding `is_empty` m
   --> $DIR/len_without_is_empty.rs:6:1
    |
 LL | / impl PubOne {
-LL | |     pub fn len(self: &Self) -> isize {
+LL | |     pub fn len(&self) -> isize {
 LL | |         1
 LL | |     }
 LL | | }
@@ -14,7 +14,7 @@ error: trait `PubTraitsToo` has a `len` method but no (possibly inherited) `is_e
   --> $DIR/len_without_is_empty.rs:37:1
    |
 LL | / pub trait PubTraitsToo {
-LL | |     fn len(self: &Self) -> isize;
+LL | |     fn len(&self) -> isize;
 LL | | }
    | |_^
 
@@ -22,7 +22,7 @@ error: item `HasIsEmpty` has a public `len` method but a private `is_empty` meth
   --> $DIR/len_without_is_empty.rs:49:1
    |
 LL | / impl HasIsEmpty {
-LL | |     pub fn len(self: &Self) -> isize {
+LL | |     pub fn len(&self) -> isize {
 LL | |         1
 LL | |     }
 ...  |
@@ -34,7 +34,7 @@ error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is
   --> $DIR/len_without_is_empty.rs:61:1
    |
 LL | / impl HasWrongIsEmpty {
-LL | |     pub fn len(self: &Self) -> isize {
+LL | |     pub fn len(&self) -> isize {
 LL | |         1
 LL | |     }
 ...  |

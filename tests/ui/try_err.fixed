@@ -6,6 +6,9 @@
 #[macro_use]
 extern crate macro_rules;
 
+use std::io;
+use std::task::Poll;
+
 // Tests that a simple case works
 // Should flag `Err(err)?`
 pub fn basic_test() -> Result<i32, i32> {
@@ -103,4 +106,22 @@ pub fn macro_inside(fail: bool) -> Result<i32, String> {
         return Err(foo!());
     }
     Ok(0)
+}
+
+pub fn poll_write(n: usize) -> Poll<io::Result<usize>> {
+    if n == 0 {
+        return Poll::Ready(Err(io::ErrorKind::WriteZero.into()))
+    } else if n == 1 {
+        return Poll::Ready(Err(io::Error::new(io::ErrorKind::InvalidInput, "error")))
+    };
+
+    Poll::Ready(Ok(n))
+}
+
+pub fn poll_next(ready: bool) -> Poll<Option<io::Result<()>>> {
+    if !ready {
+        return Poll::Ready(Some(Err(io::ErrorKind::NotFound.into())))
+    }
+
+    Poll::Ready(None)
 }
