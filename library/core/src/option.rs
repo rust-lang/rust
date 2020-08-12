@@ -72,16 +72,19 @@
 //!
 //! # Representation
 //!
-//! Rust guarantees to optimise the following inner types such that an [`Option`] which contains
-//! them has the same size as a pointer:
+//! Rust guarantees to optimize the following types `<T>` such that an
+//! [`Option<T>`] has the same size as `T`:
 //!
+//! * [`Box<T>`]
 //! * `&T`
 //! * `&mut T`
 //! * `extern "C" fn`
 //! * [`num::NonZero*`]
 //! * [`ptr::NonNull<T>`]
 //! * `#[repr(transparent)]` struct around one of the types in this list.
-//! * [`Box<T>`]
+//!
+//! For the above cases, it is guaranteed that one can use [`mem::transmute`]
+//! between `T` and `Option<T>` and vice versa.
 //!
 //! # Examples
 //!
