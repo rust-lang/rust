@@ -3,7 +3,7 @@
 use log::debug;
 
 use parser::FragmentKind;
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode, GenericParamsOwner, ModuleItemOwner, NameOwner},
     match_ast,
 };

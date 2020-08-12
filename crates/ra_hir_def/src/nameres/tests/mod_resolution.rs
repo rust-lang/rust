@@ -698,7 +698,7 @@ fn unresolved_module_diagnostics() {
                             ),
                         ),
                     ),
-                    value: FileAstId::<ra_syntax::ast::generated::nodes::Module>(1),
+                    value: FileAstId::<syntax::ast::generated::nodes::Module>(1),
                 },
                 candidate: "bar.rs",
             },

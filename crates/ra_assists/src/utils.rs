@@ -5,13 +5,13 @@ use std::{iter, ops};
 
 use hir::{Adt, Crate, Enum, ScopeDef, Semantics, Trait, Type};
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
+use rustc_hash::FxHashSet;
+use syntax::{
     ast::{self, make, NameOwner},
     AstNode,
     SyntaxKind::*,
     SyntaxNode, TextSize, T,
 };
-use rustc_hash::FxHashSet;
 
 use crate::assist_config::SnippetCap;
 

@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
-use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
 use stdx::format_to;
+use syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
 
 pub(crate) trait ShortLabel {
     fn short_label(&self) -> Option<String>;

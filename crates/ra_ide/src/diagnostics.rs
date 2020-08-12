@@ -10,7 +10,7 @@ use hir::{diagnostics::DiagnosticSinkBuilder, Semantics};
 use itertools::Itertools;
 use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode},
     SyntaxNode, TextRange, T,
 };

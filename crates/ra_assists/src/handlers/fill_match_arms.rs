@@ -3,7 +3,7 @@ use std::iter;
 use hir::{Adt, HasSource, ModuleDef, Semantics};
 use itertools::Itertools;
 use ra_ide_db::RootDatabase;
-use ra_syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
+use syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
 use test_utils::mark;
 
 use crate::{

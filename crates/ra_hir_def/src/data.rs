@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use hir_expand::{name::Name, InFile};
-use ra_syntax::ast;
+use syntax::ast;
 
 use crate::{
     attr::Attrs,

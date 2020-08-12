@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 
 use ra_db::{FileId, FilePosition, FileRange};
 use ra_ide::{AssistKind, LineCol, LineIndex};
-use ra_syntax::{TextRange, TextSize};
+use syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;
 
 use crate::{global_state::GlobalStateSnapshot, Result};

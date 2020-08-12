@@ -9,7 +9,7 @@ use hir_expand::{
     hygiene::Hygiene,
     name::{name, AsName},
 };
-use ra_syntax::ast::{self, AstNode, TypeBoundsOwner};
+use syntax::ast::{self, AstNode, TypeBoundsOwner};
 
 use super::AssociatedTypeBinding;
 use crate::{

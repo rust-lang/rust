@@ -2,7 +2,7 @@
 
 use rustc_hash::FxHashSet;
 
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode, AstToken, VisibilityOwner},
     Direction, NodeOrToken, SourceFile,
     SyntaxKind::{self, *},

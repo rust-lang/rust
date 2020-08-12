@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use ra_fmt::{compute_ws, extract_trivial_expression};
-use ra_syntax::{
+use syntax::{
     algo::{find_covering_element, non_trivia_sibling},
     ast::{self, AstNode, AstToken},
     Direction, NodeOrToken, SourceFile,
@@ -170,7 +170,7 @@ fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use ra_syntax::SourceFile;
+    use syntax::SourceFile;
     use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
 
     use super::*;
@@ -437,11 +437,11 @@ fn foo() {
         // No space after the '{'
         check_join_lines(
             r"
-<|>use ra_syntax::{
+<|>use syntax::{
     TextSize, TextRange,
 };",
             r"
-<|>use ra_syntax::{TextSize, TextRange,
+<|>use syntax::{TextSize, TextRange,
 };",
         );
     }
@@ -451,11 +451,11 @@ fn foo() {
         // No space after the '}'
         check_join_lines(
             r"
-use ra_syntax::{
+use syntax::{
 <|>    TextSize, TextRange
 };",
             r"
-use ra_syntax::{
+use syntax::{
 <|>    TextSize, TextRange};",
         );
     }
@@ -465,11 +465,11 @@ use ra_syntax::{
         // No space after the '}'
         check_join_lines(
             r"
-use ra_syntax::{
+use syntax::{
 <|>    TextSize, TextRange,
 };",
             r"
-use ra_syntax::{
+use syntax::{
 <|>    TextSize, TextRange};",
         );
     }
@@ -478,14 +478,14 @@ use ra_syntax::{
     fn test_join_lines_use_tree() {
         check_join_lines(
             r"
-use ra_syntax::{
+use syntax::{
     algo::<|>{
         find_token_at_offset,
     },
     ast,
 };",
             r"
-use ra_syntax::{
+use syntax::{
     algo::<|>find_token_at_offset,
     ast,
 };",

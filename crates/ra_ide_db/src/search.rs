@@ -9,8 +9,8 @@ use std::{convert::TryInto, mem};
 use hir::{DefWithBody, HasSource, Module, ModuleSource, Semantics, Visibility};
 use once_cell::unsync::Lazy;
 use ra_db::{FileId, FileRange, SourceDatabaseExt};
-use ra_syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 use rustc_hash::FxHashMap;
+use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 
 use crate::{
     defs::{classify_name_ref, Definition, NameRefClass},

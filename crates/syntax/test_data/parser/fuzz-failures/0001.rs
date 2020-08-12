@@ -1,4 +1,4 @@
-use ra_syntax::{
+use syntax::{
     File, TextRange, SyntaxNodeRef, TextUnit,
     SyntaxKind::*,
     algo::{find_leaf_at_offset, LeafAtOffset, find_covering_node, ancestors, Direction, siblings},

@@ -10,7 +10,7 @@
 //!
 //! The actual parsing happens in the `grammar` module.
 //!
-//! Tests for this crate live in `ra_syntax` crate.
+//! Tests for this crate live in `syntax` crate.
 
 #[macro_use]
 mod token_set;

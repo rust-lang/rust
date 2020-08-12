@@ -17,7 +17,7 @@ use ra_ide_db::{
     search::SearchScope,
     RootDatabase,
 };
-use ra_syntax::{
+use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
     AstNode, SyntaxKind, SyntaxNode, TextRange, TokenAtOffset,

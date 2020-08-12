@@ -12,7 +12,7 @@ use ra_ide_db::{
     source_change::{FileSystemEdit, SourceFileEdit},
     RootDatabase,
 };
-use ra_syntax::{algo, ast, AstNode};
+use syntax::{algo, ast, AstNode};
 use text_edit::TextEdit;
 
 /// A [Diagnostic] that potentially has a fix available.

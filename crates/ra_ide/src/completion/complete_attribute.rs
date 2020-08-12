@@ -3,8 +3,8 @@
 //! This module uses a bit of static metadata to provide completions
 //! for built-in attributes.
 
-use ra_syntax::{ast, AstNode, SyntaxKind};
 use rustc_hash::FxHashSet;
+use syntax::{ast, AstNode, SyntaxKind};
 
 use crate::completion::{
     completion_context::CompletionContext,

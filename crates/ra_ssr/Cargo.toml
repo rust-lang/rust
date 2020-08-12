@@ -12,7 +12,7 @@ doctest = false
 
 [dependencies]
 text_edit = { path = "../text_edit" }
-ra_syntax = { path = "../ra_syntax" }
+syntax = { path = "../syntax" }
 ra_db = { path = "../ra_db" }
 ra_ide_db = { path = "../ra_ide_db" }
 hir = { path = "../ra_hir", package = "ra_hir" }

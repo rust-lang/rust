@@ -1,7 +1,7 @@
 //! Transcriber takes a template, like `fn $ident() {}`, a set of bindings like
 //! `$ident => foo`, interpolates variables in the template, to get `fn foo() {}`
 
-use ra_syntax::SmolStr;
+use syntax::SmolStr;
 
 use super::ExpandResult;
 use crate::{

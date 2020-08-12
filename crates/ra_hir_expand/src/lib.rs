@@ -19,7 +19,7 @@ use std::hash::Hash;
 use std::sync::Arc;
 
 use ra_db::{impl_intern_key, salsa, CrateId, FileId};
-use ra_syntax::{
+use syntax::{
     algo,
     ast::{self, AstNode},
     SyntaxNode, SyntaxToken, TextSize,

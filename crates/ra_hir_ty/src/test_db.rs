@@ -8,8 +8,8 @@ use std::{
 use hir_def::{db::DefDatabase, ModuleId};
 use hir_expand::db::AstDatabase;
 use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast};
-use ra_syntax::TextRange;
 use rustc_hash::{FxHashMap, FxHashSet};
+use syntax::TextRange;
 use test_utils::extract_annotations;
 
 #[salsa::database(

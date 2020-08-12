@@ -1,5 +1,5 @@
 use hir;
-use ra_syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SmolStr, SyntaxNode};
+use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SmolStr, SyntaxNode};
 
 use crate::{
     utils::{find_insert_use_container, insert_use_statement},

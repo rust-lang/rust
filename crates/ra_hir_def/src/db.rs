@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use hir_expand::{db::AstDatabase, HirFileId};
 use ra_db::{salsa, CrateId, SourceDatabase, Upcast};
-use ra_syntax::SmolStr;
+use syntax::SmolStr;
 
 use crate::{
     adt::{EnumData, StructData},

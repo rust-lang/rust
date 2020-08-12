@@ -31,12 +31,12 @@ use hir_ty::{
     InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, Edition, FileId};
-use ra_syntax::{
+use rustc_hash::FxHashSet;
+use stdx::impl_from;
+use syntax::{
     ast::{self, AttrsOwner, NameOwner},
     AstNode,
 };
-use rustc_hash::FxHashSet;
-use stdx::impl_from;
 
 use crate::{
     db::{DefDatabase, HirDatabase},

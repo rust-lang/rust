@@ -23,7 +23,7 @@ hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
 arena = { path = "../arena" }
 ra_db = { path = "../ra_db" }
 profile = { path = "../profile" }
-ra_syntax = { path = "../ra_syntax" }
+syntax = { path = "../syntax" }
 test_utils = { path = "../test_utils" }
 
 scoped-tls = "1"

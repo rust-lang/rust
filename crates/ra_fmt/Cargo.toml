@@ -12,4 +12,4 @@ doctest = false
 [dependencies]
 itertools = "0.9.0"
 
-ra_syntax = { path = "../ra_syntax" }
+syntax = { path = "../syntax" }

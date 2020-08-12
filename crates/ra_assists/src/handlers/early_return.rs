@@ -1,6 +1,6 @@
 use std::{iter::once, ops::RangeInclusive};
 
-use ra_syntax::{
+use syntax::{
     algo::replace_children,
     ast::{
         self,

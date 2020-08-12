@@ -20,7 +20,7 @@
 //!
 //! After adding a new inline-test, run `cargo xtask codegen` to
 //! extract it as a standalone text-fixture into
-//! `crates/ra_syntax/test_data/parser/`, and run `cargo test` once to
+//! `crates/syntax/test_data/parser/`, and run `cargo test` once to
 //! create the "gold" value.
 //!
 //! Coding convention: rules like `where_clause` always produce either a

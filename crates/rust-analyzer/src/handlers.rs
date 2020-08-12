@@ -23,10 +23,10 @@ use ra_ide::{
     RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
 };
 use ra_project_model::TargetKind;
-use ra_syntax::{algo, ast, AstNode, SyntaxKind, TextRange, TextSize};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use stdx::{format_to, split_once};
+use syntax::{algo, ast, AstNode, SyntaxKind, TextRange, TextSize};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,

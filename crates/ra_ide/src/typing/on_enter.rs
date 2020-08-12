@@ -3,7 +3,7 @@
 
 use ra_db::{FilePosition, SourceDatabase};
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
+use syntax::{
     ast::{self, AstToken},
     AstNode, SmolStr, SourceFile,
     SyntaxKind::*,

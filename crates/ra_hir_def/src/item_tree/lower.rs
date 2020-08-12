@@ -4,11 +4,11 @@ use std::{collections::hash_map::Entry, mem, sync::Arc};
 
 use arena::map::ArenaMap;
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, HirFileId};
-use ra_syntax::{
+use smallvec::SmallVec;
+use syntax::{
     ast::{self, ModuleItemOwner},
     SyntaxNode,
 };
-use smallvec::SmallVec;
 
 use crate::{
     attr::Attrs,

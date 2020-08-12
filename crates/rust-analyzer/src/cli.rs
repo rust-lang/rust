@@ -11,7 +11,7 @@ use std::io::Read;
 
 use anyhow::Result;
 use ra_ide::Analysis;
-use ra_syntax::{AstNode, SourceFile};
+use syntax::{AstNode, SourceFile};
 
 pub use analysis_bench::{BenchCmd, BenchWhat, Position};
 pub use analysis_stats::AnalysisStatsCmd;

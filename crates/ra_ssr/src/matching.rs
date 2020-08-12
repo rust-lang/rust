@@ -8,10 +8,10 @@ use crate::{
 };
 use hir::Semantics;
 use ra_db::FileRange;
-use ra_syntax::ast::{AstNode, AstToken};
-use ra_syntax::{ast, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken};
 use rustc_hash::FxHashMap;
 use std::{cell::Cell, iter::Peekable};
+use syntax::ast::{AstNode, AstToken};
+use syntax::{ast, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken};
 use test_utils::mark;
 
 // Creates a match error. If we're currently attempting to match some code that we thought we were
@@ -264,7 +264,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         &self,
         phase: &mut Phase,
         pattern: &mut Peekable<PatternIterator>,
-        code: &ra_syntax::SyntaxToken,
+        code: &syntax::SyntaxToken,
     ) -> Result<(), MatchFailed> {
         phase.record_ignored_comments(code);
         // Ignore whitespace and comments.
@@ -444,7 +444,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         &self,
         phase: &mut Phase,
         pattern: &SyntaxNode,
-        code: &ra_syntax::SyntaxNode,
+        code: &syntax::SyntaxNode,
     ) -> Result<(), MatchFailed> {
         let mut pattern = PatternIterator::new(pattern).peekable();
         let mut children = code.children_with_tokens();

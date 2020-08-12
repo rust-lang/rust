@@ -1,4 +1,4 @@
-use ra_syntax::{
+use syntax::{
     ast::{self, edit::AstNodeEdit, make, AstNode, NameOwner, TypeBoundsOwner},
     match_ast,
     SyntaxKind::*,

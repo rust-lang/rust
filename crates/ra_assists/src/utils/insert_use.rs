@@ -4,7 +4,7 @@
 
 use either::Either;
 use hir::{self, ModPath};
-use ra_syntax::{
+use syntax::{
     ast::{self, NameOwner, VisibilityOwner},
     AstNode, Direction, SmolStr,
     SyntaxKind::{PATH, PATH_SEGMENT},

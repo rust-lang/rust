@@ -4,8 +4,8 @@ use crate::errors::error;
 use crate::{parsing, SsrError};
 use parsing::Placeholder;
 use ra_db::FilePosition;
-use ra_syntax::{ast, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken};
 use rustc_hash::FxHashMap;
+use syntax::{ast, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken};
 use test_utils::mark;
 
 pub(crate) struct ResolutionScope<'db> {
@@ -70,7 +70,7 @@ struct Resolver<'a, 'db> {
 
 impl Resolver<'_, '_> {
     fn resolve_pattern_tree(&self, pattern: SyntaxNode) -> Result<ResolvedPattern, SsrError> {
-        use ra_syntax::{SyntaxElement, T};
+        use syntax::{SyntaxElement, T};
         let mut resolved_paths = FxHashMap::default();
         self.resolve(pattern.clone(), 0, &mut resolved_paths)?;
         let ufcs_function_calls = resolved_paths
@@ -108,7 +108,7 @@ impl Resolver<'_, '_> {
         depth: u32,
         resolved_paths: &mut FxHashMap<SyntaxNode, ResolvedPath>,
     ) -> Result<(), SsrError> {
-        use ra_syntax::ast::AstNode;
+        use syntax::ast::AstNode;
         if let Some(path) = ast::Path::cast(node.clone()) {
             if is_self(&path) {
                 // Self cannot be resolved like other paths.
@@ -179,7 +179,7 @@ impl<'db> ResolutionScope<'db> {
         sema: &hir::Semantics<'db, ra_ide_db::RootDatabase>,
         resolve_context: FilePosition,
     ) -> ResolutionScope<'db> {
-        use ra_syntax::ast::AstNode;
+        use syntax::ast::AstNode;
         let file = sema.parse(resolve_context.file_id);
         // Find a node at the requested position, falling back to the whole file.
         let node = file

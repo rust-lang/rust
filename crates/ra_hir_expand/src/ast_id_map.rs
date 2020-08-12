@@ -13,7 +13,7 @@ use std::{
 };
 
 use arena::{Arena, Idx};
-use ra_syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
+use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.
 pub struct FileAstId<N: AstNode> {

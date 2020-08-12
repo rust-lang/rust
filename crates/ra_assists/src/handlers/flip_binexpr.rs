@@ -1,4 +1,4 @@
-use ra_syntax::ast::{AstNode, BinExpr, BinOp};
+use syntax::ast::{AstNode, BinExpr, BinOp};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

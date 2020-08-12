@@ -1,4 +1,4 @@
-use ra_syntax::{SyntaxKind, TextRange, T};
+use syntax::{SyntaxKind, TextRange, T};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

@@ -1,8 +1,8 @@
 //! FIXME: write short doc here
 
 use parser::{Token, TokenSource};
-use ra_syntax::{lex_single_syntax_kind, SmolStr, SyntaxKind, SyntaxKind::*, T};
 use std::cell::{Cell, Ref, RefCell};
+use syntax::{lex_single_syntax_kind, SmolStr, SyntaxKind, SyntaxKind::*, T};
 use tt::buffer::{Cursor, TokenBuffer};
 
 #[derive(Debug, Clone, Eq, PartialEq)]

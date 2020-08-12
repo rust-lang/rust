@@ -1,10 +1,10 @@
 use hir::{Adt, Callable, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
+use stdx::to_lower_snake_case;
+use syntax::{
     ast::{self, ArgListOwner, AstNode},
     match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
 };
-use stdx::to_lower_snake_case;
 
 use crate::FileId;
 use ast::NameOwner;

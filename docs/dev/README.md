@@ -92,7 +92,7 @@ This is primarily useful for performance optimizations, or for bug minimization.
 
 ## Parser Tests
 
-Tests for the parser (`parser`) live in the `ra_syntax` crate (see `test_data` directory).
+Tests for the parser (`parser`) live in the `syntax` crate (see `test_data` directory).
 There are two kinds of tests:
 
 * Manually written test cases in `parser/ok` and `parser/err`

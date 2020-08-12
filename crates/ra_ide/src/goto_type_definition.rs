@@ -1,5 +1,5 @@
 use ra_ide_db::RootDatabase;
-use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
 
 use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 

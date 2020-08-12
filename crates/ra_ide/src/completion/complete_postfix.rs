@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 use ra_assists::utils::TryEnum;
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode},
     TextRange, TextSize,
 };

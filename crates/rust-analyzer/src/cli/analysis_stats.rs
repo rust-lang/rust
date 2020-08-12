@@ -18,10 +18,10 @@ use ra_db::{
     salsa::{self, ParallelDatabase},
     SourceDatabaseExt,
 };
-use ra_syntax::AstNode;
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use stdx::format_to;
+use syntax::AstNode;
 
 use crate::{
     cli::{

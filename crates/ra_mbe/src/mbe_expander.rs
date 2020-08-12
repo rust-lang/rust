@@ -5,8 +5,8 @@
 mod matcher;
 mod transcriber;
 
-use ra_syntax::SmolStr;
 use rustc_hash::FxHashMap;
+use syntax::SmolStr;
 
 use crate::{ExpandError, ExpandResult};
 
@@ -123,7 +123,7 @@ enum Fragment {
 
 #[cfg(test)]
 mod tests {
-    use ra_syntax::{ast, AstNode};
+    use syntax::{ast, AstNode};
 
     use super::*;
     use crate::ast_to_token_tree;

@@ -1,7 +1,7 @@
 //! This module resolves `mod foo;` declaration to file.
 use hir_expand::name::Name;
 use ra_db::FileId;
-use ra_syntax::SmolStr;
+use syntax::SmolStr;
 
 use crate::{db::DefDatabase, HirFileId};
 

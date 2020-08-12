@@ -126,7 +126,7 @@ fn self_hosting_parsing() {
     let files = walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_entry(|entry| {
-            // Get all files which are not in the crates/ra_syntax/test_data folder
+            // Get all files which are not in the crates/syntax/test_data folder
             !entry.path().components().any(|component| component.as_os_str() == "test_data")
         })
         .map(|e| e.unwrap())
@@ -162,7 +162,7 @@ fn self_hosting_parsing() {
 }
 
 fn test_data_dir() -> PathBuf {
-    project_dir().join("crates/ra_syntax/test_data")
+    project_dir().join("crates/syntax/test_data")
 }
 
 fn assert_errors_are_present(errors: &[SyntaxError], path: &Path) {

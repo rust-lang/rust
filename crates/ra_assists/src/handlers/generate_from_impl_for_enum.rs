@@ -1,5 +1,5 @@
 use ra_ide_db::RootDatabase;
-use ra_syntax::ast::{self, AstNode, NameOwner};
+use syntax::ast::{self, AstNode, NameOwner};
 use test_utils::mark;
 
 use crate::{utils::FamousDefs, AssistContext, AssistId, AssistKind, Assists};

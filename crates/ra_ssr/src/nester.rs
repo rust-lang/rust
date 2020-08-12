@@ -8,8 +8,8 @@
 //! middle match would take the second `foo` from the outer match.
 
 use crate::{Match, SsrMatches};
-use ra_syntax::SyntaxNode;
 use rustc_hash::FxHashMap;
+use syntax::SyntaxNode;
 
 pub(crate) fn nest_and_remove_collisions(
     mut matches: Vec<Match>,

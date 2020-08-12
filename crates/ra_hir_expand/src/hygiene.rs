@@ -4,7 +4,7 @@
 //! this moment, this is horribly incomplete and handles only `$crate`.
 use either::Either;
 use ra_db::CrateId;
-use ra_syntax::ast;
+use syntax::ast;
 
 use crate::{
     db::AstDatabase,

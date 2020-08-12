@@ -1,7 +1,7 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
 use hir::{Adt, ModuleDef, ScopeDef, Type};
-use ra_syntax::AstNode;
+use syntax::AstNode;
 use test_utils::mark;
 
 use crate::completion::{CompletionContext, Completions};

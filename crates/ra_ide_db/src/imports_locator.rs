@@ -2,7 +2,7 @@
 //! Later, this should be moved away to a separate crate that is accessible from the ra_assists module.
 
 use hir::{Crate, MacroDef, ModuleDef, Semantics};
-use ra_syntax::{ast, AstNode, SyntaxKind::NAME};
+use syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
     defs::{classify_name, Definition},

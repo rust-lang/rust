@@ -12,7 +12,7 @@ doctest = false
 salsa = "0.15.2"
 rustc-hash = "1.1.0"
 
-ra_syntax = { path = "../ra_syntax" }
+syntax = { path = "../syntax" }
 ra_cfg = { path = "../ra_cfg" }
 profile = { path = "../profile" }
 tt = { path = "../tt" }

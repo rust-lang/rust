@@ -21,7 +21,7 @@ use hir_ty::{
     diagnostics::{record_literal_missing_fields, record_pattern_missing_fields},
     InferenceResult, Substs, Ty,
 };
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode},
     SyntaxNode, TextRange, TextSize,
 };

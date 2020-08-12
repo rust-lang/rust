@@ -7,9 +7,9 @@
 
 use crate::errors::bail;
 use crate::{SsrError, SsrPattern, SsrRule};
-use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, T};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::str::FromStr;
+use syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, T};
 use test_utils::mark;
 
 #[derive(Debug)]
@@ -243,7 +243,7 @@ fn validate_rule(rule: &SsrRule) -> Result<(), SsrError> {
 
 fn tokenize(source: &str) -> Result<Vec<Token>, SsrError> {
     let mut start = 0;
-    let (raw_tokens, errors) = ra_syntax::tokenize(source);
+    let (raw_tokens, errors) = syntax::tokenize(source);
     if let Some(first_error) = errors.first() {
         bail!("Failed to parse pattern: {}", first_error);
     }

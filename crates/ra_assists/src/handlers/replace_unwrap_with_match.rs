@@ -1,6 +1,6 @@
 use std::iter;
 
-use ra_syntax::{
+use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},

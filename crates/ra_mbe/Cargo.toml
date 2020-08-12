@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 doctest = false
 
 [dependencies]
-ra_syntax = { path = "../ra_syntax" }
+syntax = { path = "../syntax" }
 parser = { path = "../parser" }
 tt = { path = "../tt" }
 rustc-hash = "1.1.0"

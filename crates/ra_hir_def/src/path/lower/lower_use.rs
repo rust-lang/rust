@@ -5,7 +5,7 @@ use std::iter;
 
 use either::Either;
 use hir_expand::{hygiene::Hygiene, name::AsName};
-use ra_syntax::ast::{self, NameOwner};
+use syntax::ast::{self, NameOwner};
 use test_utils::mark;
 
 use crate::path::{ImportAlias, ModPath, PathKind};

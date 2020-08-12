@@ -199,7 +199,7 @@ impl TidyDocs {
             "parser",
             "profile",
             "ra_project_model",
-            "ra_syntax",
+            "syntax",
             "tt",
             "ra_hir_ty",
         ];

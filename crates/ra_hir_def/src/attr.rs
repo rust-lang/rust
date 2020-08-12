@@ -6,7 +6,7 @@ use either::Either;
 use hir_expand::{hygiene::Hygiene, AstId, InFile};
 use mbe::ast_to_token_tree;
 use ra_cfg::{CfgExpr, CfgOptions};
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode, AttrsOwner},
     SmolStr,
 };

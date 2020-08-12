@@ -2,9 +2,9 @@
 //! representation.
 use std::iter;
 
-use ra_syntax::{TextRange, TextSize};
 use rustc_hash::FxHashMap;
 use stdx::partition_point;
+use syntax::{TextRange, TextSize};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineIndex {

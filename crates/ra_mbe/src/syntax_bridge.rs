@@ -1,13 +1,13 @@
 //! FIXME: write short doc here
 
 use parser::{FragmentKind, ParseError, TreeSink};
-use ra_syntax::{
+use rustc_hash::FxHashMap;
+use syntax::{
     ast::{self, make::tokens::doc_comment},
     tokenize, AstToken, Parse, SmolStr, SyntaxKind,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, Token as RawToken, T,
 };
-use rustc_hash::FxHashMap;
 use tt::buffer::{Cursor, TokenBuffer};
 
 use crate::subtree_source::SubtreeTokenSource;
@@ -176,7 +176,7 @@ fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
     text.into()
 }
 
-fn convert_doc_comment(token: &ra_syntax::SyntaxToken) -> Option<Vec<tt::TokenTree>> {
+fn convert_doc_comment(token: &syntax::SyntaxToken) -> Option<Vec<tt::TokenTree>> {
     let comment = ast::Comment::cast(token.clone())?;
     let doc = comment.kind().doc?;
 
@@ -716,7 +716,7 @@ mod tests {
     use super::*;
     use crate::tests::parse_macro;
     use parser::TokenSource;
-    use ra_syntax::{
+    use syntax::{
         algo::{insert_children, InsertPosition},
         ast::AstNode,
     };

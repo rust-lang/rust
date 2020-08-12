@@ -1,5 +1,5 @@
 use hir::HirDisplay;
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode, LetStmt, NameOwner},
     TextRange,
 };

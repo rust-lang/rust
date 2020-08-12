@@ -4,7 +4,7 @@
 
 use std::slice::Iter as SliceIter;
 
-use ra_syntax::SmolStr;
+use syntax::SmolStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CfgExpr {
@@ -87,7 +87,7 @@ mod tests {
     use super::*;
 
     use mbe::{ast_to_token_tree, TokenMap};
-    use ra_syntax::ast::{self, AstNode};
+    use syntax::ast::{self, AstNode};
 
     fn get_token_tree_generated(input: &str) -> (tt::Subtree, TokenMap) {
         let source_file = ast::SourceFile::parse(input).ok().unwrap();

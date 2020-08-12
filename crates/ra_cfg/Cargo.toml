@@ -11,7 +11,7 @@ doctest = false
 [dependencies]
 rustc-hash = "1.1.0"
 
-ra_syntax = { path = "../ra_syntax" }
+syntax = { path = "../syntax" }
 tt = { path = "../tt" }
 
 [dev-dependencies]

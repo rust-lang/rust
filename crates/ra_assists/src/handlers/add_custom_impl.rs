@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode},
     Direction, SmolStr,
     SyntaxKind::{IDENT, WHITESPACE},

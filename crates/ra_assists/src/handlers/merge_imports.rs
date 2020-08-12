@@ -1,6 +1,6 @@
 use std::iter::successors;
 
-use ra_syntax::{
+use syntax::{
     algo::{neighbor, skip_trivia_token, SyntaxRewriter},
     ast::{self, edit::AstNodeEdit, make},
     AstNode, Direction, InsertPosition, SyntaxElement, T,

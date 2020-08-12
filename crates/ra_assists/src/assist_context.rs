@@ -10,7 +10,7 @@ use ra_ide_db::{
     source_change::{SourceChange, SourceFileEdit},
     RootDatabase,
 };
-use ra_syntax::{
+use syntax::{
     algo::{self, find_node_at_offset, SyntaxRewriter},
     AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
     TokenAtOffset,
@@ -271,7 +271,7 @@ impl AssistBuilder {
     }
     /// Replaces specified `node` of text with a given string, reindenting the
     /// string to maintain `node`'s existing indent.
-    // FIXME: remove in favor of ra_syntax::edit::IndentLevel::increase_indent
+    // FIXME: remove in favor of syntax::edit::IndentLevel::increase_indent
     pub(crate) fn replace_node_and_indent(
         &mut self,
         node: &SyntaxNode,

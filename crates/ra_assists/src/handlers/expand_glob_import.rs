@@ -3,7 +3,7 @@ use ra_ide_db::{
     defs::{classify_name_ref, Definition, NameRefClass},
     RootDatabase,
 };
-use ra_syntax::{algo, ast, match_ast, AstNode, SyntaxNode, SyntaxToken, T};
+use syntax::{algo, ast, match_ast, AstNode, SyntaxNode, SyntaxToken, T};
 
 use crate::{
     assist_context::{AssistBuilder, AssistContext, Assists},

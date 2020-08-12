@@ -10,7 +10,7 @@ use crate::{
 
 use super::ExpandResult;
 use parser::{FragmentKind::*, TreeSink};
-use ra_syntax::{SmolStr, SyntaxKind};
+use syntax::{SmolStr, SyntaxKind};
 use tt::buffer::{Cursor, TokenBuffer};
 
 impl Bindings {

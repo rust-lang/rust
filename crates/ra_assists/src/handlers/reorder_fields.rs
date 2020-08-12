@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 
 use hir::{Adt, ModuleDef, PathResolution, Semantics, Struct};
 use ra_ide_db::RootDatabase;
-use ra_syntax::{algo, ast, match_ast, AstNode, SyntaxKind, SyntaxKind::*, SyntaxNode};
+use syntax::{algo, ast, match_ast, AstNode, SyntaxKind, SyntaxKind::*, SyntaxNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

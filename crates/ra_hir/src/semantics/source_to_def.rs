@@ -10,12 +10,12 @@ use hir_def::{
 };
 use hir_expand::{name::AsName, AstId, MacroDefKind};
 use ra_db::FileId;
-use ra_syntax::{
+use rustc_hash::FxHashMap;
+use stdx::impl_from;
+use syntax::{
     ast::{self, NameOwner},
     match_ast, AstNode, SyntaxNode,
 };
-use rustc_hash::FxHashMap;
-use stdx::impl_from;
 
 use crate::{db::HirDatabase, InFile, MacroDefId};
 

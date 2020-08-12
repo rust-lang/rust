@@ -11,8 +11,8 @@ use either::Either;
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId};
 use ra_cfg::CfgOptions;
 use ra_db::CrateId;
-use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
+use syntax::{ast, AstNode, AstPtr};
 use test_utils::mark;
 
 pub(crate) use lower::LowerCtx;

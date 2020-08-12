@@ -171,7 +171,7 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
 mod tests {
     use hir_expand::{name::AsName, InFile};
     use ra_db::{fixture::WithFixture, FileId, SourceDatabase};
-    use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
+    use syntax::{algo::find_node_at_offset, ast, AstNode};
     use test_utils::{assert_eq_text, extract_offset, mark};
 
     use crate::{db::DefDatabase, test_db::TestDB, FunctionId, ModuleDefId};

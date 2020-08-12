@@ -2,12 +2,12 @@ use hir::{EnumVariant, Module, ModuleDef, Name};
 use ra_db::FileId;
 use ra_fmt::leading_indent;
 use ra_ide_db::{defs::Definition, search::Reference, RootDatabase};
-use ra_syntax::{
+use rustc_hash::FxHashSet;
+use syntax::{
     algo::find_node_at_offset,
     ast::{self, ArgListOwner, AstNode, NameOwner, VisibilityOwner},
     SourceFile, SyntaxNode, TextRange, TextSize,
 };
-use rustc_hash::FxHashSet;
 
 use crate::{
     assist_context::AssistBuilder, utils::insert_use_statement, AssistContext, AssistId,

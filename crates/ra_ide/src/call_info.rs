@@ -2,11 +2,11 @@
 use either::Either;
 use hir::{Docs, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
-use ra_syntax::{
+use stdx::format_to;
+use syntax::{
     ast::{self, ArgListOwner},
     match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
-use stdx::format_to;
 use test_utils::mark;
 
 use crate::FilePosition;

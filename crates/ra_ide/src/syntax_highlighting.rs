@@ -9,13 +9,13 @@ use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
 };
-use ra_syntax::{
+use rustc_hash::FxHashMap;
+use syntax::{
     ast::{self, HasFormatSpecifier},
     AstNode, AstToken, Direction, NodeOrToken, SyntaxElement,
     SyntaxKind::*,
     TextRange, WalkEvent, T,
 };
-use rustc_hash::FxHashMap;
 
 use crate::FileId;
 

@@ -1,4 +1,4 @@
-use ra_syntax::{
+use syntax::{
     ast::{self, AstNode},
     T,
 };

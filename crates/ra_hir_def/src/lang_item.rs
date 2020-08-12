@@ -4,8 +4,8 @@
 //! features, such as Fn family of traits.
 use std::sync::Arc;
 
-use ra_syntax::SmolStr;
 use rustc_hash::FxHashMap;
+use syntax::SmolStr;
 
 use crate::{
     db::DefDatabase, AdtId, AttrDefId, CrateId, EnumId, FunctionId, ImplId, ModuleDefId, ModuleId,

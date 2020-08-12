@@ -2,8 +2,8 @@
 
 use hir::Semantics;
 use itertools::Itertools;
-use ra_syntax::{AstNode, NodeOrToken, SyntaxElement};
 use stdx::{format_to, trim_indent};
+use syntax::{AstNode, NodeOrToken, SyntaxElement};
 use test_utils::assert_eq_text;
 
 use crate::{

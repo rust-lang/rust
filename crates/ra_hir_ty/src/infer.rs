@@ -31,9 +31,9 @@ use hir_def::{
     TypeAliasId, VariantId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::name};
-use ra_syntax::SmolStr;
 use rustc_hash::FxHashMap;
 use stdx::impl_from;
+use syntax::SmolStr;
 
 use super::{
     primitive::{FloatTy, IntTy},

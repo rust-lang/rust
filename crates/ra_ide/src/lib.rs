@@ -56,7 +56,7 @@ use ra_ide_db::{
     symbol_index::{self, FileSymbol},
     LineIndexDatabase,
 };
-use ra_syntax::{SourceFile, TextRange, TextSize};
+use syntax::{SourceFile, TextRange, TextSize};
 
 use crate::display::ToNav;
 

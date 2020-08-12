@@ -5,9 +5,9 @@ use std::{cmp::Ordering, fmt, hash::BuildHasherDefault, sync::Arc};
 use fst::{self, Streamer};
 use indexmap::{map::Entry, IndexMap};
 use ra_db::CrateId;
-use ra_syntax::SmolStr;
 use rustc_hash::{FxHashMap, FxHasher};
 use smallvec::SmallVec;
+use syntax::SmolStr;
 
 use crate::{
     db::DefDatabase,

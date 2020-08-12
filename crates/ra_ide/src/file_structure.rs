@@ -1,4 +1,4 @@
-use ra_syntax::{
+use syntax::{
     ast::{self, AttrsOwner, GenericParamsOwner, NameOwner},
     match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, WalkEvent,
 };

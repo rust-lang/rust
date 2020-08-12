@@ -933,9 +933,9 @@ dependencies = [
  "ra_fmt",
  "ra_hir",
  "ra_ide_db",
- "ra_syntax",
  "rustc-hash",
  "stdx",
+ "syntax",
  "test_utils",
  "text_edit",
 ]
@@ -945,8 +945,8 @@ name = "ra_cfg"
 version = "0.1.0"
 dependencies = [
  "ra_mbe",
- "ra_syntax",
  "rustc-hash",
+ "syntax",
  "tt",
 ]
 
@@ -956,10 +956,10 @@ version = "0.1.0"
 dependencies = [
  "profile",
  "ra_cfg",
- "ra_syntax",
  "rustc-hash",
  "salsa",
  "stdx",
+ "syntax",
  "test_utils",
  "tt",
  "vfs",
@@ -970,7 +970,7 @@ name = "ra_fmt"
 version = "0.1.0"
 dependencies = [
  "itertools",
- "ra_syntax",
+ "syntax",
 ]
 
 [[package]]
@@ -986,9 +986,9 @@ dependencies = [
  "ra_hir_def",
  "ra_hir_expand",
  "ra_hir_ty",
- "ra_syntax",
  "rustc-hash",
  "stdx",
+ "syntax",
 ]
 
 [[package]]
@@ -1010,10 +1010,10 @@ dependencies = [
  "ra_db",
  "ra_hir_expand",
  "ra_mbe",
- "ra_syntax",
  "rustc-hash",
  "smallvec",
  "stdx",
+ "syntax",
  "test_utils",
  "tt",
 ]
@@ -1029,8 +1029,8 @@ dependencies = [
  "profile",
  "ra_db",
  "ra_mbe",
- "ra_syntax",
  "rustc-hash",
+ "syntax",
  "test_utils",
  "tt",
 ]
@@ -1052,11 +1052,11 @@ dependencies = [
  "ra_db",
  "ra_hir_def",
  "ra_hir_expand",
- "ra_syntax",
  "rustc-hash",
  "scoped-tls",
  "smallvec",
  "stdx",
+ "syntax",
  "test_utils",
  "tracing",
  "tracing-subscriber",
@@ -1081,9 +1081,9 @@ dependencies = [
  "ra_hir",
  "ra_ide_db",
  "ra_ssr",
- "ra_syntax",
  "rustc-hash",
  "stdx",
+ "syntax",
  "test_utils",
  "text_edit",
 ]
@@ -1099,10 +1099,10 @@ dependencies = [
  "profile",
  "ra_db",
  "ra_hir",
- "ra_syntax",
  "rayon",
  "rustc-hash",
  "stdx",
+ "syntax",
  "test_utils",
  "text_edit",
 ]
@@ -1113,9 +1113,9 @@ version = "0.1.0"
 dependencies = [
  "log",
  "parser",
- "ra_syntax",
  "rustc-hash",
  "smallvec",
+ "syntax",
  "test_utils",
  "tt",
 ]
@@ -1176,31 +1176,10 @@ dependencies = [
  "ra_db",
  "ra_hir",
  "ra_ide_db",
- "ra_syntax",
  "rustc-hash",
+ "syntax",
  "test_utils",
  "text_edit",
-]
-
-[[package]]
-name = "ra_syntax"
-version = "0.1.0"
-dependencies = [
- "arrayvec",
- "expect",
- "itertools",
- "once_cell",
- "parser",
- "rayon",
- "rowan",
- "rustc-ap-rustc_lexer",
- "rustc-hash",
- "serde",
- "smol_str",
- "stdx",
- "test_utils",
- "text_edit",
- "walkdir",
 ]
 
 [[package]]
@@ -1304,12 +1283,12 @@ dependencies = [
  "ra_proc_macro_srv",
  "ra_project_model",
  "ra_ssr",
- "ra_syntax",
  "rayon",
  "rustc-hash",
  "serde",
  "serde_json",
  "stdx",
+ "syntax",
  "test_utils",
  "text_edit",
  "threadpool",
@@ -1530,6 +1509,27 @@ dependencies = [
  "quote",
  "syn",
  "unicode-xid",
+]
+
+[[package]]
+name = "syntax"
+version = "0.0.0"
+dependencies = [
+ "arrayvec",
+ "expect",
+ "itertools",
+ "once_cell",
+ "parser",
+ "rayon",
+ "rowan",
+ "rustc-ap-rustc_lexer",
+ "rustc-hash",
+ "serde",
+ "smol_str",
+ "stdx",
+ "test_utils",
+ "text_edit",
+ "walkdir",
 ]
 
 [[package]]
