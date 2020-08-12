@@ -84,7 +84,7 @@ pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
     // Current position within the function
     ////////////////////////////////////////////////////////////////////////////////
     /// If this is `Err`, we are not currently executing any particular statement in
-    /// this frame (can happen e.g. during frame initialziation, and during unwinding on
+    /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
     /// We basically abuse `Result` as `Either`.
     pub(super) loc: Result<mir::Location, Span>,
@@ -663,7 +663,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let const_ =
                 self.subst_from_current_frame_and_normalize_erasing_regions(const_.literal);
             self.const_to_op(const_, None).map_err(|err| {
-                // If there was an error, set the span of the current frame so this constant.
+                // If there was an error, set the span of the current frame to this constant.
                 // Avoiding doing this when evaluation succeeds.
                 self.frame_mut().loc = Err(span);
                 err
