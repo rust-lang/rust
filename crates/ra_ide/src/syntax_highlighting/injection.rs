@@ -4,8 +4,8 @@ use std::{collections::BTreeMap, convert::TryFrom};
 
 use ast::{HasQuotes, HasStringValue};
 use hir::Semantics;
+use itertools::Itertools;
 use ra_syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
-use stdx::SepBy;
 
 use crate::{
     call_info::ActiveParameter, Analysis, Highlight, HighlightModifier, HighlightTag,
@@ -129,8 +129,7 @@ pub(super) fn extract_doc_comments(
 
             line[pos..].to_owned()
         })
-        .sep_by("\n")
-        .to_string();
+        .join("\n");
 
     if doctest.is_empty() {
         return None;

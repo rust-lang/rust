@@ -1,5 +1,6 @@
+use itertools::Itertools;
 use ra_syntax::ast::{self, AstNode, GenericParamsOwner, NameOwner};
-use stdx::{format_to, SepBy};
+use stdx::format_to;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -50,7 +51,7 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()
                     .filter_map(|it| it.name())
                     .map(|it| it.text().clone());
 
-                let generic_params = lifetime_params.chain(type_params).sep_by(", ");
+                let generic_params = lifetime_params.chain(type_params).format(", ");
                 format_to!(buf, "<{}>", generic_params)
             }
             match ctx.config.snippet_cap {

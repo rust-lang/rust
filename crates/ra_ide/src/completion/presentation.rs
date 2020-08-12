@@ -2,8 +2,8 @@
 //! It also handles scoring (sorting) completions.
 
 use hir::{Docs, HasAttrs, HasSource, HirDisplay, ModPath, ScopeDef, StructKind, Type};
+use itertools::Itertools;
 use ra_syntax::ast::NameOwner;
-use stdx::SepBy;
 use test_utils::mark;
 
 use crate::{
@@ -289,16 +289,16 @@ impl Completions {
             .map(|field| (field.name(ctx.db), field.signature_ty(ctx.db)));
         let variant_kind = variant.kind(ctx.db);
         let detail = match variant_kind {
-            StructKind::Tuple | StructKind::Unit => detail_types
-                .map(|(_, t)| t.display(ctx.db).to_string())
-                .sep_by(", ")
-                .surround_with("(", ")")
-                .to_string(),
-            StructKind::Record => detail_types
-                .map(|(n, t)| format!("{}: {}", n, t.display(ctx.db).to_string()))
-                .sep_by(", ")
-                .surround_with("{ ", " }")
-                .to_string(),
+            StructKind::Tuple | StructKind::Unit => format!(
+                "({})",
+                detail_types.map(|(_, t)| t.display(ctx.db).to_string()).format(", ")
+            ),
+            StructKind::Record => format!(
+                "{{ {} }}",
+                detail_types
+                    .map(|(n, t)| format!("{}: {}", n, t.display(ctx.db).to_string()))
+                    .format(", ")
+            ),
         };
         let mut res = CompletionItem::new(
             CompletionKind::Reference,
@@ -412,11 +412,10 @@ impl Builder {
             self = self.trigger_call_info();
             let snippet = match (ctx.config.add_call_argument_snippets, params) {
                 (true, Params::Named(params)) => {
-                    let function_params_snippet = params
-                        .iter()
-                        .enumerate()
-                        .map(|(index, param_name)| format!("${{{}:{}}}", index + 1, param_name))
-                        .sep_by(", ");
+                    let function_params_snippet =
+                        params.iter().enumerate().format_with(", ", |(index, param_name), f| {
+                            f(&format_args!("${{{}:{}}}", index + 1, param_name))
+                        });
                     format!("{}({})$0", name, function_params_snippet)
                 }
                 _ => {

@@ -1,10 +1,10 @@
+use itertools::Itertools;
 use ra_syntax::{
     ast::{self, AstNode},
     Direction, SmolStr,
     SyntaxKind::{IDENT, WHITESPACE},
     TextRange, TextSize,
 };
-use stdx::SepBy;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -61,9 +61,9 @@ pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<
             .filter(|t| t != trait_token.text())
             .collect::<Vec<SmolStr>>();
         let has_more_derives = !new_attr_input.is_empty();
-        let new_attr_input = new_attr_input.iter().sep_by(", ").surround_with("(", ")").to_string();
 
         if has_more_derives {
+            let new_attr_input = format!("({})", new_attr_input.iter().format(", "));
             builder.replace(input.syntax().text_range(), new_attr_input);
         } else {
             let attr_range = attr.syntax().text_range();
