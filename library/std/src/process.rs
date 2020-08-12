@@ -215,7 +215,7 @@ impl fmt::Debug for Child {
 /// file handle will be closed. If the child process was blocked on input prior
 /// to being dropped, it will become unblocked after dropping.
 ///
-/// [`stdin`]: crate::process::Child.stdin
+/// [`stdin`]: Child::stdin
 /// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
@@ -273,7 +273,7 @@ impl fmt::Debug for ChildStdin {
 /// When an instance of `ChildStdout` is [dropped], the `ChildStdout`'s
 /// underlying file handle will be closed.
 ///
-/// [`stdout`]: crate::process::Child.stdout
+/// [`stdout`]: Child::stdout
 /// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
@@ -333,7 +333,7 @@ impl fmt::Debug for ChildStdout {
 /// When an instance of `ChildStderr` is [dropped], the `ChildStderr`'s
 /// underlying file handle will be closed.
 ///
-/// [`stderr`]: crate::process::Child.stderr
+/// [`stderr`]: Child::stderr
 /// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
