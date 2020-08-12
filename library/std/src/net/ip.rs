@@ -1473,6 +1473,37 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xff00) == 0xff00
     }
 
+    /// Converts this address to an [IPv4 address] if it's an "IPv4-mapped IPv6 address"
+    /// defined in [IETF RFC 4291 section 2.5.5.2], otherwise returns [`None`].
+    ///
+    /// `::ffff:a.b.c.d` becomes `a.b.c.d`.
+    /// All addresses *not* starting with `::ffff` will return `None`.
+    ///
+    /// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4_mapped(), None);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4_mapped(),
+    ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
+    /// ```
+    pub fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
+        match self.octets() {
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, a, b, c, d] => {
+                Some(Ipv4Addr::new(a, b, c, d))
+            }
+            _ => None,
+        }
+    }
+
     /// Converts this address to an [IPv4 address]. Returns [`None`] if this address is
     /// neither IPv4-compatible or IPv4-mapped.
     ///
@@ -2068,6 +2099,15 @@ mod tests {
             Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678),
             Ipv4Addr::new(0x12, 0x34, 0x56, 0x78).to_ipv6_compatible()
         );
+    }
+
+    #[test]
+    fn ipv6_to_ipv4_mapped() {
+        assert_eq!(
+            Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678).to_ipv4_mapped(),
+            Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
+        );
+        assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4_mapped(), None);
     }
 
     #[test]
