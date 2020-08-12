@@ -23,7 +23,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
         let syntax = file.syntax();
         let text = syntax.text().slice(range.start()..);
         let pos = match text.find_char('\n') {
-            None => return TextEditBuilder::default().finish(),
+            None => return TextEdit::builder().finish(),
             Some(pos) => pos,
         };
         TextRange::at(range.start() + pos, TextSize::of('\n'))
@@ -35,7 +35,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
         NodeOrToken::Node(node) => node,
         NodeOrToken::Token(token) => token.parent(),
     };
-    let mut edit = TextEditBuilder::default();
+    let mut edit = TextEdit::builder();
     for token in node.descendants_with_tokens().filter_map(|it| it.into_token()) {
         let range = match range.intersect(token.text_range()) {
             Some(range) => range,

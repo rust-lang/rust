@@ -13,7 +13,7 @@ use ra_ide_db::{
     RootDatabase,
 };
 use ra_syntax::{algo, ast, AstNode};
-use ra_text_edit::{TextEdit, TextEditBuilder};
+use ra_text_edit::TextEdit;
 
 /// A [Diagnostic] that potentially has a fix available.
 ///
@@ -70,7 +70,7 @@ impl DiagnosticWithFix for MissingFields {
         }
 
         let edit = {
-            let mut builder = TextEditBuilder::default();
+            let mut builder = TextEdit::builder();
             algo::diff(&old_field_list.syntax(), &new_field_list.syntax())
                 .into_text_edit(&mut builder);
             builder.finish()

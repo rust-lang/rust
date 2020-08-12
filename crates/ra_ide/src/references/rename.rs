@@ -281,7 +281,7 @@ mod tests {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = analysis_and_position(ra_fixture_before);
         let source_change = analysis.rename(position, new_name).unwrap();
-        let mut text_edit_builder = TextEditBuilder::default();
+        let mut text_edit_builder = TextEdit::builder();
         let mut file_id: Option<FileId> = None;
         if let Some(change) = source_change {
             for edit in change.info.source_file_edits {
