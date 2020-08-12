@@ -88,10 +88,13 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: Remove-Item ./target/debug/xtask.exe, ./target/debug/deps/xtask.exe
 
-  # Weird target to catch non-portable code
-  rust-power:
-    name: Rust Power
+  # Weird targets to catch non-portable code
+  rust-cross:
+    name: Rust Cross
     runs-on: ubuntu-latest
+
+    env:
+      targets: "powerpc-unknown-linux-gnu x86_64-unknown-linux-musl"
 
     steps:
     - name: Checkout repository
@@ -103,7 +106,9 @@ jobs:
         toolchain: stable
         profile: minimal
         override: true
-        target: 'powerpc-unknown-linux-gnu'
+
+    - name: Install Rust targets
+      run: rustup target add ${{ env.targets }}
 
     - name: Cache cargo directories
       uses: actions/cache@v2
@@ -114,7 +119,10 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Check
-      run: cargo check --target=powerpc-unknown-linux-gnu --all-targets
+      run: |
+        for target in ${{ env.targets }}; do
+          cargo check --target=$target --all-targets
+        done
 
   typescript:
     name: TypeScript

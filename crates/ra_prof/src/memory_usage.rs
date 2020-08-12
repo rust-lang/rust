@@ -24,7 +24,7 @@ impl std::ops::Sub for MemoryUsage {
 impl MemoryUsage {
     pub fn current() -> MemoryUsage {
         cfg_if! {
-            if #[cfg(target_os = "linux")] {
+            if #[cfg(all(target_os = "linux", target_env = "gnu"))] {
                 // Note: This is incredibly slow.
                 let alloc = unsafe { libc::mallinfo() }.uordblks as isize;
                 MemoryUsage { allocated: Bytes(alloc) }
