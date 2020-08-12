@@ -195,10 +195,16 @@ impl CStore {
     }
 
     pub fn report_unused_deps(&self, tcx: TyCtxt<'_>) {
+        // We put the check for the option before the lint_level_at_node call
+        // because the call mutates internal state and introducing it
+        // leads to some ui tests failing.
+        if !tcx.sess.opts.json_unused_externs {
+            return;
+        }
         let level = tcx
             .lint_level_at_node(lint::builtin::UNUSED_CRATE_DEPENDENCIES, rustc_hir::CRATE_HIR_ID)
             .0;
-        if level != lint::Level::Allow && tcx.sess.opts.json_unused_externs {
+        if level != lint::Level::Allow {
             let unused_externs =
                 self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();
             let unused_externs = unused_externs.iter().map(String::as_str).collect::<Vec<&str>>();
