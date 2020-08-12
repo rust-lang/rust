@@ -353,14 +353,25 @@ impl Types {
                             );
                             return; // don't recurse into the type
                         }
-                        if let Some(span) = match_type_parameter(cx, qpath, &paths::BOX) {
+                        if match_type_parameter(cx, qpath, &paths::BOX).is_some() {
+                            let box_ty = match &last_path_segment(qpath).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => match &ty.kind {
+                                    TyKind::Path(qpath) => qpath,
+                                    _ => panic!("Box that isn't a type"),
+                                },
+                                _ => panic!("Rc without type argument"),
+                            };
+                            let inner_span = match &last_path_segment(&box_ty).args.unwrap().args[0] {
+                                GenericArg::Type(ty) => ty.span,
+                                _ => panic!("Box without type argument"),
+                            };
                             span_lint_and_sugg(
                                 cx,
                                 REDUNDANT_ALLOCATION,
                                 hir_ty.span,
                                 "usage of `Rc<Box<T>>`",
                                 "try",
-                                snippet(cx, span, "..").to_string(),
+                                format!("Rc<{}>", snippet(cx, inner_span, "..")),
                                 Applicability::MachineApplicable,
                             );
                             return; // don't recurse into the type
