@@ -22,7 +22,7 @@
 //! * [`std::*` modules](#modules)
 //! * [Primitive types](#primitives)
 //! * [Standard macros](#macros)
-//! * [The Rust Prelude](prelude/index.html)
+//! * [The Rust Prelude]
 //!
 //! If this is your first time, the documentation for the standard library is
 //! written to be casually perused. Clicking on interesting things should
@@ -63,8 +63,8 @@
 //! So for example there is a [page for the primitive type
 //! `i32`](primitive.i32.html) that lists all the methods that can be called on
 //! 32-bit integers (very useful), and there is a [page for the module
-//! `std::i32`](i32/index.html) that documents the constant values [`MIN`] and
-//! [`MAX`](i32/constant.MAX.html) (rarely useful).
+//! `std::i32`] that documents the constant values [`MIN`] and [`MAX`] (rarely
+//! useful).
 //!
 //! Note the documentation for the primitives [`str`] and [`[T]`][slice] (also
 //! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
@@ -152,48 +152,35 @@
 //! contains further primitive shared memory types, including [`atomic`] and
 //! [`mpsc`], which contains the channel types for message passing.
 //!
-//! [I/O]: io/index.html
-//! [`MIN`]: i32/constant.MIN.html
-//! [TCP]: net/struct.TcpStream.html
-//! [The Rust Prelude]: prelude/index.html
-//! [UDP]: net/struct.UdpSocket.html
-//! [`Arc`]: sync/struct.Arc.html
-//! [owned slice]: boxed/index.html
-//! [`Cell`]: cell/struct.Cell.html
-//! [`FromStr`]: str/trait.FromStr.html
-//! [`HashMap<K, V>`]: collections/struct.HashMap.html
-//! [`Iterator`]: iter/trait.Iterator.html
-//! [`Mutex`]: sync/struct.Mutex.html
-//! [`Option<T>`]: option/enum.Option.html
-//! [`Rc`]: rc/struct.Rc.html
-//! [`RefCell`]: cell/struct.RefCell.html
-//! [`Result<T, E>`]: result/enum.Result.html
-//! [`String`]: string/struct.String.html
-//! [`Vec<T>`]: vec/struct.Vec.html
-//! [array]: primitive.array.html
-//! [slice]: primitive.slice.html
-//! [`atomic`]: sync/atomic/index.html
-//! [`collections`]: collections/index.html
+//! [I/O]: io
+//! [`MIN`]: i32::MIN
+//! [`MAX`]: i32::MAX
+//! [page for the module `std::i32`]: crate::i32
+//! [TCP]: net::TcpStream
+//! [The Rust Prelude]: prelude
+//! [UDP]: net::UdpSocket
+//! [`Arc`]: sync::Arc
+//! [owned slice]: boxed
+//! [`Cell`]: cell::Cell
+//! [`FromStr`]: str::FromStr
+//! [`HashMap<K, V>`]: collections::HashMap
+//! [`Mutex`]: sync::Mutex
+//! [`Option<T>`]: option::Option
+//! [`Rc`]: rc::Rc
+//! [`RefCell`]: cell::RefCell
+//! [`Result<T, E>`]: result::Result
+//! [`Vec<T>`]: vec::Vec
+//! [`atomic`]: sync::atomic
 //! [`for`]: ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
-//! [`format!`]: macro.format.html
-//! [`fs`]: fs/index.html
-//! [`io`]: io/index.html
-//! [`iter`]: iter/index.html
-//! [`mpsc`]: sync/mpsc/index.html
-//! [`net`]: net/index.html
-//! [`option`]: option/index.html
-//! [`result`]: result/index.html
-//! [`std::cmp`]: cmp/index.html
-//! [`std::slice`]: slice/index.html
-//! [`str`]: primitive.str.html
-//! [`sync`]: sync/index.html
-//! [`thread`]: thread/index.html
+//! [`mpsc`]: sync::mpsc
+//! [`std::cmp`]: cmp
+//! [`std::slice`]: slice
 //! [`use std::env`]: env/index.html
 //! [`use`]: ../book/ch07-02-defining-modules-to-control-scope-and-privacy.html
 //! [crates.io]: https://crates.io
 //! [deref-coercions]: ../book/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
-//! [files]: fs/struct.File.html
-//! [multithreading]: thread/index.html
+//! [files]: fs::File
+//! [multithreading]: thread
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/ch03-02-data-types.html
 //! [rust-discord]: https://discord.gg/rust-lang
