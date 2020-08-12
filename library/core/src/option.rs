@@ -78,7 +78,7 @@
 //! * [`Box<T>`]
 //! * `&T`
 //! * `&mut T`
-//! * `extern "C" fn`
+//! * `fn`, `extern "C" fn`
 //! * [`num::NonZero*`]
 //! * [`ptr::NonNull<T>`]
 //! * `#[repr(transparent)]` struct around one of the types in this list.
