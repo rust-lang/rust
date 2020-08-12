@@ -52,11 +52,8 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                         if let Some(f_c) = f_c.literal.try_eval_bool(tcx, param_env) {
                             // This should also be a bool because it's writing to the same place
                             let s_c = s_c.literal.try_eval_bool(tcx, param_env).unwrap();
-                            // Check that only const assignments of opposite bool values are
-                            // permitted.
-                            if f_c != s_c {
-                              continue
-                            }
+                            assert_ne!(f_c, s_c, "Unexpected match would've compared eq earlier");
+                            continue;
                         }
                         continue 'outer;
                     }
@@ -70,14 +67,19 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             bbs[bb_idx].terminator_mut().kind = TerminatorKind::Goto { target: first };
             for s in bbs[first].statements.iter_mut() {
                 if let StatementKind::Assign(box (_, ref mut rhs)) = s.kind {
-                    let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
-                    let const_cmp = Operand::const_from_scalar(
-                        tcx,
-                        switch_ty,
-                        crate::interpret::Scalar::from_uint(val, size),
-                        rustc_span::DUMMY_SP,
-                    );
-                    *rhs = Rvalue::BinaryOp(BinOp::Eq, Operand::Move(discr), const_cmp);
+                    if let Rvalue::Use(Operand::Constant(c)) = rhs {
+                        let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
+                        let const_cmp = Operand::const_from_scalar(
+                            tcx,
+                            switch_ty,
+                            crate::interpret::Scalar::from_uint(val, size),
+                            rustc_span::DUMMY_SP,
+                        );
+                        if let Some(c) = c.literal.try_eval_bool(tcx, param_env) {
+                            let op = if c { BinOp::Eq } else { BinOp::Ne };
+                            *rhs = Rvalue::BinaryOp(op, Operand::Move(discr), const_cmp);
+                        }
+                    }
                 }
             }
         }
