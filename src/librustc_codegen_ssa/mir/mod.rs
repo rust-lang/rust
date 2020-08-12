@@ -192,16 +192,18 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info();
 
-    for const_ in &mir.required_consts {
-        if let Err(err) = fx.eval_mir_constant(const_) {
-            match err {
-                // errored or at least linted
-                ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {}
-                ErrorHandled::TooGeneric => {
-                    span_bug!(const_.span, "codgen encountered polymorphic constant: {:?}", err)
-                }
-            }
+    let all_consts_ok = mir.required_consts.iter().fold(true, |accu, const_| {
+        // Using `&` and not `&&` as we do not want short-circuiting.
+        accu & match fx.eval_mir_constant(const_) {
+            Ok(_) => true,
+            Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted) => false,
+            Err(ErrorHandled::TooGeneric) => span_bug!(const_.span, "codgen encountered polymorphic constant"),
         }
+    });
+    if !all_consts_ok {
+        // There is no delay_span_bug here, we just have to rely on a hard error actually having been raised.
+        bx.abort();
+        return;
     }
 
     let memory_locals = analyze::non_ssa_locals(&fx);
