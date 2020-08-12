@@ -97,7 +97,6 @@ pub use core::time::Duration;
 /// [clock_time_get (Monotonic Clock)]: https://nuxi.nl/cloudabi/#clock_time_get
 ///
 /// **Disclaimer:** These system calls might change over time.
-///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct Instant(time::Instant);
@@ -124,11 +123,6 @@ pub struct Instant(time::Instant);
 ///
 /// The size of a `SystemTime` struct may vary depending on the target operating
 /// system.
-///
-/// [`Instant`]: ../../std/time/struct.Instant.html
-/// [`Result`]: ../../std/result/enum.Result.html
-/// [`Duration`]: ../../std/time/struct.Duration.html
-/// [`UNIX_EPOCH`]: ../../std/time/constant.UNIX_EPOCH.html
 ///
 /// Example:
 ///
@@ -176,7 +170,6 @@ pub struct Instant(time::Instant);
 /// [GetSystemTimeAsFileTime]: https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimeasfiletime
 ///
 /// **Disclaimer:** These system calls might change over time.
-///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct SystemTime(time::SystemTime);
@@ -368,7 +361,7 @@ impl Add<Duration> for Instant {
     /// This function may panic if the resulting point in time cannot be represented by the
     /// underlying data structure. See [`checked_add`] for a version without panic.
     ///
-    /// [`checked_add`]: ../../std/time/struct.Instant.html#method.checked_add
+    /// [`checked_add`]: Instant::checked_add
     fn add(self, other: Duration) -> Instant {
         self.checked_add(other).expect("overflow when adding duration to instant")
     }
@@ -463,11 +456,6 @@ impl SystemTime {
     /// Returns an [`Err`] if `earlier` is later than `self`, and the error
     /// contains how far from `self` the time is.
     ///
-    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`Duration`]: ../../std/time/struct.Duration.html
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`Instant`]: ../../std/time/struct.Instant.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -496,11 +484,6 @@ impl SystemTime {
     ///
     /// Returns an [`Err`] if `self` is later than the current system time, and
     /// the error contains how far from the current system time `self` is.
-    ///
-    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`Duration`]: ../../std/time/struct.Duration.html
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`Instant`]: ../../std/time/struct.Instant.html
     ///
     /// # Examples
     ///
@@ -544,7 +527,7 @@ impl Add<Duration> for SystemTime {
     /// This function may panic if the resulting point in time cannot be represented by the
     /// underlying data structure. See [`checked_add`] for a version without panic.
     ///
-    /// [`checked_add`]: ../../std/time/struct.SystemTime.html#method.checked_add
+    /// [`checked_add`]: SystemTime::checked_add
     fn add(self, dur: Duration) -> SystemTime {
         self.checked_add(dur).expect("overflow when adding duration to instant")
     }
@@ -589,8 +572,6 @@ impl fmt::Debug for SystemTime {
 /// measurement lies, and using `UNIX_EPOCH + duration` can be used to create a
 /// [`SystemTime`] instance to represent another fixed point in time.
 ///
-/// [`SystemTime`]: ../../std/time/struct.SystemTime.html
-///
 /// # Examples
 ///
 /// ```no_run
@@ -608,13 +589,9 @@ impl SystemTimeError {
     /// Returns the positive duration which represents how far forward the
     /// second system time was from the first.
     ///
-    /// A `SystemTimeError` is returned from the [`duration_since`] and [`elapsed`]
-    /// methods of [`SystemTime`] whenever the second system time represents a point later
-    /// in time than the `self` of the method call.
-    ///
-    /// [`duration_since`]: ../../std/time/struct.SystemTime.html#method.duration_since
-    /// [`elapsed`]: ../../std/time/struct.SystemTime.html#method.elapsed
-    /// [`SystemTime`]: ../../std/time/struct.SystemTime.html
+    /// A `SystemTimeError` is returned from the [`SystemTime::duration_since`]
+    /// and [`SystemTime::elapsed`] methods whenever the second system time
+    /// represents a point later in time than the `self` of the method call.
     ///
     /// # Examples
     ///
