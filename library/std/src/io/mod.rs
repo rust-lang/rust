@@ -266,6 +266,8 @@ pub use self::buffered::{BufReader, BufWriter, LineWriter};
 pub use self::cursor::Cursor;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::error::{Error, ErrorKind, Result};
+#[unstable(feature = "input", issue = "none")]
+pub use self::stdio::input;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 #[stable(feature = "rust1", since = "1.0.0")]
