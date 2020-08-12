@@ -16,7 +16,7 @@ use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{source_map::DUMMY_SP, Pos, Span};
+use rustc_span::{Pos, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
@@ -83,9 +83,11 @@ pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
     ////////////////////////////////////////////////////////////////////////////////
-    /// If this is `None`, we are unwinding and this function doesn't need any clean-up.
-    /// Just continue the same as with `Resume`.
-    pub loc: Option<mir::Location>,
+    /// If this is `Err`, we are not currently executing any particular statement in
+    /// this frame (can happen e.g. during frame initialization, and during unwinding on
+    /// frames without cleanup code).
+    /// We basically abuse `Result` as `Either`.
+    pub(super) loc: Result<mir::Location, Span>,
 }
 
 /// What we store about a frame in an interpreter backtrace.
@@ -189,7 +191,14 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
 impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// Return the `SourceInfo` of the current instruction.
     pub fn current_source_info(&self) -> Option<&mir::SourceInfo> {
-        self.loc.map(|loc| self.body.source_info(loc))
+        self.loc.ok().map(|loc| self.body.source_info(loc))
+    }
+
+    pub fn current_span(&self) -> Span {
+        match self.loc {
+            Ok(loc) => self.body.source_info(loc).span,
+            Err(span) => span,
+        }
     }
 }
 
@@ -324,11 +333,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn cur_span(&self) -> Span {
-        self.stack()
-            .last()
-            .and_then(|f| f.current_source_info())
-            .map(|si| si.span)
-            .unwrap_or(self.tcx.span)
+        self.stack().last().map(|f| f.current_span()).unwrap_or(self.tcx.span)
     }
 
     #[inline(always)]
@@ -640,7 +645,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
-            loc: Some(mir::Location::START),
+            loc: Err(body.span), // Span used for errors caused during preamble.
             return_to_block,
             return_place,
             // empty local array, we fill it in below, after we are inside the stack frame and
@@ -654,9 +659,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
         for const_ in &body.required_consts {
+            let span = const_.span;
             let const_ =
                 self.subst_from_current_frame_and_normalize_erasing_regions(const_.literal);
-            self.const_to_op(const_, None)?;
+            self.const_to_op(const_, None).map_err(|err| {
+                // If there was an error, set the span of the current frame to this constant.
+                // Avoiding doing this when evaluation succeeds.
+                self.frame_mut().loc = Err(span);
+                err
+            })?;
         }
 
         // Locals are initially uninitialized.
@@ -683,8 +694,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         // done
         self.frame_mut().locals = locals;
-
         M::after_stack_push(self)?;
+        self.frame_mut().loc = Ok(mir::Location::START);
         info!("ENTERING({}) {}", self.frame_idx(), self.frame().instance);
 
         Ok(())
@@ -693,7 +704,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Jump to the given block.
     #[inline]
     pub fn go_to_block(&mut self, target: mir::BasicBlock) {
-        self.frame_mut().loc = Some(mir::Location { block: target, statement_index: 0 });
+        self.frame_mut().loc = Ok(mir::Location { block: target, statement_index: 0 });
     }
 
     /// *Return* to the given `target` basic block.
@@ -715,7 +726,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// If `target` is `None`, that indicates the function does not need cleanup during
     /// unwinding, and we will just keep propagating that upwards.
     pub fn unwind_to_block(&mut self, target: Option<mir::BasicBlock>) {
-        self.frame_mut().loc = target.map(|block| mir::Location { block, statement_index: 0 });
+        self.frame_mut().loc = match target {
+            Some(block) => Ok(mir::Location { block, statement_index: 0 }),
+            None => Err(self.frame_mut().body.span),
+        };
     }
 
     /// Pops the current frame from the stack, deallocating the
@@ -743,8 +757,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert_eq!(
             unwinding,
             match self.frame().loc {
-                None => true,
-                Some(loc) => self.body().basic_blocks()[loc.block].is_cleanup,
+                Ok(loc) => self.body().basic_blocks()[loc.block].is_cleanup,
+                Err(_) => true,
             }
         );
 
@@ -920,14 +934,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn generate_stacktrace(&self) -> Vec<FrameInfo<'tcx>> {
         let mut frames = Vec::new();
         for frame in self.stack().iter().rev() {
-            let source_info = frame.current_source_info();
-            let lint_root = source_info.and_then(|source_info| {
+            let lint_root = frame.current_source_info().and_then(|source_info| {
                 match &frame.body.source_scopes[source_info.scope].local_data {
                     mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
                     mir::ClearCrossCrate::Clear => None,
                 }
             });
-            let span = source_info.map_or(DUMMY_SP, |source_info| source_info.span);
+            let span = frame.current_span();
 
             frames.push(FrameInfo { span, instance: frame.instance, lint_root });
         }

@@ -8,8 +8,8 @@ impl<T> PrintName<T> {
 }
 
 const fn no_codegen<T>() {
-    if false { //~ERROR evaluation of constant value failed
-        let _ = PrintName::<T>::VOID;
+    if false {
+        let _ = PrintName::<T>::VOID; //~ERROR evaluation of constant value failed
     }
 }
 

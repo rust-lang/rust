@@ -24,17 +24,17 @@ error: any use of this value will cause an error
   --> $DIR/const-err-multi.rs:7:19
    |
 LL | pub const C: u8 = A as u8;
-   | ------------------^^^^^^^-
+   | ------------------^-------
    |                   |
    |                   referenced constant has errors
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-multi.rs:9:19
+  --> $DIR/const-err-multi.rs:9:24
    |
 LL | pub const D: i8 = 50 - A;
-   | ------------------^^^^^^-
-   |                   |
-   |                   referenced constant has errors
+   | -----------------------^-
+   |                        |
+   |                        referenced constant has errors
 
 error: aborting due to 4 previous errors
 

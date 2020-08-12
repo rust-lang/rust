@@ -25,12 +25,10 @@ LL | #![warn(const_err, unconditional_panic)]
    |         ^^^^^^^^^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/erroneous-const.rs:11:5
+  --> $DIR/erroneous-const.rs:12:17
    |
-LL | /     if false {
-LL | |         let _ = PrintName::<T>::VOID;
-LL | |     }
-   | |_____^ referenced constant has errors
+LL |         let _ = PrintName::<T>::VOID;
+   |                 ^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/erroneous-const.rs:16:22
