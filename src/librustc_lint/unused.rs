@@ -2,7 +2,6 @@ use crate::Lint;
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast::ast;
 use rustc_ast::ast::{ExprKind, StmtKind};
-use rustc_ast::attr;
 use rustc_ast::util::parser;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -242,7 +241,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             descr_post_path: &str,
         ) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
-                if attr.check_name(sym::must_use) {
+                if cx.sess().check_name(attr, sym::must_use) {
                     cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
                         let msg = format!(
                             "unused {}`{}`{} that must be used",
@@ -275,10 +274,26 @@ declare_lint_pass!(PathStatements => [PATH_STATEMENTS]);
 
 impl<'tcx> LateLintPass<'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
-        if let hir::StmtKind::Semi(ref expr) = s.kind {
+        if let hir::StmtKind::Semi(expr) = s.kind {
             if let hir::ExprKind::Path(_) = expr.kind {
                 cx.struct_span_lint(PATH_STATEMENTS, s.span, |lint| {
-                    lint.build("path statement with no effect").emit()
+                    let ty = cx.typeck_results().expr_ty(expr);
+                    if ty.needs_drop(cx.tcx, cx.param_env) {
+                        let mut lint = lint.build("path statement drops value");
+                        if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span) {
+                            lint.span_suggestion(
+                                s.span,
+                                "use `drop` to clarify the intent",
+                                format!("drop({});", snippet),
+                                Applicability::MachineApplicable,
+                            );
+                        } else {
+                            lint.span_help(s.span, "use `drop` to clarify the intent");
+                        }
+                        lint.emit()
+                    } else {
+                        lint.build("path statement with no effect").emit()
+                    }
                 });
             }
         }
@@ -315,7 +330,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAttributes {
             }
         }
 
-        if !attr::is_used(attr) {
+        if !cx.sess().is_attr_used(attr) {
             debug!("emitting warning for: {:?}", attr);
             cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| {
                 lint.build("unused attribute").emit()
@@ -466,25 +481,27 @@ trait UnusedDelimLint {
             let mut err = lint.build(&span_msg);
             let mut ate_left_paren = false;
             let mut ate_right_paren = false;
-            let parens_removed = pattern.trim_matches(|c| match c {
-                '(' | '{' => {
-                    if ate_left_paren {
-                        false
-                    } else {
-                        ate_left_paren = true;
-                        true
+            let parens_removed = pattern
+                .trim_matches(|c| match c {
+                    '(' | '{' => {
+                        if ate_left_paren {
+                            false
+                        } else {
+                            ate_left_paren = true;
+                            true
+                        }
                     }
-                }
-                ')' | '}' => {
-                    if ate_right_paren {
-                        false
-                    } else {
-                        ate_right_paren = true;
-                        true
+                    ')' | '}' => {
+                        if ate_right_paren {
+                            false
+                        } else {
+                            ate_right_paren = true;
+                            true
+                        }
                     }
-                }
-                _ => false,
-            });
+                    _ => false,
+                })
+                .trim();
 
             let replace = {
                 let mut replace = if keep_space.0 {
@@ -520,7 +537,10 @@ trait UnusedDelimLint {
                 (cond, UnusedDelimsCtx::IfCond, true, Some(left), Some(right))
             }
 
-            While(ref cond, ref block, ..) => {
+            // Do not lint `unused_braces` in `while let` expressions.
+            While(ref cond, ref block, ..)
+                if !matches!(cond.kind, Let(_, _)) || Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX =>
+            {
                 let left = e.span.lo() + rustc_span::BytePos(5);
                 let right = block.span.lo();
                 (cond, UnusedDelimsCtx::WhileCond, true, Some(left), Some(right))

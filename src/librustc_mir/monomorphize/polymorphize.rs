@@ -15,6 +15,7 @@ use rustc_middle::ty::{
     self,
     fold::{TypeFoldable, TypeVisitor},
     query::Providers,
+    subst::SubstsRef,
     Const, Ty, TyCtxt,
 };
 use rustc_span::symbol::sym;
@@ -28,11 +29,18 @@ pub fn provide(providers: &mut Providers) {
 /// Determine which generic parameters are used by the function/method/closure represented by
 /// `def_id`. Returns a bitset where bits representing unused parameters are set (`is_empty`
 /// indicates all parameters are used).
-fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u64> {
+fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
     debug!("unused_generic_params({:?})", def_id);
 
     if !tcx.sess.opts.debugging_opts.polymorphize {
         // If polymorphization disabled, then all parameters are used.
+        return FiniteBitSet::new_empty();
+    }
+
+    // Polymorphization results are stored in cross-crate metadata only when there are unused
+    // parameters, so assume that non-local items must have only used parameters (else this query
+    // would not be invoked, and the cross-crate metadata used instead).
+    if !def_id.is_local() {
         return FiniteBitSet::new_empty();
     }
 
@@ -53,7 +61,7 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u64> {
     // Create a bitset with N rightmost ones for each parameter.
     let generics_count: u32 =
         generics.count().try_into().expect("more generic parameters than can fit into a `u32`");
-    let mut unused_parameters = FiniteBitSet::<u64>::new_empty();
+    let mut unused_parameters = FiniteBitSet::<u32>::new_empty();
     unused_parameters.set_range(0..generics_count);
     debug!("unused_generic_params: (start) unused_parameters={:?}", unused_parameters);
     mark_used_by_default_parameters(tcx, def_id, generics, &mut unused_parameters);
@@ -84,7 +92,7 @@ fn mark_used_by_default_parameters<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     generics: &'tcx ty::Generics,
-    unused_parameters: &mut FiniteBitSet<u64>,
+    unused_parameters: &mut FiniteBitSet<u32>,
 ) {
     if !tcx.is_trait(def_id) && (tcx.is_closure(def_id) || tcx.type_of(def_id).is_generator()) {
         for param in &generics.params {
@@ -110,11 +118,11 @@ fn mark_used_by_default_parameters<'tcx>(
 fn mark_used_by_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    unused_parameters: &mut FiniteBitSet<u64>,
+    unused_parameters: &mut FiniteBitSet<u32>,
 ) {
     let def_id = tcx.closure_base_def_id(def_id);
 
-    let is_self_ty_used = |unused_parameters: &mut FiniteBitSet<u64>, self_ty: Ty<'tcx>| {
+    let is_self_ty_used = |unused_parameters: &mut FiniteBitSet<u32>, self_ty: Ty<'tcx>| {
         debug!("unused_generic_params: self_ty={:?}", self_ty);
         if let ty::Param(param) = self_ty.kind {
             !unused_parameters.contains(param.index).unwrap_or(false)
@@ -123,7 +131,7 @@ fn mark_used_by_predicates<'tcx>(
         }
     };
 
-    let mark_ty = |unused_parameters: &mut FiniteBitSet<u64>, ty: Ty<'tcx>| {
+    let mark_ty = |unused_parameters: &mut FiniteBitSet<u32>, ty: Ty<'tcx>| {
         let mut vis = UsedGenericParametersVisitor { tcx, def_id, unused_parameters };
         ty.visit_with(&mut vis);
     };
@@ -159,11 +167,15 @@ fn emit_unused_generic_params_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     generics: &'tcx ty::Generics,
-    unused_parameters: &FiniteBitSet<u64>,
+    unused_parameters: &FiniteBitSet<u32>,
 ) {
     debug!("emit_unused_generic_params_error: def_id={:?}", def_id);
     let base_def_id = tcx.closure_base_def_id(def_id);
-    if !tcx.get_attrs(base_def_id).iter().any(|a| a.check_name(sym::rustc_polymorphize_error)) {
+    if !tcx
+        .get_attrs(base_def_id)
+        .iter()
+        .any(|a| tcx.sess.check_name(a, sym::rustc_polymorphize_error))
+    {
         return;
     }
 
@@ -195,7 +207,26 @@ fn emit_unused_generic_params_error<'tcx>(
 struct UsedGenericParametersVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    unused_parameters: &'a mut FiniteBitSet<u64>,
+    unused_parameters: &'a mut FiniteBitSet<u32>,
+}
+
+impl<'a, 'tcx> UsedGenericParametersVisitor<'a, 'tcx> {
+    /// Invoke `unused_generic_params` on a body contained within the current item (e.g.
+    /// a closure, generator or constant).
+    fn visit_child_body(&mut self, def_id: DefId, substs: SubstsRef<'tcx>) {
+        let unused = self.tcx.unused_generic_params(def_id);
+        debug!(
+            "visit_child_body: unused_parameters={:?} unused={:?}",
+            self.unused_parameters, unused
+        );
+        for (i, arg) in substs.iter().enumerate() {
+            let i = i.try_into().unwrap();
+            if !unused.contains(i).unwrap_or(false) {
+                arg.visit_with(self);
+            }
+        }
+        debug!("visit_child_body: unused_parameters={:?}", self.unused_parameters);
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UsedGenericParametersVisitor<'a, 'tcx> {
@@ -238,6 +269,23 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UsedGenericParametersVisitor<'a, 'tcx> {
                 self.unused_parameters.clear(param.index);
                 false
             }
+            ty::ConstKind::Unevaluated(def, _, Some(p))
+                // Avoid considering `T` unused when constants are of the form:
+                //   `<Self as Foo<T>>::foo::promoted[p]`
+                if self.def_id == def.did && !self.tcx.generics_of(def.did).has_self =>
+            {
+                // If there is a promoted, don't look at the substs - since it will always contain
+                // the generic parameters, instead, traverse the promoted MIR.
+                let promoted = self.tcx.promoted_mir(def.did);
+                self.visit_body(&promoted[p]);
+                false
+            }
+            ty::ConstKind::Unevaluated(def, unevaluated_substs, None)
+                if self.tcx.def_kind(def.did) == DefKind::AnonConst =>
+            {
+                self.visit_child_body(def.did, unevaluated_substs);
+                false
+            }
             _ => c.super_visit_with(self),
         }
     }
@@ -258,19 +306,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UsedGenericParametersVisitor<'a, 'tcx> {
 
                 // Consider any generic parameters used by any closures/generators as used in the
                 // parent.
-                let unused = self.tcx.unused_generic_params(def_id);
-                debug!(
-                    "visit_ty: unused_parameters={:?} unused={:?}",
-                    self.unused_parameters, unused
-                );
-                for (i, arg) in substs.iter().enumerate() {
-                    let i = i.try_into().unwrap();
-                    if !unused.contains(i).unwrap_or(false) {
-                        arg.visit_with(self);
-                    }
-                }
-                debug!("visit_ty: unused_parameters={:?}", self.unused_parameters);
-
+                self.visit_child_body(def_id, substs);
                 false
             }
             ty::Param(param) => {

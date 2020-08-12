@@ -15,7 +15,7 @@ use rustc_middle::middle::privacy;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 
-use rustc_ast::{ast, attr};
+use rustc_ast::ast;
 use rustc_span::symbol::{sym, Symbol};
 
 // Any local node that may call something in its body block should be
@@ -331,17 +331,17 @@ fn has_allow_dead_code_or_lang_attr(
     id: hir::HirId,
     attrs: &[ast::Attribute],
 ) -> bool {
-    if attr::contains_name(attrs, sym::lang) {
+    if tcx.sess.contains_name(attrs, sym::lang) {
         return true;
     }
 
     // Stable attribute for #[lang = "panic_impl"]
-    if attr::contains_name(attrs, sym::panic_handler) {
+    if tcx.sess.contains_name(attrs, sym::panic_handler) {
         return true;
     }
 
     // (To be) stable attribute for #[lang = "oom"]
-    if attr::contains_name(attrs, sym::alloc_error_handler) {
+    if tcx.sess.contains_name(attrs, sym::alloc_error_handler) {
         return true;
     }
 

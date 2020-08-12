@@ -141,7 +141,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let predicates = self.tcx.predicates_of(adt_def.did).predicates;
         let where_clauses: Vec<_> = predicates
-            .into_iter()
+            .iter()
             .map(|(wc, _)| wc.subst(self.tcx, bound_vars))
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner))
             .collect();
@@ -174,7 +174,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 phantom_data: adt_def.is_phantom_data(),
             },
         });
-        return struct_datum;
+        struct_datum
     }
 
     fn fn_def_datum(
@@ -187,7 +187,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let predicates = self.tcx.predicates_defined_on(def_id).predicates;
         let where_clauses: Vec<_> = predicates
-            .into_iter()
+            .iter()
             .map(|(wc, _)| wc.subst(self.tcx, &bound_vars))
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
 
@@ -276,7 +276,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             parameters[0].assert_ty_ref(&self.interner).could_match(&self.interner, &lowered_ty)
         });
 
-        let impls = matched_impls.map(|matched_impl| chalk_ir::ImplId(matched_impl)).collect();
+        let impls = matched_impls.map(chalk_ir::ImplId).collect();
         impls
     }
 
@@ -379,7 +379,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                         ty::AdtKind::Struct | ty::AdtKind::Union => None,
                         ty::AdtKind::Enum => {
                             let constraint = self.tcx.adt_sized_constraint(adt_def.did);
-                            if constraint.0.len() > 0 { unimplemented!() } else { Some(true) }
+                            if !constraint.0.is_empty() { unimplemented!() } else { Some(true) }
                         }
                     },
                     _ => None,
@@ -398,7 +398,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                         ty::AdtKind::Struct | ty::AdtKind::Union => None,
                         ty::AdtKind::Enum => {
                             let constraint = self.tcx.adt_sized_constraint(adt_def.did);
-                            if constraint.0.len() > 0 { unimplemented!() } else { Some(true) }
+                            if !constraint.0.is_empty() { unimplemented!() } else { Some(true) }
                         }
                     },
                     _ => None,
@@ -440,7 +440,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             FnOnce => self.tcx.lang_items().fn_once_trait(),
             Unsize => self.tcx.lang_items().unsize_trait(),
         };
-        def_id.map(|t| chalk_ir::TraitId(t))
+        def_id.map(chalk_ir::TraitId)
     }
 
     fn is_object_safe(&self, trait_id: chalk_ir::TraitId<RustInterner<'tcx>>) -> bool {

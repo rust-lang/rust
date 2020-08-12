@@ -7,75 +7,33 @@ use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Path, PathSegment};
 use crate::mut_visit::visit_clobber;
 use crate::ptr::P;
-use crate::token::{self, Token};
+use crate::token::{self, CommentKind, Token};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
-use rustc_data_structures::sync::Lock;
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::source_map::{BytePos, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
-use log::debug;
 use std::iter;
 use std::ops::DerefMut;
 
-// Per-session global variables: this struct is stored in thread-local storage
-// in such a way that it is accessible without any kind of handle to all
-// threads within the compilation session, but is not accessible outside the
-// session.
-pub struct SessionGlobals {
-    used_attrs: Lock<GrowableBitSet<AttrId>>,
-    known_attrs: Lock<GrowableBitSet<AttrId>>,
-    span_session_globals: rustc_span::SessionGlobals,
-}
+pub struct MarkedAttrs(GrowableBitSet<AttrId>);
 
-impl SessionGlobals {
-    fn new(edition: Edition) -> SessionGlobals {
-        SessionGlobals {
-            // We have no idea how many attributes there will be, so just
-            // initiate the vectors with 0 bits. We'll grow them as necessary.
-            used_attrs: Lock::new(GrowableBitSet::new_empty()),
-            known_attrs: Lock::new(GrowableBitSet::new_empty()),
-            span_session_globals: rustc_span::SessionGlobals::new(edition),
-        }
+impl MarkedAttrs {
+    // We have no idea how many attributes there will be, so just
+    // initiate the vectors with 0 bits. We'll grow them as necessary.
+    pub fn new() -> Self {
+        MarkedAttrs(GrowableBitSet::new_empty())
     }
-}
 
-pub fn with_session_globals<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
-    let ast_session_globals = SessionGlobals::new(edition);
-    SESSION_GLOBALS.set(&ast_session_globals, || {
-        rustc_span::SESSION_GLOBALS.set(&ast_session_globals.span_session_globals, f)
-    })
-}
+    pub fn mark(&mut self, attr: &Attribute) {
+        self.0.insert(attr.id);
+    }
 
-pub fn with_default_session_globals<R>(f: impl FnOnce() -> R) -> R {
-    with_session_globals(DEFAULT_EDITION, f)
-}
-
-scoped_tls::scoped_thread_local!(pub static SESSION_GLOBALS: SessionGlobals);
-
-pub fn mark_used(attr: &Attribute) {
-    debug!("marking {:?} as used", attr);
-    SESSION_GLOBALS.with(|session_globals| {
-        session_globals.used_attrs.lock().insert(attr.id);
-    });
-}
-
-pub fn is_used(attr: &Attribute) -> bool {
-    SESSION_GLOBALS.with(|session_globals| session_globals.used_attrs.lock().contains(attr.id))
-}
-
-pub fn mark_known(attr: &Attribute) {
-    debug!("marking {:?} as known", attr);
-    SESSION_GLOBALS.with(|session_globals| {
-        session_globals.known_attrs.lock().insert(attr.id);
-    });
-}
-
-pub fn is_known(attr: &Attribute) -> bool {
-    SESSION_GLOBALS.with(|session_globals| session_globals.known_attrs.lock().contains(attr.id))
+    pub fn is_marked(&self, attr: &Attribute) -> bool {
+        self.0.contains(attr.id)
+    }
 }
 
 pub fn is_known_lint_tool(m_item: Ident) -> bool {
@@ -100,8 +58,8 @@ impl NestedMetaItem {
     }
 
     /// Returns `true` if this list item is a MetaItem with a name of `name`.
-    pub fn check_name(&self, name: Symbol) -> bool {
-        self.meta_item().map_or(false, |meta_item| meta_item.check_name(name))
+    pub fn has_name(&self, name: Symbol) -> bool {
+        self.meta_item().map_or(false, |meta_item| meta_item.has_name(name))
     }
 
     /// For a single-segment meta item, returns its name; otherwise, returns `None`.
@@ -169,18 +127,8 @@ impl Attribute {
     pub fn has_name(&self, name: Symbol) -> bool {
         match self.kind {
             AttrKind::Normal(ref item) => item.path == name,
-            AttrKind::DocComment(_) => false,
+            AttrKind::DocComment(..) => false,
         }
-    }
-
-    /// Returns `true` if the attribute's path matches the argument. If it matches, then the
-    /// attribute is marked as used.
-    pub fn check_name(&self, name: Symbol) -> bool {
-        let matches = self.has_name(name);
-        if matches {
-            mark_used(self);
-        }
-        matches
     }
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
@@ -193,7 +141,7 @@ impl Attribute {
                     None
                 }
             }
-            AttrKind::DocComment(_) => None,
+            AttrKind::DocComment(..) => None,
         }
     }
     pub fn name_or_empty(&self) -> Symbol {
@@ -213,7 +161,7 @@ impl Attribute {
                 Some(MetaItem { kind: MetaItemKind::List(list), .. }) => Some(list),
                 _ => None,
             },
-            AttrKind::DocComment(_) => None,
+            AttrKind::DocComment(..) => None,
         }
     }
 
@@ -278,7 +226,7 @@ impl MetaItem {
         }
     }
 
-    pub fn check_name(&self, name: Symbol) -> bool {
+    pub fn has_name(&self, name: Symbol) -> bool {
         self.path == name
     }
 
@@ -309,13 +257,13 @@ impl Attribute {
     pub fn is_doc_comment(&self) -> bool {
         match self.kind {
             AttrKind::Normal(_) => false,
-            AttrKind::DocComment(_) => true,
+            AttrKind::DocComment(..) => true,
         }
     }
 
     pub fn doc_str(&self) -> Option<Symbol> {
         match self.kind {
-            AttrKind::DocComment(symbol) => Some(symbol),
+            AttrKind::DocComment(.., data) => Some(data),
             AttrKind::Normal(ref item) if item.path == sym::doc => {
                 item.meta(self.span).and_then(|meta| meta.value_str())
             }
@@ -326,14 +274,14 @@ impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
         match self.kind {
             AttrKind::Normal(ref item) => item,
-            AttrKind::DocComment(_) => panic!("unexpected doc comment"),
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
 
     pub fn unwrap_normal_item(self) -> AttrItem {
         match self.kind {
             AttrKind::Normal(item) => item,
-            AttrKind::DocComment(_) => panic!("unexpected doc comment"),
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
 
@@ -400,28 +348,17 @@ pub fn mk_attr_outer(item: MetaItem) -> Attribute {
     mk_attr(AttrStyle::Outer, item.path, item.kind.mac_args(item.span), item.span)
 }
 
-pub fn mk_doc_comment(style: AttrStyle, comment: Symbol, span: Span) -> Attribute {
-    Attribute { kind: AttrKind::DocComment(comment), id: mk_attr_id(), style, span }
+pub fn mk_doc_comment(
+    comment_kind: CommentKind,
+    style: AttrStyle,
+    data: Symbol,
+    span: Span,
+) -> Attribute {
+    Attribute { kind: AttrKind::DocComment(comment_kind, data), id: mk_attr_id(), style, span }
 }
 
 pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {
-    items.iter().any(|item| item.check_name(name))
-}
-
-pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
-    attrs.iter().any(|item| item.check_name(name))
-}
-
-pub fn find_by_name(attrs: &[Attribute], name: Symbol) -> Option<&Attribute> {
-    attrs.iter().find(|attr| attr.check_name(name))
-}
-
-pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {
-    attrs.iter().filter(move |attr| attr.check_name(name))
-}
-
-pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: Symbol) -> Option<Symbol> {
-    attrs.iter().find(|at| at.check_name(name)).and_then(|at| at.value_str())
+    items.iter().any(|item| item.has_name(name))
 }
 
 impl MetaItem {

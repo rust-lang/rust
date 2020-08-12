@@ -246,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     //
                     // FIXME? Other potential candidate methods: `as_ref` and
                     // `as_mut`?
-                    .any(|a| a.check_name(sym::rustc_conversion_suggestion))
+                    .any(|a| self.sess().check_name(a, sym::rustc_conversion_suggestion))
         });
 
         methods

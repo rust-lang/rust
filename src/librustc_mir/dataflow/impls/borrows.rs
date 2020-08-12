@@ -136,9 +136,9 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         borrow_set: &Rc<BorrowSet<'tcx>>,
     ) -> Self {
         let mut borrows_out_of_scope_at_location = FxHashMap::default();
-        for (borrow_index, borrow_data) in borrow_set.borrows.iter_enumerated() {
+        for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
             let borrow_region = borrow_data.region.to_region_vid();
-            let location = borrow_set.borrows[borrow_index].reserve_location;
+            let location = borrow_data.reserve_location;
 
             precompute_borrows_out_of_scope(
                 body,
@@ -160,7 +160,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {
-        &self.borrow_set.borrows[idx].reserve_location
+        &self.borrow_set[idx].reserve_location
     }
 
     /// Add all borrows to the kill set, if those borrows are out of scope at `location`.
@@ -216,7 +216,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             places_conflict(
                 self.tcx,
                 self.body,
-                self.borrow_set.borrows[i].borrowed_place,
+                self.borrow_set[i].borrowed_place,
                 place,
                 PlaceConflictBias::NoOverlap,
             )
@@ -232,7 +232,7 @@ impl<'tcx> dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
     const NAME: &'static str = "borrows";
 
     fn bits_per_block(&self, _: &mir::Body<'tcx>) -> usize {
-        self.borrow_set.borrows.len() * 2
+        self.borrow_set.len() * 2
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut BitSet<Self::Idx>) {
@@ -271,11 +271,11 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
                     ) {
                         return;
                     }
-                    let index = self.borrow_set.location_map.get(&location).unwrap_or_else(|| {
+                    let index = self.borrow_set.get_index_of(&location).unwrap_or_else(|| {
                         panic!("could not find BorrowIndex for location {:?}", location);
                     });
 
-                    trans.gen(*index);
+                    trans.gen(index);
                 }
 
                 // Make sure there are no remaining borrows for variables

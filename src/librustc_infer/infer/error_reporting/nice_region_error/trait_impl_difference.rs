@@ -2,7 +2,7 @@
 
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
-use crate::infer::{Subtype, TyCtxtInferExt, ValuePairs};
+use crate::infer::{Subtype, ValuePairs};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -53,7 +53,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     }
 
     fn emit_err(&self, sp: Span, expected: Ty<'tcx>, found: Ty<'tcx>, trait_def_id: DefId) {
-        let tcx = self.tcx();
         let trait_sp = self.tcx().def_span(trait_def_id);
         let mut err = self
             .tcx()
@@ -85,9 +84,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             );
         }
 
-        if let Some((expected, found)) = tcx
-            .infer_ctxt()
-            .enter(|infcx| infcx.expected_found_str_ty(&ExpectedFound { expected, found }))
+        if let Some((expected, found)) =
+            self.infcx.expected_found_str_ty(&ExpectedFound { expected, found })
         {
             // Highlighted the differences when showing the "expected/found" note.
             err.note_expected_found(&"", expected, &"", found);

@@ -355,7 +355,7 @@ fn visit_fn<'tcx>(
     if let FnKind::Method(..) = fk {
         let parent = ir.tcx.hir().get_parent_item(id);
         if let Some(Node::Item(i)) = ir.tcx.hir().find(parent) {
-            if i.attrs.iter().any(|a| a.check_name(sym::automatically_derived)) {
+            if i.attrs.iter().any(|a| ir.tcx.sess.check_name(a, sym::automatically_derived)) {
                 return;
             }
         }

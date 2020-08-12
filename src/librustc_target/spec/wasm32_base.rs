@@ -10,13 +10,6 @@ pub fn options() -> TargetOptions {
         clang_args.push(format!("-Wl,{}", arg));
     };
 
-    // There have been reports in the wild (rustwasm/wasm-bindgen#119) of
-    // using threads causing weird hangs and bugs. Disable it entirely as
-    // this isn't yet the bottleneck of compilation at all anyway.
-    //
-    // FIXME: we should file an upstream issue with LLD about this
-    arg("--no-threads");
-
     // By default LLD only gives us one page of stack (64k) which is a
     // little small. Default to a larger stack closer to other PC platforms
     // (1MB) and users can always inject their own link-args to override this.

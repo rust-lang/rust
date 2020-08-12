@@ -9,7 +9,7 @@ use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
 use crate::build::Builder;
 use crate::thir::pattern::compare_const_vals;
 use crate::thir::*;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::RangeEnd;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
@@ -44,8 +44,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                         // these maps are empty to start; cases are
                         // added below in add_cases_to_switch
-                        options: vec![],
-                        indices: Default::default(),
+                        options: Default::default(),
                     },
                 }
             }
@@ -83,8 +82,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test_place: &Place<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
         switch_ty: Ty<'tcx>,
-        options: &mut Vec<u128>,
-        indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>,
+        options: &mut FxIndexMap<&'tcx ty::Const<'tcx>, u128>,
     ) -> bool {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
             Some(match_pair) => match_pair,
@@ -95,9 +93,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match *match_pair.pattern.kind {
             PatKind::Constant { value } => {
-                indices.entry(value).or_insert_with(|| {
-                    options.push(value.eval_bits(self.hir.tcx(), self.hir.param_env, switch_ty));
-                    options.len() - 1
+                options.entry(value).or_insert_with(|| {
+                    value.eval_bits(self.hir.tcx(), self.hir.param_env, switch_ty)
                 });
                 true
             }
@@ -106,7 +103,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             PatKind::Range(range) => {
                 // Check that none of the switch values are in the range.
-                self.values_not_contained_in_range(range, indices).unwrap_or(false)
+                self.values_not_contained_in_range(range, options).unwrap_or(false)
             }
             PatKind::Slice { .. }
             | PatKind::Array { .. }
@@ -216,7 +213,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
             }
 
-            TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
+            TestKind::SwitchInt { switch_ty, ref options } => {
                 let target_blocks = make_target_blocks(self);
                 let terminator = if switch_ty.kind == ty::Bool {
                     assert!(!options.is_empty() && options.len() <= 2);
@@ -236,7 +233,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     TerminatorKind::SwitchInt {
                         discr: Operand::Copy(place),
                         switch_ty,
-                        values: options.clone().into(),
+                        values: options.values().copied().collect(),
                         targets: target_blocks,
                     }
                 };
@@ -532,20 +529,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
             (
-                &TestKind::SwitchInt { switch_ty: _, options: _, ref indices },
+                &TestKind::SwitchInt { switch_ty: _, ref options },
                 &PatKind::Constant { ref value },
             ) if is_switch_ty(match_pair.pattern.ty) => {
-                let index = indices[value];
+                let index = options.get_index_of(value).unwrap();
                 self.candidate_without_match_pair(match_pair_index, candidate);
                 Some(index)
             }
 
             (
-                &TestKind::SwitchInt { switch_ty: _, ref options, ref indices },
+                &TestKind::SwitchInt { switch_ty: _, ref options },
                 &PatKind::Range(range),
             ) => {
                 let not_contained =
-                    self.values_not_contained_in_range(range, indices).unwrap_or(false);
+                    self.values_not_contained_in_range(range, options).unwrap_or(false);
 
                 if not_contained {
                     // No switch values are contained in the pattern range,
@@ -777,9 +774,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn values_not_contained_in_range(
         &self,
         range: PatRange<'tcx>,
-        indices: &FxHashMap<&'tcx ty::Const<'tcx>, usize>,
+        options: &FxIndexMap<&'tcx ty::Const<'tcx>, u128>,
     ) -> Option<bool> {
-        for &val in indices.keys() {
+        for &val in options.keys() {
             if self.const_range_contains(range, val)? {
                 return Some(false);
             }

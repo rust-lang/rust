@@ -187,7 +187,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     }
 
     pub fn span(&self) -> Span {
-        self.span.clone()
+        self.span
     }
 
     pub fn reached_recursion_limit(&self) -> bool {

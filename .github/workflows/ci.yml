@@ -575,6 +575,7 @@ jobs:
       CACHE_DOMAIN: ci-caches-gha.rust-lang.org
     if: "github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: aarch64-gnu

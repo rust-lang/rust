@@ -1,39 +1,18 @@
-error: type parameters must be declared prior to const parameters
-  --> $DIR/argument_order.rs:4:28
-   |
-LL | struct Bad<const N: usize, T> {
-   |           -----------------^- help: reorder the parameters: lifetimes, then types, then consts: `<T, const N: usize>`
-
 error: lifetime parameters must be declared prior to const parameters
   --> $DIR/argument_order.rs:9:32
    |
 LL | struct AlsoBad<const N: usize, 'a, T, 'b, const M: usize, U> {
-   |               -----------------^^-----^^-------------------- help: reorder the parameters: lifetimes, then types, then consts: `<'a, 'b, T, U, const N: usize, const M: usize>`
-
-error: type parameters must be declared prior to const parameters
-  --> $DIR/argument_order.rs:9:36
-   |
-LL | struct AlsoBad<const N: usize, 'a, T, 'b, const M: usize, U> {
-   |               ---------------------^----------------------^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, 'b, T, U, const N: usize, const M: usize>`
-
-warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/argument_order.rs:1:12
-   |
-LL | #![feature(const_generics)]
-   |            ^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
+   |               -----------------^^-----^^-------------------- help: reorder the parameters: lifetimes, then consts and types: `<'a, 'b, const N: usize, T, const M: usize, U>`
 
 error[E0747]: lifetime provided when a type was expected
-  --> $DIR/argument_order.rs:17:23
+  --> $DIR/argument_order.rs:16:23
    |
 LL |     let _: AlsoBad<7, 'static, u32, 'static, 17, u16>;
    |                       ^^^^^^^
    |
    = note: lifetime arguments must be provided before type arguments
-   = help: reorder the arguments: lifetimes, then types, then consts: `<'a, 'b, T, U, N, M>`
+   = help: reorder the arguments: lifetimes, then consts: `<'a, 'b, N, T, M, U>`
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0747`.

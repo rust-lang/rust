@@ -486,7 +486,9 @@ fn token_probably_equal_for_proc_macro(first: &Token, other: &Token) -> bool {
 
         (&OpenDelim(a), &OpenDelim(b)) | (&CloseDelim(a), &CloseDelim(b)) => a == b,
 
-        (&DocComment(a), &DocComment(b)) | (&Shebang(a), &Shebang(b)) => a == b,
+        (&DocComment(a1, a2, a3), &DocComment(b1, b2, b3)) => a1 == b1 && a2 == b2 && a3 == b3,
+
+        (&Shebang(a), &Shebang(b)) => a == b,
 
         (&Literal(a), &Literal(b)) => a == b,
 
@@ -524,7 +526,7 @@ fn prepend_attrs(
 
         let item = match attr.kind {
             ast::AttrKind::Normal(ref item) => item,
-            ast::AttrKind::DocComment(_) => {
+            ast::AttrKind::DocComment(..) => {
                 let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
                 builder.push(stream);
                 continue;

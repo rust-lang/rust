@@ -23,9 +23,9 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV \
-    AR_i686_unknown_freebsd=i686-unknown-freebsd10-ar \
-    CC_i686_unknown_freebsd=i686-unknown-freebsd10-clang \
-    CXX_i686_unknown_freebsd=i686-unknown-freebsd10-clang++
+    AR_i686_unknown_freebsd=i686-unknown-freebsd11-ar \
+    CC_i686_unknown_freebsd=i686-unknown-freebsd11-clang \
+    CXX_i686_unknown_freebsd=i686-unknown-freebsd11-clang++
 
 ENV HOSTS=i686-unknown-freebsd
 

@@ -107,7 +107,7 @@ impl MultiItemModifier for ProcMacroDerive {
         let input = if item.pretty_printing_compatibility_hack() {
             TokenTree::token(token::Interpolated(Lrc::new(item)), DUMMY_SP).into()
         } else {
-            nt_to_tokenstream(&item, ecx.parse_sess, DUMMY_SP)
+            nt_to_tokenstream(&item, &ecx.sess.parse_sess, DUMMY_SP)
         };
 
         let server = proc_macro_server::Rustc::new(ecx);
@@ -123,9 +123,9 @@ impl MultiItemModifier for ProcMacroDerive {
             }
         };
 
-        let error_count_before = ecx.parse_sess.span_diagnostic.err_count();
+        let error_count_before = ecx.sess.parse_sess.span_diagnostic.err_count();
         let mut parser =
-            rustc_parse::stream_to_parser(ecx.parse_sess, stream, Some("proc-macro derive"));
+            rustc_parse::stream_to_parser(&ecx.sess.parse_sess, stream, Some("proc-macro derive"));
         let mut items = vec![];
 
         loop {
@@ -140,7 +140,7 @@ impl MultiItemModifier for ProcMacroDerive {
         }
 
         // fail if there have been errors emitted
-        if ecx.parse_sess.span_diagnostic.err_count() > error_count_before {
+        if ecx.sess.parse_sess.span_diagnostic.err_count() > error_count_before {
             ecx.struct_span_err(span, "proc-macro derive produced unparseable tokens").emit();
         }
 

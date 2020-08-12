@@ -1,4 +1,4 @@
-error: Usage of deprecated attribute
+error: usage of deprecated attribute
   --> $DIR/renamed_builtin_attr.rs:3:11
    |
 LL | #[clippy::cyclomatic_complexity = "1"]

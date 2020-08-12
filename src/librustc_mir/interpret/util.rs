@@ -47,14 +47,26 @@ where
                             unused_params.contains(index).map(|unused| !unused).unwrap_or(true);
                         // Only recurse when generic parameters in fns, closures and generators
                         // are used and require substitution.
-                        if is_used && subst.needs_subst() {
+                        match (is_used, subst.needs_subst()) {
                             // Just in case there are closures or generators within this subst,
                             // recurse.
-                            if subst.super_visit_with(self) {
+                            (true, true) if subst.super_visit_with(self) => {
                                 // Only return when we find a parameter so the remaining substs
                                 // are not skipped.
                                 return true;
                             }
+                            // Confirm that polymorphization replaced the parameter with
+                            // `ty::Param`/`ty::ConstKind::Param`.
+                            (false, true) if cfg!(debug_assertions) => match subst.unpack() {
+                                ty::subst::GenericArgKind::Type(ty) => {
+                                    assert!(matches!(ty.kind, ty::Param(_)))
+                                }
+                                ty::subst::GenericArgKind::Const(ct) => {
+                                    assert!(matches!(ct.val, ty::ConstKind::Param(_)))
+                                }
+                                ty::subst::GenericArgKind::Lifetime(..) => (),
+                            },
+                            _ => {}
                         }
                     }
                     false

@@ -17,7 +17,7 @@ LL |     (|| Box::new(|| {}) as Box<dyn Fn()>)();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/unsized_cast.rs:21:15
+  --> $DIR/unsized_cast.rs:22:15
    |
 LL | fn foo2<T: Default>() {
    |         - generic parameter `T` is unused
@@ -25,5 +25,19 @@ LL | fn foo2<T: Default>() {
 LL |         call(&|| {}, ());
    |               ^^^^^
 
-error: aborting due to 3 previous errors
+error: item has unused generic parameters
+  --> $DIR/unsized_cast.rs:19:5
+   |
+LL |   fn foo2<T: Default>() {
+   |           - generic parameter `T` is unused
+LL |       let _: T = Default::default();
+LL | /     (|| {
+LL | |
+LL | |         let call: extern "rust-call" fn(_, _) = Fn::call;
+LL | |         call(&|| {}, ());
+LL | |
+LL | |     })();
+   | |______^
+
+error: aborting due to 4 previous errors
 

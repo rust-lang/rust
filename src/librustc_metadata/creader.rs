@@ -4,8 +4,8 @@ use crate::dynamic_lib::DynamicLibrary;
 use crate::locator::{CrateError, CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
 
-use rustc_ast::expand::allocator::{global_allocator_spans, AllocatorKind};
-use rustc_ast::{ast, attr};
+use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::{ast, visit};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
@@ -636,7 +636,8 @@ impl<'a> CrateLoader<'a> {
         // compilation mode also comes into play.
         let desired_strategy = self.sess.panic_strategy();
         let mut runtime_found = false;
-        let mut needs_panic_runtime = attr::contains_name(&krate.attrs, sym::needs_panic_runtime);
+        let mut needs_panic_runtime =
+            self.sess.contains_name(&krate.attrs, sym::needs_panic_runtime);
 
         self.cstore.iter_crate_data(|cnum, data| {
             needs_panic_runtime = needs_panic_runtime || data.needs_panic_runtime();
@@ -716,7 +717,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_allocator_crate(&mut self, krate: &ast::Crate) {
-        self.cstore.has_global_allocator = match &*global_allocator_spans(krate) {
+        self.cstore.has_global_allocator = match &*global_allocator_spans(&self.sess, krate) {
             [span1, span2, ..] => {
                 self.sess
                     .struct_span_err(*span2, "cannot define multiple global allocators")
@@ -731,7 +732,7 @@ impl<'a> CrateLoader<'a> {
         // Check to see if we actually need an allocator. This desire comes
         // about through the `#![needs_allocator]` attribute and is typically
         // written down in liballoc.
-        let mut needs_allocator = attr::contains_name(&krate.attrs, sym::needs_allocator);
+        let mut needs_allocator = self.sess.contains_name(&krate.attrs, sym::needs_allocator);
         self.cstore.iter_crate_data(|_, data| {
             needs_allocator = needs_allocator || data.needs_allocator();
         });
@@ -785,7 +786,7 @@ impl<'a> CrateLoader<'a> {
         // allocator. At this point our allocator request is typically fulfilled
         // by the standard library, denoted by the `#![default_lib_allocator]`
         // attribute.
-        let mut has_default = attr::contains_name(&krate.attrs, sym::default_lib_allocator);
+        let mut has_default = self.sess.contains_name(&krate.attrs, sym::default_lib_allocator);
         self.cstore.iter_crate_data(|_, data| {
             if data.has_default_lib_allocator() {
                 has_default = true;
@@ -895,12 +896,12 @@ impl<'a> CrateLoader<'a> {
                 );
                 let name = match orig_name {
                     Some(orig_name) => {
-                        validate_crate_name(Some(self.sess), &orig_name.as_str(), Some(item.span));
+                        validate_crate_name(self.sess, &orig_name.as_str(), Some(item.span));
                         orig_name
                     }
                     None => item.ident.name,
                 };
-                let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
+                let dep_kind = if self.sess.contains_name(&item.attrs, sym::no_link) {
                     CrateDepKind::MacrosOnly
                 } else {
                     CrateDepKind::Explicit
@@ -944,4 +945,27 @@ impl<'a> CrateLoader<'a> {
     pub fn maybe_process_path_extern(&mut self, name: Symbol) -> Option<CrateNum> {
         self.maybe_resolve_crate(name, CrateDepKind::Explicit, None).ok()
     }
+}
+
+fn global_allocator_spans(sess: &Session, krate: &ast::Crate) -> Vec<Span> {
+    struct Finder<'a> {
+        sess: &'a Session,
+        name: Symbol,
+        spans: Vec<Span>,
+    }
+    impl<'ast, 'a> visit::Visitor<'ast> for Finder<'a> {
+        fn visit_item(&mut self, item: &'ast ast::Item) {
+            if item.ident.name == self.name
+                && self.sess.contains_name(&item.attrs, sym::rustc_std_internal_symbol)
+            {
+                self.spans.push(item.span);
+            }
+            visit::walk_item(self, item)
+        }
+    }
+
+    let name = Symbol::intern(&AllocatorKind::Global.fn_name(sym::alloc));
+    let mut f = Finder { sess, name, spans: Vec::new() };
+    visit::walk_crate(&mut f, krate);
+    f.spans
 }

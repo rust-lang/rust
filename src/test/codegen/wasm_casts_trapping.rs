@@ -5,72 +5,72 @@
 // CHECK-LABEL: @cast_f64_i64
 #[no_mangle]
 pub fn cast_f64_i64(a: f64) -> i64 {
-    // CHECK-NOT: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
-    // CHECK: fptosi double {{.*}} to i64
-    // CHECK-NEXT: select i1 {{.*}}, i64 {{.*}}, i64 {{.*}}
+    // CHECK-NOT: fptosi double {{.*}} to i64
+    // CHECK-NOT: select i1 {{.*}}, i64 {{.*}}, i64 {{.*}}
+    // CHECK: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
     a as _
 }
 
 // CHECK-LABEL: @cast_f64_i32
 #[no_mangle]
 pub fn cast_f64_i32(a: f64) -> i32 {
-    // CHECK-NOT: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
-    // CHECK: fptosi double {{.*}} to i32
-    // CHECK-NEXT: select i1 {{.*}}, i32 {{.*}}, i32 {{.*}}
+    // CHECK-NOT: fptosi double {{.*}} to i32
+    // CHECK-NOT: select i1 {{.*}}, i32 {{.*}}, i32 {{.*}}
+    // CHECK: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
     a as _
 }
 
 // CHECK-LABEL: @cast_f32_i64
 #[no_mangle]
 pub fn cast_f32_i64(a: f32) -> i64 {
-    // CHECK-NOT: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
-    // CHECK: fptosi float {{.*}} to i64
-    // CHECK-NEXT: select i1 {{.*}}, i64 {{.*}}, i64 {{.*}}
+    // CHECK-NOT: fptosi float {{.*}} to i64
+    // CHECK-NOT: select i1 {{.*}}, i64 {{.*}}, i64 {{.*}}
+    // CHECK: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
     a as _
 }
 
 // CHECK-LABEL: @cast_f32_i32
 #[no_mangle]
 pub fn cast_f32_i32(a: f32) -> i32 {
-    // CHECK-NOT: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
-    // CHECK: fptosi float {{.*}} to i32
-    // CHECK-NEXT: select i1 {{.*}}, i32 {{.*}}, i32 {{.*}}
+    // CHECK-NOT: fptosi float {{.*}} to i32
+    // CHECK-NOT: select i1 {{.*}}, i32 {{.*}}, i32 {{.*}}
+    // CHECK: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
     a as _
 }
 
 // CHECK-LABEL: @cast_f64_u64
 #[no_mangle]
 pub fn cast_f64_u64(a: f64) -> u64 {
-    // CHECK-NOT: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
-    // CHECK: fptoui double {{.*}} to i64
-    // CHECK-NEXT: select i1 {{.*}}, i64 {{.*}}, i64 {{.*}}
+    // CHECK-NOT: fptoui double {{.*}} to i64
+    // CHECK-NOT: select i1 {{.*}}, i64 {{.*}}, i64 {{.*}}
+    // CHECK: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
     a as _
 }
 
 // CHECK-LABEL: @cast_f64_u32
 #[no_mangle]
 pub fn cast_f64_u32(a: f64) -> u32 {
-    // CHECK-NOT: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
-    // CHECK: fptoui double {{.*}} to i32
-    // CHECK-NEXT: select i1 {{.*}}, i32 {{.*}}, i32 {{.*}}
+    // CHECK-NOT: fptoui double {{.*}} to i32
+    // CHECK-NOT: select i1 {{.*}}, i32 {{.*}}, i32 {{.*}}
+    // CHECK: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
     a as _
 }
 
 // CHECK-LABEL: @cast_f32_u64
 #[no_mangle]
 pub fn cast_f32_u64(a: f32) -> u64 {
-    // CHECK-NOT: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
-    // CHECK: fptoui float {{.*}} to i64
-    // CHECK-NEXT: select i1 {{.*}}, i64 {{.*}}, i64 {{.*}}
+    // CHECK-NOT: fptoui float {{.*}} to i64
+    // CHECK-NOT: select i1 {{.*}}, i64 {{.*}}, i64 {{.*}}
+    // CHECK: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
     a as _
 }
 
 // CHECK-LABEL: @cast_f32_u32
 #[no_mangle]
 pub fn cast_f32_u32(a: f32) -> u32 {
-    // CHECK-NOT: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
-    // CHECK: fptoui float {{.*}} to i32
-    // CHECK-NEXT: select i1 {{.*}}, i32 {{.*}}, i32 {{.*}}
+    // CHECK-NOT: fptoui float {{.*}} to i32
+    // CHECK-NOT: select i1 {{.*}}, i32 {{.*}}, i32 {{.*}}
+    // CHECK: {{.*}} call {{.*}} @llvm.wasm.trunc.{{.*}}
     a as _
 }
 

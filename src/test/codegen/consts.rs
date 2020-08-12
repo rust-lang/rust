@@ -10,11 +10,11 @@
 // CHECK: @STATIC = {{.*}}, align 4
 
 // This checks the constants from inline_enum_const
-// CHECK: @alloc7 = {{.*}}, align 2
+// CHECK: @alloc8 = {{.*}}, align 2
 
 // This checks the constants from {low,high}_align_const, they share the same
 // constant, but the alignment differs, so the higher one should be used
-// CHECK: [[LOW_HIGH:@[0-9]+]] = {{.*}} getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* @alloc19, i32 0, i32 0, i32 0), {{.*}}
+// CHECK: [[LOW_HIGH:@[0-9]+]] = {{.*}} getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* @alloc20, i32 0, i32 0, i32 0), {{.*}}
 
 #[derive(Copy, Clone)]
 // repr(i16) is required for the {low,high}_align_const test

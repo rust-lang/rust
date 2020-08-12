@@ -180,9 +180,9 @@ pub struct DirtyCleanVisitor<'tcx> {
 impl DirtyCleanVisitor<'tcx> {
     /// Possibly "deserialize" the attribute into a clean/dirty assertion
     fn assertion_maybe(&mut self, item_id: hir::HirId, attr: &Attribute) -> Option<Assertion> {
-        let is_clean = if attr.check_name(sym::rustc_dirty) {
+        let is_clean = if self.tcx.sess.check_name(attr, sym::rustc_dirty) {
             false
-        } else if attr.check_name(sym::rustc_clean) {
+        } else if self.tcx.sess.check_name(attr, sym::rustc_clean) {
             true
         } else {
             // skip: not rustc_clean/dirty
@@ -231,7 +231,7 @@ impl DirtyCleanVisitor<'tcx> {
 
     fn labels(&self, attr: &Attribute) -> Option<Labels> {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-            if item.check_name(LABEL) {
+            if item.has_name(LABEL) {
                 let value = expect_associated_value(self.tcx, &item);
                 return Some(self.resolve_labels(&item, value));
             }
@@ -242,7 +242,7 @@ impl DirtyCleanVisitor<'tcx> {
     /// `except=` attribute value
     fn except(&self, attr: &Attribute) -> Labels {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-            if item.check_name(EXCEPT) {
+            if item.has_name(EXCEPT) {
                 let value = expect_associated_value(self.tcx, &item);
                 return self.resolve_labels(&item, value);
             }
@@ -474,15 +474,15 @@ fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
     debug!("check_config: config={:?}", config);
     let (mut cfg, mut except, mut label) = (None, false, false);
     for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-        if item.check_name(CFG) {
+        if item.has_name(CFG) {
             let value = expect_associated_value(tcx, &item);
             debug!("check_config: searching for cfg {:?}", value);
             cfg = Some(config.contains(&(value, None)));
         }
-        if item.check_name(LABEL) {
+        if item.has_name(LABEL) {
             label = true;
         }
-        if item.check_name(EXCEPT) {
+        if item.has_name(EXCEPT) {
             except = true;
         }
     }
@@ -523,7 +523,7 @@ pub struct FindAllAttrs<'tcx> {
 impl FindAllAttrs<'tcx> {
     fn is_active_attr(&mut self, attr: &Attribute) -> bool {
         for attr_name in &self.attr_names {
-            if attr.check_name(*attr_name) && check_config(self.tcx, attr) {
+            if self.tcx.sess.check_name(attr, *attr_name) && check_config(self.tcx, attr) {
                 return true;
             }
         }

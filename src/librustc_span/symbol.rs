@@ -672,6 +672,7 @@ symbols! {
         min_align_of,
         min_align_of_val,
         min_const_fn,
+        min_const_generics,
         min_const_unsafe_fn,
         min_specialization,
         minnumf32,
@@ -736,6 +737,7 @@ symbols! {
         not,
         note,
         object_safe_for_dispatch,
+        of,
         offset,
         omit_gdb_pretty_printer_section,
         on,
@@ -1480,6 +1482,10 @@ impl<CTX> ToStableHashKey<CTX> for Symbol {
 }
 
 // The `&'static str`s in this type actually point into the arena.
+//
+// The `FxHashMap`+`Vec` pair could be replaced by `FxIndexSet`, but #75278
+// found that to regress performance up to 2% in some cases. This might be
+// revisited after further improvements to `indexmap`.
 #[derive(Default)]
 pub struct Interner {
     arena: DroplessArena,

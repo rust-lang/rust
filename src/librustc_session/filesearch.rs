@@ -105,7 +105,7 @@ impl<'a> FileSearch<'a> {
         if self_contained {
             vec![p.clone(), p.join("self-contained")]
         } else {
-            vec![p.clone()]
+            vec![p]
         }
     }
 }

@@ -1125,11 +1125,11 @@ rustc_queries! {
 
     TypeChecking {
         query implementations_of_trait(_: (CrateNum, DefId))
-            -> &'tcx [DefId] {
+            -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
             desc { "looking up implementations of a trait in a crate" }
         }
         query all_trait_implementations(_: CrateNum)
-            -> &'tcx [DefId] {
+            -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
             desc { "looking up all (?) trait implementations" }
         }
     }
@@ -1319,7 +1319,7 @@ rustc_queries! {
         query codegen_unit(_: Symbol) -> &'tcx CodegenUnit<'tcx> {
             desc { "codegen_unit" }
         }
-        query unused_generic_params(key: DefId) -> FiniteBitSet<u64> {
+        query unused_generic_params(key: DefId) -> FiniteBitSet<u32> {
             cache_on_disk_if { key.is_local() }
             desc {
                 |tcx| "determining which generic parameters are unused by `{}`",

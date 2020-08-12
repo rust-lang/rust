@@ -1,0 +1,35 @@
+error: it looks like the same item is being pushed into this Vec
+  --> $DIR/same_item_push.rs:16:9
+   |
+LL |         spaces.push(vec![b' ']);
+   |         ^^^^^^
+   |
+   = note: `-D clippy::same-item-push` implied by `-D warnings`
+   = help: try using vec![vec![b' '];SIZE] or spaces.resize(NEW_SIZE, vec![b' '])
+
+error: it looks like the same item is being pushed into this Vec
+  --> $DIR/same_item_push.rs:22:9
+   |
+LL |         vec2.push(item);
+   |         ^^^^
+   |
+   = help: try using vec![item;SIZE] or vec2.resize(NEW_SIZE, item)
+
+error: it looks like the same item is being pushed into this Vec
+  --> $DIR/same_item_push.rs:28:9
+   |
+LL |         vec3.push(item);
+   |         ^^^^
+   |
+   = help: try using vec![item;SIZE] or vec3.resize(NEW_SIZE, item)
+
+error: it looks like the same item is being pushed into this Vec
+  --> $DIR/same_item_push.rs:33:9
+   |
+LL |         vec4.push(13);
+   |         ^^^^
+   |
+   = help: try using vec![13;SIZE] or vec4.resize(NEW_SIZE, 13)
+
+error: aborting due to 4 previous errors
+

@@ -9,6 +9,7 @@ use rustc_ast::{self, ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};
+use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::{ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
@@ -162,12 +163,7 @@ pub fn register_plugins<'a>(
         )
     });
 
-    let (krate, features) = rustc_expand::config::features(
-        krate,
-        &sess.parse_sess,
-        sess.edition(),
-        &sess.opts.debugging_opts.allow_features,
-    );
+    let (krate, features) = rustc_expand::config::features(sess, krate);
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
@@ -244,7 +240,7 @@ fn configure_and_expand_inner<'a>(
         let (krate, name) = rustc_builtin_macros::standard_library_imports::inject(
             krate,
             &mut resolver,
-            &sess.parse_sess,
+            &sess,
             alt_std_name,
         );
         if let Some(name) = name {
@@ -253,7 +249,7 @@ fn configure_and_expand_inner<'a>(
         krate
     });
 
-    util::check_attr_crate_type(&krate.attrs, &mut resolver.lint_buffer());
+    util::check_attr_crate_type(&sess, &krate.attrs, &mut resolver.lint_buffer());
 
     // Expand all macros
     krate = sess.time("macro_expand_crate", || {
@@ -300,7 +296,7 @@ fn configure_and_expand_inner<'a>(
         };
 
         let extern_mod_loaded = |k: &ast::Crate| pre_expansion_lint(sess, lint_store, k);
-        let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver, Some(&extern_mod_loaded));
+        let mut ecx = ExtCtxt::new(&sess, cfg, &mut resolver, Some(&extern_mod_loaded));
 
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
@@ -312,6 +308,7 @@ fn configure_and_expand_inner<'a>(
         });
 
         let mut missing_fragment_specifiers: Vec<_> = ecx
+            .sess
             .parse_sess
             .missing_fragment_specifiers
             .borrow()
@@ -341,17 +338,7 @@ fn configure_and_expand_inner<'a>(
     })?;
 
     sess.time("maybe_building_test_harness", || {
-        rustc_builtin_macros::test_harness::inject(
-            &sess.parse_sess,
-            &mut resolver,
-            sess.opts.test,
-            &mut krate,
-            sess.diagnostic(),
-            &sess.features_untracked(),
-            sess.panic_strategy(),
-            sess.target.target.options.panic_strategy,
-            sess.opts.debugging_opts.panic_abort_tests,
-        )
+        rustc_builtin_macros::test_harness::inject(&sess, &mut resolver, &mut krate)
     });
 
     if let Some(PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops)) = sess.opts.pretty {
@@ -385,7 +372,7 @@ fn configure_and_expand_inner<'a>(
             let num_crate_types = crate_types.len();
             let is_test_crate = sess.opts.test;
             rustc_builtin_macros::proc_macro_harness::inject(
-                &sess.parse_sess,
+                &sess,
                 &mut resolver,
                 krate,
                 is_proc_macro_crate,
@@ -415,12 +402,7 @@ fn configure_and_expand_inner<'a>(
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {
-        rustc_ast_passes::feature_gate::check_crate(
-            &krate,
-            &sess.parse_sess,
-            &sess.features_untracked(),
-            sess.opts.unstable_features,
-        );
+        rustc_ast_passes::feature_gate::check_crate(&krate, sess);
     });
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
@@ -993,6 +975,7 @@ fn encode_and_write_metadata(
             .prefix("rmeta")
             .tempdir_in(out_filename.parent().unwrap())
             .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
+        let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
         let metadata_filename = emit_metadata(tcx.sess, &metadata, &metadata_tmpdir);
         if let Err(e) = fs::rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));

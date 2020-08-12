@@ -10,6 +10,7 @@ use crate::cmp::Ordering;
 use crate::fmt::{self, Write as FmtWrite};
 use crate::hash;
 use crate::io::Write as IoWrite;
+use crate::mem::transmute;
 use crate::sys::net::netc as c;
 use crate::sys_common::{AsInner, FromInner};
 
@@ -319,15 +320,9 @@ impl Ipv4Addr {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ipv4", since = "1.32.0")]
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
-        // FIXME: should just be u32::from_be_bytes([a, b, c, d]),
-        // once that method is no longer rustc_const_unstable
-        Ipv4Addr {
-            inner: c::in_addr {
-                s_addr: u32::to_be(
-                    ((a as u32) << 24) | ((b as u32) << 16) | ((c as u32) << 8) | (d as u32),
-                ),
-            },
-        }
+        // `s_addr` is stored as BE on all machine and the array is in BE order.
+        // So the native endian conversion method is used so that it's never swapped.
+        Ipv4Addr { inner: c::in_addr { s_addr: u32::from_ne_bytes([a, b, c, d]) } }
     }
 
     /// An IPv4 address with the address pointing to localhost: 127.0.0.1.
@@ -772,10 +767,8 @@ impl Ipv4Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv6_compatible(&self) -> Ipv6Addr {
-        let octets = self.octets();
-        Ipv6Addr::from([
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, octets[0], octets[1], octets[2], octets[3],
-        ])
+        let [a, b, c, d] = self.octets();
+        Ipv6Addr::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, a, b, c, d])
     }
 
     /// Converts this address to an IPv4-mapped [IPv6 address].
@@ -794,10 +787,8 @@ impl Ipv4Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv6_mapped(&self) -> Ipv6Addr {
-        let octets = self.octets();
-        Ipv6Addr::from([
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, octets[0], octets[1], octets[2], octets[3],
-        ])
+        let [a, b, c, d] = self.octets();
+        Ipv6Addr::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, a, b, c, d])
     }
 }
 
@@ -967,11 +958,6 @@ impl AsInner<c::in_addr> for Ipv4Addr {
         &self.inner
     }
 }
-impl FromInner<c::in_addr> for Ipv4Addr {
-    fn from_inner(addr: c::in_addr) -> Ipv4Addr {
-        Ipv4Addr { inner: addr }
-    }
-}
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<Ipv4Addr> for u32 {
@@ -982,8 +968,8 @@ impl From<Ipv4Addr> for u32 {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::new(13, 12, 11, 10);
-    /// assert_eq!(0x0d0c0b0au32, u32::from(addr));
+    /// let addr = Ipv4Addr::new(0xca, 0xfe, 0xba, 0xbe);
+    /// assert_eq!(0xcafebabe, u32::from(addr));
     /// ```
     fn from(ip: Ipv4Addr) -> u32 {
         let ip = ip.octets();
@@ -1000,8 +986,8 @@ impl From<u32> for Ipv4Addr {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::from(0x0d0c0b0au32);
-    /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
+    /// let addr = Ipv4Addr::from(0xcafebabe);
+    /// assert_eq!(Ipv4Addr::new(0xca, 0xfe, 0xba, 0xbe), addr);
     /// ```
     fn from(ip: u32) -> Ipv4Addr {
         Ipv4Addr::from(ip.to_be_bytes())
@@ -1056,27 +1042,23 @@ impl Ipv6Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
+    #[allow_internal_unstable(const_fn_transmute)]
     pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr {
+        let addr16 = [
+            a.to_be(),
+            b.to_be(),
+            c.to_be(),
+            d.to_be(),
+            e.to_be(),
+            f.to_be(),
+            g.to_be(),
+            h.to_be(),
+        ];
         Ipv6Addr {
             inner: c::in6_addr {
-                s6_addr: [
-                    (a >> 8) as u8,
-                    a as u8,
-                    (b >> 8) as u8,
-                    b as u8,
-                    (c >> 8) as u8,
-                    c as u8,
-                    (d >> 8) as u8,
-                    d as u8,
-                    (e >> 8) as u8,
-                    e as u8,
-                    (f >> 8) as u8,
-                    f as u8,
-                    (g >> 8) as u8,
-                    g as u8,
-                    (h >> 8) as u8,
-                    h as u8,
-                ],
+                // All elements in `addr16` are big endian.
+                // SAFETY: `[u16; 8]` is always safe to transmute to `[u8; 16]`.
+                s6_addr: unsafe { transmute::<_, [u8; 16]>(addr16) },
             },
         }
     }
@@ -1119,16 +1101,19 @@ impl Ipv6Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn segments(&self) -> [u16; 8] {
-        let arr = &self.inner.s6_addr;
+        // All elements in `s6_addr` must be big endian.
+        // SAFETY: `[u8; 16]` is always safe to transmute to `[u16; 8]`.
+        let [a, b, c, d, e, f, g, h] = unsafe { transmute::<_, [u16; 8]>(self.inner.s6_addr) };
+        // We want native endian u16
         [
-            u16::from_be_bytes([arr[0], arr[1]]),
-            u16::from_be_bytes([arr[2], arr[3]]),
-            u16::from_be_bytes([arr[4], arr[5]]),
-            u16::from_be_bytes([arr[6], arr[7]]),
-            u16::from_be_bytes([arr[8], arr[9]]),
-            u16::from_be_bytes([arr[10], arr[11]]),
-            u16::from_be_bytes([arr[12], arr[13]]),
-            u16::from_be_bytes([arr[14], arr[15]]),
+            u16::from_be(a),
+            u16::from_be(b),
+            u16::from_be(c),
+            u16::from_be(d),
+            u16::from_be(e),
+            u16::from_be(f),
+            u16::from_be(g),
+            u16::from_be(h),
         ]
     }
 
@@ -1509,11 +1494,12 @@ impl Ipv6Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv4(&self) -> Option<Ipv4Addr> {
-        match self.segments() {
-            [0, 0, 0, 0, 0, f, g, h] if f == 0 || f == 0xffff => {
-                Some(Ipv4Addr::new((g >> 8) as u8, g as u8, (h >> 8) as u8, h as u8))
-            }
-            _ => None,
+        if let [0, 0, 0, 0, 0, 0 | 0xffff, ab, cd] = self.segments() {
+            let [a, b] = ab.to_be_bytes();
+            let [c, d] = cd.to_be_bytes();
+            Some(Ipv4Addr::new(a, b, c, d))
+        } else {
+            None
         }
     }
 

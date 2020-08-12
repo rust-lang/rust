@@ -50,6 +50,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(any(
         all(target_family = "windows", target_env = "gnu"),
         target_os = "cloudabi",
+        target_os = "psp",
         target_family = "unix",
         all(target_vendor = "fortanix", target_env = "sgx"),
     ))] {
@@ -65,7 +66,6 @@ cfg_if::cfg_if! {
         // - os=uefi
         // - nvptx64-nvidia-cuda
         // - avr-unknown-unknown
-        // - mipsel-sony-psp
         #[path = "dummy.rs"]
         mod real_imp;
     }

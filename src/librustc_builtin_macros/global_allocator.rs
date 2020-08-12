@@ -19,7 +19,7 @@ pub fn expand(
     check_builtin_macro_attribute(ecx, meta_item, sym::global_allocator);
 
     let not_static = |item: Annotatable| {
-        ecx.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
+        ecx.sess.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
         vec![item]
     };
     let item = match item {

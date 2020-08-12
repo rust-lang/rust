@@ -19,6 +19,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::Features;
 use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
+use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
@@ -217,7 +218,7 @@ fn generic_extension<'cx>(
     lhses: &[mbe::TokenTree],
     rhses: &[mbe::TokenTree],
 ) -> Box<dyn MacResult + 'cx> {
-    let sess = cx.parse_sess;
+    let sess = &cx.sess.parse_sess;
 
     if cx.trace_macros() {
         let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(&arg));
@@ -378,7 +379,7 @@ fn generic_extension<'cx>(
 
 /// Converts a macro item into a syntax extension.
 pub fn compile_declarative_macro(
-    sess: &ParseSess,
+    sess: &Session,
     features: &Features,
     def: &ast::Item,
     edition: Edition,
@@ -396,7 +397,7 @@ pub fn compile_declarative_macro(
         )
     };
 
-    let diag = &sess.span_diagnostic;
+    let diag = &sess.parse_sess.span_diagnostic;
     let lhs_nm = Ident::new(sym::lhs, def.span);
     let rhs_nm = Ident::new(sym::rhs, def.span);
     let tt_spec = Some(NonterminalKind::TT);
@@ -444,17 +445,20 @@ pub fn compile_declarative_macro(
         ),
     ];
 
-    let parser = Parser::new(sess, body, true, rustc_parse::MACRO_ARGUMENTS);
+    let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
     let argument_map = match parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
         Success(m) => m,
         Failure(token, msg) => {
             let s = parse_failure_msg(&token);
             let sp = token.span.substitute_dummy(def.span);
-            sess.span_diagnostic.struct_span_err(sp, &s).span_label(sp, msg).emit();
+            sess.parse_sess.span_diagnostic.struct_span_err(sp, &s).span_label(sp, msg).emit();
             return mk_syn_ext(Box::new(macro_rules_dummy_expander));
         }
         Error(sp, msg) => {
-            sess.span_diagnostic.struct_span_err(sp.substitute_dummy(def.span), &msg).emit();
+            sess.parse_sess
+                .span_diagnostic
+                .struct_span_err(sp.substitute_dummy(def.span), &msg)
+                .emit();
             return mk_syn_ext(Box::new(macro_rules_dummy_expander));
         }
         ErrorReported => {
@@ -471,17 +475,18 @@ pub fn compile_declarative_macro(
             .map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        let tt = mbe::quoted::parse(tt.clone().into(), true, sess, def.id)
-                            .pop()
-                            .unwrap();
-                        valid &= check_lhs_nt_follows(sess, features, &def.attrs, &tt);
+                        let tt =
+                            mbe::quoted::parse(tt.clone().into(), true, &sess.parse_sess, def.id)
+                                .pop()
+                                .unwrap();
+                        valid &= check_lhs_nt_follows(&sess.parse_sess, features, &def.attrs, &tt);
                         return tt;
                     }
                 }
-                sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
+                sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
             })
             .collect::<Vec<mbe::TokenTree>>(),
-        _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs"),
+        _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs"),
     };
 
     let rhses = match argument_map[&MacroRulesNormalizedIdent::new(rhs_nm)] {
@@ -490,29 +495,34 @@ pub fn compile_declarative_macro(
             .map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        return mbe::quoted::parse(tt.clone().into(), false, sess, def.id)
-                            .pop()
-                            .unwrap();
+                        return mbe::quoted::parse(
+                            tt.clone().into(),
+                            false,
+                            &sess.parse_sess,
+                            def.id,
+                        )
+                        .pop()
+                        .unwrap();
                     }
                 }
-                sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
+                sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
             })
             .collect::<Vec<mbe::TokenTree>>(),
-        _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured rhs"),
+        _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured rhs"),
     };
 
     for rhs in &rhses {
-        valid &= check_rhs(sess, rhs);
+        valid &= check_rhs(&sess.parse_sess, rhs);
     }
 
     // don't abort iteration early, so that errors for multiple lhses can be reported
     for lhs in &lhses {
-        valid &= check_lhs_no_empty_seq(sess, slice::from_ref(lhs));
+        valid &= check_lhs_no_empty_seq(&sess.parse_sess, slice::from_ref(lhs));
     }
 
-    valid &= macro_check::check_meta_variables(sess, def.id, def.span, &lhses, &rhses);
+    valid &= macro_check::check_meta_variables(&sess.parse_sess, def.id, def.span, &lhses, &rhses);
 
-    let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
+    let (transparency, transparency_error) = attr::find_transparency(sess, &def.attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
             diag.span_err(span, &format!("unknown macro transparency: `{}`", value))

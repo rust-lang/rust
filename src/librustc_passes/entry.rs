@@ -1,4 +1,3 @@
-use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{CrateNum, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -58,7 +57,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(&tcx.hir().krate().item.attrs, sym::no_main) {
+    if tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::no_main) {
         return None;
     }
 
@@ -76,14 +75,14 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)
     configure_main(tcx, &ctxt)
 }
 
-// Beware, this is duplicated in `librustc_ast/entry.rs`, so make sure to keep
-// them in sync.
-fn entry_point_type(item: &Item<'_>, at_root: bool) -> EntryPointType {
+// Beware, this is duplicated in `librustc_builtin_macros/test_harness.rs`
+// (with `ast::Item`), so make sure to keep them in sync.
+fn entry_point_type(sess: &Session, item: &Item<'_>, at_root: bool) -> EntryPointType {
     match item.kind {
         ItemKind::Fn(..) => {
-            if attr::contains_name(&item.attrs, sym::start) {
+            if sess.contains_name(&item.attrs, sym::start) {
                 EntryPointType::Start
-            } else if attr::contains_name(&item.attrs, sym::main) {
+            } else if sess.contains_name(&item.attrs, sym::main) {
                 EntryPointType::MainAttr
             } else if item.ident.name == sym::main {
                 if at_root {
@@ -101,7 +100,7 @@ fn entry_point_type(item: &Item<'_>, at_root: bool) -> EntryPointType {
 }
 
 fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
-    match entry_point_type(item, at_root) {
+    match entry_point_type(&ctxt.session, item, at_root) {
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {
                 ctxt.main_fn = Some((item.hir_id, item.span));

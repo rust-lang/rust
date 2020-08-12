@@ -24,7 +24,6 @@ use super::{Overflow, SelectionError, Unimplemented};
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::project::ProjectionCacheKeyExt;
-use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
@@ -440,7 +439,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation
         );
 
-        // `previous_stack` stores a `TraitObligatiom`, while `obligation` is
+        // `previous_stack` stores a `TraitObligation`, while `obligation` is
         // a `PredicateObligation`. These are distinct types, so we can't
         // use any `Option` combinator method that would force them to be
         // the same.
@@ -980,7 +979,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         &mut self.intercrate_ambiguity_causes
                     {
                         let attrs = tcx.get_attrs(def_id);
-                        let attr = attr::find_by_name(&attrs, sym::rustc_reservation_impl);
+                        let attr = tcx.sess.find_by_name(&attrs, sym::rustc_reservation_impl);
                         let value = attr.and_then(|a| a.value_str());
                         if let Some(value) = value {
                             debug!(

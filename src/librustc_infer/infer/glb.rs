@@ -50,7 +50,7 @@ impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
             // FIXME(#41044) -- not correct, need test
-            ty::Bivariant => Ok(a.clone()),
+            ty::Bivariant => Ok(a),
             ty::Contravariant => self.fields.lub(self.a_is_expected).relate(a, b),
         }
     }
@@ -97,7 +97,7 @@ impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
         // very challenging, switch to invariance. This is obviously
         // overly conservative but works ok in practice.
         self.relate_with_variance(ty::Variance::Invariant, a, b)?;
-        Ok(a.clone())
+        Ok(a)
     }
 }
 

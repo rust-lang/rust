@@ -6,7 +6,6 @@ use crate::thir::util::UserAnnotatedTyHelpers;
 use crate::thir::*;
 
 use rustc_ast::ast;
-use rustc_ast::attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
@@ -69,7 +68,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
         // the settings for the crate they are codegened in.
-        let mut check_overflow = attr::contains_name(attrs, sym::rustc_inherit_overflow_checks);
+        let mut check_overflow = tcx.sess.contains_name(attrs, sym::rustc_inherit_overflow_checks);
 
         // Respect -C overflow-checks.
         check_overflow |= tcx.sess.overflow_checks();

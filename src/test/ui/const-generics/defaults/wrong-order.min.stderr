@@ -1,0 +1,10 @@
+error: type parameters with a default must be trailing
+  --> $DIR/wrong-order.rs:5:10
+   |
+LL | struct A<T = u32, const N: usize> {
+   |          ^
+   |
+   = note: using type defaults and const parameters in the same parameter list is currently not permitted
+
+error: aborting due to previous error
+

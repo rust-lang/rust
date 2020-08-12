@@ -1,4 +1,4 @@
-error: Usage of unknown attribute
+error: usage of unknown attribute
   --> $DIR/unknown_attribute.rs:1:11
    |
 LL | #[clippy::unknown]

@@ -106,7 +106,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 
             // However, we cannot allow stable `const fn`s to use unstable features without an explicit
             // opt-in via `allow_internal_unstable`.
-            attr::allow_internal_unstable(&tcx.get_attrs(def_id), &tcx.sess.diagnostic())
+            attr::allow_internal_unstable(&tcx.sess, &tcx.get_attrs(def_id))
                 .map_or(false, |mut features| features.any(|name| name == feature_gate))
         };
 

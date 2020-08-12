@@ -926,7 +926,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // first copy the relocations to a temporary buffer, because
         // `get_bytes_mut` will clear the relocations, which is correct,
         // since we don't want to keep any relocations at the target.
-        // (`get_bytes_with_undef_and_ptr` below checks that there are no
+        // (`get_bytes_with_uninit_and_ptr` below checks that there are no
         // relocations overlapping the edges; those would not be handled correctly).
         let relocations =
             self.get_raw(src.alloc_id)?.prepare_relocation_copy(self, src, size, dest, length);
@@ -935,7 +935,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         // This checks relocation edges on the src.
         let src_bytes =
-            self.get_raw(src.alloc_id)?.get_bytes_with_undef_and_ptr(&tcx, src, size)?.as_ptr();
+            self.get_raw(src.alloc_id)?.get_bytes_with_uninit_and_ptr(&tcx, src, size)?.as_ptr();
         let dest_bytes =
             self.get_raw_mut(dest.alloc_id)?.get_bytes_mut(&tcx, dest, size * length)?; // `Size` multiplication
 
@@ -948,11 +948,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let dest_bytes = dest_bytes.as_mut_ptr();
 
         // Prepare a copy of the initialization mask.
-        let compressed = self.get_raw(src.alloc_id)?.compress_undef_range(src, size);
+        let compressed = self.get_raw(src.alloc_id)?.compress_uninit_range(src, size);
 
         if compressed.no_bytes_init() {
             // Fast path: If all bytes are `uninit` then there is nothing to copy. The target range
-            // is marked as unititialized but we otherwise omit changing the byte representation which may
+            // is marked as uninitialized but we otherwise omit changing the byte representation which may
             // be arbitrary for uninitialized bytes.
             // This also avoids writing to the target bytes so that the backing allocation is never
             // touched if the bytes stay uninitialized for the whole interpreter execution. On contemporary

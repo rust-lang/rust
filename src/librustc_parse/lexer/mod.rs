@@ -1,4 +1,4 @@
-use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::token::{self, CommentKind, Token, TokenKind};
 use rustc_ast::util::comments;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError};
@@ -170,22 +170,20 @@ impl<'a> StringReader<'a> {
         match token {
             rustc_lexer::TokenKind::LineComment => {
                 let string = self.str_from(start);
-                // comments with only more "/"s are not doc comments
-                if comments::is_line_doc_comment(string) {
+                if let Some(attr_style) = comments::line_doc_comment_style(string) {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in doc-comment");
-                    token::DocComment(Symbol::intern(string))
+                    // Opening delimiter of the length 3 is not included into the symbol.
+                    token::DocComment(CommentKind::Line, attr_style, Symbol::intern(&string[3..]))
                 } else {
                     token::Comment
                 }
             }
             rustc_lexer::TokenKind::BlockComment { terminated } => {
                 let string = self.str_from(start);
-                // block comments starting with "/**" or "/*!" are doc-comments
-                // but comments with only "*"s between two "/"s are not
-                let is_doc_comment = comments::is_block_doc_comment(string);
+                let attr_style = comments::block_doc_comment_style(string, terminated);
 
                 if !terminated {
-                    let msg = if is_doc_comment {
+                    let msg = if attr_style.is_some() {
                         "unterminated block doc-comment"
                     } else {
                         "unterminated block comment"
@@ -202,9 +200,15 @@ impl<'a> StringReader<'a> {
                     FatalError.raise();
                 }
 
-                if is_doc_comment {
+                if let Some(attr_style) = attr_style {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in block doc-comment");
-                    token::DocComment(Symbol::intern(string))
+                    // Opening delimiter of the length 3 and closing delimiter of the length 2
+                    // are not included into the symbol.
+                    token::DocComment(
+                        CommentKind::Block,
+                        attr_style,
+                        Symbol::intern(&string[3..string.len() - if terminated { 2 } else { 0 }]),
+                    )
                 } else {
                     token::Comment
                 }

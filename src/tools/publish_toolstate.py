@@ -42,7 +42,7 @@ MAINTAINERS = {
 LABELS = {
     'miri': ['A-miri', 'C-bug'],
     'rls': ['A-rls', 'C-bug'],
-    'rustfmt': ['C-bug'],
+    'rustfmt': ['A-rustfmt', 'C-bug'],
     'book': ['C-bug'],
     'nomicon': ['C-bug'],
     'reference': ['C-bug'],

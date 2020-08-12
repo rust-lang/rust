@@ -433,7 +433,7 @@
 #
 # LLD will not be used if we're cross linking or running tests.
 #
-# Explicitly setting the linker for a target will override this option.
+# Explicitly setting the linker for a target will override this option when targeting MSVC.
 #use-lld = false
 
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
@@ -503,7 +503,7 @@
 # Linker to be used to link Rust code. Note that the
 # default value is platform specific, and if not specified it may also depend on
 # what platform is crossing to what platform.
-# Setting this will override the `use-lld` option for Rust code.
+# Setting this will override the `use-lld` option for Rust code when targeting MSVC.
 #linker = "cc"
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link

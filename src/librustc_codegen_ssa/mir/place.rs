@@ -253,14 +253,13 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     bx.sub(tag, bx.cx().const_uint_big(niche_llty, niche_start))
                 };
                 let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
-                let is_niche = {
-                    let relative_max = if relative_max == 0 {
-                        // Avoid calling `const_uint`, which wouldn't work for pointers.
-                        // FIXME(eddyb) check the actual primitive type here.
-                        bx.cx().const_null(niche_llty)
-                    } else {
-                        bx.cx().const_uint(niche_llty, relative_max as u64)
-                    };
+                let is_niche = if relative_max == 0 {
+                    // Avoid calling `const_uint`, which wouldn't work for pointers.
+                    // Also use canonical == 0 instead of non-canonical u<= 0.
+                    // FIXME(eddyb) check the actual primitive type here.
+                    bx.icmp(IntPredicate::IntEQ, relative_discr, bx.cx().const_null(niche_llty))
+                } else {
+                    let relative_max = bx.cx().const_uint(niche_llty, relative_max as u64);
                     bx.icmp(IntPredicate::IntULE, relative_discr, relative_max)
                 };
 

@@ -1,13 +1,16 @@
 // aux-build:make-macro.rs
 // aux-build:meta-macro.rs
 // edition:2018
-// compile-flags: -Z span-debug -Z macro-backtrace
+// compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
 // check-pass
-// normalize-stdout-test "#\d+" -> "#CTXT"
 // normalize-stdout-test "\d+#" -> "0#"
 //
 // We don't care about symbol ids, so we set them all to 0
 // in the stdout
+
+#![no_std] // Don't load unnecessary hygiene information from std
+extern crate std;
+
 extern crate meta_macro;
 
 macro_rules! produce_it {
