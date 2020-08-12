@@ -311,7 +311,6 @@ static Optional<CodeModel::Model> fromRust(LLVMRustCodeModel Model) {
 }
 
 enum class LLVMRustCodeGenOptLevel {
-  Other,
   None,
   Less,
   Default,

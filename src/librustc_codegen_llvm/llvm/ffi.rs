@@ -401,9 +401,6 @@ impl AsmDialect {
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum CodeGenOptLevel {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
     None,
     Less,
     Default,
