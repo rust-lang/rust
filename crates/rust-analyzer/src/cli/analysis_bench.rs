@@ -52,7 +52,7 @@ impl FromStr for Position {
 
 impl BenchCmd {
     pub fn run(self, verbosity: Verbosity) -> Result<()> {
-        ra_prof::init();
+        profile::init();
 
         let start = Instant::now();
         eprint!("loading: ");

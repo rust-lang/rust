@@ -5,7 +5,6 @@ pub mod fixture;
 
 use std::{panic, sync::Arc};
 
-use ra_prof::profile;
 use ra_syntax::{ast, Parse, SourceFile, TextRange, TextSize};
 use rustc_hash::FxHashSet;
 
@@ -113,7 +112,7 @@ pub trait SourceDatabase: CheckCanceled + FileLoader + std::fmt::Debug {
 }
 
 fn parse_query(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
-    let _p = profile("parse_query").detail(|| format!("{:?}", file_id));
+    let _p = profile::span("parse_query").detail(|| format!("{:?}", file_id));
     let text = db.file_text(file_id);
     SourceFile::parse(&*text)
 }

@@ -56,7 +56,7 @@ pub struct ImportMap {
 
 impl ImportMap {
     pub fn import_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<Self> {
-        let _p = ra_prof::profile("import_map_query");
+        let _p = profile::span("import_map_query");
         let def_map = db.crate_def_map(krate);
         let mut import_map = Self::default();
 
@@ -254,7 +254,7 @@ pub fn search_dependencies<'a>(
     krate: CrateId,
     query: Query,
 ) -> Vec<ItemInNs> {
-    let _p = ra_prof::profile("search_dependencies").detail(|| format!("{:?}", query));
+    let _p = profile::span("search_dependencies").detail(|| format!("{:?}", query));
 
     let graph = db.crate_graph();
     let import_maps: Vec<_> =

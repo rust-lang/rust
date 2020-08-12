@@ -37,19 +37,16 @@ pub type Label = &'static str;
 ///
 /// # Example
 /// ```
-/// use ra_prof::{profile, set_filter, Filter};
-///
-/// let f = Filter::from_spec("profile1|profile2@2");
-/// set_filter(f);
+/// profile::init_from("profile1|profile2@2");
 /// profiling_function1();
 ///
 /// fn profiling_function1() {
-///     let _p = profile("profile1");
+///     let _p = profile::span("profile1");
 ///     profiling_function2();
 /// }
 ///
 /// fn profiling_function2() {
-///     let _p = profile("profile2");
+///     let _p = profile::span("profile2");
 /// }
 /// ```
 /// This will print in the stderr the following:
@@ -57,27 +54,27 @@ pub type Label = &'static str;
 ///  0ms - profile
 ///      0ms - profile2
 /// ```
-pub fn profile(label: Label) -> Profiler {
+pub fn span(label: Label) -> ProfileSpan {
     assert!(!label.is_empty());
 
     if PROFILING_ENABLED.load(Ordering::Relaxed)
         && PROFILE_STACK.with(|stack| stack.borrow_mut().push(label))
     {
-        Profiler(Some(ProfilerImpl { label, detail: None }))
+        ProfileSpan(Some(ProfilerImpl { label, detail: None }))
     } else {
-        Profiler(None)
+        ProfileSpan(None)
     }
 }
 
-pub struct Profiler(Option<ProfilerImpl>);
+pub struct ProfileSpan(Option<ProfilerImpl>);
 
 struct ProfilerImpl {
     label: Label,
     detail: Option<String>,
 }
 
-impl Profiler {
-    pub fn detail(mut self, detail: impl FnOnce() -> String) -> Profiler {
+impl ProfileSpan {
+    pub fn detail(mut self, detail: impl FnOnce() -> String) -> ProfileSpan {
         if let Some(profiler) = &mut self.0 {
             profiler.detail = Some(detail())
         }

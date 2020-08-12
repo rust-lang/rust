@@ -27,7 +27,6 @@ use crate::{
     to_proto::url_from_abs_path,
     Result,
 };
-use ra_prof::profile;
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub(crate) enum Status {
@@ -135,7 +134,7 @@ impl GlobalState {
     }
 
     pub(crate) fn process_changes(&mut self) -> bool {
-        let _p = profile("GlobalState::process_changes");
+        let _p = profile::span("GlobalState::process_changes");
         let mut fs_changes = Vec::new();
         let mut has_fs_changes = false;
 

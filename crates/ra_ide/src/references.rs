@@ -17,7 +17,6 @@ use ra_ide_db::{
     search::SearchScope,
     RootDatabase,
 };
-use ra_prof::profile;
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
@@ -90,7 +89,7 @@ pub(crate) fn find_all_refs(
     position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
-    let _p = profile("find_all_refs");
+    let _p = profile::span("find_all_refs");
     let syntax = sema.parse(position.file_id).syntax().clone();
 
     let (opt_name, search_kind) = if let Some(name) =

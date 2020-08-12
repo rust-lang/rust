@@ -29,7 +29,7 @@ use crate::{
     },
     print_memory_usage,
 };
-use ra_prof::StopWatch;
+use profile::StopWatch;
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);

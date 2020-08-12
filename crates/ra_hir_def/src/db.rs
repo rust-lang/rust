@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use hir_expand::{db::AstDatabase, HirFileId};
 use ra_db::{salsa, CrateId, SourceDatabase, Upcast};
-use ra_prof::profile;
 use ra_syntax::SmolStr;
 
 use crate::{
@@ -116,6 +115,6 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 }
 
 fn crate_def_map_wait(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
-    let _p = profile("crate_def_map:wait");
+    let _p = profile::span("crate_def_map:wait");
     db.crate_def_map_query(krate)
 }

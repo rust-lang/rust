@@ -110,7 +110,7 @@ fn add_missing_impl_members_inner(
     assist_id: &'static str,
     label: &'static str,
 ) -> Option<()> {
-    let _p = ra_prof::profile("add_missing_impl_members_inner");
+    let _p = profile::span("add_missing_impl_members_inner");
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?;
     let impl_item_list = impl_def.assoc_item_list()?;
 

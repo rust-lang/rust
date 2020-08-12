@@ -5,7 +5,6 @@ use chalk_ir::cast::Cast;
 use chalk_solve::Solver;
 use hir_def::{lang_item::LangItemTarget, TraitId};
 use ra_db::CrateId;
-use ra_prof::profile;
 
 use crate::{db::HirDatabase, DebruijnIndex, Substs};
 
@@ -125,7 +124,7 @@ pub(crate) fn trait_solve_query(
     krate: CrateId,
     goal: Canonical<InEnvironment<Obligation>>,
 ) -> Option<Solution> {
-    let _p = profile("trait_solve_query").detail(|| match &goal.value.value {
+    let _p = profile::span("trait_solve_query").detail(|| match &goal.value.value {
         Obligation::Trait(it) => db.trait_data(it.trait_).name.to_string(),
         Obligation::Projection(_) => "projection".to_string(),
     });

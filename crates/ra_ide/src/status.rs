@@ -1,6 +1,7 @@
 use std::{fmt, iter::FromIterator, sync::Arc};
 
 use hir::MacroFile;
+use profile::{memory_usage, Bytes};
 use ra_db::{
     salsa::debug::{DebugQueryTable, TableEntry},
     FileTextQuery, SourceRootId,
@@ -9,7 +10,6 @@ use ra_ide_db::{
     symbol_index::{LibrarySymbolsQuery, SymbolIndex},
     RootDatabase,
 };
-use ra_prof::{memory_usage, Bytes};
 use ra_syntax::{ast, Parse, SyntaxNode};
 use rustc_hash::FxHashMap;
 

@@ -8,7 +8,6 @@ use std::any::Any;
 use hir_def::DefWithBodyId;
 use hir_expand::diagnostics::{Diagnostic, DiagnosticSink};
 use hir_expand::{name::Name, HirFileId, InFile};
-use ra_prof::profile;
 use ra_syntax::{ast, AstPtr, SyntaxNodePtr};
 use stdx::format_to;
 
@@ -17,7 +16,7 @@ use crate::db::HirDatabase;
 pub use crate::diagnostics::expr::{record_literal_missing_fields, record_pattern_missing_fields};
 
 pub fn validate_body(db: &dyn HirDatabase, owner: DefWithBodyId, sink: &mut DiagnosticSink<'_>) {
-    let _p = profile("validate_body");
+    let _p = profile::span("validate_body");
     let infer = db.infer(owner);
     infer.add_diagnostics(db, owner, sink);
     let mut validator = expr::ExprValidator::new(owner, infer.clone(), sink);

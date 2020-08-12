@@ -9,7 +9,6 @@ use std::{convert::TryInto, mem};
 use hir::{DefWithBody, HasSource, Module, ModuleSource, Semantics, Visibility};
 use once_cell::unsync::Lazy;
 use ra_db::{FileId, FileRange, SourceDatabaseExt};
-use ra_prof::profile;
 use ra_syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 use rustc_hash::FxHashMap;
 
@@ -107,7 +106,7 @@ impl IntoIterator for SearchScope {
 
 impl Definition {
     fn search_scope(&self, db: &RootDatabase) -> SearchScope {
-        let _p = profile("search_scope");
+        let _p = profile::span("search_scope");
         let module = match self.module(db) {
             Some(it) => it,
             None => return SearchScope::empty(),
@@ -187,7 +186,7 @@ impl Definition {
         sema: &Semantics<RootDatabase>,
         search_scope: Option<SearchScope>,
     ) -> Vec<Reference> {
-        let _p = profile("Definition::find_usages");
+        let _p = profile::span("Definition::find_usages");
 
         let search_scope = {
             let base = self.search_scope(sema.db);

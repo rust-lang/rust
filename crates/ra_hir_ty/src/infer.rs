@@ -31,7 +31,6 @@ use hir_def::{
     TypeAliasId, VariantId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::name};
-use ra_prof::profile;
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashMap;
 use stdx::impl_from;
@@ -64,7 +63,7 @@ mod coerce;
 
 /// The entry point of type inference.
 pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
-    let _p = profile("infer_query");
+    let _p = profile::span("infer_query");
     let resolver = def.resolver(db.upcast());
     let mut ctx = InferenceContext::new(db, def, resolver);
 

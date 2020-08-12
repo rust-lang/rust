@@ -410,7 +410,7 @@ pub(crate) fn impl_datum_query(
     krate: CrateId,
     impl_id: ImplId,
 ) -> Arc<ImplDatum> {
-    let _p = ra_prof::profile("impl_datum");
+    let _p = profile::span("impl_datum");
     debug!("impl_datum {:?}", impl_id);
     let impl_: hir_def::ImplId = from_chalk(db, impl_id);
     impl_def_datum(db, krate, impl_id, impl_)

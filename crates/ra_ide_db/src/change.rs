@@ -3,11 +3,11 @@
 
 use std::{fmt, sync::Arc, time};
 
+use profile::{memory_usage, Bytes};
 use ra_db::{
     salsa::{Database, Durability, SweepStrategy},
     CrateGraph, FileId, SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
-use ra_prof::{memory_usage, profile, Bytes};
 use rustc_hash::FxHashSet;
 
 use crate::{symbol_index::SymbolsDatabase, RootDatabase};
@@ -85,12 +85,12 @@ const GC_COOLDOWN: time::Duration = time::Duration::from_millis(100);
 
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {
-        let _p = profile("RootDatabase::request_cancellation");
+        let _p = profile::span("RootDatabase::request_cancellation");
         self.salsa_runtime_mut().synthetic_write(Durability::LOW);
     }
 
     pub fn apply_change(&mut self, change: AnalysisChange) {
-        let _p = profile("RootDatabase::apply_change");
+        let _p = profile::span("RootDatabase::apply_change");
         self.request_cancellation();
         log::info!("apply_change {:?}", change);
         if let Some(roots) = change.roots {
@@ -141,7 +141,7 @@ impl RootDatabase {
             return;
         }
 
-        let _p = profile("RootDatabase::collect_garbage");
+        let _p = profile::span("RootDatabase::collect_garbage");
         self.last_gc = crate::wasm_shims::Instant::now();
 
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
