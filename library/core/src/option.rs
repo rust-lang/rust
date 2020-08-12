@@ -84,8 +84,9 @@
 //! * `#[repr(transparent)]` struct around one of the types in this list.
 //!
 //! For the above cases, it is guaranteed that one can [`mem::transmute`]
-//! from all valid values of `T` to `Option<T>` but only from non-`None`
-//! Option<T>` to `T`.
+//! from all valid values of `T` to `Option<T>` but only from
+//! `Option::Some(T)` to `T` (i.e. transmuting `None` to `<T>` is undefined
+//! behaviour).
 //!
 //! # Examples
 //!
