@@ -23,16 +23,13 @@ LL |     Empty4()
    |     -------- `E::Empty4` defined here
 ...
 LL |         E::Empty4 => ()
-   |         ^^^^^^^^^ did you mean `E::Empty4( /* fields */ )`?
+   |         ^^^^^^^^^ help: use the tuple variant pattern syntax instead: `E::Empty4()`
 
 error[E0532]: expected unit struct, unit variant or constant, found tuple variant `XE::XEmpty5`
   --> $DIR/empty-struct-tuple-pat.rs:33:9
    |
 LL |         XE::XEmpty5 => (),
-   |         ^^^^-------
-   |         |   |
-   |         |   help: a unit variant with a similar name exists: `XEmpty4`
-   |         did you mean `XE::XEmpty5( /* fields */ )`?
+   |         ^^^^^^^^^^^
    | 
   ::: $DIR/auxiliary/empty-struct.rs:7:5
    |
@@ -40,6 +37,15 @@ LL |     XEmpty4,
    |     ------- similarly named unit variant `XEmpty4` defined here
 LL |     XEmpty5(),
    |     --------- `XE::XEmpty5` defined here
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL |         XE::XEmpty5(/* fields */) => (),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: a unit variant with a similar name exists
+   |
+LL |         XE::XEmpty4 => (),
+   |             ^^^^^^^
 
 error: aborting due to 4 previous errors
 

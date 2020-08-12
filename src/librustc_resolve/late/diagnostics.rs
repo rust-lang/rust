@@ -701,7 +701,16 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 if let Some(span) = self.def_span(def_id) {
                     err.span_label(span, &format!("`{}` defined here", path_str));
                 }
-                err.span_label(span, format!("did you mean `{}( /* fields */ )`?", path_str));
+                let fields =
+                    self.r.field_names.get(&def_id).map_or("/* fields */".to_string(), |fields| {
+                        vec!["_"; fields.len()].join(", ")
+                    });
+                err.span_suggestion(
+                    span,
+                    "use the tuple variant pattern syntax instead",
+                    format!("{}({})", path_str, fields),
+                    Applicability::HasPlaceholders,
+                );
             }
             (Res::SelfTy(..), _) if ns == ValueNS => {
                 err.span_label(span, fallback_label);

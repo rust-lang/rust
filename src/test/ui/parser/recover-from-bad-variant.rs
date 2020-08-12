@@ -9,6 +9,7 @@ fn main() {
     match x {
         Enum::Foo(a, b) => {}
         //~^ ERROR expected tuple struct or tuple variant, found struct variant `Enum::Foo`
-        Enum::Bar(a, b) => {}
+        Enum::Bar { a, b } => {}
+        //~^ ERROR tuple variant `Enum::Bar` written as struct variant
     }
 }
