@@ -70,10 +70,18 @@
 //! }
 //! ```
 //!
-//! This usage of [`Option`] to create safe nullable pointers is so
-//! common that Rust does special optimizations to make the
-//! representation of [`Option`]`<`[`Box<T>`]`>` a single pointer. Optional pointers
-//! in Rust are stored as efficiently as any other pointer type.
+//! # Representation
+//!
+//! Rust guarantees to optimise the following inner types such that an [`Option`] which contains
+//! them has the same size as a pointer:
+//!
+//! * `&T`
+//! * `&mut T`
+//! * `extern "C" fn`
+//! * [`num::NonZero*`]
+//! * [`ptr::NonNull<T>`]
+//! * `#[repr(transparent)]` struct around one of the types in this list.
+//! * [`Box<T>`]
 //!
 //! # Examples
 //!
