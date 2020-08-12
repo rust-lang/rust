@@ -869,6 +869,6 @@ struct Foo {
 
     #[test]
     fn test_disabled_diagnostics() {
-        check_disabled_diagnostics(r#"mod foo;"#, &vec!["unresolved-module"]);
+        check_disabled_diagnostics(r#"mod foo;"#, &["unresolved-module"]);
     }
 }
