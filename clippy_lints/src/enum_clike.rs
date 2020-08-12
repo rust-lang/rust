@@ -72,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
                             cx,
                             ENUM_CLIKE_UNPORTABLE_VARIANT,
                             var.span,
-                            "Clike enum variant discriminant is not portable to 32-bit targets",
+                            "C-like enum variant discriminant is not portable to 32-bit targets",
                         );
                     };
                 }
