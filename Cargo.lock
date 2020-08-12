@@ -835,6 +835,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "parser"
+version = "0.0.0"
+dependencies = [
+ "drop_bomb",
+]
+
+[[package]]
 name = "paths"
 version = "0.1.0"
 
@@ -1018,10 +1025,10 @@ dependencies = [
  "arena",
  "either",
  "log",
+ "parser",
  "profile",
  "ra_db",
  "ra_mbe",
- "ra_parser",
  "ra_syntax",
  "rustc-hash",
  "test_utils",
@@ -1105,19 +1112,12 @@ name = "ra_mbe"
 version = "0.1.0"
 dependencies = [
  "log",
- "ra_parser",
+ "parser",
  "ra_syntax",
  "rustc-hash",
  "smallvec",
  "test_utils",
  "tt",
-]
-
-[[package]]
-name = "ra_parser"
-version = "0.1.0"
-dependencies = [
- "drop_bomb",
 ]
 
 [[package]]
@@ -1190,7 +1190,7 @@ dependencies = [
  "expect",
  "itertools",
  "once_cell",
- "ra_parser",
+ "parser",
  "rayon",
  "rowan",
  "rustc-ap-rustc_lexer",

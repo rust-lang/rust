@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_parser::{Token, TokenSource};
+use parser::{Token, TokenSource};
 use ra_syntax::{lex_single_syntax_kind, SmolStr, SyntaxKind, SyntaxKind::*, T};
 use std::cell::{Cell, Ref, RefCell};
 use tt::buffer::{Cursor, TokenBuffer};

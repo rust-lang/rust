@@ -4,7 +4,7 @@
 use std::fmt;
 
 use itertools::Itertools;
-use ra_parser::SyntaxKind;
+use parser::SyntaxKind;
 
 use crate::{
     ast::{self, support, AstNode, NameOwner, SyntaxNode},

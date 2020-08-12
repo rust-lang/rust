@@ -25,8 +25,8 @@ use crate::{
     EagerCallLoc, EagerMacroId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 
+use parser::FragmentKind;
 use ra_db::CrateId;
-use ra_parser::FragmentKind;
 use ra_syntax::{algo::SyntaxRewriter, SyntaxNode};
 use std::sync::Arc;
 

@@ -11,7 +11,7 @@
 //!
 //! The most interesting modules here are `syntax_node` (which defines concrete
 //! syntax tree) and `ast` (which defines abstract syntax tree on top of the
-//! CST). The actual parser live in a separate `ra_parser` crate, though the
+//! CST). The actual parser live in a separate `parser` crate, though the
 //! lexer lives in this crate.
 //!
 //! See `api_walkthrough` test in this file for a quick API tour!
@@ -53,7 +53,7 @@ pub use crate::{
         SyntaxNodeChildren, SyntaxToken, SyntaxTreeBuilder,
     },
 };
-pub use ra_parser::{SyntaxKind, T};
+pub use parser::{SyntaxKind, T};
 pub use rowan::{SmolStr, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
@@ -169,35 +169,35 @@ impl SourceFile {
 impl ast::Path {
     /// Returns `text`, parsed as a path, but only if it has no errors.
     pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_fragment(text, ra_parser::FragmentKind::Path)
+        parsing::parse_text_fragment(text, parser::FragmentKind::Path)
     }
 }
 
 impl ast::Pat {
     /// Returns `text`, parsed as a pattern, but only if it has no errors.
     pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_fragment(text, ra_parser::FragmentKind::Pattern)
+        parsing::parse_text_fragment(text, parser::FragmentKind::Pattern)
     }
 }
 
 impl ast::Expr {
     /// Returns `text`, parsed as an expression, but only if it has no errors.
     pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_fragment(text, ra_parser::FragmentKind::Expr)
+        parsing::parse_text_fragment(text, parser::FragmentKind::Expr)
     }
 }
 
 impl ast::Item {
     /// Returns `text`, parsed as an item, but only if it has no errors.
     pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_fragment(text, ra_parser::FragmentKind::Item)
+        parsing::parse_text_fragment(text, parser::FragmentKind::Item)
     }
 }
 
 impl ast::Type {
     /// Returns `text`, parsed as an type reference, but only if it has no errors.
     pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_fragment(text, ra_parser::FragmentKind::Type)
+        parsing::parse_text_fragment(text, parser::FragmentKind::Type)
     }
 }
 

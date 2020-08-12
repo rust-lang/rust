@@ -6,7 +6,7 @@
 //!   - otherwise, we search for the nearest `{}` block which contains the edit
 //!     and try to parse only this block.
 
-use ra_parser::Reparser;
+use parser::Reparser;
 use text_edit::Indel;
 
 use crate::{

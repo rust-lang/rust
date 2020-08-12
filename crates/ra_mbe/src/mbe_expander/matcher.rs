@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::ExpandResult;
-use ra_parser::{FragmentKind::*, TreeSink};
+use parser::{FragmentKind::*, TreeSink};
 use ra_syntax::{SmolStr, SyntaxKind};
 use tt::buffer::{Cursor, TokenBuffer};
 
@@ -285,7 +285,7 @@ impl<'a> TtIter<'a> {
 
     pub(crate) fn expect_fragment(
         &mut self,
-        fragment_kind: ra_parser::FragmentKind,
+        fragment_kind: parser::FragmentKind,
     ) -> ExpandResult<Option<tt::TokenTree>> {
         pub(crate) struct OffsetTokenSink<'a> {
             pub(crate) cursor: Cursor<'a>,
@@ -303,7 +303,7 @@ impl<'a> TtIter<'a> {
             }
             fn start_node(&mut self, _kind: SyntaxKind) {}
             fn finish_node(&mut self) {}
-            fn error(&mut self, _error: ra_parser::ParseError) {
+            fn error(&mut self, _error: parser::ParseError) {
                 self.error = true;
             }
         }
@@ -312,7 +312,7 @@ impl<'a> TtIter<'a> {
         let mut src = SubtreeTokenSource::new(&buffer);
         let mut sink = OffsetTokenSink { cursor: buffer.begin(), error: false };
 
-        ra_parser::parse_fragment(&mut src, &mut sink, fragment_kind);
+        parser::parse_fragment(&mut src, &mut sink, fragment_kind);
 
         let mut err = None;
         if !sink.cursor.is_root() || sink.error {

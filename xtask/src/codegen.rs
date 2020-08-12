@@ -24,11 +24,11 @@ pub use self::{
     gen_syntax::generate_syntax,
 };
 
-const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
+const GRAMMAR_DIR: &str = "crates/parser/src/grammar";
 const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/ok";
 const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/err";
 
-const SYNTAX_KINDS: &str = "crates/ra_parser/src/syntax_kind/generated.rs";
+const SYNTAX_KINDS: &str = "crates/parser/src/syntax_kind/generated.rs";
 const AST_NODES: &str = "crates/ra_syntax/src/ast/generated/nodes.rs";
 const AST_TOKENS: &str = "crates/ra_syntax/src/ast/generated/tokens.rs";
 

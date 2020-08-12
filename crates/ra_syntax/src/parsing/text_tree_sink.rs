@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use ra_parser::{ParseError, TreeSink};
+use parser::{ParseError, TreeSink};
 
 use crate::{
     parsing::Token,
