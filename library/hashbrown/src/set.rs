@@ -352,13 +352,13 @@ impl<T, S> HashSet<T, S> {
         self.map.retain(|k, _| f(k));
     }
 
-    /// Drains elements which are false under the given predicate,
+    /// Drains elements which are true under the given predicate,
     /// and returns an iterator over the removed items.
     ///
-    /// In other words, move all elements `e` such that `f(&e)` returns `false` out
+    /// In other words, move all elements `e` such that `f(&e)` returns `true` out
     /// into another iterator.
     ///
-    /// When the returned DrainedFilter is dropped, the elements that don't satisfy
+    /// When the returned DrainedFilter is dropped, any remaining elements that satisfy
     /// the predicate are dropped from the set.
     ///
     /// # Examples
@@ -367,9 +367,15 @@ impl<T, S> HashSet<T, S> {
     /// use hashbrown::HashSet;
     ///
     /// let mut set: HashSet<i32> = (0..8).collect();
-    /// let drained = set.drain_filter(|&k| k % 2 == 0);
-    /// assert_eq!(drained.count(), 4);
-    /// assert_eq!(set.len(), 4);
+    /// let drained: HashSet<i32> = set.drain_filter(|v| v % 2 == 0).collect();
+    ///
+    /// let mut evens = drained.into_iter().collect::<Vec<_>>();
+    /// let mut odds = set.into_iter().collect::<Vec<_>>();
+    /// evens.sort();
+    /// odds.sort();
+    ///
+    /// assert_eq!(evens, vec![0, 2, 4, 6]);
+    /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, T, F>
@@ -2074,7 +2080,7 @@ mod test_set {
             let drained = set.drain_filter(|&k| k % 2 == 0);
             let mut out = drained.collect::<Vec<_>>();
             out.sort_unstable();
-            assert_eq!(vec![1, 3, 5, 7], out);
+            assert_eq!(vec![0, 2, 4, 6], out);
             assert_eq!(set.len(), 4);
         }
         {
