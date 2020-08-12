@@ -10,7 +10,7 @@ pub fn is_ci() -> bool {
 
 pub trait SepBy: Sized {
     /// Returns an `impl fmt::Display`, which joins elements via a separator.
-    fn sep_by<'a>(self, sep: &'a str) -> SepByBuilder<'a, Self>;
+    fn sep_by(self, sep: &str) -> SepByBuilder<'_, Self>;
 }
 
 impl<I> SepBy for I
@@ -18,7 +18,7 @@ where
     I: Iterator,
     I::Item: fmt::Display,
 {
-    fn sep_by<'a>(self, sep: &'a str) -> SepByBuilder<'a, Self> {
+    fn sep_by(self, sep: &str) -> SepByBuilder<'_, Self> {
         SepByBuilder::new(sep, self)
     }
 }

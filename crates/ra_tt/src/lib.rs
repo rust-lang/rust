@@ -107,7 +107,7 @@ fn print_debug_subtree(f: &mut fmt::Formatter<'_>, subtree: &Subtree, level: usi
         for (idx, child) in subtree.token_trees.iter().enumerate() {
             print_debug_token(f, child, level + 1)?;
             if idx != subtree.token_trees.len() - 1 {
-                writeln!(f, "")?;
+                writeln!(f)?;
             }
         }
     }
