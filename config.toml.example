@@ -475,6 +475,10 @@
 # This only applies from stage 1 onwards, and only for Windows targets.
 #control-flow-guard = false
 
+# Enable symbol-mangling-version v0. This can be helpful when profiling rustc,
+# as generics will be preserved in symbols (rather than erased into opaque T).
+#new-symbol-mangling = false
+
 # =============================================================================
 # Options for specific targets
 #
