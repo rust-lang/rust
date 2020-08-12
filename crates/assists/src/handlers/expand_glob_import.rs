@@ -4,7 +4,7 @@ use ide_db::{
     defs::{classify_name_ref, Definition, NameRefClass},
     RootDatabase,
 };
-use syntax::{algo, ast, match_ast, AstNode, SyntaxNode, SyntaxToken, T};
+use syntax::{ast, AstNode, SyntaxToken, T};
 
 use crate::{
     assist_context::{AssistBuilder, AssistContext, Assists},
@@ -38,7 +38,7 @@ use crate::{
 // ```
 pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let star = ctx.find_token_at_offset(T![*])?;
-    let mod_path = find_mod_path(&star)?;
+    let (parent, mod_path) = find_parent_and_path(&star)?;
     let module = match ctx.sema.resolve_path(&mod_path)? {
         PathResolution::Def(ModuleDef::Module(it)) => it,
         _ => return None,
@@ -52,19 +52,23 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
         source_file.syntax().descendants().filter_map(ast::NameRef::cast).collect();
     let used_names = find_used_names(ctx, defs_in_mod, name_refs_in_source_file);
 
-    let parent = star.parent().parent()?;
+    let target = parent.syntax();
     acc.add(
         AssistId("expand_glob_import", AssistKind::RefactorRewrite),
         "Expand glob import",
-        parent.text_range(),
+        target.text_range(),
         |builder| {
-            replace_ast(builder, &parent, mod_path, used_names);
+            replace_ast(builder, parent, mod_path, used_names);
         },
     )
 }
 
-fn find_mod_path(star: &SyntaxToken) -> Option<ast::Path> {
-    star.ancestors().find_map(|n| ast::UseTree::cast(n).and_then(|u| u.path()))
+fn find_parent_and_path(star: &SyntaxToken) -> Option<(ast::UseTree, ast::Path)> {
+    star.ancestors().find_map(|n| {
+        let use_tree = ast::UseTree::cast(n)?;
+        let path = use_tree.path()?;
+        Some((use_tree, path))
+    })
 }
 
 #[derive(PartialEq)]
@@ -137,41 +141,28 @@ fn find_used_names(
 
 fn replace_ast(
     builder: &mut AssistBuilder,
-    node: &SyntaxNode,
+    parent: ast::UseTree,
     path: ast::Path,
     used_names: Vec<Name>,
 ) {
-    let replacement: Either<ast::UseTree, ast::UseTreeList> = match used_names.as_slice() {
-        [name] => Either::Left(ast::make::use_tree(
+    let replacement = match used_names.as_slice() {
+        [name] => ast::make::use_tree(
             ast::make::path_from_text(&format!("{}::{}", path, name)),
             None,
             None,
             false,
-        )),
-        names => Either::Right(ast::make::use_tree_list(names.iter().map(|n| {
-            ast::make::use_tree(ast::make::path_from_text(&n.to_string()), None, None, false)
-        }))),
+        ),
+        names => ast::make::use_tree(
+            path,
+            Some(ast::make::use_tree_list(names.iter().map(|n| {
+                ast::make::use_tree(ast::make::path_from_text(&n.to_string()), None, None, false)
+            }))),
+            None,
+            false,
+        ),
     };
 
-    let mut replace_node = |replacement: Either<ast::UseTree, ast::UseTreeList>| {
-        algo::diff(node, &replacement.either(|u| u.syntax().clone(), |ut| ut.syntax().clone()))
-            .into_text_edit(builder.text_edit_builder());
-    };
-
-    match_ast! {
-        match node {
-            ast::UseTree(use_tree) => {
-                replace_node(replacement);
-            },
-            ast::UseTreeList(use_tree_list) => {
-                replace_node(replacement);
-            },
-            ast::Use(use_item) => {
-                builder.replace_ast(use_item, ast::make::use_(replacement.left_or_else(|ut| ast::make::use_tree(path, Some(ut), None, false))));
-            },
-            _ => {},
-        }
-    }
+    builder.replace_ast(parent, replacement);
 }
 
 #[cfg(test)]
@@ -260,7 +251,7 @@ fn qux(bar: Bar, baz: Baz) {
             expand_glob_import,
             r"
 mod foo {
-    mod bar {
+    pub mod bar {
         pub struct Bar;
         pub struct Baz;
         pub struct Qux;
@@ -268,7 +259,7 @@ mod foo {
         pub fn f() {}
     }
 
-    mod baz {
+    pub mod baz {
         pub fn g() {}
     }
 }
@@ -282,7 +273,7 @@ fn qux(bar: Bar, baz: Baz) {
 ",
             r"
 mod foo {
-    mod bar {
+    pub mod bar {
         pub struct Bar;
         pub struct Baz;
         pub struct Qux;
@@ -290,7 +281,7 @@ mod foo {
         pub fn f() {}
     }
 
-    mod baz {
+    pub mod baz {
         pub fn g() {}
     }
 }
@@ -302,7 +293,207 @@ fn qux(bar: Bar, baz: Baz) {
     g();
 }
 ",
-        )
+        );
+
+        check_assist(
+            expand_glob_import,
+            r"
+mod foo {
+    pub mod bar {
+        pub struct Bar;
+        pub struct Baz;
+        pub struct Qux;
+
+        pub fn f() {}
+    }
+
+    pub mod baz {
+        pub fn g() {}
+    }
+}
+
+use foo::{bar::{Bar, Baz, f}, baz::*<|>};
+
+fn qux(bar: Bar, baz: Baz) {
+    f();
+    g();
+}
+",
+            r"
+mod foo {
+    pub mod bar {
+        pub struct Bar;
+        pub struct Baz;
+        pub struct Qux;
+
+        pub fn f() {}
+    }
+
+    pub mod baz {
+        pub fn g() {}
+    }
+}
+
+use foo::{bar::{Bar, Baz, f}, baz::g};
+
+fn qux(bar: Bar, baz: Baz) {
+    f();
+    g();
+}
+",
+        );
+
+        check_assist(
+            expand_glob_import,
+            r"
+mod foo {
+    pub mod bar {
+        pub struct Bar;
+        pub struct Baz;
+        pub struct Qux;
+
+        pub fn f() {}
+    }
+
+    pub mod baz {
+        pub fn g() {}
+
+        pub mod qux {
+            pub fn h() {}
+            pub fn m() {}
+
+            pub mod q {
+                pub fn j() {}
+            }
+        }
+    }
+}
+
+use foo::{
+    bar::{*, f},
+    baz::{g, qux::*<|>}
+};
+
+fn qux(bar: Bar, baz: Baz) {
+    f();
+    g();
+    h();
+    q::j();
+}
+",
+            r"
+mod foo {
+    pub mod bar {
+        pub struct Bar;
+        pub struct Baz;
+        pub struct Qux;
+
+        pub fn f() {}
+    }
+
+    pub mod baz {
+        pub fn g() {}
+
+        pub mod qux {
+            pub fn h() {}
+            pub fn m() {}
+
+            pub mod q {
+                pub fn j() {}
+            }
+        }
+    }
+}
+
+use foo::{
+    bar::{*, f},
+    baz::{g, qux::{q, h}}
+};
+
+fn qux(bar: Bar, baz: Baz) {
+    f();
+    g();
+    h();
+    q::j();
+}
+",
+        );
+
+        check_assist(
+            expand_glob_import,
+            r"
+mod foo {
+    pub mod bar {
+        pub struct Bar;
+        pub struct Baz;
+        pub struct Qux;
+
+        pub fn f() {}
+    }
+
+    pub mod baz {
+        pub fn g() {}
+
+        pub mod qux {
+            pub fn h() {}
+            pub fn m() {}
+
+            pub mod q {
+                pub fn j() {}
+            }
+        }
+    }
+}
+
+use foo::{
+    bar::{*, f},
+    baz::{g, qux::{h, q::*<|>}}
+};
+
+fn qux(bar: Bar, baz: Baz) {
+    f();
+    g();
+    h();
+    j();
+}
+",
+            r"
+mod foo {
+    pub mod bar {
+        pub struct Bar;
+        pub struct Baz;
+        pub struct Qux;
+
+        pub fn f() {}
+    }
+
+    pub mod baz {
+        pub fn g() {}
+
+        pub mod qux {
+            pub fn h() {}
+            pub fn m() {}
+
+            pub mod q {
+                pub fn j() {}
+            }
+        }
+    }
+}
+
+use foo::{
+    bar::{*, f},
+    baz::{g, qux::{h, q::j}}
+};
+
+fn qux(bar: Bar, baz: Baz) {
+    f();
+    g();
+    h();
+    j();
+}
+",
+        );
     }
 
     #[test]
