@@ -3,38 +3,11 @@ use rustc_ast::ast;
 use rustc_ast::visit::FnKind;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::BytePos;
 
-use crate::utils::{snippet_opt, span_lint_and_sugg, span_lint_and_then};
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for return statements at the end of a block.
-    ///
-    /// **Why is this bad?** Removing the `return` and semicolon will make the code
-    /// more rusty.
-    ///
-    /// **Known problems:** If the computation returning the value borrows a local
-    /// variable, removing the `return` may run afoul of the borrow checker.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// fn foo(x: usize) -> usize {
-    ///     return x;
-    /// }
-    /// ```
-    /// simplify to
-    /// ```rust
-    /// fn foo(x: usize) -> usize {
-    ///     x
-    /// }
-    /// ```
-    pub NEEDLESS_RETURN,
-    style,
-    "using a return statement like `return expr;` where an expression would suffice"
-}
+use crate::utils::{span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for unit (`()`) expressions that can be removed.
@@ -57,117 +30,12 @@ declare_clippy_lint! {
     "needless unit expression"
 }
 
-#[derive(PartialEq, Eq, Copy, Clone)]
-enum RetReplacement {
-    Empty,
-    Block,
-}
 
-declare_lint_pass!(Return => [NEEDLESS_RETURN, UNUSED_UNIT]);
-
-impl Return {
-    // Check the final stmt or expr in a block for unnecessary return.
-    fn check_block_return(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
-        if let Some(stmt) = block.stmts.last() {
-            match stmt.kind {
-                ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => {
-                    self.check_final_expr(cx, expr, Some(stmt.span), RetReplacement::Empty);
-                },
-                _ => (),
-            }
-        }
-    }
-
-    // Check the final expression in a block if it's a return.
-    fn check_final_expr(
-        &mut self,
-        cx: &EarlyContext<'_>,
-        expr: &ast::Expr,
-        span: Option<Span>,
-        replacement: RetReplacement,
-    ) {
-        match expr.kind {
-            // simple return is always "bad"
-            ast::ExprKind::Ret(ref inner) => {
-                // allow `#[cfg(a)] return a; #[cfg(b)] return b;`
-                if !expr.attrs.iter().any(attr_is_cfg) {
-                    Self::emit_return_lint(
-                        cx,
-                        span.expect("`else return` is not possible"),
-                        inner.as_ref().map(|i| i.span),
-                        replacement,
-                    );
-                }
-            },
-            // a whole block? check it!
-            ast::ExprKind::Block(ref block, _) => {
-                self.check_block_return(cx, block);
-            },
-            // an if/if let expr, check both exprs
-            // note, if without else is going to be a type checking error anyways
-            // (except for unit type functions) so we don't match it
-            ast::ExprKind::If(_, ref ifblock, Some(ref elsexpr)) => {
-                self.check_block_return(cx, ifblock);
-                self.check_final_expr(cx, elsexpr, None, RetReplacement::Empty);
-            },
-            // a match expr, check all arms
-            ast::ExprKind::Match(_, ref arms) => {
-                for arm in arms {
-                    self.check_final_expr(cx, &arm.body, Some(arm.body.span), RetReplacement::Block);
-                }
-            },
-            _ => (),
-        }
-    }
-
-    fn emit_return_lint(cx: &EarlyContext<'_>, ret_span: Span, inner_span: Option<Span>, replacement: RetReplacement) {
-        match inner_span {
-            Some(inner_span) => {
-                if in_external_macro(cx.sess(), inner_span) || inner_span.from_expansion() {
-                    return;
-                }
-
-                span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
-                    if let Some(snippet) = snippet_opt(cx, inner_span) {
-                        diag.span_suggestion(ret_span, "remove `return`", snippet, Applicability::MachineApplicable);
-                    }
-                })
-            },
-            None => match replacement {
-                RetReplacement::Empty => {
-                    span_lint_and_sugg(
-                        cx,
-                        NEEDLESS_RETURN,
-                        ret_span,
-                        "unneeded `return` statement",
-                        "remove `return`",
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    );
-                },
-                RetReplacement::Block => {
-                    span_lint_and_sugg(
-                        cx,
-                        NEEDLESS_RETURN,
-                        ret_span,
-                        "unneeded `return` statement",
-                        "replace `return` with an empty block",
-                        "{}".to_string(),
-                        Applicability::MachineApplicable,
-                    );
-                },
-            },
-        }
-    }
-}
+declare_lint_pass!(Return => [UNUSED_UNIT]);
 
 impl EarlyLintPass for Return {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, kind: FnKind<'_>, span: Span, _: ast::NodeId) {
-        match kind {
-            FnKind::Fn(.., Some(block)) => self.check_block_return(cx, block),
-            FnKind::Closure(_, body) => self.check_final_expr(cx, body, Some(body.span), RetReplacement::Empty),
-            FnKind::Fn(.., None) => {},
-        }
+
         if_chain! {
             if let ast::FnRetTy::Ty(ref ty) = kind.decl().output;
             if let ast::TyKind::Tup(ref vals) = ty.kind;
@@ -234,9 +102,6 @@ impl EarlyLintPass for Return {
     }
 }
 
-fn attr_is_cfg(attr: &ast::Attribute) -> bool {
-    attr.meta_item_list().is_some() && attr.has_name(sym!(cfg))
-}
 
 // get the def site
 #[must_use]

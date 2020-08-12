@@ -1534,7 +1534,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "using a return statement like `return expr;` where an expression would suffice",
         deprecation: None,
-        module: "returns",
+        module: "needless_return",
     },
     Lint {
         name: "needless_update",
