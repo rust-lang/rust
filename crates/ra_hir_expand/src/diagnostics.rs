@@ -21,7 +21,7 @@ use ra_syntax::{SyntaxNode, SyntaxNodePtr};
 use crate::{db::AstDatabase, InFile};
 
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
-    fn name(&self) -> String;
+    fn name(&self) -> &'static str;
     fn message(&self) -> String;
     fn source(&self) -> InFile<SyntaxNodePtr>;
     fn as_any(&self) -> &(dyn Any + Send + 'static);

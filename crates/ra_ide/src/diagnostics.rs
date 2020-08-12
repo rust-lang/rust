@@ -63,7 +63,7 @@ pub(crate) fn diagnostics(
                     .into(),
             );
             res.borrow_mut().push(Diagnostic {
-                name: Some(d.name()),
+                name: Some(d.name().into()),
                 range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
@@ -98,7 +98,7 @@ pub(crate) fn diagnostics(
             };
 
             res.borrow_mut().push(Diagnostic {
-                name: Some(d.name()),
+                name: Some(d.name().into()),
                 range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
@@ -112,7 +112,7 @@ pub(crate) fn diagnostics(
             let source_change = SourceFileEdit { file_id, edit }.into();
             let fix = Fix::new("Wrap with ok", source_change);
             res.borrow_mut().push(Diagnostic {
-                name: Some(d.name()),
+                name: Some(d.name().into()),
                 range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
@@ -121,7 +121,7 @@ pub(crate) fn diagnostics(
         })
         .on::<hir::diagnostics::NoSuchField, _>(|d| {
             res.borrow_mut().push(Diagnostic {
-                name: Some(d.name()),
+                name: Some(d.name().into()),
                 range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
@@ -133,8 +133,8 @@ pub(crate) fn diagnostics(
 
     if !analysis_config.disabled_diagnostics.is_empty() {
         // Do not collect disabled diagnostics.
-        sink_builder = sink_builder
-            .filter(|diag| !analysis_config.disabled_diagnostics.contains(&diag.name()));
+        sink_builder =
+            sink_builder.filter(|diag| !analysis_config.disabled_diagnostics.contains(diag.name()));
     }
 
     // Finalize the `DiagnosticSink` building process.
@@ -142,7 +142,7 @@ pub(crate) fn diagnostics(
         // Diagnostics not handled above get no fix and default treatment.
         .build(|d| {
             res.borrow_mut().push(Diagnostic {
-                name: Some(d.name()),
+                name: Some(d.name().into()),
                 message: d.message(),
                 range: sema.diagnostics_range(d).range,
                 severity: Severity::Error,
@@ -313,6 +313,7 @@ fn check_struct_shorthand_initialization(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
@@ -385,12 +386,9 @@ mod tests {
 
     /// Takes a multi-file input fixture with annotated cursor position and the list of disabled diagnostics,
     /// and checks that provided diagnostics aren't spawned during analysis.
-    fn check_disabled_diagnostics(
-        ra_fixture: &str,
-        disabled_diagnostics: impl IntoIterator<Item = String>,
-    ) {
-        let disabled_diagnostics: std::collections::HashSet<_> =
-            disabled_diagnostics.into_iter().collect();
+    fn check_disabled_diagnostics(ra_fixture: &str, disabled_diagnostics: &[&'static str]) {
+        let disabled_diagnostics: HashSet<_> =
+            disabled_diagnostics.into_iter().map(|diag| diag.to_string()).collect();
 
         let mock = MockAnalysis::with_files(ra_fixture);
         let files = mock.files().map(|(it, _)| it).collect::<Vec<_>>();
@@ -871,6 +869,6 @@ struct Foo {
 
     #[test]
     fn test_disabled_diagnostics() {
-        check_disabled_diagnostics(r#"mod foo;"#, vec!["unresolved-module".to_string()]);
+        check_disabled_diagnostics(r#"mod foo;"#, &vec!["unresolved-module"]);
     }
 }
