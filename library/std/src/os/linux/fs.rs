@@ -8,7 +8,7 @@ use crate::os::linux::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
+/// [`fs::Metadata`]: crate::fs::Metadata
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -18,7 +18,7 @@ pub trait MetadataExt {
     /// Unix platforms. The `os::unix::fs::MetadataExt` trait contains the
     /// cross-Unix abstractions contained within the raw stat.
     ///
-    /// [`stat`]: ../../../../std/os/linux/raw/struct.stat.html
+    /// [`stat`]: crate::os::linux::raw::stat
     ///
     /// # Examples
     ///
