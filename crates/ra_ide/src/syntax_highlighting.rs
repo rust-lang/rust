@@ -497,9 +497,9 @@ fn highlight_element(
             match name_kind {
                 Some(NameClass::ExternCrate(_)) => HighlightTag::Module.into(),
                 Some(NameClass::Definition(def)) => {
-                    highlight_name(db, def, false) | HighlightModifier::Definition
+                    highlight_name(sema, db, def, None, false) | HighlightModifier::Definition
                 }
-                Some(NameClass::ConstReference(def)) => highlight_name(db, def, false),
+                Some(NameClass::ConstReference(def)) => highlight_name(sema, db, def, None, false),
                 Some(NameClass::FieldShorthand { field, .. }) => {
                     let mut h = HighlightTag::Field.into();
                     if let Definition::Field(field) = field {
@@ -532,7 +532,7 @@ fn highlight_element(
                                 binding_hash = Some(calc_binding_hash(&name, *shadow_count))
                             }
                         };
-                        highlight_name(db, def, possibly_unsafe)
+                        highlight_name(sema, db, def, Some(name_ref), possibly_unsafe)
                     }
                     NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
                 },
@@ -566,9 +566,20 @@ fn highlight_element(
             }
         }
         p if p.is_punct() => match p {
-            T![::] | T![->] | T![=>] | T![&] | T![..] | T![=] | T![@] => {
-                HighlightTag::Operator.into()
+            T![&] => {
+                let h = HighlightTag::Operator.into();
+                let is_unsafe = element
+                    .parent()
+                    .and_then(ast::RefExpr::cast)
+                    .map(|ref_expr| sema.is_unsafe_ref_expr(&ref_expr))
+                    .unwrap_or(false);
+                if is_unsafe {
+                    h | HighlightModifier::Unsafe
+                } else {
+                    h
+                }
             }
+            T![::] | T![->] | T![=>] | T![..] | T![=] | T![@] => HighlightTag::Operator.into(),
             T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
                 HighlightTag::Macro.into()
             }
@@ -649,6 +660,18 @@ fn highlight_element(
                         HighlightTag::SelfKeyword.into()
                     }
                 }
+                T![ref] => element
+                    .parent()
+                    .and_then(ast::IdentPat::cast)
+                    .and_then(|ident_pat| {
+                        if sema.is_unsafe_ident_pat(&ident_pat) {
+                            Some(HighlightModifier::Unsafe)
+                        } else {
+                            None
+                        }
+                    })
+                    .map(|modifier| h | modifier)
+                    .unwrap_or(h),
                 _ => h,
             }
         }
@@ -678,7 +701,13 @@ fn is_child_of_impl(element: &SyntaxElement) -> bool {
     }
 }
 
-fn highlight_name(db: &RootDatabase, def: Definition, possibly_unsafe: bool) -> Highlight {
+fn highlight_name(
+    sema: &Semantics<RootDatabase>,
+    db: &RootDatabase,
+    def: Definition,
+    name_ref: Option<ast::NameRef>,
+    possibly_unsafe: bool,
+) -> Highlight {
     match def {
         Definition::Macro(_) => HighlightTag::Macro,
         Definition::Field(field) => {
@@ -697,6 +726,15 @@ fn highlight_name(db: &RootDatabase, def: Definition, possibly_unsafe: bool) -> 
                 let mut h = HighlightTag::Function.into();
                 if func.is_unsafe(db) {
                     h |= HighlightModifier::Unsafe;
+                } else {
+                    let is_unsafe = name_ref
+                        .and_then(|name_ref| name_ref.syntax().parent())
+                        .and_then(ast::MethodCallExpr::cast)
+                        .map(|method_call_expr| sema.is_unsafe_method_call(method_call_expr))
+                        .unwrap_or(false);
+                    if is_unsafe {
+                        h |= HighlightModifier::Unsafe;
+                    }
                 }
                 return h;
             }
@@ -768,8 +806,18 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
         _ => return default.into(),
     };
 
-    let tag = match parent.kind() {
-        METHOD_CALL_EXPR => HighlightTag::Function,
+    match parent.kind() {
+        METHOD_CALL_EXPR => {
+            let mut h = Highlight::new(HighlightTag::Function);
+            let is_unsafe = ast::MethodCallExpr::cast(parent)
+                .map(|method_call_expr| sema.is_unsafe_method_call(method_call_expr))
+                .unwrap_or(false);
+            if is_unsafe {
+                h |= HighlightModifier::Unsafe;
+            }
+
+            h
+        }
         FIELD_EXPR => {
             let h = HighlightTag::Field;
             let is_union = ast::FieldExpr::cast(parent)
@@ -782,7 +830,11 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
                     })
                 })
                 .unwrap_or(false);
-            return if is_union { h | HighlightModifier::Unsafe } else { h.into() };
+            if is_union {
+                h | HighlightModifier::Unsafe
+            } else {
+                h.into()
+            }
         }
         PATH_SEGMENT => {
             let path = match parent.parent().and_then(ast::Path::cast) {
@@ -807,18 +859,15 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
             };
 
             match parent.kind() {
-                CALL_EXPR => HighlightTag::Function,
-                _ => {
-                    if name.text().chars().next().unwrap_or_default().is_uppercase() {
-                        HighlightTag::Struct
-                    } else {
-                        HighlightTag::Constant
-                    }
+                CALL_EXPR => HighlightTag::Function.into(),
+                _ => if name.text().chars().next().unwrap_or_default().is_uppercase() {
+                    HighlightTag::Struct.into()
+                } else {
+                    HighlightTag::Constant
                 }
+                .into(),
             }
         }
-        _ => default,
-    };
-
-    tag.into()
+        _ => default.into(),
+    }
 }

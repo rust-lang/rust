@@ -292,10 +292,24 @@ struct TypeForStaticMut {
 
 static mut global_mut: TypeForStaticMut = TypeForStaticMut { a: 0 };
 
+#[repr(packed)]
+struct Packed {
+    a: u16,
+}
+
+trait DoTheAutoref {
+    fn calls_autoref(&self);
+}
+
+impl DoTheAutoref for u16 {
+    fn calls_autoref(&self) {}
+}
+
 fn main() {
-    let x = &5 as *const usize;
+    let x = &5 as *const _ as *const usize;
     let u = Union { b: 0 };
     unsafe {
+        // unsafe fn and method calls
         unsafe_fn();
         let b = u.b;
         match u {
@@ -303,9 +317,22 @@ fn main() {
             Union { a } => (),
         }
         HasUnsafeFn.unsafe_method();
-        let y = *(x);
-        let z = -x;
+
+        // unsafe deref
+        let y = *x;
+
+        // unsafe access to a static mut
         let a = global_mut.a;
+
+        // unsafe ref of packed fields
+        let packed = Packed { a: 0 };
+        let a = &packed.a;
+        let ref a = packed.a;
+        let Packed { ref a } = packed;
+        let Packed { a: ref _a } = packed;
+
+        // unsafe auto ref of packed field
+        packed.a.calls_autoref();
     }
 }
 "#
