@@ -500,9 +500,6 @@ pub enum DiagnosticLevel {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum ArchiveKind {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
     K_GNU,
     K_BSD,
     K_DARWIN,
