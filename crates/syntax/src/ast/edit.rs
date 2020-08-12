@@ -313,10 +313,15 @@ impl ast::UseTree {
 
     #[must_use]
     pub fn split_prefix(&self, prefix: &ast::Path) -> ast::UseTree {
-        let suffix = match split_path_prefix(&prefix) {
-            Some(it) => it,
-            None => return self.clone(),
+        let suffix = if self.path().as_ref() == Some(prefix) && self.use_tree_list().is_none() {
+            make::path_unqualified(make::path_segment_self())
+        } else {
+            match split_path_prefix(&prefix) {
+                Some(it) => it,
+                None => return self.clone(),
+            }
         };
+
         let use_tree = make::use_tree(
             suffix,
             self.use_tree_list(),

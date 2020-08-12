@@ -165,6 +165,33 @@ use std::fmt::{Display, Debug};
     }
 
     #[test]
+    fn merge_self1() {
+        check_assist(
+            merge_imports,
+            r"
+use std::fmt<|>;
+use std::fmt::Display;
+",
+            r"
+use std::fmt::{self, Display};
+",
+        );
+    }
+
+    #[test]
+    fn merge_self2() {
+        check_assist(
+            merge_imports,
+            r"
+use std::{fmt, <|>fmt::Display};
+",
+            r"
+use std::{fmt::{Display, self}};
+",
+        );
+    }
+
+    #[test]
     fn test_merge_nested() {
         check_assist(
             merge_imports,
