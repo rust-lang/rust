@@ -83,8 +83,9 @@
 //! * [`ptr::NonNull<T>`]
 //! * `#[repr(transparent)]` struct around one of the types in this list.
 //!
-//! For the above cases, it is guaranteed that one can use [`mem::transmute`]
-//! between `T` and `Option<T>` and vice versa.
+//! For the above cases, it is guaranteed that one can [`mem::transmute`]
+//! from all valid values of `T` to `Option<T>` but only from non-`None`
+//! Option<T>` to `T`.
 //!
 //! # Examples
 //!
