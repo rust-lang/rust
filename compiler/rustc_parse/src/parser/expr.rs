@@ -2015,9 +2015,12 @@ impl<'a> Parser<'a> {
     ) -> Option<PResult<'a, P<Expr>>> {
         let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
         if struct_allowed || self.is_certainly_not_a_block() {
-            // This is a struct literal, but we don't can't accept them here.
-            let expr = self.parse_struct_expr(path.clone(), attrs.clone());
+            if let Err(err) = self.expect(&token::OpenDelim(token::Brace)) {
+                return Some(Err(err));
+            }
+            let expr = self.parse_struct_expr(path.clone(), attrs.clone(), true);
             if let (Ok(expr), false) = (&expr, struct_allowed) {
+                // This is a struct literal, but we don't can't accept them here.
                 self.error_struct_lit_not_allowed_here(path.span, expr.span);
             }
             return Some(expr);
@@ -2035,12 +2038,13 @@ impl<'a> Parser<'a> {
             .emit();
     }
 
+    /// Precondition: already parsed the '{'.
     pub(super) fn parse_struct_expr(
         &mut self,
         pth: ast::Path,
         mut attrs: AttrVec,
+        recover: bool,
     ) -> PResult<'a, P<Expr>> {
-        self.bump();
         let mut fields = Vec::new();
         let mut base = None;
         let mut recover_async = false;
@@ -2059,10 +2063,11 @@ impl<'a> Parser<'a> {
                 let exp_span = self.prev_token.span;
                 match self.parse_expr() {
                     Ok(e) => base = Some(e),
-                    Err(mut e) => {
+                    Err(mut e) if recover => {
                         e.emit();
                         self.recover_stmt();
                     }
+                    Err(e) => return Err(e),
                 }
                 self.recover_struct_comma_after_dotdot(exp_span);
                 break;
@@ -2113,6 +2118,9 @@ impl<'a> Parser<'a> {
                                 Applicability::MachineApplicable,
                             );
                         }
+                    }
+                    if !recover {
+                        return Err(e);
                     }
                     e.emit();
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);

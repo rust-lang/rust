@@ -20,7 +20,7 @@ use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{struct_span_err, Applicability, PResult};
 use rustc_feature::Features;
-use rustc_parse::parser::Parser;
+use rustc_parse::parser::{AttemptLocalParseRecovery, Parser};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -921,7 +921,7 @@ pub fn parse_ast_fragment<'a>(
             let mut stmts = SmallVec::new();
             // Won't make progress on a `}`.
             while this.token != token::Eof && this.token != token::CloseDelim(token::Brace) {
-                if let Some(stmt) = this.parse_full_stmt()? {
+                if let Some(stmt) = this.parse_full_stmt(AttemptLocalParseRecovery::Yes)? {
                     stmts.push(stmt);
                 }
             }
