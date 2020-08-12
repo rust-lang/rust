@@ -359,9 +359,7 @@ impl Add<Duration> for Instant {
     /// # Panics
     ///
     /// This function may panic if the resulting point in time cannot be represented by the
-    /// underlying data structure. See [`checked_add`] for a version without panic.
-    ///
-    /// [`checked_add`]: Instant::checked_add
+    /// underlying data structure. See [`Instant::checked_add`] for a version without panic.
     fn add(self, other: Duration) -> Instant {
         self.checked_add(other).expect("overflow when adding duration to instant")
     }
@@ -525,9 +523,7 @@ impl Add<Duration> for SystemTime {
     /// # Panics
     ///
     /// This function may panic if the resulting point in time cannot be represented by the
-    /// underlying data structure. See [`checked_add`] for a version without panic.
-    ///
-    /// [`checked_add`]: SystemTime::checked_add
+    /// underlying data structure. See [`SystemTime::checked_add`] for a version without panic.
     fn add(self, dur: Duration) -> SystemTime {
         self.checked_add(dur).expect("overflow when adding duration to instant")
     }
