@@ -30,10 +30,6 @@ pub use core::panic::{Location, PanicInfo};
 /// purpose of this trait is to encode what types are safe to cross a [`catch_unwind`]
 /// boundary with no fear of unwind safety.
 ///
-/// [`Send`]: ../marker/trait.Send.html
-/// [`Sync`]: ../marker/trait.Sync.html
-/// [`catch_unwind`]: ./fn.catch_unwind.html
-///
 /// ## What is unwind safety?
 ///
 /// In Rust a function can "return" early if it either panics or calls a
@@ -99,8 +95,6 @@ pub use core::panic::{Location, PanicInfo};
 /// above, the lack of `unsafe` means it is mostly an advisory. The
 /// [`AssertUnwindSafe`] wrapper struct can be used to force this trait to be
 /// implemented for any closed over variables passed to `catch_unwind`.
-///
-/// [`AssertUnwindSafe`]: ./struct.AssertUnwindSafe.html
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented(
     message = "the type `{Self}` may not be safely transferred across an unwind boundary",
@@ -116,9 +110,6 @@ pub auto trait UnwindSafe {}
 ///
 /// This is a "helper marker trait" used to provide impl blocks for the
 /// [`UnwindSafe`] trait, for more information see that documentation.
-///
-/// [`UnsafeCell`]: ../cell/struct.UnsafeCell.html
-/// [`UnwindSafe`]: ./trait.UnwindSafe.html
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented(
     message = "the type `{Self}` may contain interior mutability and a reference may not be safely \
@@ -138,7 +129,6 @@ pub auto trait RefUnwindSafe {}
 /// account. This wrapper struct is useful for a quick and lightweight
 /// annotation that a variable is indeed unwind safe.
 ///
-/// [`catch_unwind`]: ./fn.catch_unwind.html
 /// # Examples
 ///
 /// One way to use `AssertUnwindSafe` is to assert that the entire closure
@@ -352,8 +342,6 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
 /// can fail on a regular basis. Additionally, this function is not guaranteed
 /// to catch all panics, see the "Notes" section below.
 ///
-/// [`Result`]: ../result/enum.Result.html
-///
 /// The closure provided is required to adhere to the [`UnwindSafe`] trait to ensure
 /// that all captured variables are safe to cross this boundary. The purpose of
 /// this bound is to encode the concept of [exception safety][rfc] in the type
@@ -361,9 +349,6 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
 /// bound as programs are naturally unwind safe without `unsafe` code. If it
 /// becomes a problem the [`AssertUnwindSafe`] wrapper struct can be used to quickly
 /// assert that the usage here is indeed unwind safe.
-///
-/// [`AssertUnwindSafe`]: ./struct.AssertUnwindSafe.html
-/// [`UnwindSafe`]: ./trait.UnwindSafe.html
 ///
 /// [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/1236-stabilize-catch-panic.md
 ///
@@ -398,8 +383,6 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 ///
 /// This is designed to be used in conjunction with [`catch_unwind`] to, for
 /// example, carry a panic across a layer of C code.
-///
-/// [`catch_unwind`]: ./fn.catch_unwind.html
 ///
 /// # Notes
 ///
