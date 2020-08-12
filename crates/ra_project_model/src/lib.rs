@@ -513,7 +513,7 @@ fn get_rustc_cfg_options(target: Option<&str>) -> Vec<CfgFlag> {
     }
 
     let rustc_cfgs = {
-        let mut cmd = Command::new(ra_toolchain::rustc());
+        let mut cmd = Command::new(toolchain::rustc());
         cmd.args(&["--print", "cfg", "-O"]);
         if let Some(target) = target {
             cmd.args(&["--target", target]);

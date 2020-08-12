@@ -23,4 +23,4 @@ cargo_metadata = "0.11.1"
 difference = "2.0.0"
 # used as proc macro test target
 serde_derive = "1.0.106"
-ra_toolchain = { path = "../ra_toolchain" }
+toolchain = { path = "../toolchain" }

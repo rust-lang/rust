@@ -358,8 +358,8 @@ dependencies = [
  "crossbeam-channel",
  "jod-thread",
  "log",
- "ra_toolchain",
  "serde_json",
+ "toolchain",
 ]
 
 [[package]]
@@ -1143,9 +1143,9 @@ dependencies = [
  "memmap",
  "ra_mbe",
  "ra_proc_macro",
- "ra_toolchain",
  "serde_derive",
  "test_utils",
+ "toolchain",
  "tt",
 ]
 
@@ -1161,11 +1161,11 @@ dependencies = [
  "ra_cfg",
  "ra_db",
  "ra_proc_macro",
- "ra_toolchain",
  "rustc-hash",
  "serde",
  "serde_json",
  "stdx",
+ "toolchain",
 ]
 
 [[package]]
@@ -1208,13 +1208,6 @@ name = "ra_text_edit"
 version = "0.1.0"
 dependencies = [
  "text-size",
-]
-
-[[package]]
-name = "ra_toolchain"
-version = "0.1.0"
-dependencies = [
- "home",
 ]
 
 [[package]]
@@ -1320,7 +1313,6 @@ dependencies = [
  "ra_ssr",
  "ra_syntax",
  "ra_text_edit",
- "ra_toolchain",
  "rayon",
  "rustc-hash",
  "serde",
@@ -1328,6 +1320,7 @@ dependencies = [
  "stdx",
  "test_utils",
  "threadpool",
+ "toolchain",
  "tt",
  "vfs",
  "vfs-notify",
@@ -1611,6 +1604,13 @@ name = "tinyvec"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53953d2d3a5ad81d9f844a32f14ebb121f50b650cd59d0ee2a07cf13c617efed"
+
+[[package]]
+name = "toolchain"
+version = "0.0.0"
+dependencies = [
+ "home",
+]
 
 [[package]]
 name = "tracing"

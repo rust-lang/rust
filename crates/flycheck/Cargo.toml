@@ -14,4 +14,4 @@ log = "0.4.8"
 cargo_metadata = "0.11.1"
 serde_json = "1.0.48"
 jod-thread = "0.1.1"
-ra_toolchain = { path = "../ra_toolchain" }
+toolchain = { path = "../toolchain" }

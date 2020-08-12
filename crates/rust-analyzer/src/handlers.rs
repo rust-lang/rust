@@ -692,7 +692,7 @@ pub(crate) fn handle_formatting(
 
     let mut rustfmt = match &snap.config.rustfmt {
         RustfmtConfig::Rustfmt { extra_args } => {
-            let mut cmd = process::Command::new(ra_toolchain::rustfmt());
+            let mut cmd = process::Command::new(toolchain::rustfmt());
             cmd.args(extra_args);
             if let Some(&crate_id) = crate_ids.first() {
                 // Assume all crates are in the same edition
