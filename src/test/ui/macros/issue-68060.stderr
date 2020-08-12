@@ -7,15 +7,6 @@ LL |             #[target_feature(enable = "")]
 LL |             |_| (),
    |             ------ not a function
 
-error[E0739]: attribute should be applied to function
-  --> $DIR/issue-68060.rs:8:13
-   |
-LL |             #[track_caller]
-   |             ^^^^^^^^^^^^^^^
-...
-LL |             |_| (),
-   |             ------ not a function
-
 error: the feature named `` is not valid for this target
   --> $DIR/issue-68060.rs:4:30
    |
@@ -28,7 +19,6 @@ error[E0737]: `#[track_caller]` requires Rust ABI
 LL |             #[track_caller]
    |             ^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0737, E0739.
-For more information about an error, try `rustc --explain E0737`.
+For more information about this error, try `rustc --explain E0737`.

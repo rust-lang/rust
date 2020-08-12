@@ -125,12 +125,12 @@ impl CheckAttrVisitor<'tcx> {
                     lint.build("`#[inline]` is ignored on constants")
                         .warn(
                             "this was previously accepted by the compiler but is \
-                               being phased out; it will become a hard error in \
-                               a future release!",
+                             being phased out; it will become a hard error in \
+                             a future release!",
                         )
                         .note(
                             "see issue #65833 <https://github.com/rust-lang/rust/issues/65833> \
-                                 for more information",
+                             for more information",
                         )
                         .emit();
                 });
@@ -169,7 +169,7 @@ impl CheckAttrVisitor<'tcx> {
                 .emit();
                 false
             }
-            Target::Fn | Target::Method(..) | Target::ForeignFn => true,
+            Target::Fn | Target::Method(..) | Target::ForeignFn | Target::Closure => true,
             _ => {
                 struct_span_err!(
                     self.tcx.sess,
@@ -235,8 +235,8 @@ impl CheckAttrVisitor<'tcx> {
                     lint.build("attribute should be applied to a function")
                         .warn(
                             "this was previously accepted by the compiler but is \
-                               being phased out; it will become a hard error in \
-                               a future release!",
+                             being phased out; it will become a hard error in \
+                             a future release!",
                         )
                         .span_label(*span, "not a function")
                         .emit();
@@ -307,7 +307,7 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if `#[cold]` is applied to a non-function. Returns `true` if valid.
     fn check_cold(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
         match target {
-            Target::Fn | Target::Method(..) | Target::ForeignFn => {}
+            Target::Fn | Target::Method(..) | Target::ForeignFn | Target::Closure => {}
             _ => {
                 // FIXME: #[cold] was previously allowed on non-functions and some crates used
                 // this, so only emit a warning.
@@ -315,8 +315,8 @@ impl CheckAttrVisitor<'tcx> {
                     lint.build("attribute should be applied to a function")
                         .warn(
                             "this was previously accepted by the compiler but is \
-                               being phased out; it will become a hard error in \
-                               a future release!",
+                             being phased out; it will become a hard error in \
+                             a future release!",
                         )
                         .span_label(*span, "not a function")
                         .emit();
@@ -337,8 +337,8 @@ impl CheckAttrVisitor<'tcx> {
                         lint.build("attribute should be applied to a foreign function or static");
                     diag.warn(
                         "this was previously accepted by the compiler but is \
-                               being phased out; it will become a hard error in \
-                               a future release!",
+                         being phased out; it will become a hard error in \
+                         a future release!",
                     );
 
                     // See issue #47725
@@ -403,8 +403,8 @@ impl CheckAttrVisitor<'tcx> {
                     lint.build("attribute should be applied to a function or static")
                         .warn(
                             "this was previously accepted by the compiler but is \
-                               being phased out; it will become a hard error in \
-                               a future release!",
+                             being phased out; it will become a hard error in \
+                             a future release!",
                         )
                         .span_label(*span, "not a function or static")
                         .emit();
