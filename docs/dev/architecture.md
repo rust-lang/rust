@@ -118,7 +118,7 @@ directly query the database.
 
 The top-level `hir` façade crate wraps ids into a more OO-flavored API.
 
-### `crates/ra_ide`
+### `crates/ide`
 
 A stateful library for analyzing many Rust files as they change. `AnalysisHost`
 is a mutable entity (clojure's atom) which holds the current state, incorporates
@@ -136,11 +136,11 @@ offsets and strings as output. This works on top of rich code model powered by
 
 ### `crates/rust-analyzer`
 
-An LSP implementation which wraps `ra_ide` into a language server protocol.
+An LSP implementation which wraps `ide` into a language server protocol.
 
 ### `ra_vfs`
 
-Although `hir` and `ra_ide` don't do any IO, we need to be able to read
+Although `hir` and `ide` don't do any IO, we need to be able to read
 files from disk at the end of the day. This is what `ra_vfs` does. It also
 manages overlays: "dirty" files in the editor, whose "true" contents is
 different from data on disk. This is more or less the single really
@@ -161,7 +161,7 @@ disk. For this reason, we try to avoid writing too many tests on this boundary:
 in a statically typed language, it's hard to make an error in the protocol
 itself if messages are themselves typed.
 
-The middle, and most important, boundary is `ra_ide`. Unlike
+The middle, and most important, boundary is `ide`. Unlike
 `rust-analyzer`, which exposes API, `ide` uses Rust API and is intended to
 use by various tools. Typical test creates an `AnalysisHost`, calls some
 `Analysis` functions and compares the results against expectation.

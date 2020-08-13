@@ -105,7 +105,7 @@ impl<T> Option<T> {
 }
 "#
         .trim(),
-        expect_file!["crates/ra_ide/test_data/highlighting.html"],
+        expect_file!["crates/ide/test_data/highlighting.html"],
         false,
     );
 }
@@ -128,7 +128,7 @@ fn bar() {
 }
 "#
         .trim(),
-        expect_file!["crates/ra_ide/test_data/rainbow_highlighting.html"],
+        expect_file!["crates/ide/test_data/rainbow_highlighting.html"],
         true,
     );
 }
@@ -181,7 +181,7 @@ fn main() {
     );
 }"##
         .trim(),
-        expect_file!["crates/ra_ide/test_data/highlight_injection.html"],
+        expect_file!["crates/ide/test_data/highlight_injection.html"],
         false,
     );
 }
@@ -264,7 +264,7 @@ fn main() {
     println!("{ничоси}", ничоси = 92);
 }"#
         .trim(),
-        expect_file!["crates/ra_ide/test_data/highlight_strings.html"],
+        expect_file!["crates/ide/test_data/highlight_strings.html"],
         false,
     );
 }
@@ -337,7 +337,7 @@ fn main() {
 }
 "#
         .trim(),
-        expect_file!["crates/ra_ide/test_data/highlight_unsafe.html"],
+        expect_file!["crates/ide/test_data/highlight_unsafe.html"],
         false,
     );
 }
@@ -413,7 +413,7 @@ macro_rules! noop {
 }
 "#
         .trim(),
-        expect_file!["crates/ra_ide/test_data/highlight_doctest.html"],
+        expect_file!["crates/ide/test_data/highlight_doctest.html"],
         false,
     );
 }
@@ -430,7 +430,7 @@ fn test_extern_crate() {
         //- /alloc/lib.rs
         pub struct A
         "#,
-        expect_file!["crates/ra_ide/test_data/highlight_extern_crate.html"],
+        expect_file!["crates/ide/test_data/highlight_extern_crate.html"],
         false,
     );
 }

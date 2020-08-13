@@ -7,9 +7,9 @@ use std::{
 
 use base_db::VfsPath;
 use crossbeam_channel::{select, Receiver};
+use ide::{Canceled, FileId};
 use lsp_server::{Connection, Notification, Request, Response};
 use lsp_types::notification::Notification as _;
-use ra_ide::{Canceled, FileId};
 
 use crate::{
     config::Config,

@@ -194,7 +194,7 @@ impl TidyDocs {
         let poorly_documented = [
             "hir",
             "hir_expand",
-            "ra_ide",
+            "ide",
             "mbe",
             "parser",
             "profile",

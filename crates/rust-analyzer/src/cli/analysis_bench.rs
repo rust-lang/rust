@@ -7,7 +7,7 @@ use base_db::{
     salsa::{Database, Durability},
     FileId,
 };
-use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CompletionConfig, FilePosition, LineCol};
+use ide::{Analysis, AnalysisChange, AnalysisHost, CompletionConfig, FilePosition, LineCol};
 use vfs::AbsPathBuf;
 
 use crate::{

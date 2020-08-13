@@ -243,7 +243,7 @@ impl NameRefClass {
 }
 
 // Note: we don't have unit-tests for this rather important function.
-// It is primarily exercised via goto definition tests in `ra_ide`.
+// It is primarily exercised via goto definition tests in `ide`.
 pub fn classify_name_ref(
     sema: &Semantics<RootDatabase>,
     name_ref: &ast::NameRef,

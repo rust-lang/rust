@@ -3,7 +3,7 @@ pub(crate) mod to_proto;
 
 use std::{mem, sync::Arc};
 
-use ra_ide::FileId;
+use ide::FileId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::lsp_ext;

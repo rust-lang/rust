@@ -5,13 +5,13 @@ use std::{
 };
 
 use base_db::{FileId, FileRange};
-use itertools::Itertools;
-use ra_ide::{
+use ide::{
     Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation,
     FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag, HighlightedRange,
     Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget,
     ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
+use itertools::Itertools;
 use syntax::{SyntaxKind, TextRange, TextSize};
 
 use crate::{
@@ -761,7 +761,7 @@ pub(crate) fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
 
 #[cfg(test)]
 mod tests {
-    use ra_ide::Analysis;
+    use ide::Analysis;
 
     use super::*;
 

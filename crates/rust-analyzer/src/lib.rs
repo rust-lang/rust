@@ -1,6 +1,6 @@
 //! Implementation of the LSP for rust-analyzer.
 //!
-//! This crate takes Rust-specific analysis results from ra_ide and translates
+//! This crate takes Rust-specific analysis results from ide and translates
 //! into LSP types.
 //!
 //! It also is the root of all state. `world` module defines the bulk of the
@@ -41,7 +41,7 @@ use serde::de::DeserializeOwned;
 
 pub type Result<T, E = Box<dyn std::error::Error + Send + Sync>> = std::result::Result<T, E>;
 pub use crate::{caps::server_capabilities, main_loop::main_loop};
-use ra_ide::AnalysisHost;
+use ide::AnalysisHost;
 use std::fmt;
 use vfs::Vfs;
 

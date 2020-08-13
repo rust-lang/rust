@@ -2,7 +2,7 @@
 use std::convert::TryFrom;
 
 use base_db::{FileId, FilePosition, FileRange};
-use ra_ide::{AssistKind, LineCol, LineIndex};
+use ide::{AssistKind, LineCol, LineIndex};
 use syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;
 
