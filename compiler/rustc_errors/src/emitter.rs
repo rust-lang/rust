@@ -9,14 +9,15 @@
 
 use Destination::*;
 
+use rustc_lint_defs::FutureBreakage;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{MultiSpan, SourceFile, Span};
 
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
-use crate::{
-    pluralize, CodeSuggestion, Diagnostic, DiagnosticId, Level, SubDiagnostic, SuggestionStyle,
-};
+use crate::{CodeSuggestion, Diagnostic, DiagnosticId, Level, SubDiagnostic, SuggestionStyle};
+
+use rustc_lint_defs::pluralize;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -191,6 +192,8 @@ pub trait Emitter {
     /// This is currently only supported for the JSON format,
     /// other formats can, and will, simply ignore it.
     fn emit_artifact_notification(&mut self, _path: &Path, _artifact_type: &str) {}
+
+    fn emit_future_breakage_report(&mut self, _diags: Vec<(FutureBreakage, Diagnostic)>) {}
 
     /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {

@@ -1,11 +1,44 @@
+#[macro_use]
+extern crate rustc_macros;
+
 pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
 
 pub mod builtin;
+
+#[macro_export]
+macro_rules! pluralize {
+    ($x:expr) => {
+        if $x != 1 { "s" } else { "" }
+    };
+}
+
+/// Indicates the confidence in the correctness of a suggestion.
+///
+/// All suggestions are marked with an `Applicability`. Tools use the applicability of a suggestion
+/// to determine whether it should be automatically applied or if the user should be consulted
+/// before applying the suggestion.
+#[derive(Copy, Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
+pub enum Applicability {
+    /// The suggestion is definitely what the user intended. This suggestion should be
+    /// automatically applied.
+    MachineApplicable,
+
+    /// The suggestion may be what the user intended, but it is uncertain. The suggestion should
+    /// result in valid Rust code if it is applied.
+    MaybeIncorrect,
+
+    /// The suggestion contains placeholders like `(...)` or `{ /* fields */ }`. The suggestion
+    /// cannot be applied automatically because it will not result in valid Rust code. The user
+    /// will need to fill in the placeholders.
+    HasPlaceholders,
+
+    /// The applicability of the suggestion is unknown.
+    Unspecified,
+}
 
 /// Setting for how to handle a lint.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
@@ -106,6 +139,21 @@ pub struct FutureIncompatibleInfo {
     /// If this is an edition fixing lint, the edition in which
     /// this lint becomes obsolete
     pub edition: Option<Edition>,
+    /// Information about a future breakage, which will
+    /// be emitted in JSON messages to be displayed by Cargo
+    /// for upstream deps
+    pub future_breakage: Option<FutureBreakage>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct FutureBreakage {
+    pub date: Option<&'static str>,
+}
+
+impl FutureIncompatibleInfo {
+    pub const fn default_fields_for_macro() -> Self {
+        FutureIncompatibleInfo { reference: "", edition: None, future_breakage: None }
+    }
 }
 
 impl Lint {
@@ -331,31 +379,34 @@ macro_rules! declare_lint {
         );
     );
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
-     $(@future_incompatible = $fi:expr;)?
      $(@feature_gate = $gate:expr;)?
+     $(@future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
      $($v:ident),*) => (
         $(#[$attr])*
-        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+        $vis static $NAME: &$crate::Lint = &$crate::Lint {
             name: stringify!($NAME),
-            default_level: $crate::lint::$Level,
+            default_level: $crate::$Level,
             desc: $desc,
             edition_lint_opts: None,
             is_plugin: false,
             $($v: true,)*
-            $(future_incompatible: Some($fi),)*
             $(feature_gate: Some($gate),)*
-            ..$crate::lint::Lint::default_fields_for_macro()
+            $(future_incompatible: Some($crate::FutureIncompatibleInfo {
+                $($field: $val,)*
+                ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
+            }),)*
+            ..$crate::Lint::default_fields_for_macro()
         };
     );
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
      $lint_edition: expr => $edition_level: ident
     ) => (
         $(#[$attr])*
-        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+        $vis static $NAME: &$crate::Lint = &$crate::Lint {
             name: stringify!($NAME),
-            default_level: $crate::lint::$Level,
+            default_level: $crate::$Level,
             desc: $desc,
-            edition_lint_opts: Some(($lint_edition, $crate::lint::Level::$edition_level)),
+            edition_lint_opts: Some(($lint_edition, $crate::Level::$edition_level)),
             report_in_external_macro: false,
             is_plugin: false,
         };
@@ -380,9 +431,9 @@ macro_rules! declare_tool_lint {
         $external:expr
     ) => (
         $(#[$attr])*
-        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+        $vis static $NAME: &$crate::Lint = &$crate::Lint {
             name: &concat!(stringify!($tool), "::", stringify!($NAME)),
-            default_level: $crate::lint::$Level,
+            default_level: $crate::$Level,
             desc: $desc,
             edition_lint_opts: None,
             report_in_external_macro: $external,
@@ -413,11 +464,11 @@ pub trait LintPass {
 #[macro_export]
 macro_rules! impl_lint_pass {
     ($ty:ty => [$($lint:expr),* $(,)?]) => {
-        impl $crate::lint::LintPass for $ty {
+        impl $crate::LintPass for $ty {
             fn name(&self) -> &'static str { stringify!($ty) }
         }
         impl $ty {
-            pub fn get_lints() -> $crate::lint::LintArray { $crate::lint_array!($($lint),*) }
+            pub fn get_lints() -> $crate::LintArray { $crate::lint_array!($($lint),*) }
         }
     };
 }
@@ -430,46 +481,4 @@ macro_rules! declare_lint_pass {
         $(#[$m])* #[derive(Copy, Clone)] pub struct $name;
         $crate::impl_lint_pass!($name => [$($lint),*]);
     };
-}
-
-pub fn add_elided_lifetime_in_path_suggestion(
-    sess: &crate::Session,
-    db: &mut DiagnosticBuilder<'_>,
-    n: usize,
-    path_span: Span,
-    incl_angl_brckt: bool,
-    insertion_span: Span,
-    anon_lts: String,
-) {
-    let (replace_span, suggestion) = if incl_angl_brckt {
-        (insertion_span, anon_lts)
-    } else {
-        // When possible, prefer a suggestion that replaces the whole
-        // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
-        // at a point (which makes for an ugly/confusing label)
-        if let Ok(snippet) = sess.source_map().span_to_snippet(path_span) {
-            // But our spans can get out of whack due to macros; if the place we think
-            // we want to insert `'_` isn't even within the path expression's span, we
-            // should bail out of making any suggestion rather than panicking on a
-            // subtract-with-overflow or string-slice-out-out-bounds (!)
-            // FIXME: can we do better?
-            if insertion_span.lo().0 < path_span.lo().0 {
-                return;
-            }
-            let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
-            if insertion_index > snippet.len() {
-                return;
-            }
-            let (before, after) = snippet.split_at(insertion_index);
-            (path_span, format!("{}{}{}", before, anon_lts, after))
-        } else {
-            (insertion_span, anon_lts)
-        }
-    };
-    db.span_suggestion(
-        replace_span,
-        &format!("indicate the anonymous lifetime{}", pluralize!(n)),
-        suggestion,
-        Applicability::MachineApplicable,
-    );
 }

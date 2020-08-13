@@ -13,6 +13,7 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
 unicode-width = "0.1.4"
 atty = "0.2"
 termcolor = "1.0"

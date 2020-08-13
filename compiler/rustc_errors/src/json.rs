@@ -13,8 +13,9 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 
 use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
-use crate::{Applicability, DiagnosticId};
+use crate::DiagnosticId;
 use crate::{CodeSuggestion, SubDiagnostic};
+use rustc_lint_defs::{Applicability, FutureBreakage};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_span::hygiene::ExpnData;
@@ -131,6 +132,30 @@ impl Emitter for JsonEmitter {
         }
     }
 
+    fn emit_future_breakage_report(&mut self, diags: Vec<(FutureBreakage, crate::Diagnostic)>) {
+        let data: Vec<FutureBreakageItem> = diags
+            .into_iter()
+            .map(|(breakage, mut diag)| {
+                if diag.level == crate::Level::Allow {
+                    diag.level = crate::Level::Warning;
+                }
+                FutureBreakageItem {
+                    future_breakage_date: breakage.date,
+                    diagnostic: Diagnostic::from_errors_diagnostic(&diag, self),
+                }
+            })
+            .collect();
+        let result = if self.pretty {
+            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+        } else {
+            writeln!(&mut self.dst, "{}", as_json(&data))
+        }
+        .and_then(|_| self.dst.flush());
+        if let Err(e) = result {
+            panic!("failed to print future breakage report: {:?}", e);
+        }
+    }
+
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         Some(&self.sm)
     }
@@ -221,6 +246,12 @@ struct ArtifactNotification<'a> {
     artifact: &'a Path,
     /// What kind of artifact we're emitting.
     emit: &'a str,
+}
+
+#[derive(Encodable)]
+struct FutureBreakageItem {
+    future_breakage_date: Option<&'static str>,
+    diagnostic: Diagnostic,
 }
 
 impl Diagnostic {
@@ -432,7 +463,7 @@ impl DiagnosticCode {
         s.map(|s| {
             let s = match s {
                 DiagnosticId::Error(s) => s,
-                DiagnosticId::Lint(s) => s,
+                DiagnosticId::Lint { name, has_future_breakage: _ } => name,
             };
             let je_result =
                 je.registry.as_ref().map(|registry| registry.try_find_description(&s)).unwrap();
