@@ -799,7 +799,7 @@ declare_clippy_lint! {
     ///     call_some_ffi_func(c_str);
     /// }
     /// ```
-    /// Here `c_str` point to a freed address. The correct use would be:
+    /// Here `c_str` points to a freed address. The correct use would be:
     /// ```rust
     /// # use std::ffi::CString;
     /// # fn call_some_ffi_func(_: *const i8) {}
