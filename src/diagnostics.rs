@@ -227,7 +227,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         TopFrameInfo {
             stack_size: this.active_thread_stack().len(),
             instance: Some(frame.instance),
-            span: frame.current_source_info().map_or(DUMMY_SP, |si| si.span),
+            span: frame.current_span(),
         }
     }
 
