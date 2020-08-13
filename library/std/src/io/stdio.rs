@@ -917,7 +917,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(input)]
+/// #![feature(io_input)]
 /// use std::io;
 ///
 /// fn main() -> io::Result<()> {
@@ -928,7 +928,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// }
 /// ```
 #[unstable(
-    feature = "input",
+    feature = "io_input",
     reason = "this function may be replaced with a more general mechanism",
     issue = "none"
 )]
