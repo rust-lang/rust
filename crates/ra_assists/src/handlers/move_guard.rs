@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{AstNode, IfExpr, MatchArm},
+    ast::{edit::AstNodeEdit, make, AstNode, IfExpr, MatchArm},
     SyntaxKind::WHITESPACE,
 };
 
@@ -25,7 +25,9 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // fn handle(action: Action) {
 //     match action {
-//         Action::Move { distance } => if distance > 10 { foo() },
+//         Action::Move { distance } => if distance > 10 {
+//             foo()
+//         },
 //         _ => (),
 //     }
 // }
@@ -35,9 +37,13 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> 
     let guard = match_arm.guard()?;
     let space_before_guard = guard.syntax().prev_sibling_or_token();
 
-    let guard_conditions = guard.expr()?;
+    let guard_condition = guard.expr()?;
     let arm_expr = match_arm.expr()?;
-    let buf = format!("if {} {{ {} }}", guard_conditions.syntax().text(), arm_expr.syntax().text());
+    let if_expr = make::expr_if(
+        make::condition(guard_condition, None),
+        make::block_expr(None, Some(arm_expr.clone())),
+    )
+    .indent(arm_expr.indent_level());
 
     let target = guard.syntax().text_range();
     acc.add(
@@ -53,7 +59,7 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> 
             };
 
             edit.delete(guard.syntax().text_range());
-            edit.replace_node_and_indent(arm_expr.syntax(), buf);
+            edit.replace_ast(arm_expr, if_expr);
         },
     )
 }
@@ -134,16 +140,14 @@ mod tests {
         check_assist_target(
             move_guard_to_arm_body,
             r#"
-            fn f() {
-                let t = 'a';
-                let chars = "abcd";
-                match t {
-                    '\r' <|>if chars.clone().next() == Some('\n') => false,
-                    _ => true
-                }
-            }
-            "#,
-            r#"if chars.clone().next() == Some('\n')"#,
+fn main() {
+    match 92 {
+        x <|>if x > 10 => false,
+        _ => true
+    }
+}
+"#,
+            r#"if x > 10"#,
         );
     }
 
@@ -152,25 +156,23 @@ mod tests {
         check_assist(
             move_guard_to_arm_body,
             r#"
-            fn f() {
-                let t = 'a';
-                let chars = "abcd";
-                match t {
-                    '\r' <|>if chars.clone().next() == Some('\n') => false,
-                    _ => true
-                }
-            }
-            "#,
+fn main() {
+    match 92 {
+        x <|>if x > 10 => false,
+        _ => true
+    }
+}
+"#,
             r#"
-            fn f() {
-                let t = 'a';
-                let chars = "abcd";
-                match t {
-                    '\r' => if chars.clone().next() == Some('\n') { false },
-                    _ => true
-                }
-            }
-            "#,
+fn main() {
+    match 92 {
+        x => if x > 10 {
+            false
+        },
+        _ => true
+    }
+}
+"#,
         );
     }
 
@@ -179,21 +181,23 @@ mod tests {
         check_assist(
             move_guard_to_arm_body,
             r#"
-            fn f() {
-                match x {
-                    <|>y @ 4 | y @ 5    if y > 5 => true,
-                    _ => false
-                }
-            }
-            "#,
+fn main() {
+    match 92 {
+        <|>x @ 4 | x @ 5    if x > 5 => true,
+        _ => false
+    }
+}
+"#,
             r#"
-            fn f() {
-                match x {
-                    y @ 4 | y @ 5 => if y > 5 { true },
-                    _ => false
-                }
-            }
-            "#,
+fn main() {
+    match 92 {
+        x @ 4 | x @ 5 => if x > 5 {
+            true
+        },
+        _ => false
+    }
+}
+"#,
         );
     }
 
@@ -202,25 +206,21 @@ mod tests {
         check_assist(
             move_arm_cond_to_match_guard,
             r#"
-            fn f() {
-                let t = 'a';
-                let chars = "abcd";
-                match t {
-                    '\r' => if chars.clone().next() == Some('\n') { <|>false },
-                    _ => true
-                }
-            }
-            "#,
+fn main() {
+    match 92 {
+        x => if x > 10 { <|>false },
+        _ => true
+    }
+}
+"#,
             r#"
-            fn f() {
-                let t = 'a';
-                let chars = "abcd";
-                match t {
-                    '\r' if chars.clone().next() == Some('\n') => false,
-                    _ => true
-                }
-            }
-            "#,
+fn main() {
+    match 92 {
+        x if x > 10 => false,
+        _ => true
+    }
+}
+"#,
         );
     }
 
@@ -229,15 +229,13 @@ mod tests {
         check_assist_not_applicable(
             move_arm_cond_to_match_guard,
             r#"
-            fn f() {
-                let t = 'a';
-                let chars = "abcd";
-                match t {
-                    '\r' => if let Some(_) = chars.clone().next() { <|>false },
-                    _ => true
-                }
-            }
-            "#,
+fn main() {
+    match 92 {
+        x => if let 62 = x { <|>false },
+        _ => true
+    }
+}
+"#,
         );
     }
 
@@ -246,25 +244,21 @@ mod tests {
         check_assist(
             move_arm_cond_to_match_guard,
             r#"
-            fn f() {
-                let t = 'a';
-                let chars = "abcd";
-                match t {
-                    '\r' => if chars.clone().next().is_some() { <|> },
-                    _ => true
-                }
-            }
-            "#,
+fn main() {
+    match 92 {
+        x => if x > 10 { <|> },
+        _ => true
+    }
+}
+"#,
             r#"
-            fn f() {
-                let t = 'a';
-                let chars = "abcd";
-                match t {
-                    '\r' if chars.clone().next().is_some() => {  },
-                    _ => true
-                }
-            }
-            "#,
+fn main() {
+    match 92 {
+        x if x > 10 => {  },
+        _ => true
+    }
+}
+"#,
         );
     }
 
@@ -273,31 +267,27 @@ mod tests {
         check_assist(
             move_arm_cond_to_match_guard,
             r#"
-            fn f() {
-                let mut t = 'a';
-                let chars = "abcd";
-                match t {
-                    '\r' => if chars.clone().next().is_some() {
-                        t = 'e';<|>
-                        false
-                    },
-                    _ => true
-                }
-            }
-            "#,
+fn main() {
+    match 92 {
+        x => if x > 10 {
+            92;<|>
+            false
+        },
+        _ => true
+    }
+}
+"#,
             r#"
-            fn f() {
-                let mut t = 'a';
-                let chars = "abcd";
-                match t {
-                    '\r' if chars.clone().next().is_some() => {
-                        t = 'e';
-                        false
-                    },
-                    _ => true
-                }
-            }
-            "#,
+fn main() {
+    match 92 {
+        x if x > 10 => {
+            92;
+            false
+        },
+        _ => true
+    }
+}
+"#,
         );
     }
 }
