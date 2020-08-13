@@ -25,7 +25,7 @@ pub(crate) struct ResolvedPattern {
     pub(crate) node: SyntaxNode,
     // Paths in `node` that we've resolved.
     pub(crate) resolved_paths: FxHashMap<SyntaxNode, ResolvedPath>,
-    pub(crate) ufcs_function_calls: FxHashMap<SyntaxNode, hir::Function>,
+    pub(crate) ufcs_function_calls: FxHashMap<SyntaxNode, UfcsCallInfo>,
     pub(crate) contains_self: bool,
 }
 
@@ -33,6 +33,12 @@ pub(crate) struct ResolvedPath {
     pub(crate) resolution: hir::PathResolution,
     /// The depth of the ast::Path that was resolved within the pattern.
     pub(crate) depth: u32,
+}
+
+pub(crate) struct UfcsCallInfo {
+    pub(crate) call_expr: ast::CallExpr,
+    pub(crate) function: hir::Function,
+    pub(crate) qualifier_type: Option<hir::Type>,
 }
 
 impl ResolvedRule {
@@ -70,6 +76,7 @@ struct Resolver<'a, 'db> {
 
 impl Resolver<'_, '_> {
     fn resolve_pattern_tree(&self, pattern: SyntaxNode) -> Result<ResolvedPattern, SsrError> {
+        use syntax::ast::AstNode;
         use syntax::{SyntaxElement, T};
         let mut resolved_paths = FxHashMap::default();
         self.resolve(pattern.clone(), 0, &mut resolved_paths)?;
@@ -77,11 +84,15 @@ impl Resolver<'_, '_> {
             .iter()
             .filter_map(|(path_node, resolved)| {
                 if let Some(grandparent) = path_node.parent().and_then(|parent| parent.parent()) {
-                    if grandparent.kind() == SyntaxKind::CALL_EXPR {
+                    if let Some(call_expr) = ast::CallExpr::cast(grandparent.clone()) {
                         if let hir::PathResolution::AssocItem(hir::AssocItem::Function(function)) =
-                            &resolved.resolution
+                            resolved.resolution
                         {
-                            return Some((grandparent, *function));
+                            let qualifier_type = self.resolution_scope.qualifier_type(path_node);
+                            return Some((
+                                grandparent,
+                                UfcsCallInfo { call_expr, function, qualifier_type },
+                            ));
                         }
                     }
                 }
@@ -225,6 +236,20 @@ impl<'db> ResolutionScope<'db> {
         } else {
             None
         }
+    }
+
+    fn qualifier_type(&self, path: &SyntaxNode) -> Option<hir::Type> {
+        use syntax::ast::AstNode;
+        if let Some(path) = ast::Path::cast(path.clone()) {
+            if let Some(qualifier) = path.qualifier() {
+                if let Some(resolved_qualifier) = self.resolve_path(&qualifier) {
+                    if let hir::PathResolution::Def(hir::ModuleDef::Adt(adt)) = resolved_qualifier {
+                        return Some(adt.ty(self.scope.db));
+                    }
+                }
+            }
+        }
+        None
     }
 }
 
