@@ -20,6 +20,6 @@ arena = { path = "../arena" }
 cfg = { path = "../cfg" }
 ra_db = { path = "../ra_db" }
 toolchain = { path = "../toolchain" }
-ra_proc_macro =  { path = "../ra_proc_macro" }
+proc_macro_api =  { path = "../proc_macro_api" }
 paths =  { path = "../paths" }
 stdx =  { path = "../stdx" }

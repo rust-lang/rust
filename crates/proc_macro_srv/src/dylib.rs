@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use goblin::{mach::Mach, Object};
 use libloading::Library;
 use memmap::Mmap;
-use ra_proc_macro::ProcMacroKind;
+use proc_macro_api::ProcMacroKind;
 use std::io;
 
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";

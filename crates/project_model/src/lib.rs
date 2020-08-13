@@ -25,7 +25,7 @@ pub use crate::{
     sysroot::Sysroot,
 };
 
-pub use ra_proc_macro::ProcMacroClient;
+pub use proc_macro_api::ProcMacroClient;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ProjectWorkspace {

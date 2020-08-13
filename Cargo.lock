@@ -910,6 +910,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc_macro_api"
+version = "0.1.0"
+dependencies = [
+ "crossbeam-channel",
+ "jod-thread",
+ "log",
+ "serde",
+ "serde_json",
+ "tt",
+]
+
+[[package]]
 name = "proc_macro_srv"
 version = "0.0.0"
 dependencies = [
@@ -919,7 +931,7 @@ dependencies = [
  "libloading",
  "mbe",
  "memmap",
- "ra_proc_macro",
+ "proc_macro_api",
  "serde_derive",
  "test_utils",
  "toolchain",
@@ -948,8 +960,8 @@ dependencies = [
  "cfg",
  "log",
  "paths",
+ "proc_macro_api",
  "ra_db",
- "ra_proc_macro",
  "rustc-hash",
  "serde",
  "serde_json",
@@ -1129,18 +1141,6 @@ dependencies = [
  "syntax",
  "test_utils",
  "text_edit",
-]
-
-[[package]]
-name = "ra_proc_macro"
-version = "0.1.0"
-dependencies = [
- "crossbeam-channel",
- "jod-thread",
- "log",
- "serde",
- "serde_json",
- "tt",
 ]
 
 [[package]]
