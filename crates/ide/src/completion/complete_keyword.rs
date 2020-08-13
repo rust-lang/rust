@@ -10,30 +10,21 @@ use crate::completion::{
 pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     // complete keyword "crate" in use stmt
     let source_range = ctx.source_range();
-    match (ctx.use_item_syntax.as_ref(), ctx.path_prefix.as_ref()) {
-        (Some(_), None) => {
+
+    if ctx.use_item_syntax.is_some() {
+        if ctx.path_qual.is_none() {
             CompletionItem::new(CompletionKind::Keyword, source_range, "crate::")
                 .kind(CompletionItemKind::Keyword)
                 .insert_text("crate::")
                 .add_to(acc);
-            CompletionItem::new(CompletionKind::Keyword, source_range, "self")
-                .kind(CompletionItemKind::Keyword)
-                .add_to(acc);
-            CompletionItem::new(CompletionKind::Keyword, source_range, "super::")
-                .kind(CompletionItemKind::Keyword)
-                .insert_text("super::")
-                .add_to(acc);
         }
-        (Some(_), Some(_)) => {
-            CompletionItem::new(CompletionKind::Keyword, source_range, "self")
-                .kind(CompletionItemKind::Keyword)
-                .add_to(acc);
-            CompletionItem::new(CompletionKind::Keyword, source_range, "super::")
-                .kind(CompletionItemKind::Keyword)
-                .insert_text("super::")
-                .add_to(acc);
-        }
-        _ => {}
+        CompletionItem::new(CompletionKind::Keyword, source_range, "self")
+            .kind(CompletionItemKind::Keyword)
+            .add_to(acc);
+        CompletionItem::new(CompletionKind::Keyword, source_range, "super::")
+            .kind(CompletionItemKind::Keyword)
+            .insert_text("super::")
+            .add_to(acc);
     }
 
     // Suggest .await syntax for types that implement Future trait

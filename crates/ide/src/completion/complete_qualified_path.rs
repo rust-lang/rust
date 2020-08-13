@@ -8,7 +8,7 @@ use test_utils::mark;
 use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    let path = match &ctx.path_prefix {
+    let path = match &ctx.path_qual {
         Some(path) => path.clone(),
         None => return,
     };
@@ -19,7 +19,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
     let context_module = ctx.scope.module();
 
-    let resolution = match ctx.scope.resolve_hir_path_qualifier(&path) {
+    let resolution = match ctx.sema.resolve_path(&path) {
         Some(res) => res,
         None => return,
     };
