@@ -1,9 +1,9 @@
-//! ra_cfg defines conditional compiling options, `cfg` attibute parser and evaluator
+//! cfg defines conditional compiling options, `cfg` attibute parser and evaluator
 
 mod cfg_expr;
 
 use rustc_hash::FxHashSet;
-use syntax::SmolStr;
+use tt::SmolStr;
 
 pub use cfg_expr::CfgExpr;
 

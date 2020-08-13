@@ -4,7 +4,7 @@
 
 use std::slice::Iter as SliceIter;
 
-use syntax::SmolStr;
+use tt::SmolStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CfgExpr {
@@ -86,17 +86,15 @@ fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
 mod tests {
     use super::*;
 
-    use mbe::{ast_to_token_tree, TokenMap};
+    use mbe::ast_to_token_tree;
     use syntax::ast::{self, AstNode};
 
-    fn get_token_tree_generated(input: &str) -> (tt::Subtree, TokenMap) {
-        let source_file = ast::SourceFile::parse(input).ok().unwrap();
-        let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        ast_to_token_tree(&tt).unwrap()
-    }
-
     fn assert_parse_result(input: &str, expected: CfgExpr) {
-        let (tt, _) = get_token_tree_generated(input);
+        let (tt, _) = {
+            let source_file = ast::SourceFile::parse(input).ok().unwrap();
+            let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+            ast_to_token_tree(&tt).unwrap()
+        };
         let cfg = CfgExpr::parse(&tt);
         assert_eq!(cfg, expected);
     }

@@ -47,7 +47,7 @@ mod typing;
 
 use std::sync::Arc;
 
-use ra_cfg::CfgOptions;
+use cfg::CfgOptions;
 use ra_db::{
     salsa::{self, ParallelDatabase},
     CheckCanceled, Env, FileLoader, FileSet, SourceDatabase, VfsPath,

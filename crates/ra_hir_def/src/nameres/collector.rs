@@ -3,6 +3,7 @@
 //! `DefCollector::collect` contains the fixed-point iteration loop which
 //! resolves imports and expands macros.
 
+use cfg::CfgOptions;
 use hir_expand::{
     ast_id_map::FileAstId,
     builtin_derive::find_builtin_derive,
@@ -11,7 +12,6 @@ use hir_expand::{
     proc_macro::ProcMacroExpander,
     HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
-use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId, ProcMacroId};
 use rustc_hash::FxHashMap;
 use syntax::ast;

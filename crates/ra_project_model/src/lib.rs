@@ -12,8 +12,8 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
+use cfg::CfgOptions;
 use paths::{AbsPath, AbsPathBuf};
-use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateId, CrateName, Edition, Env, FileId};
 use rustc_hash::{FxHashMap, FxHashSet};
 

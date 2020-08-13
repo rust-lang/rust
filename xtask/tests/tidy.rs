@@ -195,7 +195,7 @@ impl TidyDocs {
             "ra_hir",
             "ra_hir_expand",
             "ra_ide",
-            "ra_mbe",
+            "mbe",
             "parser",
             "profile",
             "ra_project_model",

@@ -15,7 +15,7 @@ rustc-hash = "1.1.0"
 cargo_metadata = "0.11.1"
 
 arena = { path = "../arena" }
-ra_cfg = { path = "../ra_cfg" }
+cfg = { path = "../cfg" }
 ra_db = { path = "../ra_db" }
 toolchain = { path = "../toolchain" }
 ra_proc_macro =  { path = "../ra_proc_macro" }
