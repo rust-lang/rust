@@ -132,7 +132,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
 #![feature(associated_type_bounds)]
-
+#![feature(raw_ref_op)]
 // Allow testing this library
 
 #[cfg(test)]
