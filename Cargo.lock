@@ -464,6 +464,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "hir_def"
+version = "0.0.0"
+dependencies = [
+ "anymap",
+ "arena",
+ "base_db",
+ "cfg",
+ "drop_bomb",
+ "either",
+ "expect",
+ "fst",
+ "hir_expand",
+ "indexmap",
+ "itertools",
+ "log",
+ "mbe",
+ "once_cell",
+ "profile",
+ "rustc-hash",
+ "smallvec",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "tt",
+]
+
+[[package]]
 name = "hir_expand"
 version = "0.0.0"
 dependencies = [
@@ -1034,42 +1061,15 @@ dependencies = [
  "arrayvec",
  "base_db",
  "either",
+ "hir_def",
  "hir_expand",
  "itertools",
  "log",
  "profile",
- "ra_hir_def",
  "ra_hir_ty",
  "rustc-hash",
  "stdx",
  "syntax",
-]
-
-[[package]]
-name = "ra_hir_def"
-version = "0.1.0"
-dependencies = [
- "anymap",
- "arena",
- "base_db",
- "cfg",
- "drop_bomb",
- "either",
- "expect",
- "fst",
- "hir_expand",
- "indexmap",
- "itertools",
- "log",
- "mbe",
- "once_cell",
- "profile",
- "rustc-hash",
- "smallvec",
- "stdx",
- "syntax",
- "test_utils",
- "tt",
 ]
 
 [[package]]
@@ -1084,11 +1084,11 @@ dependencies = [
  "chalk-solve",
  "ena",
  "expect",
+ "hir_def",
  "hir_expand",
  "itertools",
  "log",
  "profile",
- "ra_hir_def",
  "rustc-hash",
  "scoped-tls",
  "smallvec",
@@ -1236,6 +1236,7 @@ dependencies = [
  "env_logger",
  "expect",
  "flycheck",
+ "hir_def",
  "itertools",
  "jod-thread",
  "log",
@@ -1250,7 +1251,6 @@ dependencies = [
  "profile",
  "project_model",
  "ra_hir",
- "ra_hir_def",
  "ra_hir_ty",
  "ra_ide",
  "ra_ide_db",
