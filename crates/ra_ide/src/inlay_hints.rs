@@ -1,5 +1,5 @@
 use hir::{Adt, Callable, HirDisplay, Semantics, Type};
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, ArgListOwner, AstNode},

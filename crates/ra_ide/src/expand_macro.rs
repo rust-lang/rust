@@ -1,5 +1,5 @@
 use hir::Semantics;
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use syntax::{
     algo::{find_node_at_offset, SyntaxRewriter},
     ast, AstNode, NodeOrToken, SyntaxKind,

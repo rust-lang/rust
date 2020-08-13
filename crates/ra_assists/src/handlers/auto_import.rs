@@ -5,7 +5,7 @@ use hir::{
     AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution, Semantics, Trait,
     Type,
 };
-use ra_ide_db::{imports_locator, RootDatabase};
+use ide_db::{imports_locator, RootDatabase};
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, AstNode},

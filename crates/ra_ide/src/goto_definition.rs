@@ -1,5 +1,5 @@
 use hir::Semantics;
-use ra_ide_db::{
+use ide_db::{
     defs::{classify_name, classify_name_ref},
     symbol_index, RootDatabase,
 };

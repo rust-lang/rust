@@ -5,11 +5,11 @@ use base_db::{
     FileTextQuery, SourceRootId,
 };
 use hir::MacroFile;
-use profile::{memory_usage, Bytes};
-use ra_ide_db::{
+use ide_db::{
     symbol_index::{LibrarySymbolsQuery, SymbolIndex},
     RootDatabase,
 };
+use profile::{memory_usage, Bytes};
 use rustc_hash::FxHashMap;
 use syntax::{ast, Parse, SyntaxNode};
 

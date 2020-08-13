@@ -19,7 +19,7 @@ mod complete_postfix;
 mod complete_macro_in_item_position;
 mod complete_trait_impl;
 
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 
 use crate::{
     completion::{

@@ -24,7 +24,7 @@ stdx = { path = "../stdx" }
 syntax = { path = "../syntax" }
 text_edit = { path = "../text_edit" }
 base_db = { path = "../base_db" }
-ra_ide_db = { path = "../ra_ide_db" }
+ide_db = { path = "../ide_db" }
 cfg = { path = "../cfg" }
 profile = { path = "../profile" }
 test_utils = { path = "../test_utils" }

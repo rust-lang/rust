@@ -1,4 +1,4 @@
-use ra_ide_db::defs::{classify_name_ref, Definition, NameRefClass};
+use ide_db::defs::{classify_name_ref, Definition, NameRefClass};
 use syntax::{ast, AstNode, SyntaxKind, T};
 use test_utils::mark;
 

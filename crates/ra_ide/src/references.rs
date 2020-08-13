@@ -12,7 +12,7 @@
 mod rename;
 
 use hir::Semantics;
-use ra_ide_db::{
+use ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     search::SearchScope,
     RootDatabase,
@@ -27,7 +27,7 @@ use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeI
 
 pub(crate) use self::rename::rename;
 
-pub use ra_ide_db::search::{Reference, ReferenceAccess, ReferenceKind};
+pub use ide_db::search::{Reference, ReferenceAccess, ReferenceKind};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {

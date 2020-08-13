@@ -1,5 +1,5 @@
 use hir::{AssocItem, MacroDef, ModuleDef, Name, PathResolution, ScopeDef, SemanticsScope};
-use ra_ide_db::{
+use ide_db::{
     defs::{classify_name_ref, Definition, NameRefClass},
     RootDatabase,
 };

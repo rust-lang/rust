@@ -52,7 +52,7 @@ use base_db::{
     CheckCanceled, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
 };
 use cfg::CfgOptions;
-use ra_ide_db::{
+use ide_db::{
     symbol_index::{self, FileSymbol},
     LineIndexDatabase,
 };
@@ -86,8 +86,7 @@ pub use base_db::{
     SourceRootId,
 };
 pub use hir::{Documentation, Semantics};
-pub use ra_assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
-pub use ra_ide_db::{
+pub use ide_db::{
     change::AnalysisChange,
     line_index::{LineCol, LineIndex},
     search::SearchScope,
@@ -95,6 +94,7 @@ pub use ra_ide_db::{
     symbol_index::Query,
     RootDatabase,
 };
+pub use ra_assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
 pub use ra_ssr::SsrError;
 pub use text_edit::{Indel, TextEdit};
 

@@ -563,6 +563,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ide_db"
+version = "0.0.0"
+dependencies = [
+ "base_db",
+ "either",
+ "fst",
+ "hir",
+ "log",
+ "once_cell",
+ "profile",
+ "rayon",
+ "rustc-hash",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "text_edit",
+]
+
+[[package]]
 name = "idna"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1090,9 +1109,9 @@ dependencies = [
  "base_db",
  "either",
  "hir",
+ "ide_db",
  "itertools",
  "profile",
- "ra_ide_db",
  "rustc-hash",
  "stdx",
  "syntax",
@@ -1109,33 +1128,14 @@ dependencies = [
  "either",
  "expect",
  "hir",
+ "ide_db",
  "indexmap",
  "itertools",
  "log",
  "oorandom",
  "profile",
  "ra_assists",
- "ra_ide_db",
  "ra_ssr",
- "rustc-hash",
- "stdx",
- "syntax",
- "test_utils",
- "text_edit",
-]
-
-[[package]]
-name = "ra_ide_db"
-version = "0.1.0"
-dependencies = [
- "base_db",
- "either",
- "fst",
- "hir",
- "log",
- "once_cell",
- "profile",
- "rayon",
  "rustc-hash",
  "stdx",
  "syntax",
@@ -1150,7 +1150,7 @@ dependencies = [
  "base_db",
  "expect",
  "hir",
- "ra_ide_db",
+ "ide_db",
  "rustc-hash",
  "syntax",
  "test_utils",
@@ -1239,6 +1239,7 @@ dependencies = [
  "hir",
  "hir_def",
  "hir_ty",
+ "ide_db",
  "itertools",
  "jod-thread",
  "log",
@@ -1253,7 +1254,6 @@ dependencies = [
  "profile",
  "project_model",
  "ra_ide",
- "ra_ide_db",
  "ra_ssr",
  "rayon",
  "rustc-hash",

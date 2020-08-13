@@ -1,5 +1,5 @@
 use base_db::{FileId, SourceDatabase};
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use syntax::{
     algo, AstNode, NodeOrToken, SourceFile,
     SyntaxKind::{RAW_STRING, STRING},

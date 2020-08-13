@@ -20,7 +20,7 @@ pub use crate::matching::Match;
 use crate::matching::MatchFailureReason;
 use base_db::{FileId, FilePosition, FileRange};
 use hir::Semantics;
-use ra_ide_db::source_change::SourceFileEdit;
+use ide_db::source_change::SourceFileEdit;
 use resolving::ResolvedRule;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, SyntaxNode, TextRange};
@@ -49,7 +49,7 @@ pub struct SsrMatches {
 /// Searches a crate for pattern matches and possibly replaces them with something else.
 pub struct MatchFinder<'db> {
     /// Our source of information about the user's code.
-    sema: Semantics<'db, ra_ide_db::RootDatabase>,
+    sema: Semantics<'db, ide_db::RootDatabase>,
     rules: Vec<ResolvedRule>,
     resolution_scope: resolving::ResolutionScope<'db>,
     restrict_ranges: Vec<FileRange>,
@@ -59,7 +59,7 @@ impl<'db> MatchFinder<'db> {
     /// Constructs a new instance where names will be looked up as if they appeared at
     /// `lookup_context`.
     pub fn in_context(
-        db: &'db ra_ide_db::RootDatabase,
+        db: &'db ide_db::RootDatabase,
         lookup_context: FilePosition,
         mut restrict_ranges: Vec<FileRange>,
     ) -> MatchFinder<'db> {
@@ -70,9 +70,9 @@ impl<'db> MatchFinder<'db> {
     }
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.
-    pub fn at_first_file(db: &'db ra_ide_db::RootDatabase) -> Result<MatchFinder<'db>, SsrError> {
+    pub fn at_first_file(db: &'db ide_db::RootDatabase) -> Result<MatchFinder<'db>, SsrError> {
         use base_db::SourceDatabaseExt;
-        use ra_ide_db::symbol_index::SymbolsDatabase;
+        use ide_db::symbol_index::SymbolsDatabase;
         if let Some(first_file_id) = db
             .local_roots()
             .iter()

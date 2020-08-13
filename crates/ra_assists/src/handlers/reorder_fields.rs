@@ -2,7 +2,7 @@ use itertools::Itertools;
 use rustc_hash::FxHashMap;
 
 use hir::{Adt, ModuleDef, PathResolution, Semantics, Struct};
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use syntax::{algo, ast, match_ast, AstNode, SyntaxKind, SyntaxKind::*, SyntaxNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

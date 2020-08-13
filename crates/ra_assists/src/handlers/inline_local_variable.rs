@@ -1,4 +1,4 @@
-use ra_ide_db::defs::Definition;
+use ide_db::defs::Definition;
 use syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,

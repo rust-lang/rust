@@ -27,7 +27,7 @@ pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
 /// for much else.
 pub fn search_for_patterns(patterns: Vec<SsrPattern>, debug_snippet: Option<String>) -> Result<()> {
     use base_db::SourceDatabaseExt;
-    use ra_ide_db::symbol_index::SymbolsDatabase;
+    use ide_db::symbol_index::SymbolsDatabase;
     let (host, _vfs) = load_cargo(&std::env::current_dir()?, true, true)?;
     let db = host.raw_database();
     let mut match_finder = MatchFinder::at_first_file(db)?;

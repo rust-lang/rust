@@ -1,5 +1,5 @@
 use base_db::{FilePosition, FileRange};
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 
 use crate::SourceFileEdit;
 use ra_ssr::{MatchFinder, SsrError, SsrRule};
