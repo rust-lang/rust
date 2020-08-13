@@ -2,7 +2,7 @@ use std::fmt;
 
 use hir::{AsAssocItem, Attrs, HirFileId, InFile, Semantics};
 use itertools::Itertools;
-use ra_cfg::CfgExpr;
+use cfg::CfgExpr;
 use ra_ide_db::RootDatabase;
 use syntax::{
     ast::{self, AstNode, AttrsOwner, DocCommentsOwner, ModuleItemOwner, NameOwner},

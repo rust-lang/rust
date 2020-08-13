@@ -8,7 +8,7 @@
 
 use std::{fmt, iter::FromIterator, ops, str::FromStr, sync::Arc};
 
-use ra_cfg::CfgOptions;
+use cfg::CfgOptions;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::SmolStr;
 use tt::TokenExpander;

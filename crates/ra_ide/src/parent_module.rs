@@ -63,7 +63,7 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
 
 #[cfg(test)]
 mod tests {
-    use ra_cfg::CfgOptions;
+    use cfg::CfgOptions;
     use ra_db::Env;
     use test_utils::mark;
 

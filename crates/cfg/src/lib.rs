@@ -1,4 +1,4 @@
-//! ra_cfg defines conditional compiling options, `cfg` attibute parser and evaluator
+//! cfg defines conditional compiling options, `cfg` attibute parser and evaluator
 
 mod cfg_expr;
 

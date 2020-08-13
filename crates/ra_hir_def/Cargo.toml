@@ -29,7 +29,7 @@ profile = { path = "../profile" }
 hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
 test_utils = { path = "../test_utils" }
 mbe = { path = "../mbe" }
-ra_cfg = { path = "../ra_cfg" }
+cfg = { path = "../cfg" }
 tt = { path = "../tt" }
 
 [dev-dependencies]

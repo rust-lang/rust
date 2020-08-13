@@ -5,7 +5,7 @@ use std::{ops, sync::Arc};
 use either::Either;
 use hir_expand::{hygiene::Hygiene, AstId, InFile};
 use mbe::ast_to_token_tree;
-use ra_cfg::{CfgExpr, CfgOptions};
+use cfg::{CfgExpr, CfgOptions};
 use syntax::{
     ast::{self, AstNode, AttrsOwner},
     SmolStr,

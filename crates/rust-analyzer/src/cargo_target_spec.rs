@@ -1,6 +1,6 @@
 //! See `CargoTargetSpec`
 
-use ra_cfg::CfgExpr;
+use cfg::CfgExpr;
 use ra_ide::{FileId, RunnableKind, TestId};
 use ra_project_model::{self, TargetKind};
 use vfs::AbsPathBuf;
@@ -178,7 +178,7 @@ mod tests {
     use super::*;
 
     use mbe::ast_to_token_tree;
-    use ra_cfg::CfgExpr;
+    use cfg::CfgExpr;
     use syntax::{
         ast::{self, AstNode},
         SmolStr,

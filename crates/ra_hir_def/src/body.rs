@@ -9,7 +9,7 @@ use arena::{map::ArenaMap, Arena};
 use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId};
-use ra_cfg::CfgOptions;
+use cfg::CfgOptions;
 use ra_db::CrateId;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};

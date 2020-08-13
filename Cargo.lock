@@ -113,6 +113,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9a06fb2e53271d7c279ec1efea6ab691c35a2ae67ec0d91d7acec0caf13b518"
 
 [[package]]
+name = "cfg"
+version = "0.0.0"
+dependencies = [
+ "mbe",
+ "rustc-hash",
+ "syntax",
+ "tt",
+]
+
+[[package]]
 name = "cfg-if"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -956,21 +966,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_cfg"
-version = "0.1.0"
-dependencies = [
- "mbe",
- "rustc-hash",
- "syntax",
- "tt",
-]
-
-[[package]]
 name = "ra_db"
 version = "0.1.0"
 dependencies = [
+ "cfg",
  "profile",
- "ra_cfg",
  "rustc-hash",
  "salsa",
  "stdx",
@@ -1012,6 +1012,7 @@ version = "0.1.0"
 dependencies = [
  "anymap",
  "arena",
+ "cfg",
  "drop_bomb",
  "either",
  "expect",
@@ -1022,7 +1023,6 @@ dependencies = [
  "mbe",
  "once_cell",
  "profile",
- "ra_cfg",
  "ra_db",
  "ra_hir_expand",
  "rustc-hash",
@@ -1082,6 +1082,7 @@ dependencies = [
 name = "ra_ide"
 version = "0.1.0"
 dependencies = [
+ "cfg",
  "either",
  "expect",
  "indexmap",
@@ -1090,7 +1091,6 @@ dependencies = [
  "oorandom",
  "profile",
  "ra_assists",
- "ra_cfg",
  "ra_db",
  "ra_fmt",
  "ra_hir",
@@ -1141,9 +1141,9 @@ dependencies = [
  "anyhow",
  "arena",
  "cargo_metadata",
+ "cfg",
  "log",
  "paths",
- "ra_cfg",
  "ra_db",
  "ra_proc_macro",
  "rustc-hash",
@@ -1240,6 +1240,7 @@ name = "rust-analyzer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cfg",
  "crossbeam-channel",
  "env_logger",
  "expect",
@@ -1256,7 +1257,6 @@ dependencies = [
  "pico-args",
  "proc_macro_srv",
  "profile",
- "ra_cfg",
  "ra_db",
  "ra_hir",
  "ra_hir_def",

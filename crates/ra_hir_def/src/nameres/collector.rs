@@ -11,7 +11,7 @@ use hir_expand::{
     proc_macro::ProcMacroExpander,
     HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
-use ra_cfg::CfgOptions;
+use cfg::CfgOptions;
 use ra_db::{CrateId, FileId, ProcMacroId};
 use rustc_hash::FxHashMap;
 use syntax::ast;

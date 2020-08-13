@@ -23,7 +23,7 @@ use crate::{
     EnumId, HasModule, LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StructId, UnionId,
     VariantId,
 };
-use ra_cfg::CfgOptions;
+use cfg::CfgOptions;
 
 /// Note that we use `StructData` for unions as well!
 #[derive(Debug, Clone, PartialEq, Eq)]

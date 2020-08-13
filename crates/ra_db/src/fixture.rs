@@ -59,7 +59,7 @@
 //! ```
 use std::{str::FromStr, sync::Arc};
 
-use ra_cfg::CfgOptions;
+use cfg::CfgOptions;
 use rustc_hash::FxHashMap;
 use test_utils::{extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER};
 use vfs::{file_set::FileSet, VfsPath};

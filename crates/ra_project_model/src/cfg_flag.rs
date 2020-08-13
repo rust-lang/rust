@@ -3,7 +3,7 @@
 //! rustc main.rs --cfg foo --cfg 'feature="bar"'
 use std::str::FromStr;
 
-use ra_cfg::CfgOptions;
+use cfg::CfgOptions;
 use stdx::split_once;
 
 #[derive(Clone, Eq, PartialEq, Debug)]

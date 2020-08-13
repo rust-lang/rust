@@ -25,7 +25,7 @@ syntax = { path = "../syntax" }
 text_edit = { path = "../text_edit" }
 ra_db = { path = "../ra_db" }
 ra_ide_db = { path = "../ra_ide_db" }
-ra_cfg = { path = "../ra_cfg" }
+cfg = { path = "../cfg" }
 ra_fmt = { path = "../ra_fmt" }
 profile = { path = "../profile" }
 test_utils = { path = "../test_utils" }
