@@ -508,6 +508,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "hir_ty"
+version = "0.0.0"
+dependencies = [
+ "arena",
+ "arrayvec",
+ "base_db",
+ "chalk-ir",
+ "chalk-recursive",
+ "chalk-solve",
+ "ena",
+ "expect",
+ "hir_def",
+ "hir_expand",
+ "itertools",
+ "log",
+ "profile",
+ "rustc-hash",
+ "scoped-tls",
+ "smallvec",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-tree",
+]
+
+[[package]]
 name = "home"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1063,41 +1091,13 @@ dependencies = [
  "either",
  "hir_def",
  "hir_expand",
- "itertools",
- "log",
- "profile",
- "ra_hir_ty",
- "rustc-hash",
- "stdx",
- "syntax",
-]
-
-[[package]]
-name = "ra_hir_ty"
-version = "0.1.0"
-dependencies = [
- "arena",
- "arrayvec",
- "base_db",
- "chalk-ir",
- "chalk-recursive",
- "chalk-solve",
- "ena",
- "expect",
- "hir_def",
- "hir_expand",
+ "hir_ty",
  "itertools",
  "log",
  "profile",
  "rustc-hash",
- "scoped-tls",
- "smallvec",
  "stdx",
  "syntax",
- "test_utils",
- "tracing",
- "tracing-subscriber",
- "tracing-tree",
 ]
 
 [[package]]
@@ -1237,6 +1237,7 @@ dependencies = [
  "expect",
  "flycheck",
  "hir_def",
+ "hir_ty",
  "itertools",
  "jod-thread",
  "log",
@@ -1251,7 +1252,6 @@ dependencies = [
  "profile",
  "project_model",
  "ra_hir",
- "ra_hir_ty",
  "ra_ide",
  "ra_ide_db",
  "ra_ssr",

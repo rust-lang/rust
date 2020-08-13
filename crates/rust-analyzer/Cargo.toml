@@ -51,7 +51,7 @@ ra_ide_db = { path = "../ra_ide_db" }
 ra_ssr = { path = "../ra_ssr" }
 hir = { path = "../ra_hir", package = "ra_hir" }
 hir_def = { path = "../hir_def" }
-hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }
+hir_ty = { path = "../hir_ty" }
 proc_macro_srv = { path = "../proc_macro_srv" }
 
 [target.'cfg(windows)'.dependencies]

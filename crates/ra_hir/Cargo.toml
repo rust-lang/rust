@@ -22,4 +22,4 @@ base_db = { path = "../base_db" }
 profile = { path = "../profile" }
 hir_expand = { path = "../hir_expand" }
 hir_def = { path = "../hir_def" }
-hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }
+hir_ty = { path = "../hir_ty" }

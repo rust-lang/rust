@@ -201,7 +201,7 @@ impl TidyDocs {
             "project_model",
             "syntax",
             "tt",
-            "ra_hir_ty",
+            "hir_ty",
         ];
 
         let mut has_fixmes =
