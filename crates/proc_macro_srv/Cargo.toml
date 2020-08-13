@@ -9,12 +9,13 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-tt = { path = "../tt" }
-ra_mbe = { path = "../ra_mbe" }
-ra_proc_macro = { path = "../ra_proc_macro" }
 goblin = "0.2.1"
 libloading = "0.6.0"
 memmap = "0.7"
+
+tt = { path = "../tt" }
+ra_mbe = { path = "../ra_mbe" }
+ra_proc_macro = { path = "../ra_proc_macro" }
 test_utils = { path = "../test_utils" }
 
 [dev-dependencies]
@@ -22,4 +23,5 @@ cargo_metadata = "0.11.1"
 difference = "2.0.0"
 # used as proc macro test target
 serde_derive = "1.0.106"
+
 toolchain = { path = "../toolchain" }

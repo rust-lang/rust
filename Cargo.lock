@@ -902,6 +902,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc_macro_srv"
+version = "0.0.0"
+dependencies = [
+ "cargo_metadata",
+ "difference",
+ "goblin",
+ "libloading",
+ "memmap",
+ "ra_mbe",
+ "ra_proc_macro",
+ "serde_derive",
+ "test_utils",
+ "toolchain",
+ "tt",
+]
+
+[[package]]
 name = "profile"
 version = "0.0.0"
 dependencies = [
@@ -1133,23 +1150,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proc_macro_srv"
-version = "0.0.0"
-dependencies = [
- "cargo_metadata",
- "difference",
- "goblin",
- "libloading",
- "memmap",
- "ra_mbe",
- "ra_proc_macro",
- "serde_derive",
- "test_utils",
- "toolchain",
- "tt",
-]
-
-[[package]]
 name = "ra_project_model"
 version = "0.1.0"
 dependencies = [
@@ -1271,6 +1271,7 @@ dependencies = [
  "oorandom",
  "parking_lot",
  "pico-args",
+ "proc_macro_srv",
  "profile",
  "ra_cfg",
  "ra_db",
@@ -1280,7 +1281,6 @@ dependencies = [
  "ra_ide",
  "ra_ide_db",
  "ra_mbe",
- "proc_macro_srv",
  "ra_project_model",
  "ra_ssr",
  "rayon",
