@@ -14,7 +14,7 @@ To learn more about how rust-analyzer works, see
 
 We also publish rustdoc docs to pages:
 
-https://rust-analyzer.github.io/rust-analyzer/ra_ide/
+https://rust-analyzer.github.io/rust-analyzer/ide/
 
 Various organizational and process issues are discussed in this document.
 
@@ -159,7 +159,7 @@ IDE should use only types from `hir`, and should not depend on the underling com
 
 ## IDE API
 
-The main IDE crate (`ra_ide`) uses "Plain Old Data" for the API.
+The main IDE crate (`ide`) uses "Plain Old Data" for the API.
 Rather than talking in definitions and references, it talks in Strings and textual offsets.
 In general, API is centered around UI concerns -- the result of the call is what the user sees in the editor, and not what the compiler sees underneath.
 The results are 100% Rust specific though.

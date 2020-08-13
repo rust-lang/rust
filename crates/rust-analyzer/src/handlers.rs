@@ -1,12 +1,16 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. The majority of requests are fulfilled by calling into the
-//! `ra_ide` crate.
+//! `ide` crate.
 
 use std::{
     io::Write as _,
     process::{self, Stdio},
 };
 
+use ide::{
+    FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
+    RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
+};
 use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
@@ -19,10 +23,6 @@ use lsp_types::{
     TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use project_model::TargetKind;
-use ra_ide::{
-    FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
-    RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
-};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use stdx::{format_to, split_once};
@@ -212,7 +212,7 @@ pub(crate) fn handle_on_type_formatting(
     let line_index = snap.analysis.file_line_index(position.file_id)?;
     let line_endings = snap.file_line_endings(position.file_id);
 
-    // in `ra_ide`, the `on_type` invariant is that
+    // in `ide`, the `on_type` invariant is that
     // `text.char_at(position) == typed_char`.
     position.offset -= TextSize::of('.');
     let char_typed = params.ch.chars().next().unwrap_or('\0');

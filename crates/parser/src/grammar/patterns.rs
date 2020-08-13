@@ -79,13 +79,13 @@ const PAT_RECOVERY_SET: TokenSet =
 fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     let m = match p.nth(0) {
         T![box] => box_pat(p),
-        T![ref] | T![mut] => bind_pat(p, true),
+        T![ref] | T![mut] => ident_pat(p, true),
         IDENT => match p.nth(1) {
             // Checks the token after an IDENT to see if a pattern is a path (Struct { .. }) or macro
             // (T![x]).
             T!['('] | T!['{'] | T![!] => path_or_macro_pat(p),
             T![:] if p.nth_at(1, T![::]) => path_or_macro_pat(p),
-            _ => bind_pat(p, true),
+            _ => ident_pat(p, true),
         },
 
         // test type_path_in_pattern
@@ -93,8 +93,8 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
         _ if paths::is_path_start(p) => path_or_macro_pat(p),
         _ if is_literal_pat_start(p) => literal_pat(p),
 
-        T![.] if p.at(T![..]) => dot_dot_pat(p),
-        T![_] => placeholder_pat(p),
+        T![.] if p.at(T![..]) => rest_pat(p),
+        T![_] => wildcard_pat(p),
         T![&] => ref_pat(p),
         T!['('] => tuple_pat(p),
         T!['['] => slice_pat(p),
@@ -149,7 +149,7 @@ fn path_or_macro_pat(p: &mut Parser) -> CompletedMarker {
             TUPLE_STRUCT_PAT
         }
         T!['{'] => {
-            record_field_pat_list(p);
+            record_pat_field_list(p);
             RECORD_PAT
         }
         // test marco_pat
@@ -186,7 +186,7 @@ fn tuple_pat_fields(p: &mut Parser) {
 //     let S { h: _, ..} = ();
 //     let S { h: _, } = ();
 // }
-fn record_field_pat_list(p: &mut Parser) {
+fn record_pat_field_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);
@@ -214,7 +214,7 @@ fn record_field_pat_list(p: &mut Parser) {
                         box_pat(p);
                     }
                     _ => {
-                        bind_pat(p, false);
+                        ident_pat(p, false);
                     }
                 }
                 m.complete(p, RECORD_PAT_FIELD);
@@ -230,7 +230,7 @@ fn record_field_pat_list(p: &mut Parser) {
 
 // test placeholder_pat
 // fn main() { let _ = (); }
-fn placeholder_pat(p: &mut Parser) -> CompletedMarker {
+fn wildcard_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![_]));
     let m = p.start();
     p.bump(T![_]);
@@ -263,7 +263,7 @@ fn placeholder_pat(p: &mut Parser) -> CompletedMarker {
 //     let [head, .., mid, tail @ ..] = ();
 //     let [head, .., mid, .., cons] = ();
 // }
-fn dot_dot_pat(p: &mut Parser) -> CompletedMarker {
+fn rest_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![..]));
     let m = p.start();
     p.bump(T![..]);
@@ -353,7 +353,7 @@ fn pat_list(p: &mut Parser, ket: SyntaxKind) {
 //     let e @ _ = ();
 //     let ref mut f @ g @ _ = ();
 // }
-fn bind_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
+fn ident_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
     let m = p.start();
     p.eat(T![ref]);
     p.eat(T![mut]);

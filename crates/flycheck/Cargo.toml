@@ -1,9 +1,9 @@
 [package]
-edition = "2018"
 name = "flycheck"
-version = "0.1.0"
-authors = ["rust-analyzer developers"]
+version = "0.0.0"
 license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
 
 [lib]
 doctest = false
@@ -14,4 +14,5 @@ log = "0.4.8"
 cargo_metadata = "0.11.1"
 serde_json = "1.0.48"
 jod-thread = "0.1.1"
+
 toolchain = { path = "../toolchain" }

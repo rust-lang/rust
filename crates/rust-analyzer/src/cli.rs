@@ -10,7 +10,7 @@ mod ssr;
 use std::io::Read;
 
 use anyhow::Result;
-use ra_ide::Analysis;
+use ide::Analysis;
 use syntax::{AstNode, SourceFile};
 
 pub use self::{

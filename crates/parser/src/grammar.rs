@@ -142,19 +142,19 @@ pub(crate) fn reparser(
 ) -> Option<fn(&mut Parser)> {
     let res = match node {
         BLOCK_EXPR => expressions::block_expr,
-        RECORD_FIELD_LIST => items::record_field_def_list,
-        RECORD_EXPR_FIELD_LIST => items::record_field_list,
-        VARIANT_LIST => items::enum_variant_list,
+        RECORD_FIELD_LIST => items::record_field_list,
+        RECORD_EXPR_FIELD_LIST => items::record_expr_field_list,
+        VARIANT_LIST => items::variant_list,
         MATCH_ARM_LIST => items::match_arm_list,
         USE_TREE_LIST => items::use_tree_list,
         EXTERN_ITEM_LIST => items::extern_item_list,
         TOKEN_TREE if first_child? == T!['{'] => items::token_tree,
         ASSOC_ITEM_LIST => match parent? {
-            IMPL => items::impl_item_list,
-            TRAIT => items::trait_item_list,
+            IMPL => items::assoc_item_list,
+            TRAIT => items::assoc_item_list,
             _ => return None,
         },
-        ITEM_LIST => items::mod_item_list,
+        ITEM_LIST => items::item_list,
         _ => return None,
     };
     Some(res)
@@ -217,7 +217,7 @@ fn opt_visibility(p: &mut Parser) -> bool {
     true
 }
 
-fn opt_alias(p: &mut Parser) {
+fn opt_rename(p: &mut Parser) {
     if p.at(T![as]) {
         let m = p.start();
         p.bump(T![as]);
@@ -239,7 +239,7 @@ fn abi(p: &mut Parser) {
     abi.complete(p, ABI);
 }
 
-fn opt_fn_ret_type(p: &mut Parser) -> bool {
+fn opt_ret_type(p: &mut Parser) -> bool {
     if p.at(T![->]) {
         let m = p.start();
         p.bump(T![->]);

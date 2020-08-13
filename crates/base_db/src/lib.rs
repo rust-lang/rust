@@ -1,4 +1,4 @@
-//! base_db defines basic database traits. The concrete DB is defined by ra_ide.
+//! base_db defines basic database traits. The concrete DB is defined by ide.
 mod cancellation;
 mod input;
 pub mod fixture;

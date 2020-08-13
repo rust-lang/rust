@@ -2,13 +2,13 @@
 
 use super::*;
 
-pub(super) fn struct_def(p: &mut Parser, m: Marker) {
+pub(super) fn strukt(p: &mut Parser, m: Marker) {
     assert!(p.at(T![struct]));
     p.bump(T![struct]);
     struct_or_union(p, m, T![struct], STRUCT);
 }
 
-pub(super) fn union_def(p: &mut Parser, m: Marker) {
+pub(super) fn union(p: &mut Parser, m: Marker) {
     assert!(p.at_contextual_kw("union"));
     p.bump_remap(T![union]);
     struct_or_union(p, m, T![union], UNION);
@@ -16,7 +16,7 @@ pub(super) fn union_def(p: &mut Parser, m: Marker) {
 
 fn struct_or_union(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
     name_r(p, ITEM_RECOVERY_SET);
-    type_params::opt_type_param_list(p);
+    type_params::opt_generic_param_list(p);
     match p.current() {
         T![where] => {
             type_params::opt_where_clause(p);
@@ -24,7 +24,7 @@ fn struct_or_union(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
                 T![;] => {
                     p.bump(T![;]);
                 }
-                T!['{'] => record_field_def_list(p),
+                T!['{'] => record_field_list(p),
                 _ => {
                     //FIXME: special case `(` error message
                     p.error("expected `;` or `{`");
@@ -34,9 +34,9 @@ fn struct_or_union(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
         T![;] if kw == T![struct] => {
             p.bump(T![;]);
         }
-        T!['{'] => record_field_def_list(p),
+        T!['{'] => record_field_list(p),
         T!['('] if kw == T![struct] => {
-            tuple_field_def_list(p);
+            tuple_field_list(p);
             // test tuple_struct_where
             // struct Test<T>(T) where T: Clone;
             // struct Test<T>(T);
@@ -53,21 +53,21 @@ fn struct_or_union(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
     m.complete(p, def);
 }
 
-pub(super) fn enum_def(p: &mut Parser, m: Marker) {
+pub(super) fn enum_(p: &mut Parser, m: Marker) {
     assert!(p.at(T![enum]));
     p.bump(T![enum]);
     name_r(p, ITEM_RECOVERY_SET);
-    type_params::opt_type_param_list(p);
+    type_params::opt_generic_param_list(p);
     type_params::opt_where_clause(p);
     if p.at(T!['{']) {
-        enum_variant_list(p);
+        variant_list(p);
     } else {
         p.error("expected `{`")
     }
     m.complete(p, ENUM);
 }
 
-pub(crate) fn enum_variant_list(p: &mut Parser) {
+pub(crate) fn variant_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);
@@ -77,12 +77,12 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
             continue;
         }
         let var = p.start();
-        attributes::outer_attributes(p);
+        attributes::outer_attrs(p);
         if p.at(IDENT) {
             name(p);
             match p.current() {
-                T!['{'] => record_field_def_list(p),
-                T!['('] => tuple_field_def_list(p),
+                T!['{'] => record_field_list(p),
+                T!['('] => tuple_field_list(p),
                 _ => (),
             }
 
@@ -104,7 +104,7 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
     m.complete(p, VARIANT_LIST);
 }
 
-pub(crate) fn record_field_def_list(p: &mut Parser) {
+pub(crate) fn record_field_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);
@@ -128,7 +128,7 @@ pub(crate) fn record_field_def_list(p: &mut Parser) {
         //     #[serde(with = "url_serde")]
         //     pub uri: Uri,
         // }
-        attributes::outer_attributes(p);
+        attributes::outer_attrs(p);
         opt_visibility(p);
         if p.at(IDENT) {
             name(p);
@@ -142,7 +142,7 @@ pub(crate) fn record_field_def_list(p: &mut Parser) {
     }
 }
 
-fn tuple_field_def_list(p: &mut Parser) {
+fn tuple_field_list(p: &mut Parser) {
     assert!(p.at(T!['(']));
     let m = p.start();
     if !p.expect(T!['(']) {
@@ -159,7 +159,7 @@ fn tuple_field_def_list(p: &mut Parser) {
         // enum S {
         //     Uri(#[serde(with = "url_serde")] Uri),
         // }
-        attributes::outer_attributes(p);
+        attributes::outer_attrs(p);
         opt_visibility(p);
         if !p.at_ts(types::TYPE_FIRST) {
             p.error("expected a type");

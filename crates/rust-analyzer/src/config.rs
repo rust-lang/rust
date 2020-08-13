@@ -10,9 +10,9 @@
 use std::{ffi::OsString, path::PathBuf};
 
 use flycheck::FlycheckConfig;
+use ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
 use lsp_types::ClientCapabilities;
 use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
-use ra_ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
 use serde::Deserialize;
 use vfs::AbsPathBuf;
 

@@ -2,7 +2,7 @@
 
 use super::*;
 
-pub(super) fn opt_type_arg_list(p: &mut Parser, colon_colon_required: bool) {
+pub(super) fn opt_generic_arg_list(p: &mut Parser, colon_colon_required: bool) {
     let m;
     if p.at(T![::]) && p.nth(2) == T![<] {
         m = p.start();
@@ -16,7 +16,7 @@ pub(super) fn opt_type_arg_list(p: &mut Parser, colon_colon_required: bool) {
     }
 
     while !p.at(EOF) && !p.at(T![>]) {
-        type_arg(p);
+        generic_arg(p);
         if !p.at(T![>]) && !p.expect(T![,]) {
             break;
         }
@@ -27,7 +27,7 @@ pub(super) fn opt_type_arg_list(p: &mut Parser, colon_colon_required: bool) {
 
 // test type_arg
 // type A = B<'static, i32, 1, { 2 }, Item=u64>;
-fn type_arg(p: &mut Parser) {
+fn generic_arg(p: &mut Parser) {
     let m = p.start();
     match p.current() {
         LIFETIME => {

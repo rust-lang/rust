@@ -1,4 +1,4 @@
-//! ra_ide crate provides "ide-centric" APIs for the rust-analyzer. That is,
+//! ide crate provides "ide-centric" APIs for the rust-analyzer. That is,
 //! it generally operates with files and text ranges, and returns results as
 //! Strings, suitable for displaying to the human.
 //!

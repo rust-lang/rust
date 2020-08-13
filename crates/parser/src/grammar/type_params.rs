@@ -2,14 +2,14 @@
 
 use super::*;
 
-pub(super) fn opt_type_param_list(p: &mut Parser) {
+pub(super) fn opt_generic_param_list(p: &mut Parser) {
     if !p.at(T![<]) {
         return;
     }
-    type_param_list(p);
+    generic_param_list(p);
 }
 
-fn type_param_list(p: &mut Parser) {
+fn generic_param_list(p: &mut Parser) {
     assert!(p.at(T![<]));
     let m = p.start();
     p.bump(T![<]);
@@ -20,12 +20,12 @@ fn type_param_list(p: &mut Parser) {
         // test generic_lifetime_type_attribute
         // fn foo<#[derive(Lifetime)] 'a, #[derive(Type)] T>(_: &'a T) {
         // }
-        attributes::outer_attributes(p);
+        attributes::outer_attrs(p);
 
         match p.current() {
             LIFETIME => lifetime_param(p, m),
             IDENT => type_param(p, m),
-            CONST_KW => type_const_param(p, m),
+            CONST_KW => const_param(p, m),
             _ => {
                 m.abandon(p);
                 p.err_and_bump("expected type parameter")
@@ -65,7 +65,7 @@ fn type_param(p: &mut Parser, m: Marker) {
 
 // test const_param
 // struct S<const N: u32>;
-fn type_const_param(p: &mut Parser, m: Marker) {
+fn const_param(p: &mut Parser, m: Marker) {
     assert!(p.at(CONST_KW));
     p.bump(T![const]);
     name(p);

@@ -2,7 +2,7 @@
 
 use super::*;
 
-pub(super) fn use_item(p: &mut Parser, m: Marker) {
+pub(super) fn use_(p: &mut Parser, m: Marker) {
     assert!(p.at(T![use]));
     p.bump(T![use]);
     use_tree(p, true);
@@ -80,7 +80,7 @@ fn use_tree(p: &mut Parser, top_level: bool) {
                     //  running::out::of::synonyms::for_::different::*
                     // };
                     // use Trait as _;
-                    opt_alias(p);
+                    opt_rename(p);
                 }
                 T![:] if p.at(T![::]) => {
                     p.bump(T![::]);

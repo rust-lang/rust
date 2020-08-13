@@ -346,7 +346,7 @@ dependencies = [
 
 [[package]]
 name = "expect"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "difference",
  "once_cell",
@@ -385,7 +385,7 @@ dependencies = [
 
 [[package]]
 name = "flycheck"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "cargo_metadata",
  "crossbeam-channel",
@@ -577,6 +577,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2456aef2e6b6a9784192ae780c0f15bc57df0e918585282325e8c8ac27737654"
 dependencies = [
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "ide"
+version = "0.0.0"
+dependencies = [
+ "assists",
+ "base_db",
+ "cfg",
+ "either",
+ "expect",
+ "hir",
+ "ide_db",
+ "indexmap",
+ "itertools",
+ "log",
+ "oorandom",
+ "profile",
+ "rustc-hash",
+ "ssr",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "text_edit",
 ]
 
 [[package]]
@@ -992,7 +1016,7 @@ dependencies = [
 
 [[package]]
 name = "paths"
-version = "0.1.0"
+version = "0.0.0"
 
 [[package]]
 name = "percent-encoding"
@@ -1052,7 +1076,7 @@ dependencies = [
 
 [[package]]
 name = "proc_macro_api"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "crossbeam-channel",
  "jod-thread",
@@ -1117,30 +1141,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa563d17ecb180e500da1cfd2b028310ac758de548efdd203e18f283af693f37"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "ra_ide"
-version = "0.1.0"
-dependencies = [
- "assists",
- "base_db",
- "cfg",
- "either",
- "expect",
- "hir",
- "ide_db",
- "indexmap",
- "itertools",
- "log",
- "oorandom",
- "profile",
- "rustc-hash",
- "ssr",
- "stdx",
- "syntax",
- "test_utils",
- "text_edit",
 ]
 
 [[package]]
@@ -1213,7 +1213,7 @@ dependencies = [
 
 [[package]]
 name = "rust-analyzer"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "base_db",
@@ -1225,6 +1225,7 @@ dependencies = [
  "hir",
  "hir_def",
  "hir_ty",
+ "ide",
  "ide_db",
  "itertools",
  "jod-thread",
@@ -1239,7 +1240,6 @@ dependencies = [
  "proc_macro_srv",
  "profile",
  "project_model",
- "ra_ide",
  "rayon",
  "rustc-hash",
  "serde",
@@ -1444,7 +1444,7 @@ dependencies = [
 
 [[package]]
 name = "ssr"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "base_db",
  "expect",
@@ -1458,7 +1458,7 @@ dependencies = [
 
 [[package]]
 name = "stdx"
-version = "0.1.0"
+version = "0.0.0"
 
 [[package]]
 name = "syn"
@@ -1515,7 +1515,7 @@ dependencies = [
 
 [[package]]
 name = "test_utils"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "difference",
  "rustc-hash",
@@ -1729,7 +1729,7 @@ dependencies = [
 
 [[package]]
 name = "vfs"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "fst",
  "paths",
@@ -1738,7 +1738,7 @@ dependencies = [
 
 [[package]]
 name = "vfs-notify"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "crossbeam-channel",
  "jod-thread",

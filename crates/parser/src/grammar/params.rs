@@ -47,20 +47,20 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     if let FnDef = flavor {
         // test self_param_outer_attr
         // fn f(#[must_use] self) {}
-        attributes::outer_attributes(p);
+        attributes::outer_attrs(p);
         opt_self_param(p);
     }
 
     while !p.at(EOF) && !p.at(ket) {
         // test param_outer_arg
         // fn f(#[attr1] pat: Type) {}
-        attributes::outer_attributes(p);
+        attributes::outer_attrs(p);
 
-        if !p.at_ts(VALUE_PARAMETER_FIRST) {
+        if !p.at_ts(PARAM_FIRST) {
             p.error("expected value parameter");
             break;
         }
-        let param = value_parameter(p, flavor);
+        let param = param(p, flavor);
         if !p.at(ket) {
             p.expect(T![,]);
         }
@@ -73,11 +73,11 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     m.complete(p, PARAM_LIST);
 }
 
-const VALUE_PARAMETER_FIRST: TokenSet = patterns::PATTERN_FIRST.union(types::TYPE_FIRST);
+const PARAM_FIRST: TokenSet = patterns::PATTERN_FIRST.union(types::TYPE_FIRST);
 
 struct Variadic(bool);
 
-fn value_parameter(p: &mut Parser, flavor: Flavor) -> Variadic {
+fn param(p: &mut Parser, flavor: Flavor) -> Variadic {
     let mut res = Variadic(false);
     let m = p.start();
     match flavor {
