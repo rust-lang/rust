@@ -502,18 +502,19 @@ impl<'db> SemanticsImpl<'db> {
     fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db> {
         let node = self.find_file(node.clone());
         let resolver = self.analyze2(node.as_ref(), None).resolver;
-        SemanticsScope { db: self.db, resolver }
+        SemanticsScope { db: self.db, file_id: node.file_id, resolver }
     }
 
     fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db> {
         let node = self.find_file(node.clone());
         let resolver = self.analyze2(node.as_ref(), Some(offset)).resolver;
-        SemanticsScope { db: self.db, resolver }
+        SemanticsScope { db: self.db, file_id: node.file_id, resolver }
     }
 
     fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
+        let file_id = self.db.lookup_intern_trait(def.id).id.file_id;
         let resolver = def.id.resolver(self.db.upcast());
-        SemanticsScope { db: self.db, resolver }
+        SemanticsScope { db: self.db, file_id, resolver }
     }
 
     fn analyze(&self, node: &SyntaxNode) -> SourceAnalyzer {
@@ -709,6 +710,7 @@ fn find_root(node: &SyntaxNode) -> SyntaxNode {
 #[derive(Debug)]
 pub struct SemanticsScope<'a> {
     pub db: &'a dyn HirDatabase,
+    file_id: HirFileId,
     resolver: Resolver,
 }
 
@@ -750,6 +752,14 @@ impl<'a> SemanticsScope<'a> {
             };
             f(name, def)
         })
+    }
+
+    /// Resolve a path as-if it was written at the given scope. This is
+    /// necessary a heuristic, as it doesn't take hygiene into account.
+    pub fn resolve_hypothetical(&self, path: &ast::Path) -> Option<PathResolution> {
+        let hygiene = Hygiene::new(self.db.upcast(), self.file_id);
+        let path = Path::from_src(path.clone(), &hygiene)?;
+        self.resolve_hir_path(&path)
     }
 
     pub fn resolve_hir_path(&self, path: &Path) -> Option<PathResolution> {

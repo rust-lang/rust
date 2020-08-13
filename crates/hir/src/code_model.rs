@@ -883,6 +883,13 @@ where
 }
 
 impl AssocItem {
+    pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
+        match self {
+            AssocItem::Function(it) => Some(it.name(db)),
+            AssocItem::Const(it) => it.name(db),
+            AssocItem::TypeAlias(it) => Some(it.name(db)),
+        }
+    }
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         match self {
             AssocItem::Function(f) => f.module(db),
