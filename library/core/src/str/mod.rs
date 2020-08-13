@@ -420,7 +420,7 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
     // Also relies on `&str` and `&[u8]` having the same layout.
-    unsafe { mem::transmute(self) }
+    unsafe { mem::transmute(v) }
 }
 
 /// Converts a slice of bytes to a string slice without checking
