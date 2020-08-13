@@ -68,17 +68,6 @@ where
     F: Fn(BasicBlock) -> bool,
 {
     let terminator = match *terminator_kind {
-        TerminatorKind::FalseEdge { real_target, imaginary_target }
-            if predicate(real_target) && predicate(imaginary_target) =>
-        {
-            TerminatorKind::Unreachable
-        }
-        TerminatorKind::FalseUnwind { real_target, unwind }
-            if predicate(real_target) && unwind.map_or(true, &predicate) =>
-        {
-            TerminatorKind::Unreachable
-        }
-
         TerminatorKind::Goto { target } if predicate(target) => TerminatorKind::Unreachable,
         TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
             let original_targets_len = targets.len();
