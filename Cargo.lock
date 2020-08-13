@@ -939,6 +939,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "project_model"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "arena",
+ "cargo_metadata",
+ "cfg",
+ "log",
+ "paths",
+ "ra_db",
+ "ra_proc_macro",
+ "rustc-hash",
+ "serde",
+ "serde_json",
+ "stdx",
+ "toolchain",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1135,25 +1154,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_project_model"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "arena",
- "cargo_metadata",
- "cfg",
- "log",
- "paths",
- "ra_db",
- "ra_proc_macro",
- "rustc-hash",
- "serde",
- "serde_json",
- "stdx",
- "toolchain",
-]
-
-[[package]]
 name = "ra_ssr"
 version = "0.1.0"
 dependencies = [
@@ -1257,13 +1257,13 @@ dependencies = [
  "pico-args",
  "proc_macro_srv",
  "profile",
+ "project_model",
  "ra_db",
  "ra_hir",
  "ra_hir_def",
  "ra_hir_ty",
  "ra_ide",
  "ra_ide_db",
- "ra_project_model",
  "ra_ssr",
  "rayon",
  "rustc-hash",

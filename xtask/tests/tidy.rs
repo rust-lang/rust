@@ -198,7 +198,7 @@ impl TidyDocs {
             "mbe",
             "parser",
             "profile",
-            "ra_project_model",
+            "project_model",
             "syntax",
             "tt",
             "ra_hir_ty",

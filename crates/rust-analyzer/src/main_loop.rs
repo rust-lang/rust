@@ -21,7 +21,7 @@ use crate::{
     lsp_utils::{apply_document_changes, is_canceled, notification_is, Progress},
     Result,
 };
-use ra_project_model::ProjectWorkspace;
+use project_model::ProjectWorkspace;
 use vfs::ChangeKind;
 
 pub fn main_loop(config: Config, connection: Connection) -> Result<()> {

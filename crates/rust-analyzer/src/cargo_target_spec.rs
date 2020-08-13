@@ -1,8 +1,8 @@
 //! See `CargoTargetSpec`
 
 use cfg::CfgExpr;
+use project_model::{self, TargetKind};
 use ra_ide::{FileId, RunnableKind, TestId};
-use ra_project_model::{self, TargetKind};
 use vfs::AbsPathBuf;
 
 use crate::{global_state::GlobalStateSnapshot, Result};

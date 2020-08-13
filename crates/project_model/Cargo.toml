@@ -1,9 +1,9 @@
 [package]
-edition = "2018"
-name = "ra_project_model"
-version = "0.1.0"
-authors = ["rust-analyzer developers"]
+name = "project_model"
+version = "0.0.0"
 license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
 
 [lib]
 doctest = false
@@ -11,8 +11,10 @@ doctest = false
 [dependencies]
 log = "0.4.8"
 rustc-hash = "1.1.0"
-
 cargo_metadata = "0.11.1"
+serde = { version = "1.0.106", features = ["derive"] }
+serde_json = "1.0.48"
+anyhow = "1.0.26"
 
 arena = { path = "../arena" }
 cfg = { path = "../cfg" }
@@ -21,8 +23,3 @@ toolchain = { path = "../toolchain" }
 ra_proc_macro =  { path = "../ra_proc_macro" }
 paths =  { path = "../paths" }
 stdx =  { path = "../stdx" }
-
-serde = { version = "1.0.106", features = ["derive"] }
-serde_json = "1.0.48"
-
-anyhow = "1.0.26"
