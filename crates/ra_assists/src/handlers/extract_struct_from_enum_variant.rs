@@ -1,11 +1,10 @@
 use hir::{EnumVariant, Module, ModuleDef, Name};
 use ra_db::FileId;
-use ra_fmt::leading_indent;
 use ra_ide_db::{defs::Definition, search::Reference, RootDatabase};
 use rustc_hash::FxHashSet;
 use syntax::{
     algo::find_node_at_offset,
-    ast::{self, ArgListOwner, AstNode, NameOwner, VisibilityOwner},
+    ast::{self, edit::IndentLevel, ArgListOwner, AstNode, NameOwner, VisibilityOwner},
     SourceFile, TextRange, TextSize,
 };
 
@@ -112,7 +111,7 @@ fn insert_import(
     Some(())
 }
 
-// FIXME: this should use strongly-typed `make`, rather than string manipulation1
+// FIXME: this should use strongly-typed `make`, rather than string manipulation.
 fn extract_struct_def(
     builder: &mut AssistBuilder,
     enum_: &ast::Enum,
@@ -127,11 +126,7 @@ fn extract_struct_def(
     } else {
         "".to_string()
     };
-    let indent = if let Some(indent) = leading_indent(enum_.syntax()) {
-        indent.to_string()
-    } else {
-        "".to_string()
-    };
+    let indent = IndentLevel::from_node(enum_.syntax());
     let struct_def = format!(
         r#"{}struct {}{};
 

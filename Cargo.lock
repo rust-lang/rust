@@ -955,7 +955,6 @@ dependencies = [
  "itertools",
  "profile",
  "ra_db",
- "ra_fmt",
  "ra_hir",
  "ra_ide_db",
  "rustc-hash",
@@ -978,14 +977,6 @@ dependencies = [
  "test_utils",
  "tt",
  "vfs",
-]
-
-[[package]]
-name = "ra_fmt"
-version = "0.1.0"
-dependencies = [
- "itertools",
- "syntax",
 ]
 
 [[package]]
@@ -1092,7 +1083,6 @@ dependencies = [
  "profile",
  "ra_assists",
  "ra_db",
- "ra_fmt",
  "ra_hir",
  "ra_ide_db",
  "ra_ssr",

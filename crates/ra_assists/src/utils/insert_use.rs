@@ -2,13 +2,15 @@
 // FIXME: rewrite according to the plan, outlined in
 // https://github.com/rust-analyzer/rust-analyzer/issues/3301#issuecomment-592931553
 
+use std::iter::successors;
+
 use either::Either;
 use hir::{self, ModPath};
 use syntax::{
     ast::{self, NameOwner, VisibilityOwner},
-    AstNode, Direction, SmolStr,
+    AstNode, AstToken, Direction, SmolStr,
     SyntaxKind::{PATH, PATH_SEGMENT},
-    SyntaxNode, T,
+    SyntaxNode, SyntaxToken, T,
 };
 use text_edit::TextEditBuilder;
 
@@ -442,7 +444,7 @@ fn make_assist_add_new_use(
     edit: &mut TextEditBuilder,
 ) {
     if let Some(anchor) = anchor {
-        let indent = ra_fmt::leading_indent(anchor);
+        let indent = leading_indent(anchor);
         let mut buf = String::new();
         if after {
             buf.push_str("\n");
@@ -522,5 +524,24 @@ fn make_assist_add_nested_import(
         }
         edit.insert(start, buf);
         edit.insert(end, "}".to_string());
+    }
+}
+
+/// If the node is on the beginning of the line, calculate indent.
+fn leading_indent(node: &SyntaxNode) -> Option<SmolStr> {
+    for token in prev_tokens(node.first_token()?) {
+        if let Some(ws) = ast::Whitespace::cast(token.clone()) {
+            let ws_text = ws.text();
+            if let Some(pos) = ws_text.rfind('\n') {
+                return Some(ws_text[pos + 1..].into());
+            }
+        }
+        if token.text().contains('\n') {
+            break;
+        }
+    }
+    return None;
+    fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
+        successors(token.prev_token(), |token| token.prev_token())
     }
 }

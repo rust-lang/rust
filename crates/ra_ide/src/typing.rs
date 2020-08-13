@@ -16,11 +16,10 @@
 mod on_enter;
 
 use ra_db::{FilePosition, SourceDatabase};
-use ra_fmt::leading_indent;
 use ra_ide_db::{source_change::SourceFileEdit, RootDatabase};
 use syntax::{
     algo::find_node_at_offset,
-    ast::{self, AstToken},
+    ast::{self, edit::IndentLevel, AstToken},
     AstNode, SourceFile,
     SyntaxKind::{FIELD_EXPR, METHOD_CALL_EXPR},
     TextRange, TextSize,
@@ -104,7 +103,7 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     if !matches!(parent.kind(), FIELD_EXPR | METHOD_CALL_EXPR) {
         return None;
     }
-    let prev_indent = leading_indent(&parent)?;
+    let prev_indent = IndentLevel::from_node(&parent);
     let target_indent = format!("    {}", prev_indent);
     let target_indent_len = TextSize::of(&target_indent);
     if current_indent_len == target_indent_len {
