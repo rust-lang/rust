@@ -39,7 +39,6 @@ mod matching_brace;
 mod parent_module;
 mod references;
 mod runnables;
-mod ssr;
 mod status;
 mod syntax_highlighting;
 mod syntax_tree;
@@ -95,7 +94,7 @@ pub use ide_db::{
     RootDatabase,
 };
 pub use ra_assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
-pub use ra_ssr::SsrError;
+pub use ssr::SsrError;
 pub use text_edit::{Indel, TextEdit};
 
 pub type Cancelable<T> = Result<T, Canceled>;
@@ -515,20 +514,23 @@ impl Analysis {
         &self,
         query: &str,
         parse_only: bool,
-        position: FilePosition,
+        resolve_context: FilePosition,
         selections: Vec<FileRange>,
     ) -> Cancelable<Result<SourceChange, SsrError>> {
         self.with_db(|db| {
-            let edits = ssr::parse_search_replace(query, parse_only, db, position, selections)?;
+            let rule: ssr::SsrRule = query.parse()?;
+            let mut match_finder = ssr::MatchFinder::in_context(db, resolve_context, selections);
+            match_finder.add_rule(rule)?;
+            let edits = if parse_only { Vec::new() } else { match_finder.edits() };
             Ok(SourceChange::from(edits))
         })
     }
 
     /// Performs an operation on that may be Canceled.
-    fn with_db<F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe, T>(
-        &self,
-        f: F,
-    ) -> Cancelable<T> {
+    fn with_db<F, T>(&self, f: F) -> Cancelable<T>
+    where
+        F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe,
+    {
         self.db.catch_canceled(f)
     }
 }

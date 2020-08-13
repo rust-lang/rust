@@ -48,7 +48,7 @@ toolchain = { path = "../toolchain" }
 # This should only be used in CLI
 base_db = { path = "../base_db" }
 ide_db = { path = "../ide_db" }
-ra_ssr = { path = "../ra_ssr" }
+ssr = { path = "../ssr" }
 hir = { path = "../hir" }
 hir_def = { path = "../hir_def" }
 hir_ty = { path = "../hir_ty" }

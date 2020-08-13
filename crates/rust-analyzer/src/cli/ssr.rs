@@ -1,7 +1,7 @@
 //! Applies structured search replace rules from the command line.
 
 use crate::cli::{load_cargo::load_cargo, Result};
-use ra_ssr::{MatchFinder, SsrPattern, SsrRule};
+use ssr::{MatchFinder, SsrPattern, SsrRule};
 
 pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
     use base_db::SourceDatabaseExt;

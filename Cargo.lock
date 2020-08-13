@@ -1135,23 +1135,9 @@ dependencies = [
  "oorandom",
  "profile",
  "ra_assists",
- "ra_ssr",
  "rustc-hash",
+ "ssr",
  "stdx",
- "syntax",
- "test_utils",
- "text_edit",
-]
-
-[[package]]
-name = "ra_ssr"
-version = "0.1.0"
-dependencies = [
- "base_db",
- "expect",
- "hir",
- "ide_db",
- "rustc-hash",
  "syntax",
  "test_utils",
  "text_edit",
@@ -1254,11 +1240,11 @@ dependencies = [
  "profile",
  "project_model",
  "ra_ide",
- "ra_ssr",
  "rayon",
  "rustc-hash",
  "serde",
  "serde_json",
+ "ssr",
  "stdx",
  "syntax",
  "test_utils",
@@ -1454,6 +1440,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f7909a1d8bc166a862124d84fdc11bda0ea4ed3157ccca662296919c2972db1"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "ssr"
+version = "0.1.0"
+dependencies = [
+ "base_db",
+ "expect",
+ "hir",
+ "ide_db",
+ "rustc-hash",
+ "syntax",
+ "test_utils",
+ "text_edit",
 ]
 
 [[package]]
