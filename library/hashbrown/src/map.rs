@@ -846,7 +846,7 @@ where
             Some(item) => unsafe {
                 let &(ref key, ref value) = item.as_ref();
                 Some((key, value))
-            }
+            },
             None => None,
         }
     }
@@ -886,7 +886,7 @@ where
             Some(item) => unsafe {
                 let &mut (ref key, ref mut value) = item.as_mut();
                 Some((key, value))
-            }
+            },
             None => None,
         }
     }
@@ -1390,7 +1390,14 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next(&mut self.f)
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, self.inner.iter.size_hint().1)
+    }
 }
+
+impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
 
 /// Portions of `DrainFilter` shared with `set::DrainFilter`
 pub(super) struct DrainFilterInner<'a, K, V> {
@@ -1585,7 +1592,7 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
             Some(item) => unsafe {
                 let &(ref key, ref value) = item.as_ref();
                 Some((key, value))
-            }
+            },
             None => None,
         }
     }
@@ -2055,7 +2062,7 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
             Some(x) => unsafe {
                 let r = x.as_ref();
                 Some((&r.0, &r.1))
-            }
+            },
             None => None,
         }
     }
@@ -2083,7 +2090,7 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
             Some(x) => unsafe {
                 let r = x.as_mut();
                 Some((&r.0, &mut r.1))
-            }
+            },
             None => None,
         }
     }

@@ -406,7 +406,7 @@ impl<T> RawTable<T> {
         // Avoid `Option::ok_or_else` because it bloats LLVM IR.
         let (layout, ctrl_offset) = match calculate_layout::<T>(buckets) {
             Some(lco) => lco,
-            None => return Err(fallability.capacity_overflow())
+            None => return Err(fallability.capacity_overflow()),
         };
         let ptr = match NonNull::new(alloc(layout)) {
             Some(ptr) => ptr,
@@ -688,7 +688,10 @@ impl<T> RawTable<T> {
                 *self = Self::with_capacity(min_size)
             } else {
                 // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
-                if self.resize(min_size, hasher, Fallibility::Infallible).is_err() {
+                if self
+                    .resize(min_size, hasher, Fallibility::Infallible)
+                    .is_err()
+                {
                     unsafe { hint::unreachable_unchecked() }
                 }
             }
@@ -701,7 +704,10 @@ impl<T> RawTable<T> {
     pub fn reserve(&mut self, additional: usize, hasher: impl Fn(&T) -> u64) {
         if additional > self.growth_left {
             // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
-            if self.reserve_rehash(additional, hasher, Fallibility::Infallible).is_err() {
+            if self
+                .reserve_rehash(additional, hasher, Fallibility::Infallible)
+                .is_err()
+            {
                 unsafe { hint::unreachable_unchecked() }
             }
         }
@@ -1114,7 +1120,7 @@ impl<T: Clone> Clone for RawTable<T> {
                     match Self::new_uninitialized(self.buckets(), Fallibility::Infallible) {
                         Ok(table) => table,
                         Err(_) => hint::unreachable_unchecked(),
-                    }
+                    },
                 );
 
                 new_table.clone_from_spec(self, |new_table| {
@@ -1151,7 +1157,7 @@ impl<T: Clone> Clone for RawTable<T> {
                         match Self::new_uninitialized(source.buckets(), Fallibility::Infallible) {
                             Ok(table) => table,
                             Err(_) => hint::unreachable_unchecked(),
-                        }
+                        },
                     );
                 }
 

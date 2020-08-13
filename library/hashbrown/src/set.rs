@@ -1462,7 +1462,14 @@ where
         let (k, _) = self.inner.next(&mut |k, _| f(k))?;
         Some(k)
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, self.inner.iter.size_hint().1)
+    }
 }
+
+impl<K, F> FusedIterator for DrainFilter<'_, K, F> where F: FnMut(&K) -> bool {}
 
 impl<T, S> Clone for Intersection<'_, T, S> {
     #[cfg_attr(feature = "inline-more", inline)]
