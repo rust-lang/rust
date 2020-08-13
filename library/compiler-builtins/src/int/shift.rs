@@ -20,6 +20,7 @@ trait Ashl: Int + LargeInt {
     }
 }
 
+impl Ashl for u32 {}
 impl Ashl for u64 {}
 impl Ashl for u128 {}
 
@@ -47,6 +48,7 @@ trait Ashr: Int + LargeInt {
     }
 }
 
+impl Ashr for i32 {}
 impl Ashr for i64 {}
 impl Ashr for i128 {}
 
@@ -70,10 +72,16 @@ trait Lshr: Int + LargeInt {
     }
 }
 
+impl Lshr for u32 {}
 impl Lshr for u64 {}
 impl Lshr for u128 {}
 
 intrinsics! {
+    #[maybe_use_optimized_c_shim]
+    pub extern "C" fn __ashlsi3(a: u32, b: u32) -> u32 {
+        a.ashl(b)
+    }
+
     #[maybe_use_optimized_c_shim]
     #[arm_aeabi_alias = __aeabi_llsl]
     pub extern "C" fn __ashldi3(a: u64, b: u32) -> u64 {
@@ -85,6 +93,11 @@ intrinsics! {
     }
 
     #[maybe_use_optimized_c_shim]
+    pub extern "C" fn __ashrsi3(a: i32, b: u32) -> i32 {
+        a.ashr(b)
+    }
+
+    #[maybe_use_optimized_c_shim]
     #[arm_aeabi_alias = __aeabi_lasr]
     pub extern "C" fn __ashrdi3(a: i64, b: u32) -> i64 {
         a.ashr(b)
@@ -92,6 +105,11 @@ intrinsics! {
 
     pub extern "C" fn __ashrti3(a: i128, b: u32) -> i128 {
         a.ashr(b)
+    }
+
+    #[maybe_use_optimized_c_shim]
+    pub extern "C" fn __lshrsi3(a: u32, b: u32) -> u32 {
+        a.lshr(b)
     }
 
     #[maybe_use_optimized_c_shim]
