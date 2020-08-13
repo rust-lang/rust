@@ -17,7 +17,6 @@ stdx = { path = "../stdx" }
 
 syntax = { path = "../syntax" }
 text_edit = { path = "../text_edit" }
-ra_fmt = { path = "../ra_fmt" }
 profile = { path = "../profile" }
 ra_db = { path = "../ra_db" }
 ra_ide_db = { path = "../ra_ide_db" }
