@@ -75,9 +75,9 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         T!['('] => tuple_expr(p),
         T!['['] => array_expr(p),
         L_DOLLAR => meta_var_expr(p),
-        T![|] => lambda_expr(p),
-        T![move] if la == T![|] => lambda_expr(p),
-        T![async] if la == T![|] || (la == T![move] && p.nth(2) == T![|]) => lambda_expr(p),
+        T![|] => closure_expr(p),
+        T![move] if la == T![|] => closure_expr(p),
+        T![async] if la == T![|] || (la == T![move] && p.nth(2) == T![|]) => closure_expr(p),
         T![if] => if_expr(p),
 
         T![loop] => loop_expr(p, None),
@@ -228,7 +228,7 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
 //     move || {};
 //     async move || {};
 // }
-fn lambda_expr(p: &mut Parser) -> CompletedMarker {
+fn closure_expr(p: &mut Parser) -> CompletedMarker {
     assert!(
         p.at(T![|])
             || (p.at(T![move]) && p.nth(1) == T![|])
@@ -239,7 +239,7 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
     p.eat(T![async]);
     p.eat(T![move]);
     params::param_list_closure(p);
-    if opt_fn_ret_type(p) {
+    if opt_ret_type(p) {
         // test lambda_ret_block
         // fn main() { || -> i32 { 92 }(); }
         block_expr(p);
@@ -265,7 +265,7 @@ fn if_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![if]));
     let m = p.start();
     p.bump(T![if]);
-    cond(p);
+    condition(p);
     block_expr(p);
     if p.at(T![else]) {
         p.bump(T![else]);
@@ -314,7 +314,7 @@ fn while_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(T![while]));
     let m = m.unwrap_or_else(|| p.start());
     p.bump(T![while]);
-    cond(p);
+    condition(p);
     block_expr(p);
     m.complete(p, WHILE_EXPR)
 }
@@ -342,7 +342,7 @@ fn for_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
 //     while let Some(_) | Some(_) = None {}
 //     while let | Some(_) = None {}
 // }
-fn cond(p: &mut Parser) {
+fn condition(p: &mut Parser) {
     let m = p.start();
     if p.eat(T![let]) {
         patterns::pattern_top(p);
@@ -386,7 +386,7 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
     //         _ => (),
     //     }
     // }
-    attributes::inner_attributes(p);
+    attributes::inner_attrs(p);
 
     while !p.at(EOF) && !p.at(T!['}']) {
         if p.at(T!['{']) {
@@ -437,7 +437,7 @@ fn match_arm(p: &mut Parser) -> BlockLike {
     //         _ => (),
     //     }
     // }
-    attributes::outer_attributes(p);
+    attributes::outer_attrs(p);
 
     patterns::pattern_top_r(p, TokenSet::EMPTY);
     if p.at(T![if]) {

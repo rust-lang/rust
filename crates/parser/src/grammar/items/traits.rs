@@ -5,11 +5,11 @@ use super::*;
 // test trait_item
 // trait T<U>: Hash + Clone where U: Copy {}
 // trait X<U: Debug + Display>: Hash + Clone where U: Copy {}
-pub(super) fn trait_def(p: &mut Parser) {
+pub(super) fn trait_(p: &mut Parser) {
     assert!(p.at(T![trait]));
     p.bump(T![trait]);
     name_r(p, ITEM_RECOVERY_SET);
-    type_params::opt_type_param_list(p);
+    type_params::opt_generic_param_list(p);
     // test trait_alias
     // trait Z<U> = T<U>;
     // trait Z<U> = T<U> where U: Copy;
@@ -25,41 +25,19 @@ pub(super) fn trait_def(p: &mut Parser) {
     }
     type_params::opt_where_clause(p);
     if p.at(T!['{']) {
-        trait_item_list(p);
+        assoc_item_list(p);
     } else {
         p.error("expected `{`");
     }
 }
 
-// test trait_item_list
-// impl F {
-//     type A: Clone;
-//     const B: i32;
-//     fn foo() {}
-//     fn bar(&self);
-// }
-pub(crate) fn trait_item_list(p: &mut Parser) {
-    assert!(p.at(T!['{']));
-    let m = p.start();
-    p.bump(T!['{']);
-    while !p.at(EOF) && !p.at(T!['}']) {
-        if p.at(T!['{']) {
-            error_block(p, "expected an item");
-            continue;
-        }
-        item_or_macro(p, true);
-    }
-    p.expect(T!['}']);
-    m.complete(p, ASSOC_ITEM_LIST);
-}
-
 // test impl_def
 // impl Foo {}
-pub(super) fn impl_def(p: &mut Parser) {
+pub(super) fn impl_(p: &mut Parser) {
     assert!(p.at(T![impl]));
     p.bump(T![impl]);
     if choose_type_params_over_qpath(p) {
-        type_params::opt_type_param_list(p);
+        type_params::opt_generic_param_list(p);
     }
 
     // FIXME: never type
@@ -74,7 +52,7 @@ pub(super) fn impl_def(p: &mut Parser) {
     }
     type_params::opt_where_clause(p);
     if p.at(T!['{']) {
-        impl_item_list(p);
+        assoc_item_list(p);
     } else {
         p.error("expected `{`");
     }
@@ -87,7 +65,7 @@ pub(super) fn impl_def(p: &mut Parser) {
 //     fn foo() {}
 //     fn bar(&self) {}
 // }
-pub(crate) fn impl_item_list(p: &mut Parser) {
+pub(crate) fn assoc_item_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);
@@ -97,7 +75,7 @@ pub(crate) fn impl_item_list(p: &mut Parser) {
     //      //! This is a doc comment
     //      #![doc("This is also a doc comment")]
     // }
-    attributes::inner_attributes(p);
+    attributes::inner_attrs(p);
 
     while !p.at(EOF) && !p.at(T!['}']) {
         if p.at(T!['{']) {

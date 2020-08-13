@@ -22,7 +22,7 @@ pub(super) fn expr(p: &mut Parser) -> (Option<CompletedMarker>, BlockLike) {
 pub(super) fn expr_with_attrs(p: &mut Parser) -> bool {
     let m = p.start();
     let has_attrs = p.at(T![#]);
-    attributes::outer_attributes(p);
+    attributes::outer_attrs(p);
 
     let (cm, _block_like) = expr(p);
     let success = cm.is_some();
@@ -64,7 +64,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
     //     #[D] return ();
     // }
     let has_attrs = p.at(T![#]);
-    attributes::outer_attributes(p);
+    attributes::outer_attrs(p);
 
     if p.at(T![let]) {
         let_stmt(p, m, with_semi);
@@ -175,7 +175,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
 
 pub(super) fn expr_block_contents(p: &mut Parser) {
     // This is checked by a validator
-    attributes::inner_attributes(p);
+    attributes::inner_attrs(p);
 
     while !p.at(EOF) && !p.at(T!['}']) {
         // test nocontentexpr
@@ -489,7 +489,7 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     let m = lhs.precede(p);
     p.bump_any();
     name_ref(p);
-    type_args::opt_type_arg_list(p, true);
+    type_args::opt_generic_arg_list(p, true);
     if p.at(T!['(']) {
         arg_list(p);
     }
@@ -585,7 +585,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
     paths::expr_path(p);
     match p.current() {
         T!['{'] if !r.forbid_structs => {
-            record_field_list(p);
+            record_expr_field_list(p);
             (m.complete(p, RECORD_EXPR), BlockLike::NotBlock)
         }
         T![!] if !p.at(T![!=]) => {
@@ -603,7 +603,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
 //     S { x, y: 32, ..Default::default() };
 //     TupleStruct { 0: 1 };
 // }
-pub(crate) fn record_field_list(p: &mut Parser) {
+pub(crate) fn record_expr_field_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);
@@ -613,7 +613,7 @@ pub(crate) fn record_field_list(p: &mut Parser) {
         // fn main() {
         //     S { #[cfg(test)] field: 1 }
         // }
-        attributes::outer_attributes(p);
+        attributes::outer_attrs(p);
 
         match p.current() {
             IDENT | INT_NUMBER => {

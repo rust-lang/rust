@@ -2,19 +2,19 @@
 
 use super::*;
 
-pub(super) fn inner_attributes(p: &mut Parser) {
+pub(super) fn inner_attrs(p: &mut Parser) {
     while p.at(T![#]) && p.nth(1) == T![!] {
-        attribute(p, true)
+        attr(p, true)
     }
 }
 
-pub(super) fn outer_attributes(p: &mut Parser) {
+pub(super) fn outer_attrs(p: &mut Parser) {
     while p.at(T![#]) {
-        attribute(p, false)
+        attr(p, false)
     }
 }
 
-fn attribute(p: &mut Parser, inner: bool) {
+fn attr(p: &mut Parser, inner: bool) {
     let attr = p.start();
     assert!(p.at(T![#]));
     p.bump(T![#]);

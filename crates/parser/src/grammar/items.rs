@@ -6,9 +6,9 @@ mod traits;
 mod use_item;
 
 pub(crate) use self::{
-    adt::{enum_variant_list, record_field_def_list},
-    expressions::{match_arm_list, record_field_list},
-    traits::{impl_item_list, trait_item_list},
+    adt::{record_field_list, variant_list},
+    expressions::{match_arm_list, record_expr_field_list},
+    traits::assoc_item_list,
     use_item::use_tree_list,
 };
 use super::*;
@@ -20,7 +20,7 @@ use super::*;
 // super::baz! {}
 // struct S;
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
-    attributes::inner_attributes(p);
+    attributes::inner_attrs(p);
     while !(stop_on_r_curly && p.at(T!['}']) || p.at(EOF)) {
         item_or_macro(p, stop_on_r_curly)
     }
@@ -33,7 +33,7 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
 
 pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
     let m = p.start();
-    attributes::outer_attributes(p);
+    attributes::outer_attrs(p);
     let m = match maybe_item(p, m) {
         Ok(()) => {
             if p.at(T![;]) {
@@ -144,30 +144,30 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         // test fn
         // fn foo() {}
         T![fn] => {
-            fn_def(p);
+            fn_(p);
             m.complete(p, FN);
         }
 
         // test trait
         // trait T {}
         T![trait] => {
-            traits::trait_def(p);
+            traits::trait_(p);
             m.complete(p, TRAIT);
         }
 
         T![const] => {
-            consts::const_def(p, m);
+            consts::konst(p, m);
         }
 
         // test impl
         // impl T for S {}
         T![impl] => {
-            traits::impl_def(p);
+            traits::impl_(p);
             m.complete(p, IMPL);
         }
 
         T![type] => {
-            type_def(p, m);
+            type_alias(p, m);
         }
         _ => {
             if !has_visibility && !has_mods {
@@ -190,9 +190,9 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     match p.current() {
         // test extern_crate
         // extern crate foo;
-        T![extern] if la == T![crate] => extern_crate_item(p, m),
+        T![extern] if la == T![crate] => extern_crate(p, m),
         T![type] => {
-            type_def(p, m);
+            type_alias(p, m);
         }
         T![mod] => mod_item(p, m),
         T![struct] => {
@@ -205,7 +205,7 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             //     a: i32,
             //     b: f32,
             // }
-            adt::struct_def(p, m);
+            adt::strukt(p, m);
         }
         // test pub_macro_def
         // pub macro m($:ident) {}
@@ -219,12 +219,12 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             //     a: i32,
             //     b: f32,
             // }
-            adt::union_def(p, m);
+            adt::union(p, m);
         }
-        T![enum] => adt::enum_def(p, m),
-        T![use] => use_item::use_item(p, m),
-        T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::const_def(p, m),
-        T![static] => consts::static_def(p, m),
+        T![enum] => adt::enum_(p, m),
+        T![use] => use_item::use_(p, m),
+        T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::konst(p, m),
+        T![static] => consts::static_(p, m),
         // test extern_block
         // extern {}
         T![extern]
@@ -239,7 +239,7 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     Ok(())
 }
 
-fn extern_crate_item(p: &mut Parser, m: Marker) {
+fn extern_crate(p: &mut Parser, m: Marker) {
     assert!(p.at(T![extern]));
     p.bump(T![extern]);
     assert!(p.at(T![crate]));
@@ -251,7 +251,7 @@ fn extern_crate_item(p: &mut Parser, m: Marker) {
         name_ref(p);
     }
 
-    opt_alias(p);
+    opt_rename(p);
     p.expect(T![;]);
     m.complete(p, EXTERN_CRATE);
 }
@@ -265,14 +265,14 @@ pub(crate) fn extern_item_list(p: &mut Parser) {
     m.complete(p, EXTERN_ITEM_LIST);
 }
 
-fn fn_def(p: &mut Parser) {
+fn fn_(p: &mut Parser) {
     assert!(p.at(T![fn]));
     p.bump(T![fn]);
 
     name_r(p, ITEM_RECOVERY_SET);
     // test function_type_params
     // fn foo<T: Clone + Copy>(){}
-    type_params::opt_type_param_list(p);
+    type_params::opt_generic_param_list(p);
 
     if p.at(T!['(']) {
         params::param_list_fn_def(p);
@@ -282,7 +282,7 @@ fn fn_def(p: &mut Parser) {
     // test function_ret_type
     // fn foo() {}
     // fn bar() -> () {}
-    opt_fn_ret_type(p);
+    opt_ret_type(p);
 
     // test function_where_clause
     // fn foo<T>() where T: Copy {}
@@ -299,7 +299,7 @@ fn fn_def(p: &mut Parser) {
 
 // test type_item
 // type Foo = Bar;
-fn type_def(p: &mut Parser, m: Marker) {
+fn type_alias(p: &mut Parser, m: Marker) {
     assert!(p.at(T![type]));
     p.bump(T![type]);
 
@@ -307,7 +307,7 @@ fn type_def(p: &mut Parser, m: Marker) {
 
     // test type_item_type_params
     // type Result<T> = ();
-    type_params::opt_type_param_list(p);
+    type_params::opt_generic_param_list(p);
 
     if p.at(T![:]) {
         type_params::bounds(p);
@@ -329,14 +329,14 @@ pub(crate) fn mod_item(p: &mut Parser, m: Marker) {
 
     name(p);
     if p.at(T!['{']) {
-        mod_item_list(p);
+        item_list(p);
     } else if !p.eat(T![;]) {
         p.error("expected `;` or `{`");
     }
     m.complete(p, MODULE);
 }
 
-pub(crate) fn mod_item_list(p: &mut Parser) {
+pub(crate) fn item_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);

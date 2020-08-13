@@ -2,11 +2,11 @@
 
 use super::*;
 
-pub(super) fn static_def(p: &mut Parser, m: Marker) {
+pub(super) fn static_(p: &mut Parser, m: Marker) {
     const_or_static(p, m, T![static], STATIC)
 }
 
-pub(super) fn const_def(p: &mut Parser, m: Marker) {
+pub(super) fn konst(p: &mut Parser, m: Marker) {
     const_or_static(p, m, T![const], CONST)
 }
 

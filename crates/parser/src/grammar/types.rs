@@ -32,11 +32,11 @@ fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
     match p.current() {
         T!['('] => paren_or_tuple_type(p),
         T![!] => never_type(p),
-        T![*] => pointer_type(p),
+        T![*] => ptr_type(p),
         T!['['] => array_or_slice_type(p),
-        T![&] => reference_type(p),
-        T![_] => placeholder_type(p),
-        T![fn] | T![unsafe] | T![extern] => fn_pointer_type(p),
+        T![&] => ref_type(p),
+        T![_] => infer_type(p),
+        T![fn] | T![unsafe] | T![extern] => fn_ptr_type(p),
         T![for] => for_type(p),
         T![impl] => impl_trait_type(p),
         T![dyn] => dyn_trait_type(p),
@@ -96,7 +96,7 @@ fn never_type(p: &mut Parser) {
     m.complete(p, NEVER_TYPE);
 }
 
-fn pointer_type(p: &mut Parser) {
+fn ptr_type(p: &mut Parser) {
     assert!(p.at(T![*]));
     let m = p.start();
     p.bump(T![*]);
@@ -156,7 +156,7 @@ fn array_or_slice_type(p: &mut Parser) {
 // type A = &();
 // type B = &'static ();
 // type C = &mut ();
-fn reference_type(p: &mut Parser) {
+fn ref_type(p: &mut Parser) {
     assert!(p.at(T![&]));
     let m = p.start();
     p.bump(T![&]);
@@ -168,7 +168,7 @@ fn reference_type(p: &mut Parser) {
 
 // test placeholder_type
 // type Placeholder = _;
-fn placeholder_type(p: &mut Parser) {
+fn infer_type(p: &mut Parser) {
     assert!(p.at(T![_]));
     let m = p.start();
     p.bump(T![_]);
@@ -180,7 +180,7 @@ fn placeholder_type(p: &mut Parser) {
 // type B = unsafe fn();
 // type C = unsafe extern "C" fn();
 // type D = extern "C" fn ( u8 , ... ) -> u8;
-fn fn_pointer_type(p: &mut Parser) {
+fn fn_ptr_type(p: &mut Parser) {
     let m = p.start();
     p.eat(T![unsafe]);
     if p.at(T![extern]) {
@@ -200,7 +200,7 @@ fn fn_pointer_type(p: &mut Parser) {
     }
     // test fn_pointer_type_with_ret
     // type F = fn() -> ();
-    opt_fn_ret_type(p);
+    opt_ret_type(p);
     m.complete(p, FN_PTR_TYPE);
 }
 
@@ -208,7 +208,7 @@ pub(super) fn for_binder(p: &mut Parser) {
     assert!(p.at(T![for]));
     p.bump(T![for]);
     if p.at(T![<]) {
-        type_params::opt_type_param_list(p);
+        type_params::opt_generic_param_list(p);
     } else {
         p.error("expected `<`");
     }

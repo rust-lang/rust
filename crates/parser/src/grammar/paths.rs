@@ -105,11 +105,11 @@ fn opt_path_type_args(p: &mut Parser, mode: Mode) {
             // type F = Box<Fn(i32) -> ()>;
             if p.at(T!['(']) {
                 params::param_list_fn_trait(p);
-                opt_fn_ret_type(p);
+                opt_ret_type(p);
             } else {
-                type_args::opt_type_arg_list(p, false)
+                type_args::opt_generic_arg_list(p, false)
             }
         }
-        Mode::Expr => type_args::opt_type_arg_list(p, true),
+        Mode::Expr => type_args::opt_generic_arg_list(p, true),
     }
 }
