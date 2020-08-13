@@ -30,7 +30,7 @@ fn try_main() -> Result<()> {
     let args = args::Args::parse()?;
     match args.command {
         args::Command::RunServer => run_server()?,
-        args::Command::ProcMacro => ra_proc_macro_srv::cli::run()?,
+        args::Command::ProcMacro => proc_macro_srv::cli::run()?,
 
         args::Command::Parse { no_dump } => cli::parse(no_dump)?,
         args::Command::Symbols => cli::symbols()?,

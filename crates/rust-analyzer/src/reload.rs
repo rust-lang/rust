@@ -176,7 +176,7 @@ impl GlobalState {
                 Ok(it) => it,
                 Err(err) => {
                     log::error!(
-                        "Failed to run ra_proc_macro_srv from path {}, error: {:?}",
+                        "Failed to run proc_macro_srv from path {}, error: {:?}",
                         path.display(),
                         err
                     );
