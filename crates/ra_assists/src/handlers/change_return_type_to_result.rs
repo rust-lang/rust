@@ -1,10 +1,12 @@
+use std::iter;
+
 use syntax::{
-    ast::{self, BlockExpr, Expr, LoopBodyOwner},
+    ast::{self, make, BlockExpr, Expr, LoopBodyOwner},
     AstNode, SyntaxNode,
 };
+use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
-use test_utils::mark;
 
 // Assist: change_return_type_to_result
 //
@@ -44,7 +46,13 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
             tail_return_expr_collector.collect_tail_exprs(block_expr);
 
             for ret_expr_arg in tail_return_expr_collector.exprs_to_wrap {
-                builder.replace_node_and_indent(&ret_expr_arg, format!("Ok({})", ret_expr_arg));
+                let ok_wrapped = make::expr_call(
+                    make::expr_path(make::path_unqualified(make::path_segment(make::name_ref(
+                        "Ok",
+                    )))),
+                    make::arg_list(iter::once(ret_expr_arg.clone())),
+                );
+                builder.replace_ast(ret_expr_arg, ok_wrapped);
             }
 
             match ctx.config.snippet_cap {
@@ -60,7 +68,7 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
 }
 
 struct TailReturnCollector {
-    exprs_to_wrap: Vec<SyntaxNode>,
+    exprs_to_wrap: Vec<ast::Expr>,
 }
 
 impl TailReturnCollector {
@@ -86,7 +94,8 @@ impl TailReturnCollector {
             if let Some(last_exprs) = get_tail_expr_from_block(&expr) {
                 for last_expr in last_exprs {
                     let last_expr = match last_expr {
-                        NodeType::Node(expr) | NodeType::Leaf(expr) => expr,
+                        NodeType::Node(expr) => expr,
+                        NodeType::Leaf(expr) => expr.syntax().clone(),
                     };
 
                     if let Some(last_expr) = Expr::cast(last_expr.clone()) {
@@ -113,12 +122,12 @@ impl TailReturnCollector {
             }
             Expr::ReturnExpr(ret_expr) => {
                 if let Some(ret_expr_arg) = &ret_expr.expr() {
-                    self.exprs_to_wrap.push(ret_expr_arg.syntax().clone());
+                    self.exprs_to_wrap.push(ret_expr_arg.clone());
                 }
             }
             Expr::BreakExpr(break_expr) if collect_break => {
                 if let Some(break_expr_arg) = &break_expr.expr() {
-                    self.exprs_to_wrap.push(break_expr_arg.syntax().clone());
+                    self.exprs_to_wrap.push(break_expr_arg.clone());
                 }
             }
             Expr::IfExpr(if_expr) => {
@@ -166,14 +175,11 @@ impl TailReturnCollector {
                     NodeType::Leaf(expr) => {
                         self.exprs_to_wrap.push(expr.clone());
                     }
-                    NodeType::Node(expr) => match &Expr::cast(expr.clone()) {
-                        Some(last_expr) => {
-                            self.fetch_tail_exprs(last_expr);
+                    NodeType::Node(expr) => {
+                        if let Some(last_expr) = Expr::cast(expr.clone()) {
+                            self.fetch_tail_exprs(&last_expr);
                         }
-                        None => {
-                            self.exprs_to_wrap.push(expr.clone());
-                        }
-                    },
+                    }
                 }
             }
         }
@@ -182,7 +188,7 @@ impl TailReturnCollector {
 
 #[derive(Debug)]
 enum NodeType {
-    Leaf(SyntaxNode),
+    Leaf(ast::Expr),
     Node(SyntaxNode),
 }
 
@@ -233,25 +239,26 @@ fn get_tail_expr_from_block(expr: &Expr) -> Option<Vec<NodeType>> {
 
             Some(arms)
         }
-        Expr::BreakExpr(expr) => expr.expr().map(|e| vec![NodeType::Leaf(e.syntax().clone())]),
+        Expr::BreakExpr(expr) => expr.expr().map(|e| vec![NodeType::Leaf(e)]),
         Expr::ReturnExpr(ret_expr) => Some(vec![NodeType::Node(ret_expr.syntax().clone())]),
-        Expr::CallExpr(call_expr) => Some(vec![NodeType::Leaf(call_expr.syntax().clone())]),
-        Expr::Literal(lit_expr) => Some(vec![NodeType::Leaf(lit_expr.syntax().clone())]),
-        Expr::TupleExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::ArrayExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::ParenExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::PathExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::RecordExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::IndexExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::MethodCallExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::AwaitExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::CastExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::RefExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::PrefixExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::RangeExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::BinExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::MacroCall(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::BoxExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
+
+        Expr::CallExpr(_)
+        | Expr::Literal(_)
+        | Expr::TupleExpr(_)
+        | Expr::ArrayExpr(_)
+        | Expr::ParenExpr(_)
+        | Expr::PathExpr(_)
+        | Expr::RecordExpr(_)
+        | Expr::IndexExpr(_)
+        | Expr::MethodCallExpr(_)
+        | Expr::AwaitExpr(_)
+        | Expr::CastExpr(_)
+        | Expr::RefExpr(_)
+        | Expr::PrefixExpr(_)
+        | Expr::RangeExpr(_)
+        | Expr::BinExpr(_)
+        | Expr::MacroCall(_)
+        | Expr::BoxExpr(_) => Some(vec![NodeType::Leaf(expr.clone())]),
         _ => None,
     }
 }

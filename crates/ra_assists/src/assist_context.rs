@@ -5,14 +5,13 @@ use std::mem;
 use algo::find_covering_element;
 use hir::Semantics;
 use ra_db::{FileId, FileRange};
-use ra_fmt::{leading_indent, reindent};
 use ra_ide_db::{
     source_change::{SourceChange, SourceFileEdit},
     RootDatabase,
 };
 use syntax::{
     algo::{self, find_node_at_offset, SyntaxRewriter},
-    AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxToken, TextRange, TextSize,
     TokenAtOffset,
 };
 use text_edit::{TextEdit, TextEditBuilder};
@@ -268,20 +267,6 @@ impl AssistBuilder {
     }
     pub(crate) fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
         algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
-    }
-    /// Replaces specified `node` of text with a given string, reindenting the
-    /// string to maintain `node`'s existing indent.
-    // FIXME: remove in favor of syntax::edit::IndentLevel::increase_indent
-    pub(crate) fn replace_node_and_indent(
-        &mut self,
-        node: &SyntaxNode,
-        replace_with: impl Into<String>,
-    ) {
-        let mut replace_with = replace_with.into();
-        if let Some(indent) = leading_indent(node) {
-            replace_with = reindent(&replace_with, &indent)
-        }
-        self.replace(node.text_range(), replace_with)
     }
     pub(crate) fn rewrite(&mut self, rewriter: SyntaxRewriter) {
         let node = rewriter.rewrite_root().unwrap();

@@ -134,6 +134,9 @@ pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
     let token = token(op);
     expr_from_text(&format!("{}{}", token, expr))
 }
+pub fn expr_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::Expr {
+    expr_from_text(&format!("{}{}", f, arg_list))
+}
 fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))
 }
@@ -149,6 +152,10 @@ pub fn condition(expr: ast::Expr, pattern: Option<ast::Pat>) -> ast::Condition {
             ast_from_text(&format!("const _: () = while let {} = {} {{}};", pattern, expr))
         }
     }
+}
+
+pub fn arg_list(args: impl IntoIterator<Item = ast::Expr>) -> ast::ArgList {
+    ast_from_text(&format!("fn main() {{ ()({}) }}", args.into_iter().format(", ")))
 }
 
 pub fn ident_pat(name: ast::Name) -> ast::IdentPat {
