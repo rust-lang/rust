@@ -51,6 +51,15 @@ error[E0106]: missing lifetime specifiers
    |
 LL |     buzz: Buzz,
    |           ^^^^ expected 2 lifetime parameters
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | struct Quux<'a> {
+LL |     baz: Baz,
+LL |
+LL |
+LL |     buzz: Buzz<'a, 'a>,
+   |
 
 error: aborting due to 5 previous errors
 
