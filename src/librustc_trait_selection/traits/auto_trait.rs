@@ -738,7 +738,7 @@ impl AutoTraitFinder<'tcx> {
                     // and turn them into an explicit negative impl for our type.
                     debug!("Projecting and unifying projection predicate {:?}", predicate);
 
-                    match poly_project_and_unify_type(select, &obligation.with(p)) {
+                    match project::poly_project_and_unify_type(select, &obligation.with(p)) {
                         Err(e) => {
                             debug!(
                                 "evaluate_nested_obligations: Unable to unify predicate \
@@ -747,7 +747,11 @@ impl AutoTraitFinder<'tcx> {
                             );
                             return false;
                         }
-                        Ok(Some(v)) => {
+                        Ok(Err(project::InProgress)) => {
+                            debug!("evaluate_nested_obligations: recursive projection predicate");
+                            return false;
+                        }
+                        Ok(Ok(Some(v))) => {
                             // We only care about sub-obligations
                             // when we started out trying to unify
                             // some inference variables. See the comment above
@@ -766,7 +770,7 @@ impl AutoTraitFinder<'tcx> {
                                 }
                             }
                         }
-                        Ok(None) => {
+                        Ok(Ok(None)) => {
                             // It's ok not to make progress when have no inference variables -
                             // in that case, we were only performing unifcation to check if an
                             // error occurred (which would indicate that it's impossible for our

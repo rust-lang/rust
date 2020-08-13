@@ -503,7 +503,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let data = ty::Binder::bind(data);
                 let project_obligation = obligation.with(data);
                 match project::poly_project_and_unify_type(self, &project_obligation) {
-                    Ok(Some(mut subobligations)) => {
+                    Ok(Ok(Some(mut subobligations))) => {
                         self.add_depth(subobligations.iter_mut(), obligation.recursion_depth);
                         let result = self.evaluate_predicates_recursively(
                             previous_stack,
@@ -516,7 +516,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                         result
                     }
-                    Ok(None) => Ok(EvaluatedToAmbig),
+                    Ok(Ok(None)) => Ok(EvaluatedToAmbig),
+                    // EvaluatedToRecur might also be acceptable here, but use
+                    // Unknown for now because it means that we won't dismiss a
+                    // selection candidate solely because it has a projection
+                    // cycle. This is closest to the previous behavior of
+                    // immediately erroring.
+                    Ok(Err(project::InProgress)) => Ok(EvaluatedToUnknown),
                     Err(_) => Ok(EvaluatedToErr),
                 }
             }

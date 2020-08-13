@@ -622,15 +622,20 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         project_obligation: PolyProjectionObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
+        let tcx = self.selcx.tcx();
         match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
-            Ok(None) => {
+            Ok(Ok(Some(os))) => ProcessResult::Changed(mk_pending(os)),
+            Ok(Ok(None)) => {
                 *stalled_on = trait_ref_infer_vars(
                     self.selcx,
                     project_obligation.predicate.to_poly_trait_ref(self.selcx.tcx()),
                 );
                 ProcessResult::Unchanged
             }
-            Ok(Some(os)) => ProcessResult::Changed(mk_pending(os)),
+            // Let the caller handle the recursion
+            Ok(Err(project::InProgress)) => ProcessResult::Changed(mk_pending(vec![
+                project_obligation.with(project_obligation.predicate.to_predicate(tcx)),
+            ])),
             Err(e) => ProcessResult::Error(CodeProjectionError(e)),
         }
     }
