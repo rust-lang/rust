@@ -283,6 +283,7 @@ define_tables! {
     // Also, as an optimization, a missing entry indicates an empty `&[]`.
     inferred_outlives: Table<DefIndex, Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>,
     super_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
+    is_trivial_mir: Table<DefIndex, Lazy<bool>>,
     mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
     unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u32>>>,

@@ -61,6 +61,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         },
         mir_validated,
         mir_drops_elaborated_and_const_checked,
+        is_trivial_mir: inline::is_trivial_mir,
         optimized_mir,
         optimized_mir_of_const_arg,
         is_mir_available,
@@ -510,6 +511,8 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) 
         return shim::build_adt_ctor(tcx, def.did.to_def_id());
     }
 
+    // `is_trivial_mir` uses `mir_drops_elaborated_and_const_checked` so run that first.
+    tcx.ensure().is_trivial_mir(def.did.to_def_id());
     let mut body = tcx.mir_drops_elaborated_and_const_checked(def).steal();
     run_optimization_passes(tcx, &mut body, def.did, None);
 
