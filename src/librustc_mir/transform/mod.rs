@@ -29,6 +29,7 @@ pub mod generator;
 pub mod inline;
 pub mod instcombine;
 pub mod instrument_coverage;
+pub mod match_branches;
 pub mod no_landing_pads;
 pub mod nrvo;
 pub mod promote_consts;
@@ -440,6 +441,7 @@ fn run_optimization_passes<'tcx>(
         // with async primitives.
         &generator::StateTransform,
         &instcombine::InstCombine,
+        &match_branches::MatchBranchSimplification,
         &const_prop::ConstProp,
         &simplify_branches::SimplifyBranches::new("after-const-prop"),
         &simplify_try::SimplifyArmIdentity,
