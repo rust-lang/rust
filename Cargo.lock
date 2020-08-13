@@ -464,6 +464,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "hir_expand"
+version = "0.0.0"
+dependencies = [
+ "arena",
+ "base_db",
+ "either",
+ "log",
+ "mbe",
+ "parser",
+ "profile",
+ "rustc-hash",
+ "syntax",
+ "test_utils",
+ "tt",
+]
+
+[[package]]
 name = "home"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1017,11 +1034,11 @@ dependencies = [
  "arrayvec",
  "base_db",
  "either",
+ "hir_expand",
  "itertools",
  "log",
  "profile",
  "ra_hir_def",
- "ra_hir_expand",
  "ra_hir_ty",
  "rustc-hash",
  "stdx",
@@ -1040,33 +1057,16 @@ dependencies = [
  "either",
  "expect",
  "fst",
+ "hir_expand",
  "indexmap",
  "itertools",
  "log",
  "mbe",
  "once_cell",
  "profile",
- "ra_hir_expand",
  "rustc-hash",
  "smallvec",
  "stdx",
- "syntax",
- "test_utils",
- "tt",
-]
-
-[[package]]
-name = "ra_hir_expand"
-version = "0.1.0"
-dependencies = [
- "arena",
- "base_db",
- "either",
- "log",
- "mbe",
- "parser",
- "profile",
- "rustc-hash",
  "syntax",
  "test_utils",
  "tt",
@@ -1084,11 +1084,11 @@ dependencies = [
  "chalk-solve",
  "ena",
  "expect",
+ "hir_expand",
  "itertools",
  "log",
  "profile",
  "ra_hir_def",
- "ra_hir_expand",
  "rustc-hash",
  "scoped-tls",
  "smallvec",

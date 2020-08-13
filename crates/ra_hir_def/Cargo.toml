@@ -21,12 +21,11 @@ indexmap = "1.4.0"
 smallvec = "1.4.0"
 
 stdx = { path = "../stdx" }
-
 arena = { path = "../arena" }
 base_db = { path = "../base_db" }
 syntax = { path = "../syntax" }
 profile = { path = "../profile" }
-hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
+hir_expand = { path = "../hir_expand" }
 test_utils = { path = "../test_utils" }
 mbe = { path = "../mbe" }
 cfg = { path = "../cfg" }
