@@ -102,7 +102,7 @@ impl FileDescriptor for io::Stdout {
 
 impl FileDescriptor for io::Stderr {
     fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
-        throw_unsup_format!("stdout cannot be used as FileHandle");
+        throw_unsup_format!("stderr cannot be used as FileHandle");
     }
 
     fn read<'tcx>(&mut self, _communicate_allowed: bool, _bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
