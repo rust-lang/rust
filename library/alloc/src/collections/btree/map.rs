@@ -1287,12 +1287,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
     }
     pub(super) fn drain_filter_inner(&mut self) -> DrainFilterInner<'_, K, V> {
         let root_node = self.root.as_mut().map(|r| r.node_as_mut());
-        let front = root_node.map(|rn| rn.first_leaf_edge());
-        DrainFilterInner {
-            length: &mut self.length,
-            cur_leaf_edge: front,
-            emptied_internal_root: false,
-        }
+        let height = root_node.as_ref().map_or(0, |rn| rn.height());
+        let front = root_node.map(|rn| Ok(rn.first_leaf_edge()));
+        DrainFilterInner { length: &mut self.length, cur_leaf_edge: front, useful_height: height }
     }
 
     /// Calculates the number of elements if it is incorrect.
@@ -1707,8 +1704,13 @@ where
 /// of the predicate, thus also serving for BTreeSet::DrainFilter.
 pub(super) struct DrainFilterInner<'a, K: 'a, V: 'a> {
     length: &'a mut usize,
-    cur_leaf_edge: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
-    emptied_internal_root: bool,
+    cur_leaf_edge: Option<
+        Result<
+            Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
+            NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>,
+        >,
+    >,
+    useful_height: usize,
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -1751,19 +1753,22 @@ where
 
 impl<K, V> Drop for DrainFilterInner<'_, K, V> {
     fn drop(&mut self) {
-        if self.emptied_internal_root {
-            if let Some(handle) = self.cur_leaf_edge.take() {
-                let root = handle.into_node().into_root_mut();
-                root.pop_internal_level();
-            }
+        let root = match self.cur_leaf_edge.take() {
+            None => return,        // map without root
+            Some(Ok(_)) => return, // panic in drop
+            Some(Err(root_node)) => root_node.into_root_mut(),
+        };
+        for _ in self.useful_height..root.height() {
+            root.pop_internal_level();
         }
+        debug_assert_eq!(root.height(), self.useful_height);
     }
 }
 
 impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
     /// Allow Debug implementations to predict the next element.
     pub(super) fn peek(&self) -> Option<(&K, &V)> {
-        let edge = self.cur_leaf_edge.as_ref()?;
+        let edge = self.cur_leaf_edge.as_ref()?.as_ref().ok()?;
         edge.reborrow().next_kv().ok().map(|kv| kv.into_kv())
     }
 
@@ -1772,17 +1777,32 @@ impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
     where
         F: FnMut(&K, &mut V) -> bool,
     {
-        while let Ok(mut kv) = self.cur_leaf_edge.take()?.next_kv() {
+        let mut cur_leaf_edge = match self.cur_leaf_edge.take() {
+            Some(Ok(edge)) => edge,
+            Some(Err(root_node)) => {
+                self.cur_leaf_edge = Some(Err(root_node));
+                return None;
+            }
+            None => return None,
+        };
+        loop {
+            let mut kv = match cur_leaf_edge.next_kv() {
+                Ok(kv) => kv,
+                Err(root) => {
+                    self.cur_leaf_edge = Some(Err(root));
+                    return None;
+                }
+            };
             let (k, v) = kv.kv_mut();
             if pred(k, v) {
                 *self.length -= 1;
-                let (kv, pos) = kv.remove_kv_tracking(|_| self.emptied_internal_root = true);
-                self.cur_leaf_edge = Some(pos);
+                let (kv, pos) =
+                    kv.remove_kv_tracking(|root| self.useful_height = root.height() - 1);
+                self.cur_leaf_edge = Some(Ok(pos));
                 return Some(kv);
             }
-            self.cur_leaf_edge = Some(kv.next_leaf_edge());
+            cur_leaf_edge = kv.next_leaf_edge();
         }
-        None
     }
 
     /// Implementation of a typical `DrainFilter::size_hint` method.
