@@ -2,6 +2,7 @@
 use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
+use base_db::{CrateId, Edition, FileId};
 use either::Either;
 use hir_def::{
     adt::ReprKind,
@@ -30,7 +31,6 @@ use hir_ty::{
     method_resolution, ApplicationTy, CallableDefId, Canonical, FnSig, GenericPredicate,
     InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
-use ra_db::{CrateId, Edition, FileId};
 use rustc_hash::FxHashSet;
 use stdx::impl_from;
 use syntax::{

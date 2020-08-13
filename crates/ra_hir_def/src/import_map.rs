@@ -2,9 +2,9 @@
 
 use std::{cmp::Ordering, fmt, hash::BuildHasherDefault, sync::Arc};
 
+use base_db::CrateId;
 use fst::{self, Streamer};
 use indexmap::{map::Entry, IndexMap};
-use ra_db::CrateId;
 use rustc_hash::{FxHashMap, FxHasher};
 use smallvec::SmallVec;
 use syntax::SmolStr;
@@ -327,8 +327,8 @@ pub fn search_dependencies<'a>(
 
 #[cfg(test)]
 mod tests {
+    use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
     use expect::{expect, Expect};
-    use ra_db::{fixture::WithFixture, SourceDatabase, Upcast};
 
     use crate::{test_db::TestDB, AssocContainerId, Lookup};
 

@@ -208,12 +208,12 @@ impl Diagnostic for MismatchedArgCount {
 
 #[cfg(test)]
 mod tests {
+    use base_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
     use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId};
     use hir_expand::{
         db::AstDatabase,
         diagnostics::{Diagnostic, DiagnosticSinkBuilder},
     };
-    use ra_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
     use rustc_hash::FxHashMap;
     use syntax::{TextRange, TextSize};
 

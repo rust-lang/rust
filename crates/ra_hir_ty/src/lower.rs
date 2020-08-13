@@ -8,6 +8,7 @@
 use std::{iter, sync::Arc};
 
 use arena::map::ArenaMap;
+use base_db::CrateId;
 use hir_def::{
     adt::StructKind,
     builtin_type::BuiltinType,
@@ -20,7 +21,6 @@ use hir_def::{
     UnionId, VariantId,
 };
 use hir_expand::name::Name;
-use ra_db::CrateId;
 use smallvec::SmallVec;
 use stdx::impl_from;
 use test_utils::mark;

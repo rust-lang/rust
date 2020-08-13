@@ -6,11 +6,11 @@ pub mod scope;
 use std::{mem, ops::Index, sync::Arc};
 
 use arena::{map::ArenaMap, Arena};
+use base_db::CrateId;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId};
-use ra_db::CrateId;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
 use test_utils::mark;
@@ -320,7 +320,7 @@ impl BodySourceMap {
 
 #[cfg(test)]
 mod tests {
-    use ra_db::{fixture::WithFixture, SourceDatabase};
+    use base_db::{fixture::WithFixture, SourceDatabase};
     use test_utils::mark;
 
     use crate::ModuleDefId;

@@ -5,15 +5,15 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use base_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, Upcast};
 use hir_expand::db::AstDatabase;
-use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, Upcast};
 use rustc_hash::FxHashSet;
 
 use crate::db::DefDatabase;
 
 #[salsa::database(
-    ra_db::SourceDatabaseExtStorage,
-    ra_db::SourceDatabaseStorage,
+    base_db::SourceDatabaseExtStorage,
+    base_db::SourceDatabaseStorage,
     hir_expand::db::AstDatabaseStorage,
     crate::db::InternDatabaseStorage,
     crate::db::DefDatabaseStorage

@@ -28,12 +28,12 @@ use std::{
     sync::Arc,
 };
 
-use fst::{self, Streamer};
-use hir::db::DefDatabase;
-use ra_db::{
+use base_db::{
     salsa::{self, ParallelDatabase},
     CrateId, FileId, SourceDatabaseExt, SourceRootId,
 };
+use fst::{self, Streamer};
+use hir::db::DefDatabase;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{

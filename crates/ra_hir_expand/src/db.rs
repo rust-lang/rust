@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
+use base_db::{salsa, SourceDatabase};
 use mbe::{ExpandResult, MacroRules};
 use parser::FragmentKind;
-use ra_db::{salsa, SourceDatabase};
 use syntax::{algo::diff, AstNode, GreenNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{

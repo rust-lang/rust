@@ -1,6 +1,6 @@
 use crate::{MatchFinder, SsrRule};
+use base_db::{salsa::Durability, FileId, FilePosition, FileRange, SourceDatabaseExt};
 use expect::{expect, Expect};
-use ra_db::{salsa::Durability, FileId, FilePosition, FileRange, SourceDatabaseExt};
 use rustc_hash::FxHashSet;
 use std::sync::Arc;
 use test_utils::{mark, RangeOrOffset};
@@ -62,7 +62,7 @@ fn parser_undefined_placeholder_in_replacement() {
 /// `code` may optionally contain a cursor marker `<|>`. If it doesn't, then the position will be
 /// the start of the file. If there's a second cursor marker, then we'll return a single range.
 pub(crate) fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FilePosition, Vec<FileRange>) {
-    use ra_db::fixture::WithFixture;
+    use base_db::fixture::WithFixture;
     use ra_ide_db::symbol_index::SymbolsDatabase;
     let (mut db, file_id, range_or_offset) = if code.contains(test_utils::CURSOR_MARKER) {
         ra_ide_db::RootDatabase::with_range_or_offset(code)
@@ -83,7 +83,7 @@ pub(crate) fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FilePosition,
         }
     }
     let mut local_roots = FxHashSet::default();
-    local_roots.insert(ra_db::fixture::WORKSPACE);
+    local_roots.insert(base_db::fixture::WORKSPACE);
     db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
     (db, position, selections)
 }

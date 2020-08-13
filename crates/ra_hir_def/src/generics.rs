@@ -5,12 +5,12 @@
 use std::sync::Arc;
 
 use arena::{map::ArenaMap, Arena};
+use base_db::FileId;
 use either::Either;
 use hir_expand::{
     name::{name, AsName, Name},
     InFile,
 };
-use ra_db::FileId;
 use syntax::ast::{self, GenericParamsOwner, NameOwner, TypeBoundsOwner};
 
 use crate::{

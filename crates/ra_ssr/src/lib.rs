@@ -18,8 +18,8 @@ use crate::errors::bail;
 pub use crate::errors::SsrError;
 pub use crate::matching::Match;
 use crate::matching::MatchFailureReason;
+use base_db::{FileId, FilePosition, FileRange};
 use hir::Semantics;
-use ra_db::{FileId, FilePosition, FileRange};
 use ra_ide_db::source_change::SourceFileEdit;
 use resolving::ResolvedRule;
 use rustc_hash::FxHashMap;
@@ -71,7 +71,7 @@ impl<'db> MatchFinder<'db> {
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.
     pub fn at_first_file(db: &'db ra_ide_db::RootDatabase) -> Result<MatchFinder<'db>, SsrError> {
-        use ra_db::SourceDatabaseExt;
+        use base_db::SourceDatabaseExt;
         use ra_ide_db::symbol_index::SymbolsDatabase;
         if let Some(first_file_id) = db
             .local_roots()
@@ -105,7 +105,7 @@ impl<'db> MatchFinder<'db> {
 
     /// Finds matches for all added rules and returns edits for all found matches.
     pub fn edits(&self) -> Vec<SourceFileEdit> {
-        use ra_db::SourceDatabaseExt;
+        use base_db::SourceDatabaseExt;
         let mut matches_by_file = FxHashMap::default();
         for m in self.matches().matches {
             matches_by_file
@@ -150,7 +150,7 @@ impl<'db> MatchFinder<'db> {
     /// them, while recording reasons why they don't match. This API is useful for command
     /// line-based debugging where providing a range is difficult.
     pub fn debug_where_text_equal(&self, file_id: FileId, snippet: &str) -> Vec<MatchDebugInfo> {
-        use ra_db::SourceDatabaseExt;
+        use base_db::SourceDatabaseExt;
         let file = self.sema.parse(file_id);
         let mut res = Vec::new();
         let file_text = self.sema.db.file_text(file_id);

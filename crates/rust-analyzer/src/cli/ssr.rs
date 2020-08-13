@@ -4,7 +4,7 @@ use crate::cli::{load_cargo::load_cargo, Result};
 use ra_ssr::{MatchFinder, SsrPattern, SsrRule};
 
 pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
-    use ra_db::SourceDatabaseExt;
+    use base_db::SourceDatabaseExt;
     let (host, vfs) = load_cargo(&std::env::current_dir()?, true, true)?;
     let db = host.raw_database();
     let mut match_finder = MatchFinder::at_first_file(db)?;
@@ -26,7 +26,7 @@ pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
 /// `debug_snippet`. This is intended for debugging and probably isn't in it's current form useful
 /// for much else.
 pub fn search_for_patterns(patterns: Vec<SsrPattern>, debug_snippet: Option<String>) -> Result<()> {
-    use ra_db::SourceDatabaseExt;
+    use base_db::SourceDatabaseExt;
     use ra_ide_db::symbol_index::SymbolsDatabase;
     let (host, _vfs) = load_cargo(&std::env::current_dir()?, true, true)?;
     let db = host.raw_database();

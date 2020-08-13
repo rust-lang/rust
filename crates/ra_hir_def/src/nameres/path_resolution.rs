@@ -12,8 +12,8 @@
 
 use std::iter::successors;
 
+use base_db::Edition;
 use hir_expand::name::Name;
-use ra_db::Edition;
 use test_utils::mark;
 
 use crate::{

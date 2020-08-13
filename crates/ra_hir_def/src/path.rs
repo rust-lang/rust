@@ -8,11 +8,11 @@ use std::{
 };
 
 use crate::body::LowerCtx;
+use base_db::CrateId;
 use hir_expand::{
     hygiene::Hygiene,
     name::{AsName, Name},
 };
-use ra_db::CrateId;
 use syntax::ast;
 
 use crate::{

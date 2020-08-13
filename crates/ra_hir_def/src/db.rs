@@ -1,8 +1,8 @@
 //! Defines database & queries for name resolution.
 use std::sync::Arc;
 
+use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use hir_expand::{db::AstDatabase, HirFileId};
-use ra_db::{salsa, CrateId, SourceDatabase, Upcast};
 use syntax::SmolStr;
 
 use crate::{

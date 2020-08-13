@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ra_db::SourceDatabaseExt;
+use base_db::SourceDatabaseExt;
 
 use super::*;
 

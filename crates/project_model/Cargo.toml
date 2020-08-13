@@ -18,7 +18,7 @@ anyhow = "1.0.26"
 
 arena = { path = "../arena" }
 cfg = { path = "../cfg" }
-ra_db = { path = "../ra_db" }
+base_db = { path = "../base_db" }
 toolchain = { path = "../toolchain" }
 proc_macro_api =  { path = "../proc_macro_api" }
 paths =  { path = "../paths" }

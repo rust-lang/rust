@@ -115,7 +115,7 @@ impl AsName for ast::FieldKind {
     }
 }
 
-impl AsName for ra_db::Dependency {
+impl AsName for base_db::Dependency {
     fn as_name(&self) -> Name {
         Name::new_text(SmolStr::new(&*self.name))
     }

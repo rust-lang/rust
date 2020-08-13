@@ -46,7 +46,7 @@ cfg = { path = "../cfg" }
 toolchain = { path = "../toolchain" }
 
 # This should only be used in CLI
-ra_db = { path = "../ra_db" }
+base_db = { path = "../base_db" }
 ra_ide_db = { path = "../ra_ide_db" }
 ra_ssr = { path = "../ra_ssr" }
 hir = { path = "../ra_hir", package = "ra_hir" }

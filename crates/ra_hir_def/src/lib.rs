@@ -53,11 +53,11 @@ mod test_db;
 use std::hash::{Hash, Hasher};
 
 use arena::Idx;
+use base_db::{impl_intern_key, salsa, CrateId};
 use hir_expand::{
     ast_id_map::FileAstId, eager::expand_eager_macro, hygiene::Hygiene, AstId, HirFileId, InFile,
     MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
-use ra_db::{impl_intern_key, salsa, CrateId};
 use syntax::ast;
 
 use crate::builtin_type::BuiltinType;

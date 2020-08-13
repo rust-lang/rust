@@ -92,14 +92,14 @@ in particular: it shows off various methods of working with syntax tree.
 See [#93](https://github.com/rust-analyzer/rust-analyzer/pull/93) for an example PR which
 fixes a bug in the grammar.
 
-### `crates/ra_db`
+### `crates/base_db`
 
 We use the [salsa](https://github.com/salsa-rs/salsa) crate for incremental and
 on-demand computation. Roughly, you can think of salsa as a key-value store, but
-it also can compute derived values using specified functions. The `ra_db` crate
+it also can compute derived values using specified functions. The `base_db` crate
 provides basic infrastructure for interacting with salsa. Crucially, it
 defines most of the "input" queries: facts supplied by the client of the
-analyzer. Reading the docs of the `ra_db::input` module should be useful:
+analyzer. Reading the docs of the `base_db::input` module should be useful:
 everything else is strictly derived from those inputs.
 
 ### `crates/ra_hir*` crates

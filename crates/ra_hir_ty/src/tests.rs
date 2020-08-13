@@ -10,6 +10,7 @@ mod display_source_code;
 
 use std::sync::Arc;
 
+use base_db::{fixture::WithFixture, FileRange, SourceDatabase, SourceDatabaseExt};
 use expect::Expect;
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},
@@ -21,7 +22,6 @@ use hir_def::{
     AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::{db::AstDatabase, InFile};
-use ra_db::{fixture::WithFixture, FileRange, SourceDatabase, SourceDatabaseExt};
 use stdx::format_to;
 use syntax::{
     algo,

@@ -3,9 +3,9 @@
 
 use std::collections::hash_map::Entry;
 
+use base_db::CrateId;
 use hir_expand::name::Name;
 use once_cell::sync::Lazy;
-use ra_db::CrateId;
 use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::mark;
 

@@ -6,9 +6,9 @@
 
 use std::cell::RefCell;
 
+use base_db::SourceDatabase;
 use hir::{diagnostics::DiagnosticSinkBuilder, Semantics};
 use itertools::Itertools;
-use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use syntax::{
     ast::{self, AstNode},

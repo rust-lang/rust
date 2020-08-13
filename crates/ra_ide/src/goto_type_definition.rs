@@ -54,7 +54,7 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 
 #[cfg(test)]
 mod tests {
-    use ra_db::FileRange;
+    use base_db::FileRange;
 
     use crate::mock_analysis::MockAnalysis;
 

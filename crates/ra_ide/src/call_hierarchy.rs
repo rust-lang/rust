@@ -137,7 +137,7 @@ impl CallLocations {
 
 #[cfg(test)]
 mod tests {
-    use ra_db::FilePosition;
+    use base_db::FilePosition;
 
     use crate::mock_analysis::analysis_and_position;
 

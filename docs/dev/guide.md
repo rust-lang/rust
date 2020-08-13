@@ -259,7 +259,7 @@ Salsa input queries are defined in [`FilesDatabase`] (which is a part of
 `RootDatabase`). They closely mirror the familiar `AnalysisChange` structure:
 indeed, what `apply_change` does is it sets the values of input queries.
 
-[`FilesDatabase`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_db/src/input.rs#L150-L174
+[`FilesDatabase`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/base_db/src/input.rs#L150-L174
 
 ## From text to semantic model
 
@@ -392,7 +392,7 @@ integers which can "intern" a location and return an integer ID back. The salsa
 database we use includes a couple of [interners]. How to "garbage collect"
 unused locations is an open question.
 
-[`LocationInterner`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_db/src/loc2id.rs#L65-L71
+[`LocationInterner`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/base_db/src/loc2id.rs#L65-L71
 [interners]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/db.rs#L22-L23
 
 For example, we use `LocationInterner` to assign IDs to definitions of functions,

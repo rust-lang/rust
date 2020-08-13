@@ -169,8 +169,8 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
 
 #[cfg(test)]
 mod tests {
+    use base_db::{fixture::WithFixture, FileId, SourceDatabase};
     use hir_expand::{name::AsName, InFile};
-    use ra_db::{fixture::WithFixture, FileId, SourceDatabase};
     use syntax::{algo::find_node_at_offset, ast, AstNode};
     use test_utils::{assert_eq_text, extract_offset, mark};
 

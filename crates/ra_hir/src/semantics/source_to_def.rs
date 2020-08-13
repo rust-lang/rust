@@ -1,5 +1,6 @@
 //! Maps *syntax* of various definitions to their semantic ids.
 
+use base_db::FileId;
 use hir_def::{
     child_by_source::ChildBySource,
     dyn_map::DynMap,
@@ -9,7 +10,6 @@ use hir_def::{
     ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefKind};
-use ra_db::FileId;
 use rustc_hash::FxHashMap;
 use stdx::impl_from;
 use syntax::{

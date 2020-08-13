@@ -3,7 +3,7 @@
 use std::{env, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 
 use anyhow::{bail, format_err, Result};
-use ra_db::{
+use base_db::{
     salsa::{Database, Durability},
     FileId,
 };

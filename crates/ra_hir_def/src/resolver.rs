@@ -1,11 +1,11 @@
 //! Name resolution façade.
 use std::sync::Arc;
 
+use base_db::CrateId;
 use hir_expand::{
     name::{name, Name},
     MacroDefId,
 };
-use ra_db::CrateId;
 use rustc_hash::FxHashSet;
 
 use crate::{

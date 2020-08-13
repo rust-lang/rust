@@ -1,4 +1,4 @@
-use ra_db::{FilePosition, FileRange};
+use base_db::{FilePosition, FileRange};
 use ra_ide_db::RootDatabase;
 
 use crate::SourceFileEdit;

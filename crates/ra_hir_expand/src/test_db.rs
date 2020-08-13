@@ -5,12 +5,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate};
+use base_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate};
 use rustc_hash::FxHashSet;
 
 #[salsa::database(
-    ra_db::SourceDatabaseExtStorage,
-    ra_db::SourceDatabaseStorage,
+    base_db::SourceDatabaseExtStorage,
+    base_db::SourceDatabaseStorage,
     crate::db::AstDatabaseStorage
 )]
 #[derive(Default)]

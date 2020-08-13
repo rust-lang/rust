@@ -84,6 +84,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
 
 [[package]]
+name = "base_db"
+version = "0.0.0"
+dependencies = [
+ "cfg",
+ "profile",
+ "rustc-hash",
+ "salsa",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "tt",
+ "vfs",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -956,12 +971,12 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "arena",
+ "base_db",
  "cargo_metadata",
  "cfg",
  "log",
  "paths",
  "proc_macro_api",
- "ra_db",
  "rustc-hash",
  "serde",
  "serde_json",
@@ -982,10 +997,10 @@ dependencies = [
 name = "ra_assists"
 version = "0.1.0"
 dependencies = [
+ "base_db",
  "either",
  "itertools",
  "profile",
- "ra_db",
  "ra_hir",
  "ra_ide_db",
  "rustc-hash",
@@ -996,30 +1011,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_db"
-version = "0.1.0"
-dependencies = [
- "cfg",
- "profile",
- "rustc-hash",
- "salsa",
- "stdx",
- "syntax",
- "test_utils",
- "tt",
- "vfs",
-]
-
-[[package]]
 name = "ra_hir"
 version = "0.1.0"
 dependencies = [
  "arrayvec",
+ "base_db",
  "either",
  "itertools",
  "log",
  "profile",
- "ra_db",
  "ra_hir_def",
  "ra_hir_expand",
  "ra_hir_ty",
@@ -1034,6 +1034,7 @@ version = "0.1.0"
 dependencies = [
  "anymap",
  "arena",
+ "base_db",
  "cfg",
  "drop_bomb",
  "either",
@@ -1045,7 +1046,6 @@ dependencies = [
  "mbe",
  "once_cell",
  "profile",
- "ra_db",
  "ra_hir_expand",
  "rustc-hash",
  "smallvec",
@@ -1060,12 +1060,12 @@ name = "ra_hir_expand"
 version = "0.1.0"
 dependencies = [
  "arena",
+ "base_db",
  "either",
  "log",
  "mbe",
  "parser",
  "profile",
- "ra_db",
  "rustc-hash",
  "syntax",
  "test_utils",
@@ -1078,6 +1078,7 @@ version = "0.1.0"
 dependencies = [
  "arena",
  "arrayvec",
+ "base_db",
  "chalk-ir",
  "chalk-recursive",
  "chalk-solve",
@@ -1086,7 +1087,6 @@ dependencies = [
  "itertools",
  "log",
  "profile",
- "ra_db",
  "ra_hir_def",
  "ra_hir_expand",
  "rustc-hash",
@@ -1104,6 +1104,7 @@ dependencies = [
 name = "ra_ide"
 version = "0.1.0"
 dependencies = [
+ "base_db",
  "cfg",
  "either",
  "expect",
@@ -1113,7 +1114,6 @@ dependencies = [
  "oorandom",
  "profile",
  "ra_assists",
- "ra_db",
  "ra_hir",
  "ra_ide_db",
  "ra_ssr",
@@ -1128,12 +1128,12 @@ dependencies = [
 name = "ra_ide_db"
 version = "0.1.0"
 dependencies = [
+ "base_db",
  "either",
  "fst",
  "log",
  "once_cell",
  "profile",
- "ra_db",
  "ra_hir",
  "rayon",
  "rustc-hash",
@@ -1147,8 +1147,8 @@ dependencies = [
 name = "ra_ssr"
 version = "0.1.0"
 dependencies = [
+ "base_db",
  "expect",
- "ra_db",
  "ra_hir",
  "ra_ide_db",
  "rustc-hash",
@@ -1230,6 +1230,7 @@ name = "rust-analyzer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base_db",
  "cfg",
  "crossbeam-channel",
  "env_logger",
@@ -1248,7 +1249,6 @@ dependencies = [
  "proc_macro_srv",
  "profile",
  "project_model",
- "ra_db",
  "ra_hir",
  "ra_hir_def",
  "ra_hir_ty",

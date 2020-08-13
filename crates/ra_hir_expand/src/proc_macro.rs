@@ -1,7 +1,7 @@
 //! Proc Macro Expander stub
 
 use crate::{db::AstDatabase, LazyMacroId};
-use ra_db::{CrateId, ProcMacroId};
+use base_db::{CrateId, ProcMacroId};
 use tt::buffer::{Cursor, TokenBuffer};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]

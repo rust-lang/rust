@@ -5,7 +5,7 @@ use crate::{
     resolving::{ResolvedPath, ResolvedPattern, ResolvedRule},
     Match, MatchFinder,
 };
-use ra_db::{FileId, FileRange};
+use base_db::{FileId, FileRange};
 use ra_ide_db::{
     defs::Definition,
     search::{Reference, SearchScope},
@@ -145,7 +145,7 @@ impl<'db> MatchFinder<'db> {
     fn search_files_do(&self, mut callback: impl FnMut(FileId)) {
         if self.restrict_ranges.is_empty() {
             // Unrestricted search.
-            use ra_db::SourceDatabaseExt;
+            use base_db::SourceDatabaseExt;
             use ra_ide_db::symbol_index::SymbolsDatabase;
             for &root in self.sema.db.local_roots().iter() {
                 let sr = self.sema.db.source_root(root);

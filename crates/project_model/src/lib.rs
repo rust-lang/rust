@@ -12,9 +12,9 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
+use base_db::{CrateGraph, CrateId, CrateName, Edition, Env, FileId};
 use cfg::CfgOptions;
 use paths::{AbsPath, AbsPathBuf};
-use ra_db::{CrateGraph, CrateId, CrateName, Edition, Env, FileId};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::cfg_flag::CfgFlag;

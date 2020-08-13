@@ -6,11 +6,11 @@ use log::debug;
 use chalk_ir::{fold::shift::Shift, CanonicalVarKinds, GenericArg, TypeName};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
+use base_db::{salsa::InternKey, CrateId};
 use hir_def::{
     lang_item::{lang_attr, LangItemTarget},
     AssocContainerId, AssocItemId, HasModule, Lookup, TypeAliasId,
 };
-use ra_db::{salsa::InternKey, CrateId};
 
 use super::ChalkContext;
 use crate::{

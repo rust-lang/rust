@@ -18,7 +18,7 @@ pub mod eager;
 use std::hash::Hash;
 use std::sync::Arc;
 
-use ra_db::{impl_intern_key, salsa, CrateId, FileId};
+use base_db::{impl_intern_key, salsa, CrateId, FileId};
 use syntax::{
     algo,
     ast::{self, AstNode},

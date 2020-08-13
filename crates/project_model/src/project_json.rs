@@ -2,8 +2,8 @@
 
 use std::path::PathBuf;
 
+use base_db::{CrateId, CrateName, Dependency, Edition};
 use paths::{AbsPath, AbsPathBuf};
-use ra_db::{CrateId, CrateName, Dependency, Edition};
 use rustc_hash::FxHashMap;
 use serde::{de, Deserialize};
 

@@ -1,10 +1,10 @@
 //! Trait solving using Chalk.
 use std::sync::Arc;
 
+use base_db::CrateId;
 use chalk_ir::cast::Cast;
 use chalk_solve::Solver;
 use hir_def::{lang_item::LangItemTarget, TraitId};
-use ra_db::CrateId;
 
 use crate::{db::HirDatabase, DebruijnIndex, Substs};
 

@@ -2,8 +2,8 @@
 //!
 //! Specifically, `ast` + `Hygiene` allows you to create a `Name`. Note that, at
 //! this moment, this is horribly incomplete and handles only `$crate`.
+use base_db::CrateId;
 use either::Either;
-use ra_db::CrateId;
 use syntax::ast;
 
 use crate::{

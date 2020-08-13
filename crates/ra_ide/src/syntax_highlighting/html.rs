@@ -1,7 +1,7 @@
 //! Renders a bit of code as HTML.
 
+use base_db::SourceDatabase;
 use oorandom::Rand32;
-use ra_db::SourceDatabase;
 use syntax::{AstNode, TextRange, TextSize};
 
 use crate::{syntax_highlighting::highlight, FileId, RootDatabase};

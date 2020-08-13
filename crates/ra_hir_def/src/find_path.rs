@@ -292,8 +292,8 @@ fn find_local_import_locations(
 
 #[cfg(test)]
 mod tests {
+    use base_db::fixture::WithFixture;
     use hir_expand::hygiene::Hygiene;
-    use ra_db::fixture::WithFixture;
     use syntax::ast::AstNode;
     use test_utils::mark;
 

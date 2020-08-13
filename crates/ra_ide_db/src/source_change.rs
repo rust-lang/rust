@@ -3,7 +3,7 @@
 //!
 //! It can be viewed as a dual for `AnalysisChange`.
 
-use ra_db::FileId;
+use base_db::FileId;
 use text_edit::TextEdit;
 
 #[derive(Default, Debug, Clone)]

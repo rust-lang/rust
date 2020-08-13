@@ -253,8 +253,8 @@ fn partial_ord_expand(
 
 #[cfg(test)]
 mod tests {
+    use base_db::{fixture::WithFixture, CrateId, SourceDatabase};
     use name::{known, Name};
-    use ra_db::{fixture::WithFixture, CrateId, SourceDatabase};
 
     use crate::{test_db::TestDB, AstId, MacroCallId, MacroCallKind, MacroCallLoc};
 

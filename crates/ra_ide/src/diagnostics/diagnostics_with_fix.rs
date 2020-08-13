@@ -2,12 +2,12 @@
 //! The same module also has all curret custom fixes for the diagnostics implemented.
 use crate::Fix;
 use ast::{edit::IndentLevel, make};
+use base_db::FileId;
 use hir::{
     db::AstDatabase,
     diagnostics::{Diagnostic, MissingFields, MissingOkInTailExpr, NoSuchField, UnresolvedModule},
     HasSource, HirDisplay, Semantics, VariantDef,
 };
-use ra_db::FileId;
 use ra_ide_db::{
     source_change::{FileSystemEdit, SourceFileEdit},
     RootDatabase,

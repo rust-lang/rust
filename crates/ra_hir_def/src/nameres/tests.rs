@@ -6,8 +6,8 @@ mod primitives;
 
 use std::sync::Arc;
 
+use base_db::{fixture::WithFixture, SourceDatabase};
 use expect::{expect, Expect};
-use ra_db::{fixture::WithFixture, SourceDatabase};
 use test_utils::mark;
 
 use crate::{db::DefDatabase, nameres::*, test_db::TestDB};

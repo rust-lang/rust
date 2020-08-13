@@ -4,10 +4,10 @@ use crate::{
     MacroDefId, MacroDefKind, TextSize,
 };
 
+use base_db::FileId;
 use either::Either;
 use mbe::parse_to_token_tree;
 use parser::FragmentKind;
-use ra_db::FileId;
 use syntax::ast::{self, AstToken, HasStringValue};
 
 macro_rules! register_builtin {
@@ -426,7 +426,7 @@ mod tests {
         name::AsName, test_db::TestDB, AstNode, EagerCallLoc, MacroCallId, MacroCallKind,
         MacroCallLoc,
     };
-    use ra_db::{fixture::WithFixture, SourceDatabase};
+    use base_db::{fixture::WithFixture, SourceDatabase};
     use std::sync::Arc;
     use syntax::ast::NameOwner;
 

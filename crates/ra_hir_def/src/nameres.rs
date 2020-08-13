@@ -57,8 +57,8 @@ mod tests;
 use std::sync::Arc;
 
 use arena::Arena;
+use base_db::{CrateId, Edition, FileId};
 use hir_expand::{diagnostics::DiagnosticSink, name::Name, InFile};
-use ra_db::{CrateId, Edition, FileId};
 use rustc_hash::FxHashMap;
 use stdx::format_to;
 use syntax::ast;

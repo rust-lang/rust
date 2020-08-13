@@ -3,6 +3,7 @@
 //! `DefCollector::collect` contains the fixed-point iteration loop which
 //! resolves imports and expands macros.
 
+use base_db::{CrateId, FileId, ProcMacroId};
 use cfg::CfgOptions;
 use hir_expand::{
     ast_id_map::FileAstId,
@@ -12,7 +13,6 @@ use hir_expand::{
     proc_macro::ProcMacroExpander,
     HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
-use ra_db::{CrateId, FileId, ProcMacroId};
 use rustc_hash::FxHashMap;
 use syntax::ast;
 use test_utils::mark;
@@ -1209,7 +1209,7 @@ fn is_macro_rules(path: &ModPath) -> bool {
 mod tests {
     use crate::{db::DefDatabase, test_db::TestDB};
     use arena::Arena;
-    use ra_db::{fixture::WithFixture, SourceDatabase};
+    use base_db::{fixture::WithFixture, SourceDatabase};
 
     use super::*;
 
