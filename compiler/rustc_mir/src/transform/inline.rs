@@ -38,7 +38,7 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+        if tcx.sess.opts.debugging_opts.mir_opt_level >= 1 {
             if tcx.sess.opts.debugging_opts.instrument_coverage {
                 // The current implementation of source code coverage injects code region counters
                 // into the MIR, and assumes a 1-to-1 correspondence between MIR and source-code-
@@ -106,7 +106,12 @@ impl Inliner<'tcx> {
                     continue;
                 }
 
-                let callee_body = if let Some(callee_def_id) = callsite.callee.as_local() {
+                let callee_body = if self.tcx.is_trivial_mir(callsite.callee) {
+                    self.tcx.optimized_mir(callsite.callee)
+                } else if self.tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
+                    // Only inline trivial functions by default.
+                    continue;
+                } else if let Some(callee_def_id) = callsite.callee.as_local() {
                     let callee_hir_id = self.tcx.hir().local_def_id_to_hir_id(callee_def_id);
                     // Avoid a cycle here by only using `optimized_mir` only if we have
                     // a lower `HirId` than the callee. This ensures that the callee will
@@ -841,5 +846,46 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
 
     fn visit_source_scope(&mut self, scope: &mut SourceScope) {
         *scope = self.scope_map[*scope];
+    }
+}
+
+struct FunctionCallFinder {
+    found: bool,
+}
+
+impl FunctionCallFinder {
+    fn new() -> Self {
+        FunctionCallFinder { found: false }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for FunctionCallFinder {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, _location: Location) {
+        if let TerminatorKind::Call { .. } = terminator.kind {
+            self.found = true;
+        }
+    }
+}
+
+pub fn is_trivial_mir(tcx: TyCtxt<'tcx>, did: DefId) -> bool {
+    debug!("is_trivial_mir({:?})", did);
+    if tcx.is_constructor(did) {
+        debug!("is_trivial_mir = true (constructor)");
+        return true;
+    }
+
+    if let Some(did) = did.as_local() {
+        let body = tcx
+            .mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did))
+            .borrow();
+        let mut finder = FunctionCallFinder::new();
+        finder.visit_body(&body);
+        debug!("is_trivial_mir = {}", !finder.found);
+        !finder.found
+    } else {
+        // This branch is only taken if no `optimized_mir` is available for
+        // an extern crate, as `is_trivial_mir` has otherwise been encoded.
+        debug!("is_trivial_mir = false (no MIR available)");
+        false
     }
 }

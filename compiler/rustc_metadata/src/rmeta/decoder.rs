@@ -1195,6 +1195,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
+    fn get_is_trivial_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> bool {
+        self.root
+            .tables
+            .is_trivial_mir
+            .get(self, id)
+            .filter(|_| !self.is_proc_macro(id))
+            .map_or(false, |v| v.decode((self, tcx)))
+    }
+
     fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Body<'tcx> {
         self.root
             .tables
