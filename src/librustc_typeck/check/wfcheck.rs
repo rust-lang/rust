@@ -8,6 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 use rustc_hir::lang_items;
 use rustc_hir::ItemKind;
 use rustc_middle::hir::map as hir_map;
@@ -1373,6 +1374,7 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, span: Span, id: hir::HirId) {
     fcx.select_all_obligations_or_error();
 }
 
+#[derive(Clone, Copy)]
 pub struct CheckTypeWellFormedVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
@@ -1380,6 +1382,20 @@ pub struct CheckTypeWellFormedVisitor<'tcx> {
 impl CheckTypeWellFormedVisitor<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> CheckTypeWellFormedVisitor<'tcx> {
         CheckTypeWellFormedVisitor { tcx }
+    }
+}
+
+impl ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
+    fn visit_item(&self, i: &'tcx hir::Item<'tcx>) {
+        Visitor::visit_item(&mut self.clone(), i);
+    }
+
+    fn visit_trait_item(&self, trait_item: &'tcx hir::TraitItem<'tcx>) {
+        Visitor::visit_trait_item(&mut self.clone(), trait_item);
+    }
+
+    fn visit_impl_item(&self, impl_item: &'tcx hir::ImplItem<'tcx>) {
+        Visitor::visit_impl_item(&mut self.clone(), impl_item);
     }
 }
 
@@ -1413,8 +1429,7 @@ impl Visitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
         check_param_wf(self.tcx, p);
-        // No need to walk further here, there is nothing interesting
-        // inside of generic params we don't already check in `check_param_wf`.
+        hir_visit::walk_generic_param(self, p);
     }
 }
 
