@@ -218,7 +218,6 @@ mod large_const_arrays;
 mod large_enum_variant;
 mod large_stack_arrays;
 mod len_zero;
-mod let_and_return;
 mod let_if_seq;
 mod let_underscore;
 mod lifetimes;
@@ -256,7 +255,6 @@ mod needless_borrow;
 mod needless_borrowed_ref;
 mod needless_continue;
 mod needless_pass_by_value;
-mod needless_return;
 mod needless_update;
 mod neg_cmp_op_on_partial_ord;
 mod neg_multiply;
@@ -311,6 +309,7 @@ mod unnested_or_patterns;
 mod unsafe_removed_from_name;
 mod unused_io_amount;
 mod unused_self;
+mod unused_unit;
 mod unwrap;
 mod use_self;
 mod useless_conversion;
@@ -587,7 +586,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &large_stack_arrays::LARGE_STACK_ARRAYS,
         &len_zero::LEN_WITHOUT_IS_EMPTY,
         &len_zero::LEN_ZERO,
-        &let_and_return::LET_AND_RETURN,
+        &returns::LET_AND_RETURN,
         &let_if_seq::USELESS_LET_IF_SEQ,
         &let_underscore::LET_UNDERSCORE_LOCK,
         &let_underscore::LET_UNDERSCORE_MUST_USE,
@@ -727,7 +726,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
         &needless_continue::NEEDLESS_CONTINUE,
         &needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
-        &needless_return::NEEDLESS_RETURN,
+        &returns::NEEDLESS_RETURN,
         &needless_update::NEEDLESS_UPDATE,
         &neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD,
         &neg_multiply::NEG_MULTIPLY,
@@ -771,7 +770,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &regex::INVALID_REGEX,
         &regex::TRIVIAL_REGEX,
         &repeat_once::REPEAT_ONCE,
-        &returns::UNUSED_UNIT,
+        &unused_unit::UNUSED_UNIT,
         &serde_api::SERDE_API_MISUSE,
         &shadow::SHADOW_REUSE,
         &shadow::SHADOW_SAME,
@@ -1026,9 +1025,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box misc_early::MiscEarlyLints);
     store.register_early_pass(|| box redundant_closure_call::RedundantClosureCall);
     store.register_late_pass(|| box redundant_closure_call::RedundantClosureCall);
-    store.register_early_pass(|| box returns::Return);
-    store.register_late_pass(|| box let_and_return::LetReturn);
-    store.register_late_pass(|| box needless_return::NeedlessReturn);
+    store.register_early_pass(|| box unused_unit::UnusedUnit);
+    store.register_late_pass(|| box returns::Return);
     store.register_early_pass(|| box collapsible_if::CollapsibleIf);
     store.register_early_pass(|| box items_after_statements::ItemsAfterStatements);
     store.register_early_pass(|| box precedence::Precedence);
@@ -1286,7 +1284,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&large_enum_variant::LARGE_ENUM_VARIANT),
         LintId::of(&len_zero::LEN_WITHOUT_IS_EMPTY),
         LintId::of(&len_zero::LEN_ZERO),
-        LintId::of(&let_and_return::LET_AND_RETURN),
+        LintId::of(&returns::LET_AND_RETURN),
         LintId::of(&let_underscore::LET_UNDERSCORE_LOCK),
         LintId::of(&lifetimes::EXTRA_UNUSED_LIFETIMES),
         LintId::of(&lifetimes::NEEDLESS_LIFETIMES),
@@ -1383,7 +1381,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&needless_bool::BOOL_COMPARISON),
         LintId::of(&needless_bool::NEEDLESS_BOOL),
         LintId::of(&needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE),
-        LintId::of(&needless_return::NEEDLESS_RETURN),
+        LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&needless_update::NEEDLESS_UPDATE),
         LintId::of(&neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD),
         LintId::of(&neg_multiply::NEG_MULTIPLY),
@@ -1416,7 +1414,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&regex::INVALID_REGEX),
         LintId::of(&regex::TRIVIAL_REGEX),
         LintId::of(&repeat_once::REPEAT_ONCE),
-        LintId::of(&returns::UNUSED_UNIT),
+        LintId::of(&unused_unit::UNUSED_UNIT),
         LintId::of(&serde_api::SERDE_API_MISUSE),
         LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(&slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
@@ -1502,7 +1500,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&inherent_to_string::INHERENT_TO_STRING),
         LintId::of(&len_zero::LEN_WITHOUT_IS_EMPTY),
         LintId::of(&len_zero::LEN_ZERO),
-        LintId::of(&let_and_return::LET_AND_RETURN),
+        LintId::of(&returns::LET_AND_RETURN),
         LintId::of(&literal_representation::INCONSISTENT_DIGIT_GROUPING),
         LintId::of(&loops::EMPTY_LOOP),
         LintId::of(&loops::FOR_KV_MAP),
@@ -1545,7 +1543,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&misc_early::MIXED_CASE_HEX_LITERALS),
         LintId::of(&misc_early::REDUNDANT_PATTERN),
         LintId::of(&mut_reference::UNNECESSARY_MUT_PASSED),
-        LintId::of(&needless_return::NEEDLESS_RETURN),
+        LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&neg_multiply::NEG_MULTIPLY),
         LintId::of(&new_without_default::NEW_WITHOUT_DEFAULT),
         LintId::of(&non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
@@ -1557,7 +1555,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(&redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
         LintId::of(&regex::TRIVIAL_REGEX),
-        LintId::of(&returns::UNUSED_UNIT),
+        LintId::of(&unused_unit::UNUSED_UNIT),
         LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(&strings::STRING_LIT_AS_BYTES),
         LintId::of(&tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),

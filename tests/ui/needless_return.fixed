@@ -76,6 +76,17 @@ mod no_lint_if_stmt_borrows {
             let stdin = ::std::io::stdin();
             return stdin.lock().lines().next().unwrap().unwrap();
         }
+
+        fn read_line2(value: bool) -> String {
+            if value {
+                use std::io::BufRead;
+                let stdin = ::std::io::stdin();
+                let _a = stdin.lock().lines().next().unwrap().unwrap();
+                return String::from("test");
+            } else {
+                return String::new();
+            }
+        }
     }
 }
 
