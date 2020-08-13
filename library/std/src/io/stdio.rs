@@ -922,8 +922,9 @@ impl fmt::Debug for StderrLock<'_> {
 ///
 /// fn main() -> io::Result<()> {
 ///     let name = io::input("Enter name: ")?;
+///
 ///     println!("Your name is {}!", name);
-/// 
+///
 ///     Ok(())
 /// }
 /// ```
