@@ -29,4 +29,4 @@ test_utils = { path = "../test_utils" }
 
 # ra_ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.
-hir = { path = "../ra_hir", package = "ra_hir" }
+hir = { path = "../hir" }

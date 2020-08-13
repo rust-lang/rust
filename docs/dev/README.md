@@ -148,14 +148,14 @@ Internal representations are lowered to LSP in the `rust-analyzer` crate (the on
 
 ## IDE/Compiler split
 
-There's a semi-hard split between "compiler" and "IDE", at the `ra_hir` crate.
+There's a semi-hard split between "compiler" and "IDE", at the `hir` crate.
 Compiler derives new facts about source code.
 It explicitly acknowledges that not all info is available (i.e. you can't look at types during name resolution).
 
 IDE assumes that all information is available at all times.
 
-IDE should use only types from `ra_hir`, and should not depend on the underling compiler types.
-`ra_hir` is a facade.
+IDE should use only types from `hir`, and should not depend on the underling compiler types.
+`hir` is a facade.
 
 ## IDE API
 

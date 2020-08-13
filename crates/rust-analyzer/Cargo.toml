@@ -49,7 +49,7 @@ toolchain = { path = "../toolchain" }
 base_db = { path = "../base_db" }
 ra_ide_db = { path = "../ra_ide_db" }
 ra_ssr = { path = "../ra_ssr" }
-hir = { path = "../ra_hir", package = "ra_hir" }
+hir = { path = "../hir" }
 hir_def = { path = "../hir_def" }
 hir_ty = { path = "../hir_ty" }
 proc_macro_srv = { path = "../proc_macro_srv" }

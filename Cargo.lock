@@ -464,6 +464,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "hir"
+version = "0.0.0"
+dependencies = [
+ "arrayvec",
+ "base_db",
+ "either",
+ "hir_def",
+ "hir_expand",
+ "hir_ty",
+ "itertools",
+ "log",
+ "profile",
+ "rustc-hash",
+ "stdx",
+ "syntax",
+]
+
+[[package]]
 name = "hir_def"
 version = "0.0.0"
 dependencies = [
@@ -1071,33 +1089,15 @@ version = "0.1.0"
 dependencies = [
  "base_db",
  "either",
+ "hir",
  "itertools",
  "profile",
- "ra_hir",
  "ra_ide_db",
  "rustc-hash",
  "stdx",
  "syntax",
  "test_utils",
  "text_edit",
-]
-
-[[package]]
-name = "ra_hir"
-version = "0.1.0"
-dependencies = [
- "arrayvec",
- "base_db",
- "either",
- "hir_def",
- "hir_expand",
- "hir_ty",
- "itertools",
- "log",
- "profile",
- "rustc-hash",
- "stdx",
- "syntax",
 ]
 
 [[package]]
@@ -1108,13 +1108,13 @@ dependencies = [
  "cfg",
  "either",
  "expect",
+ "hir",
  "indexmap",
  "itertools",
  "log",
  "oorandom",
  "profile",
  "ra_assists",
- "ra_hir",
  "ra_ide_db",
  "ra_ssr",
  "rustc-hash",
@@ -1131,10 +1131,10 @@ dependencies = [
  "base_db",
  "either",
  "fst",
+ "hir",
  "log",
  "once_cell",
  "profile",
- "ra_hir",
  "rayon",
  "rustc-hash",
  "stdx",
@@ -1149,7 +1149,7 @@ version = "0.1.0"
 dependencies = [
  "base_db",
  "expect",
- "ra_hir",
+ "hir",
  "ra_ide_db",
  "rustc-hash",
  "syntax",
@@ -1236,6 +1236,7 @@ dependencies = [
  "env_logger",
  "expect",
  "flycheck",
+ "hir",
  "hir_def",
  "hir_ty",
  "itertools",
@@ -1251,7 +1252,6 @@ dependencies = [
  "proc_macro_srv",
  "profile",
  "project_model",
- "ra_hir",
  "ra_ide",
  "ra_ide_db",
  "ra_ssr",

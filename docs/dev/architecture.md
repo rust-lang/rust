@@ -102,7 +102,7 @@ defines most of the "input" queries: facts supplied by the client of the
 analyzer. Reading the docs of the `base_db::input` module should be useful:
 everything else is strictly derived from those inputs.
 
-### `crates/ra_hir*` crates
+### `crates/hir*` crates
 
 HIR provides high-level "object oriented" access to Rust code.
 
@@ -113,10 +113,10 @@ is responsible for guessing a HIR for a particular source position.
 
 Underneath, HIR works on top of salsa, using a `HirDatabase` trait.
 
-`ra_hir_xxx` crates have a strong ECS flavor, in that they work with raw ids and
+`hir_xxx` crates have a strong ECS flavor, in that they work with raw ids and
 directly query the database.
 
-The top-level `ra_hir` façade crate wraps ids into a more OO-flavored API.
+The top-level `hir` façade crate wraps ids into a more OO-flavored API.
 
 ### `crates/ra_ide`
 

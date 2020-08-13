@@ -3,7 +3,7 @@
 //! Strings, suitable for displaying to the human.
 //!
 //! What powers this API are the `RootDatabase` struct, which defines a `salsa`
-//! database, and the `ra_hir` crate, where majority of the analysis happens.
+//! database, and the `hir` crate, where majority of the analysis happens.
 //! However, IDE specific bits of the analysis (most notably completion) happen
 //! in this crate.
 

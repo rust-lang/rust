@@ -9,11 +9,11 @@
 //! It is written in "OO" style. Each type is self contained (as in, it knows it's
 //! parents and full context). It should be "clean code".
 //!
-//! `ra_hir_*` crates are the implementation of the compiler logic.
+//! `hir_*` crates are the implementation of the compiler logic.
 //! They are written in "ECS" style, with relatively little abstractions.
 //! Many types are not self-contained, and explicitly use local indexes, arenas, etc.
 //!
-//! `ra_hir` is what insulates the "we don't know how to actually write an incremental compiler"
+//! `hir` is what insulates the "we don't know how to actually write an incremental compiler"
 //! from the ide with completions, hovers, etc. It is a (soft, internal) boundary:
 //! https://www.tedinski.com/2018/02/06/system-boundaries.html.
 
