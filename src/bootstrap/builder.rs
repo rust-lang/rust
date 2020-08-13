@@ -404,6 +404,7 @@ impl<'a> Builder<'a> {
                 test::CrateLibrustc,
                 test::CrateRustdoc,
                 test::Linkcheck,
+                test::TierCheck,
                 test::Cargotest,
                 test::Cargo,
                 test::Rls,
