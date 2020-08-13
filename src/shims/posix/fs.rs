@@ -127,7 +127,7 @@ pub struct FileHandler {
 
 impl<'tcx> Default for FileHandler {
     fn default() -> Self {
-        let mut handles : BTreeMap<_, Box<dyn FileDescriptor>> = BTreeMap::new();
+        let mut handles: BTreeMap<_, Box<dyn FileDescriptor>> = BTreeMap::new();
         handles.insert(0i32, Box::new(io::stdin()));
         handles.insert(1i32, Box::new(io::stdout()));
         handles.insert(2i32, Box::new(io::stderr()));
