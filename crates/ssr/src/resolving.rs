@@ -10,7 +10,6 @@ use test_utils::mark;
 
 pub(crate) struct ResolutionScope<'db> {
     scope: hir::SemanticsScope<'db>,
-    hygiene: hir::Hygiene,
     node: SyntaxNode,
 }
 
@@ -201,11 +200,7 @@ impl<'db> ResolutionScope<'db> {
             .unwrap_or_else(|| file.syntax().clone());
         let node = pick_node_for_resolution(node);
         let scope = sema.scope(&node);
-        ResolutionScope {
-            scope,
-            hygiene: hir::Hygiene::new(sema.db, resolve_context.file_id.into()),
-            node,
-        }
+        ResolutionScope { scope, node }
     }
 
     /// Returns the function in which SSR was invoked, if any.
@@ -214,24 +209,31 @@ impl<'db> ResolutionScope<'db> {
     }
 
     fn resolve_path(&self, path: &ast::Path) -> Option<hir::PathResolution> {
-        let hir_path = hir::Path::from_src(path.clone(), &self.hygiene)?;
         // First try resolving the whole path. This will work for things like
         // `std::collections::HashMap`, but will fail for things like
         // `std::collections::HashMap::new`.
-        if let Some(resolution) = self.scope.resolve_hir_path(&hir_path) {
+        if let Some(resolution) = self.scope.resolve_hypothetical(&path) {
             return Some(resolution);
         }
         // Resolution failed, try resolving the qualifier (e.g. `std::collections::HashMap` and if
         // that succeeds, then iterate through the candidates on the resolved type with the provided
         // name.
-        let resolved_qualifier = self.scope.resolve_hir_path_qualifier(&hir_path.qualifier()?)?;
+        let resolved_qualifier = self.scope.resolve_hypothetical(&path.qualifier()?)?;
         if let hir::PathResolution::Def(hir::ModuleDef::Adt(adt)) = resolved_qualifier {
+            let name = path.segment()?.name_ref()?;
             adt.ty(self.scope.db).iterate_path_candidates(
                 self.scope.db,
                 self.scope.module()?.krate(),
                 &self.scope.traits_in_scope(),
-                Some(hir_path.segments().last()?.name),
-                |_ty, assoc_item| Some(hir::PathResolution::AssocItem(assoc_item)),
+                None,
+                |_ty, assoc_item| {
+                    let item_name = assoc_item.name(self.scope.db)?;
+                    if item_name.to_string().as_str() == name.text().as_str() {
+                        Some(hir::PathResolution::AssocItem(assoc_item))
+                    } else {
+                        None
+                    }
+                },
             )
         } else {
             None
