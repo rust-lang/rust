@@ -27,8 +27,20 @@ pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
 }
 
 pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
-    FN_KW, STRUCT_KW, ENUM_KW, IMPL_KW, TRAIT_KW, CONST_KW, STATIC_KW, LET_KW, MOD_KW, PUB_KW,
-    CRATE_KW, USE_KW, MACRO_KW
+    FN_KW,
+    STRUCT_KW,
+    ENUM_KW,
+    IMPL_KW,
+    TRAIT_KW,
+    CONST_KW,
+    STATIC_KW,
+    LET_KW,
+    MOD_KW,
+    PUB_KW,
+    CRATE_KW,
+    USE_KW,
+    MACRO_KW,
+    T![;],
 ];
 
 pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {

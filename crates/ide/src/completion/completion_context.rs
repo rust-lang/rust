@@ -9,15 +9,21 @@ use syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
+use test_utils::mark;
 use text_edit::Indel;
 
-use super::patterns::{
-    has_bind_pat_parent, has_block_expr_parent, has_impl_as_prev_sibling, has_impl_parent,
-    has_item_list_or_source_file_parent, has_ref_parent, has_trait_as_prev_sibling,
-    has_trait_parent, if_is_prev, is_in_loop_body, is_match_arm, unsafe_is_prev,
+use crate::{
+    call_info::ActiveParameter,
+    completion::{
+        patterns::{
+            has_bind_pat_parent, has_block_expr_parent, has_impl_as_prev_sibling, has_impl_parent,
+            has_item_list_or_source_file_parent, has_ref_parent, has_trait_as_prev_sibling,
+            has_trait_parent, if_is_prev, is_in_loop_body, is_match_arm, unsafe_is_prev,
+        },
+        CompletionConfig,
+    },
+    FilePosition,
 };
-use crate::{call_info::ActiveParameter, completion::CompletionConfig, FilePosition};
-use test_utils::mark;
 
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
