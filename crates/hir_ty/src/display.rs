@@ -511,6 +511,7 @@ fn write_bounds_like_dyn_trait(
             GenericPredicate::Implemented(trait_ref) => {
                 if angle_open {
                     write!(f, ">")?;
+                    angle_open = false;
                 }
                 if !first {
                     write!(f, " + ")?;
