@@ -2,7 +2,7 @@
 //! comments, but should handle indent some time in the future as well.
 
 use base_db::{FilePosition, SourceDatabase};
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use syntax::{
     ast::{self, AstToken},
     AstNode, SmolStr, SourceFile,

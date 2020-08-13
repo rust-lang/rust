@@ -4,8 +4,8 @@ pub(crate) mod insert_use;
 use std::{iter, ops};
 
 use hir::{Adt, Crate, Enum, ScopeDef, Semantics, Trait, Type};
+use ide_db::RootDatabase;
 use itertools::Itertools;
-use ra_ide_db::RootDatabase;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, make, NameOwner},

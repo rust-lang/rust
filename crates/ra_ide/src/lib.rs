@@ -3,7 +3,7 @@
 //! Strings, suitable for displaying to the human.
 //!
 //! What powers this API are the `RootDatabase` struct, which defines a `salsa`
-//! database, and the `ra_hir` crate, where majority of the analysis happens.
+//! database, and the `hir` crate, where majority of the analysis happens.
 //! However, IDE specific bits of the analysis (most notably completion) happen
 //! in this crate.
 
@@ -39,7 +39,6 @@ mod matching_brace;
 mod parent_module;
 mod references;
 mod runnables;
-mod ssr;
 mod status;
 mod syntax_highlighting;
 mod syntax_tree;
@@ -52,7 +51,7 @@ use base_db::{
     CheckCanceled, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
 };
 use cfg::CfgOptions;
-use ra_ide_db::{
+use ide_db::{
     symbol_index::{self, FileSymbol},
     LineIndexDatabase,
 };
@@ -86,8 +85,7 @@ pub use base_db::{
     SourceRootId,
 };
 pub use hir::{Documentation, Semantics};
-pub use ra_assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
-pub use ra_ide_db::{
+pub use ide_db::{
     change::AnalysisChange,
     line_index::{LineCol, LineIndex},
     search::SearchScope,
@@ -95,7 +93,8 @@ pub use ra_ide_db::{
     symbol_index::Query,
     RootDatabase,
 };
-pub use ra_ssr::SsrError;
+pub use ra_assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
+pub use ssr::SsrError;
 pub use text_edit::{Indel, TextEdit};
 
 pub type Cancelable<T> = Result<T, Canceled>;
@@ -515,20 +514,23 @@ impl Analysis {
         &self,
         query: &str,
         parse_only: bool,
-        position: FilePosition,
+        resolve_context: FilePosition,
         selections: Vec<FileRange>,
     ) -> Cancelable<Result<SourceChange, SsrError>> {
         self.with_db(|db| {
-            let edits = ssr::parse_search_replace(query, parse_only, db, position, selections)?;
+            let rule: ssr::SsrRule = query.parse()?;
+            let mut match_finder = ssr::MatchFinder::in_context(db, resolve_context, selections);
+            match_finder.add_rule(rule)?;
+            let edits = if parse_only { Vec::new() } else { match_finder.edits() };
             Ok(SourceChange::from(edits))
         })
     }
 
     /// Performs an operation on that may be Canceled.
-    fn with_db<F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe, T>(
-        &self,
-        f: F,
-    ) -> Cancelable<T> {
+    fn with_db<F, T>(&self, f: F) -> Cancelable<T>
+    where
+        F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe,
+    {
         self.db.catch_canceled(f)
     }
 }

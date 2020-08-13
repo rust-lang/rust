@@ -8,7 +8,7 @@ use hir::{
     diagnostics::{Diagnostic, MissingFields, MissingOkInTailExpr, NoSuchField, UnresolvedModule},
     HasSource, HirDisplay, Semantics, VariantDef,
 };
-use ra_ide_db::{
+use ide_db::{
     source_change::{FileSystemEdit, SourceFileEdit},
     RootDatabase,
 };

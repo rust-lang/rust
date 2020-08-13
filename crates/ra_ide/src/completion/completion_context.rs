@@ -2,7 +2,7 @@
 
 use base_db::SourceDatabase;
 use hir::{Semantics, SemanticsScope, Type};
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use syntax::{
     algo::{find_covering_element, find_node_at_offset},
     ast, match_ast, AstNode, NodeOrToken,

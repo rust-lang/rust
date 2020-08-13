@@ -3,6 +3,58 @@
 //! Allows searching the AST for code that matches one or more patterns and then replacing that code
 //! based on a template.
 
+// Feature: Structural Search and Replace
+//
+// Search and replace with named wildcards that will match any expression, type, path, pattern or item.
+// The syntax for a structural search replace command is `<search_pattern> ==>> <replace_pattern>`.
+// A `$<name>` placeholder in the search pattern will match any AST node and `$<name>` will reference it in the replacement.
+// Within a macro call, a placeholder will match up until whatever token follows the placeholder.
+//
+// All paths in both the search pattern and the replacement template must resolve in the context
+// in which this command is invoked. Paths in the search pattern will then match the code if they
+// resolve to the same item, even if they're written differently. For example if we invoke the
+// command in the module `foo` with a pattern of `Bar`, then code in the parent module that refers
+// to `foo::Bar` will match.
+//
+// Paths in the replacement template will be rendered appropriately for the context in which the
+// replacement occurs. For example if our replacement template is `foo::Bar` and we match some
+// code in the `foo` module, we'll insert just `Bar`.
+//
+// Inherent method calls should generally be written in UFCS form. e.g. `foo::Bar::baz($s, $a)` will
+// match `$s.baz($a)`, provided the method call `baz` resolves to the method `foo::Bar::baz`.
+//
+// The scope of the search / replace will be restricted to the current selection if any, otherwise
+// it will apply to the whole workspace.
+//
+// Placeholders may be given constraints by writing them as `${<name>:<constraint1>:<constraint2>...}`.
+//
+// Supported constraints:
+//
+// |===
+// | Constraint    | Restricts placeholder
+//
+// | kind(literal) | Is a literal (e.g. `42` or `"forty two"`)
+// | not(a)        | Negates the constraint `a`
+// |===
+//
+// Available via the command `rust-analyzer.ssr`.
+//
+// ```rust
+// // Using structural search replace command [foo($a, $b) ==>> ($a).foo($b)]
+//
+// // BEFORE
+// String::from(foo(y + 5, z))
+//
+// // AFTER
+// String::from((y + 5).foo(z))
+// ```
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **Rust Analyzer: Structural Search Replace**
+// |===
+
 mod matching;
 mod nester;
 mod parsing;
@@ -20,7 +72,7 @@ pub use crate::matching::Match;
 use crate::matching::MatchFailureReason;
 use base_db::{FileId, FilePosition, FileRange};
 use hir::Semantics;
-use ra_ide_db::source_change::SourceFileEdit;
+use ide_db::source_change::SourceFileEdit;
 use resolving::ResolvedRule;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, SyntaxNode, TextRange};
@@ -49,7 +101,7 @@ pub struct SsrMatches {
 /// Searches a crate for pattern matches and possibly replaces them with something else.
 pub struct MatchFinder<'db> {
     /// Our source of information about the user's code.
-    sema: Semantics<'db, ra_ide_db::RootDatabase>,
+    sema: Semantics<'db, ide_db::RootDatabase>,
     rules: Vec<ResolvedRule>,
     resolution_scope: resolving::ResolutionScope<'db>,
     restrict_ranges: Vec<FileRange>,
@@ -59,7 +111,7 @@ impl<'db> MatchFinder<'db> {
     /// Constructs a new instance where names will be looked up as if they appeared at
     /// `lookup_context`.
     pub fn in_context(
-        db: &'db ra_ide_db::RootDatabase,
+        db: &'db ide_db::RootDatabase,
         lookup_context: FilePosition,
         mut restrict_ranges: Vec<FileRange>,
     ) -> MatchFinder<'db> {
@@ -70,9 +122,9 @@ impl<'db> MatchFinder<'db> {
     }
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.
-    pub fn at_first_file(db: &'db ra_ide_db::RootDatabase) -> Result<MatchFinder<'db>, SsrError> {
+    pub fn at_first_file(db: &'db ide_db::RootDatabase) -> Result<MatchFinder<'db>, SsrError> {
         use base_db::SourceDatabaseExt;
-        use ra_ide_db::symbol_index::SymbolsDatabase;
+        use ide_db::symbol_index::SymbolsDatabase;
         if let Some(first_file_id) = db
             .local_roots()
             .iter()

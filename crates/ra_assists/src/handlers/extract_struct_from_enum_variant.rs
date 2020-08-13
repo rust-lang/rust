@@ -1,6 +1,6 @@
 use base_db::FileId;
 use hir::{EnumVariant, Module, ModuleDef, Name};
-use ra_ide_db::{defs::Definition, search::Reference, RootDatabase};
+use ide_db::{defs::Definition, search::Reference, RootDatabase};
 use rustc_hash::FxHashSet;
 use syntax::{
     algo::find_node_at_offset,

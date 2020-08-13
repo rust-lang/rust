@@ -2,7 +2,7 @@
 
 use base_db::SourceDatabaseExt;
 use hir::{Module, ModuleDef, ModuleSource, Semantics};
-use ra_ide_db::{
+use ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
 };

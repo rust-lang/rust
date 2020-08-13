@@ -1,5 +1,5 @@
 use hir::{Crate, ImplDef, Semantics};
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use syntax::{algo::find_node_at_offset, ast, AstNode};
 
 use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};

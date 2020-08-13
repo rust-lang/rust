@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 use either::Either;
 use hir::{Docs, HirDisplay, Semantics, Type};
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use stdx::format_to;
 use syntax::{
     ast::{self, ArgListOwner},

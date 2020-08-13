@@ -61,13 +61,13 @@ fn parser_undefined_placeholder_in_replacement() {
 
 /// `code` may optionally contain a cursor marker `<|>`. If it doesn't, then the position will be
 /// the start of the file. If there's a second cursor marker, then we'll return a single range.
-pub(crate) fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FilePosition, Vec<FileRange>) {
+pub(crate) fn single_file(code: &str) -> (ide_db::RootDatabase, FilePosition, Vec<FileRange>) {
     use base_db::fixture::WithFixture;
-    use ra_ide_db::symbol_index::SymbolsDatabase;
+    use ide_db::symbol_index::SymbolsDatabase;
     let (mut db, file_id, range_or_offset) = if code.contains(test_utils::CURSOR_MARKER) {
-        ra_ide_db::RootDatabase::with_range_or_offset(code)
+        ide_db::RootDatabase::with_range_or_offset(code)
     } else {
-        let (db, file_id) = ra_ide_db::RootDatabase::with_single_file(code);
+        let (db, file_id) = ide_db::RootDatabase::with_single_file(code);
         (db, file_id, RangeOrOffset::Offset(0.into()))
     };
     let selections;

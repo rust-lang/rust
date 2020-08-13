@@ -464,6 +464,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "hir"
+version = "0.0.0"
+dependencies = [
+ "arrayvec",
+ "base_db",
+ "either",
+ "hir_def",
+ "hir_expand",
+ "hir_ty",
+ "itertools",
+ "log",
+ "profile",
+ "rustc-hash",
+ "stdx",
+ "syntax",
+]
+
+[[package]]
 name = "hir_def"
 version = "0.0.0"
 dependencies = [
@@ -508,12 +526,59 @@ dependencies = [
 ]
 
 [[package]]
+name = "hir_ty"
+version = "0.0.0"
+dependencies = [
+ "arena",
+ "arrayvec",
+ "base_db",
+ "chalk-ir",
+ "chalk-recursive",
+ "chalk-solve",
+ "ena",
+ "expect",
+ "hir_def",
+ "hir_expand",
+ "itertools",
+ "log",
+ "profile",
+ "rustc-hash",
+ "scoped-tls",
+ "smallvec",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-tree",
+]
+
+[[package]]
 name = "home"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2456aef2e6b6a9784192ae780c0f15bc57df0e918585282325e8c8ac27737654"
 dependencies = [
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "ide_db"
+version = "0.0.0"
+dependencies = [
+ "base_db",
+ "either",
+ "fst",
+ "hir",
+ "log",
+ "once_cell",
+ "profile",
+ "rayon",
+ "rustc-hash",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "text_edit",
 ]
 
 [[package]]
@@ -1043,61 +1108,15 @@ version = "0.1.0"
 dependencies = [
  "base_db",
  "either",
+ "hir",
+ "ide_db",
  "itertools",
  "profile",
- "ra_hir",
- "ra_ide_db",
  "rustc-hash",
  "stdx",
  "syntax",
  "test_utils",
  "text_edit",
-]
-
-[[package]]
-name = "ra_hir"
-version = "0.1.0"
-dependencies = [
- "arrayvec",
- "base_db",
- "either",
- "hir_def",
- "hir_expand",
- "itertools",
- "log",
- "profile",
- "ra_hir_ty",
- "rustc-hash",
- "stdx",
- "syntax",
-]
-
-[[package]]
-name = "ra_hir_ty"
-version = "0.1.0"
-dependencies = [
- "arena",
- "arrayvec",
- "base_db",
- "chalk-ir",
- "chalk-recursive",
- "chalk-solve",
- "ena",
- "expect",
- "hir_def",
- "hir_expand",
- "itertools",
- "log",
- "profile",
- "rustc-hash",
- "scoped-tls",
- "smallvec",
- "stdx",
- "syntax",
- "test_utils",
- "tracing",
- "tracing-subscriber",
- "tracing-tree",
 ]
 
 [[package]]
@@ -1108,50 +1127,17 @@ dependencies = [
  "cfg",
  "either",
  "expect",
+ "hir",
+ "ide_db",
  "indexmap",
  "itertools",
  "log",
  "oorandom",
  "profile",
  "ra_assists",
- "ra_hir",
- "ra_ide_db",
- "ra_ssr",
  "rustc-hash",
+ "ssr",
  "stdx",
- "syntax",
- "test_utils",
- "text_edit",
-]
-
-[[package]]
-name = "ra_ide_db"
-version = "0.1.0"
-dependencies = [
- "base_db",
- "either",
- "fst",
- "log",
- "once_cell",
- "profile",
- "ra_hir",
- "rayon",
- "rustc-hash",
- "stdx",
- "syntax",
- "test_utils",
- "text_edit",
-]
-
-[[package]]
-name = "ra_ssr"
-version = "0.1.0"
-dependencies = [
- "base_db",
- "expect",
- "ra_hir",
- "ra_ide_db",
- "rustc-hash",
  "syntax",
  "test_utils",
  "text_edit",
@@ -1236,7 +1222,10 @@ dependencies = [
  "env_logger",
  "expect",
  "flycheck",
+ "hir",
  "hir_def",
+ "hir_ty",
+ "ide_db",
  "itertools",
  "jod-thread",
  "log",
@@ -1250,15 +1239,12 @@ dependencies = [
  "proc_macro_srv",
  "profile",
  "project_model",
- "ra_hir",
- "ra_hir_ty",
  "ra_ide",
- "ra_ide_db",
- "ra_ssr",
  "rayon",
  "rustc-hash",
  "serde",
  "serde_json",
+ "ssr",
  "stdx",
  "syntax",
  "test_utils",
@@ -1454,6 +1440,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f7909a1d8bc166a862124d84fdc11bda0ea4ed3157ccca662296919c2972db1"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "ssr"
+version = "0.1.0"
+dependencies = [
+ "base_db",
+ "expect",
+ "hir",
+ "ide_db",
+ "rustc-hash",
+ "syntax",
+ "test_utils",
+ "text_edit",
 ]
 
 [[package]]

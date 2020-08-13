@@ -13,11 +13,13 @@ use anyhow::Result;
 use ra_ide::Analysis;
 use syntax::{AstNode, SourceFile};
 
-pub use analysis_bench::{BenchCmd, BenchWhat, Position};
-pub use analysis_stats::AnalysisStatsCmd;
-pub use diagnostics::diagnostics;
-pub use load_cargo::load_cargo;
-pub use ssr::{apply_ssr_rules, search_for_patterns};
+pub use self::{
+    analysis_bench::{BenchCmd, BenchWhat, Position},
+    analysis_stats::AnalysisStatsCmd,
+    diagnostics::diagnostics,
+    load_cargo::load_cargo,
+    ssr::{apply_ssr_rules, search_for_patterns},
+};
 
 #[derive(Clone, Copy)]
 pub enum Verbosity {

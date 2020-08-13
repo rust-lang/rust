@@ -24,16 +24,16 @@ stdx = { path = "../stdx" }
 syntax = { path = "../syntax" }
 text_edit = { path = "../text_edit" }
 base_db = { path = "../base_db" }
-ra_ide_db = { path = "../ra_ide_db" }
+ide_db = { path = "../ide_db" }
 cfg = { path = "../cfg" }
 profile = { path = "../profile" }
 test_utils = { path = "../test_utils" }
 ra_assists = { path = "../ra_assists" }
-ra_ssr = { path = "../ra_ssr" }
+ssr = { path = "../ssr" }
 
 # ra_ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.
-hir = { path = "../ra_hir", package = "ra_hir" }
+hir = { path = "../hir" }
 
 [dev-dependencies]
 expect = { path = "../expect" }

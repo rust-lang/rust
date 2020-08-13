@@ -2,7 +2,7 @@ mod generated;
 
 use base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
 use hir::Semantics;
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use syntax::TextRange;
 use test_utils::{assert_eq_text, extract_offset, extract_range};
 

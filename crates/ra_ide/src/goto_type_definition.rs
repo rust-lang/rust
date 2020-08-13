@@ -1,4 +1,4 @@
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
 
 use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};

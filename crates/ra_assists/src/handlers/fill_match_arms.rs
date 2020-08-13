@@ -1,8 +1,8 @@
 use std::iter;
 
 use hir::{Adt, HasSource, ModuleDef, Semantics};
+use ide_db::RootDatabase;
 use itertools::Itertools;
-use ra_ide_db::RootDatabase;
 use syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
 use test_utils::mark;
 

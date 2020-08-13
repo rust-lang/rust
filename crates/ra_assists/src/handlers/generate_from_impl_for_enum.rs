@@ -1,4 +1,4 @@
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use syntax::ast::{self, AstNode, NameOwner};
 use test_utils::mark;
 

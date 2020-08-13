@@ -3,7 +3,7 @@
 use indexmap::IndexMap;
 
 use hir::Semantics;
-use ra_ide_db::RootDatabase;
+use ide_db::RootDatabase;
 use syntax::{ast, match_ast, AstNode, TextRange};
 
 use crate::{

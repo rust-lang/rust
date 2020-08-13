@@ -275,7 +275,7 @@ several times, with different sets of `cfg`s enabled. The IDE-specific task of
 mapping source code position into a semantic model is inherently imprecise for
 this reason, and is handled by the [`source_binder`].
 
-[`source_binder`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/source_binder.rs
+[`source_binder`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/source_binder.rs
 
 The semantic interface is declared in the [`code_model_api`] module. Each entity is
 identified by an integer ID and has a bunch of methods which take a salsa database
@@ -283,8 +283,8 @@ as an argument and returns other entities (which are also IDs). Internally, thes
 methods invoke various queries on the database to build the model on demand.
 Here's [the list of queries].
 
-[`code_model_api`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/code_model_api.rs
-[the list of queries]: https://github.com/rust-analyzer/rust-analyzer/blob/7e84440e25e19529e4ff8a66e521d1b06349c6ec/crates/ra_hir/src/db.rs#L20-L106
+[`code_model_api`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/code_model_api.rs
+[the list of queries]: https://github.com/rust-analyzer/rust-analyzer/blob/7e84440e25e19529e4ff8a66e521d1b06349c6ec/crates/hir/src/db.rs#L20-L106
 
 The first step of building the model is parsing the source code.
 
@@ -341,7 +341,7 @@ The algorithm for building a tree of modules is to start with a crate root
 declarations and recursively process child modules. This is handled by the
 [`module_tree_query`], with two slight variations.
 
-[`module_tree_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/module_tree.rs#L116-L123
+[`module_tree_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/module_tree.rs#L116-L123
 
 First, rust-analyzer builds a module tree for all crates in a source root
 simultaneously. The main reason for this is historical (`module_tree` predates
@@ -364,7 +364,7 @@ the same, we don't have to re-execute [`module_tree_query`]. In fact, we only
 need to re-execute it when we add/remove new files or when we change mod
 declarations.
 
-[`submodules_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/module_tree.rs#L41
+[`submodules_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/module_tree.rs#L41
 
 We store the resulting modules in a `Vec`-based indexed arena. The indices in
 the arena becomes module IDs. And this brings us to the next topic:
@@ -393,7 +393,7 @@ database we use includes a couple of [interners]. How to "garbage collect"
 unused locations is an open question.
 
 [`LocationInterner`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/base_db/src/loc2id.rs#L65-L71
-[interners]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/db.rs#L22-L23
+[interners]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/db.rs#L22-L23
 
 For example, we use `LocationInterner` to assign IDs to definitions of functions,
 structs, enums, etc. The location, [`DefLoc`] contains two bits of information:
@@ -407,7 +407,7 @@ using offsets, text ranges or syntax trees as keys and values for queries. What
 we do instead is we store "index" of the item among all of the items of a file
 (so, a positional based ID, but localized to a single file).
 
-[`DefLoc`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/ids.rs#L127-L139
+[`DefLoc`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/ids.rs#L127-L139
 
 One thing we've glossed over for the time being is support for macros. We have
 only proof of concept handling of macros at the moment, but they are extremely
@@ -440,7 +440,7 @@ terms of `HirFileId`! This does not recur infinitely though: any chain of
 `HirFileId`s bottoms out in `HirFileId::FileId`, that is, some source file
 actually written by the user.
 
-[`HirFileId`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/ids.rs#L18-L125
+[`HirFileId`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/ids.rs#L18-L125
 
 Now that we understand how to identify a definition, in a source or in a
 macro-generated file, we can discuss name resolution a bit.
@@ -454,14 +454,14 @@ each module into a position-independent representation which does not change if
 we modify bodies of the items. After that we [loop] resolving all imports until
 we've reached a fixed point.
 
-[lower]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L113-L117
-[loop]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres.rs#L186-L196
+[lower]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L113-L117
+[loop]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres.rs#L186-L196
 
 And, given all our preparation with IDs and a position-independent representation,
 it is satisfying to [test] that typing inside function body does not invalidate
 name resolution results.
 
-[test]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/tests.rs#L376
+[test]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/tests.rs#L376
 
 An interesting fact about name resolution is that it "erases" all of the
 intermediate paths from the imports: in the end, we know which items are defined
@@ -496,10 +496,10 @@ there's an intermediate [projection query] which returns only the first
 position-independent part of the lowering. The result of this query is stable.
 Naturally, name resolution [uses] this stable projection query.
 
-[imports]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L52-L59
-[`SourceMap`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L52-L59
-[projection query]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L97-L103
-[uses]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/query_definitions.rs#L49
+[imports]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L52-L59
+[`SourceMap`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L52-L59
+[projection query]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L97-L103
+[uses]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/query_definitions.rs#L49
 
 ## Type inference
 
@@ -521,10 +521,10 @@ construct a mapping from `ExprId`s to types.
 
 [@flodiebold]: https://github.com/flodiebold
 [#327]: https://github.com/rust-analyzer/rust-analyzer/pull/327
-[lower the AST]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs
-[positional ID]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs#L13-L15
-[a source map]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/expr.rs#L41-L44
-[type inference]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/ty.rs#L1208-L1223
+[lower the AST]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/expr.rs
+[positional ID]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/expr.rs#L13-L15
+[a source map]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/expr.rs#L41-L44
+[type inference]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/ty.rs#L1208-L1223
 
 ## Tying it all together: completion
 

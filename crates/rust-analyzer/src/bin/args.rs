@@ -7,8 +7,8 @@ use std::{env, fmt::Write, path::PathBuf};
 
 use anyhow::{bail, Result};
 use pico_args::Arguments;
-use ra_ssr::{SsrPattern, SsrRule};
 use rust_analyzer::cli::{AnalysisStatsCmd, BenchCmd, BenchWhat, Position, Verbosity};
+use ssr::{SsrPattern, SsrRule};
 use vfs::AbsPathBuf;
 
 pub(crate) struct Args {

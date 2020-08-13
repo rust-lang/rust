@@ -3,7 +3,7 @@
 use base_db::{FileId, SourceDatabase};
 use either::Either;
 use hir::{original_range, AssocItem, FieldSource, HasSource, InFile, ModuleSource};
-use ra_ide_db::{defs::Definition, RootDatabase};
+use ide_db::{defs::Definition, RootDatabase};
 use syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
     match_ast, AstNode, SmolStr,

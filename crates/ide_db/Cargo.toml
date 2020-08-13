@@ -1,9 +1,9 @@
 [package]
-edition = "2018"
-name = "ra_ide_db"
-version = "0.1.0"
-authors = ["rust-analyzer developers"]
+name = "ide_db"
+version = "0.0.0"
 license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
 
 [lib]
 doctest = false
@@ -20,13 +20,11 @@ once_cell = "1.3.1"
 either = "1.5.3"
 
 stdx = { path = "../stdx" }
-
 syntax = { path = "../syntax" }
 text_edit = { path = "../text_edit" }
 base_db = { path = "../base_db" }
 profile = { path = "../profile" }
 test_utils = { path = "../test_utils" }
-
 # ra_ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.
-hir = { path = "../ra_hir", package = "ra_hir" }
+hir = { path = "../hir" }

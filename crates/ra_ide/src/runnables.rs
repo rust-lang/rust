@@ -2,8 +2,8 @@ use std::fmt;
 
 use cfg::CfgExpr;
 use hir::{AsAssocItem, Attrs, HirFileId, InFile, Semantics};
+use ide_db::RootDatabase;
 use itertools::Itertools;
-use ra_ide_db::RootDatabase;
 use syntax::{
     ast::{self, AstNode, AttrsOwner, DocCommentsOwner, ModuleItemOwner, NameOwner},
     match_ast, SyntaxNode,
