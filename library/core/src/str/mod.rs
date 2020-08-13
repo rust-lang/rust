@@ -381,12 +381,6 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     Ok(unsafe { from_utf8_unchecked_mut(v) })
 }
 
-#[repr(C)]
-union StrOrSlice<'a> {
-    str: &'a str,
-    slice: &'a [u8],
-}
-
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
 ///
@@ -422,11 +416,11 @@ union StrOrSlice<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_str_from_utf8_unchecked", issue = "75196")]
 #[allow(unused_attributes)]
-#[allow_internal_unstable(const_fn_union)]
+#[allow_internal_unstable(const_fn_transmute)]
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
     // Also relies on `&str` and `&[u8]` having the same layout.
-    unsafe { StrOrSlice { slice: v }.str }
+    unsafe { mem::transmute(self) }
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -2355,10 +2349,10 @@ impl str {
     #[rustc_const_stable(feature = "str_as_bytes", since = "1.32.0")]
     #[inline(always)]
     #[allow(unused_attributes)]
-    #[allow_internal_unstable(const_fn_union)]
+    #[allow_internal_unstable(const_fn_transmute)]
     pub const fn as_bytes(&self) -> &[u8] {
         // SAFETY: const sound because we transmute two types with the same layout
-        unsafe { StrOrSlice { str: self }.slice }
+        unsafe { mem::transmute(self) }
     }
 
     /// Converts a mutable string slice to a mutable byte slice.
