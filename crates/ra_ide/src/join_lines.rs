@@ -1,10 +1,10 @@
 use itertools::Itertools;
-use ra_fmt::{compute_ws, extract_trivial_expression};
+use ra_assists::utils::extract_trivial_expression;
 use syntax::{
     algo::{find_covering_element, non_trivia_sibling},
     ast::{self, AstNode, AstToken},
     Direction, NodeOrToken, SourceFile,
-    SyntaxKind::{self, WHITESPACE},
+    SyntaxKind::{self, USE_TREE, WHITESPACE},
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
 use text_edit::{TextEdit, TextEditBuilder};
@@ -166,6 +166,29 @@ fn join_single_use_tree(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Opti
 
 fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
     matches!((left, right), (T![,], T![')']) | (T![,], T![']']))
+}
+
+fn compute_ws(left: SyntaxKind, right: SyntaxKind) -> &'static str {
+    match left {
+        T!['('] | T!['['] => return "",
+        T!['{'] => {
+            if let USE_TREE = right {
+                return "";
+            }
+        }
+        _ => (),
+    }
+    match right {
+        T![')'] | T![']'] => return "",
+        T!['}'] => {
+            if let USE_TREE = left {
+                return "";
+            }
+        }
+        T![.] => return "",
+        _ => (),
+    }
+    " "
 }
 
 #[cfg(test)]
