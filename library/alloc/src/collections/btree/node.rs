@@ -821,6 +821,53 @@ impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, mar
     }
 }
 
+enum InsertionPlace {
+    Left(usize),
+    Right(usize),
+}
+
+/// Given an edge index where we want to insert into a node filled to capacity,
+/// computes a sensible KV index of a split point and where to perform the insertion.
+/// The goal of the split point is for its key and value to end up in a parent node;
+/// the keys, values and edges to the left of the split point become the left child;
+/// the keys, values and edges to the right of the split point become the right child.
+fn splitpoint(edge_idx: usize) -> (usize, InsertionPlace) {
+    debug_assert!(edge_idx <= CAPACITY);
+    // Rust issue #74834 tries to explain these symmetric rules.
+    let middle_kv_idx;
+    let insertion;
+    if edge_idx <= B - 2 {
+        middle_kv_idx = B - 2;
+        insertion = InsertionPlace::Left(edge_idx);
+    } else if edge_idx == B - 1 {
+        middle_kv_idx = B - 1;
+        insertion = InsertionPlace::Left(edge_idx);
+    } else if edge_idx == B {
+        middle_kv_idx = B - 1;
+        insertion = InsertionPlace::Right(0);
+    } else {
+        middle_kv_idx = B;
+        let new_edge_idx = edge_idx - (B + 1);
+        insertion = InsertionPlace::Right(new_edge_idx);
+    }
+    let mut left_len = middle_kv_idx;
+    let mut right_len = CAPACITY - middle_kv_idx - 1;
+    match insertion {
+        InsertionPlace::Left(edge_idx) => {
+            debug_assert!(edge_idx <= left_len);
+            left_len += 1;
+        }
+        InsertionPlace::Right(edge_idx) => {
+            debug_assert!(edge_idx <= right_len);
+            right_len += 1;
+        }
+    }
+    debug_assert!(left_len >= MIN_LEN);
+    debug_assert!(right_len >= MIN_LEN);
+    debug_assert!(left_len + right_len == CAPACITY);
+    (middle_kv_idx, insertion)
+}
+
 impl<'a, K, V, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::Edge> {
     /// Helps implementations of `insert_fit` for a particular `NodeType`,
     /// by taking care of leaf data.
@@ -863,18 +910,20 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
             let kv = unsafe { Handle::new_kv(self.node, self.idx) };
             (InsertResult::Fit(kv), ptr)
         } else {
-            let middle = unsafe { Handle::new_kv(self.node, B) };
+            let (middle_kv_idx, insertion) = splitpoint(self.idx);
+            let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
             let (mut left, k, v, mut right) = middle.split();
-            let ptr = if self.idx <= B {
-                unsafe { Handle::new_edge(left.reborrow_mut(), self.idx).insert_fit(key, val) }
-            } else {
-                unsafe {
+            let ptr = match insertion {
+                InsertionPlace::Left(insert_idx) => unsafe {
+                    Handle::new_edge(left.reborrow_mut(), insert_idx).insert_fit(key, val)
+                },
+                InsertionPlace::Right(insert_idx) => unsafe {
                     Handle::new_edge(
                         right.node_as_mut().cast_unchecked::<marker::Leaf>(),
-                        self.idx - (B + 1),
+                        insert_idx,
                     )
                     .insert_fit(key, val)
-                }
+                },
             };
             (InsertResult::Split(SplitResult { left: left.forget_type(), k, v, right }), ptr)
         }
@@ -936,20 +985,20 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             let kv = unsafe { Handle::new_kv(self.node, self.idx) };
             InsertResult::Fit(kv)
         } else {
-            let middle = unsafe { Handle::new_kv(self.node, B) };
+            let (middle_kv_idx, insertion) = splitpoint(self.idx);
+            let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
             let (mut left, k, v, mut right) = middle.split();
-            if self.idx <= B {
-                unsafe {
-                    Handle::new_edge(left.reborrow_mut(), self.idx).insert_fit(key, val, edge);
-                }
-            } else {
-                unsafe {
+            match insertion {
+                InsertionPlace::Left(insert_idx) => unsafe {
+                    Handle::new_edge(left.reborrow_mut(), insert_idx).insert_fit(key, val, edge);
+                },
+                InsertionPlace::Right(insert_idx) => unsafe {
                     Handle::new_edge(
                         right.node_as_mut().cast_unchecked::<marker::Internal>(),
-                        self.idx - (B + 1),
+                        insert_idx,
                     )
                     .insert_fit(key, val, edge);
-                }
+                },
             }
             InsertResult::Split(SplitResult { left: left.forget_type(), k, v, right })
         }
