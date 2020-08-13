@@ -1,7 +1,7 @@
 //! Driver for proc macro server
 
 use crate::ProcMacroSrv;
-use ra_proc_macro::msg::{self, Message};
+use proc_macro_api::msg::{self, Message};
 use std::io;
 
 pub fn run() -> io::Result<()> {

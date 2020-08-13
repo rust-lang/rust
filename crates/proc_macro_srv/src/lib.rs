@@ -8,7 +8,7 @@
 //! * We use `tt` for proc-macro `TokenStream` server, it is easier to manipulate and interact with
 //!   RA than `proc-macro2` token stream.
 //! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
-//!   rustc rather than `unstable`. (Although in gerenal ABI compatibility is still an issue)
+//!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
 #[allow(dead_code)]
 #[doc(hidden)]
@@ -20,7 +20,7 @@ mod rustc_server;
 mod dylib;
 
 use proc_macro::bridge::client::TokenStream;
-use ra_proc_macro::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask};
+use proc_macro_api::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask};
 use std::{
     collections::{hash_map::Entry, HashMap},
     fs,

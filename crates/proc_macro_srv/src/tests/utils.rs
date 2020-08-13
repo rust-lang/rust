@@ -2,7 +2,7 @@
 
 use crate::dylib;
 use crate::ProcMacroSrv;
-use ra_proc_macro::ListMacrosTask;
+use proc_macro_api::ListMacrosTask;
 use std::str::FromStr;
 use test_utils::assert_eq_text;
 

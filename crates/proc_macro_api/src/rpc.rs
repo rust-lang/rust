@@ -1,4 +1,4 @@
-//! Data struture serialization related stuff for RPC
+//! Data structure serialization related stuff for RPC
 //!
 //! Defines all necessary rpc serialization data structures,
 //! which includes `tt` related data and some task messages.
