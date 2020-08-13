@@ -90,7 +90,7 @@ pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
 /// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
 /// said intrinsic has a `rustc_const_{un,}stable` attribute.
 fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
 
     let node = tcx.hir().get(hir_id);
 

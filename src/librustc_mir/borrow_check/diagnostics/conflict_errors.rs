@@ -263,7 +263,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let needs_note = match ty.kind {
                 ty::Closure(id, _) => {
                     let tables = self.infcx.tcx.typeck(id.expect_local());
-                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(id.expect_local());
+                    let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(id.expect_local());
 
                     tables.closure_kind_origins().get(hir_id).is_none()
                 }
@@ -954,7 +954,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("`{}` would have to be valid for `{}`...", name, region_name),
             );
 
-            let fn_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id);
+            let fn_hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(self.mir_def_id);
             err.span_label(
                 drop_span,
                 format!(
@@ -1863,7 +1863,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> Option<AnnotatedBorrowFnSignature<'tcx>> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
         let is_closure = self.infcx.tcx.is_closure(did);
-        let fn_hir_id = self.infcx.tcx.hir().as_local_hir_id(did.as_local()?);
+        let fn_hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did.as_local()?);
         let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(fn_hir_id)?;
 
         // We need to work out which arguments to highlight. We do this by looking

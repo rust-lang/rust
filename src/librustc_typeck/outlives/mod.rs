@@ -18,7 +18,7 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate<'_>, Span)] {
-    let id = tcx.hir().as_local_hir_id(item_def_id.expect_local());
+    let id = tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local());
 
     match tcx.hir().get(id) {
         Node::Item(item) => match item.kind {

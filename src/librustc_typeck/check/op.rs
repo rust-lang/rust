@@ -933,7 +933,7 @@ fn suggest_constraining_param(
     let param_def_id = generics.type_param(&p, tcx).def_id;
     if let Some(generics) = param_def_id
         .as_local()
-        .map(|id| hir.as_local_hir_id(id))
+        .map(|id| hir.local_def_id_to_hir_id(id))
         .and_then(|id| hir.find(hir.get_parent_item(id)))
         .as_ref()
         .and_then(|node| node.generics())

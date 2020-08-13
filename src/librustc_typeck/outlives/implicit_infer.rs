@@ -57,7 +57,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
 
         debug!("InferVisitor::visit_item(item={:?})", item_did);
 
-        let hir_id = self.tcx.hir().as_local_hir_id(item_did);
+        let hir_id = self.tcx.hir().local_def_id_to_hir_id(item_did);
         let item = match self.tcx.hir().get(hir_id) {
             Node::Item(item) => item,
             _ => bug!(),

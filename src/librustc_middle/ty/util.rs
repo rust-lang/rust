@@ -879,7 +879,7 @@ impl<'tcx> ty::TyS<'tcx> {
                         let span = match field
                             .did
                             .as_local()
-                            .map(|id| tcx.hir().as_local_hir_id(id))
+                            .map(|id| tcx.hir().local_def_id_to_hir_id(id))
                             .and_then(|id| tcx.hir().find(id))
                         {
                             Some(hir::Node::Field(field)) => field.ty.span,
