@@ -118,13 +118,13 @@ impl serialize::Encoder for Encoder {
 
     #[inline]
     fn emit_f64(&mut self, v: f64) -> EncodeResult {
-        let as_u64: u64 = unsafe { ::std::mem::transmute(v) };
+        let as_u64: u64 = v.to_bits();
         self.emit_u64(as_u64)
     }
 
     #[inline]
     fn emit_f32(&mut self, v: f32) -> EncodeResult {
-        let as_u32: u32 = unsafe { ::std::mem::transmute(v) };
+        let as_u32: u32 = v.to_bits();
         self.emit_u32(as_u32)
     }
 

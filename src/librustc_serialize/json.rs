@@ -78,19 +78,17 @@
 //!     data_vector: Vec<u8>,
 //! }
 //!
-//! fn main() {
-//!     let object = TestStruct {
-//!         data_int: 1,
-//!         data_str: "homura".to_string(),
-//!         data_vector: vec![2,3,4,5],
-//!     };
+//! let object = TestStruct {
+//!     data_int: 1,
+//!     data_str: "homura".to_string(),
+//!     data_vector: vec![2,3,4,5],
+//! };
 //!
-//!     // Serialize using `json::encode`
-//!     let encoded = json::encode(&object).unwrap();
+//! // Serialize using `json::encode`
+//! let encoded = json::encode(&object).unwrap();
 //!
-//!     // Deserialize using `json::decode`
-//!     let decoded: TestStruct = json::decode(&encoded[..]).unwrap();
-//! }
+//! // Deserialize using `json::decode`
+//! let decoded: TestStruct = json::decode(&encoded[..]).unwrap();
 //! ```
 //!
 //! ## Using the `ToJson` trait
@@ -125,16 +123,14 @@
 //!     val: Json,
 //! }
 //!
-//! fn main() {
-//!     let num = ComplexNum { a: 0.0001, b: 12.539 };
-//!     let data: String = json::encode(&ComplexNumRecord{
-//!         uid: 1,
-//!         dsc: "test".to_string(),
-//!         val: num.to_json(),
-//!     }).unwrap();
-//!     println!("data: {}", data);
-//!     // data: {"uid":1,"dsc":"test","val":"0.0001+12.539i"};
-//! }
+//! let num = ComplexNum { a: 0.0001, b: 12.539 };
+//! let data: String = json::encode(&ComplexNumRecord{
+//!     uid: 1,
+//!     dsc: "test".to_string(),
+//!     val: num.to_json(),
+//! }).unwrap();
+//! println!("data: {}", data);
+//! // data: {"uid":1,"dsc":"test","val":"0.0001+12.539i"};
 //! ```
 //!
 //! ### Verbose example of `ToJson` usage
@@ -164,19 +160,17 @@
 //!     }
 //! }
 //!
-//! fn main() {
-//!     // Serialize using `ToJson`
-//!     let input_data = TestStruct {
-//!         data_int: 1,
-//!         data_str: "madoka".to_string(),
-//!         data_vector: vec![2,3,4,5],
-//!     };
-//!     let json_obj: Json = input_data.to_json();
-//!     let json_str: String = json_obj.to_string();
+//! // Serialize using `ToJson`
+//! let input_data = TestStruct {
+//!     data_int: 1,
+//!     data_str: "madoka".to_string(),
+//!     data_vector: vec![2,3,4,5],
+//! };
+//! let json_obj: Json = input_data.to_json();
+//! let json_str: String = json_obj.to_string();
 //!
-//!     // Deserialize like before
-//!     let decoded: TestStruct = json::decode(&json_str).unwrap();
-//! }
+//! // Deserialize like before
+//! let decoded: TestStruct = json::decode(&json_str).unwrap();
 //! ```
 
 use self::DecoderError::*;
@@ -1269,34 +1263,22 @@ impl Json {
 
     /// Returns `true` if the Json value is a `Number`.
     pub fn is_number(&self) -> bool {
-        match *self {
-            Json::I64(_) | Json::U64(_) | Json::F64(_) => true,
-            _ => false,
-        }
+        matches!(*self, Json::I64(_) | Json::U64(_) | Json::F64(_))
     }
 
     /// Returns `true` if the Json value is a `i64`.
     pub fn is_i64(&self) -> bool {
-        match *self {
-            Json::I64(_) => true,
-            _ => false,
-        }
+        matches!(*self, Json::I64(_))
     }
 
     /// Returns `true` if the Json value is a `u64`.
     pub fn is_u64(&self) -> bool {
-        match *self {
-            Json::U64(_) => true,
-            _ => false,
-        }
+        matches!(*self, Json::U64(_))
     }
 
     /// Returns `true` if the Json value is a `f64`.
     pub fn is_f64(&self) -> bool {
-        match *self {
-            Json::F64(_) => true,
-            _ => false,
-        }
+        matches!(*self, Json::F64(_))
     }
 
     /// If the Json value is a number, returns or cast it to a `i64`;
@@ -1416,6 +1398,7 @@ enum ParserState {
 /// structure of the JSON stream.
 ///
 /// An example is `foo.bar[3].x`.
+#[derive(Default)]
 pub struct Stack {
     stack: Vec<InternalStackElement>,
     str_buffer: Vec<u8>,
@@ -1442,7 +1425,7 @@ enum InternalStackElement {
 
 impl Stack {
     pub fn new() -> Stack {
-        Stack { stack: Vec::new(), str_buffer: Vec::new() }
+        Self::default()
     }
 
     /// Returns The number of elements in the Stack.
@@ -1547,10 +1530,7 @@ impl Stack {
 
     // Used by Parser to test whether the top-most element is an index.
     fn last_is_index(&self) -> bool {
-        match self.stack.last() {
-            Some(InternalIndex(_)) => true,
-            _ => false,
-        }
+        matches!(self.stack.last(), Some(InternalIndex(_)))
     }
 
     // Used by Parser to increment the index of the top-most element.
