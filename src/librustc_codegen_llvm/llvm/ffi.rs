@@ -337,9 +337,6 @@ impl AtomicOrdering {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum SynchronizationScope {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
     SingleThread,
     CrossThread,
 }
@@ -347,7 +344,6 @@ pub enum SynchronizationScope {
 impl SynchronizationScope {
     pub fn from_generic(sc: rustc_codegen_ssa::common::SynchronizationScope) -> Self {
         match sc {
-            rustc_codegen_ssa::common::SynchronizationScope::Other => SynchronizationScope::Other,
             rustc_codegen_ssa::common::SynchronizationScope::SingleThread => {
                 SynchronizationScope::SingleThread
             }
@@ -362,9 +358,6 @@ impl SynchronizationScope {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum FileType {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
     AssemblyFile,
     ObjectFile,
 }
@@ -391,9 +384,6 @@ pub enum MetadataType {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum AsmDialect {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
     Att,
     Intel,
 }
@@ -411,9 +401,6 @@ impl AsmDialect {
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum CodeGenOptLevel {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
     None,
     Less,
     Default,
@@ -513,9 +500,6 @@ pub enum DiagnosticLevel {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum ArchiveKind {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
     K_GNU,
     K_BSD,
     K_DARWIN,

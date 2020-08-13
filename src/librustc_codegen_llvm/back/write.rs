@@ -975,7 +975,6 @@ pub unsafe fn with_llvm_pmb(
         (llvm::CodeGenOptLevel::Default, ..) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 225);
         }
-        (llvm::CodeGenOptLevel::Other, ..) => bug!("CodeGenOptLevel::Other selected"),
     }
 
     f(builder);
