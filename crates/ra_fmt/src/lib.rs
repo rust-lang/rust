@@ -10,11 +10,6 @@ use syntax::{
     SyntaxNode, SyntaxToken, T,
 };
 
-pub fn reindent(text: &str, indent: &str) -> String {
-    let indent = format!("\n{}", indent);
-    text.lines().intersperse(&indent).collect()
-}
-
 /// If the node is on the beginning of the line, calculate indent.
 pub fn leading_indent(node: &SyntaxNode) -> Option<SmolStr> {
     for token in prev_tokens(node.first_token()?) {
