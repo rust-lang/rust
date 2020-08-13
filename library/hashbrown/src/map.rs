@@ -1390,7 +1390,14 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next(&mut self.f)
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, self.inner.iter.size_hint().1)
+    }
 }
+
+impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
 
 /// Portions of `DrainFilter` shared with `set::DrainFilter`
 pub(super) struct DrainFilterInner<'a, K, V> {
