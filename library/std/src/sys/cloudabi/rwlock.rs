@@ -61,23 +61,25 @@ impl RWLock {
     pub unsafe fn read(&self) {
         if !self.try_read() {
             // Call into the kernel to acquire a read lock.
-            let lock = self.lock.get();
-            let subscription = abi::subscription {
-                type_: abi::eventtype::LOCK_RDLOCK,
-                union: abi::subscription_union {
-                    lock: abi::subscription_lock {
-                        lock: lock as *mut abi::lock,
-                        lock_scope: abi::scope::PRIVATE,
+            unsafe {
+                let lock = self.lock.get();
+                let subscription = abi::subscription {
+                    type_: abi::eventtype::LOCK_RDLOCK,
+                    union: abi::subscription_union {
+                        lock: abi::subscription_lock {
+                            lock: lock as *mut abi::lock,
+                            lock_scope: abi::scope::PRIVATE,
+                        },
                     },
-                },
-                ..mem::zeroed()
-            };
-            let mut event = MaybeUninit::<abi::event>::uninit();
-            let mut nevents = MaybeUninit::<usize>::uninit();
-            let ret = abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr());
-            assert_eq!(ret, abi::errno::SUCCESS, "Failed to acquire read lock");
-            let event = event.assume_init();
-            assert_eq!(event.error, abi::errno::SUCCESS, "Failed to acquire read lock");
+                    ..mem::zeroed()
+                };
+                let mut event = MaybeUninit::<abi::event>::uninit();
+                let mut nevents = MaybeUninit::<usize>::uninit();
+                let ret = abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr());
+                assert_eq!(ret, abi::errno::SUCCESS, "Failed to acquire read lock");
+                let event = event.assume_init();
+                assert_eq!(event.error, abi::errno::SUCCESS, "Failed to acquire read lock");
+            }
 
             RDLOCKS_ACQUIRED += 1;
         }
@@ -140,46 +142,50 @@ impl RWLock {
 
     pub unsafe fn try_write(&self) -> bool {
         // Attempt to acquire the lock.
-        let lock = self.lock.get();
-        if let Err(old) = (*lock).compare_exchange(
-            abi::LOCK_UNLOCKED.0,
-            __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0,
-            Ordering::Acquire,
-            Ordering::Relaxed,
-        ) {
-            // Failure. Crash upon recursive acquisition.
-            assert_ne!(
-                old & !abi::LOCK_KERNEL_MANAGED.0,
+        unsafe {
+            let lock = self.lock.get();
+            if let Err(old) = (*lock).compare_exchange(
+                abi::LOCK_UNLOCKED.0,
                 __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0,
-                "Attempted to recursive write-lock a rwlock",
-            );
-            false
-        } else {
-            // Success.
-            true
+                Ordering::Acquire,
+                Ordering::Relaxed,
+            ) {
+                // Failure. Crash upon recursive acquisition.
+                assert_ne!(
+                    old & !abi::LOCK_KERNEL_MANAGED.0,
+                    __pthread_thread_id.0 | abi::LOCK_WRLOCKED.0,
+                    "Attempted to recursive write-lock a rwlock",
+                );
+                false
+            } else {
+                // Success.
+                true
+            }
         }
     }
 
     pub unsafe fn write(&self) {
         if !self.try_write() {
             // Call into the kernel to acquire a write lock.
-            let lock = self.lock.get();
-            let subscription = abi::subscription {
-                type_: abi::eventtype::LOCK_WRLOCK,
-                union: abi::subscription_union {
-                    lock: abi::subscription_lock {
-                        lock: lock as *mut abi::lock,
-                        lock_scope: abi::scope::PRIVATE,
+            unsafe {
+                let lock = self.lock.get();
+                let subscription = abi::subscription {
+                    type_: abi::eventtype::LOCK_WRLOCK,
+                    union: abi::subscription_union {
+                        lock: abi::subscription_lock {
+                            lock: lock as *mut abi::lock,
+                            lock_scope: abi::scope::PRIVATE,
+                        },
                     },
-                },
-                ..mem::zeroed()
-            };
-            let mut event = MaybeUninit::<abi::event>::uninit();
-            let mut nevents = MaybeUninit::<usize>::uninit();
-            let ret = abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr());
-            assert_eq!(ret, abi::errno::SUCCESS, "Failed to acquire write lock");
-            let event = event.assume_init();
-            assert_eq!(event.error, abi::errno::SUCCESS, "Failed to acquire write lock");
+                    ..mem::zeroed()
+                };
+                let mut event = MaybeUninit::<abi::event>::uninit();
+                let mut nevents = MaybeUninit::<usize>::uninit();
+                let ret = abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr());
+                assert_eq!(ret, abi::errno::SUCCESS, "Failed to acquire write lock");
+                let event = event.assume_init();
+                assert_eq!(event.error, abi::errno::SUCCESS, "Failed to acquire write lock");
+            }
         }
     }
 

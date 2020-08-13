@@ -57,22 +57,24 @@ impl Condvar {
         );
 
         // Call into the kernel to wait on the condition variable.
-        let condvar = self.condvar.get();
-        let subscription = abi::subscription {
-            type_: abi::eventtype::CONDVAR,
-            union: abi::subscription_union {
-                condvar: abi::subscription_condvar {
-                    condvar: condvar as *mut abi::condvar,
-                    condvar_scope: abi::scope::PRIVATE,
-                    lock: mutex as *mut abi::lock,
-                    lock_scope: abi::scope::PRIVATE,
+        unsafe {
+            let condvar = self.condvar.get();
+            let subscription = abi::subscription {
+                type_: abi::eventtype::CONDVAR,
+                union: abi::subscription_union {
+                    condvar: abi::subscription_condvar {
+                        condvar: condvar as *mut abi::condvar,
+                        condvar_scope: abi::scope::PRIVATE,
+                        lock: mutex as *mut abi::lock,
+                        lock_scope: abi::scope::PRIVATE,
+                    },
                 },
-            },
-            ..mem::zeroed()
-        };
-        let mut event: mem::MaybeUninit<abi::event> = mem::MaybeUninit::uninit();
-        let mut nevents: mem::MaybeUninit<usize> = mem::MaybeUninit::uninit();
-        let ret = abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr());
+                ..mem::zeroed()
+            };
+            let mut event: mem::MaybeUninit<abi::event> = mem::MaybeUninit::uninit();
+            let mut nevents: mem::MaybeUninit<usize> = mem::MaybeUninit::uninit();
+            let ret = abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr());
+        }
         assert_eq!(ret, abi::errno::SUCCESS, "Failed to wait on condition variable");
         assert_eq!(
             event.assume_init().error,
@@ -90,42 +92,44 @@ impl Condvar {
         );
 
         // Call into the kernel to wait on the condition variable.
-        let condvar = self.condvar.get();
-        let timeout =
-            checked_dur2intervals(&dur).expect("overflow converting duration to nanoseconds");
-        let subscriptions = [
-            abi::subscription {
-                type_: abi::eventtype::CONDVAR,
-                union: abi::subscription_union {
-                    condvar: abi::subscription_condvar {
-                        condvar: condvar as *mut abi::condvar,
-                        condvar_scope: abi::scope::PRIVATE,
-                        lock: mutex as *mut abi::lock,
-                        lock_scope: abi::scope::PRIVATE,
+        unsafe {
+            let condvar = self.condvar.get();
+            let timeout =
+                checked_dur2intervals(&dur).expect("overflow converting duration to nanoseconds");
+            let subscriptions = [
+                abi::subscription {
+                    type_: abi::eventtype::CONDVAR,
+                    union: abi::subscription_union {
+                        condvar: abi::subscription_condvar {
+                            condvar: condvar as *mut abi::condvar,
+                            condvar_scope: abi::scope::PRIVATE,
+                            lock: mutex as *mut abi::lock,
+                            lock_scope: abi::scope::PRIVATE,
+                        },
                     },
+                    ..mem::zeroed()
                 },
-                ..mem::zeroed()
-            },
-            abi::subscription {
-                type_: abi::eventtype::CLOCK,
-                union: abi::subscription_union {
-                    clock: abi::subscription_clock {
-                        clock_id: abi::clockid::MONOTONIC,
-                        timeout,
-                        ..mem::zeroed()
+                abi::subscription {
+                    type_: abi::eventtype::CLOCK,
+                    union: abi::subscription_union {
+                        clock: abi::subscription_clock {
+                            clock_id: abi::clockid::MONOTONIC,
+                            timeout,
+                            ..mem::zeroed()
+                        },
                     },
+                    ..mem::zeroed()
                 },
-                ..mem::zeroed()
-            },
-        ];
-        let mut events: [mem::MaybeUninit<abi::event>; 2] = [mem::MaybeUninit::uninit(); 2];
-        let mut nevents: mem::MaybeUninit<usize> = mem::MaybeUninit::uninit();
-        let ret = abi::poll(
-            subscriptions.as_ptr(),
-            mem::MaybeUninit::first_ptr_mut(&mut events),
-            2,
-            nevents.as_mut_ptr(),
-        );
+            ];
+            let mut events: [mem::MaybeUninit<abi::event>; 2] = [mem::MaybeUninit::uninit(); 2];
+            let mut nevents: mem::MaybeUninit<usize> = mem::MaybeUninit::uninit();
+            let ret = abi::poll(
+                subscriptions.as_ptr(),
+                mem::MaybeUninit::first_ptr_mut(&mut events),
+                2,
+                nevents.as_mut_ptr(),
+            );
+        }
         assert_eq!(ret, abi::errno::SUCCESS, "Failed to wait on condition variable");
         let nevents = nevents.assume_init();
         for i in 0..nevents {
