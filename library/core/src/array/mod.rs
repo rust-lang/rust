@@ -364,3 +364,66 @@ macro_rules! array_impl_default {
 }
 
 array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+
+#[cfg(not(bootstrap))]
+#[lang = "array"]
+impl<T, const N: usize> [T; N] {
+    /// Returns an array of the same size as `self`, with function `f` applied to each element
+    /// in order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_map)]
+    /// let x = [1, 2, 3];
+    /// let y = x.map(|v| v + 1);
+    /// assert_eq!(y, [2, 3, 4]);
+    ///
+    /// let x = [1, 2, 3];
+    /// let mut temp = 0;
+    /// let y = x.map(|v| { temp += 1; v * temp });
+    /// assert_eq!(y, [1, 4, 9]);
+    ///
+    /// let x = ["Ferris", "Bueller's", "Day", "Off"];
+    /// let y = x.map(|v| v.len());
+    /// assert_eq!(y, [6, 9, 3, 3]);
+    /// ```
+    #[unstable(feature = "array_map", issue = "75243")]
+    pub fn map<F, U>(self, mut f: F) -> [U; N]
+    where
+        F: FnMut(T) -> U,
+    {
+        use crate::mem::MaybeUninit;
+        struct Guard<T, const N: usize> {
+            dst: *mut T,
+            initialized: usize,
+        }
+
+        impl<T, const N: usize> Drop for Guard<T, N> {
+            fn drop(&mut self) {
+                debug_assert!(self.initialized <= N);
+
+                let initialized_part =
+                    crate::ptr::slice_from_raw_parts_mut(self.dst, self.initialized);
+                // SAFETY: this raw slice will contain only initialized objects
+                // that's why, it is allowed to drop it.
+                unsafe {
+                    crate::ptr::drop_in_place(initialized_part);
+                }
+            }
+        }
+        let mut dst = MaybeUninit::uninit_array::<N>();
+        let mut guard: Guard<U, N> =
+            Guard { dst: MaybeUninit::first_ptr_mut(&mut dst), initialized: 0 };
+        for (src, dst) in IntoIter::new(self).zip(&mut dst) {
+            dst.write(f(src));
+            guard.initialized += 1;
+        }
+        // FIXME: Convert to crate::mem::transmute once it works with generics.
+        // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
+        crate::mem::forget(guard);
+        // SAFETY: At this point we've properly initialized the whole array
+        // and we just need to cast it to the correct type.
+        unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
+    }
+}
