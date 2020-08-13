@@ -17,8 +17,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** Removing the `return` and semicolon will make the code
     /// more rusty.
     ///
-    /// **Known problems:** If the computation returning the value borrows a local
-    /// variable, removing the `return` may run afoul of the borrow checker.
+    /// **Known problems:** None.
     ///
     /// **Example:**
     /// ```rust
