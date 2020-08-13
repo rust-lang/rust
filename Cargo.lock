@@ -1133,8 +1133,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_proc_macro_srv"
-version = "0.1.0"
+name = "proc_macro_srv"
+version = "0.0.0"
 dependencies = [
  "cargo_metadata",
  "difference",
@@ -1280,7 +1280,7 @@ dependencies = [
  "ra_ide",
  "ra_ide_db",
  "ra_mbe",
- "ra_proc_macro_srv",
+ "proc_macro_srv",
  "ra_project_model",
  "ra_ssr",
  "rayon",
