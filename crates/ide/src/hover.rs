@@ -767,6 +767,25 @@ fn main() {
     }
 
     #[test]
+    fn hover_for_param_with_multiple_traits() {
+        check(
+            r#"trait Deref {
+                type Target: ?Sized;
+            }
+            trait DerefMut {
+                type Target: ?Sized;
+            }
+            fn f(_x<|>: impl Deref<Target=u8> + DerefMut<Target=u8>) {}"#,
+            expect![[r#"
+                *_x*
+                ```rust
+                impl Deref<Target = u8> + DerefMut<Target = u8>
+                ```
+            "#]],
+        )
+    }
+
+    #[test]
     fn test_hover_infer_associated_method_result() {
         check(
             r#"
