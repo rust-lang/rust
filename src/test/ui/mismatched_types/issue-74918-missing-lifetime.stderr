@@ -6,8 +6,8 @@ LL |     type Item = IteratorChunk<T, S>;
    |
 help: consider introducing a named lifetime parameter
    |
-LL |     type Item<'a> = IteratorChunk<<'a>T, S>;
-   |              ^^^^                 ^^^^
+LL |     type Item<'a> = IteratorChunk<'a, T, S>;
+   |              ^^^^                 ^^^
 
 error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/issue-74918-missing-lifetime.rs:11:5
