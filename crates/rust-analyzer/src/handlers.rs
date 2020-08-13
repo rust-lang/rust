@@ -18,11 +18,11 @@ use lsp_types::{
     SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
     TextDocumentIdentifier, Url, WorkspaceEdit,
 };
+use project_model::TargetKind;
 use ra_ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
     RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
 };
-use ra_project_model::TargetKind;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use stdx::{format_to, split_once};

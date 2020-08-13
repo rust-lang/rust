@@ -6,7 +6,7 @@ mod args;
 use std::{convert::TryFrom, process};
 
 use lsp_server::Connection;
-use ra_project_model::ProjectManifest;
+use project_model::ProjectManifest;
 use rust_analyzer::{
     cli,
     config::{Config, LinkedProject},

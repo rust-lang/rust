@@ -2,9 +2,9 @@
 use std::{mem, sync::Arc};
 
 use flycheck::FlycheckHandle;
+use project_model::{ProcMacroClient, ProjectWorkspace};
 use ra_db::{CrateGraph, SourceRoot, VfsPath};
 use ra_ide::AnalysisChange;
-use ra_project_model::{ProcMacroClient, ProjectWorkspace};
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
@@ -98,14 +98,14 @@ impl GlobalState {
                     .iter()
                     .map(|project| match project {
                         LinkedProject::ProjectManifest(manifest) => {
-                            ra_project_model::ProjectWorkspace::load(
+                            project_model::ProjectWorkspace::load(
                                 manifest.clone(),
                                 &cargo_config,
                                 with_sysroot,
                             )
                         }
                         LinkedProject::InlineJsonProject(it) => {
-                            Ok(ra_project_model::ProjectWorkspace::Json { project: it.clone() })
+                            Ok(project_model::ProjectWorkspace::Json { project: it.clone() })
                         }
                     })
                     .collect::<Vec<_>>();
