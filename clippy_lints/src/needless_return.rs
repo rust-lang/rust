@@ -1,13 +1,13 @@
-use rustc_lint::{LateLintPass, LateContext};
 use rustc_ast::ast::Attribute;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{FnKind, walk_expr, NestedVisitorMap, Visitor};
-use rustc_span::source_map::Span;
-use rustc_middle::lint::in_external_macro;
-use rustc_middle::hir::map::Map;
-use rustc_middle::ty::subst::GenericArgKind;
+use rustc_hir::intravisit::{walk_expr, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, HirId, MatchSource, StmtKind};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::map::Map;
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::subst::GenericArgKind;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::source_map::Span;
 
 use crate::utils::{fn_def_id, snippet_opt, span_lint_and_sugg, span_lint_and_then};
 
@@ -46,16 +46,39 @@ enum RetReplacement {
 declare_lint_pass!(NeedlessReturn => [NEEDLESS_RETURN]);
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessReturn {
-    fn check_fn(&mut self, cx: &LateContext<'tcx>, kind: FnKind<'tcx>, _: &'tcx FnDecl<'tcx>, body: &'tcx Body<'tcx>, _: Span, _: HirId) {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        kind: FnKind<'tcx>,
+        _: &'tcx FnDecl<'tcx>,
+        body: &'tcx Body<'tcx>,
+        _: Span,
+        _: HirId,
+    ) {
         match kind {
             FnKind::Closure(_) => {
-                check_final_expr(cx, &body.value, Some(body.value.span), RetReplacement::Empty)
-            }
+                if !last_statement_borrows(cx, &body.value) {
+                    check_final_expr(cx, &body.value, Some(body.value.span), RetReplacement::Empty)
+                }
+            },
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 if let ExprKind::Block(ref block, _) = body.value.kind {
-                    check_block_return(cx, block)
+                    if let Some(expr) = block.expr {
+                        if !last_statement_borrows(cx, expr) {
+                            check_final_expr(cx, expr, Some(expr.span), RetReplacement::Empty);
+                        }
+                    } else if let Some(stmt) = block.stmts.iter().last() {
+                        match stmt.kind {
+                            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
+                                if !last_statement_borrows(cx, expr) {
+                                    check_final_expr(cx, expr, Some(stmt.span), RetReplacement::Empty);
+                                }
+                            },
+                            _ => (),
+                        }
+                    }
                 }
-            }
+            },
         }
     }
 }
@@ -71,23 +94,16 @@ fn check_block_return(cx: &LateContext<'_>, block: &Block<'_>) {
         match stmt.kind {
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
                 check_final_expr(cx, expr, Some(stmt.span), RetReplacement::Empty);
-            }
+            },
             _ => (),
         }
     }
 }
 
-
-fn check_final_expr(
-    cx: &LateContext<'_>,
-    expr: &Expr<'_>,
-    span: Option<Span>,
-    replacement: RetReplacement,
-) {
+fn check_final_expr(cx: &LateContext<'_>, expr: &Expr<'_>, span: Option<Span>, replacement: RetReplacement) {
     match expr.kind {
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {
-
             // allow `#[cfg(a)] return a; #[cfg(b)] return b;`
             if !expr.attrs.iter().any(attr_is_cfg) {
                 emit_return_lint(
@@ -97,32 +113,34 @@ fn check_final_expr(
                     replacement,
                 );
             }
-        }
+        },
         // a whole block? check it!
         ExprKind::Block(ref block, _) => {
             check_block_return(cx, block);
-        }
+        },
         // a match expr, check all arms
         // an if/if let expr, check both exprs
         // note, if without else is going to be a type checking error anyways
         // (except for unit type functions) so we don't match it
-
-        ExprKind::Match(_, ref arms, source) => {
-            match source {
-                MatchSource::Normal => {
-                    for arm in arms.iter() {
-                        check_final_expr(cx, &arm.body, Some(arm.body.span), RetReplacement::Block);
-                    }
+        ExprKind::Match(_, ref arms, source) => match source {
+            MatchSource::Normal => {
+                for arm in arms.iter() {
+                    check_final_expr(cx, &arm.body, Some(arm.body.span), RetReplacement::Block);
                 }
-                MatchSource::IfDesugar { contains_else_clause: true } | MatchSource::IfLetDesugar { contains_else_clause: true } => {
-                    if let ExprKind::Block(ref ifblock, _) = arms[0].body.kind {
-                        check_block_return(cx, ifblock);
-                    }
-                    check_final_expr(cx, arms[1].body, None, RetReplacement::Empty);
-                }
-                _ => ()
+            },
+            MatchSource::IfDesugar {
+                contains_else_clause: true,
             }
-        }
+            | MatchSource::IfLetDesugar {
+                contains_else_clause: true,
+            } => {
+                if let ExprKind::Block(ref ifblock, _) = arms[0].body.kind {
+                    check_block_return(cx, ifblock);
+                }
+                check_final_expr(cx, arms[1].body, None, RetReplacement::Empty);
+            },
+            _ => (),
+        },
         _ => (),
     }
 }
@@ -139,7 +157,7 @@ fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, inner_span: Option<Spa
                     diag.span_suggestion(ret_span, "remove `return`", snippet, Applicability::MachineApplicable);
                 }
             })
-        }
+        },
         None => match replacement {
             RetReplacement::Empty => {
                 span_lint_and_sugg(
@@ -151,7 +169,7 @@ fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, inner_span: Option<Spa
                     String::new(),
                     Applicability::MachineApplicable,
                 );
-            }
+            },
             RetReplacement::Block => {
                 span_lint_and_sugg(
                     cx,
@@ -162,7 +180,7 @@ fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, inner_span: Option<Spa
                     "{}".to_string(),
                     Applicability::MachineApplicable,
                 );
-            }
+            },
         },
     }
 }
@@ -204,4 +222,3 @@ impl<'tcx> Visitor<'tcx> for BorrowVisitor<'_, 'tcx> {
         NestedVisitorMap::None
     }
 }
-

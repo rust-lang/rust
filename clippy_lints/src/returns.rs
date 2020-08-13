@@ -7,7 +7,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::BytePos;
 
-use crate::utils::{span_lint_and_sugg};
+use crate::utils::span_lint_and_sugg;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for unit (`()`) expressions that can be removed.
@@ -30,12 +30,10 @@ declare_clippy_lint! {
     "needless unit expression"
 }
 
-
 declare_lint_pass!(Return => [UNUSED_UNIT]);
 
 impl EarlyLintPass for Return {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, kind: FnKind<'_>, span: Span, _: ast::NodeId) {
-
         if_chain! {
             if let ast::FnRetTy::Ty(ref ty) = kind.decl().output;
             if let ast::TyKind::Tup(ref vals) = ty.kind;
@@ -101,7 +99,6 @@ impl EarlyLintPass for Return {
         }
     }
 }
-
 
 // get the def site
 #[must_use]

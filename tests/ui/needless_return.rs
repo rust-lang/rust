@@ -69,6 +69,16 @@ fn test_void_match(x: u32) {
     }
 }
 
+mod no_lint_if_stmt_borrows {
+    mod issue_5858 {
+        fn read_line() -> String {
+            use std::io::BufRead;
+            let stdin = ::std::io::stdin();
+            return stdin.lock().lines().next().unwrap().unwrap();
+        }
+    }
+}
+
 fn main() {
     let _ = test_end_of_fn();
     let _ = test_no_semicolon();
