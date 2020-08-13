@@ -166,7 +166,7 @@ use crate::num::NonZeroU64;
 use crate::panic;
 use crate::panicking;
 use crate::str;
-use crate::sync::atomic::{AtomicUsize, AtomicIsize};
+use crate::sync::atomic::{AtomicUsize, AtomicI32};
 use crate::sync::atomic::Ordering::SeqCst;
 use crate::sync::{Arc, Condvar, Mutex};
 use crate::sys::thread as imp;
@@ -1054,11 +1054,11 @@ pub struct ThreadId(NonZeroU64);
 impl ThreadId {
     // Generate a new unique thread ID.
     fn new() -> ThreadId {
-        static COUNTER: AtomicIsize = AtomicIsize::new(1);
+        static COUNTER: AtomicI32 = AtomicI32::new(1);
         let id = COUNTER.fetch_add(1, SeqCst);
 
-        if id == isize::MIN {
-            COUNTER.store(isize::MIN, SeqCst);
+        if id == i32::MIN {
+            COUNTER.store(i32::MIN, SeqCst);
         }
         if id < 0 {
             /* Overflow */
