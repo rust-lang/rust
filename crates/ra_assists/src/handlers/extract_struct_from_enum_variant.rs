@@ -6,7 +6,7 @@ use rustc_hash::FxHashSet;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, ArgListOwner, AstNode, NameOwner, VisibilityOwner},
-    SourceFile, SyntaxNode, TextRange, TextSize,
+    SourceFile, TextRange, TextSize,
 };
 
 use crate::{
@@ -72,7 +72,7 @@ pub(crate) fn extract_struct_from_enum_variant(
             }
             extract_struct_def(
                 builder,
-                enum_ast.syntax(),
+                &enum_ast,
                 &variant_name,
                 &field_list.to_string(),
                 start_offset,
@@ -112,9 +112,10 @@ fn insert_import(
     Some(())
 }
 
+// FIXME: this should use strongly-typed `make`, rather than string manipulation1
 fn extract_struct_def(
     builder: &mut AssistBuilder,
-    enum_ast: &SyntaxNode,
+    enum_: &ast::Enum,
     variant_name: &str,
     variant_list: &str,
     start_offset: TextSize,
@@ -126,7 +127,7 @@ fn extract_struct_def(
     } else {
         "".to_string()
     };
-    let indent = if let Some(indent) = leading_indent(enum_ast) {
+    let indent = if let Some(indent) = leading_indent(enum_.syntax()) {
         indent.to_string()
     } else {
         "".to_string()
