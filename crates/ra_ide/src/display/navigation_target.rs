@@ -1,8 +1,8 @@
 //! FIXME: write short doc here
 
+use base_db::{FileId, SourceDatabase};
 use either::Either;
 use hir::{original_range, AssocItem, FieldSource, HasSource, InFile, ModuleSource};
-use ra_db::{FileId, SourceDatabase};
 use ra_ide_db::{defs::Definition, RootDatabase};
 use syntax::{
     ast::{self, DocCommentsOwner, NameOwner},

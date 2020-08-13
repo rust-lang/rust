@@ -1,7 +1,7 @@
 //! Handles the `Enter` key press. At the momently, this only continues
 //! comments, but should handle indent some time in the future as well.
 
-use ra_db::{FilePosition, SourceDatabase};
+use base_db::{FilePosition, SourceDatabase};
 use ra_ide_db::RootDatabase;
 use syntax::{
     ast::{self, AstToken},

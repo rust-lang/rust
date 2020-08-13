@@ -1,8 +1,8 @@
 //! FIXME: write short doc here
 use std::sync::Arc;
 
+use base_db::{CrateName, FileSet, SourceRoot, VfsPath};
 use cfg::CfgOptions;
-use ra_db::{CrateName, FileSet, SourceRoot, VfsPath};
 use test_utils::{
     extract_annotations, extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER,
 };

@@ -6,9 +6,9 @@
 
 use std::{convert::TryInto, mem};
 
+use base_db::{FileId, FileRange, SourceDatabaseExt};
 use hir::{DefWithBody, HasSource, Module, ModuleSource, Semantics, Visibility};
 use once_cell::unsync::Lazy;
-use ra_db::{FileId, FileRange, SourceDatabaseExt};
 use rustc_hash::FxHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 

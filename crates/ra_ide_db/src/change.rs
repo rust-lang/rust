@@ -3,11 +3,11 @@
 
 use std::{fmt, sync::Arc, time};
 
-use profile::{memory_usage, Bytes};
-use ra_db::{
+use base_db::{
     salsa::{Database, Durability, SweepStrategy},
     CrateGraph, FileId, SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
+use profile::{memory_usage, Bytes};
 use rustc_hash::FxHashSet;
 
 use crate::{symbol_index::SymbolsDatabase, RootDatabase};
@@ -146,7 +146,7 @@ impl RootDatabase {
 
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
 
-        ra_db::ParseQuery.in_db(self).sweep(sweep);
+        base_db::ParseQuery.in_db(self).sweep(sweep);
         hir::db::ParseMacroQuery.in_db(self).sweep(sweep);
 
         // Macros do take significant space, but less then the syntax trees
@@ -201,14 +201,14 @@ impl RootDatabase {
         }
         sweep_each_query![
             // SourceDatabase
-            ra_db::ParseQuery
-            ra_db::CrateGraphQuery
+            base_db::ParseQuery
+            base_db::CrateGraphQuery
 
             // SourceDatabaseExt
-            ra_db::FileTextQuery
-            ra_db::FileSourceRootQuery
-            ra_db::SourceRootQuery
-            ra_db::SourceRootCratesQuery
+            base_db::FileTextQuery
+            base_db::FileSourceRootQuery
+            base_db::SourceRootQuery
+            base_db::SourceRootCratesQuery
 
             // AstDatabase
             hir::db::AstIdMapQuery

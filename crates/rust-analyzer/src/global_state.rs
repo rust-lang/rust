@@ -5,12 +5,12 @@
 
 use std::{sync::Arc, time::Instant};
 
+use base_db::{CrateId, VfsPath};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
-use ra_db::{CrateId, VfsPath};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
 use rustc_hash::FxHashMap;
 

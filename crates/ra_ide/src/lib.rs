@@ -47,11 +47,11 @@ mod typing;
 
 use std::sync::Arc;
 
-use cfg::CfgOptions;
-use ra_db::{
+use base_db::{
     salsa::{self, ParallelDatabase},
     CheckCanceled, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
 };
+use cfg::CfgOptions;
 use ra_ide_db::{
     symbol_index::{self, FileSymbol},
     LineIndexDatabase,
@@ -81,12 +81,12 @@ pub use crate::{
     },
 };
 
-pub use hir::{Documentation, Semantics};
-pub use ra_assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
-pub use ra_db::{
+pub use base_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRoot,
     SourceRootId,
 };
+pub use hir::{Documentation, Semantics};
+pub use ra_assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
 pub use ra_ide_db::{
     change::AnalysisChange,
     line_index::{LineCol, LineIndex},

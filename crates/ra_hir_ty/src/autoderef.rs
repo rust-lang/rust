@@ -5,10 +5,10 @@
 
 use std::iter::successors;
 
+use base_db::CrateId;
 use hir_def::lang_item::LangItemTarget;
 use hir_expand::name::name;
 use log::{info, warn};
-use ra_db::CrateId;
 
 use crate::{
     db::HirDatabase,

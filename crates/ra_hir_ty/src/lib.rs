@@ -26,6 +26,7 @@ mod test_db;
 
 use std::{iter, mem, ops::Deref, sync::Arc};
 
+use base_db::{salsa, CrateId};
 use hir_def::{
     expr::ExprId,
     type_ref::{Mutability, Rawness},
@@ -33,7 +34,6 @@ use hir_def::{
     TypeParamId,
 };
 use itertools::Itertools;
-use ra_db::{salsa, CrateId};
 
 use crate::{
     db::HirDatabase,

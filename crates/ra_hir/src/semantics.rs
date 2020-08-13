@@ -4,6 +4,7 @@ mod source_to_def;
 
 use std::{cell::RefCell, fmt, iter::successors};
 
+use base_db::{FileId, FileRange};
 use hir_def::{
     resolver::{self, HasResolver, Resolver},
     AsMacroCall, FunctionId, TraitId, VariantId,
@@ -11,7 +12,6 @@ use hir_def::{
 use hir_expand::{hygiene::Hygiene, name::AsName, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
-use ra_db::{FileId, FileRange};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     algo::{find_node_at_offset, skip_trivia_token},

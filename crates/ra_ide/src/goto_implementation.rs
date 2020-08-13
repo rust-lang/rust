@@ -74,7 +74,7 @@ fn impls_for_trait(
 
 #[cfg(test)]
 mod tests {
-    use ra_db::FileRange;
+    use base_db::FileRange;
 
     use crate::mock_analysis::MockAnalysis;
 

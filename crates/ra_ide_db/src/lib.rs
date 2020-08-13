@@ -13,19 +13,19 @@ mod wasm_shims;
 
 use std::{fmt, sync::Arc};
 
-use hir::db::{AstDatabase, DefDatabase, HirDatabase};
-use ra_db::{
+use base_db::{
     salsa::{self, Durability},
     Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase,
     Upcast,
 };
+use hir::db::{AstDatabase, DefDatabase, HirDatabase};
 use rustc_hash::FxHashSet;
 
 use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
 
 #[salsa::database(
-    ra_db::SourceDatabaseStorage,
-    ra_db::SourceDatabaseExtStorage,
+    base_db::SourceDatabaseStorage,
+    base_db::SourceDatabaseExtStorage,
     LineIndexDatabaseStorage,
     symbol_index::SymbolsDatabaseStorage,
     hir::db::InternDatabaseStorage,
@@ -111,8 +111,8 @@ impl RootDatabase {
     }
 
     pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
-        let lru_capacity = lru_capacity.unwrap_or(ra_db::DEFAULT_LRU_CAP);
-        ra_db::ParseQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
+        let lru_capacity = lru_capacity.unwrap_or(base_db::DEFAULT_LRU_CAP);
+        base_db::ParseQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
         hir::db::ParseMacroQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
         hir::db::MacroExpandQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
     }
@@ -129,7 +129,7 @@ impl salsa::ParallelDatabase for RootDatabase {
 }
 
 #[salsa::query_group(LineIndexDatabaseStorage)]
-pub trait LineIndexDatabase: ra_db::SourceDatabase + CheckCanceled {
+pub trait LineIndexDatabase: base_db::SourceDatabase + CheckCanceled {
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
 

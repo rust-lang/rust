@@ -46,11 +46,11 @@ cfg = { path = "../cfg" }
 toolchain = { path = "../toolchain" }
 
 # This should only be used in CLI
-ra_db = { path = "../ra_db" }
+base_db = { path = "../base_db" }
 ra_ide_db = { path = "../ra_ide_db" }
 ra_ssr = { path = "../ra_ssr" }
 hir = { path = "../ra_hir", package = "ra_hir" }
-hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
+hir_def = { path = "../hir_def" }
 hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }
 proc_macro_srv = { path = "../proc_macro_srv" }
 

@@ -9,9 +9,9 @@ use std::{
 
 use anyhow::{Context, Result};
 use arena::{Arena, Idx};
+use base_db::Edition;
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
 use paths::{AbsPath, AbsPathBuf};
-use ra_db::Edition;
 use rustc_hash::FxHashMap;
 
 use crate::cfg_flag::CfgFlag;

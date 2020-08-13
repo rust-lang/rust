@@ -1,5 +1,5 @@
+use base_db::{CrateId, FileId, FilePosition};
 use hir::Semantics;
-use ra_db::{CrateId, FileId, FilePosition};
 use ra_ide_db::RootDatabase;
 use syntax::{
     algo::find_node_at_offset,
@@ -63,8 +63,8 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
 
 #[cfg(test)]
 mod tests {
+    use base_db::Env;
     use cfg::CfgOptions;
-    use ra_db::Env;
     use test_utils::mark;
 
     use crate::{

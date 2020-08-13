@@ -18,8 +18,8 @@ itertools = "0.9.0"
 
 stdx = { path = "../stdx" }
 syntax = { path = "../syntax" }
-ra_db = { path = "../ra_db" }
+base_db = { path = "../base_db" }
 profile = { path = "../profile" }
-hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
-hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
+hir_expand = { path = "../hir_expand" }
+hir_def = { path = "../hir_def" }
 hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }

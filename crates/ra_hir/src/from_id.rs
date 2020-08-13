@@ -29,7 +29,7 @@ macro_rules! from_id {
 }
 
 from_id![
-    (ra_db::CrateId, crate::Crate),
+    (base_db::CrateId, crate::Crate),
     (hir_def::ModuleId, crate::Module),
     (hir_def::StructId, crate::Struct),
     (hir_def::UnionId, crate::Union),

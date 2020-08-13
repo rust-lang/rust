@@ -3,9 +3,9 @@
 use std::{path::Path, sync::Arc};
 
 use anyhow::Result;
+use base_db::CrateGraph;
 use crossbeam_channel::{unbounded, Receiver};
 use project_model::{CargoConfig, ProcMacroClient, ProjectManifest, ProjectWorkspace};
-use ra_db::CrateGraph;
 use ra_ide::{AnalysisChange, AnalysisHost};
 use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 

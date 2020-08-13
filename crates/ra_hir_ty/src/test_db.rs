@@ -5,16 +5,16 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use base_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast};
 use hir_def::{db::DefDatabase, ModuleId};
 use hir_expand::db::AstDatabase;
-use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::TextRange;
 use test_utils::extract_annotations;
 
 #[salsa::database(
-    ra_db::SourceDatabaseExtStorage,
-    ra_db::SourceDatabaseStorage,
+    base_db::SourceDatabaseExtStorage,
+    base_db::SourceDatabaseStorage,
     hir_expand::db::AstDatabaseStorage,
     hir_def::db::InternDatabaseStorage,
     hir_def::db::DefDatabaseStorage,

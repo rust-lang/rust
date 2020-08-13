@@ -3,11 +3,11 @@
 use std::sync::Arc;
 
 use arena::map::ArenaMap;
+use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
     db::DefDatabase, expr::ExprId, DefWithBodyId, FunctionId, GenericDefId, ImplId, LocalFieldId,
     TypeParamId, VariantId,
 };
-use ra_db::{impl_intern_key, salsa, CrateId, Upcast};
 
 use crate::{
     method_resolution::{InherentImpls, TraitImpls},

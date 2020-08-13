@@ -9,8 +9,8 @@ use chalk_ir::{
 };
 use chalk_solve::rust_ir;
 
+use base_db::salsa::InternKey;
 use hir_def::{type_ref::Mutability, AssocContainerId, GenericDefId, Lookup, TypeAliasId};
-use ra_db::salsa::InternKey;
 
 use crate::{
     db::HirDatabase,

@@ -1,11 +1,11 @@
 use std::{fmt, iter::FromIterator, sync::Arc};
 
-use hir::MacroFile;
-use profile::{memory_usage, Bytes};
-use ra_db::{
+use base_db::{
     salsa::debug::{DebugQueryTable, TableEntry},
     FileTextQuery, SourceRootId,
 };
+use hir::MacroFile;
+use profile::{memory_usage, Bytes};
 use ra_ide_db::{
     symbol_index::{LibrarySymbolsQuery, SymbolIndex},
     RootDatabase,
@@ -16,7 +16,7 @@ use syntax::{ast, Parse, SyntaxNode};
 use crate::FileId;
 
 fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
-    ra_db::ParseQuery.in_db(db).entries::<SyntaxTreeStats>()
+    base_db::ParseQuery.in_db(db).entries::<SyntaxTreeStats>()
 }
 fn macro_syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
     hir::db::ParseMacroQuery.in_db(db).entries::<SyntaxTreeStats>()

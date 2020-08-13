@@ -4,8 +4,8 @@ use std::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
+use base_db::{FileId, FileRange};
 use itertools::Itertools;
-use ra_db::{FileId, FileRange};
 use ra_ide::{
     Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation,
     FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag, HighlightedRange,

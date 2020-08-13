@@ -18,10 +18,10 @@ rustc-hash = "1.1.0"
 
 stdx = { path = "../stdx" }
 
-hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
-hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
+hir_def = { path = "../hir_def" }
+hir_expand = { path = "../hir_expand" }
 arena = { path = "../arena" }
-ra_db = { path = "../ra_db" }
+base_db = { path = "../base_db" }
 profile = { path = "../profile" }
 syntax = { path = "../syntax" }
 test_utils = { path = "../test_utils" }

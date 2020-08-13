@@ -2,8 +2,8 @@
 
 use crate::errors::error;
 use crate::{parsing, SsrError};
+use base_db::FilePosition;
 use parsing::Placeholder;
-use ra_db::FilePosition;
 use rustc_hash::FxHashMap;
 use syntax::{ast, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken};
 use test_utils::mark;

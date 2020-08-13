@@ -2,9 +2,9 @@
 //! representation of the various objects Chalk deals with (types, goals etc.).
 
 use super::tls;
+use base_db::salsa::InternId;
 use chalk_ir::{GenericArg, Goal, GoalData};
 use hir_def::TypeAliasId;
-use ra_db::salsa::InternId;
 use std::{fmt, sync::Arc};
 
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]

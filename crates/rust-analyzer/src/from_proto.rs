@@ -1,7 +1,7 @@
 //! Conversion lsp_types types to rust-analyzer specific ones.
 use std::convert::TryFrom;
 
-use ra_db::{FileId, FilePosition, FileRange};
+use base_db::{FileId, FilePosition, FileRange};
 use ra_ide::{AssistKind, LineCol, LineIndex};
 use syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;

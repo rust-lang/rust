@@ -1,9 +1,9 @@
+use base_db::SourceDatabase;
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource, HirDisplay,
     Module, ModuleDef, ModuleSource, Semantics,
 };
 use itertools::Itertools;
-use ra_db::SourceDatabase;
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
@@ -352,8 +352,8 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 
 #[cfg(test)]
 mod tests {
+    use base_db::FileLoader;
     use expect::{expect, Expect};
-    use ra_db::FileLoader;
 
     use crate::mock_analysis::analysis_and_position;
 

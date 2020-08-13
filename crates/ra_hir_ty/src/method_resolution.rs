@@ -5,6 +5,7 @@
 use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
+use base_db::CrateId;
 use hir_def::{
     builtin_type::{IntBitness, Signedness},
     lang_item::LangItemTarget,
@@ -12,7 +13,6 @@ use hir_def::{
     AssocContainerId, AssocItemId, FunctionId, HasModule, ImplId, Lookup, TraitId,
 };
 use hir_expand::name::Name;
-use ra_db::CrateId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::Substs;

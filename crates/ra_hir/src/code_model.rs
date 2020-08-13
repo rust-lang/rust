@@ -2,6 +2,7 @@
 use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
+use base_db::{CrateId, Edition, FileId};
 use either::Either;
 use hir_def::{
     adt::ReprKind,
@@ -30,7 +31,6 @@ use hir_ty::{
     method_resolution, ApplicationTy, CallableDefId, Canonical, FnSig, GenericPredicate,
     InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
-use ra_db::{CrateId, Edition, FileId};
 use rustc_hash::FxHashSet;
 use stdx::impl_from;
 use syntax::{
@@ -815,7 +815,7 @@ pub struct MacroDef {
 impl MacroDef {
     /// FIXME: right now, this just returns the root module of the crate that
     /// defines this macro. The reasons for this is that macros are expanded
-    /// early, in `ra_hir_expand`, where modules simply do not exist yet.
+    /// early, in `hir_expand`, where modules simply do not exist yet.
     pub fn module(self, db: &dyn HirDatabase) -> Option<Module> {
         let krate = self.id.krate?;
         let module_id = db.crate_def_map(krate).root;
