@@ -4,9 +4,7 @@ use std::iter::successors;
 
 use syntax::{
     ast::{self, AstToken},
-    SmolStr, SyntaxKind,
-    SyntaxKind::*,
-    SyntaxNode, SyntaxToken, T,
+    SmolStr, SyntaxNode, SyntaxToken,
 };
 
 /// If the node is on the beginning of the line, calculate indent.
@@ -27,27 +25,4 @@ pub fn leading_indent(node: &SyntaxNode) -> Option<SmolStr> {
 
 fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
     successors(token.prev_token(), |token| token.prev_token())
-}
-
-pub fn compute_ws(left: SyntaxKind, right: SyntaxKind) -> &'static str {
-    match left {
-        T!['('] | T!['['] => return "",
-        T!['{'] => {
-            if let USE_TREE = right {
-                return "";
-            }
-        }
-        _ => (),
-    }
-    match right {
-        T![')'] | T![']'] => return "",
-        T!['}'] => {
-            if let USE_TREE = left {
-                return "";
-            }
-        }
-        T![.] => return "",
-        _ => (),
-    }
-    " "
 }
