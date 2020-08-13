@@ -1,5 +1,8 @@
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+// revisions: full min
+
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 // Currently, const parameters cannot depend on other generic parameters,
 // as our current implementation can't really support this.
@@ -8,8 +11,10 @@
 
 pub struct Dependent<const N: usize, const X: [u8; N]>([(); N]);
 //~^ ERROR: the type of const parameters must not depend on other generic parameters
+//[min]~^^ ERROR using `[u8; _]` as const generic parameters is forbidden
 
 pub struct SelfDependent<const N: [u8; N]>;
 //~^ ERROR: the type of const parameters must not depend on other generic parameters
+//[min]~^^ ERROR using `[u8; _]` as const generic parameters is forbidden
 
 fn main() {}

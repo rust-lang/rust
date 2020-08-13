@@ -1,0 +1,9 @@
+error[E0741]: `C` must be annotated with `#[derive(PartialEq, Eq)]` to be used as the type of a const parameter
+  --> $DIR/forbid-non-structural_match-types.rs:15:19
+   |
+LL | struct D<const X: C>;
+   |                   ^ `C` doesn't derive both `PartialEq` and `Eq`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0741`.

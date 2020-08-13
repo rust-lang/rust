@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/different_byref.rs:13:9
+   |
+LL |     x = Const::<{ [4] }> {};
+   |         ^^^^^^^^^^^^^^^^^^^ expected `3_usize`, found `4_usize`
+   |
+   = note: expected type `[3_usize]`
+              found type `[4_usize]`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
