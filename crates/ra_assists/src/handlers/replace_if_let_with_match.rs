@@ -1,4 +1,3 @@
-use ra_fmt::unwrap_trivial_block;
 use syntax::{
     ast::{
         self,
@@ -8,7 +7,10 @@ use syntax::{
     AstNode,
 };
 
-use crate::{utils::TryEnum, AssistContext, AssistId, AssistKind, Assists};
+use crate::{
+    utils::{unwrap_trivial_block, TryEnum},
+    AssistContext, AssistId, AssistKind, Assists,
+};
 
 // Assist: replace_if_let_with_match
 //

@@ -1,4 +1,3 @@
-use ra_fmt::unwrap_trivial_block;
 use syntax::{
     ast::{
         self,
@@ -7,7 +6,7 @@ use syntax::{
     AstNode, TextRange, T,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{utils::unwrap_trivial_block, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: unwrap_block
 //
