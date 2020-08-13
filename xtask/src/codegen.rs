@@ -32,8 +32,8 @@ const SYNTAX_KINDS: &str = "crates/parser/src/syntax_kind/generated.rs";
 const AST_NODES: &str = "crates/syntax/src/ast/generated/nodes.rs";
 const AST_TOKENS: &str = "crates/syntax/src/ast/generated/tokens.rs";
 
-const ASSISTS_DIR: &str = "crates/ra_assists/src/handlers";
-const ASSISTS_TESTS: &str = "crates/ra_assists/src/tests/generated.rs";
+const ASSISTS_DIR: &str = "crates/assists/src/handlers";
+const ASSISTS_TESTS: &str = "crates/assists/src/tests/generated.rs";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Mode {

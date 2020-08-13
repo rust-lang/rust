@@ -1,5 +1,5 @@
-//! This module contains an import search funcionality that is provided to the ra_assists module.
-//! Later, this should be moved away to a separate crate that is accessible from the ra_assists module.
+//! This module contains an import search funcionality that is provided to the assists module.
+//! Later, this should be moved away to a separate crate that is accessible from the assists module.
 
 use hir::{Crate, MacroDef, ModuleDef, Semantics};
 use syntax::{ast, AstNode, SyntaxKind::NAME};
