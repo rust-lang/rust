@@ -769,9 +769,22 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 }
 
 fn link_sanitizers(sess: &Session, crate_type: CrateType, linker: &mut dyn Linker) {
-    if crate_type != CrateType::Executable {
+    // On macOS the runtimes are distributed as dylibs which should be linked to
+    // both executables and dynamic shared objects. Everywhere else the runtimes
+    // are currently distributed as static liraries which should be linked to
+    // executables only.
+    let needs_runtime = match crate_type {
+        CrateType::Executable => true,
+        CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => {
+            sess.target.target.options.is_like_osx
+        }
+        CrateType::Rlib | CrateType::Staticlib => false,
+    };
+
+    if !needs_runtime {
         return;
     }
+
     let sanitizer = sess.opts.debugging_opts.sanitizer;
     if sanitizer.contains(SanitizerSet::ADDRESS) {
         link_sanitizer_runtime(sess, linker, "asan");
