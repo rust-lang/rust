@@ -47,6 +47,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cff77d8686867eceff3105329d4698d96c2391c176d5d03adc90c7389162b5b8"
 
 [[package]]
+name = "assists"
+version = "0.0.0"
+dependencies = [
+ "base_db",
+ "either",
+ "hir",
+ "ide_db",
+ "itertools",
+ "profile",
+ "rustc-hash",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "text_edit",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1103,26 +1120,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_assists"
-version = "0.1.0"
-dependencies = [
- "base_db",
- "either",
- "hir",
- "ide_db",
- "itertools",
- "profile",
- "rustc-hash",
- "stdx",
- "syntax",
- "test_utils",
- "text_edit",
-]
-
-[[package]]
 name = "ra_ide"
 version = "0.1.0"
 dependencies = [
+ "assists",
  "base_db",
  "cfg",
  "either",
@@ -1134,7 +1135,6 @@ dependencies = [
  "log",
  "oorandom",
  "profile",
- "ra_assists",
  "rustc-hash",
  "ssr",
  "stdx",

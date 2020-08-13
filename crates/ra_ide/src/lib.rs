@@ -80,6 +80,7 @@ pub use crate::{
     },
 };
 
+pub use assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
 pub use base_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRoot,
     SourceRootId,
@@ -93,7 +94,6 @@ pub use ide_db::{
     symbol_index::Query,
     RootDatabase,
 };
-pub use ra_assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
 pub use ssr::SsrError;
 pub use text_edit::{Indel, TextEdit};
 
@@ -478,7 +478,7 @@ impl Analysis {
         config: &AssistConfig,
         frange: FileRange,
     ) -> Cancelable<Vec<ResolvedAssist>> {
-        self.with_db(|db| ra_assists::Assist::resolved(db, config, frange))
+        self.with_db(|db| assists::Assist::resolved(db, config, frange))
     }
 
     /// Computes unresolved assists (aka code actions aka intentions) for the given

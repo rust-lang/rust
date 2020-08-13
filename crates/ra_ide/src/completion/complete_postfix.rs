@@ -1,5 +1,5 @@
 //! FIXME: write short doc here
-use ra_assists::utils::TryEnum;
+use assists::utils::TryEnum;
 use syntax::{
     ast::{self, AstNode},
     TextRange, TextSize,

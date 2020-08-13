@@ -31,8 +31,8 @@
 //! }
 //! ```
 
+use assists::utils::get_missing_assoc_items;
 use hir::{self, Docs, HasSource};
-use ra_assists::utils::get_missing_assoc_items;
 use syntax::{
     ast::{self, edit, Impl},
     AstNode, SyntaxKind, SyntaxNode, TextRange, T,
