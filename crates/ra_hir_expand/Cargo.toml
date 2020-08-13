@@ -19,5 +19,5 @@ syntax = { path = "../syntax" }
 parser = { path = "../parser" }
 profile = { path = "../profile" }
 tt = { path = "../tt" }
-mbe = { path = "../ra_mbe", package = "ra_mbe" }
+mbe = { path = "../mbe" }
 test_utils = { path = "../test_utils"}

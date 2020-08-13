@@ -636,6 +636,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
 
 [[package]]
+name = "mbe"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "parser",
+ "rustc-hash",
+ "smallvec",
+ "syntax",
+ "test_utils",
+ "tt",
+]
+
+[[package]]
 name = "memmap"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -894,8 +907,8 @@ dependencies = [
  "difference",
  "goblin",
  "libloading",
+ "mbe",
  "memmap",
- "ra_mbe",
  "ra_proc_macro",
  "serde_derive",
  "test_utils",
@@ -946,7 +959,7 @@ dependencies = [
 name = "ra_cfg"
 version = "0.1.0"
 dependencies = [
- "ra_mbe",
+ "mbe",
  "rustc-hash",
  "syntax",
  "tt",
@@ -1006,12 +1019,12 @@ dependencies = [
  "indexmap",
  "itertools",
  "log",
+ "mbe",
  "once_cell",
  "profile",
  "ra_cfg",
  "ra_db",
  "ra_hir_expand",
- "ra_mbe",
  "rustc-hash",
  "smallvec",
  "stdx",
@@ -1027,10 +1040,10 @@ dependencies = [
  "arena",
  "either",
  "log",
+ "mbe",
  "parser",
  "profile",
  "ra_db",
- "ra_mbe",
  "rustc-hash",
  "syntax",
  "test_utils",
@@ -1107,19 +1120,6 @@ dependencies = [
  "syntax",
  "test_utils",
  "text_edit",
-]
-
-[[package]]
-name = "ra_mbe"
-version = "0.1.0"
-dependencies = [
- "log",
- "parser",
- "rustc-hash",
- "smallvec",
- "syntax",
- "test_utils",
- "tt",
 ]
 
 [[package]]
@@ -1249,6 +1249,7 @@ dependencies = [
  "log",
  "lsp-server",
  "lsp-types",
+ "mbe",
  "mimalloc",
  "oorandom",
  "parking_lot",
@@ -1262,7 +1263,6 @@ dependencies = [
  "ra_hir_ty",
  "ra_ide",
  "ra_ide_db",
- "ra_mbe",
  "ra_project_model",
  "ra_ssr",
  "rayon",

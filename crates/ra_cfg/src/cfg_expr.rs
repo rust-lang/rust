@@ -4,7 +4,7 @@
 
 use std::slice::Iter as SliceIter;
 
-use syntax::SmolStr;
+use tt::SmolStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CfgExpr {

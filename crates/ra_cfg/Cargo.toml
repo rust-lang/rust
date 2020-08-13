@@ -15,4 +15,4 @@ syntax = { path = "../syntax" }
 tt = { path = "../tt" }
 
 [dev-dependencies]
-mbe = { path = "../ra_mbe", package = "ra_mbe" }
+mbe = { path = "../mbe" }

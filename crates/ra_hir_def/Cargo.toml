@@ -28,7 +28,7 @@ syntax = { path = "../syntax" }
 profile = { path = "../profile" }
 hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
 test_utils = { path = "../test_utils" }
-mbe = { path = "../ra_mbe", package = "ra_mbe" }
+mbe = { path = "../mbe" }
 ra_cfg = { path = "../ra_cfg" }
 tt = { path = "../tt" }
 

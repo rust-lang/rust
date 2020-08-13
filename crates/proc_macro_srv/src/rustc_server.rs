@@ -182,7 +182,7 @@ pub mod token_stream {
 
         fn from_str(src: &str) -> Result<TokenStream, LexError> {
             let (subtree, _token_map) =
-                ra_mbe::parse_to_token_tree(src).ok_or("Failed to parse from mbe")?;
+                mbe::parse_to_token_tree(src).ok_or("Failed to parse from mbe")?;
 
             let tt: tt::TokenTree = subtree.into();
             Ok(tt.into())

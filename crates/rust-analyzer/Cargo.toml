@@ -60,5 +60,5 @@ winapi = "0.3.8"
 [dev-dependencies]
 expect = { path = "../expect" }
 test_utils = { path = "../test_utils" }
-mbe = { path = "../ra_mbe", package = "ra_mbe" }
+mbe = { path = "../mbe" }
 tt = { path = "../tt" }
