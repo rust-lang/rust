@@ -56,7 +56,7 @@ pub(crate) struct CompletionContext<'a> {
     /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
     pub(super) is_trivial_path: bool,
     /// If not a trivial path, the prefix (qualifier).
-    pub(super) path_prefix: Option<hir::Path>,
+    pub(super) path_qual: Option<ast::Path>,
     pub(super) after_if: bool,
     /// `true` if we are a statement or a last expr in the block.
     pub(super) can_be_stmt: bool,
@@ -137,7 +137,7 @@ impl<'a> CompletionContext<'a> {
             is_param: false,
             is_pat_binding_or_const: false,
             is_trivial_path: false,
-            path_prefix: None,
+            path_qual: None,
             after_if: false,
             can_be_stmt: false,
             is_expr: false,
@@ -385,48 +385,54 @@ impl<'a> CompletionContext<'a> {
             self.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
             self.has_type_args = segment.generic_arg_list().is_some();
 
-            let hygiene = hir::Hygiene::new(self.db, self.position.file_id.into());
-            if let Some(path) = hir::Path::from_src(path.clone(), &hygiene) {
-                if let Some(path_prefix) = path.qualifier() {
-                    self.path_prefix = Some(path_prefix);
+            if let Some(path) = path_or_use_tree_qualifier(&path) {
+                self.path_qual = path
+                    .segment()
+                    .and_then(|it| {
+                        find_node_with_range::<ast::PathSegment>(
+                            original_file,
+                            it.syntax().text_range(),
+                        )
+                    })
+                    .map(|it| it.parent_path());
+                return;
+            }
+
+            if let Some(segment) = path.segment() {
+                if segment.coloncolon_token().is_some() {
                     return;
                 }
             }
 
-            if path.qualifier().is_none() {
-                self.is_trivial_path = true;
+            self.is_trivial_path = true;
 
-                // Find either enclosing expr statement (thing with `;`) or a
-                // block. If block, check that we are the last expr.
-                self.can_be_stmt = name_ref
-                    .syntax()
-                    .ancestors()
-                    .find_map(|node| {
-                        if let Some(stmt) = ast::ExprStmt::cast(node.clone()) {
-                            return Some(
-                                stmt.syntax().text_range() == name_ref.syntax().text_range(),
-                            );
-                        }
-                        if let Some(block) = ast::BlockExpr::cast(node) {
-                            return Some(
-                                block.expr().map(|e| e.syntax().text_range())
-                                    == Some(name_ref.syntax().text_range()),
-                            );
-                        }
-                        None
-                    })
-                    .unwrap_or(false);
-                self.is_expr = path.syntax().parent().and_then(ast::PathExpr::cast).is_some();
+            // Find either enclosing expr statement (thing with `;`) or a
+            // block. If block, check that we are the last expr.
+            self.can_be_stmt = name_ref
+                .syntax()
+                .ancestors()
+                .find_map(|node| {
+                    if let Some(stmt) = ast::ExprStmt::cast(node.clone()) {
+                        return Some(stmt.syntax().text_range() == name_ref.syntax().text_range());
+                    }
+                    if let Some(block) = ast::BlockExpr::cast(node) {
+                        return Some(
+                            block.expr().map(|e| e.syntax().text_range())
+                                == Some(name_ref.syntax().text_range()),
+                        );
+                    }
+                    None
+                })
+                .unwrap_or(false);
+            self.is_expr = path.syntax().parent().and_then(ast::PathExpr::cast).is_some();
 
-                if let Some(off) = name_ref.syntax().text_range().start().checked_sub(2.into()) {
-                    if let Some(if_expr) =
-                        self.sema.find_node_at_offset_with_macros::<ast::IfExpr>(original_file, off)
+            if let Some(off) = name_ref.syntax().text_range().start().checked_sub(2.into()) {
+                if let Some(if_expr) =
+                    self.sema.find_node_at_offset_with_macros::<ast::IfExpr>(original_file, off)
+                {
+                    if if_expr.syntax().text_range().end() < name_ref.syntax().text_range().start()
                     {
-                        if if_expr.syntax().text_range().end()
-                            < name_ref.syntax().text_range().start()
-                        {
-                            self.after_if = true;
-                        }
+                        self.after_if = true;
                     }
                 }
             }
@@ -468,4 +474,13 @@ fn is_node<N: AstNode>(node: &SyntaxNode) -> bool {
         None => false,
         Some(n) => n.syntax().text_range() == node.text_range(),
     }
+}
+
+fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<ast::Path> {
+    if let Some(qual) = path.qualifier() {
+        return Some(qual);
+    }
+    let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
+    let use_tree = use_tree_list.syntax().parent().and_then(ast::UseTree::cast)?;
+    use_tree.path()
 }
