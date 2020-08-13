@@ -601,6 +601,9 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
         }
         rewriter.rewrite_ast(self)
     }
+    fn indent_level(&self) -> IndentLevel {
+        IndentLevel::from_node(self.syntax())
+    }
     #[must_use]
     fn indent(&self, level: IndentLevel) -> Self {
         Self::cast(level.increase_indent(self.syntax().clone())).unwrap()

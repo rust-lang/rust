@@ -690,7 +690,9 @@ enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
     match action {
-        Action::Move { distance } => if distance > 10 { foo() },
+        Action::Move { distance } => if distance > 10 {
+            foo()
+        },
         _ => (),
     }
 }
