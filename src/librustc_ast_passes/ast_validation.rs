@@ -777,7 +777,7 @@ fn validate_generic_param_order<'a>(
                 if sess.features_untracked().const_generics {
                     ", then consts and types"
                 } else if sess.features_untracked().min_const_generics {
-                    ", then consts, then types"
+                    ", then types, then consts"
                 } else {
                     ", then types"
                 },
