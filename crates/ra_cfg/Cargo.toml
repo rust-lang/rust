@@ -11,8 +11,8 @@ doctest = false
 [dependencies]
 rustc-hash = "1.1.0"
 
-syntax = { path = "../syntax" }
 tt = { path = "../tt" }
 
 [dev-dependencies]
 mbe = { path = "../mbe" }
+syntax = { path = "../syntax" }

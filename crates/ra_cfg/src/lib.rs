@@ -3,7 +3,7 @@
 mod cfg_expr;
 
 use rustc_hash::FxHashSet;
-use syntax::SmolStr;
+use tt::SmolStr;
 
 pub use cfg_expr::CfgExpr;
 
