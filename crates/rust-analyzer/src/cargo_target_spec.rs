@@ -177,8 +177,8 @@ fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
 mod tests {
     use super::*;
 
-    use mbe::ast_to_token_tree;
     use cfg::CfgExpr;
+    use mbe::ast_to_token_tree;
     use syntax::{
         ast::{self, AstNode},
         SmolStr,
