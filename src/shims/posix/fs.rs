@@ -22,41 +22,41 @@ struct FileHandle {
     writable: bool,
 }
 
-trait FileDescriptor<'tcx> : std::fmt::Debug {
-    fn as_file_handle(&self) -> InterpResult<'tcx, &FileHandle>;
+trait FileDescriptor : std::fmt::Debug {
+    fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle>;
 
-    fn read(&mut self, communicate_allowed: bool, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>>;
-    fn write(&mut self, communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>>;
-    fn seek(&mut self, communicate_allowed: bool, offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>>;
+    fn read<'tcx>(&mut self, communicate_allowed: bool, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>>;
+    fn write<'tcx>(&mut self, communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>>;
+    fn seek<'tcx>(&mut self, communicate_allowed: bool, offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>>;
 }
 
-impl<'tcx> FileDescriptor<'tcx> for FileHandle {
-    fn as_file_handle(&self) -> InterpResult<'tcx, &FileHandle> {
+impl FileDescriptor for FileHandle {
+    fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
         Ok(&self)
     }
 
-    fn read(&mut self, communicate_allowed: bool, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn read<'tcx>(&mut self, communicate_allowed: bool, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.read(bytes))
     }
 
-    fn write(&mut self, communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn write<'tcx>(&mut self, communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.write(bytes))
     }
 
-    fn seek(&mut self, communicate_allowed: bool, offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+    fn seek<'tcx>(&mut self, communicate_allowed: bool, offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.seek(offset))
     }
 }
 
-impl<'tcx> FileDescriptor<'tcx> for io::Stdin {
-    fn as_file_handle(&self) -> InterpResult<'tcx, &FileHandle> {
+impl FileDescriptor for io::Stdin {
+    fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
         throw_unsup_format!("stdin cannot be used as FileHandle");
     }
 
-    fn read(&mut self, communicate_allowed: bool, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn read<'tcx>(&mut self, communicate_allowed: bool, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
         if !communicate_allowed {
             // We want isolation mode to be deterministic, so we have to disallow all reads, even stdin.
             helpers::isolation_error("read")?;
@@ -64,25 +64,25 @@ impl<'tcx> FileDescriptor<'tcx> for io::Stdin {
         Ok(Read::read(self, bytes))
     }
 
-    fn write(&mut self, _communicate_allowed: bool, _bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn write<'tcx>(&mut self, _communicate_allowed: bool, _bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot write to stdin");
     }
 
-    fn seek(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+    fn seek<'tcx>(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
         throw_unsup_format!("cannot seek on stdin");
     }
 }
 
-impl<'tcx> FileDescriptor<'tcx> for io::Stdout {
-    fn as_file_handle(&self) -> InterpResult<'tcx, &FileHandle> {
+impl FileDescriptor for io::Stdout {
+    fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
         throw_unsup_format!("stdout cannot be used as FileHandle");
     }
 
-    fn read(&mut self, _communicate_allowed: bool, _bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn read<'tcx>(&mut self, _communicate_allowed: bool, _bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot read from stdout");
     }
 
-    fn write(&mut self, _communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn write<'tcx>(&mut self, _communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
         let result = Write::write(self, bytes);
         // Stdout is buffered, flush to make sure it appears on the
@@ -95,41 +95,42 @@ impl<'tcx> FileDescriptor<'tcx> for io::Stdout {
         Ok(result)
     }
 
-    fn seek(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+    fn seek<'tcx>(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
         throw_unsup_format!("cannot seek on stdout");
     }
 }
 
-impl<'tcx> FileDescriptor<'tcx> for io::Stderr {
-    fn as_file_handle(&self) -> InterpResult<'tcx, &FileHandle> {
+impl FileDescriptor for io::Stderr {
+    fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
         throw_unsup_format!("stdout cannot be used as FileHandle");
     }
 
-    fn read(&mut self, _communicate_allowed: bool, _bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn read<'tcx>(&mut self, _communicate_allowed: bool, _bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot read from stderr");
     }
 
-    fn write(&mut self, _communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn write<'tcx>(&mut self, _communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
+        // No need to flush, stderr is not buffered.
         Ok(Write::write(self, bytes))
     }
 
-    fn seek(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+    fn seek<'tcx>(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
         throw_unsup_format!("cannot seek on stderr");
     }
 }
 
 #[derive(Debug)]
-pub struct FileHandler<'tcx> {
-    handles: BTreeMap<i32, Box<dyn FileDescriptor<'tcx>>>,
+pub struct FileHandler {
+    handles: BTreeMap<i32, Box<dyn FileDescriptor>>,
 }
 
-impl<'tcx> Default for FileHandler<'tcx> {
+impl<'tcx> Default for FileHandler {
     fn default() -> Self {
-        let mut handles = BTreeMap::new();
-        handles.insert(0i32, Box::new(io::stdin()) as Box<dyn FileDescriptor<'_>>);
-        handles.insert(1i32, Box::new(io::stdout()) as Box<dyn FileDescriptor<'_>>);
-        handles.insert(2i32, Box::new(io::stderr()) as Box<dyn FileDescriptor<'_>>);
+        let mut handles: BTreeMap<_, Box<dyn FileDescriptor>> = BTreeMap::new();
+        handles.insert(0i32, Box::new(io::stdin()));
+        handles.insert(1i32, Box::new(io::stdout()));
+        handles.insert(2i32, Box::new(io::stderr()));
         FileHandler {
             handles
         }
@@ -140,7 +141,7 @@ impl<'tcx> Default for FileHandler<'tcx> {
 // fd numbers 0, 1, and 2 are reserved for stdin, stdout, and stderr
 const MIN_NORMAL_FILE_FD: i32 = 3;
 
-impl<'tcx> FileHandler<'tcx> {
+impl<'tcx> FileHandler {
     fn insert_fd(&mut self, file_handle: FileHandle) -> i32 {
         self.insert_fd_with_min_fd(file_handle, 0)
     }
