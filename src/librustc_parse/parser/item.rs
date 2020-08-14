@@ -1313,7 +1313,7 @@ impl<'a> Parser<'a> {
         vis: Visibility,
         attrs: Vec<Attribute>,
     ) -> PResult<'a, StructField> {
-        let name = self.parse_ident()?;
+        let name = self.parse_ident_common(false)?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
         Ok(StructField {
