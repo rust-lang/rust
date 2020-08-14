@@ -2,7 +2,7 @@ use crate::base::ExtCtxt;
 
 use rustc_ast::ast;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
+use rustc_ast::tokenstream::{self, DelimSpan, TokenStream};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Diagnostic;
@@ -47,22 +47,22 @@ impl ToInternal<token::DelimToken> for Delimiter {
     }
 }
 
-impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
+impl FromInternal<(tokenstream::TokenTree, &'_ ParseSess, &'_ mut Vec<Self>)>
     for TokenTree<Group, Punct, Ident, Literal>
 {
     fn from_internal(
-        ((tree, is_joint), sess, stack): (TreeAndJoint, &ParseSess, &mut Vec<Self>),
+        (tree, sess, stack): (tokenstream::TokenTree, &ParseSess, &mut Vec<Self>),
     ) -> Self {
         use rustc_ast::token::*;
 
-        let joint = is_joint == Joint;
-        let Token { kind, span } = match tree {
+        let Token { kind, span, spacing } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
                 return TokenTree::Group(Group { delimiter, stream: tts, span, flatten: false });
             }
             tokenstream::TokenTree::Token(token) => token,
         };
+        let joint = spacing == token::Spacing::Joint;
 
         macro_rules! tt {
             ($ty:ident { $($field:ident $(: $value:expr)*),+ $(,)? }) => (
@@ -254,8 +254,11 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             _ => unreachable!(),
         };
 
-        let tree = tokenstream::TokenTree::token(kind, span);
-        TokenStream::new(vec![(tree, if joint { Joint } else { NonJoint })])
+        let spacing = if joint { token::Spacing::Joint } else { token::Spacing::Alone };
+        let token = token::Token::with_spacing(kind, span, spacing);
+        let tree = tokenstream::TokenTree::Token(token);
+
+        TokenStream::from(tree)
     }
 }
 
@@ -438,7 +441,7 @@ impl server::TokenStreamIter for Rustc<'_> {
     ) -> Option<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
         loop {
             let tree = iter.stack.pop().or_else(|| {
-                let next = iter.cursor.next_with_joint()?;
+                let next = iter.cursor.next()?;
                 Some(TokenTree::from_internal((next, self.sess, &mut iter.stack)))
             })?;
             // A hack used to pass AST fragments to attribute and derive macros

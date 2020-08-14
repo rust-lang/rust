@@ -267,10 +267,24 @@ pub enum TokenKind {
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(TokenKind, 16);
 
+// FIXME: remove to Spacing, to match proc_macro
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+pub enum Spacing {
+    Alone,
+    Joint,
+}
+
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
+    /// Is this operator token immediately followed by another operator token,
+    /// without whitespace?
+    ///
+    /// At the moment, this field is only used for proc_macros, and joint tokens
+    /// are usually represented by dedicated token kinds. We want to transition
+    /// to using jointness everywhere though (#63689).
+    pub spacing: Spacing,
 }
 
 impl TokenKind {
@@ -324,7 +338,11 @@ impl TokenKind {
 
 impl Token {
     pub fn new(kind: TokenKind, span: Span) -> Self {
-        Token { kind, span }
+        Token::with_spacing(kind, span, Spacing::Alone)
+    }
+
+    pub fn with_spacing(kind: TokenKind, span: Span, spacing: Spacing) -> Self {
+        Token { kind, span, spacing }
     }
 
     /// Some token that will be thrown away later.
@@ -622,6 +640,9 @@ impl Token {
     }
 
     pub fn glue(&self, joint: &Token) -> Option<Token> {
+        if self.spacing == Spacing::Alone {
+            return None;
+        }
         let kind = match self.kind {
             Eq => match joint.kind {
                 Eq => EqEq,
@@ -678,7 +699,9 @@ impl Token {
             | Shebang(..) | Unknown(..) | Eof => return None,
         };
 
-        Some(Token::new(kind, self.span.to(joint.span)))
+        let mut token = Token::new(kind, self.span.to(joint.span));
+        token.spacing = joint.spacing;
+        Some(token)
     }
 }
 
@@ -709,7 +732,7 @@ pub enum Nonterminal {
 
 // `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Nonterminal, 40);
+rustc_data_structures::static_assert_size!(Nonterminal, 48);
 
 #[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum NonterminalKind {

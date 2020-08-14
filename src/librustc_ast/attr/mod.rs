@@ -8,7 +8,7 @@ use crate::ast::{Path, PathSegment};
 use crate::mut_visit::visit_clobber;
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Token};
-use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::source_map::{BytePos, Spanned};
@@ -362,7 +362,7 @@ pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {
 }
 
 impl MetaItem {
-    fn token_trees_and_joints(&self) -> Vec<TreeAndJoint> {
+    fn token_trees_and_joints(&self) -> Vec<TokenTree> {
         let mut idents = vec![];
         let mut last_pos = BytePos(0 as u32);
         for (i, segment) in self.path.segments.iter().enumerate() {
@@ -370,9 +370,9 @@ impl MetaItem {
             if !is_first {
                 let mod_sep_span =
                     Span::new(last_pos, segment.ident.span.lo(), segment.ident.span.ctxt());
-                idents.push(TokenTree::token(token::ModSep, mod_sep_span).into());
+                idents.push(TokenTree::token(token::ModSep, mod_sep_span));
             }
-            idents.push(TokenTree::Token(Token::from_ast_ident(segment.ident)).into());
+            idents.push(TokenTree::Token(Token::from_ast_ident(segment.ident)));
             last_pos = segment.ident.span.hi();
         }
         idents.extend(self.kind.token_trees_and_joints(self.span));
@@ -388,6 +388,7 @@ impl MetaItem {
             Some(TokenTree::Token(Token {
                 kind: kind @ (token::Ident(..) | token::ModSep),
                 span,
+                spacing: _,
             })) => 'arm: {
                 let mut segments = if let token::Ident(name, _) = kind {
                     if let Some(TokenTree::Token(Token { kind: token::ModSep, .. })) = tokens.peek()
@@ -401,8 +402,11 @@ impl MetaItem {
                     vec![PathSegment::path_root(span)]
                 };
                 loop {
-                    if let Some(TokenTree::Token(Token { kind: token::Ident(name, _), span })) =
-                        tokens.next().map(TokenTree::uninterpolate)
+                    if let Some(TokenTree::Token(Token {
+                        kind: token::Ident(name, _),
+                        span,
+                        spacing: _,
+                    })) = tokens.next().map(TokenTree::uninterpolate)
                     {
                         segments.push(PathSegment::from_ident(Ident::new(name, span)));
                     } else {
@@ -459,7 +463,7 @@ impl MetaItemKind {
         }
     }
 
-    fn token_trees_and_joints(&self, span: Span) -> Vec<TreeAndJoint> {
+    fn token_trees_and_joints(&self, span: Span) -> Vec<TokenTree> {
         match *self {
             MetaItemKind::Word => vec![],
             MetaItemKind::NameValue(ref lit) => {
@@ -554,7 +558,7 @@ impl NestedMetaItem {
         }
     }
 
-    fn token_trees_and_joints(&self) -> Vec<TreeAndJoint> {
+    fn token_trees_and_joints(&self) -> Vec<TokenTree> {
         match *self {
             NestedMetaItem::MetaItem(ref item) => item.token_trees_and_joints(),
             NestedMetaItem::Literal(ref lit) => vec![lit.token_tree().into()],

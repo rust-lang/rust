@@ -21,7 +21,7 @@ use rustc_ast::ast::{
 };
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
-use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_session::parse::ParseSess;
@@ -120,7 +120,7 @@ impl<'a> Drop for Parser<'a> {
 struct TokenCursor {
     frame: TokenCursorFrame,
     stack: Vec<TokenCursorFrame>,
-    cur_token: Option<TreeAndJoint>,
+    cur_token: Option<TokenTree>,
     collecting: Option<Collecting>,
 }
 
@@ -138,7 +138,7 @@ struct TokenCursorFrame {
 struct Collecting {
     /// Holds the current tokens captured during the most
     /// recent call to `collect_tokens`
-    buf: Vec<TreeAndJoint>,
+    buf: Vec<TokenTree>,
     /// The depth of the `TokenCursor` stack at the time
     /// collection was started. When we encounter a `TokenTree::Delimited`,
     /// we want to record the `TokenTree::Delimited` itself,
@@ -169,7 +169,7 @@ impl TokenCursor {
             let tree = if !self.frame.open_delim {
                 self.frame.open_delim = true;
                 TokenTree::open_tt(self.frame.span, self.frame.delim).into()
-            } else if let Some(tree) = self.frame.tree_cursor.next_with_joint() {
+            } else if let Some(tree) = self.frame.tree_cursor.next() {
                 tree
             } else if !self.frame.close_delim {
                 self.frame.close_delim = true;
@@ -184,7 +184,7 @@ impl TokenCursor {
             // Don't set an open delimiter as our current token - we want
             // to leave it as the full `TokenTree::Delimited` from the previous
             // iteration of this loop
-            if !matches!(tree.0, TokenTree::Token(Token { kind: TokenKind::OpenDelim(_), .. })) {
+            if !matches!(tree, TokenTree::Token(Token { kind: TokenKind::OpenDelim(_), .. })) {
                 self.cur_token = Some(tree.clone());
             }
 
@@ -199,7 +199,7 @@ impl TokenCursor {
                 }
             }
 
-            match tree.0 {
+            match tree {
                 TokenTree::Token(token) => return token,
                 TokenTree::Delimited(sp, delim, tts) => {
                     let frame = TokenCursorFrame::new(sp, delim, &tts);
@@ -211,7 +211,7 @@ impl TokenCursor {
 
     fn next_desugared(&mut self) -> Token {
         let (data, attr_style, sp) = match self.next() {
-            Token { kind: token::DocComment(_, attr_style, data), span } => {
+            Token { kind: token::DocComment(_, attr_style, data), span, spacing: _ } => {
                 (data, attr_style, span)
             }
             tok => return tok,
@@ -1155,7 +1155,7 @@ impl<'a> Parser<'a> {
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
     ) -> PResult<'a, (R, TokenStream)> {
         // Record all tokens we parse when parsing this item.
-        let tokens: Vec<TreeAndJoint> = self.token_cursor.cur_token.clone().into_iter().collect();
+        let tokens: Vec<TokenTree> = self.token_cursor.cur_token.clone().into_iter().collect();
         debug!("collect_tokens: starting with {:?}", tokens);
 
         // We need special handling for the case where `collect_tokens` is called
@@ -1163,27 +1163,26 @@ impl<'a> Parser<'a> {
         // a new frame - however, we want to record the original `TokenTree::Delimited`,
         // for consistency with the case where we start recording one token earlier.
         // See `TokenCursor::next` to see how `cur_token` is set up.
-        let prev_depth =
-            if matches!(self.token_cursor.cur_token, Some((TokenTree::Delimited(..), _))) {
-                if self.token_cursor.stack.is_empty() {
-                    // There is nothing below us in the stack that
-                    // the function could consume, so the only thing it can legally
-                    // capture is the entire contents of the current frame.
-                    return Ok((f(self)?, TokenStream::new(tokens)));
-                }
-                // We have already recorded the full `TokenTree::Delimited` when we created
-                // our `tokens` vector at the start of this function. We are now inside
-                // a new frame corresponding to the `TokenTree::Delimited` we already recoreded.
-                // We don't want to record any of the tokens inside this frame, since they
-                // will be duplicates of the tokens nested inside the `TokenTree::Delimited`.
-                // Therefore, we set our recording depth to the *previous* frame. This allows
-                // us to record a sequence like: `(foo).bar()`: the `(foo)` will be recored
-                // as our initial `cur_token`, while the `.bar()` will be recored after we
-                // pop the `(foo)` frame.
-                self.token_cursor.stack.len() - 1
-            } else {
-                self.token_cursor.stack.len()
-            };
+        let prev_depth = if matches!(self.token_cursor.cur_token, Some(TokenTree::Delimited(..))) {
+            if self.token_cursor.stack.is_empty() {
+                // There is nothing below us in the stack that
+                // the function could consume, so the only thing it can legally
+                // capture is the entire contents of the current frame.
+                return Ok((f(self)?, TokenStream::new(tokens)));
+            }
+            // We have already recorded the full `TokenTree::Delimited` when we created
+            // our `tokens` vector at the start of this function. We are now inside
+            // a new frame corresponding to the `TokenTree::Delimited` we already recoreded.
+            // We don't want to record any of the tokens inside this frame, since they
+            // will be duplicates of the tokens nested inside the `TokenTree::Delimited`.
+            // Therefore, we set our recording depth to the *previous* frame. This allows
+            // us to record a sequence like: `(foo).bar()`: the `(foo)` will be recored
+            // as our initial `cur_token`, while the `.bar()` will be recored after we
+            // pop the `(foo)` frame.
+            self.token_cursor.stack.len() - 1
+        } else {
+            self.token_cursor.stack.len()
+        };
         let prev_collecting =
             self.token_cursor.collecting.replace(Collecting { buf: tokens, depth: prev_depth });
 

@@ -1,6 +1,6 @@
 use crate::tests::string_to_stream;
 
-use rustc_ast::token;
+use rustc_ast::token::{self, Spacing, Token};
 use rustc_ast::tokenstream::{TokenStream, TokenStreamBuilder, TokenTree};
 use rustc_span::with_default_session_globals;
 use rustc_span::{BytePos, Span, Symbol};
@@ -99,9 +99,9 @@ fn test_is_empty() {
 fn test_dotdotdot() {
     with_default_session_globals(|| {
         let mut builder = TokenStreamBuilder::new();
-        builder.push(TokenTree::token(token::Dot, sp(0, 1)).joint());
-        builder.push(TokenTree::token(token::Dot, sp(1, 2)).joint());
-        builder.push(TokenTree::token(token::Dot, sp(2, 3)));
+        builder.push(TokenTree::Token(Token::with_spacing(token::Dot, sp(0, 1), Spacing::Joint)));
+        builder.push(TokenTree::Token(Token::with_spacing(token::Dot, sp(1, 2), Spacing::Joint)));
+        builder.push(TokenTree::Token(Token::with_spacing(token::Dot, sp(2, 3), Spacing::Alone)));
         let stream = builder.build();
         assert!(stream.eq_unspanned(&string_to_ts("...")));
         assert_eq!(stream.trees().count(), 1);

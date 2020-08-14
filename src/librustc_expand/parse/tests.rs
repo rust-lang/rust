@@ -2,7 +2,7 @@ use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_pa
 
 use rustc_ast::ast::{self, PatKind};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Token};
+use rustc_ast::token::{self, Spacing, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::visit;
 use rustc_ast_pretty::pprust::item_to_string;
@@ -116,7 +116,12 @@ fn string_to_tts_1() {
                 DelimSpan::from_pair(sp(15, 16), sp(20, 21)),
                 token::DelimToken::Brace,
                 TokenStream::new(vec![
-                    TokenTree::token(token::Ident(Symbol::intern("b"), false), sp(17, 18)).into(),
+                    TokenTree::Token(Token::with_spacing(
+                        token::Ident(Symbol::intern("b"), false),
+                        sp(17, 18),
+                        Spacing::Joint,
+                    ))
+                    .into(),
                     TokenTree::token(token::Semi, sp(18, 19)).into(),
                 ])
                 .into(),

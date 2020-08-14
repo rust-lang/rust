@@ -56,31 +56,31 @@ pub(super) fn parse(
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
-                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span })) => {
-                        match trees.next() {
-                            Some(tokenstream::TokenTree::Token(token)) => match token.ident() {
-                                Some((frag, _)) => {
-                                    let span = token.span.with_lo(start_sp.lo());
-                                    let kind = token::NonterminalKind::from_symbol(frag.name)
-                                        .unwrap_or_else(|| {
-                                            let msg = format!(
-                                                "invalid fragment specifier `{}`",
-                                                frag.name
-                                            );
-                                            sess.span_diagnostic
-                                                .struct_span_err(span, &msg)
-                                                .help(VALID_FRAGMENT_NAMES_MSG)
-                                                .emit();
-                                            token::NonterminalKind::Ident
-                                        });
-                                    result.push(TokenTree::MetaVarDecl(span, ident, Some(kind)));
-                                    continue;
-                                }
-                                _ => token.span,
-                            },
-                            tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
-                        }
-                    }
+                    Some(tokenstream::TokenTree::Token(Token {
+                        kind: token::Colon,
+                        span,
+                        spacing: _,
+                    })) => match trees.next() {
+                        Some(tokenstream::TokenTree::Token(token)) => match token.ident() {
+                            Some((frag, _)) => {
+                                let span = token.span.with_lo(start_sp.lo());
+                                let kind = token::NonterminalKind::from_symbol(frag.name)
+                                    .unwrap_or_else(|| {
+                                        let msg =
+                                            format!("invalid fragment specifier `{}`", frag.name);
+                                        sess.span_diagnostic
+                                            .struct_span_err(span, &msg)
+                                            .help(VALID_FRAGMENT_NAMES_MSG)
+                                            .emit();
+                                        token::NonterminalKind::Ident
+                                    });
+                                result.push(TokenTree::MetaVarDecl(span, ident, Some(kind)));
+                                continue;
+                            }
+                            _ => token.span,
+                        },
+                        tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
+                    },
                     tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
                 };
                 if node_id != DUMMY_NODE_ID {
@@ -122,7 +122,7 @@ fn parse_tree(
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
-        tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }) => {
+        tokenstream::TokenTree::Token(Token { kind: token::Dollar, span, spacing: _ }) => {
             // FIXME: Handle `None`-delimited groups in a more systematic way
             // during parsing.
             let mut next = outer_trees.next();

@@ -640,14 +640,14 @@ pub fn noop_visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
 
 pub fn noop_visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T) {
     let tts = Lrc::make_mut(tts);
-    visit_vec(tts, |(tree, _is_joint)| vis.visit_tt(tree));
+    visit_vec(tts, |tree| vis.visit_tt(tree));
 }
 
 // Applies ident visitor if it's an ident; applies other visits to interpolated nodes.
 // In practice the ident part is not actually used by specific visitors right now,
 // but there's a test below checking that it works.
 pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
-    let Token { kind, span } = t;
+    let Token { kind, span, spacing: _ } = t;
     match kind {
         token::Ident(name, _) | token::Lifetime(name) => {
             let mut ident = Ident::new(*name, *span);
