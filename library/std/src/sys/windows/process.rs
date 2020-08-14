@@ -10,6 +10,7 @@ use crate::fs;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::os::windows::ffi::OsStrExt;
+use crate::os::windows::io::RawHandle;
 use crate::path::Path;
 use crate::ptr;
 use crate::sys::c;
@@ -72,10 +73,16 @@ pub struct Command {
     cwd: Option<OsString>,
     flags: u32,
     detach: bool, // not currently exposed in std::process
+    inherit_handles: Option<SendHandles>,
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
 }
+
+struct SendHandles(Vec<RawHandle>);
+
+unsafe impl Send for SendHandles {}
+unsafe impl Sync for SendHandles {}
 
 pub enum Stdio {
     Inherit,
@@ -94,6 +101,13 @@ struct DropGuard<'a> {
     lock: &'a Mutex,
 }
 
+#[derive(Default)]
+struct ProcAttributeList {
+    buf: Vec<u8>,
+    inherit_handles: Vec<RawHandle>,
+    initialized: bool,
+}
+
 impl Command {
     pub fn new(program: &OsStr) -> Command {
         Command {
@@ -103,6 +117,7 @@ impl Command {
             cwd: None,
             flags: 0,
             detach: false,
+            inherit_handles: None,
             stdin: None,
             stdout: None,
             stderr: None,
@@ -130,6 +145,12 @@ impl Command {
     pub fn creation_flags(&mut self, flags: u32) {
         self.flags = flags;
     }
+    pub fn inherit_handles(&mut self, handles: Vec<RawHandle>) {
+        match self.inherit_handles {
+            Some(ref mut list) => list.0.extend(handles),
+            None => self.inherit_handles = Some(SendHandles(handles)),
+        }
+    }
 
     pub fn spawn(
         &mut self,
@@ -156,7 +177,11 @@ impl Command {
             None
         });
 
-        let mut si = zeroed_startupinfo();
+        let mut si_ex = c::STARTUPINFOEX {
+            StartupInfo: zeroed_startupinfo(),
+            lpAttributeList: ptr::null_mut(),
+        };
+        let si = &mut si_ex.StartupInfo;
         si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
         si.dwFlags = c::STARTF_USESTDHANDLES;
 
@@ -199,6 +224,20 @@ impl Command {
         si.hStdOutput = stdout.raw();
         si.hStdError = stderr.raw();
 
+        // Limit handles to inherit.
+        // See https://devblogs.microsoft.com/oldnewthing/20111216-00/?p=8873
+        let mut proc_attribute_list = ProcAttributeList::default();
+        if let Some(SendHandles(ref handles)) = self.inherit_handles {
+            // Unconditionally inherit stdio redirection handles.
+            let mut inherit_handles = handles.clone();
+            inherit_handles.extend_from_slice(&[stdin.raw(), stdout.raw(), stderr.raw()]);
+            proc_attribute_list.init(1)?;
+            proc_attribute_list.set_handle_list(inherit_handles)?;
+            si.cb = mem::size_of::<c::STARTUPINFOEX>() as c::DWORD;
+            si_ex.lpAttributeList = proc_attribute_list.ptr();
+            flags |= c::EXTENDED_STARTUPINFO_PRESENT;
+        }
+
         unsafe {
             cvt(c::CreateProcessW(
                 ptr::null(),
@@ -209,7 +248,7 @@ impl Command {
                 flags,
                 envp,
                 dirp,
-                &mut si,
+                si,
                 &mut pi,
             ))
         }?;
@@ -246,6 +285,60 @@ impl<'a> Drop for DropGuard<'a> {
     fn drop(&mut self) {
         unsafe {
             self.lock.unlock();
+        }
+    }
+}
+
+impl ProcAttributeList {
+    fn init(&mut self, attribute_count: c::DWORD) -> io::Result<()> {
+        // Allocate
+        let mut size: c::SIZE_T = 0;
+        cvt(unsafe {
+            c::InitializeProcThreadAttributeList(ptr::null_mut(), attribute_count, 0, &mut size)
+        })
+        .or_else(|e| match e.raw_os_error().unwrap_or_default() as c::DWORD {
+            c::ERROR_INSUFFICIENT_BUFFER => Ok(0),
+            _ => Err(e),
+        })?;
+        self.buf.resize(size as usize, 0);
+
+        // Initialize
+        cvt(unsafe {
+            c::InitializeProcThreadAttributeList(self.ptr(), attribute_count, 0, &mut size)
+        })?;
+        self.initialized = true;
+
+        Ok(())
+    }
+
+    fn set_handle_list(&mut self, handles: Vec<RawHandle>) -> io::Result<()> {
+        // Take ownership. The PROC_THREAD_ATTRIBUTE_LIST struct might
+        // refer to the handles using pointers.
+        self.inherit_handles = handles;
+        cvt(unsafe {
+            c::UpdateProcThreadAttribute(
+                self.ptr(),
+                0,
+                c::PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                self.inherit_handles.as_mut_ptr() as c::PVOID,
+                self.inherit_handles.len() * mem::size_of::<c::HANDLE>(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        })?;
+
+        Ok(())
+    }
+
+    fn ptr(&mut self) -> c::LPPROC_THREAD_ATTRIBUTE_LIST {
+        self.buf.as_mut_ptr() as _
+    }
+}
+
+impl Drop for ProcAttributeList {
+    fn drop(&mut self) {
+        if self.initialized {
+            unsafe { c::DeleteProcThreadAttributeList(self.ptr()) };
         }
     }
 }

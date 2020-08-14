@@ -13,6 +13,7 @@ pub use self::EXCEPTION_DISPOSITION::*;
 pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
 
 pub type DWORD = c_ulong;
+pub type DWORD_PTR = ULONG_PTR;
 pub type HANDLE = LPVOID;
 pub type HINSTANCE = HANDLE;
 pub type HMODULE = HINSTANCE;
@@ -39,6 +40,7 @@ pub type LPCWSTR = *const WCHAR;
 pub type LPDWORD = *mut DWORD;
 pub type LPHANDLE = *mut HANDLE;
 pub type LPOVERLAPPED = *mut OVERLAPPED;
+pub type LPPROC_THREAD_ATTRIBUTE_LIST = *mut PROC_THREAD_ATTRIBUTE_LIST;
 pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
 pub type LPSECURITY_ATTRIBUTES = *mut SECURITY_ATTRIBUTES;
 pub type LPSTARTUPINFO = *mut STARTUPINFO;
@@ -56,7 +58,9 @@ pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE = *mut c_void;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
+pub type PSIZE_T = *mut ULONG_PTR;
 pub type PSRWLOCK = *mut SRWLOCK;
+pub type PVOID = *mut c_void;
 
 pub type SOCKET = crate::os::windows::raw::SOCKET;
 pub type socklen_t = c_int;
@@ -100,6 +104,8 @@ pub const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
 pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
 
 pub const FIONBIO: c_ulong = 0x8004667e;
+
+pub const PROC_THREAD_ATTRIBUTE_HANDLE_LIST: DWORD_PTR = 0x00020002;
 
 #[repr(C)]
 #[derive(Copy)]
@@ -217,6 +223,7 @@ pub const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE { ptr
 pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { ptr: ptr::null_mut() };
 
 pub const DETACHED_PROCESS: DWORD = 0x00000008;
+pub const EXTENDED_STARTUPINFO_PRESENT: DWORD = 0x00080000;
 pub const CREATE_NEW_PROCESS_GROUP: DWORD = 0x00000200;
 pub const CREATE_UNICODE_ENVIRONMENT: DWORD = 0x00000400;
 pub const STARTF_USESTDHANDLES: DWORD = 0x00000100;
@@ -484,6 +491,11 @@ pub struct SECURITY_ATTRIBUTES {
 }
 
 #[repr(C)]
+pub struct PROC_THREAD_ATTRIBUTE_LIST {
+    pub dummy: *mut c_void,
+}
+
+#[repr(C)]
 pub struct PROCESS_INFORMATION {
     pub hProcess: HANDLE,
     pub hThread: HANDLE,
@@ -511,6 +523,12 @@ pub struct STARTUPINFO {
     pub hStdInput: HANDLE,
     pub hStdOutput: HANDLE,
     pub hStdError: HANDLE,
+}
+
+#[repr(C)]
+pub struct STARTUPINFOEX {
+    pub StartupInfo: STARTUPINFO,
+    pub lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST,
 }
 
 #[repr(C)]
@@ -886,6 +904,23 @@ extern "system" {
         lpDefaultChar: LPCSTR,
         lpUsedDefaultChar: LPBOOL,
     ) -> c_int;
+
+    pub fn InitializeProcThreadAttributeList(
+        lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST,
+        dwAttributeCount: DWORD,
+        dwFlags: DWORD,
+        lpSize: PSIZE_T,
+    ) -> BOOL;
+    pub fn UpdateProcThreadAttribute(
+        lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST,
+        dwFlags: DWORD,
+        Attribute: DWORD_PTR,
+        lpValue: PVOID,
+        cbSize: SIZE_T,
+        lpPreviousValue: PVOID,
+        lpReturnSize: PSIZE_T,
+    ) -> BOOL;
+    pub fn DeleteProcThreadAttributeList(lpAttributeList: LPPROC_THREAD_ATTRIBUTE_LIST);
 
     pub fn closesocket(socket: SOCKET) -> c_int;
     pub fn recv(socket: SOCKET, buf: *mut c_void, len: c_int, flags: c_int) -> c_int;

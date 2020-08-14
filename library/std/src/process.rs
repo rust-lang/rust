@@ -2105,6 +2105,93 @@ mod tests {
     }
 
     #[test]
+    #[cfg(windows)]
+    fn test_inherit_handles() {
+        use crate::io;
+        use crate::os::windows::process::CommandExt;
+        use crate::sys::pipe::anon_pipe;
+
+        // Count handles of a child process using PowerShell.
+        fn count_child_handles(f: impl FnOnce(&mut Command) -> &mut Command) -> io::Result<usize> {
+            let mut command = Command::new("powershell");
+            let command = command.args(&[
+                "-Command",
+                "Get-Process -Id $PID | Format-Table -HideTableHeaders Handles",
+            ]);
+            let out = f(command).output()?.stdout;
+            String::from_utf8_lossy(&out)
+                .trim()
+                .parse::<usize>()
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+        }
+
+        // The exact count is unstable because tests run in other threads might
+        // create inheritable handles, and PowerShell is a GC runtime.
+        // Increase epsilon if the test becomes flaky.
+        let epsilon = 25;
+        let base_count = count_child_handles(|c| c).unwrap();
+
+        // Create `n` inheritable pipes.
+        let n = epsilon * 6;
+        let pipes: Vec<_> = (1..n).map(|_| anon_pipe(true, true).unwrap()).collect();
+
+        // Without `inherit_handles`, all pipes are inherited.
+        let inherit_count = count_child_handles(|c| c).unwrap();
+        assert!(
+            inherit_count > base_count + n - epsilon,
+            "pipes do not seem to be inherited (base: {}, inherit: {}, n: {})",
+            base_count,
+            inherit_count,
+            n
+        );
+
+        // With `inherit_handles`, none of the pipes are inherited.
+        let inherit_count = count_child_handles(|c| c.inherit_handles(vec![])).unwrap();
+        assert!(
+            inherit_count < base_count + epsilon,
+            "pipe inheritance does not seem to be limited (base: {}, inherit: {}, n: {})",
+            base_count,
+            inherit_count,
+            n
+        );
+
+        // Use `inherit_handles` to inherit half of the pipes.
+        let half = n / 2;
+        let handles: Vec<_> = pipes.iter().take(half).map(|p| p.theirs.handle().raw()).collect();
+        let inherit_count = count_child_handles(move |c| c.inherit_handles(handles)).unwrap();
+        assert!(
+            inherit_count > base_count + half - epsilon,
+            "pipe inheritance seems over-limited (base: {}, inherit: {}, n: {}, half: {})",
+            base_count,
+            inherit_count,
+            n,
+            half
+        );
+        assert!(
+            inherit_count < base_count + half + epsilon,
+            "pipe inheritance seems under-limited (base: {}, inherit: {}, n: {}, half: {})",
+            base_count,
+            inherit_count,
+            n,
+            half
+        );
+
+        // Call `inherit_handles` multiple times to inherit all pipes.
+        let handles: Vec<_> = pipes.iter().map(|p| p.theirs.handle().raw()).collect();
+        let inherit_count = count_child_handles(move |c| {
+            handles.into_iter().fold(c, |c, h| c.inherit_handles(vec![h]))
+        })
+        .unwrap();
+        assert!(
+            inherit_count > base_count + n - epsilon,
+            "pipe inheritance seems over-limited (base: {}, inherit: {}, n: {})",
+            base_count,
+            inherit_count,
+            n,
+        );
+    }
+
+    #[test]
     fn test_command_implements_send_sync() {
         fn take_send_sync_type<T: Send + Sync>(_: T) {}
         take_send_sync_type(Command::new(""))

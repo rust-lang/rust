@@ -102,12 +102,42 @@ pub trait CommandExt {
     /// [1]: https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
     #[stable(feature = "windows_process_extensions", since = "1.16.0")]
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command;
+
+    /// Specifies additional [inheritable handles][1] for `CreateProcess`.
+    ///
+    /// Handles must be created as inheritable and must not be pseudo
+    /// such as those returned by the `GetCurrentProcess`.
+    ///
+    /// Handles for stdio redirection are always inherited. Handles are
+    /// passed via `STARTUPINFOEX`. Process creation flags will be ORed
+    /// by `EXTENDED_STARTUPINFO_PRESENT` automatically.
+    ///
+    /// Calling this function multiple times is equivalent to calling
+    /// one time with a chained iterator.
+    ///
+    /// If this function is not called, all inheritable handles will be
+    /// inherited. Note this may change in the future.
+    ///
+    /// [1]: https://docs.microsoft.com/en-us/windows/win32/procthread/inheritance#inheriting-handles
+    #[unstable(feature = "windows_process_inherit_handles", issue = "none")]
+    fn inherit_handles(
+        &mut self,
+        handles: impl IntoIterator<Item = RawHandle>,
+    ) -> &mut process::Command;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
 impl CommandExt for process::Command {
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command {
         self.as_inner_mut().creation_flags(flags);
+        self
+    }
+
+    fn inherit_handles(
+        &mut self,
+        handles: impl IntoIterator<Item = RawHandle>,
+    ) -> &mut process::Command {
+        self.as_inner_mut().inherit_handles(handles.into_iter().collect());
         self
     }
 }
