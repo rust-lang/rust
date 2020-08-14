@@ -175,8 +175,9 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         let code = source.error_code(res.is_some());
         let mut err = self.r.session.struct_span_err_with_code(base_span, &base_msg, code);
 
+        let is_assoc_fn = self.self_type_is_available(span);
         // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
-        if ["this", "my"].contains(&&*item_str.as_str()) && self.self_type_is_available(span) {
+        if ["this", "my"].contains(&&*item_str.as_str()) && is_assoc_fn {
             err.span_suggestion_short(
                 span,
                 "you might have meant to use `self` here instead",
@@ -187,25 +188,24 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 if let Some((FnKind::Fn(_, _, sig, ..), fn_span)) =
                     &self.diagnostic_metadata.current_function
                 {
-                    if let Some(param) = sig.decl.inputs.get(0) {
-                        err.span_suggestion_verbose(
-                            param.span.shrink_to_lo(),
-                            "you are also missing a `self` receiver argument",
-                            "&self, ".to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
+                    let (span, sugg) = if let Some(param) = sig.decl.inputs.get(0) {
+                        (param.span.shrink_to_lo(), "&self, ")
                     } else {
-                        err.span_suggestion_verbose(
+                        (
                             self.r
                                 .session
                                 .source_map()
                                 .span_through_char(*fn_span, '(')
                                 .shrink_to_hi(),
-                            "you are also missing a `self` receiver argument",
-                            "&self".to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+                            "&self",
+                        )
+                    };
+                    err.span_suggestion_verbose(
+                        span,
+                        "you are also missing a `self` receiver argument",
+                        sugg.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             }
         }
@@ -236,7 +236,38 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 if fn_kind.decl().inputs.get(0).map(|p| p.is_self()).unwrap_or(false) {
                     err.span_label(*span, "this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters");
                 } else {
-                    err.span_label(*span, "this function doesn't have a `self` parameter");
+                    let doesnt = if is_assoc_fn {
+                        let (span, sugg) = fn_kind
+                            .decl()
+                            .inputs
+                            .get(0)
+                            .map(|p| (p.span.shrink_to_lo(), "&self, "))
+                            .unwrap_or_else(|| {
+                                (
+                                    self.r
+                                        .session
+                                        .source_map()
+                                        .span_through_char(*span, '(')
+                                        .shrink_to_hi(),
+                                    "&self",
+                                )
+                            });
+                        err.span_suggestion_verbose(
+                            span,
+                            "add a `self` receiver parameter to make the associated `fn` a method",
+                            sugg.to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                        "doesn't"
+                    } else {
+                        "can't"
+                    };
+                    if let Some(ident) = fn_kind.ident() {
+                        err.span_label(
+                            ident.span,
+                            &format!("this function {} have a `self` parameter", doesnt),
+                        );
+                    }
                 }
             }
             return (err, Vec::new());

@@ -50,6 +50,13 @@ impl<'a> FnKind<'a> {
         }
     }
 
+    pub fn ident(&self) -> Option<&Ident> {
+        match self {
+            FnKind::Fn(_, ident, ..) => Some(ident),
+            _ => None,
+        }
+    }
+
     pub fn decl(&self) -> &'a FnDecl {
         match self {
             FnKind::Fn(_, _, sig, _, _) => &sig.decl,
