@@ -1310,7 +1310,7 @@ declare_clippy_lint! {
     /// **What it does:** Warns when using push_str with a single-character string literal,
     /// and push with a char would work fine.
     ///
-    /// **Why is this bad?** it's less clear that we are pushing a single character
+    /// **Why is this bad?** It's less clear that we are pushing a single character
     ///
     /// **Known problems:** None
     ///
@@ -3154,9 +3154,9 @@ fn lint_chars_last_cmp_with_unwrap<'tcx>(cx: &LateContext<'tcx>, info: &BinaryEx
     }
 }
 
-fn get_hint_if_single_char_arg<'tcx>(
-    cx: &LateContext<'tcx>,
-    arg: &'tcx hir::Expr<'_>,
+fn get_hint_if_single_char_arg(
+    cx: &LateContext<'_>,
+    arg: &hir::Expr<'_>,
     applicability: &mut Applicability,
 ) -> Option<String> {
     if_chain! {
@@ -3183,7 +3183,7 @@ fn get_hint_if_single_char_arg<'tcx>(
 }
 
 /// lint for length-1 `str`s for methods in `PATTERN_METHODS`
-fn lint_single_char_pattern<'tcx>(cx: &LateContext<'tcx>, _expr: &'tcx hir::Expr<'_>, arg: &'tcx hir::Expr<'_>) {
+fn lint_single_char_pattern(cx: &LateContext<'_>, _expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
     let mut applicability = Applicability::MachineApplicable;
     if let Some(hint) = get_hint_if_single_char_arg(cx, arg, &mut applicability) {
         span_lint_and_sugg(
@@ -3199,7 +3199,7 @@ fn lint_single_char_pattern<'tcx>(cx: &LateContext<'tcx>, _expr: &'tcx hir::Expr
 }
 
 /// lint for length-1 `str`s as argument for `push_str`
-fn lint_single_char_push_string<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, args: &'tcx [hir::Expr<'_>]) {
+fn lint_single_char_push_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let mut applicability = Applicability::MachineApplicable;
     if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[1], &mut applicability) {
         let base_string_snippet = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
