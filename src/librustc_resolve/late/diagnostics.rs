@@ -202,7 +202,8 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     };
                     err.span_suggestion_verbose(
                         span,
-                        "you are also missing a `self` receiver argument",
+                        "if you meant to use `self`, you are also missing a `self` receiver \
+                         argument",
                         sugg.to_string(),
                         Applicability::MaybeIncorrect,
                     );

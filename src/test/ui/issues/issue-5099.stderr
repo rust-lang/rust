@@ -8,7 +8,7 @@ help: you might have meant to use `self` here instead
    |
 LL |         self.a
    |         ^^^^
-help: you are also missing a `self` receiver argument
+help: if you meant to use `self`, you are also missing a `self` receiver argument
    |
 LL |     fn a(&self) -> A {
    |          ^^^^^
@@ -23,7 +23,7 @@ help: you might have meant to use `self` here instead
    |
 LL |         self.b(x);
    |         ^^^^
-help: you are also missing a `self` receiver argument
+help: if you meant to use `self`, you are also missing a `self` receiver argument
    |
 LL |     fn b(&self, x: i32) {
    |          ^^^^^^
