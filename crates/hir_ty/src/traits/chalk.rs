@@ -240,20 +240,23 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         Substs::empty().to_chalk(self.db)
     }
 
-    fn trait_name(&self, _trait_id: chalk_ir::TraitId<Interner>) -> String {
-        unimplemented!()
+    fn trait_name(&self, trait_id: chalk_ir::TraitId<Interner>) -> String {
+        let id = from_chalk(self.db, trait_id);
+        self.db.trait_data(id).name.to_string()
     }
-    fn adt_name(&self, _struct_id: chalk_ir::AdtId<Interner>) -> String {
-        unimplemented!()
+    // FIXME: lookup names
+    fn adt_name(&self, struct_id: chalk_ir::AdtId<Interner>) -> String {
+        let datum = self.db.struct_datum(self.krate, struct_id);
+        format!("{:?}", datum.name(&Interner))
     }
-    fn assoc_type_name(&self, _assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
-        unimplemented!()
+    fn assoc_type_name(&self, assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
+        format!("Assoc_{}", assoc_ty_id.0)
     }
-    fn opaque_type_name(&self, _opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
-        unimplemented!()
+    fn opaque_type_name(&self, opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
+        format!("Opaque_{}", opaque_ty_id.0)
     }
-    fn fn_def_name(&self, _fn_def_id: chalk_ir::FnDefId<Interner>) -> String {
-        unimplemented!()
+    fn fn_def_name(&self, fn_def_id: chalk_ir::FnDefId<Interner>) -> String {
+        format!("fn_{}", fn_def_id.0)
     }
 }
 
