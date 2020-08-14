@@ -745,7 +745,6 @@ impl<'a> Builder<'a> {
             .env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler))
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
             .env("RUSTDOC_REAL", self.rustdoc(compiler))
-            .env("RUSTDOC_CRATE_VERSION", self.rust_version())
             .env("RUSTC_BOOTSTRAP", "1")
             .arg("-Winvalid_codeblock_attributes");
         if self.config.deny_warnings {
@@ -1271,7 +1270,7 @@ impl<'a> Builder<'a> {
         }
 
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
-        cargo.env("RUSTDOC_CRATE_VERSION", self.rust_version());
+        rustdocflags.arg("--crate-version").arg(&self.rust_version());
 
         // Environment variables *required* throughout the build
         //
