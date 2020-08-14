@@ -43,6 +43,9 @@ use crate::boxed::Box;
 const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;
 pub const CAPACITY: usize = 2 * B - 1;
+const KV_IDX_CENTER: usize = B - 1;
+const EDGE_IDX_LEFT_OF_CENTER: usize = B - 1;
+const EDGE_IDX_RIGHT_OF_CENTER: usize = B;
 
 /// The underlying representation of leaf nodes.
 #[repr(C)]
@@ -834,38 +837,12 @@ enum InsertionPlace {
 fn splitpoint(edge_idx: usize) -> (usize, InsertionPlace) {
     debug_assert!(edge_idx <= CAPACITY);
     // Rust issue #74834 tries to explain these symmetric rules.
-    let middle_kv_idx;
-    let insertion;
-    if edge_idx <= B - 2 {
-        middle_kv_idx = B - 2;
-        insertion = InsertionPlace::Left(edge_idx);
-    } else if edge_idx == B - 1 {
-        middle_kv_idx = B - 1;
-        insertion = InsertionPlace::Left(edge_idx);
-    } else if edge_idx == B {
-        middle_kv_idx = B - 1;
-        insertion = InsertionPlace::Right(0);
-    } else {
-        middle_kv_idx = B;
-        let new_edge_idx = edge_idx - (B + 1);
-        insertion = InsertionPlace::Right(new_edge_idx);
+    match edge_idx {
+        0..EDGE_IDX_LEFT_OF_CENTER => (KV_IDX_CENTER - 1, InsertionPlace::Left(edge_idx)),
+        EDGE_IDX_LEFT_OF_CENTER => (KV_IDX_CENTER, InsertionPlace::Left(edge_idx)),
+        EDGE_IDX_RIGHT_OF_CENTER => (KV_IDX_CENTER, InsertionPlace::Right(0)),
+        _ => (KV_IDX_CENTER + 1, InsertionPlace::Right(edge_idx - (KV_IDX_CENTER + 1 + 1))),
     }
-    let mut left_len = middle_kv_idx;
-    let mut right_len = CAPACITY - middle_kv_idx - 1;
-    match insertion {
-        InsertionPlace::Left(edge_idx) => {
-            debug_assert!(edge_idx <= left_len);
-            left_len += 1;
-        }
-        InsertionPlace::Right(edge_idx) => {
-            debug_assert!(edge_idx <= right_len);
-            right_len += 1;
-        }
-    }
-    debug_assert!(left_len >= MIN_LEN);
-    debug_assert!(right_len >= MIN_LEN);
-    debug_assert!(left_len + right_len == CAPACITY);
-    (middle_kv_idx, insertion)
 }
 
 impl<'a, K, V, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::Edge> {
@@ -1600,3 +1577,6 @@ unsafe fn slice_remove<T>(slice: &mut [T], idx: usize) -> T {
         ret
     }
 }
+
+#[cfg(test)]
+mod tests;
