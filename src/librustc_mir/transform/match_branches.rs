@@ -78,7 +78,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                         );
                         if let Some(c) = c.literal.try_eval_bool(tcx, param_env) {
                             let op = if c { BinOp::Eq } else { BinOp::Ne };
-                            *rhs = Rvalue::BinaryOp(op, Operand::Move(discr), const_cmp);
+                            *rhs = Rvalue::BinaryOp(op, Operand::Copy(discr), const_cmp);
                         }
                     }
                 }
