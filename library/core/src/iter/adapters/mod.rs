@@ -679,11 +679,7 @@ where
     fn next_back_index(&self) -> usize {
         let rem = self.iter.len() % (self.step + 1);
         if self.first_take {
-            if rem == 0 {
-                self.step
-            } else {
-                rem - 1
-            }
+            if rem == 0 { self.step } else { rem - 1 }
         } else {
             rem
         }
@@ -2213,11 +2209,7 @@ where
     I: DoubleEndedIterator + ExactSizeIterator,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        if self.len() > 0 {
-            self.iter.next_back()
-        } else {
-            None
-        }
+        if self.len() > 0 { self.iter.next_back() } else { None }
     }
 
     #[inline]
@@ -2247,11 +2239,7 @@ where
             move |acc, x| {
                 n -= 1;
                 let r = fold(acc, x);
-                if n == 0 {
-                    LoopState::Break(r)
-                } else {
-                    LoopState::from_try(r)
-                }
+                if n == 0 { LoopState::Break(r) } else { LoopState::from_try(r) }
             }
         }
 
@@ -2362,11 +2350,7 @@ where
             move |acc, x| {
                 *n -= 1;
                 let r = fold(acc, x);
-                if *n == 0 {
-                    LoopState::Break(r)
-                } else {
-                    LoopState::from_try(r)
-                }
+                if *n == 0 { LoopState::Break(r) } else { LoopState::from_try(r) }
             }
         }
 
