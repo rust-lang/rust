@@ -3,7 +3,7 @@
     {
       "files": [
         {
-          "filename": "main.rs",
+          "filename": "testprog.rs",
           "summary": {
             "functions": {
               "count": 7,

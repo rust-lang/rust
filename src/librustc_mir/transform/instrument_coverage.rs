@@ -295,6 +295,21 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         let (file_name, start_line, start_col, end_line, end_col) = self.code_region(&span);
 
+        // FIXME(richkadel): Note that `const_str()` results in the creation of an `Allocation` to
+        // hold one copy of each unique filename. It looks like that `Allocation` may translate into
+        // the creation of an `@alloc` in LLVM IR that is never actually used by runtime code.
+        //
+        // Example LLVM IR:
+        //
+        // @alloc4 = private unnamed_addr constant <{ [43 x i8] }> \
+        //   <{ [43 x i8] c"C:\\msys64\\home\\richkadel\\rust\\rust_basic.rs" }>, align 1
+        //
+        // Can I flag the alloc as something not to be added to codegen? Or somehow remove it before
+        // it gets added to the LLVM IR? Do we need some kind of reference counting to know it's
+        // not used by any runtime code?
+        //
+        // This question is moot if I convert the Call Terminators to Statements, I believe:
+        // https://rust-lang.zulipchat.com/#narrow/stream/233931-t-compiler.2Fmajor-changes/topic/Implement.20LLVM-compatible.20source-based.20cod.20compiler-team.23278/near/206731748
         args.push(self.const_str(&file_name, inject_at));
         args.push(self.const_u32(start_line, inject_at));
         args.push(self.const_u32(start_col, inject_at));

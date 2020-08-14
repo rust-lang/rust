@@ -7,6 +7,8 @@ pub trait CoverageInfoMethods: BackendTypes {
 }
 
 pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
+    fn create_pgo_func_name_var(&self, instance: Instance<'tcx>) -> Self::Value;
+
     fn add_counter_region(
         &mut self,
         instance: Instance<'tcx>,

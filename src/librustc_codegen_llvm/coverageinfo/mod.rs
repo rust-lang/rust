@@ -8,7 +8,7 @@ use llvm::coverageinfo::CounterMappingRegion;
 use log::debug;
 use rustc_codegen_ssa::coverageinfo::map::{CounterExpression, ExprKind, FunctionCoverage, Region};
 use rustc_codegen_ssa::traits::{
-    BaseTypeMethods, CoverageInfoBuilderMethods, CoverageInfoMethods, StaticMethods,
+    BaseTypeMethods, CoverageInfoBuilderMethods, CoverageInfoMethods, MiscMethods, StaticMethods,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_llvm::RustString;
@@ -44,6 +44,16 @@ impl CoverageInfoMethods for CodegenCx<'ll, 'tcx> {
 }
 
 impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+    /// Calls llvm::createPGOFuncNameVar() with the given function instance's mangled function name.
+    /// The LLVM API returns an llvm::GlobalVariable containing the function name, with the specific
+    /// variable name and linkage required by LLVM InstrProf source-based coverage instrumentation.
+    fn create_pgo_func_name_var(&self, instance: Instance<'tcx>) -> Self::Value {
+        let llfn = self.cx.get_fn(instance);
+        let mangled_fn_name = CString::new(self.tcx.symbol_name(instance).name)
+            .expect("error converting function name to C string");
+        unsafe { llvm::LLVMRustCoverageCreatePGOFuncNameVar(llfn, mangled_fn_name.as_ptr()) }
+    }
+
     fn add_counter_region(
         &mut self,
         instance: Instance<'tcx>,

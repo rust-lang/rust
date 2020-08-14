@@ -215,19 +215,19 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.call(llfn, &[], None)
             }
             sym::count_code_region => {
-                let coverageinfo = tcx.coverageinfo(caller_instance.def_id());
-                let mangled_fn = tcx.symbol_name(caller_instance);
-                let (mangled_fn_name, _len_val) = self.const_str(Symbol::intern(mangled_fn.name));
-                let num_counters = self.const_u32(coverageinfo.num_counters);
                 use coverage::count_code_region_args::*;
+                let coverageinfo = tcx.coverageinfo(caller_instance.def_id());
+
+                let fn_name = self.create_pgo_func_name_var(caller_instance);
                 let hash = args[FUNCTION_SOURCE_HASH].immediate();
+                let num_counters = self.const_u32(coverageinfo.num_counters);
                 let index = args[COUNTER_ID].immediate();
                 debug!(
                     "translating Rust intrinsic `count_code_region()` to LLVM intrinsic: \
-                    instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
-                    mangled_fn.name, hash, num_counters, index,
+                    instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
+                    fn_name, hash, num_counters, index,
                 );
-                self.instrprof_increment(mangled_fn_name, hash, num_counters, index)
+                self.instrprof_increment(fn_name, hash, num_counters, index)
             }
             sym::va_start => self.va_start(args[0].immediate()),
             sym::va_end => self.va_end(args[0].immediate()),
