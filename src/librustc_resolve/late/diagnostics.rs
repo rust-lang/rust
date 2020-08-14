@@ -7,6 +7,7 @@ use crate::{PathResult, PathSource, Segment};
 
 use rustc_ast::ast::{self, Expr, ExprKind, Item, ItemKind, NodeId, Path, Ty, TyKind};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -175,15 +176,38 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         let mut err = self.r.session.struct_span_err_with_code(base_span, &base_msg, code);
 
         // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
-        if ["this", "my"].contains(&&*item_str.as_str())
-            && self.self_value_is_available(path[0].ident.span, span)
-        {
+        if ["this", "my"].contains(&&*item_str.as_str()) && self.self_type_is_available(span) {
             err.span_suggestion_short(
                 span,
                 "you might have meant to use `self` here instead",
                 "self".to_string(),
                 Applicability::MaybeIncorrect,
             );
+            if !self.self_value_is_available(path[0].ident.span, span) {
+                if let Some((FnKind::Fn(_, _, sig, ..), fn_span)) =
+                    &self.diagnostic_metadata.current_function
+                {
+                    if let Some(param) = sig.decl.inputs.get(0) {
+                        err.span_suggestion_verbose(
+                            param.span.shrink_to_lo(),
+                            "you are also missing a `self` receiver argument",
+                            "&self, ".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        err.span_suggestion_verbose(
+                            self.r
+                                .session
+                                .source_map()
+                                .span_through_char(*fn_span, '(')
+                                .shrink_to_hi(),
+                            "you are also missing a `self` receiver argument",
+                            "&self".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
         }
 
         // Emit special messages for unresolved `Self` and `self`.
