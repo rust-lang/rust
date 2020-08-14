@@ -29,9 +29,9 @@ pub use self::{
 // Directory used by xtask
 const STORAGE: &str = ".xtask";
 
-const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
-const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/ok";
-const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/err";
+const GRAMMAR_DIR: &str = "crates/parser/src/grammar";
+const OK_INLINE_TESTS_DIR: &str = "crates/syntax/test_data/parser/inline/ok";
+const ERR_INLINE_TESTS_DIR: &str = "crates/syntax/test_data/parser/inline/err";
 
 const SYNTAX_KINDS: &str = "crates/parser/src/syntax_kind/generated.rs";
 const AST_NODES: &str = "crates/syntax/src/ast/generated/nodes.rs";
@@ -41,7 +41,7 @@ const ASSISTS_DIR: &str = "crates/assists/src/handlers";
 const ASSISTS_TESTS: &str = "crates/assists/src/tests/generated.rs";
 
 const REPOSITORY_URL: &str = "https://github.com/rust-lang/rust";
-const UNSTABLE_FEATURE: &str = "crates/ra_ide/src/completion/unstable_feature_descriptor.rs";
+const UNSTABLE_FEATURE: &str = "crates/ide/src/completion/unstable_feature_descriptor.rs";
 const REPO_PATH: &str = "src/doc/unstable-book/src";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

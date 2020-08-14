@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Provides set of implementation for hir's objects that allows get back location in file.
 
 use either::Either;
 use hir_def::{

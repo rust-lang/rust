@@ -9,6 +9,7 @@ use syntax::{ast, AstNode, SyntaxKind};
 use crate::completion::{
     completion_context::CompletionContext,
     completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions},
+    UNSTABLE_FEATURE_DESCRIPTOR,
 };
 
 pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
@@ -17,12 +18,15 @@ pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
         (Some(path), Some(token_tree)) if path.to_string() == "derive" => {
             complete_derive(acc, ctx, token_tree)
         }
+        (Some(path), Some(token_tree)) if path.to_string() == "feature" => {
+            complete_lint(acc, ctx, token_tree, UNSTABLE_FEATURE_DESCRIPTOR)
+        }
         (Some(path), Some(token_tree))
             if ["allow", "warn", "deny", "forbid"]
                 .iter()
                 .any(|lint_level| lint_level == &path.to_string()) =>
         {
-            complete_lint(acc, ctx, token_tree)
+            complete_lint(acc, ctx, token_tree, DEFAULT_LINT_COMPLETIONS)
         }
         (_, Some(_token_tree)) => {}
         _ => complete_attribute_start(acc, ctx, attribute),
@@ -162,9 +166,14 @@ fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input:
     }
 }
 
-fn complete_lint(acc: &mut Completions, ctx: &CompletionContext, derive_input: ast::TokenTree) {
+fn complete_lint(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    derive_input: ast::TokenTree,
+    lints_completions: &[LintCompletion],
+) {
     if let Ok(existing_lints) = parse_comma_sep_input(derive_input) {
-        for lint_completion in DEFAULT_LINT_COMPLETIONS
+        for lint_completion in lints_completions
             .into_iter()
             .filter(|completion| !existing_lints.contains(completion.label))
         {
@@ -228,7 +237,7 @@ fn get_derive_names_in_scope(ctx: &CompletionContext) -> FxHashSet<String> {
     result
 }
 
-struct DeriveCompletion {
+pub(crate) struct DeriveCompletion {
     label: &'static str,
     dependencies: &'static [&'static str],
 }
@@ -248,9 +257,9 @@ const DEFAULT_DERIVE_COMPLETIONS: &[DeriveCompletion] = &[
     DeriveCompletion { label: "Ord", dependencies: &["PartialOrd", "Eq", "PartialEq"] },
 ];
 
-struct LintCompletion {
-    label: &'static str,
-    description: &'static str,
+pub(crate) struct LintCompletion {
+    pub(crate) label: &'static str,
+    pub(crate) description: &'static str,
 }
 
 #[rustfmt::skip]
