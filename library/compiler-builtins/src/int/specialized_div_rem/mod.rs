@@ -57,9 +57,7 @@ mod asymmetric;
 /// impossible to reach by Rust users, unless `compiler-builtins` public division functions or
 /// `core/std::unchecked_div/rem` are directly used without a zero check in front.
 fn zero_div_fn() -> ! {
-    // TODO: change this once the algorithms are verified
-    //unsafe {core::hint::unreachable_unchecked()}
-    ::abort()
+    unsafe { core::hint::unreachable_unchecked() }
 }
 
 // The `B` extension on RISC-V determines if a CLZ assembly instruction exists
