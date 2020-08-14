@@ -48,15 +48,13 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                     (
                         StatementKind::Assign(box (lhs_f, Rvalue::Use(Operand::Constant(f_c)))),
                         StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
-                    ) if lhs_f == lhs_s => {
-                        if let Some(f_c) = f_c.literal.try_eval_bool(tcx, param_env) {
-                            // This should also be a bool because it's writing to the same place
-                            let s_c = s_c.literal.try_eval_bool(tcx, param_env).unwrap();
-                            if f_c != s_c {
-                                // have to check this here because f_c & s_c might have
-                                // different spans.
-                                continue;
-                            }
+                    ) if lhs_f == lhs_s && f_c.literal.ty.is_bool() && s_c.literal.ty.is_bool() => {
+                        let f_c = f_c.literal.try_eval_bool(tcx, param_env).unwrap();
+                        let s_c = s_c.literal.try_eval_bool(tcx, param_env).unwrap();
+                        if f_c != s_c {
+                            // have to check this here because f_c & s_c might have
+                            // different spans.
+                            continue;
                         }
                         continue 'outer;
                     }
