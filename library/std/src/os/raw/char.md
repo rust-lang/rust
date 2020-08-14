@@ -7,5 +7,3 @@ C chars are most commonly used to make C strings. Unlike Rust, where the length 
 [C's `char` type]: https://en.wikipedia.org/wiki/C_data_types#Basic_types
 [Rust's `char` type]: char
 [`CStr`]: crate::ffi::CStr
-[`i8`]: i8
-[`u8`]: u8

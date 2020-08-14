@@ -4,4 +4,3 @@ This type will almost always be [`f64`], which is guaranteed to be an [IEEE-754 
 
 [IEEE-754 double-precision float]: https://en.wikipedia.org/wiki/IEEE_754
 [`float`]: c_float
-[`f64`]: f64
