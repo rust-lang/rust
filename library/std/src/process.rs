@@ -84,25 +84,15 @@
 //! assert_eq!(b"test", output.stdout.as_slice());
 //! ```
 //!
-//! [`abort`]: fn.abort.html
-//! [`exit`]: fn.exit.html
+//! [`spawn`]: Command::spawn
+//! [`output`]: Command::output
 //!
-//! [`Command`]: struct.Command.html
-//! [`spawn`]: struct.Command.html#method.spawn
-//! [`output`]: struct.Command.html#method.output
+//! [`stdout`]: Command::stdout
+//! [`stdin`]: Command::stdin
+//! [`stderr`]: Command::stderr
 //!
-//! [`Child`]: struct.Child.html
-//! [`ChildStdin`]: struct.ChildStdin.html
-//! [`ChildStdout`]: struct.ChildStdout.html
-//! [`ChildStderr`]: struct.ChildStderr.html
-//! [`Stdio`]: struct.Stdio.html
-//!
-//! [`stdout`]: struct.Command.html#method.stdout
-//! [`stdin`]: struct.Command.html#method.stdin
-//! [`stderr`]: struct.Command.html#method.stderr
-//!
-//! [`Write`]: ../io/trait.Write.html
-//! [`Read`]: ../io/trait.Read.html
+//! [`Write`]: io::Write
+//! [`Read`]: io::Read
 
 #![stable(feature = "process", since = "1.0.0")]
 
@@ -130,7 +120,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// run, even after the `Child` handle to the child process has gone out of
 /// scope.
 ///
-/// Calling [`wait`](#method.wait) (or other functions that wrap around it) will make
+/// Calling [`wait`] (or other functions that wrap around it) will make
 /// the parent process wait until the child has actually exited before
 /// continuing.
 ///
@@ -162,9 +152,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// assert!(ecode.success());
 /// ```
 ///
-/// [`Command`]: struct.Command.html
-/// [`Drop`]: ../../core/ops/trait.Drop.html
-/// [`wait`]: #method.wait
+/// [`wait`]: Child::wait
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Child {
     handle: imp::Process,
@@ -248,9 +236,8 @@ impl fmt::Debug for Child {
 /// file handle will be closed. If the child process was blocked on input prior
 /// to being dropped, it will become unblocked after dropping.
 ///
-/// [`Child`]: struct.Child.html
-/// [`stdin`]: struct.Child.html#structfield.stdin
-/// [dropped]: ../ops/trait.Drop.html
+/// [`stdin`]: Child::stdin
+/// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
     inner: AnonPipe,
@@ -307,9 +294,8 @@ impl fmt::Debug for ChildStdin {
 /// When an instance of `ChildStdout` is [dropped], the `ChildStdout`'s
 /// underlying file handle will be closed.
 ///
-/// [`Child`]: struct.Child.html
-/// [`stdout`]: struct.Child.html#structfield.stdout
-/// [dropped]: ../ops/trait.Drop.html
+/// [`stdout`]: Child::stdout
+/// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
     inner: AnonPipe,
@@ -368,9 +354,8 @@ impl fmt::Debug for ChildStdout {
 /// When an instance of `ChildStderr` is [dropped], the `ChildStderr`'s
 /// underlying file handle will be closed.
 ///
-/// [`Child`]: struct.Child.html
-/// [`stderr`]: struct.Child.html#structfield.stderr
-/// [dropped]: ../ops/trait.Drop.html
+/// [`stderr`]: Child::stderr
+/// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
     inner: AnonPipe,
@@ -543,7 +528,7 @@ impl Command {
     ///
     /// To pass multiple arguments see [`args`].
     ///
-    /// [`args`]: #method.args
+    /// [`args`]: Command::args
     ///
     /// # Examples
     ///
@@ -568,7 +553,7 @@ impl Command {
     ///
     /// To pass a single argument see [`arg`].
     ///
-    /// [`arg`]: #method.arg
+    /// [`arg`]: Command::arg
     ///
     /// # Examples
     ///
@@ -721,7 +706,7 @@ impl Command {
     ///         .expect("ls command failed to start");
     /// ```
     ///
-    /// [`canonicalize`]: ../fs/fn.canonicalize.html
+    /// [`canonicalize`]: crate::fs::canonicalize
     #[stable(feature = "process", since = "1.0.0")]
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Command {
         self.inner.cwd(dir.as_ref().as_ref());
@@ -733,8 +718,8 @@ impl Command {
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
     ///
-    /// [`inherit`]: struct.Stdio.html#method.inherit
-    /// [`piped`]: struct.Stdio.html#method.piped
+    /// [`inherit`]: Stdio::inherit
+    /// [`piped`]: Stdio::piped
     ///
     /// # Examples
     ///
@@ -759,8 +744,8 @@ impl Command {
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
     ///
-    /// [`inherit`]: struct.Stdio.html#method.inherit
-    /// [`piped`]: struct.Stdio.html#method.piped
+    /// [`inherit`]: Stdio::inherit
+    /// [`piped`]: Stdio::piped
     ///
     /// # Examples
     ///
@@ -785,8 +770,8 @@ impl Command {
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
     ///
-    /// [`inherit`]: struct.Stdio.html#method.inherit
-    /// [`piped`]: struct.Stdio.html#method.piped
+    /// [`inherit`]: Stdio::inherit
+    /// [`piped`]: Stdio::piped
     ///
     /// # Examples
     ///
@@ -914,10 +899,8 @@ impl AsInnerMut<imp::Command> for Command {
 /// [`Command`], or the [`wait_with_output`] method of a [`Child`]
 /// process.
 ///
-/// [`Command`]: struct.Command.html
-/// [`Child`]: struct.Child.html
-/// [`output`]: struct.Command.html#method.output
-/// [`wait_with_output`]: struct.Child.html#method.wait_with_output
+/// [`output`]: Command::output
+/// [`wait_with_output`]: Child::wait_with_output
 #[derive(PartialEq, Eq, Clone)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Output {
@@ -960,10 +943,9 @@ impl fmt::Debug for Output {
 /// Describes what to do with a standard I/O stream for a child process when
 /// passed to the [`stdin`], [`stdout`], and [`stderr`] methods of [`Command`].
 ///
-/// [`stdin`]: struct.Command.html#method.stdin
-/// [`stdout`]: struct.Command.html#method.stdout
-/// [`stderr`]: struct.Command.html#method.stderr
-/// [`Command`]: struct.Command.html
+/// [`stdin`]: Command::stdin
+/// [`stdout`]: Command::stdout
+/// [`stderr`]: Command::stderr
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Stdio(imp::Stdio);
 
@@ -1227,10 +1209,8 @@ impl From<fs::File> for Stdio {
 /// status is exposed through the [`status`] method, or the [`wait`] method
 /// of a [`Child`] process.
 ///
-/// [`Command`]: struct.Command.html
-/// [`Child`]: struct.Child.html
-/// [`status`]: struct.Command.html#method.status
-/// [`wait`]: struct.Child.html#method.wait
+/// [`status`]: Command::status
+/// [`wait`]: Child::wait
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
@@ -1315,8 +1295,8 @@ impl fmt::Display for ExitStatus {
 /// For the platform's canonical successful and unsuccessful codes, see
 /// the [`SUCCESS`] and [`FAILURE`] associated items.
 ///
-/// [`SUCCESS`]: #associatedconstant.SUCCESS
-/// [`FAILURE`]: #associatedconstant.FAILURE
+/// [`SUCCESS`]: ExitCode::SUCCESS
+/// [`FAILURE`]: ExitCode::FAILURE
 ///
 /// **Warning**: While various forms of this were discussed in [RFC #1937],
 /// it was ultimately cut from that RFC, and thus this type is more subject
@@ -1370,9 +1350,9 @@ impl Child {
     /// }
     /// ```
     ///
-    /// [`ErrorKind`]: ../io/enum.ErrorKind.html
-    /// [`InvalidInput`]: ../io/enum.ErrorKind.html#variant.InvalidInput
-    /// [`Other`]: ../io/enum.ErrorKind.html#variant.Other
+    /// [`ErrorKind`]: io::ErrorKind
+    /// [`InvalidInput`]: io::ErrorKind::InvalidInput
+    /// [`Other`]: io::ErrorKind::Other
     #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
         self.handle.kill()
@@ -1637,8 +1617,7 @@ pub fn exit(code: i32) -> ! {
 /// }
 /// ```
 ///
-/// [`panic!`]: ../../std/macro.panic.html
-/// [panic hook]: ../../std/panic/fn.set_hook.html
+/// [panic hook]: crate::panic::set_hook
 #[stable(feature = "process_abort", since = "1.17.0")]
 pub fn abort() -> ! {
     crate::sys::abort_internal();
