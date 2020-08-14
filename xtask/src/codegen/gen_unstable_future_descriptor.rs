@@ -84,7 +84,7 @@ fn generate_descriptor(src_dir: PathBuf) -> Result<TokenStream> {
         .filter(|entry| {
             // Get all `.md ` files
             entry.file_type().is_file()
-                && entry.path().extension().map(|ext| ext == "md").unwrap_or(false)
+                && entry.path().extension().unwrap_or_default() == "md"
         })
         .collect::<Vec<_>>();
 
