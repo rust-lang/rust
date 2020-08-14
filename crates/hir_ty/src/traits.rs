@@ -167,20 +167,21 @@ fn solve(
         remaining > 0
     };
 
-    let solution = if is_chalk_debug() {
-        let logging_db = LoggingRustIrDatabase::new(context);
-        let solve = || {
+    let mut solve = || {
+        if is_chalk_print() {
+            let logging_db = LoggingRustIrDatabase::new(context);
             let solution = solver.solve_limited(&logging_db, goal, should_continue);
             log::debug!("chalk program:\n{}", logging_db);
             solution
-        };
-
-        // don't set the TLS for Chalk unless Chalk debugging is active, to make
-        // extra sure we only use it for debugging
-        chalk::tls::set_current_program(db, solve)
-    } else {
-        solver.solve_limited(&context, goal, should_continue)
+        } else {
+            solver.solve_limited(&context, goal, should_continue)
+        }
     };
+
+    // don't set the TLS for Chalk unless Chalk debugging is active, to make
+    // extra sure we only use it for debugging
+    let solution =
+        if is_chalk_debug() { chalk::tls::set_current_program(db, solve) } else { solve() };
 
     log::debug!("solve({:?}) => {:?}", goal, solution);
 
@@ -189,6 +190,10 @@ fn solve(
 
 fn is_chalk_debug() -> bool {
     std::env::var("CHALK_DEBUG").is_ok()
+}
+
+fn is_chalk_print() -> bool {
+    std::env::var("CHALK_PRINT").is_ok()
 }
 
 fn solution_from_chalk(
