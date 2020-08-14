@@ -1813,12 +1813,190 @@ mod type_keyword {}
 
 #[doc(keyword = "unsafe")]
 //
-/// Code or interfaces whose [memory safety] cannot be verified by the type system.
+/// Code or interfaces whose [memory safety] cannot be verified by the type
+/// system.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// The `unsafe` keyword has two uses: to declare the existence of contracts the
+/// compiler can't check (`unsafe fn` and `unsafe trait`), and to declare that a
+/// programmer has checked that these contracts have been upheld (`unsafe {}`
+/// and `unsafe impl`, but also `unsafe fn` -- see below). They are not mutually
+/// exclusive, as can be seen in `unsafe fn`.
 ///
+/// # Unsafe abilities
+///
+/// **No matter what, Safe Rust can't cause Undefined Behavior**. This is
+/// referred to as [soundness]: a well-typed program actually has the desired
+/// properties. The [Nomicon][nomicon-soundness] has a more detailed explanation
+/// on the subject.
+///
+/// To ensure soundness, Safe Rust is restricted enough that it can be
+/// automatically checked. Sometimes, however, it is necessary to write code
+/// that is correct for reasons which are too clever for the compiler to
+/// understand. In those cases, you need to use Unsafe Rust.
+///
+/// Here are the abilities Unsafe Rust has in addition to Safe Rust:
+///
+/// - Dereference [raw pointers]
+/// - Implement `unsafe` [`trait`]s
+/// - Call `unsafe` functions
+/// - Mutate [`static`]s (including [`extern`]al ones)
+/// - Access fields of [`union`]s
+///
+/// However, this extra power comes with extra responsibilities: it is now up to
+/// you to ensure soundness. The `unsafe` keyword helps by clearly marking the
+/// pieces of code that need to worry about this.
+///
+/// ## The different meanings of `unsafe`
+///
+/// Not all uses of `unsafe` are equivalent: some are here to mark the existence
+/// of a contract the programmer must check, others are to say "I have checked
+/// the contract, go ahead and do this". The following
+/// [discussion on Rust Internals] has more in-depth explanations about this but
+/// here is a summary of the main points:
+///
+/// - `unsafe fn`: calling this function means abiding by a contract the
+/// compiler cannot enforce.
+/// - `unsafe trait`: implementing the [`trait`] means abiding by a
+/// contract the compiler cannot enforce.
+/// - `unsafe {}`: the contract necessary to call the operations inside the
+/// block has been checked by the programmer and is guaranteed to be respected.
+/// - `unsafe impl`: the contract necessary to implement the trait has been
+/// checked by the programmer and is guaranteed to be respected.
+///
+/// `unsafe fn` also acts like an `unsafe {}` block
+/// around the code inside the function. This means it is not just a signal to
+/// the caller, but also promises that the preconditions for the operations
+/// inside the function are upheld. Mixing these two meanings can be confusing
+/// and [proposal]s exist to use `unsafe {}` blocks inside such functions when
+/// making `unsafe` operations.
+///
+/// See the [Rustnomicon] and the [Reference] for more informations.
+///
+/// # Examples
+///
+/// ## Marking elements as `unsafe`
+///
+/// `unsafe` can be used on functions. Note that functions and statics declared
+/// in [`extern`] blocks are implicitly marked as `unsafe` (but not functions
+/// declared as `extern "something" fn ...`). Mutable statics are always unsafe,
+/// wherever they are declared. Methods can also be declared as `unsafe`:
+///
+/// ```rust
+/// # #![allow(dead_code)]
+/// static mut FOO: &str = "hello";
+///
+/// unsafe fn unsafe_fn() {}
+///
+/// extern "C" {
+///     fn unsafe_extern_fn();
+///     static BAR: *mut u32;
+/// }
+///
+/// trait SafeTraitWithUnsafeMethod {
+///     unsafe fn unsafe_method(&self);
+/// }
+///
+/// struct S;
+///
+/// impl S {
+///     unsafe fn unsafe_method_on_struct() {}
+/// }
+/// ```
+///
+/// Traits can also be declared as `unsafe`:
+///
+/// ```rust
+/// unsafe trait UnsafeTrait {}
+/// ```
+///
+/// Since `unsafe fn` and `unsafe trait` indicate that there is a safety
+/// contract that the compiler cannot enforce, documenting it is important. The
+/// standard library has many examples of this, like the following which is an
+/// extract from [`Vec::set_len`]. The `# Safety` section explains the contract
+/// that must be fulfilled to safely call the function.
+///
+/// ```rust,ignore (stub-to-show-doc-example)
+/// /// Forces the length of the vector to `new_len`.
+/// ///
+/// /// This is a low-level operation that maintains none of the normal
+/// /// invariants of the type. Normally changing the length of a vector
+/// /// is done using one of the safe operations instead, such as
+/// /// `truncate`, `resize`, `extend`, or `clear`.
+/// ///
+/// /// # Safety
+/// ///
+/// /// - `new_len` must be less than or equal to `capacity()`.
+/// /// - The elements at `old_len..new_len` must be initialized.
+/// pub unsafe fn set_len(&mut self, new_len: usize)
+/// ```
+///
+/// ## Using `unsafe {}` blocks and `impl`s
+///
+/// Performing `unsafe` operations requires an `unsafe {}` block:
+///
+/// ```rust
+/// # #![allow(dead_code)]
+/// /// Dereference the given pointer.
+/// ///
+/// /// # Safety
+/// ///
+/// /// `ptr` must be aligned and must not be dangling.
+/// unsafe fn deref_unchecked(ptr: *const i32) -> i32 {
+///     *ptr
+/// }
+///
+/// let a = 3;
+/// let b = &a as *const _;
+/// // SAFETY: `a` has not been dropped and references are always aligned,
+/// // so `b` is a valid address.
+/// unsafe { assert_eq!(*b, deref_unchecked(b)); };
+/// ```
+///
+/// Traits marked as `unsafe` must be [`impl`]emented using `unsafe impl`. This
+/// makes a guarantee to other `unsafe` code that the implementation satisfies
+/// the trait's safety contract. The [Send] and [Sync] traits are examples of
+/// this behaviour in the standard library.
+///
+/// ```rust
+/// /// Implementors of this trait must guarantee an element is always
+/// /// accessible with index 3.
+/// unsafe trait ThreeIndexable<T> {
+///     /// Returns a reference to the element with index 3 in `&self`.
+///     fn three(&self) -> &T;
+/// }
+///
+/// // The implementation of `ThreeIndexable` for `[T; 4]` is `unsafe`
+/// // because the implementor must abide by a contract the compiler cannot
+/// // check but as a programmer we know there will always be a valid element
+/// // at index 3 to access.
+/// unsafe impl<T> ThreeIndexable<T> for [T; 4] {
+///     fn three(&self) -> &T {
+///         // SAFETY: implementing the trait means there always is an element
+///         // with index 3 accessible.
+///         unsafe { self.get_unchecked(3) }
+///     }
+/// }
+///
+/// let a = [1, 2, 4, 8];
+/// assert_eq!(a.three(), &8);
+/// ```
+///
+/// [`extern`]: keyword.extern.html
+/// [`trait`]: keyword.trait.html
+/// [`static`]: keyword.static.html
+/// [`union`]: keyword.union.html
+/// [`impl`]: keyword.impl.html
+/// [Send]: marker/trait.Send.html
+/// [Sync]: marker/trait.Sync.html
+/// [`Vec::set_len`]: vec/struct.Vec.html#method.set_len
+/// [raw pointers]: ../reference/types/pointer.html
 /// [memory safety]: ../book/ch19-01-unsafe-rust.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// [Rustnomicon]: ../nomicon/index.html
+/// [nomicon-soundness]: ../nomicon/safe-unsafe-meaning.html
+/// [soundness]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#soundness-of-code--of-a-library
+/// [Reference]: ../reference/unsafety.html
+/// [proposal]: https://github.com/rust-lang/rfcs/pull/2585
+/// [discussion on Rust Internals]: https://internals.rust-lang.org/t/what-does-unsafe-mean/6696
 mod unsafe_keyword {}
 
 #[doc(keyword = "use")]
