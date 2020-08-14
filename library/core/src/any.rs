@@ -73,7 +73,7 @@ use crate::intrinsics;
 /// Most types implement `Any`. However, any type which contains a non-`'static` reference does not.
 /// See the [module-level documentation][mod] for more details.
 ///
-/// [mod]: index.html
+/// [mod]: crate::any
 // This trait is not unsafe, though we rely on the specifics of it's sole impl's
 // `type_id` function in unsafe code (e.g., `downcast`). Normally, that would be
 // a problem, but because the only impl of `Any` is a blanket implementation, no
