@@ -57,6 +57,12 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.run()?;
 
     // Intern the result
+    // FIXME: since the DefId of a promoted is the DefId of its owner, this
+    // means that promoteds in statics are actually interned like statics!
+    // However, this is also currently crucial because we promote mutable
+    // non-empty slices in statics to extend their lifetime, and this
+    // ensures that they are put into a mutable allocation.
+    // For other kinds of promoteds in statics (like array initializers), this is rather silly.
     let intern_kind = match tcx.static_mutability(cid.instance.def_id()) {
         Some(m) => InternKind::Static(m),
         None if cid.promoted.is_some() => InternKind::Promoted,

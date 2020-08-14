@@ -1,9 +1,10 @@
-use std::collections::BTreeSet;
+use crate::collections::BTreeSet;
+use crate::vec::Vec;
 use std::iter::FromIterator;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use super::DeterministicRng;
+use super::super::DeterministicRng;
 
 #[test]
 fn test_clone_eq() {
@@ -13,24 +14,6 @@ fn test_clone_eq() {
     m.insert(2);
 
     assert_eq!(m.clone(), m);
-}
-
-#[test]
-fn test_hash() {
-    use crate::hash;
-
-    let mut x = BTreeSet::new();
-    let mut y = BTreeSet::new();
-
-    x.insert(1);
-    x.insert(2);
-    x.insert(3);
-
-    y.insert(3);
-    y.insert(2);
-    y.insert(1);
-
-    assert_eq!(hash(&x), hash(&y));
 }
 
 #[test]

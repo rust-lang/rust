@@ -37,7 +37,7 @@ use crate::vec;
 /// assert_eq!(socket.port(), 8080);
 /// assert_eq!(socket.is_ipv4(), true);
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SocketAddr {
     /// An IPv4 socket address.
@@ -594,6 +594,13 @@ impl fmt::Display for SocketAddr {
             SocketAddr::V4(ref a) => a.fmt(f),
             SocketAddr::V6(ref a) => a.fmt(f),
         }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for SocketAddr {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, fmt)
     }
 }
 

@@ -245,7 +245,7 @@ where
     fn replace(&mut self, key: K) -> Option<K> {
         let root = Self::ensure_is_owned(&mut self.root);
         match search::search_tree::<marker::Mut<'_>, K, (), K>(root.node_as_mut(), &key) {
-            Found(handle) => Some(mem::replace(handle.into_kv_mut().0, key)),
+            Found(handle) => Some(mem::replace(handle.into_key_mut(), key)),
             GoDown(handle) => {
                 VacantEntry { key, handle, length: &mut self.length, _marker: PhantomData }
                     .insert(());
@@ -811,7 +811,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     {
         let root_node = self.root.as_mut()?.node_as_mut();
         match search::search_tree(root_node, key) {
-            Found(handle) => Some(handle.into_kv_mut().1),
+            Found(handle) => Some(handle.into_val_mut()),
             GoDown(_) => None,
         }
     }
@@ -2748,7 +2748,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_mut(self) -> &'a mut V {
-        self.handle.into_kv_mut().1
+        self.handle.into_val_mut()
     }
 
     /// Sets the value of the entry with the `OccupiedEntry`'s key,
@@ -3024,3 +3024,6 @@ impl<K: Ord, V, I: Iterator<Item = (K, V)>> Iterator for MergeIter<K, V, I> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

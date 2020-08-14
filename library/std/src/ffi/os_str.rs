@@ -47,14 +47,14 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// create an `OsString` from a normal Rust string.
 ///
 /// **From slices:** Just like you can start with an empty Rust
-/// [`String`] and then [`push_str`][String.push_str] `&str`
+/// [`String`] and then [`String::push_str`] `&str`
 /// sub-string slices into it, you can create an empty `OsString` with
-/// the [`new`] method and then push string slices into it with the
-/// [`push`] method.
+/// the [`OsString::new`] method and then push string slices into it with the
+/// [`OsString::push`] method.
 ///
 /// # Extracting a borrowed reference to the whole OS string
 ///
-/// You can use the [`as_os_str`] method to get an `&`[`OsStr`] from
+/// You can use the [`OsString::as_os_str`] method to get an `&`[`OsStr`] from
 /// an `OsString`; this is effectively a borrowed reference to the
 /// whole string.
 ///
@@ -63,18 +63,9 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
 /// the traits which `OsString` implements for [conversions] from/to native representations.
 ///
-/// [`OsStr`]: struct.OsStr.html
-/// [`&OsStr`]: struct.OsStr.html
-/// [`CStr`]: struct.CStr.html
-/// [`From`]: ../convert/trait.From.html
-/// [`String`]: ../string/struct.String.html
-/// [`&str`]: ../primitive.str.html
-/// [`u8`]: ../primitive.u8.html
-/// [`u16`]: ../primitive.u16.html
-/// [String.push_str]: ../string/struct.String.html#method.push_str
-/// [`new`]: #method.new
-/// [`push`]: #method.push
-/// [`as_os_str`]: #method.as_os_str
+/// [`&OsStr`]: OsStr
+/// [`&str`]: str
+/// [`CStr`]: crate::ffi::CStr
 /// [conversions]: index.html#conversions
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -93,9 +84,7 @@ pub struct OsString {
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
 /// the traits which `OsStr` implements for [conversions] from/to native representations.
 ///
-/// [`OsString`]: struct.OsString.html
-/// [`&str`]: ../primitive.str.html
-/// [`String`]: ../string/struct.String.html
+/// [`&str`]: str
 /// [conversions]: index.html#conversions
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
@@ -125,8 +114,6 @@ impl OsString {
 
     /// Converts to an [`OsStr`] slice.
     ///
-    /// [`OsStr`]: struct.OsStr.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -145,8 +132,6 @@ impl OsString {
     ///
     /// On failure, ownership of the original `OsString` is returned.
     ///
-    /// [`String`]: ../../std/string/struct.String.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -163,7 +148,7 @@ impl OsString {
 
     /// Extends the string with the given [`&OsStr`] slice.
     ///
-    /// [`&OsStr`]: struct.OsStr.html
+    /// [`&OsStr`]: OsStr
     ///
     /// # Examples
     ///
@@ -333,8 +318,6 @@ impl OsString {
 
     /// Converts this `OsString` into a boxed [`OsStr`].
     ///
-    /// [`OsStr`]: struct.OsStr.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -356,8 +339,6 @@ impl From<String> for OsString {
     /// Converts a [`String`] into a [`OsString`].
     ///
     /// The conversion copies the data, and includes an allocation on the heap.
-    ///
-    /// [`OsString`]: ../../std/ffi/struct.OsString.html
     fn from(s: String) -> OsString {
         OsString { inner: Buf::from_string(s) }
     }
@@ -544,7 +525,7 @@ impl OsStr {
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
     ///
-    /// [`&str`]: ../../std/primitive.str.html
+    /// [`&str`]: str
     ///
     /// # Examples
     ///
@@ -564,9 +545,7 @@ impl OsStr {
     /// Any non-Unicode sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
-    /// [`Cow`]: ../../std/borrow/enum.Cow.html
-    /// [`str`]: ../../std/primitive.str.html
-    /// [U+FFFD]: ../../std/char/constant.REPLACEMENT_CHARACTER.html
+    /// [U+FFFD]: crate::char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
@@ -612,8 +591,6 @@ impl OsStr {
     }
 
     /// Copies the slice into an owned [`OsString`].
-    ///
-    /// [`OsString`]: struct.OsString.html
     ///
     /// # Examples
     ///
@@ -662,9 +639,6 @@ impl OsStr {
     /// This number is simply useful for passing to other methods, like
     /// [`OsString::with_capacity`] to avoid reallocations.
     ///
-    /// [`OsString`]: struct.OsString.html
-    /// [`OsString::with_capacity`]: struct.OsString.html#method.with_capacity
-    ///
     /// # Examples
     ///
     /// ```
@@ -682,9 +656,6 @@ impl OsStr {
     }
 
     /// Converts a [`Box`]`<OsStr>` into an [`OsString`] without copying or allocating.
-    ///
-    /// [`Box`]: ../boxed/struct.Box.html
-    /// [`OsString`]: struct.OsString.html
     #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     pub fn into_os_string(self: Box<OsStr>) -> OsString {
         let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut Slice) };
@@ -706,9 +677,7 @@ impl OsStr {
     /// but non-ASCII letters are unchanged.
     ///
     /// To return a new lowercased value without modifying the existing one, use
-    /// [`to_ascii_lowercase`].
-    ///
-    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    /// [`OsStr::to_ascii_lowercase`].
     ///
     /// # Examples
     ///
@@ -733,9 +702,7 @@ impl OsStr {
     /// but non-ASCII letters are unchanged.
     ///
     /// To return a new uppercased value without modifying the existing one, use
-    /// [`to_ascii_uppercase`].
-    ///
-    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    /// [`OsStr::to_ascii_uppercase`].
     ///
     /// # Examples
     ///
@@ -760,9 +727,7 @@ impl OsStr {
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To lowercase the value in-place, use [`make_ascii_lowercase`].
-    ///
-    /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
+    /// To lowercase the value in-place, use [`OsStr::make_ascii_lowercase`].
     ///
     /// # Examples
     ///
@@ -784,9 +749,7 @@ impl OsStr {
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To uppercase the value in-place, use [`make_ascii_uppercase`].
-    ///
-    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
+    /// To uppercase the value in-place, use [`OsStr::make_ascii_uppercase`].
     ///
     /// # Examples
     ///
@@ -865,9 +828,6 @@ impl From<Cow<'_, OsStr>> for Box<OsStr> {
 impl From<Box<OsStr>> for OsString {
     /// Converts a [`Box`]`<`[`OsStr`]`>` into a `OsString` without copying or
     /// allocating.
-    ///
-    /// [`Box`]: ../boxed/struct.Box.html
-    /// [`OsStr`]: ../ffi/struct.OsStr.html
     fn from(boxed: Box<OsStr>) -> OsString {
         boxed.into_os_string()
     }
@@ -876,9 +836,6 @@ impl From<Box<OsStr>> for OsString {
 #[stable(feature = "box_from_os_string", since = "1.20.0")]
 impl From<OsString> for Box<OsStr> {
     /// Converts a [`OsString`] into a [`Box`]`<OsStr>` without copying or allocating.
-    ///
-    /// [`Box`]: ../boxed/struct.Box.html
-    /// [`OsString`]: ../ffi/struct.OsString.html
     fn from(s: OsString) -> Box<OsStr> {
         s.into_boxed_os_str()
     }
@@ -895,9 +852,6 @@ impl Clone for Box<OsStr> {
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Arc<OsStr> {
     /// Converts a [`OsString`] into a [`Arc`]`<OsStr>` without copying or allocating.
-    ///
-    /// [`Arc`]: ../sync/struct.Arc.html
-    /// [`OsString`]: ../ffi/struct.OsString.html
     #[inline]
     fn from(s: OsString) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
@@ -917,9 +871,6 @@ impl From<&OsStr> for Arc<OsStr> {
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Rc<OsStr> {
     /// Converts a [`OsString`] into a [`Rc`]`<OsStr>` without copying or allocating.
-    ///
-    /// [`Rc`]: ../rc/struct.Rc.html
-    /// [`OsString`]: ../ffi/struct.OsString.html
     #[inline]
     fn from(s: OsString) -> Rc<OsStr> {
         let rc = s.inner.into_rc();
