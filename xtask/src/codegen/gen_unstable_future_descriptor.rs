@@ -2,27 +2,13 @@
 
 use crate::codegen::update;
 use crate::codegen::{self, project_root, Mode, Result};
+use crate::not_bash::{fs2, pushd, run};
+use proc_macro2::TokenStream;
 use quote::quote;
-use std::fs;
-use std::process::Command;
+use std::path::PathBuf;
 use walkdir::WalkDir;
 
-pub fn generate_unstable_future_descriptor(mode: Mode) -> Result<()> {
-    let path = project_root().join(codegen::STORAGE);
-    fs::create_dir_all(path.clone())?;
-
-    Command::new("git").current_dir(path.clone()).arg("init").output()?;
-    Command::new("git")
-        .current_dir(path.clone())
-        .args(&["remote", "add", "-f", "origin", codegen::REPOSITORY_URL])
-        .output()?;
-    Command::new("git")
-        .current_dir(path.clone())
-        .args(&["sparse-checkout", "set", "/src/doc/unstable-book/src/"])
-        .output()?;
-    Command::new("git").current_dir(path.clone()).args(&["pull", "origin", "master"]).output()?;
-
-    let src_dir = path.join("src/doc/unstable-book/src");
+fn generate_descriptor(src_dir: PathBuf) -> Result<TokenStream> {
     let files = WalkDir::new(src_dir.join("language-features"))
         .into_iter()
         .chain(WalkDir::new(src_dir.join("library-features")))
@@ -49,13 +35,27 @@ pub fn generate_unstable_future_descriptor(mode: Mode) -> Result<()> {
     let ts = quote! {
         use crate::completion::LintCompletion;
 
-        pub const UNSTABLE_FEATURE_DESCRIPTOR:  &[LintCompletion] = &[
+        pub(crate) const UNSTABLE_FEATURE_DESCRIPTOR:  &[LintCompletion] = &[
             #(#definitions),*
         ];
     };
+    Ok(ts)
+}
 
+pub fn generate_unstable_future_descriptor(mode: Mode) -> Result<()> {
+    let path = project_root().join(codegen::STORAGE);
+    fs2::create_dir_all(path.clone())?;
+
+    let _d = pushd(path.clone());
+    run!("git init")?;
+    run!("git remote add -f origin {}", codegen::REPOSITORY_URL)?;
+    run!("git pull origin master")?;
+
+    let src_dir = path.join(codegen::REPO_PATH);
+    let content = generate_descriptor(src_dir)?.to_string();
+
+    let contents = crate::reformat(content)?;
     let destination = project_root().join(codegen::UNSTABLE_FEATURE);
-    let contents = crate::reformat(ts.to_string())?;
     update(destination.as_path(), &contents, mode)?;
 
     Ok(())

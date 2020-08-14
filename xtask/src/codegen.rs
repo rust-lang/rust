@@ -42,6 +42,7 @@ const ASSISTS_TESTS: &str = "crates/ra_assists/src/tests/generated.rs";
 
 const REPOSITORY_URL: &str = "https://github.com/rust-lang/rust";
 const UNSTABLE_FEATURE: &str = "crates/ra_ide/src/completion/unstable_feature_descriptor.rs";
+const REPO_PATH: &str = "src/doc/unstable-book/src";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Mode {
