@@ -160,10 +160,6 @@ fn check_final_expr<'tcx>(
     span: Option<Span>,
     replacement: RetReplacement,
 ) {
-    if last_statement_borrows(cx, expr) {
-        return;
-    }
-
     match expr.kind {
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {

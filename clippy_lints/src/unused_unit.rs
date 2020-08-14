@@ -16,8 +16,7 @@ declare_clippy_lint! {
     /// less readable. Depending on formatting they can make a `break` or `return`
     /// statement look like a function call.
     ///
-    /// **Known problems:** The lint currently misses unit return types in types,
-    /// e.g., the `F` in `fn generic_unit<F: Fn() -> ()>(f: F) { .. }`.
+    /// **Known problems:** None.
     ///
     /// **Example:**
     /// ```rust

@@ -69,24 +69,20 @@ fn test_void_match(x: u32) {
     }
 }
 
-mod no_lint_if_stmt_borrows {
-    mod issue_5858 {
-        fn read_line() -> String {
-            use std::io::BufRead;
-            let stdin = ::std::io::stdin();
-            return stdin.lock().lines().next().unwrap().unwrap();
-        }
+fn read_line() -> String {
+    use std::io::BufRead;
+    let stdin = ::std::io::stdin();
+    return stdin.lock().lines().next().unwrap().unwrap();
+}
 
-        fn read_line2(value: bool) -> String {
-            if value {
-                use std::io::BufRead;
-                let stdin = ::std::io::stdin();
-                let _a = stdin.lock().lines().next().unwrap().unwrap();
-                return String::from("test");
-            } else {
-                return String::new();
-            }
-        }
+fn borrows_but_not_last(value: bool) -> String {
+    if value {
+        use std::io::BufRead;
+        let stdin = ::std::io::stdin();
+        let _a = stdin.lock().lines().next().unwrap().unwrap();
+        return String::from("test");
+    } else {
+        return String::new();
     }
 }
 
