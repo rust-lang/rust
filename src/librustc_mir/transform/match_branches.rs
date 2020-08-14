@@ -16,7 +16,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
         'outer: for bb_idx in bbs.indices() {
             let (discr, val, switch_ty, first, second) = match bbs[bb_idx].terminator().kind {
                 TerminatorKind::SwitchInt {
-                    discr: Operand::Move(ref place),
+                    discr: Operand::Copy(ref place) | Operand::Move(ref place),
                     switch_ty,
                     ref targets,
                     ref values,
