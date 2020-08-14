@@ -1,9 +1,33 @@
 error[E0425]: cannot find value `this` in this scope
-  --> $DIR/issue-5099.rs:1:31
+  --> $DIR/issue-5099.rs:3:9
    |
-LL | trait B < A > { fn a() -> A { this.a } }
-   |                               ^^^^ not found in this scope
+LL |         this.a
+   |         ^^^^ not found in this scope
+   |
+help: you might have meant to use `self` here instead
+   |
+LL |         self.a
+   |         ^^^^
+help: if you meant to use `self`, you are also missing a `self` receiver argument
+   |
+LL |     fn a(&self) -> A {
+   |          ^^^^^
 
-error: aborting due to previous error
+error[E0425]: cannot find value `this` in this scope
+  --> $DIR/issue-5099.rs:6:9
+   |
+LL |         this.b(x);
+   |         ^^^^ not found in this scope
+   |
+help: you might have meant to use `self` here instead
+   |
+LL |         self.b(x);
+   |         ^^^^
+help: if you meant to use `self`, you are also missing a `self` receiver argument
+   |
+LL |     fn b(&self, x: i32) {
+   |          ^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0425`.
