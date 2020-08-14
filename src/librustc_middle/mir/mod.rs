@@ -857,9 +857,12 @@ pub struct LocalDecl<'tcx> {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(LocalDecl<'_>, 56);
 
-/// Extra information about a some locals that's used for diagnostics. (Not
-/// used for non-StaticRef temporaries, the return place, or anonymous function
-/// parameters.)
+/// Extra information about a some locals that's used for diagnostics and for
+/// classifying variables into local variables, statics, etc, which is needed e.g.
+/// for unsafety checking.
+///
+/// Not used for non-StaticRef temporaries, the return place, or anonymous
+/// function parameters.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum LocalInfo<'tcx> {
     /// A user-defined local variable or function parameter
