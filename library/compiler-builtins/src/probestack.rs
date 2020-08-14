@@ -76,7 +76,7 @@ macro_rules! define_rust_probestack {
     };
 }
 
-#[cfg(target_os = "uefi")]
+#[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
 macro_rules! define_rust_probestack {
     ($body: expr) => {
         concat!(
@@ -92,6 +92,20 @@ macro_rules! define_rust_probestack {
 // Same as above, but for Mach-O. Note that the triple underscore
 // is deliberate
 #[cfg(target_vendor = "apple")]
+macro_rules! define_rust_probestack {
+    ($body: expr) => {
+        concat!(
+            "
+            .globl ___rust_probestack
+        ___rust_probestack:
+            ",
+            $body
+        )
+    };
+}
+
+// In UEFI x86 arch, triple underscore is deliberate.
+#[cfg(all(target_os = "uefi", target_arch = "x86"))]
 macro_rules! define_rust_probestack {
     ($body: expr) => {
         concat!(
@@ -231,7 +245,7 @@ global_asm!(define_rust_probestack!(
     "
 ));
 
-#[cfg(target_arch = "x86")]
+#[cfg(all(target_arch = "x86", not(target_os = "uefi")))]
 // This is the same as x86_64 above, only translated for 32-bit sizes. Note
 // that on Unix we're expected to restore everything as it was, this
 // function basically can't tamper with anything.
@@ -264,6 +278,56 @@ global_asm!(define_rust_probestack!(
     add    %eax,%esp
     pop    %ecx
     leave
+    .cfi_def_cfa_register %esp
+    .cfi_adjust_cfa_offset -4
+    ret
+    .cfi_endproc
+    "
+));
+
+#[cfg(all(target_arch = "x86", target_os = "uefi"))]
+// UEFI target is windows like target. LLVM will do _chkstk things like windows.
+// probestack function will also do things like _chkstk in MSVC.
+// So we need to sub %ax %sp in probestack when arch is x86.
+//
+// REF: Rust commit(74e80468347)
+// rust\src\llvm-project\llvm\lib\Target\X86\X86FrameLowering.cpp: 805
+// Comments in LLVM:
+//   MSVC x32's _chkstk and cygwin/mingw's _alloca adjust %esp themselves.
+//   MSVC x64's __chkstk and cygwin/mingw's ___chkstk_ms do not adjust %rsp
+//   themselves.
+global_asm!(define_rust_probestack!(
+    "
+    .cfi_startproc
+    push   %ebp
+    .cfi_adjust_cfa_offset 4
+    .cfi_offset %ebp, -8
+    mov    %esp, %ebp
+    .cfi_def_cfa_register %ebp
+    push   %ecx
+    push   %edx
+    mov    %eax,%ecx
+
+    cmp    $0x1000,%ecx
+    jna    3f
+2:
+    sub    $0x1000,%esp
+    test   %esp,8(%esp)
+    sub    $0x1000,%ecx
+    cmp    $0x1000,%ecx
+    ja     2b
+
+3:
+    sub    %ecx,%esp
+    test   %esp,8(%esp)
+    mov    4(%ebp),%edx
+    mov    %edx, 12(%esp)
+    add    %eax,%esp
+    pop    %edx
+    pop    %ecx
+    leave
+
+    sub   %eax, %esp
     .cfi_def_cfa_register %esp
     .cfi_adjust_cfa_offset -4
     ret
