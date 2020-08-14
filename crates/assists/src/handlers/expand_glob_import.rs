@@ -183,10 +183,12 @@ fn replace_ast(
 ) {
     let existing_use_trees = match parent.clone() {
         Either::Left(_) => vec![],
-        Either::Right(u) => u.use_trees().filter(|n| 
+        Either::Right(u) => u
+            .use_trees()
+            .filter(|n|
             // filter out star
-            n.star_token().is_none()
-        ).collect(),
+            n.star_token().is_none())
+            .collect(),
     };
 
     let new_use_trees: Vec<ast::UseTree> = names_to_import
