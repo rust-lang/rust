@@ -246,12 +246,14 @@ fn get_arm_identity_info<'a, 'tcx>(
         tmp_assigned_vars.insert(*r);
     }
 
-    let mut dbg_info_to_adjust = Vec::new();
-    for (i, var_info) in debug_info.iter().enumerate() {
-        if tmp_assigned_vars.contains(var_info.place.local) {
-            dbg_info_to_adjust.push(i);
-        }
-    }
+    let dbg_info_to_adjust: Vec<_> =
+        debug_info
+            .iter()
+            .enumerate()
+            .filter_map(|(i, var_info)| {
+                if tmp_assigned_vars.contains(var_info.place.local) { Some(i) } else { None }
+            })
+            .collect();
 
     Some(ArmIdentityInfo {
         local_temp_0: local_tmp_s0,
@@ -461,14 +463,14 @@ fn match_get_variant_field<'tcx>(
     stmt: &Statement<'tcx>,
 ) -> Option<(Local, Local, VarField<'tcx>, &'tcx List<PlaceElem<'tcx>>)> {
     match &stmt.kind {
-        StatementKind::Assign(box (place_into, rvalue_from)) => match rvalue_from {
-            Rvalue::Use(Operand::Copy(pf) | Operand::Move(pf)) => {
-                let local_into = place_into.as_local()?;
-                let (local_from, vf) = match_variant_field_place(*pf)?;
-                Some((local_into, local_from, vf, pf.projection))
-            }
-            _ => None,
-        },
+        StatementKind::Assign(box (
+            place_into,
+            Rvalue::Use(Operand::Copy(pf) | Operand::Move(pf)),
+        )) => {
+            let local_into = place_into.as_local()?;
+            let (local_from, vf) = match_variant_field_place(*pf)?;
+            Some((local_into, local_from, vf, pf.projection))
+        }
         _ => None,
     }
 }
@@ -479,14 +481,11 @@ fn match_get_variant_field<'tcx>(
 /// ```
 fn match_set_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local, VarField<'tcx>)> {
     match &stmt.kind {
-        StatementKind::Assign(box (place_from, rvalue_into)) => match rvalue_into {
-            Rvalue::Use(Operand::Move(place_into)) => {
-                let local_into = place_into.as_local()?;
-                let (local_from, vf) = match_variant_field_place(*place_from)?;
-                Some((local_into, local_from, vf))
-            }
-            _ => None,
-        },
+        StatementKind::Assign(box (place_from, Rvalue::Use(Operand::Move(place_into)))) => {
+            let local_into = place_into.as_local()?;
+            let (local_from, vf) = match_variant_field_place(*place_from)?;
+            Some((local_into, local_from, vf))
+        }
         _ => None,
     }
 }
