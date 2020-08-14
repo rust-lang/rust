@@ -264,7 +264,7 @@ where
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
     #[inline(always)]
-    fn complete(self, tcx: CTX, result: C::Value, dep_node_index: DepNodeIndex) -> C::Stored {
+    fn complete(self, result: C::Value, dep_node_index: DepNodeIndex) -> C::Stored {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
         let state = self.state;
@@ -278,7 +278,7 @@ where
                 QueryResult::Started(job) => job,
                 QueryResult::Poisoned => panic!(),
             };
-            let result = state.cache.complete(tcx, &mut lock.cache, key, result, dep_node_index);
+            let result = state.cache.complete(&mut lock.cache, key, result, dep_node_index);
             (job, result)
         };
 
@@ -432,7 +432,7 @@ where
             tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
         }
 
-        return job.complete(tcx, result, dep_node_index);
+        return job.complete(result, dep_node_index);
     }
 
     let dep_node = query.to_dep_node(tcx, &key);
@@ -458,7 +458,7 @@ where
             })
         });
         if let Some((result, dep_node_index)) = loaded {
-            return job.complete(tcx, result, dep_node_index);
+            return job.complete(result, dep_node_index);
         }
     }
 
@@ -609,7 +609,7 @@ where
         }
     }
 
-    let result = job.complete(tcx, result, dep_node_index);
+    let result = job.complete(result, dep_node_index);
 
     (result, dep_node_index)
 }
