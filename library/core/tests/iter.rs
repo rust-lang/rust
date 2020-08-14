@@ -226,7 +226,11 @@ impl Iterator for Toggle {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.is_empty { (0, Some(0)) } else { (1, Some(1)) }
+        if self.is_empty {
+            (0, Some(0))
+        } else {
+            (1, Some(1))
+        }
     }
 }
 
@@ -835,6 +839,17 @@ fn test_iterator_peekable_next_if_eq() {
     assert_eq!(it.next_if_eq("Ludicrous"), Some("Ludicrous".into()));
     assert_eq!(it.next_if_eq("speed"), Some("speed".into()));
     assert_eq!(it.next_if_eq(""), None);
+}
+
+#[test]
+fn test_until_iter() {
+    let xs = "Heart of Gold";
+    let mut it = xs.chars().peekable();
+    {
+        let until = it.until(|&c| c == ' ');
+        assert_eq!(until.collect::<String>(), "Heart".to_string());
+    }
+    assert_eq!(it.collect::<String>(), " of Gold".to_string());
 }
 
 /// This is an iterator that follows the Iterator contract,
@@ -1592,7 +1607,11 @@ fn test_find_map() {
     assert_eq!(iter.next(), Some(&7));
 
     fn half_if_even(x: &isize) -> Option<isize> {
-        if x % 2 == 0 { Some(x / 2) } else { None }
+        if x % 2 == 0 {
+            Some(x / 2)
+        } else {
+            None
+        }
     }
 }
 

@@ -679,7 +679,11 @@ where
     fn next_back_index(&self) -> usize {
         let rem = self.iter.len() % (self.step + 1);
         if self.first_take {
-            if rem == 0 { self.step } else { rem - 1 }
+            if rem == 0 {
+                self.step
+            } else {
+                rem - 1
+            }
         } else {
             rem
         }
@@ -1687,6 +1691,109 @@ impl<I: Iterator> Peekable<I> {
     {
         self.next_if(|next| next == expected)
     }
+
+    /// Creates an iterator that consumes elements until predicate is
+    /// true, without consuming that last element.
+    ///
+    /// `until()` takes a closure as an argument. It will call this
+    /// closure on each element of the iterator, and consume elements
+    /// until it returns true.
+    ///
+    /// After true is returned, until()'s job is over, and the iterator
+    /// is fused.
+    ///
+    /// This is the exact opposite of [`skip_while`].
+    ///
+    /// # Example
+    /// Consume numbers until you find a '5'.
+    /// ```
+    /// #![feature(peekable_next_if)]
+    /// let mut iter = (0..10).peekable();
+    /// assert_eq!(iter.until(|&x| x == 5).collect::<String>(), "1234".to_string());
+    /// ```
+    /// [`skip_while`]: trait.Iterator.html#method.skip_while
+    #[unstable(feature = "peekable_next_if", issue = "72480")]
+    pub fn until<P: FnMut(&I::Item) -> bool>(&mut self, func: P) -> Until<'_, I, P> {
+        Until::new(self, func)
+    }
+}
+
+/// An iterator that iterates over elements until `predicate` returns `false`.
+///
+/// This `struct` is created by the [`until`] method on [`Peekable`]. See its
+/// documentation for more.
+///
+/// [`until`]: trait.Peekable.html#until
+/// [`Iterator`]: trait.Iterator.html
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[unstable(feature = "peekable_next_if", issue = "72480")]
+pub struct Until<'a, I, P>
+where
+    I: Iterator,
+{
+    peekable: &'a mut Peekable<I>,
+    flag: bool,
+    predicate: P,
+}
+impl<'a, I, P> Until<'a, I, P>
+where
+    I: Iterator,
+{
+    fn new(peekable: &'a mut Peekable<I>, predicate: P) -> Self {
+        Until { peekable, flag: false, predicate }
+    }
+}
+
+#[stable(feature = "core_impl_debug", since = "1.9.0")]
+impl<I, P> fmt::Debug for Until<'_, I, P>
+where
+    I: fmt::Debug + Iterator,
+    I::Item: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Until").field("peekable", self.peekable).field("flag", &self.flag).finish()
+    }
+}
+
+#[unstable(feature = "peekable_next_if", issue = "72480")]
+impl<I: Iterator, P> Iterator for Until<'_, I, P>
+where
+    P: FnMut(&I::Item) -> bool,
+{
+    type Item = I::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<I::Item> {
+        if self.flag {
+            return None;
+        }
+        match self.peekable.peek() {
+            Some(matched) => {
+                if (self.predicate)(&matched) {
+                    // matching value is not consumed.
+                    self.flag = true;
+                    None
+                } else {
+                    self.peekable.next()
+                }
+            }
+            None => None,
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.peekable.size_hint();
+        (0, upper) // can't know a lower bound, due to the predicate
+    }
+}
+
+#[stable(feature = "fused", since = "1.26.0")]
+impl<I, P> FusedIterator for Until<'_, I, P>
+where
+    I: FusedIterator,
+    P: FnMut(&I::Item) -> bool,
+{
 }
 
 /// An iterator that rejects elements while `predicate` returns `true`.
@@ -2106,7 +2213,11 @@ where
     I: DoubleEndedIterator + ExactSizeIterator,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        if self.len() > 0 { self.iter.next_back() } else { None }
+        if self.len() > 0 {
+            self.iter.next_back()
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -2136,7 +2247,11 @@ where
             move |acc, x| {
                 n -= 1;
                 let r = fold(acc, x);
-                if n == 0 { LoopState::Break(r) } else { LoopState::from_try(r) }
+                if n == 0 {
+                    LoopState::Break(r)
+                } else {
+                    LoopState::from_try(r)
+                }
             }
         }
 
@@ -2247,7 +2362,11 @@ where
             move |acc, x| {
                 *n -= 1;
                 let r = fold(acc, x);
-                if *n == 0 { LoopState::Break(r) } else { LoopState::from_try(r) }
+                if *n == 0 {
+                    LoopState::Break(r)
+                } else {
+                    LoopState::from_try(r)
+                }
             }
         }
 
