@@ -1097,11 +1097,16 @@ dependencies = [
  "mbe",
  "memmap",
  "proc_macro_api",
+ "proc_macro_test",
  "serde_derive",
  "test_utils",
  "toolchain",
  "tt",
 ]
+
+[[package]]
+name = "proc_macro_test"
+version = "0.0.0"
 
 [[package]]
 name = "profile"
