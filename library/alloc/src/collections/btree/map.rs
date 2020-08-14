@@ -3024,3 +3024,6 @@ impl<K: Ord, V, I: Iterator<Item = (K, V)>> Iterator for MergeIter<K, V, I> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

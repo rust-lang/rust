@@ -1,16 +1,20 @@
-use std::collections::btree_map::Entry::{Occupied, Vacant};
-use std::collections::BTreeMap;
+use crate::boxed::Box;
+use crate::collections::btree_map::Entry::{Occupied, Vacant};
+use crate::collections::BTreeMap;
+use crate::fmt::Debug;
+use crate::rc::Rc;
+use crate::string::String;
+use crate::string::ToString;
+use crate::vec::Vec;
 use std::convert::TryFrom;
-use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::mem;
 use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use super::DeterministicRng;
+use super::super::DeterministicRng;
 
 // Value of node::CAPACITY, thus capacity of a tree with a single level,
 // i.e. a tree who's root is a leaf node at height 0.
