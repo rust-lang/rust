@@ -5,7 +5,7 @@
 //! docs for usage and details.
 
 mod conversions;
-mod types;
+pub mod types;
 
 use std::cell::RefCell;
 use std::fs::File;

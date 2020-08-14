@@ -1,0 +1,171 @@
+{
+  "root": "0:0",
+  "version": null,
+  "includes_private": false,
+  "index": {
+    "0:6": {
+      "crate_id": 0,
+      "name": "bar",
+      "source": {
+        "filename": "modules.rs",
+        "begin": [
+          5,
+          4
+        ],
+        "end": [
+          7,
+          5
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "module",
+      "inner": {
+        "is_crate": false,
+        "items": [
+          "0:7"
+        ]
+      }
+    },
+    "0:3": {
+      "crate_id": 0,
+      "name": null,
+      "source": {
+        "filename": "modules.rs",
+        "begin": [
+          1,
+          0
+        ],
+        "end": [
+          1,
+          27
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "import",
+      "inner": {
+        "source": "foo::bar",
+        "name": "foobar",
+        "id": "0:6",
+        "glob": false
+      }
+    },
+    "0:0": {
+      "crate_id": 0,
+      "name": "modules",
+      "source": {
+        "filename": "modules.rs",
+        "begin": [
+          1,
+          0
+        ],
+        "end": [
+          8,
+          1
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "module",
+      "inner": {
+        "is_crate": true,
+        "items": [
+          "0:3",
+          "0:4",
+          "0:5"
+        ]
+      }
+    },
+    "0:5": {
+      "crate_id": 0,
+      "name": "foo",
+      "source": {
+        "filename": "modules.rs",
+        "begin": [
+          4,
+          0
+        ],
+        "end": [
+          8,
+          1
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "module",
+      "inner": {
+        "is_crate": false,
+        "items": [
+          "0:6"
+        ]
+      }
+    },
+    "0:4": {
+      "crate_id": 0,
+      "name": null,
+      "source": {
+        "filename": "modules.rs",
+        "begin": [
+          2,
+          0
+        ],
+        "end": [
+          2,
+          23
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "import",
+      "inner": {
+        "source": "foobar::baz",
+        "name": "baz",
+        "id": "0:7",
+        "glob": true
+      }
+    },
+    "0:7": {
+      "crate_id": 0,
+      "name": "baz",
+      "source": {
+        "filename": "modules.rs",
+        "begin": [
+          6,
+          8
+        ],
+        "end": [
+          6,
+          22
+        ]
+      },
+      "visibility": "public",
+      "docs": "",
+      "links": {},
+      "attrs": [],
+      "deprecation": null,
+      "kind": "module",
+      "inner": {
+        "is_crate": false,
+        "items": []
+      }
+    }
+  },
+  "paths": {},
+  "format_version": 1
+}

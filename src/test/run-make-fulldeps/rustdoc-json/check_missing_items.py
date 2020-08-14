@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# This test ensures that every ID in the produced json actually resolves to an item either in `index` or `paths`.
+# It DOES NOT check that the structure of the produced json is actually in any way correct,
+# for example an empty map would pass.
+
 import sys
 import json
 
