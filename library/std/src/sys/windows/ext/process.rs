@@ -2,12 +2,15 @@
 
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
+use crate::ffi::OsStr;
+use crate::io;
 use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
 use crate::process;
 use crate::sys;
 #[unstable(feature = "windows_raw_cmdline", issue = "74549")]
-pub use crate::sys::process::{Arg, RawArg};
+pub use crate::sys::process::{Arg, Problem, RawArg};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use core::convert::TryFrom;
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {
@@ -108,6 +111,10 @@ pub trait CommandExt {
     /// Pass an argument with custom escape rules.
     #[unstable(feature = "windows_raw_cmdline", issue = "74549")]
     fn arg_ext(&mut self, arg: impl Arg) -> &mut process::Command;
+
+    /// Pass arguments with custom escape rules.
+    #[unstable(feature = "windows_raw_cmdline", issue = "74549")]
+    fn args_ext(&mut self, args: impl IntoIterator<Item = impl Arg>) -> &mut process::Command;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
@@ -120,5 +127,100 @@ impl CommandExt for process::Command {
     fn arg_ext(&mut self, arg: impl Arg) -> &mut process::Command {
         self.as_inner_mut().arg_ext(arg);
         self
+    }
+
+    fn args_ext(&mut self, args: impl IntoIterator<Item = impl Arg>) -> &mut process::Command {
+        for arg in args {
+            self.arg_ext(arg);
+        }
+        self
+    }
+}
+
+/// Traits for handling a sized command.
+// FIXME: This really should be somewhere else, since it will be duplicated for unix. sys_common? I have no idea.
+// The implementations should apply to unix, but describing it to the type system is another thing.
+#[unstable(feature = "command_sized", issue = "74549")]
+pub trait CommandSized: core::marker::Sized {
+    /// Possibly pass an argument.
+    fn maybe_arg(&mut self, arg: impl Arg) -> io::Result<&mut Self>;
+    /// Possibly pass many arguments.
+    // FIXME: I don't know how to return the half-eaten iterator!
+    fn maybe_args(
+        &mut self,
+        args: impl IntoIterator<Item = impl Arg>,
+    ) -> Result<&mut Self, (usize, io::Error)>;
+    /// Build many commands.
+    fn xargs<I, S, A>(program: S, args: I, before: Vec<A>, after: Vec<A>) -> io::Result<Vec<Self>>
+    where
+        I: IntoIterator<Item = A>,
+        S: AsRef<OsStr> + Copy,
+        A: Arg;
+}
+
+#[unstable(feature = "command_sized", issue = "74549")]
+impl CommandSized for process::Command {
+    fn maybe_arg(&mut self, arg: impl Arg) -> io::Result<&mut Self> {
+        self.as_inner_mut().maybe_arg_ext(arg)?;
+        Ok(self)
+    }
+    fn maybe_args(
+        &mut self,
+        args: impl IntoIterator<Item = impl Arg>,
+    ) -> Result<&mut Self, (usize, io::Error)> {
+        let mut count: usize = 0;
+        for arg in args {
+            if let Err(err) = self.as_inner_mut().maybe_arg_ext(arg) {
+                return Err((count, err));
+            }
+            count += 1;
+        }
+        Ok(self)
+    }
+    fn xargs<I, S, A>(program: S, args: I, before: Vec<A>, after: Vec<A>) -> io::Result<Vec<Self>>
+    where
+        I: IntoIterator<Item = A>,
+        S: AsRef<OsStr> + Copy,
+        A: Arg,
+    {
+        let mut ret = Vec::new();
+        let mut cmd = Self::new(program);
+        let mut fresh: bool = true;
+
+        // This performs a nul check.
+        let tail_size: usize = after
+            .iter()
+            .map(|x| Arg::arg_size(x, false))
+            .collect::<Result<Vec<_>, Problem>>()?
+            .iter()
+            .sum();
+
+        if let Err(_) = isize::try_from(tail_size) {
+            return Err(Problem::Oversized.into());
+        }
+
+        cmd.args_ext(&before);
+        if cmd.as_inner_mut().available_size(false)? < (tail_size as isize) {
+            return Err(Problem::Oversized.into());
+        }
+
+        for arg in args {
+            let size = arg.arg_size(false)?;
+            // Negative case is catched outside of loop.
+            if (cmd.as_inner_mut().available_size(false)? as usize) < (size + tail_size) {
+                if fresh {
+                    return Err(Problem::Oversized.into());
+                }
+                cmd.args_ext(&after);
+                ret.push(cmd);
+                cmd = Self::new(program);
+                cmd.args_ext(&before);
+            }
+            cmd.maybe_arg(arg)?;
+            fresh = false;
+        }
+        cmd.args_ext(&after);
+        ret.push(cmd);
+        Ok(ret)
     }
 }

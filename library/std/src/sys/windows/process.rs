@@ -21,6 +21,7 @@ use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
 use crate::sys_common::process::CommandEnv;
 use crate::sys_common::AsInner;
+use core::convert::TryInto;
 
 use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
 
@@ -104,6 +105,7 @@ pub enum Problem {
 }
 
 /// Types that can be appended to a Windows command-line. Used for custom escaping.
+// FIXME: the force-quoted one should probably be its own type.
 #[unstable(feature = "windows_raw_cmdline", issue = "74549")]
 pub trait Arg {
     fn append_to(&self, cmd: &mut Vec<u16>, force_quotes: bool) -> Result<usize, Problem>;
@@ -188,6 +190,13 @@ impl Command {
     }
     pub fn creation_flags(&mut self, flags: u32) {
         self.flags = flags;
+    }
+    #[allow(dead_code)]
+    pub fn problem(&self) -> io::Result<()> {
+        if let Some(err) = &self.problem {
+            return Err(err.into());
+        }
+        Ok(())
     }
 
     pub fn spawn(
@@ -290,16 +299,19 @@ impl Command {
         Ok((Process { handle: Handle::new(pi.hProcess) }, pipes))
     }
 
-    #[allow(dead_code)]
     pub fn get_size(&mut self) -> io::Result<usize> {
         match &self.problem {
             Some(err) => Err(err.into()),
             None => Ok(self.cmdline.len()),
         }
     }
-    #[allow(dead_code)]
-    pub fn check_size(&mut self, _refresh: bool) -> io::Result<bool> {
-        Ok(self.get_size()? < CMDLINE_MAX)
+    pub fn available_size(&mut self, _refresh: bool) -> io::Result<isize> {
+        let size: isize = match self.get_size()?.try_into() {
+            Ok(s) => Ok(s),
+            Err(_) => Err(io::Error::from(Problem::Oversized)),
+        }?;
+
+        Ok((CMDLINE_MAX as isize) - size)
     }
 }
 
@@ -411,7 +423,7 @@ impl Arg for &OsStr {
         append_arg(&mut Some(cmd), &self, force_quotes)
     }
     fn arg_size(&self, force_quotes: bool) -> Result<usize, Problem> {
-        append_arg(&mut None, &self, force_quotes)
+        Ok(append_arg(&mut None, &self, force_quotes)? + 1)
     }
     fn to_os_string(&self) -> OsString {
         OsStr::to_os_string(&self)
@@ -425,10 +437,25 @@ impl Arg for RawArg<'_> {
         self.arg_size(_fq)
     }
     fn arg_size(&self, _: bool) -> Result<usize, Problem> {
-        Ok(self.0.encode_wide().count())
+        Ok(self.0.encode_wide().count() + 1)
     }
     fn to_os_string(&self) -> OsString {
         OsStr::to_os_string(&(self.0))
+    }
+}
+
+impl<'a, T> Arg for &'a T
+where
+    T: Arg,
+{
+    fn append_to(&self, cmd: &mut Vec<u16>, _fq: bool) -> Result<usize, Problem> {
+        (*self).append_to(cmd, _fq)
+    }
+    fn arg_size(&self, _fq: bool) -> Result<usize, Problem> {
+        (*self).arg_size(_fq)
+    }
+    fn to_os_string(&self) -> OsString {
+        (*self).to_os_string()
     }
 }
 
