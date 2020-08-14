@@ -1,3 +1,4 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 use crate::ascii;
 use crate::borrow::{Borrow, Cow};
 use crate::cmp::Ordering;
@@ -510,9 +511,16 @@ impl CString {
     /// ```
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
-        let len = sys::strlen(ptr) + 1; // Including the NUL byte
-        let slice = slice::from_raw_parts_mut(ptr, len as usize);
-        CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
+        // SAFETY: This is called with a pointer that was obtained from a call
+        // to `CString::into_raw` and the length has not been modified. As such,
+        // we know there is a NUL byte (and only one) at the end and that the
+        // information about the size of the allocation is correct on Rust's
+        // side.
+        unsafe {
+            let len = sys::strlen(ptr) + 1; // Including the NUL byte
+            let slice = slice::from_raw_parts_mut(ptr, len as usize);
+            CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
+        }
     }
 
     /// Consumes the `CString` and transfers ownership of the string to a C caller.
@@ -1228,9 +1236,21 @@ impl CStr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
-        let len = sys::strlen(ptr);
-        let ptr = ptr as *const u8;
-        CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
+        // SAFETY: The caller has provided a pointer that points to a valid C
+        // string with a NUL terminator of size less than `isize::MAX`, whose
+        // content remain valid and doesn't change for the lifetime of the
+        // returned `CStr`.
+        //
+        // Thus computing the length is fine (a NUL byte exists), the call to
+        // from_raw_parts is safe because we know the length is at most `isize::MAX`, meaning
+        // the call to `from_bytes_with_nul_unchecked` is correct.
+        //
+        // The cast from c_char to u8 is ok because a c_char is always one byte.
+        unsafe {
+            let len = sys::strlen(ptr);
+            let ptr = ptr as *const u8;
+            CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
+        }
     }
 
     /// Creates a C string wrapper from a byte slice.
@@ -1299,7 +1319,12 @@ impl CStr {
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     #[rustc_const_unstable(feature = "const_cstr_unchecked", issue = "none")]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-        &*(bytes as *const [u8] as *const CStr)
+        // SAFETY: Casting to CStr is safe because its internal representation
+        // is a [u8] too (safe only inside std).
+        // Dereferencing the obtained pointer is safe because it comes from a
+        // reference. Making a reference is then safe because its lifetime
+        // is bound by the lifetime of the given `bytes`.
+        unsafe { &*(bytes as *const [u8] as *const CStr) }
     }
 
     /// Returns the inner pointer to this C string.
