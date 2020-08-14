@@ -1058,6 +1058,8 @@ mod prim_ref {}
 /// not be null, so if you want to pass a function pointer over FFI and be able to accommodate null
 /// pointers, make your type `Option<fn()>` with your required signature.
 ///
+/// ### Safety
+///
 /// Plain function pointers are obtained by casting either plain functions, or closures that don't
 /// capture an environment:
 ///
@@ -1095,23 +1097,60 @@ mod prim_ref {}
 /// let really_safe_ptr: unsafe fn(usize) -> usize = add_one;
 /// ```
 ///
-/// On top of that, function pointers can vary based on what ABI they use. This is achieved by
-/// adding the `extern` keyword to the type name, followed by the ABI in question. For example,
-/// `fn()` is different from `extern "C" fn()`, which itself is different from `extern "stdcall"
-/// fn()`, and so on for the various ABIs that Rust supports. Non-`extern` functions have an ABI
-/// of `"Rust"`, and `extern` functions without an explicit ABI have an ABI of `"C"`. For more
-/// information, see [the nomicon's section on foreign calling conventions][nomicon-abi].
+/// ### ABI
 ///
-/// [nomicon-abi]: ../nomicon/ffi.html#foreign-calling-conventions
+/// On top of that, function pointers can vary based on what ABI they use. This
+/// is achieved by adding the `extern` keyword before the type, followed by the
+/// ABI in question. The default ABI is "Rust", i.e., `fn()` is the exact same
+/// type as `extern "Rust" fn()`. A pointer to a function with C ABI would have
+/// type `extern "C" fn()`.
+///
+/// `extern "ABI" { ... }` blocks declare functions with ABI "ABI". The default
+/// here is "C", i.e., functions declared in an `extern {...}` block have "C"
+/// ABI.
+///
+/// For more information and a list of supported ABIs, see [the nomicon's
+/// section on foreign calling conventions][nomicon-abi].
+///
+/// ### Variadic functions
 ///
 /// Extern function declarations with the "C" or "cdecl" ABIs can also be *variadic*, allowing them
-/// to be called with a variable number of arguments. Normal rust functions, even those with an
+/// to be called with a variable number of arguments. Normal Rust functions, even those with an
 /// `extern "ABI"`, cannot be variadic. For more information, see [the nomicon's section on
 /// variadic functions][nomicon-variadic].
 ///
 /// [nomicon-variadic]: ../nomicon/ffi.html#variadic-functions
 ///
-/// These markers can be combined, so `unsafe extern "stdcall" fn()` is a valid type.
+/// ### Creating function pointers
+///
+/// When `bar` is the name of a function, then the expression `bar` is *not* a
+/// function pointer. Rather, it denotes a value of an unnameable type that
+/// uniquely identifies the function `bar`. The value is zero-sized because the
+/// type already identifies the function. This has the advantage that "calling"
+/// the value (it implements the `Fn*` traits) does not require dynamic
+/// dispatch.
+///
+/// This zero-sized type *coerces* to a regular function pointer. For example:
+///
+/// ```rust
+/// use std::mem;
+///
+/// fn bar(x: i32) {}
+///
+/// let not_bar_ptr = bar; // `not_bar_ptr` is zero-sized, uniquely identifying `bar`
+/// assert_eq!(mem::size_of_val(&not_bar_ptr), 0);
+///
+/// let bar_ptr: fn(i32) = not_bar_ptr; // force coercion to function pointer
+/// assert_eq!(mem::size_of_val(&bar_ptr), mem::size_of::<usize>());
+///
+/// let footgun = &bar; // this is a shared reference to the zero-sized type identifying `bar`
+/// ```
+///
+/// The last line shows that `&bar` is not a function pointer either. Rather, it
+/// is a reference to the function-specific ZST. `&bar` is basically never what you
+/// want when `bar` is a function.
+///
+/// ### Traits
 ///
 /// Function pointers implement the following traits:
 ///
