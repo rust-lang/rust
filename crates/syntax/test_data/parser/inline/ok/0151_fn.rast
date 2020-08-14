@@ -1,0 +1,14 @@
+SOURCE_FILE@0..12
+  FN@0..11
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..11
+      L_CURLY@9..10 "{"
+      R_CURLY@10..11 "}"
+  WHITESPACE@11..12 "\n"

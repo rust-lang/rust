@@ -1,8 +1,8 @@
 //! See `CargoTargetSpec`
 
-use ra_cfg::CfgExpr;
-use ra_ide::{FileId, RunnableKind, TestId};
-use ra_project_model::{self, TargetKind};
+use cfg::CfgExpr;
+use ide::{FileId, RunnableKind, TestId};
+use project_model::{self, TargetKind};
 use vfs::AbsPathBuf;
 
 use crate::{global_state::GlobalStateSnapshot, Result};
@@ -177,9 +177,9 @@ fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
 mod tests {
     use super::*;
 
+    use cfg::CfgExpr;
     use mbe::ast_to_token_tree;
-    use ra_cfg::CfgExpr;
-    use ra_syntax::{
+    use syntax::{
         ast::{self, AstNode},
         SmolStr,
     };

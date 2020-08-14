@@ -1,0 +1,21 @@
+[package]
+name = "base_db"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+salsa = "0.15.2"
+rustc-hash = "1.1.0"
+
+syntax = { path = "../syntax" }
+cfg = { path = "../cfg" }
+profile = { path = "../profile" }
+tt = { path = "../tt" }
+test_utils = { path = "../test_utils" }
+vfs = { path = "../vfs" }
+stdx = { path = "../stdx" }

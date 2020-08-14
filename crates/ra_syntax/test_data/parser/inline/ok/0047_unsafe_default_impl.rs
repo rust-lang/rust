@@ -1,1 +1,0 @@
-unsafe default impl Foo {}

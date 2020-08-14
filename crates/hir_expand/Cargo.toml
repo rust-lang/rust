@@ -1,0 +1,23 @@
+[package]
+name = "hir_expand"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+log = "0.4.8"
+either = "1.5.3"
+rustc-hash = "1.0.0"
+
+arena = { path = "../arena" }
+base_db = { path = "../base_db" }
+syntax = { path = "../syntax" }
+parser = { path = "../parser" }
+profile = { path = "../profile" }
+tt = { path = "../tt" }
+mbe = { path = "../mbe" }
+test_utils = { path = "../test_utils"}

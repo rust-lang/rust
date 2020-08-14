@@ -14,7 +14,7 @@ To learn more about how rust-analyzer works, see
 
 We also publish rustdoc docs to pages:
 
-https://rust-analyzer.github.io/rust-analyzer/ra_ide/
+https://rust-analyzer.github.io/rust-analyzer/ide/
 
 Various organizational and process issues are discussed in this document.
 
@@ -92,11 +92,11 @@ This is primarily useful for performance optimizations, or for bug minimization.
 
 ## Parser Tests
 
-Tests for the parser (`ra_parser`) live in the `ra_syntax` crate (see `test_data` directory).
+Tests for the parser (`parser`) live in the `syntax` crate (see `test_data` directory).
 There are two kinds of tests:
 
 * Manually written test cases in `parser/ok` and `parser/err`
-* "Inline" tests in `parser/inline` (these are generated) from comments in `ra_parser` crate.
+* "Inline" tests in `parser/inline` (these are generated) from comments in `parser` crate.
 
 The purpose of inline tests is not to achieve full coverage by test cases, but to explain to the reader of the code what each particular `if` and `match` is responsible for.
 If you are tempted to add a large inline test, it might be a good idea to leave only the simplest example in place, and move the test to a manual `parser/ok` test.
@@ -148,22 +148,27 @@ Internal representations are lowered to LSP in the `rust-analyzer` crate (the on
 
 ## IDE/Compiler split
 
-There's a semi-hard split between "compiler" and "IDE", at the `ra_hir` crate.
+There's a semi-hard split between "compiler" and "IDE", at the `hir` crate.
 Compiler derives new facts about source code.
 It explicitly acknowledges that not all info is available (i.e. you can't look at types during name resolution).
 
 IDE assumes that all information is available at all times.
 
-IDE should use only types from `ra_hir`, and should not depend on the underling compiler types.
-`ra_hir` is a facade.
+IDE should use only types from `hir`, and should not depend on the underling compiler types.
+`hir` is a facade.
 
 ## IDE API
 
-The main IDE crate (`ra_ide`) uses "Plain Old Data" for the API.
+The main IDE crate (`ide`) uses "Plain Old Data" for the API.
 Rather than talking in definitions and references, it talks in Strings and textual offsets.
 In general, API is centered around UI concerns -- the result of the call is what the user sees in the editor, and not what the compiler sees underneath.
 The results are 100% Rust specific though.
 Shout outs to LSP developers for popularizing the idea that "UI" is a good place to draw a boundary at.
+
+## CI
+
+CI does not test rust-analyzer, CI is a core part of rust-analyzer, and is maintained with above average standard of quality.
+CI is reproducible -- it can only be broken by changes to files in this repository, any dependence on externalities is a bug.
 
 # Code Style & Review Process
 
@@ -256,9 +261,9 @@ Release steps:
    * checkout the `release` branch
    * reset it to `upstream/nightly`
    * push it to `upstream`. This triggers GitHub Actions which:
-    ** runs `cargo xtask dist` to package binaries and VS Code extension
-    ** makes a GitHub release
-    ** pushes VS Code extension to the marketplace
+     * runs `cargo xtask dist` to package binaries and VS Code extension
+     * makes a GitHub release
+     * pushes VS Code extension to the marketplace
    * create new changelog in `rust-analyzer.github.io`
    * create `rust-analyzer.github.io/git.log` file with the log of merge commits since last release
 2. While the release is in progress, fill-in the changelog using `git.log`

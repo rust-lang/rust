@@ -39,7 +39,7 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frls-2.2E0
 
 * Website: https://rust-analyzer.github.io/
 * Metrics: https://rust-analyzer.github.io/metrics/
-* API docs: https://rust-analyzer.github.io/rust-analyzer/ra_ide/
+* API docs: https://rust-analyzer.github.io/rust-analyzer/ide/
 
 ## License
 

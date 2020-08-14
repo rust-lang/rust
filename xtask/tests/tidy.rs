@@ -44,9 +44,24 @@ fn rust_files_are_tidy() {
         let text = fs2::read_to_string(&path).unwrap();
         check_todo(&path, &text);
         check_trailing_ws(&path, &text);
+        deny_clippy(&path, &text);
         tidy_docs.visit(&path, &text);
     }
     tidy_docs.finish();
+}
+
+fn deny_clippy(path: &PathBuf, text: &String) {
+    if text.contains("[\u{61}llow(clippy") {
+        panic!(
+            "\n\nallowing lints is forbidden: {}.
+rust-analyzer intentionally doesn't check clippy on CI.
+You can allow lint globally via `xtask clippy`.
+See https://github.com/rust-lang/rust-clippy/issues/5537 for discussion.
+
+",
+            path.display()
+        )
+    }
 }
 
 #[test]
@@ -179,16 +194,16 @@ impl TidyDocs {
         }
 
         let poorly_documented = [
-            "ra_hir",
-            "ra_hir_expand",
-            "ra_ide",
-            "ra_mbe",
-            "ra_parser",
-            "ra_prof",
-            "ra_project_model",
-            "ra_syntax",
-            "ra_tt",
-            "ra_hir_ty",
+            "hir",
+            "hir_expand",
+            "ide",
+            "mbe",
+            "parser",
+            "profile",
+            "project_model",
+            "syntax",
+            "tt",
+            "hir_ty",
         ];
 
         let mut has_fixmes =

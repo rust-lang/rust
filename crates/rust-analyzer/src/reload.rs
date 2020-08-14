@@ -1,11 +1,10 @@
 //! Project loading & configuration updates
 use std::{mem, sync::Arc};
 
+use base_db::{CrateGraph, SourceRoot, VfsPath};
 use flycheck::FlycheckHandle;
-use ra_db::{CrateGraph, SourceRoot, VfsPath};
-use ra_ide::AnalysisChange;
-use ra_prof::profile;
-use ra_project_model::{ProcMacroClient, ProjectWorkspace};
+use ide::AnalysisChange;
+use project_model::{ProcMacroClient, ProjectWorkspace};
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
@@ -17,7 +16,7 @@ use crate::{
 
 impl GlobalState {
     pub(crate) fn update_configuration(&mut self, config: Config) {
-        let _p = profile("GlobalState::update_configuration");
+        let _p = profile::span("GlobalState::update_configuration");
         let old_config = mem::replace(&mut self.config, config);
         if self.config.lru_capacity != old_config.lru_capacity {
             self.analysis_host.update_lru_capacity(old_config.lru_capacity);
@@ -99,14 +98,14 @@ impl GlobalState {
                     .iter()
                     .map(|project| match project {
                         LinkedProject::ProjectManifest(manifest) => {
-                            ra_project_model::ProjectWorkspace::load(
+                            project_model::ProjectWorkspace::load(
                                 manifest.clone(),
                                 &cargo_config,
                                 with_sysroot,
                             )
                         }
                         LinkedProject::InlineJsonProject(it) => {
-                            Ok(ra_project_model::ProjectWorkspace::Json { project: it.clone() })
+                            Ok(project_model::ProjectWorkspace::Json { project: it.clone() })
                         }
                     })
                     .collect::<Vec<_>>();
@@ -115,7 +114,7 @@ impl GlobalState {
         });
     }
     pub(crate) fn switch_workspaces(&mut self, workspaces: Vec<anyhow::Result<ProjectWorkspace>>) {
-        let _p = profile("GlobalState::switch_workspaces");
+        let _p = profile::span("GlobalState::switch_workspaces");
         log::info!("reloading projects: {:?}", self.config.linked_projects);
 
         let mut has_errors = false;
@@ -177,7 +176,7 @@ impl GlobalState {
                 Ok(it) => it,
                 Err(err) => {
                     log::error!(
-                        "Failed to run ra_proc_macro_srv from path {}, error: {:?}",
+                        "Failed to run proc_macro_srv from path {}, error: {:?}",
                         path.display(),
                         err
                     );
@@ -300,7 +299,7 @@ pub(crate) struct SourceRootConfig {
 
 impl SourceRootConfig {
     pub(crate) fn partition(&self, vfs: &vfs::Vfs) -> Vec<SourceRoot> {
-        let _p = profile("SourceRootConfig::partition");
+        let _p = profile::span("SourceRootConfig::partition");
         self.fsc
             .partition(vfs)
             .into_iter()

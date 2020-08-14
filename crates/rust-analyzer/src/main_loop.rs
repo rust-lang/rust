@@ -5,12 +5,11 @@ use std::{
     time::{Duration, Instant},
 };
 
+use base_db::VfsPath;
 use crossbeam_channel::{select, Receiver};
+use ide::{Canceled, FileId};
 use lsp_server::{Connection, Notification, Request, Response};
 use lsp_types::notification::Notification as _;
-use ra_db::VfsPath;
-use ra_ide::{Canceled, FileId};
-use ra_prof::profile;
 
 use crate::{
     config::Config,
@@ -22,7 +21,7 @@ use crate::{
     lsp_utils::{apply_document_changes, is_canceled, notification_is, Progress},
     Result,
 };
-use ra_project_model::ProjectWorkspace;
+use project_model::ProjectWorkspace;
 use vfs::ChangeKind;
 
 pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
@@ -173,7 +172,7 @@ impl GlobalState {
     fn handle_event(&mut self, event: Event) -> Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = profile("GlobalState::handle_event");
+        let _p = profile::span("GlobalState::handle_event");
 
         log::info!("handle_event({:?})", event);
         let queue_count = self.task_pool.handle.len();
@@ -204,7 +203,7 @@ impl GlobalState {
                 self.analysis_host.maybe_collect_garbage();
             }
             Event::Vfs(mut task) => {
-                let _p = profile("GlobalState::handle_event/vfs");
+                let _p = profile::span("GlobalState::handle_event/vfs");
                 loop {
                     match task {
                         vfs::loader::Message::Loaded { files } => {
@@ -337,11 +336,34 @@ impl GlobalState {
     fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
         self.register_request(&req, request_received);
 
+        if self.shutdown_requested {
+            self.respond(Response::new_err(
+                req.id,
+                lsp_server::ErrorCode::InvalidRequest as i32,
+                "Shutdown already requested.".to_owned(),
+            ));
+
+            return Ok(());
+        }
+
+        if self.status == Status::Loading && req.method != "shutdown" {
+            self.respond(lsp_server::Response::new_err(
+                req.id,
+                // FIXME: i32 should impl From<ErrorCode> (from() guarantees lossless conversion)
+                lsp_server::ErrorCode::ContentModified as i32,
+                "Rust Analyzer is still loading...".to_owned(),
+            ));
+            return Ok(());
+        }
+
         RequestDispatcher { req: Some(req), global_state: self }
             .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| Ok(s.fetch_workspaces()))?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
-            .on_sync::<lsp_types::request::Shutdown>(|_, ()| Ok(()))?
+            .on_sync::<lsp_types::request::Shutdown>(|s, ()| {
+                s.shutdown_requested = true;
+                Ok(())
+            })?
             .on_sync::<lsp_types::request::SelectionRangeRequest>(|s, p| {
                 handlers::handle_selection_range(s.snapshot(), p)
             })?

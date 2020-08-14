@@ -74,7 +74,7 @@ impl fmt::Display for Position {
 impl Expect {
     pub fn assert_eq(&self, actual: &str) {
         let trimmed = self.trimmed();
-        if &trimmed == actual {
+        if trimmed == actual {
             return;
         }
         Runtime::fail_expect(self, &trimmed, actual);

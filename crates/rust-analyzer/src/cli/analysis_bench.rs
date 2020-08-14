@@ -3,11 +3,11 @@
 use std::{env, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 
 use anyhow::{bail, format_err, Result};
-use ra_db::{
+use base_db::{
     salsa::{Database, Durability},
     FileId,
 };
-use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CompletionConfig, FilePosition, LineCol};
+use ide::{Analysis, AnalysisChange, AnalysisHost, CompletionConfig, FilePosition, LineCol};
 use vfs::AbsPathBuf;
 
 use crate::{
@@ -52,7 +52,7 @@ impl FromStr for Position {
 
 impl BenchCmd {
     pub fn run(self, verbosity: Verbosity) -> Result<()> {
-        ra_prof::init();
+        profile::init();
 
         let start = Instant::now();
         eprint!("loading: ");

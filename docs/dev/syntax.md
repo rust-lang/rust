@@ -11,7 +11,7 @@ The things described are implemented in two places
 * [rowan](https://github.com/rust-analyzer/rowan/tree/v0.9.0) -- a generic library for rowan syntax trees.
 * [ra_syntax](https://github.com/rust-analyzer/rust-analyzer/tree/cf5bdf464cad7ceb9a67e07985a3f4d3799ec0b6/crates/ra_syntax) crate inside rust-analyzer which wraps `rowan` into rust-analyzer specific API.
   Nothing in rust-analyzer except this crate knows about `rowan`.
-* [ra_parser](https://github.com/rust-analyzer/rust-analyzer/tree/cf5bdf464cad7ceb9a67e07985a3f4d3799ec0b6/crates/ra_parser) crate parses input tokens into an `ra_syntax` tree
+* [parser](https://github.com/rust-analyzer/rust-analyzer/tree/cf5bdf464cad7ceb9a67e07985a3f4d3799ec0b6/crates/parser) crate parses input tokens into an `ra_syntax` tree
 
 ## Design Goals
 
@@ -74,7 +74,7 @@ Points of note:
 * The original text can be recovered by concatenating the texts of all tokens in order.
 * Accessing a child of particular type (for example, parameter list of a function) generally involves linerary traversing the children, looking for a specific `kind`.
 * Modifying the tree is roughly `O(depth)`.
-  We don't make special efforts to guarantree that the depth is not liner, but, in practice, syntax trees are branchy and shallow.
+  We don't make special efforts to guarantee that the depth is not linear, but, in practice, syntax trees are branchy and shallow.
 * If mandatory (grammar wise) node is missing from the input, it's just missing from the tree.
 * If an extra erroneous input is present, it is wrapped into a node with `ERROR` kind, and treated just like any other node.
 * Parser errors are not a part of syntax tree.

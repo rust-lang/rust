@@ -33,12 +33,12 @@ const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
 const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/ok";
 const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/err";
 
-const SYNTAX_KINDS: &str = "crates/ra_parser/src/syntax_kind/generated.rs";
-const AST_NODES: &str = "crates/ra_syntax/src/ast/generated/nodes.rs";
-const AST_TOKENS: &str = "crates/ra_syntax/src/ast/generated/tokens.rs";
+const SYNTAX_KINDS: &str = "crates/parser/src/syntax_kind/generated.rs";
+const AST_NODES: &str = "crates/syntax/src/ast/generated/nodes.rs";
+const AST_TOKENS: &str = "crates/syntax/src/ast/generated/tokens.rs";
 
-const ASSISTS_DIR: &str = "crates/ra_assists/src/handlers";
-const ASSISTS_TESTS: &str = "crates/ra_assists/src/tests/generated.rs";
+const ASSISTS_DIR: &str = "crates/assists/src/handlers";
+const ASSISTS_TESTS: &str = "crates/assists/src/tests/generated.rs";
 
 const REPOSITORY_URL: &str = "https://github.com/rust-lang/rust";
 const UNSTABLE_FEATURE: &str = "crates/ra_ide/src/completion/unstable_feature_descriptor.rs";
