@@ -73,7 +73,8 @@ unsafe fn configure_llvm(sess: &Session) {
                 llvm_c_strs.push(s);
             }
         };
-        add("rustc", true); // fake program name
+        // Set the llvm "program name" to make usage and invalid argument messages more clear.
+        add("rustc -Cllvm-args=\"...\" with", true);
         if sess.time_llvm_passes() {
             add("-time-passes", false);
         }
