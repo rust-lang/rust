@@ -28,7 +28,7 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
 
-use log::*;
+use tracing::*;
 
 use std::cell::Cell;
 use std::{mem, ptr};

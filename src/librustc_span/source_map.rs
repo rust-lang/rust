@@ -19,9 +19,9 @@ use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 
-use log::debug;
 use std::fs;
 use std::io;
+use tracing::debug;
 
 #[cfg(test)]
 mod tests;

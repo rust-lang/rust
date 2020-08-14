@@ -1,4 +1,3 @@
-use log::info;
 use rustc_ast::ast::{AttrVec, BlockCheckMode};
 use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
 use rustc_ast::ptr::P;
@@ -33,6 +32,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, Once};
 #[cfg(not(parallel_compiler))]
 use std::{panic, thread};
+use tracing::info;
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).

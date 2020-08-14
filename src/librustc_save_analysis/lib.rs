@@ -45,7 +45,7 @@ use rls_data::{
     RefKind, Relation, RelationKind, SpanData,
 };
 
-use log::{debug, error, info};
+use tracing::{debug, error, info};
 
 pub struct SaveContext<'tcx> {
     tcx: TyCtxt<'tcx>,

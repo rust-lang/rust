@@ -1,7 +1,6 @@
 use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
 use crate::rmeta::*;
 
-use log::{debug, trace};
 use rustc_ast::ast;
 use rustc_data_structures::fingerprint::{Fingerprint, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
@@ -37,6 +36,7 @@ use rustc_target::abi::VariantIdx;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
+use tracing::{debug, trace};
 
 pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::Encoder,

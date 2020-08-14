@@ -18,7 +18,7 @@ pub(crate) fn emit_unescape_error(
     range: Range<usize>,
     error: EscapeError,
 ) {
-    log::debug!(
+    tracing::debug!(
         "emit_unescape_error: {:?}, {:?}, {:?}, {:?}, {:?}",
         lit,
         span_with_quotes,

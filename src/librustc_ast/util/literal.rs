@@ -10,8 +10,8 @@ use rustc_lexer::unescape::{unescape_byte_literal, unescape_literal, Mode};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-use log::debug;
 use std::ascii;
+use tracing::debug;
 
 pub enum LitError {
     NotLiteral,

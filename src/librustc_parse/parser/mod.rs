@@ -13,7 +13,6 @@ use crate::lexer::UnmatchedBrace;
 use diagnostics::Error;
 pub use path::PathStyle;
 
-use log::debug;
 use rustc_ast::ast::DUMMY_NODE_ID;
 use rustc_ast::ast::{self, AttrStyle, AttrVec, Const, CrateSugar, Extern, Unsafe};
 use rustc_ast::ast::{
@@ -27,6 +26,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{respan, Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use tracing::debug;
 
 use std::{cmp, mem, slice};
 

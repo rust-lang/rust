@@ -20,7 +20,7 @@ use std::mem;
 use std::path::Path;
 use std::str;
 
-use log::{debug, info};
+use tracing::{debug, info};
 
 pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 

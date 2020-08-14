@@ -8,7 +8,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use traits::{translate_substs, Reveal};
 
-use log::debug;
+use tracing::debug;
 
 fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,

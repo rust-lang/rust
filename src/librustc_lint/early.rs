@@ -23,8 +23,8 @@ use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-use log::debug;
 use std::slice;
+use tracing::debug;
 
 macro_rules! run_early_pass { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);

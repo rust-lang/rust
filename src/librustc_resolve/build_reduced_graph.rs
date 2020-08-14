@@ -37,9 +37,9 @@ use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
-use log::debug;
 use std::cell::Cell;
 use std::ptr;
+use tracing::debug;
 
 type Res = def::Res<NodeId>;
 

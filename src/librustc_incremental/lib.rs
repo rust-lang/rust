@@ -8,7 +8,7 @@
 #[macro_use]
 extern crate rustc_middle;
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 mod assert_dep_graph;
 pub mod assert_module_sources;

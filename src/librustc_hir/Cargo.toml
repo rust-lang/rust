@@ -18,5 +18,5 @@ rustc_span = { path = "../librustc_span" }
 rustc_serialize = { path = "../librustc_serialize" }
 rustc_ast = { path = "../librustc_ast" }
 lazy_static = "1"
-log = { package = "tracing", version = "0.1" }
+tracing = "0.1"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }

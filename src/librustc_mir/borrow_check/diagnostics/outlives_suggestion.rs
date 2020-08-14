@@ -3,10 +3,10 @@
 
 use std::collections::BTreeMap;
 
-use log::debug;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
 use rustc_middle::ty::RegionVid;
+use tracing::debug;
 
 use smallvec::SmallVec;
 

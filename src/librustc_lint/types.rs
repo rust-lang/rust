@@ -19,8 +19,8 @@ use rustc_target::abi::Abi;
 use rustc_target::abi::{Integer, LayoutOf, TagEncoding, VariantIdx, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
-use log::debug;
 use std::cmp;
+use tracing::debug;
 
 declare_lint! {
     UNUSED_COMPARISONS,

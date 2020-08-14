@@ -26,10 +26,10 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
-use log::{debug, info};
 use proc_macro::bridge::client::ProcMacro;
 use std::path::Path;
 use std::{cmp, env, fs};
+use tracing::{debug, info};
 
 #[derive(Clone)]
 pub struct CStore {

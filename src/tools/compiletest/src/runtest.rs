@@ -30,7 +30,7 @@ use std::str;
 
 use glob::glob;
 use lazy_static::lazy_static;
-use log::*;
+use tracing::*;
 
 use crate::extract_gdb_version;
 use crate::is_android_gdb_target;
