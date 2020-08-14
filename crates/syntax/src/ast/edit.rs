@@ -91,28 +91,55 @@ impl ast::AssocItemList {
             res = make_multiline(res);
         }
         items.into_iter().for_each(|it| res = res.append_item(it));
-        res
+        res.fixup_trailing_whitespace().unwrap_or(res)
     }
 
     #[must_use]
     pub fn append_item(&self, item: ast::AssocItem) -> ast::AssocItemList {
-        let (indent, position) = match self.assoc_items().last() {
+        let (indent, position, whitespace) = match self.assoc_items().last() {
             Some(it) => (
                 leading_indent(it.syntax()).unwrap_or_default().to_string(),
                 InsertPosition::After(it.syntax().clone().into()),
+                "\n\n",
             ),
             None => match self.l_curly_token() {
                 Some(it) => (
                     "    ".to_string() + &leading_indent(self.syntax()).unwrap_or_default(),
                     InsertPosition::After(it.into()),
+                    "\n",
                 ),
                 None => return self.clone(),
             },
         };
-        let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
+        let ws = tokens::WsBuilder::new(&format!("{}{}", whitespace, indent));
         let to_insert: ArrayVec<[SyntaxElement; 2]> =
             [ws.ws().into(), item.syntax().clone().into()].into();
         self.insert_children(position, to_insert)
+    }
+
+    /// Remove extra whitespace between last item and closing curly brace.
+    fn fixup_trailing_whitespace(&self) -> Option<ast::AssocItemList> {
+        let first_token_after_items = self
+            .assoc_items()
+            .last()?
+            .syntax()
+            .next_sibling_or_token()?;
+        let last_token_before_curly = self
+            .r_curly_token()?
+            .prev_sibling_or_token()?;
+        if last_token_before_curly != first_token_after_items {
+            // there is something more between last item and
+            // right curly than just whitespace - bail out
+            return None;
+        }
+        let whitespace = last_token_before_curly
+            .clone()
+            .into_token()
+            .and_then(ast::Whitespace::cast)?;
+        let text = whitespace.syntax().text();
+        let newline = text.rfind("\n")?;
+        let keep = tokens::WsBuilder::new(&text[newline..]);
+        Some(self.replace_children(first_token_after_items..=last_token_before_curly, std::iter::once(keep.ws().into())))
     }
 }
 

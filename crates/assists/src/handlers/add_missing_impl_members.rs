@@ -48,7 +48,6 @@ enum AddMissingImplMembersMode {
 //     fn foo(&self) -> u32 {
 //         ${0:todo!()}
 //     }
-//
 // }
 // ```
 pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -89,8 +88,8 @@ pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext) -
 // impl Trait for () {
 //     Type X = ();
 //     fn foo(&self) {}
-//     $0fn bar(&self) {}
 //
+//     $0fn bar(&self) {}
 // }
 // ```
 pub(crate) fn add_missing_default_members(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -240,15 +239,18 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
+
     $0type Output;
+
     const CONST: usize = 42;
+
     fn foo(&self) {
         todo!()
     }
+
     fn baz(&self) {
         todo!()
     }
-
 }"#,
         );
     }
@@ -281,10 +283,10 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
+
     fn foo(&self) {
         ${0:todo!()}
     }
-
 }"#,
         );
     }
@@ -599,6 +601,7 @@ trait Foo {
 struct S;
 impl Foo for S {
     $0type Output;
+
     fn foo(&self) {
         todo!()
     }
@@ -705,6 +708,58 @@ trait Tr {
 
 impl Tr for () {
     $0type Ty;
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_whitespace_fixup_preserves_bad_tokens() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Tr {
+    fn foo();
+}
+
+impl Tr for ()<|> {
+    +++
+}"#,
+            r#"
+trait Tr {
+    fn foo();
+}
+
+impl Tr for () {
+    fn foo() {
+        ${0:todo!()}
+    }
+    +++
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_whitespace_fixup_preserves_comments() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Tr {
+    fn foo();
+}
+
+impl Tr for ()<|> {
+    // very important
+}"#,
+            r#"
+trait Tr {
+    fn foo();
+}
+
+impl Tr for () {
+    fn foo() {
+        ${0:todo!()}
+    }
+    // very important
 }"#,
         )
     }
