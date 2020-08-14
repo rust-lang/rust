@@ -7,7 +7,7 @@ trait ATy {
 
 impl<'b> ATy for &'b () {
     type Item<'a> = &'b ();
-    //~^ ERROR lifetime bound not satisfied
+    //~^ ERROR  the type `&'b ()` does not fulfill the required lifetime
 }
 
 trait StaticTy {
@@ -16,7 +16,7 @@ trait StaticTy {
 
 impl StaticTy for () {
     type Item<'a> = &'a ();
-    //~^ ERROR lifetime bound not satisfied
+    //~^ ERROR  the type `&'a ()` does not fulfill the required lifetime
 }
 
 fn main() {}

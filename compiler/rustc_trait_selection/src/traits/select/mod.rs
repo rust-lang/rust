@@ -38,7 +38,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{self, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
-use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::symbol::sym;
 
 use std::cell::{Cell, RefCell};

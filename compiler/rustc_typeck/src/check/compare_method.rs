@@ -1225,18 +1225,19 @@ pub fn check_type_bounds<'tcx>(
 
         let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
         let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
-        let cause = ObligationCause::new(
-            impl_ty_span,
-            impl_ty_hir_id,
-            ObligationCauseCode::ItemObligation(trait_ty.def_id),
-        );
+        let mk_cause = |span| {
+            ObligationCause::new(
+                impl_ty_span,
+                impl_ty_hir_id,
+                ObligationCauseCode::BindingObligation(trait_ty.def_id, span),
+            )
+        };
 
         let obligations = tcx
             .explicit_item_bounds(trait_ty.def_id)
             .iter()
             .map(|&(bound, span)| {
-                let concrete_ty_bound =
-                    traits::subst_assoc_item_bound(tcx, bound, impl_ty_value, rebased_substs);
+                let concrete_ty_bound = bound.subst(tcx, rebased_substs);
                 debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
                 traits::Obligation::new(mk_cause(span), param_env, concrete_ty_bound)
@@ -1244,17 +1245,15 @@ pub fn check_type_bounds<'tcx>(
             .collect();
         debug!("check_type_bounds: item_bounds={:?}", obligations);
 
-        for obligation in util::elaborate_obligations(tcx, obligations) {
-            let concrete_ty_predicate = predicate.subst(tcx, rebased_substs);
-            debug!("compare_projection_bounds: concrete predicate = {:?}", concrete_ty_predicate);
-
+        for mut obligation in util::elaborate_obligations(tcx, obligations) {
             let traits::Normalized { value: normalized_predicate, obligations } = traits::normalize(
                 &mut selcx,
                 normalize_param_env,
                 normalize_cause.clone(),
-                &concrete_ty_predicate,
+                &obligation.predicate,
             );
             debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
+            obligation.predicate = normalized_predicate;
 
             inh.register_predicates(obligations);
             inh.register_predicate(obligation);

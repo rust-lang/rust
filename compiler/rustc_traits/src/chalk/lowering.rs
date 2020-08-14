@@ -738,10 +738,10 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
         self,
         interner: &RustInterner<'tcx>,
     ) -> Option<chalk_solve::rust_ir::QuantifiedInlineBound<RustInterner<'tcx>>> {
-        match &self.kind() {
-            ty::PredicateKind::Trait(predicate, _) => {
+        match self.bound_atom(interner.tcx).skip_binder() {
+            ty::PredicateAtom::Trait(predicate, _) => {
                 let (predicate, binders, _named_regions) =
-                    collect_bound_vars(interner, interner.tcx, predicate);
+                    collect_bound_vars(interner, interner.tcx, &ty::Binder::bind(predicate));
 
                 Some(chalk_ir::Binders::new(
                     binders,
@@ -750,24 +750,24 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
                     ),
                 ))
             }
-            ty::PredicateKind::Projection(predicate) => {
+            ty::PredicateAtom::Projection(predicate) => {
                 let (predicate, binders, _named_regions) =
-                    collect_bound_vars(interner, interner.tcx, predicate);
+                    collect_bound_vars(interner, interner.tcx, &ty::Binder::bind(predicate));
 
                 Some(chalk_ir::Binders::new(
                     binders,
                     chalk_solve::rust_ir::InlineBound::AliasEqBound(predicate.lower_into(interner)),
                 ))
             }
-            ty::PredicateKind::TypeOutlives(_predicate) => None,
-            ty::PredicateKind::WellFormed(_ty) => None,
+            ty::PredicateAtom::TypeOutlives(_predicate) => None,
+            ty::PredicateAtom::WellFormed(_ty) => None,
 
-            ty::PredicateKind::RegionOutlives(..)
-            | ty::PredicateKind::ObjectSafe(..)
-            | ty::PredicateKind::ClosureKind(..)
-            | ty::PredicateKind::Subtype(..)
-            | ty::PredicateKind::ConstEvaluatable(..)
-            | ty::PredicateKind::ConstEquate(..) => bug!("unexpected predicate {}", &self),
+            ty::PredicateAtom::RegionOutlives(..)
+            | ty::PredicateAtom::ObjectSafe(..)
+            | ty::PredicateAtom::ClosureKind(..)
+            | ty::PredicateAtom::Subtype(..)
+            | ty::PredicateAtom::ConstEvaluatable(..)
+            | ty::PredicateAtom::ConstEquate(..) => bug!("unexpected predicate {}", &self),
         }
     }
 }

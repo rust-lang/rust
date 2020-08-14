@@ -145,7 +145,7 @@ error[E0277]: the trait bound `<<Self as _Tr3>::A as std::iter::Iterator>::Item:
 LL |     type A: Iterator<Item: Copy>;
    |                            ^^^^ the trait `std::marker::Copy` is not implemented for `<<Self as _Tr3>::A as std::iter::Iterator>::Item`
    | 
-  ::: $SRC_DIR/libcore/marker.rs:LL:COL
+  ::: $SRC_DIR/core/src/marker.rs:LL:COL
    |
 LL | pub trait Copy: Clone {
    | --------------------- required by this bound in `std::marker::Copy`

@@ -2137,8 +2137,8 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
             // associated type:
             // * It must use the identity substs of the item.
             //     * Since any generic parameters on the item are not in scope,
-            //       this means that the item is not a GAT, and its identity substs
-            //       are the same as the trait's.
+            //       this means that the item is not a GAT, and its identity
+            //       substs are the same as the trait's.
             // * It must be an associated type for this trait (*not* a
             //   supertrait).
             if let ty::Projection(projection) = ty.kind {
@@ -2158,14 +2158,12 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
             .predicates
             .iter()
             .copied()
-            .filter(|(pred, _)| match pred.kind() {
-                ty::PredicateKind::Trait(tr, _) => !is_assoc_item_ty(tr.skip_binder().self_ty()),
-                ty::PredicateKind::Projection(proj) => {
-                    !is_assoc_item_ty(proj.skip_binder().projection_ty.self_ty())
+            .filter(|(pred, _)| match pred.skip_binders() {
+                ty::PredicateAtom::Trait(tr, _) => !is_assoc_item_ty(tr.self_ty()),
+                ty::PredicateAtom::Projection(proj) => {
+                    !is_assoc_item_ty(proj.projection_ty.self_ty())
                 }
-                ty::PredicateKind::TypeOutlives(outlives) => {
-                    !is_assoc_item_ty(outlives.skip_binder().0)
-                }
+                ty::PredicateAtom::TypeOutlives(outlives) => !is_assoc_item_ty(outlives.0),
                 _ => true,
             })
             .collect();

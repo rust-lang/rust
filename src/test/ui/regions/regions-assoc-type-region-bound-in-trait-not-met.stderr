@@ -1,33 +1,23 @@
-error[E0478]: lifetime bound not satisfied
+error[E0477]: the type `&'a i32` does not fulfill the required lifetime
   --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:15:5
    |
 LL |     type Value = &'a i32;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the impl at 14:6
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:14:6
-   |
-LL | impl<'a> Foo<'static> for &'a i32 {
-   |      ^^
-   = note: but lifetime parameter must outlive the static lifetime
+   = note: type must satisfy the static lifetime
 
-error[E0478]: lifetime bound not satisfied
+error[E0477]: the type `&'a i32` does not fulfill the required lifetime
   --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:20:5
    |
 LL |     type Value = &'a i32;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the impl at 19:6
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:6
+note: type must outlive the lifetime `'b` as defined on the impl at 19:10
+  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:10
    |
-LL | impl<'a,'b> Foo<'b> for &'a i64 {
-   |      ^^
-note: but lifetime parameter must outlive the lifetime `'b` as defined on the impl at 19:9
-  --> $DIR/regions-assoc-type-region-bound-in-trait-not-met.rs:19:9
-   |
-LL | impl<'a,'b> Foo<'b> for &'a i64 {
-   |         ^^
+LL | impl<'a, 'b> Foo<'b> for &'a i64 {
+   |          ^^
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0478`.
+For more information about this error, try `rustc --explain E0477`.

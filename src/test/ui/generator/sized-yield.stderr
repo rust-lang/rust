@@ -17,7 +17,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL |    Pin::new(&mut gen).resume(());
    |                       ^^^^^^ doesn't have a size known at compile-time
    | 
-  ::: $SRC_DIR/libcore/ops/generator.rs:LL:COL
+  ::: $SRC_DIR/core/src/ops/generator.rs:LL:COL
    |
 LL | pub enum GeneratorState<Y, R> {
    |                         - required by this bound in `std::ops::GeneratorState`

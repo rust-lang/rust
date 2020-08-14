@@ -391,7 +391,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         cause.clone(),
                         depth,
                         param_env,
-                        ty::PredicateKind::WellFormed(arg).to_predicate(tcx),
+                        ty::PredicateAtom::WellFormed(arg).to_predicate(tcx),
                     )
                 }),
         );

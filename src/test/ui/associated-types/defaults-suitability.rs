@@ -45,7 +45,6 @@ trait C where
     bool: IsU8<Self::Assoc>,
 {
     type Assoc = u8;
-    //~^ ERROR the trait bound `u8: IsU8<<Self as C>::Assoc>` is not satisfied
 }
 
 // Test that we get all expected errors if that default is unsuitable
@@ -55,7 +54,7 @@ trait D where
     bool: IsU8<Self::Assoc>,
 {
     type Assoc = NotClone;
-    //~^ ERROR the trait bound `NotClone: IsU8<<Self as D>::Assoc>` is not satisfied
+    //~^ ERROR the trait bound `NotClone: IsU8<NotClone>` is not satisfied
 }
 
 // Test behavior of the check when defaults refer to other defaults:

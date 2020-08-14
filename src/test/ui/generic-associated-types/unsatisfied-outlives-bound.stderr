@@ -1,33 +1,23 @@
-error[E0478]: lifetime bound not satisfied
+error[E0477]: the type `&'b ()` does not fulfill the required lifetime
   --> $DIR/unsatisfied-outlives-bound.rs:9:5
    |
 LL |     type Item<'a> = &'b ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'b` as defined on the impl at 8:6
-  --> $DIR/unsatisfied-outlives-bound.rs:8:6
-   |
-LL | impl<'b> ATy for &'b () {
-   |      ^^
-note: but lifetime parameter must outlive the lifetime `'a` as defined on the associated item at 9:15
+note: type must outlive the lifetime `'a` as defined on the associated item at 9:15
   --> $DIR/unsatisfied-outlives-bound.rs:9:15
    |
 LL |     type Item<'a> = &'b ();
    |               ^^
 
-error[E0478]: lifetime bound not satisfied
+error[E0477]: the type `&'a ()` does not fulfill the required lifetime
   --> $DIR/unsatisfied-outlives-bound.rs:18:5
    |
 LL |     type Item<'a> = &'a ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the associated item at 18:15
-  --> $DIR/unsatisfied-outlives-bound.rs:18:15
-   |
-LL |     type Item<'a> = &'a ();
-   |               ^^
-   = note: but lifetime parameter must outlive the static lifetime
+   = note: type must satisfy the static lifetime
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0478`.
+For more information about this error, try `rustc --explain E0477`.

@@ -42,20 +42,8 @@ LL |     type Assoc: Foo<Self> = ();
    |     |           required by this bound in `Bar::Assoc`
    |     the trait `Foo<Self>` is not implemented for `()`
 
-error[E0277]: the trait bound `u8: IsU8<<Self as C>::Assoc>` is not satisfied
-  --> $DIR/defaults-suitability.rs:44:5
-   |
-LL |     Self::Assoc: IsU8<Self::Assoc>,
-   |                  ----------------- required by this bound in `C::Assoc`
-...
-LL |     type Assoc = u8;
-   |     ^^^^^-----^^^^^^
-   |     |    |
-   |     |    required by a bound in this
-   |     the trait `IsU8<<Self as C>::Assoc>` is not implemented for `u8`
-
-error[E0277]: the trait bound `NotClone: IsU8<<Self as D>::Assoc>` is not satisfied
-  --> $DIR/defaults-suitability.rs:54:5
+error[E0277]: the trait bound `NotClone: IsU8<NotClone>` is not satisfied
+  --> $DIR/defaults-suitability.rs:53:5
    |
 LL |     Self::Assoc: IsU8<Self::Assoc>,
    |                  ----------------- required by this bound in `D::Assoc`
@@ -64,10 +52,10 @@ LL |     type Assoc = NotClone;
    |     ^^^^^-----^^^^^^^^^^^^
    |     |    |
    |     |    required by a bound in this
-   |     the trait `IsU8<<Self as D>::Assoc>` is not implemented for `NotClone`
+   |     the trait `IsU8<NotClone>` is not implemented for `NotClone`
 
 error[E0277]: the trait bound `<Self as Foo2<T>>::Baz: std::clone::Clone` is not satisfied
-  --> $DIR/defaults-suitability.rs:63:5
+  --> $DIR/defaults-suitability.rs:62:5
    |
 LL |     type Bar: Clone = Vec<Self::Baz>;
    |     ^^^^^^^^^^-----^^^^^^^^^^^^^^^^^^
@@ -82,7 +70,7 @@ LL | trait Foo2<T> where <Self as Foo2<T>>::Baz: Clone {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `<Self as Foo25<T>>::Baz: std::clone::Clone` is not satisfied
-  --> $DIR/defaults-suitability.rs:72:5
+  --> $DIR/defaults-suitability.rs:71:5
    |
 LL |     type Bar: Clone = Vec<Self::Baz>;
    |     ^^^^^^^^^^-----^^^^^^^^^^^^^^^^^^
@@ -97,7 +85,7 @@ LL | trait Foo25<T: Clone> where <Self as Foo25<T>>::Baz: Clone {
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: std::clone::Clone` is not satisfied
-  --> $DIR/defaults-suitability.rs:84:5
+  --> $DIR/defaults-suitability.rs:83:5
    |
 LL |     Self::Baz: Clone,
    |                ----- required by this bound in `Foo3::Baz`
@@ -113,6 +101,6 @@ help: consider further restricting type parameter `T`
 LL |     Self::Baz: Clone, T: Clone
    |                     ^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
