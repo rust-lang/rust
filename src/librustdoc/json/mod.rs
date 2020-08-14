@@ -32,24 +32,8 @@ pub struct JsonRenderer {
 }
 
 impl JsonRenderer {
-    /// Inserts an item into the index. This should be used rather than directly calling insert on
-    /// the hashmap because certain items (traits and types) need to have their mappings for trait
-    /// implementations filled out before they're inserted.
-    fn insert(&self, item: clean::Item, cache: &Cache) {
-        let id = item.def_id;
-        let mut new_item: types::Item = item.into();
-        if let types::ItemEnum::TraitItem(ref mut t) = new_item.inner {
-            t.implementors = self.get_trait_implementors(id, cache)
-        } else if let types::ItemEnum::StructItem(ref mut s) = new_item.inner {
-            s.impls = self.get_impls(id, cache)
-        } else if let types::ItemEnum::EnumItem(ref mut e) = new_item.inner {
-            e.impls = self.get_impls(id, cache)
-        }
-        self.index.borrow_mut().insert(id.into(), new_item);
-    }
-
     fn get_trait_implementors(
-        &self,
+        &mut self,
         id: rustc_span::def_id::DefId,
         cache: &Cache,
     ) -> Vec<types::Id> {
@@ -61,7 +45,7 @@ impl JsonRenderer {
                     .iter()
                     .map(|i| {
                         let item = &i.impl_item;
-                        self.insert(item.clone(), cache);
+                        self.item(item.clone(), cache).unwrap();
                         item.def_id.into()
                     })
                     .collect()
@@ -69,7 +53,7 @@ impl JsonRenderer {
             .unwrap_or_default()
     }
 
-    fn get_impls(&self, id: rustc_span::def_id::DefId, cache: &Cache) -> Vec<types::Id> {
+    fn get_impls(&mut self, id: rustc_span::def_id::DefId, cache: &Cache) -> Vec<types::Id> {
         cache
             .impls
             .get(&id)
@@ -79,7 +63,7 @@ impl JsonRenderer {
                     .filter_map(|i| {
                         let item = &i.impl_item;
                         if item.def_id.is_local() {
-                            self.insert(item.clone(), cache);
+                            self.item(item.clone(), cache).unwrap();
                             Some(item.def_id.into())
                         } else {
                             None
@@ -90,14 +74,14 @@ impl JsonRenderer {
             .unwrap_or_default()
     }
 
-    fn get_trait_items(&self, cache: &Cache) -> Vec<(types::Id, types::Item)> {
+    fn get_trait_items(&mut self, cache: &Cache) -> Vec<(types::Id, types::Item)> {
         cache
             .traits
             .iter()
             .filter_map(|(id, trait_item)| {
                 // only need to synthesize items for external traits
                 if !id.is_local() {
-                    trait_item.items.clone().into_iter().for_each(|i| self.insert(i, cache));
+                    trait_item.items.clone().into_iter().for_each(|i| self.item(i, cache).unwrap());
                     Some((
                         (*id).into(),
                         types::Item {
@@ -150,10 +134,24 @@ impl FormatRenderer for JsonRenderer {
         ))
     }
 
+    /// Inserts an item into the index. This should be used rather than directly calling insert on
+    /// the hashmap because certain items (traits and types) need to have their mappings for trait
+    /// implementations filled out before they're inserted.
     fn item(&mut self, item: clean::Item, cache: &Cache) -> Result<(), Error> {
-        // Flatten items that recursively store other items by inserting them into the index
+        // Flatten items that recursively store other items
         item.inner.inner_items().for_each(|i| self.item(i.clone(), cache).unwrap());
-        self.insert(item.clone(), cache);
+
+        let id = item.def_id;
+        let mut new_item: types::Item = item.into();
+        if let types::ItemEnum::TraitItem(ref mut t) = new_item.inner {
+            t.implementors = self.get_trait_implementors(id, cache)
+        } else if let types::ItemEnum::StructItem(ref mut s) = new_item.inner {
+            s.impls = self.get_impls(id, cache)
+        } else if let types::ItemEnum::EnumItem(ref mut e) = new_item.inner {
+            e.impls = self.get_impls(id, cache)
+        }
+
+        self.index.borrow_mut().insert(id.into(), new_item);
         Ok(())
     }
 
@@ -166,15 +164,18 @@ impl FormatRenderer for JsonRenderer {
         use clean::types::ItemEnum::*;
         if let ModuleItem(m) = &item.inner {
             for item in &m.items {
-                match item.inner {
+                match &item.inner {
                     // These don't have names so they don't get added to the output by default
-                    ImportItem(_) => self.insert(item.clone(), cache),
-                    ExternCrateItem(_, _) => self.insert(item.clone(), cache),
+                    ImportItem(_) => self.item(item.clone(), cache).unwrap(),
+                    ExternCrateItem(_, _) => self.item(item.clone(), cache).unwrap(),
+                    ImplItem(i) => {
+                        i.items.iter().for_each(|i| self.item(i.clone(), cache).unwrap())
+                    }
                     _ => {}
                 }
             }
         }
-        self.insert(item.clone(), cache);
+        self.item(item.clone(), cache).unwrap();
         Ok(())
     }
 

@@ -71,7 +71,8 @@ def check_type(ty):
     if ty["kind"] == "resolved_path":
         for bound in ty["inner"]["param_names"]:
             check_generic_bound(bound)
-        if args := ty["inner"]["args"]:
+        args = ty["inner"]["args"]
+        if args:
             if "angle_bracketed" in args:
                 for arg in args["angle_bracketed"]["args"]:
                     if "type" in arg:

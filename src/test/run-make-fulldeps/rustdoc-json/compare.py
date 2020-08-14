@@ -68,7 +68,7 @@ def check_subset(expected_main, actual_main):
 def rustdoc_object_hook(obj):
     # No need to convert paths, index and external_crates keys to ids, since
     # they are the target of resolution, and never a source itself.
-    if "id" in obj:
+    if "id" in obj and obj["id"]:
         obj["id"] = ID(id)
     if "root" in obj:
         obj["root"] = ID(id)
