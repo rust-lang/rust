@@ -115,7 +115,9 @@ while work_list:
     visited.add(current)
     item = get_local_item(current)
     # check intradoc links
-    work_list |= set(item["links"].values()) - visited
+    for (_name, link) in item["links"].items():
+        if not valid_id(link):
+            print("Intra-doc link contains invalid ID:", link)
 
     # check all fields that reference types such as generics as well as nested items
     # (modules, structs, traits, and enums)

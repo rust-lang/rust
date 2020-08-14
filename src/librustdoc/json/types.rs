@@ -101,7 +101,7 @@ pub enum Visibility {
     /// public traits and variants of public enums.
     Default,
     Crate,
-    // TODO: Restricted(Id, String),
+    // FIXME(pineapple): add support for restricted paths
 }
 
 #[serde(rename_all = "snake_case")]
@@ -440,7 +440,7 @@ pub struct Import {
     /// `use source as name;`
     pub name: String,
     /// The ID of the item being imported.
-    pub id: Option<Id>, // TODO: when is this None?
+    pub id: Option<Id>, // TODO when is this None?
     /// Whether this import uses a glob: `use source::*;`
     pub glob: bool,
 }

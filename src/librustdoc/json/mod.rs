@@ -151,13 +151,8 @@ impl FormatRenderer for JsonRenderer {
     }
 
     fn item(&mut self, item: clean::Item, cache: &Cache) -> Result<(), Error> {
-        use clean::ItemEnum::*;
         // Flatten items that recursively store other items by inserting them into the index
-        if let ModuleItem(_) = &item.inner {
-            // but ignore modules because we handle recursing into them separately
-        } else {
-            item.inner.inner_items().for_each(|i| self.item(i.clone(), cache).unwrap())
-        }
+        item.inner.inner_items().for_each(|i| self.item(i.clone(), cache).unwrap());
         self.insert(item.clone(), cache);
         Ok(())
     }
@@ -165,9 +160,20 @@ impl FormatRenderer for JsonRenderer {
     fn mod_item_in(
         &mut self,
         item: &clean::Item,
-        _item_name: &str,
+        _module_name: &str,
         cache: &Cache,
     ) -> Result<(), Error> {
+        use clean::types::ItemEnum::*;
+        if let ModuleItem(m) = &item.inner {
+            for item in &m.items {
+                match item.inner {
+                    // These don't have names so they don't get added to the output by default
+                    ImportItem(_) => self.insert(item.clone(), cache),
+                    ExternCrateItem(_, _) => self.insert(item.clone(), cache),
+                    _ => {}
+                }
+            }
+        }
         self.insert(item.clone(), cache);
         Ok(())
     }
