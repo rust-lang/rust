@@ -69,8 +69,7 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
 
     // Visit MIR and accumululate used generic parameters.
     let body = tcx.optimized_mir(def_id);
-    let mut vis =
-        UsedGenericParametersVisitor { tcx, def_id, unused_parameters: &mut unused_parameters };
+    let mut vis = MarkUsedGenericParams { tcx, def_id, unused_parameters: &mut unused_parameters };
     vis.visit_body(body);
     debug!("unused_generic_params: (after visitor) unused_parameters={:?}", unused_parameters);
 
@@ -120,44 +119,100 @@ fn mark_used_by_predicates<'tcx>(
     def_id: DefId,
     unused_parameters: &mut FiniteBitSet<u32>,
 ) {
-    let def_id = tcx.closure_base_def_id(def_id);
-
-    let is_self_ty_used = |unused_parameters: &mut FiniteBitSet<u32>, self_ty: Ty<'tcx>| {
-        debug!("unused_generic_params: self_ty={:?}", self_ty);
-        if let ty::Param(param) = self_ty.kind {
-            !unused_parameters.contains(param.index).unwrap_or(false)
-        } else {
-            false
-        }
+    let is_ty_used = |unused_parameters: &FiniteBitSet<u32>, ty: Ty<'tcx>| -> bool {
+        let mut vis = IsUsedGenericParams { unused_parameters };
+        ty.visit_with(&mut vis)
     };
 
     let mark_ty = |unused_parameters: &mut FiniteBitSet<u32>, ty: Ty<'tcx>| {
-        let mut vis = UsedGenericParametersVisitor { tcx, def_id, unused_parameters };
+        let mut vis = MarkUsedGenericParams { tcx, def_id, unused_parameters };
         ty.visit_with(&mut vis);
     };
 
+    let def_id = tcx.closure_base_def_id(def_id);
     let predicates = tcx.explicit_predicates_of(def_id);
-    debug!("mark_parameters_used_in_predicates: predicates_of={:?}", predicates);
-    for (predicate, _) in predicates.predicates {
-        match predicate.skip_binders() {
-            ty::PredicateAtom::Trait(predicate, ..) => {
-                let trait_ref = predicate.trait_ref;
-                if is_self_ty_used(unused_parameters, trait_ref.self_ty()) {
+    debug!("mark_used_by_predicates: predicates_of={:?}", predicates);
+
+    let mut current_unused_parameters = FiniteBitSet::new_empty();
+    // Run to a fixed point to support `where T: Trait<U>, U: Trait<V>`, starting with an empty
+    // bit set so that this is skipped if all parameters are already used.
+    while current_unused_parameters != *unused_parameters {
+        debug!(
+            "mark_used_by_predicates: current_unused_parameters={:?} = unused_parameters={:?}",
+            current_unused_parameters, unused_parameters
+        );
+        current_unused_parameters = *unused_parameters;
+
+        for (predicate, _) in predicates.predicates {
+            match predicate.skip_binders() {
+                ty::PredicateAtom::Trait(predicate, ..) => {
+                    let trait_ref = predicate.trait_ref;
+                    debug!("mark_used_by_predicates: (trait) trait_ref={:?}", trait_ref);
+
+                    // Consider `T` used if `I` is used in predicates of the form
+                    // `I: Iterator<Item = T>`
+                    debug!("mark_used_by_predicates: checking self");
+                    if is_ty_used(unused_parameters, trait_ref.self_ty()) {
+                        debug!("mark_used_by_predicates: used!");
+                        for ty in trait_ref.substs.types() {
+                            mark_ty(unused_parameters, ty);
+                        }
+
+                        // No need to check for a type being used in the substs if `self_ty` was
+                        // used.
+                        continue;
+                    }
+
+                    // Consider `I` used if `T` is used in predicates of the form
+                    // `I: Iterator<Item = &'a (T, E)>` (see rust-lang/rust#75326)
+                    debug!("mark_used_by_predicates: checking substs");
                     for ty in trait_ref.substs.types() {
-                        debug!("unused_generic_params: (trait) ty={:?}", ty);
-                        mark_ty(unused_parameters, ty);
+                        if is_ty_used(unused_parameters, ty) {
+                            debug!("mark_used_by_predicates: used!");
+                            mark_ty(unused_parameters, trait_ref.self_ty());
+                        }
                     }
                 }
-            }
-            ty::PredicateAtom::Projection(proj, ..) => {
-                let self_ty = proj.projection_ty.self_ty();
-                if is_self_ty_used(unused_parameters, self_ty) {
-                    debug!("unused_generic_params: (projection ty={:?}", proj.ty);
-                    mark_ty(unused_parameters, proj.ty);
+                ty::PredicateAtom::Projection(proj, ..) => {
+                    let self_ty = proj.projection_ty.self_ty();
+                    debug!(
+                        "mark_used_by_predicates: (projection) self_ty={:?} proj.ty={:?}",
+                        self_ty, proj.ty
+                    );
+
+                    // Consider `T` used if `I` is used in predicates of the form
+                    // `<I as Iterator>::Item = T`
+                    debug!("mark_used_by_predicates: checking self");
+                    if is_ty_used(unused_parameters, self_ty) {
+                        debug!("mark_used_by_predicates: used!");
+                        mark_ty(unused_parameters, proj.ty);
+
+                        // No need to check for projection type being used if `self_ty` was used.
+                        continue;
+                    }
+
+                    // Consider `I` used if `T` is used in predicates of the form
+                    // `<I as Iterator>::Item = &'a (T, E)` (see rust-lang/rust#75326)
+                    debug!("mark_used_by_predicates: checking projection ty");
+                    if is_ty_used(unused_parameters, proj.ty) {
+                        debug!("mark_used_by_predicates: used!");
+                        mark_ty(unused_parameters, self_ty);
+                    }
                 }
+                ty::PredicateAtom::RegionOutlives(..)
+                | ty::PredicateAtom::TypeOutlives(..)
+                | ty::PredicateAtom::WellFormed(..)
+                | ty::PredicateAtom::ObjectSafe(..)
+                | ty::PredicateAtom::ClosureKind(..)
+                | ty::PredicateAtom::Subtype(..)
+                | ty::PredicateAtom::ConstEvaluatable(..)
+                | ty::PredicateAtom::ConstEquate(..) => (),
             }
-            _ => (),
         }
+    }
+
+    if let Some(parent) = predicates.parent {
+        mark_used_by_predicates(tcx, parent, unused_parameters);
     }
 }
 
@@ -204,13 +259,13 @@ fn emit_unused_generic_params_error<'tcx>(
 }
 
 /// Visitor used to aggregate generic parameter uses.
-struct UsedGenericParametersVisitor<'a, 'tcx> {
+struct MarkUsedGenericParams<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     unused_parameters: &'a mut FiniteBitSet<u32>,
 }
 
-impl<'a, 'tcx> UsedGenericParametersVisitor<'a, 'tcx> {
+impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
     /// Invoke `unused_generic_params` on a body contained within the current item (e.g.
     /// a closure, generator or constant).
     fn visit_child_body(&mut self, def_id: DefId, substs: SubstsRef<'tcx>) {
@@ -229,7 +284,7 @@ impl<'a, 'tcx> UsedGenericParametersVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for UsedGenericParametersVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         debug!("visit_local_decl: local_decl={:?}", local_decl);
         if local == Local::from_usize(1) {
@@ -256,7 +311,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UsedGenericParametersVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeVisitor<'tcx> for UsedGenericParametersVisitor<'a, 'tcx> {
+impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> bool {
         debug!("visit_const: c={:?}", c);
         if !c.has_param_types_or_consts() {
@@ -314,6 +369,39 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UsedGenericParametersVisitor<'a, 'tcx> {
                 self.unused_parameters.clear(param.index);
                 false
             }
+            _ => ty.super_visit_with(self),
+        }
+    }
+}
+
+/// Visitor used to check if a generic parameter is used.
+struct IsUsedGenericParams<'a> {
+    unused_parameters: &'a FiniteBitSet<u32>,
+}
+
+impl<'a, 'tcx> TypeVisitor<'tcx> for IsUsedGenericParams<'a> {
+    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> bool {
+        debug!("visit_const: c={:?}", c);
+        if !c.has_param_types_or_consts() {
+            return false;
+        }
+
+        match c.val {
+            ty::ConstKind::Param(param) => {
+                !self.unused_parameters.contains(param.index).unwrap_or(false)
+            }
+            _ => c.super_visit_with(self),
+        }
+    }
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+        debug!("visit_ty: ty={:?}", ty);
+        if !ty.has_param_types_or_consts() {
+            return false;
+        }
+
+        match ty.kind {
+            ty::Param(param) => !self.unused_parameters.contains(param.index).unwrap_or(false),
             _ => ty.super_visit_with(self),
         }
     }
