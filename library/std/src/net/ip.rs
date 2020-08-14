@@ -40,7 +40,7 @@ use crate::sys_common::{AsInner, FromInner};
 /// assert_eq!(localhost_v4.is_ipv4(), true);
 /// ```
 #[stable(feature = "ip_addr", since = "1.7.0")]
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
     /// An IPv4 address.
     #[stable(feature = "ip_addr", since = "1.7.0")]
@@ -799,6 +799,13 @@ impl fmt::Display for IpAddr {
             IpAddr::V4(ip) => ip.fmt(fmt),
             IpAddr::V6(ip) => ip.fmt(fmt),
         }
+    }
+}
+
+#[stable(feature = "ip_addr", since = "1.7.0")]
+impl fmt::Debug for IpAddr {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, fmt)
     }
 }
 
