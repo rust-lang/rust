@@ -40,10 +40,8 @@ const AST_TOKENS: &str = "crates/ra_syntax/src/ast/generated/tokens.rs";
 const ASSISTS_DIR: &str = "crates/ra_assists/src/handlers";
 const ASSISTS_TESTS: &str = "crates/ra_assists/src/tests/generated.rs";
 
-const REPO_OWNER: &str = "rust-lang";
-const REPO_NAME: &str = "rust";
-const REPO_PATH: &str = "src/doc/unstable-book/src";
-const GENERATION_DESTINATION: &str = "crates/ra_ide/src/completion/unstable_feature_descriptor.rs";
+const REPOSITORY_URL: &str = "https://github.com/rust-lang/rust";
+const UNSTABLE_FEATURE: &str = "crates/ra_ide/src/completion/unstable_feature_descriptor.rs";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Mode {
