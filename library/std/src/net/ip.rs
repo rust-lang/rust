@@ -12,7 +12,7 @@ use crate::hash;
 use crate::io::Write as IoWrite;
 use crate::mem::transmute;
 use crate::sys::net::netc as c;
-use crate::sys_common::{AsInner, FromInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// An IP address, either IPv4 or IPv6.
 ///
@@ -909,8 +909,8 @@ impl Eq for Ipv4Addr {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for Ipv4Addr {
     fn hash<H: hash::Hasher>(&self, s: &mut H) {
-        // `inner` is #[repr(packed)], so we need to copy `s_addr`.
-        { self.inner.s_addr }.hash(s)
+        // hashing in big endian
+        self.inner.s_addr.hash(s)
     }
 }
 
@@ -944,13 +944,14 @@ impl PartialOrd<IpAddr> for Ipv4Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv4Addr {
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
+        // Compare as native endian
         u32::from_be(self.inner.s_addr).cmp(&u32::from_be(other.inner.s_addr))
     }
 }
 
-impl AsInner<c::in_addr> for Ipv4Addr {
-    fn as_inner(&self) -> &c::in_addr {
-        &self.inner
+impl IntoInner<c::in_addr> for Ipv4Addr {
+    fn into_inner(self) -> c::in_addr {
+        self.inner
     }
 }
 
@@ -2019,6 +2020,7 @@ mod tests {
 
     #[test]
     fn ipv4_addr_to_string() {
+        assert_eq!(Ipv4Addr::new(127, 0, 0, 1).to_string(), "127.0.0.1");
         // Short address
         assert_eq!(Ipv4Addr::new(1, 1, 1, 1).to_string(), "1.1.1.1");
         // Long address

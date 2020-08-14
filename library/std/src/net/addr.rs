@@ -268,7 +268,7 @@ impl SocketAddrV4 {
             inner: c::sockaddr_in {
                 sin_family: c::AF_INET as c::sa_family_t,
                 sin_port: htons(port),
-                sin_addr: *ip.as_inner(),
+                sin_addr: ip.into_inner(),
                 ..unsafe { mem::zeroed() }
             },
         }
@@ -286,6 +286,8 @@ impl SocketAddrV4 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ip(&self) -> &Ipv4Addr {
+        // SAFETY: `Ipv4Addr` is `#[repr(C)] struct { _: in_addr; }`.
+        // It is safe to cast from `&in_addr` to `&Ipv4Addr`.
         unsafe { &*(&self.inner.sin_addr as *const c::in_addr as *const Ipv4Addr) }
     }
 
@@ -302,7 +304,7 @@ impl SocketAddrV4 {
     /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_ip(&mut self, new_ip: Ipv4Addr) {
-        self.inner.sin_addr = *new_ip.as_inner()
+        self.inner.sin_addr = new_ip.into_inner()
     }
 
     /// Returns the port number associated with this socket address.
