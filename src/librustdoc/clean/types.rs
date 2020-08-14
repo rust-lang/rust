@@ -316,8 +316,8 @@ impl ItemEnum {
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
-            | AssocConstItem(_,_)
-            | AssocTypeItem(_,_)
+            | AssocConstItem(_, _)
+            | AssocTypeItem(_, _)
             | StrippedItem(_)
             | KeywordItem(_) => [].iter(),
         }

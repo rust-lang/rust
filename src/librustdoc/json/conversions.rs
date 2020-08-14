@@ -80,7 +80,9 @@ impl From<clean::Visibility> for Visibility {
             Public => Visibility::Public,
             Inherited => Visibility::Default,
             Crate => Visibility::Crate,
-            Restricted(did, path) => Visibility::Restricted{parent: did.into(), path: path.whole_name()},
+            Restricted(did, path) => {
+                Visibility::Restricted { parent: did.into(), path: path.whole_name() }
+            }
         }
     }
 }
