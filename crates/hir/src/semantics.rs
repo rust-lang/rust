@@ -112,14 +112,13 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         self.imp.expand(macro_call)
     }
-
-    pub fn expand_hypothetical(
+    pub fn speculative_expand(
         &self,
         actual_macro_call: &ast::MacroCall,
         hypothetical_args: &ast::TokenTree,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, SyntaxToken)> {
-        self.imp.expand_hypothetical(actual_macro_call, hypothetical_args, token_to_map)
+        self.imp.speculative_expand(actual_macro_call, hypothetical_args, token_to_map)
     }
 
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
@@ -311,7 +310,7 @@ impl<'db> SemanticsImpl<'db> {
         Some(node)
     }
 
-    fn expand_hypothetical(
+    fn speculative_expand(
         &self,
         actual_macro_call: &ast::MacroCall,
         hypothetical_args: &ast::TokenTree,
@@ -756,7 +755,7 @@ impl<'a> SemanticsScope<'a> {
 
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
-    pub fn resolve_hypothetical(&self, path: &ast::Path) -> Option<PathResolution> {
+    pub fn speculative_resolve(&self, path: &ast::Path) -> Option<PathResolution> {
         let hygiene = Hygiene::new(self.db.upcast(), self.file_id);
         let path = Path::from_src(path.clone(), &hygiene)?;
         self.resolve_hir_path(&path)

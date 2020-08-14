@@ -212,13 +212,13 @@ impl<'db> ResolutionScope<'db> {
         // First try resolving the whole path. This will work for things like
         // `std::collections::HashMap`, but will fail for things like
         // `std::collections::HashMap::new`.
-        if let Some(resolution) = self.scope.resolve_hypothetical(&path) {
+        if let Some(resolution) = self.scope.speculative_resolve(&path) {
             return Some(resolution);
         }
         // Resolution failed, try resolving the qualifier (e.g. `std::collections::HashMap` and if
         // that succeeds, then iterate through the candidates on the resolved type with the provided
         // name.
-        let resolved_qualifier = self.scope.resolve_hypothetical(&path.qualifier()?)?;
+        let resolved_qualifier = self.scope.speculative_resolve(&path.qualifier()?)?;
         if let hir::PathResolution::Def(hir::ModuleDef::Adt(adt)) = resolved_qualifier {
             let name = path.segment()?.name_ref()?;
             adt.ty(self.scope.db).iterate_path_candidates(
