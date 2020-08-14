@@ -1,10 +1,12 @@
 use either::Either;
+use std::iter::successors;
+
 use hir::{AssocItem, MacroDef, ModuleDef, Name, PathResolution, ScopeDef, SemanticsScope};
 use ide_db::{
     defs::{classify_name_ref, Definition, NameRefClass},
     RootDatabase,
 };
-use syntax::{ast, AstNode, SyntaxToken, T};
+use syntax::{algo, ast, AstNode, SourceFile, SyntaxNode, SyntaxToken, T};
 
 use crate::{
     assist_context::{AssistBuilder, AssistContext, Assists},
@@ -48,27 +50,39 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
     let scope = ctx.sema.scope_at_offset(source_file.syntax(), ctx.offset());
 
     let defs_in_mod = find_defs_in_mod(ctx, scope, module)?;
-    let name_refs_in_source_file =
-        source_file.syntax().descendants().filter_map(ast::NameRef::cast).collect();
-    let used_names = find_used_names(ctx, defs_in_mod, name_refs_in_source_file);
+    let names_to_import = find_names_to_import(ctx, source_file, defs_in_mod);
 
-    let target = parent.syntax();
+    let target = parent.clone().either(|n| n.syntax().clone(), |n| n.syntax().clone());
     acc.add(
         AssistId("expand_glob_import", AssistKind::RefactorRewrite),
         "Expand glob import",
         target.text_range(),
         |builder| {
-            replace_ast(builder, parent, mod_path, used_names);
+            replace_ast(builder, parent, mod_path, names_to_import);
         },
     )
 }
 
-fn find_parent_and_path(star: &SyntaxToken) -> Option<(ast::UseTree, ast::Path)> {
-    star.ancestors().find_map(|n| {
+fn find_parent_and_path(
+    star: &SyntaxToken,
+) -> Option<(Either<ast::UseTree, ast::UseTreeList>, ast::Path)> {
+    return star.ancestors().find_map(|n| {
+        find_use_tree_list(n.clone())
+            .and_then(|(u, p)| Some((Either::Right(u), p)))
+            .or_else(|| find_use_tree(n).and_then(|(u, p)| Some((Either::Left(u), p))))
+    });
+
+    fn find_use_tree_list(n: SyntaxNode) -> Option<(ast::UseTreeList, ast::Path)> {
+        let use_tree_list = ast::UseTreeList::cast(n)?;
+        let path = use_tree_list.parent_use_tree().path()?;
+        Some((use_tree_list, path))
+    }
+
+    fn find_use_tree(n: SyntaxNode) -> Option<(ast::UseTree, ast::Path)> {
         let use_tree = ast::UseTree::cast(n)?;
         let path = use_tree.path()?;
         Some((use_tree, path))
-    })
+    }
 }
 
 #[derive(PartialEq)]
@@ -105,14 +119,36 @@ fn find_defs_in_mod(
     Some(defs)
 }
 
-fn find_used_names(
+fn find_names_to_import(
     ctx: &AssistContext,
+    source_file: &SourceFile,
     defs_in_mod: Vec<Def>,
-    name_refs_in_source_file: Vec<ast::NameRef>,
 ) -> Vec<Name> {
-    let defs_in_source_file = name_refs_in_source_file
-        .iter()
-        .filter_map(|r| classify_name_ref(&ctx.sema, r))
+    let (name_refs_in_use_item, name_refs_in_source) = source_file
+        .syntax()
+        .descendants()
+        .filter_map(|n| {
+            let name_ref = ast::NameRef::cast(n.clone())?;
+            let name_ref_class = classify_name_ref(&ctx.sema, &name_ref)?;
+            let is_in_use_item =
+                successors(n.parent(), |n| n.parent()).find_map(ast::Use::cast).is_some();
+            Some((name_ref_class, is_in_use_item))
+        })
+        .partition::<Vec<_>, _>(|&(_, is_in_use_item)| is_in_use_item);
+
+    let name_refs_to_import: Vec<NameRefClass> = name_refs_in_source
+        .into_iter()
+        .filter_map(|(r, _)| {
+            if name_refs_in_use_item.contains(&(r.clone(), true)) {
+                // already imported
+                return None;
+            }
+            Some(r)
+        })
+        .collect();
+
+    let defs_in_source_file = name_refs_to_import
+        .into_iter()
         .filter_map(|rc| match rc {
             NameRefClass::Definition(Definition::ModuleDef(def)) => Some(Def::ModuleDef(def)),
             NameRefClass::Definition(Definition::Macro(def)) => Some(Def::MacroDef(def)),
@@ -141,28 +177,62 @@ fn find_used_names(
 
 fn replace_ast(
     builder: &mut AssistBuilder,
-    parent: ast::UseTree,
+    parent: Either<ast::UseTree, ast::UseTreeList>,
     path: ast::Path,
-    used_names: Vec<Name>,
+    names_to_import: Vec<Name>,
 ) {
-    let replacement = match used_names.as_slice() {
-        [name] => ast::make::use_tree(
-            ast::make::path_from_text(&format!("{}::{}", path, name)),
-            None,
-            None,
-            false,
-        ),
-        names => ast::make::use_tree(
-            path,
-            Some(ast::make::use_tree_list(names.iter().map(|n| {
-                ast::make::use_tree(ast::make::path_from_text(&n.to_string()), None, None, false)
-            }))),
-            None,
-            false,
-        ),
+    let existing_use_trees = match parent.clone() {
+        Either::Left(_) => vec![],
+        Either::Right(u) => u.use_trees().filter(|n| 
+            // filter out star
+            n.star_token().is_none()
+        ).collect(),
     };
 
-    builder.replace_ast(parent, replacement);
+    let new_use_trees: Vec<ast::UseTree> = names_to_import
+        .iter()
+        .map(|n| ast::make::use_tree(ast::make::path_from_text(&n.to_string()), None, None, false))
+        .collect();
+
+    let use_trees = [&existing_use_trees[..], &new_use_trees[..]].concat();
+
+    match use_trees.as_slice() {
+        [name] => {
+            if let Some(end_path) = name.path() {
+                let replacement = ast::make::use_tree(
+                    ast::make::path_from_text(&format!("{}::{}", path, end_path)),
+                    None,
+                    None,
+                    false,
+                );
+
+                algo::diff(
+                    &parent.either(|n| n.syntax().clone(), |n| n.syntax().clone()),
+                    replacement.syntax(),
+                )
+                .into_text_edit(builder.text_edit_builder());
+            }
+        }
+        names => {
+            let replacement = match parent {
+                Either::Left(_) => ast::make::use_tree(
+                    path,
+                    Some(ast::make::use_tree_list(names.to_owned())),
+                    None,
+                    false,
+                )
+                .syntax()
+                .clone(),
+                Either::Right(_) => ast::make::use_tree_list(names.to_owned()).syntax().clone(),
+            };
+
+            algo::diff(
+                &parent.either(|n| n.syntax().clone(), |n| n.syntax().clone()),
+                &replacement,
+            )
+            .into_text_edit(builder.text_edit_builder());
+        }
+    };
 }
 
 #[cfg(test)]
@@ -236,7 +306,46 @@ mod foo {
     pub fn f() {}
 }
 
-use foo::{Baz, Bar, f};
+use foo::{f, Baz, Bar};
+
+fn qux(bar: Bar, baz: Baz) {
+    f();
+}
+",
+        )
+    }
+
+    #[test]
+    fn expanding_glob_import_with_existing_uses_in_same_module() {
+        check_assist(
+            expand_glob_import,
+            r"
+mod foo {
+    pub struct Bar;
+    pub struct Baz;
+    pub struct Qux;
+
+    pub fn f() {}
+}
+
+use foo::Bar;
+use foo::{*<|>, f};
+
+fn qux(bar: Bar, baz: Baz) {
+    f();
+}
+",
+            r"
+mod foo {
+    pub struct Bar;
+    pub struct Baz;
+    pub struct Qux;
+
+    pub fn f() {}
+}
+
+use foo::Bar;
+use foo::{f, Baz};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -286,7 +395,7 @@ mod foo {
     }
 }
 
-use foo::{bar::{Baz, Bar, f}, baz::*};
+use foo::{bar::{f, Baz, Bar}, baz::*};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -484,6 +593,82 @@ mod foo {
 use foo::{
     bar::{*, f},
     baz::{g, qux::{h, q::j}}
+};
+
+fn qux(bar: Bar, baz: Baz) {
+    f();
+    g();
+    h();
+    j();
+}
+",
+        );
+
+        check_assist(
+            expand_glob_import,
+            r"
+mod foo {
+    pub mod bar {
+        pub struct Bar;
+        pub struct Baz;
+        pub struct Qux;
+
+        pub fn f() {}
+    }
+
+    pub mod baz {
+        pub fn g() {}
+
+        pub mod qux {
+            pub fn h() {}
+            pub fn m() {}
+
+            pub mod q {
+                pub fn j() {}
+            }
+        }
+    }
+}
+
+use foo::{
+    bar::{*, f},
+    baz::{g, qux::{q::j, *<|>}}
+};
+
+fn qux(bar: Bar, baz: Baz) {
+    f();
+    g();
+    h();
+    j();
+}
+",
+            r"
+mod foo {
+    pub mod bar {
+        pub struct Bar;
+        pub struct Baz;
+        pub struct Qux;
+
+        pub fn f() {}
+    }
+
+    pub mod baz {
+        pub fn g() {}
+
+        pub mod qux {
+            pub fn h() {}
+            pub fn m() {}
+
+            pub mod q {
+                pub fn j() {}
+            }
+        }
+    }
+}
+
+use foo::{
+    bar::{*, f},
+    baz::{g, qux::{q::j, h}}
 };
 
 fn qux(bar: Bar, baz: Baz) {
