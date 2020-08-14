@@ -170,7 +170,6 @@ use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::SeqCst;
 use crate::sync::{Arc, Condvar, Mutex};
 use crate::sys::thread as imp;
-use crate::sys_common::mutex;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
 use crate::sys_common::{AsInner, IntoInner};
@@ -1054,7 +1053,10 @@ pub struct ThreadId(NonZeroU64);
 
 impl ThreadId {
     // Generate a new unique thread ID.
+    #[cfg(not(target_has_atomic = "64"))]
     fn new() -> ThreadId {
+        use crate::sys_common::mutex;
+
         // We never call `GUARD.init()`, so it is UB to attempt to
         // acquire this mutex reentrantly!
         static GUARD: mutex::Mutex = mutex::Mutex::new();
@@ -1074,6 +1076,27 @@ impl ThreadId {
 
             ThreadId(NonZeroU64::new(id).unwrap())
         }
+    }
+
+    #[cfg(target_has_atomic = "64")]
+    fn new() -> ThreadId {
+        use crate::sync::atomic::AtomicU64;
+
+        static COUNTER: AtomicU64 = AtomicU64::new(1);
+        const COUNTER_MAX: u64 = 1u64 << 63;
+
+        let id = COUNTER.fetch_add(1, SeqCst);
+
+        /* We need to have a safe margin so that if many threads call fetch_add
+         * we won't accidentally overflow and return potentially non-unique IDs */
+        if id == COUNTER_MAX {
+            COUNTER.store(COUNTER_MAX, SeqCst);
+        }
+        if id >= COUNTER_MAX {
+            panic!("failed to generate unique thread ID: bitspace exhausted");
+        }
+
+        ThreadId(NonZeroU64::new(id).unwrap())
     }
 
     /// This returns a numeric identifier for the thread identified by this
