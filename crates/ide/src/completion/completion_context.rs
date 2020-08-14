@@ -185,7 +185,7 @@ impl<'a> CompletionContext<'a> {
             };
             if let (Some(actual_expansion), Some(hypothetical_expansion)) = (
                 ctx.sema.expand(&actual_macro_call),
-                ctx.sema.expand_hypothetical(
+                ctx.sema.speculative_expand(
                     &actual_macro_call,
                     &hypothetical_args,
                     fake_ident_token,
