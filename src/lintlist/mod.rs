@@ -2017,7 +2017,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "`push_str()` used with a single-character string literal as parameter",
         deprecation: None,
-        module: "single_char_push_str",
+        module: "methods",
     },
     Lint {
         name: "single_component_path_imports",

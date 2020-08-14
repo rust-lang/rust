@@ -12,5 +12,23 @@ error: calling `push_str()` using a single-character string literal
 LL |     string.push_str("'");
    |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('/'')`
 
-error: aborting due to 2 previous errors
+error: calling `push_str()` using a single-character string literal
+  --> $DIR/single_char_push_str.rs:12:5
+   |
+LL |     string.push_str("/x52");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('/x52')`
+
+error: calling `push_str()` using a single-character string literal
+  --> $DIR/single_char_push_str.rs:13:5
+   |
+LL |     string.push_str("/u{0052}");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('/u{0052}')`
+
+error: calling `push_str()` using a single-character string literal
+  --> $DIR/single_char_push_str.rs:14:5
+   |
+LL |     string.push_str(r##"a"##);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('a')`
+
+error: aborting due to 5 previous errors
 

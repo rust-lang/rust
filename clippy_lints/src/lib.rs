@@ -287,7 +287,6 @@ mod repeat_once;
 mod returns;
 mod serde_api;
 mod shadow;
-mod single_char_push_str;
 mod single_component_path_imports;
 mod slow_vector_initialization;
 mod stable_sort_primitive;
@@ -678,6 +677,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &methods::SEARCH_IS_SOME,
         &methods::SHOULD_IMPLEMENT_TRAIT,
         &methods::SINGLE_CHAR_PATTERN,
+        &methods::SINGLE_CHAR_PUSH_STR,
         &methods::SKIP_WHILE_NEXT,
         &methods::STRING_EXTEND_CHARS,
         &methods::SUSPICIOUS_MAP,
@@ -776,7 +776,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &shadow::SHADOW_REUSE,
         &shadow::SHADOW_SAME,
         &shadow::SHADOW_UNRELATED,
-        &single_char_push_str::SINGLE_CHAR_PUSH_STR,
         &single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS,
         &slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,
         &stable_sort_primitive::STABLE_SORT_PRIMITIVE,
@@ -934,7 +933,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box escape::BoxedLocal{too_large_for_stack});
     store.register_late_pass(|| box panic_unimplemented::PanicUnimplemented);
     store.register_late_pass(|| box strings::StringLitAsBytes);
-    store.register_late_pass(|| box single_char_push_str::SingleCharPushStrPass);
     store.register_late_pass(|| box derive::Derive);
     store.register_late_pass(|| box types::CharLitAsU8);
     store.register_late_pass(|| box vec::UselessVec);
@@ -1352,6 +1350,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&methods::SEARCH_IS_SOME),
         LintId::of(&methods::SHOULD_IMPLEMENT_TRAIT),
         LintId::of(&methods::SINGLE_CHAR_PATTERN),
+        LintId::of(&methods::SINGLE_CHAR_PUSH_STR),
         LintId::of(&methods::SKIP_WHILE_NEXT),
         LintId::of(&methods::STRING_EXTEND_CHARS),
         LintId::of(&methods::SUSPICIOUS_MAP),
@@ -1419,7 +1418,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),
         LintId::of(&serde_api::SERDE_API_MISUSE),
-        LintId::of(&single_char_push_str::SINGLE_CHAR_PUSH_STR),
         LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(&slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
         LintId::of(&stable_sort_primitive::STABLE_SORT_PRIMITIVE),
@@ -1536,6 +1534,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&methods::OPTION_MAP_OR_NONE),
         LintId::of(&methods::RESULT_MAP_OR_INTO_OPTION),
         LintId::of(&methods::SHOULD_IMPLEMENT_TRAIT),
+        LintId::of(&methods::SINGLE_CHAR_PUSH_STR),
         LintId::of(&methods::STRING_EXTEND_CHARS),
         LintId::of(&methods::UNNECESSARY_FOLD),
         LintId::of(&methods::WRONG_SELF_CONVENTION),
@@ -1560,7 +1559,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&regex::TRIVIAL_REGEX),
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),
-        LintId::of(&single_char_push_str::SINGLE_CHAR_PUSH_STR),
         LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(&strings::STRING_LIT_AS_BYTES),
         LintId::of(&tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
