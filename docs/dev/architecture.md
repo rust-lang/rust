@@ -56,7 +56,7 @@ In particular, `cargo xtask codegen` generates:
 2. [`ast/generated`](https://github.com/rust-analyzer/rust-analyzer/blob/a0be39296d2925972cacd9fbf8b5fb258fad6947/crates/ra_syntax/src/ast/generated.rs)
   -- AST data structure.
 
-3. [`doc_tests/generated`](https://github.com/rust-analyzer/rust-analyzer/blob/a0be39296d2925972cacd9fbf8b5fb258fad6947/crates/ra_assists/src/doc_tests/generated.rs),
+3. [`doc_tests/generated`](https://github.com/rust-analyzer/rust-analyzer/blob/a0be39296d2925972cacd9fbf8b5fb258fad6947/crates/assists/src/doc_tests/generated.rs),
   [`test_data/parser/inline`](https://github.com/rust-analyzer/rust-analyzer/tree/a0be39296d2925972cacd9fbf8b5fb258fad6947/crates/ra_syntax/test_data/parser/inline)
   -- tests for assists and the parser.
 
@@ -64,7 +64,7 @@ The source for 1 and 2 is in [`ast_src.rs`](https://github.com/rust-analyzer/rus
 
 ## Code Walk-Through
 
-### `crates/ra_syntax`, `crates/ra_parser`
+### `crates/ra_syntax`, `crates/parser`
 
 Rust syntax tree structure and parser. See
 [RFC](https://github.com/rust-lang/rfcs/pull/2256) and [./syntax.md](./syntax.md) for some design notes.
@@ -92,17 +92,17 @@ in particular: it shows off various methods of working with syntax tree.
 See [#93](https://github.com/rust-analyzer/rust-analyzer/pull/93) for an example PR which
 fixes a bug in the grammar.
 
-### `crates/ra_db`
+### `crates/base_db`
 
 We use the [salsa](https://github.com/salsa-rs/salsa) crate for incremental and
 on-demand computation. Roughly, you can think of salsa as a key-value store, but
-it also can compute derived values using specified functions. The `ra_db` crate
+it also can compute derived values using specified functions. The `base_db` crate
 provides basic infrastructure for interacting with salsa. Crucially, it
 defines most of the "input" queries: facts supplied by the client of the
-analyzer. Reading the docs of the `ra_db::input` module should be useful:
+analyzer. Reading the docs of the `base_db::input` module should be useful:
 everything else is strictly derived from those inputs.
 
-### `crates/ra_hir*` crates
+### `crates/hir*` crates
 
 HIR provides high-level "object oriented" access to Rust code.
 
@@ -113,12 +113,12 @@ is responsible for guessing a HIR for a particular source position.
 
 Underneath, HIR works on top of salsa, using a `HirDatabase` trait.
 
-`ra_hir_xxx` crates have a strong ECS flavor, in that they work with raw ids and
+`hir_xxx` crates have a strong ECS flavor, in that they work with raw ids and
 directly query the database.
 
-The top-level `ra_hir` façade crate wraps ids into a more OO-flavored API.
+The top-level `hir` façade crate wraps ids into a more OO-flavored API.
 
-### `crates/ra_ide`
+### `crates/ide`
 
 A stateful library for analyzing many Rust files as they change. `AnalysisHost`
 is a mutable entity (clojure's atom) which holds the current state, incorporates
@@ -136,11 +136,11 @@ offsets and strings as output. This works on top of rich code model powered by
 
 ### `crates/rust-analyzer`
 
-An LSP implementation which wraps `ra_ide` into a language server protocol.
+An LSP implementation which wraps `ide` into a language server protocol.
 
 ### `ra_vfs`
 
-Although `hir` and `ra_ide` don't do any IO, we need to be able to read
+Although `hir` and `ide` don't do any IO, we need to be able to read
 files from disk at the end of the day. This is what `ra_vfs` does. It also
 manages overlays: "dirty" files in the editor, whose "true" contents is
 different from data on disk. This is more or less the single really
@@ -161,7 +161,7 @@ disk. For this reason, we try to avoid writing too many tests on this boundary:
 in a statically typed language, it's hard to make an error in the protocol
 itself if messages are themselves typed.
 
-The middle, and most important, boundary is `ra_ide`. Unlike
+The middle, and most important, boundary is `ide`. Unlike
 `rust-analyzer`, which exposes API, `ide` uses Rust API and is intended to
 use by various tools. Typical test creates an `AnalysisHost`, calls some
 `Analysis` functions and compares the results against expectation.

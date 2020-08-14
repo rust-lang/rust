@@ -1,9 +1,9 @@
 //! Utilities for LSP-related boilerplate code.
 use std::{error::Error, ops::Range};
 
+use base_db::Canceled;
+use ide::LineIndex;
 use lsp_server::Notification;
-use ra_db::Canceled;
-use ra_ide::LineIndex;
 
 use crate::{from_proto, global_state::GlobalState};
 

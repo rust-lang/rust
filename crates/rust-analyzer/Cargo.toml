@@ -1,10 +1,10 @@
 [package]
-edition = "2018"
 name = "rust-analyzer"
-version = "0.1.0"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer developers"]
 autobins = false
-license = "MIT OR Apache-2.0"
+edition = "2018"
 
 [lib]
 doctest = false
@@ -30,29 +30,28 @@ serde_json = "1.0.48"
 threadpool = "1.7.1"
 rayon = "1.3.1"
 mimalloc = { version = "0.1.19", default-features = false, optional = true }
+lsp-server = "0.3.3"
 
 stdx = { path = "../stdx" }
-
-lsp-server = "0.3.3"
 flycheck = { path = "../flycheck" }
-ra_ide = { path = "../ra_ide" }
-ra_prof = { path = "../ra_prof" }
-ra_project_model = { path = "../ra_project_model" }
-ra_syntax = { path = "../ra_syntax" }
-ra_text_edit = { path = "../ra_text_edit" }
+ide = { path = "../ide" }
+profile = { path = "../profile" }
+project_model = { path = "../project_model" }
+syntax = { path = "../syntax" }
+text_edit = { path = "../text_edit" }
 vfs = { path = "../vfs" }
 vfs-notify = { path = "../vfs-notify" }
-ra_cfg = { path = "../ra_cfg" }
-ra_toolchain = { path = "../ra_toolchain" }
+cfg = { path = "../cfg" }
+toolchain = { path = "../toolchain" }
 
 # This should only be used in CLI
-ra_db = { path = "../ra_db" }
-ra_ide_db = { path = "../ra_ide_db" }
-ra_ssr = { path = "../ra_ssr" }
-hir = { path = "../ra_hir", package = "ra_hir" }
-hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
-hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }
-ra_proc_macro_srv = { path = "../ra_proc_macro_srv" }
+base_db = { path = "../base_db" }
+ide_db = { path = "../ide_db" }
+ssr = { path = "../ssr" }
+hir = { path = "../hir" }
+hir_def = { path = "../hir_def" }
+hir_ty = { path = "../hir_ty" }
+proc_macro_srv = { path = "../proc_macro_srv" }
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3.8"
@@ -60,5 +59,5 @@ winapi = "0.3.8"
 [dev-dependencies]
 expect = { path = "../expect" }
 test_utils = { path = "../test_utils" }
-mbe = { path = "../ra_mbe", package = "ra_mbe" }
-tt = { path = "../ra_tt", package = "ra_tt" }
+mbe = { path = "../mbe" }
+tt = { path = "../tt" }

@@ -6,7 +6,7 @@ mod args;
 use std::{convert::TryFrom, process};
 
 use lsp_server::Connection;
-use ra_project_model::ProjectManifest;
+use project_model::ProjectManifest;
 use rust_analyzer::{
     cli,
     config::{Config, LinkedProject},
@@ -30,7 +30,7 @@ fn try_main() -> Result<()> {
     let args = args::Args::parse()?;
     match args.command {
         args::Command::RunServer => run_server()?,
-        args::Command::ProcMacro => ra_proc_macro_srv::cli::run()?,
+        args::Command::ProcMacro => proc_macro_srv::cli::run()?,
 
         args::Command::Parse { no_dump } => cli::parse(no_dump)?,
         args::Command::Symbols => cli::symbols()?,
@@ -55,7 +55,7 @@ fn try_main() -> Result<()> {
 fn setup_logging() -> Result<()> {
     std::env::set_var("RUST_BACKTRACE", "short");
     env_logger::try_init_from_env("RA_LOG")?;
-    ra_prof::init();
+    profile::init();
     Ok(())
 }
 

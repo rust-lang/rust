@@ -12,7 +12,7 @@ use lsp_types::{
     notification::Exit, request::Shutdown, TextDocumentIdentifier, Url, WorkDoneProgress,
 };
 use lsp_types::{ProgressParams, ProgressParamsValue};
-use ra_project_model::ProjectManifest;
+use project_model::ProjectManifest;
 use rust_analyzer::{
     config::{ClientCapsConfig, Config, FilesConfig, FilesWatcher, LinkedProject},
     main_loop,
@@ -62,7 +62,7 @@ impl<'a> Project<'a> {
         static INIT: Once = Once::new();
         INIT.call_once(|| {
             env_logger::builder().is_test(true).try_init().unwrap();
-            ra_prof::init_from(crate::PROFILE);
+            profile::init_from(crate::PROFILE);
         });
 
         for entry in Fixture::parse(self.fixture) {

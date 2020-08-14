@@ -1,0 +1,24 @@
+[package]
+name = "hir"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+log = "0.4.8"
+rustc-hash = "1.1.0"
+either = "1.5.3"
+arrayvec = "0.5.1"
+itertools = "0.9.0"
+
+stdx = { path = "../stdx" }
+syntax = { path = "../syntax" }
+base_db = { path = "../base_db" }
+profile = { path = "../profile" }
+hir_expand = { path = "../hir_expand" }
+hir_def = { path = "../hir_def" }
+hir_ty = { path = "../hir_ty" }

@@ -10,9 +10,9 @@
 use std::{collections::HashSet, ffi::OsString, path::PathBuf};
 
 use flycheck::FlycheckConfig;
+use ide::{AnalysisConfig, AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
 use lsp_types::ClientCapabilities;
-use ra_ide::{AnalysisConfig, AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
-use ra_project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
+use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
 use serde::Deserialize;
 use vfs::AbsPathBuf;
 

@@ -192,16 +192,16 @@ impl TidyDocs {
         }
 
         let poorly_documented = [
-            "ra_hir",
-            "ra_hir_expand",
-            "ra_ide",
-            "ra_mbe",
-            "ra_parser",
-            "ra_prof",
-            "ra_project_model",
-            "ra_syntax",
-            "ra_tt",
-            "ra_hir_ty",
+            "hir",
+            "hir_expand",
+            "ide",
+            "mbe",
+            "parser",
+            "profile",
+            "project_model",
+            "syntax",
+            "tt",
+            "hir_ty",
         ];
 
         let mut has_fixmes =

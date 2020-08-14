@@ -6,6 +6,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use base_db::{
+    salsa::{self, ParallelDatabase},
+    SourceDatabaseExt,
+};
 use hir::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     original_range, AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
@@ -14,14 +18,10 @@ use hir_def::FunctionId;
 use hir_ty::{Ty, TypeWalk};
 use itertools::Itertools;
 use oorandom::Rand32;
-use ra_db::{
-    salsa::{self, ParallelDatabase},
-    SourceDatabaseExt,
-};
-use ra_syntax::AstNode;
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use stdx::format_to;
+use syntax::AstNode;
 
 use crate::{
     cli::{
@@ -29,7 +29,7 @@ use crate::{
     },
     print_memory_usage,
 };
-use ra_prof::StopWatch;
+use profile::StopWatch;
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);

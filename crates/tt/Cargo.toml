@@ -1,0 +1,16 @@
+[package]
+name = "tt"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+# ideally, `serde` should be enabled by `rust-analyzer`, but we enable it here
+# to reduce number of compilations
+smol_str = { version = "0.1.15", features = ["serde"] }
+
+stdx = { path = "../stdx" }

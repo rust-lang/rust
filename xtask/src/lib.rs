@@ -103,7 +103,7 @@ pub fn run_clippy() -> Result<()> {
 }
 
 pub fn run_fuzzer() -> Result<()> {
-    let _d = pushd("./crates/ra_syntax");
+    let _d = pushd("./crates/syntax");
     let _e = pushenv("RUSTUP_TOOLCHAIN", "nightly");
     if run!("cargo fuzz --help").is_err() {
         run!("cargo install cargo-fuzz")?;
@@ -139,7 +139,7 @@ pub fn run_pre_cache() -> Result<()> {
     }
 
     fs2::remove_file("./target/.rustc_info.json")?;
-    let to_delete = ["ra_", "heavy_test", "xtask"];
+    let to_delete = ["hir", "heavy_test", "xtask", "ide", "rust-analyzer"];
     for &dir in ["./target/debug/deps", "target/debug/.fingerprint"].iter() {
         for entry in Path::new(dir).read_dir()? {
             let entry = entry?;
