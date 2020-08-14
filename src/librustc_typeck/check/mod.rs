@@ -5401,6 +5401,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn suggest_missing_parentheses(&self, err: &mut DiagnosticBuilder<'_>, expr: &hir::Expr<'_>) {
+        let sp = self.tcx.sess.source_map().start_point(expr.span);
+        if let Some(sp) = self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp) {
+            // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
+            self.tcx.sess.parse_sess.expr_parentheses_needed(err, *sp, None);
+        }
+    }
+
     fn note_need_for_fn_pointer(
         &self,
         err: &mut DiagnosticBuilder<'_>,
