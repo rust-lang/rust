@@ -318,11 +318,18 @@ impl<'a> Parser<'a> {
             // want to keep their span info to improve diagnostics in these cases in a later stage.
             (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
             (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
-            (true, Some(AssocOp::LAnd)) | // `{ 42 } &&x` (#61475)
             (true, Some(AssocOp::Add)) // `{ 42 } + 42
             // If the next token is a keyword, then the tokens above *are* unambiguously incorrect:
             // `if x { a } else { b } && if y { c } else { d }`
-            if !self.look_ahead(1, |t| t.is_reserved_ident()) => {
+            if !self.look_ahead(1, |t| t.is_used_keyword()) => {
+                // These cases are ambiguous and can't be identified in the parser alone.
+                let sp = self.sess.source_map().start_point(self.token.span);
+                self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
+                false
+            }
+            (true, Some(AssocOp::LAnd)) => {
+                // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`. Separated from the
+                // above due to #74233.
                 // These cases are ambiguous and can't be identified in the parser alone.
                 let sp = self.sess.source_map().start_point(self.token.span);
                 self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
