@@ -18,3 +18,8 @@ quote = "1.0.2"
 ungrammar = "1.1.1"
 walkdir = "2.3.1"
 write-json =  "0.1.0"
+reqwest = { version = "0.10.7", features = ["blocking", "json"] }
+graphql_client = "0.9.0"
+serde = "1.0.115"
+regex = "1.3.9"
+chrono = "0.4.13"
