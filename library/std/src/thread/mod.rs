@@ -166,10 +166,11 @@ use crate::num::NonZeroU64;
 use crate::panic;
 use crate::panicking;
 use crate::str;
+use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::SeqCst;
-use crate::sync::atomic::{AtomicI32, AtomicUsize};
 use crate::sync::{Arc, Condvar, Mutex};
 use crate::sys::thread as imp;
+use crate::sys_common::mutex;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
 use crate::sys_common::{AsInner, IntoInner};
@@ -1054,18 +1055,25 @@ pub struct ThreadId(NonZeroU64);
 impl ThreadId {
     // Generate a new unique thread ID.
     fn new() -> ThreadId {
-        static COUNTER: AtomicI32 = AtomicI32::new(1);
-        let id = COUNTER.fetch_add(1, SeqCst);
+        // We never call `GUARD.init()`, so it is UB to attempt to
+        // acquire this mutex reentrantly!
+        static GUARD: mutex::Mutex = mutex::Mutex::new();
+        static mut COUNTER: u64 = 1;
 
-        if id == i32::MIN {
-            COUNTER.store(i32::MIN, SeqCst);
-        }
-        if id < 0 {
-            /* Overflow */
-            panic!("failed to generate unique thread ID: bitspace exhausted");
-        }
+        unsafe {
+            let _guard = GUARD.lock();
 
-        ThreadId(NonZeroU64::new(id as u64).unwrap())
+            // If we somehow use up all our bits, panic so that we're not
+            // covering up subtle bugs of IDs being reused.
+            if COUNTER == u64::MAX {
+                panic!("failed to generate unique thread ID: bitspace exhausted");
+            }
+
+            let id = COUNTER;
+            COUNTER += 1;
+
+            ThreadId(NonZeroU64::new(id).unwrap())
+        }
     }
 
     /// This returns a numeric identifier for the thread identified by this
