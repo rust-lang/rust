@@ -42,7 +42,7 @@ def check_subset(expected_main, actual_main):
         if expected_type is dict:
             for key in expected:
                 if key not in actual:
-                    raise SubsetException("Key `{}` not found in output".format(key))
+                    raise SubsetException("Key `{}` not found in output".format(key), trace)
                 new_trace = trace.copy()
                 new_trace.append(key)
                 _check_subset(expected[key], actual[key], new_trace)
@@ -51,7 +51,7 @@ def check_subset(expected_main, actual_main):
             actual_elements = len(actual)
             if expected_elements != actual_elements:
                 raise SubsetException(
-                    "Found {} items, expected {}".format(expected_elements, actual_elements)
+                    "Found {} items, expected {}".format(expected_elements, actual_elements), trace
                 )
             for expected, actual in zip(expected, actual):
                 new_trace = trace.copy()
