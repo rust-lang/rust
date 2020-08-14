@@ -165,6 +165,11 @@ In general, API is centered around UI concerns -- the result of the call is what
 The results are 100% Rust specific though.
 Shout outs to LSP developers for popularizing the idea that "UI" is a good place to draw a boundary at.
 
+## CI
+
+CI does not test rust-analyzer, CI is a core part of rust-analyzer, and is maintained with above average standard of quality.
+CI is reproducible -- it can only be broken by changes to files in this repository, any dependence on externalities is a bug.
+
 # Code Style & Review Process
 
 Do see [./style.md](./style.md).
