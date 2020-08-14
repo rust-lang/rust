@@ -106,7 +106,7 @@ fn mir_borrowck<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> &'tcx BorrowCheckResult<'tcx> {
-    let (input_body, promoted) = tcx.mir_validated(def);
+    let (input_body, promoted) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def.did.to_def_id()));
 
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {

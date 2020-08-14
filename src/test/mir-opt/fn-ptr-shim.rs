@@ -1,4 +1,4 @@
-// compile-flags: -Zmir-opt-level=0 -Zvalidate-mir
+// compile-flags: -Zmir-opt-level=0
 
 // Tests that the `<fn() as Fn>` shim does not create a `Call` terminator with a `Self` callee
 // (as only `FnDef` and `FnPtr` callees are allowed in MIR).

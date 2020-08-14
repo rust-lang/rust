@@ -4,8 +4,8 @@ use super::{MirPass, MirSource};
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::{
     mir::{
-        BasicBlock, Body, Location, Operand, Rvalue, Statement, StatementKind, Terminator,
-        TerminatorKind,
+        AggregateKind, BasicBlock, Body, Location, MirPhase, Operand, Rvalue, Statement,
+        StatementKind, Terminator, TerminatorKind,
     },
     ty::{
         self,
@@ -23,12 +23,19 @@ enum EdgeKind {
 pub struct Validator {
     /// Describes at which point in the pipeline this validation is happening.
     pub when: String,
+    /// The phase for which we are upholding the dialect. If the given phase forbids a specific
+    /// element, this validator will now emit errors if that specific element is encountered.
+    /// Note that phases that change the dialect cause all *following* phases to check the
+    /// invariants of the new dialect. A phase that changes dialects never checks the new invariants
+    /// itself.
+    pub mir_phase: MirPhase,
 }
 
 impl<'tcx> MirPass<'tcx> for Validator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(source.def_id());
-        TypeChecker { when: &self.when, source, body, tcx, param_env }.visit_body(body);
+        let mir_phase = self.mir_phase;
+        TypeChecker { when: &self.when, source, body, tcx, param_env, mir_phase }.visit_body(body);
     }
 }
 
@@ -130,6 +137,7 @@ struct TypeChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
+    mir_phase: MirPhase,
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -226,22 +234,44 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(
                         location,
                         format!(
-                            "encountered `Assign` statement with incompatible types:\n\
+                            "encountered `{:?}` with incompatible types:\n\
                             left-hand side has type: {}\n\
                             right-hand side has type: {}",
-                            left_ty, right_ty,
+                            statement.kind, left_ty, right_ty,
                         ),
                     );
                 }
-                // The sides of an assignment must not alias. Currently this just checks whether the places
-                // are identical.
                 match rvalue {
+                    // The sides of an assignment must not alias. Currently this just checks whether the places
+                    // are identical.
                     Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) => {
                         if dest == src {
                             self.fail(
                                 location,
                                 "encountered `Assign` statement with overlapping memory",
                             );
+                        }
+                    }
+                    // The deaggregator currently does not deaggreagate arrays.
+                    // So for now, we ignore them here.
+                    Rvalue::Aggregate(box AggregateKind::Array { .. }, _) => {}
+                    // All other aggregates must be gone after some phases.
+                    Rvalue::Aggregate(box kind, _) => {
+                        if self.mir_phase > MirPhase::DropLowering
+                            && !matches!(kind, AggregateKind::Generator(..))
+                        {
+                            // Generators persist until the state machine transformation, but all
+                            // other aggregates must have been lowered.
+                            self.fail(
+                                location,
+                                format!("{:?} have been lowered to field assignments", rvalue),
+                            )
+                        } else if self.mir_phase > MirPhase::GeneratorLowering {
+                            // No more aggregates after drop and generator lowering.
+                            self.fail(
+                                location,
+                                format!("{:?} have been lowered to field assignments", rvalue),
+                            )
                         }
                     }
                     _ => {}
@@ -288,6 +318,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::DropAndReplace { target, unwind, .. } => {
+                if self.mir_phase > MirPhase::DropLowering {
+                    self.fail(
+                        location,
+                        "`DropAndReplace` is not permitted to exist after drop elaboration",
+                    );
+                }
                 self.check_edge(location, *target, EdgeKind::Normal);
                 if let Some(unwind) = unwind {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
@@ -326,6 +362,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Yield { resume, drop, .. } => {
+                if self.mir_phase > MirPhase::GeneratorLowering {
+                    self.fail(location, "`Yield` should have been replaced by generator lowering");
+                }
                 self.check_edge(location, *resume, EdgeKind::Normal);
                 if let Some(drop) = drop {
                     self.check_edge(location, *drop, EdgeKind::Normal);

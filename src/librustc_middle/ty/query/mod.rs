@@ -133,7 +133,7 @@ rustc_query_append! { [define_queries!][<'tcx>] }
 /// `DefPathHash` in the current codebase to the corresponding `DefId`, we have
 /// everything we need to re-run the query.
 ///
-/// Take the `mir_validated` query as an example. Like many other queries, it
+/// Take the `mir_promoted` query as an example. Like many other queries, it
 /// just has a single parameter: the `DefId` of the item it will compute the
 /// validated MIR for. Now, when we call `force_from_dep_node()` on a `DepNode`
 /// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`

@@ -247,7 +247,7 @@ rustc_queries! {
             desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key.did.to_def_id()) }
         }
 
-        query mir_validated(key: ty::WithOptConstParam<LocalDefId>) ->
+        query mir_promoted(key: ty::WithOptConstParam<LocalDefId>) ->
             (
                 &'tcx Steal<mir::Body<'tcx>>,
                 &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
@@ -281,6 +281,8 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
+        /// The `DefId` is the `DefId` of the containing MIR body. Promoteds to not have their own
+        /// `DefId`.
         query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
             desc { |tcx| "optimizing promoted MIR for `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
