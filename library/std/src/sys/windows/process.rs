@@ -59,11 +59,7 @@ impl AsRef<OsStr> for EnvKey {
 }
 
 fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> Result<T, Problem> {
-    if str.as_ref().encode_wide().any(|b| b == 0) {
-        Err(Problem::SawNul)
-    } else {
-        Ok(str)
-    }
+    if str.as_ref().encode_wide().any(|b| b == 0) { Err(Problem::SawNul) } else { Ok(str) }
 }
 
 // 32768 minus NUL plus starting space in our implementation

@@ -387,11 +387,7 @@ impl Command {
                 self.get_argv().as_ptr() as *const _,
                 envp as *const _,
             );
-            if ret == 0 {
-                Ok(Some(p))
-            } else {
-                Err(io::Error::from_raw_os_error(ret))
-            }
+            if ret == 0 { Ok(Some(p)) } else { Err(io::Error::from_raw_os_error(ret)) }
         }
     }
 }
@@ -469,19 +465,11 @@ impl ExitStatus {
     }
 
     pub fn code(&self) -> Option<i32> {
-        if self.exited() {
-            Some(unsafe { libc::WEXITSTATUS(self.0) })
-        } else {
-            None
-        }
+        if self.exited() { Some(unsafe { libc::WEXITSTATUS(self.0) }) } else { None }
     }
 
     pub fn signal(&self) -> Option<i32> {
-        if !self.exited() {
-            Some(unsafe { libc::WTERMSIG(self.0) })
-        } else {
-            None
-        }
+        if !self.exited() { Some(unsafe { libc::WTERMSIG(self.0) }) } else { None }
     }
 }
 
