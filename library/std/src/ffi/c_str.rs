@@ -329,7 +329,7 @@ impl FromVecWithNulError {
 /// [`CString::into_string`] performs UTF-8 validation on those bytes and may
 /// return this error.
 ///
-/// This `struct` is created by the [`CString::into_string`] method. See
+/// This `struct` is created by [`CString::into_string()`]. See
 /// its documentation for more.
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstring_into", since = "1.7.0")]
@@ -566,7 +566,7 @@ impl CString {
         vec
     }
 
-    /// Equivalent to the [`CString::into_bytes`] function except that the
+    /// Equivalent to [`CString::into_bytes()`] except that the
     /// returned vector includes the trailing nul terminator.
     ///
     /// # Examples
@@ -605,7 +605,7 @@ impl CString {
         &self.inner[..self.inner.len() - 1]
     }
 
-    /// Equivalent to the [`CString::as_bytes`] function except that the
+    /// Equivalent to [`CString::as_bytes()`] except that the
     /// returned slice includes the trailing nul terminator.
     ///
     /// # Examples
