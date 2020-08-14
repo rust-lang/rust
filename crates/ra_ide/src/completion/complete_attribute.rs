@@ -258,7 +258,7 @@ const DEFAULT_DERIVE_COMPLETIONS: &[DeriveCompletion] = &[
     DeriveCompletion { label: "Ord", dependencies: &["PartialOrd", "Eq", "PartialEq"] },
 ];
 
-pub struct LintCompletion {
+pub(crate) struct LintCompletion {
     pub label: &'static str,
     pub description: &'static str,
 }
