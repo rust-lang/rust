@@ -312,7 +312,8 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     let tcx = ecx.tcx;
     let base_intern_mode = match intern_kind {
         InternKind::Static(mutbl) => InternMode::Static(mutbl),
-        // FIXME: what about array lengths, array initializers?
+        // `Constant` includes array lengths.
+        // `Promoted` includes non-`Copy` array initializers and `rustc_args_required_const` arguments.
         InternKind::Constant | InternKind::Promoted => InternMode::ConstBase,
     };
 
