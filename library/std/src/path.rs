@@ -2057,9 +2057,14 @@ impl Path {
     /// ```
     /// use std::path::Path;
     ///
-    /// let path = Path::new("/etc/passwd");
+    /// let path = Path::new("/etc/resolv.conf");
     ///
-    /// assert!(path.ends_with("passwd"));
+    /// assert!(path.ends_with("resolv.conf"));
+    /// assert!(path.ends_with("etc/resolv.conf"));
+    /// assert!(path.ends_with("/etc/resolv.conf"));
+    ///
+    /// assert!(!path.ends_with("/resolv.conf"));
+    /// assert!(!path.ends_with("conf")); // use .extension() instead
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ends_with<P: AsRef<Path>>(&self, child: P) -> bool {
