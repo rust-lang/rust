@@ -106,7 +106,12 @@ fn insert_import(
     if let Some(mut mod_path) = mod_path {
         mod_path.segments.pop();
         mod_path.segments.push(variant_hir_name.clone());
-        insert_use_statement(path.syntax(), &mod_path, ctx, builder.text_edit_builder());
+        insert_use_statement(
+            path.syntax(),
+            &mod_path.to_string(),
+            ctx,
+            builder.text_edit_builder(),
+        );
     }
     Some(())
 }
