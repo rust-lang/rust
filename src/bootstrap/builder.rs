@@ -1270,7 +1270,11 @@ impl<'a> Builder<'a> {
         }
 
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
-        rustdocflags.arg("--crate-version").arg(&self.rust_version());
+        // This replaces spaces with newlines because RUSTDOCFLAGS does not
+        // support arguments with regular spaces. Hopefully someday Cargo will
+        // have space support.
+        let rust_version = self.rust_version().replace(' ', "\n");
+        rustdocflags.arg("--crate-version").arg(&rust_version);
 
         // Environment variables *required* throughout the build
         //
@@ -1447,14 +1451,14 @@ impl Rustflags {
 
     fn env(&mut self, env: &str) {
         if let Ok(s) = env::var(env) {
-            for part in s.split_whitespace() {
+            for part in s.split(' ') {
                 self.arg(part);
             }
         }
     }
 
     fn arg(&mut self, arg: &str) -> &mut Self {
-        assert_eq!(arg.split_whitespace().count(), 1);
+        assert_eq!(arg.split(' ').count(), 1);
         if !self.0.is_empty() {
             self.0.push_str(" ");
         }
