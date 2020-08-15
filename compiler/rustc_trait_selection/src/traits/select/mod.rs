@@ -1192,6 +1192,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
         let bounds = tcx.item_bounds(def_id).subst(tcx, substs);
 
+        // The bounds returned by `item_bounds` may contain duplicates after
+        // normalization, so try to deduplicate when possible to avoid
+        // unnecessary ambiguity.
+        let mut distinct_normalized_bounds = FxHashSet::default();
+
         let matching_bounds = bounds
             .iter()
             .enumerate()
@@ -1199,12 +1204,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if let ty::PredicateAtom::Trait(pred, _) = bound.skip_binders() {
                     let bound = ty::Binder::bind(pred.trait_ref);
                     if self.infcx.probe(|_| {
-                        self.match_projection(
+                        if let Ok(normalized_trait) = self.match_projection(
                             obligation,
                             bound,
                             placeholder_trait_predicate.trait_ref,
-                        )
-                        .is_ok()
+                        ) {
+                            match normalized_trait {
+                                None => true,
+                                Some(normalized_trait)
+                                    if distinct_normalized_bounds.insert(normalized_trait) =>
+                                {
+                                    true
+                                }
+                                _ => false,
+                            }
+                        } else {
+                            false
+                        }
                     }) {
                         return Some(idx);
                     }
@@ -1221,34 +1237,41 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         matching_bounds
     }
 
+    /// Equates the trait in `obligation` with trait bound. If the two traits
+    /// can be equated and the normalized trait bound doesn't contain inference
+    /// variables or placeholders, the normalized bound is returned.
     fn match_projection(
         &mut self,
         obligation: &TraitObligation<'tcx>,
         trait_bound: ty::PolyTraitRef<'tcx>,
         placeholder_trait_ref: ty::TraitRef<'tcx>,
-    ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
+    ) -> Result<Option<ty::PolyTraitRef<'tcx>>, ()> {
         debug_assert!(!placeholder_trait_ref.has_escaping_bound_vars());
         if placeholder_trait_ref.def_id != trait_bound.def_id() {
             // Avoid unnecessary normalization
             return Err(());
         }
 
-        let Normalized { value: trait_bound, obligations: mut nested_obligations } =
-            ensure_sufficient_stack(|| {
-                project::normalize_with_depth(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    &trait_bound,
-                )
-            });
+        let Normalized { value: trait_bound, obligations: _ } = ensure_sufficient_stack(|| {
+            project::normalize_with_depth(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                &trait_bound,
+            )
+        });
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(ty::Binder::dummy(placeholder_trait_ref), trait_bound)
-            .map(|InferOk { obligations, .. }| {
-                nested_obligations.extend(obligations);
-                nested_obligations
+            .map(|InferOk { obligations: _, value: () }| {
+                // This method is called within a probe, so we can't have
+                // inference variables and placeholders escape.
+                if !trait_bound.needs_infer() && !trait_bound.has_placeholders() {
+                    Some(trait_bound)
+                } else {
+                    None
+                }
             })
             .map_err(|_| ())
     }
