@@ -501,6 +501,7 @@ impl Builder {
         // for users to install the additional component manually, if needed.
         if self.rust_release == "nightly" {
             self.extend_profile("complete", &mut manifest.profiles, &["rustc-dev"]);
+            self.extend_profile("complete", &mut manifest.profiles, &["rustc-docs"]);
         }
     }
 
@@ -576,6 +577,7 @@ impl Builder {
                 .map(|target| Component::from_str("rust-std", target)),
         );
         extensions.extend(HOSTS.iter().map(|target| Component::from_str("rustc-dev", target)));
+        extensions.extend(HOSTS.iter().map(|target| Component::from_str("rustc-docs", target)));
         extensions.push(Component::from_str("rust-src", "*"));
 
         // If the components/extensions don't actually exist for this
