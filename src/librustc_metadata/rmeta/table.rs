@@ -1,11 +1,11 @@
 use crate::rmeta::*;
 
-use log::debug;
 use rustc_index::vec::Idx;
 use rustc_serialize::opaque::Encoder;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
+use tracing::debug;
 
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
 /// Used mainly for Lazy positions and lengths.

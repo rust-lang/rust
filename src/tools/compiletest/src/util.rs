@@ -3,7 +3,7 @@ use std::env;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
-use log::*;
+use tracing::*;
 
 #[cfg(test)]
 mod tests;

@@ -17,7 +17,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
-use log::debug;
+use tracing::debug;
 
 declare_lint! {
     pub UNUSED_MUST_USE,

@@ -45,7 +45,7 @@ use rls_data::{
     RefKind, Relation, RelationKind, SpanData,
 };
 
-use log::{debug, error};
+use tracing::{debug, error};
 
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {

@@ -30,7 +30,7 @@ Rust MIR: a lowered representation of Rust.
 #![recursion_limit = "256"]
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 

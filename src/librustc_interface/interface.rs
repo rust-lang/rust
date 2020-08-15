@@ -198,7 +198,7 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
 }
 
 pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
-    log::trace!("run_compiler");
+    tracing::trace!("run_compiler");
     let stderr = config.stderr.take();
     util::setup_callbacks_and_run_in_thread_pool_with_globals(
         config.opts.edition,

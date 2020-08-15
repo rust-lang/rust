@@ -10,7 +10,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-log = { package = "tracing", version = "0.1" }
+tracing = "0.1"
 punycode = "0.4.0"
 rustc-demangle = "0.1.16"
 

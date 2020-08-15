@@ -106,7 +106,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
 
-use log::debug;
+use tracing::debug;
 
 mod legacy;
 mod v0;

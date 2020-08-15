@@ -1853,7 +1853,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
         let ret = self.required_visibility == ty::Visibility::Public
             && self.tcx.is_private_dep(item_id.krate);
 
-        log::debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
+        tracing::debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
         ret
     }
 }

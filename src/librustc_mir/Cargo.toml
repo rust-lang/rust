@@ -13,7 +13,7 @@ doctest = false
 either = "1.5.0"
 rustc_graphviz = { path = "../librustc_graphviz" }
 itertools = "0.8"
-log = { package = "tracing", version = "0.1" }
+tracing = "0.1"
 log_settings = "0.1.1"
 polonius-engine = "0.12.0"
 rustc_middle = { path = "../librustc_middle" }

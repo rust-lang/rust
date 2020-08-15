@@ -1878,7 +1878,7 @@ fn parse_pretty(
                 }
             }
         };
-        log::debug!("got unpretty option: {:?}", first);
+        tracing::debug!("got unpretty option: {:?}", first);
         first
     }
 }

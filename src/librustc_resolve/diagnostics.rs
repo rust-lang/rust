@@ -1,7 +1,6 @@
 use std::cmp::Reverse;
 use std::ptr;
 
-use log::debug;
 use rustc_ast::ast::{self, Path};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast_pretty::pprust;
@@ -18,6 +17,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span};
+use tracing::debug;
 
 use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::path_names_to_string;

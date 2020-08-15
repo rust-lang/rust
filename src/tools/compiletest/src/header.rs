@@ -5,7 +5,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use log::*;
+use tracing::*;
 
 use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PassMode};
 use crate::extract_gdb_version;

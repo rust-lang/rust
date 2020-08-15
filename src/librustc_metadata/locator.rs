@@ -230,11 +230,11 @@ use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
 
 use flate2::read::DeflateDecoder;
-use log::{debug, info, warn};
 use std::io::{Read, Result as IoResult, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt, fs};
+use tracing::{debug, info, warn};
 
 #[derive(Clone)]
 crate struct CrateLocator<'a> {

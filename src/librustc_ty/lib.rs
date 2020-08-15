@@ -12,7 +12,7 @@
 #[macro_use]
 extern crate rustc_middle;
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 use rustc_middle::ty::query::Providers;
 
