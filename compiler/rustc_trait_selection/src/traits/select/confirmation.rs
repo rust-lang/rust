@@ -439,26 +439,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let upcast_trait_ref = upcast_trait_ref.unwrap();
 
-        // Check supertraits hold
+        // Check supertraits hold. This is so that their associated type bounds
+        // will be checked in the code below.
         for super_trait in tcx
             .super_predicates_of(trait_predicate.def_id())
             .instantiate(tcx, trait_predicate.trait_ref.substs)
             .predicates
             .into_iter()
         {
-            let normalized_super_trait = normalize_with_depth_to(
-                self,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                &super_trait,
-                &mut nested,
-            );
-            nested.push(Obligation::new(
-                obligation.cause.clone(),
-                obligation.param_env.clone(),
-                normalized_super_trait,
-            ));
+            if let ty::PredicateAtom::Trait(..) = super_trait.skip_binders() {
+                let normalized_super_trait = normalize_with_depth_to(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    &super_trait,
+                    &mut nested,
+                );
+                nested.push(Obligation::new(
+                    obligation.cause.clone(),
+                    obligation.param_env.clone(),
+                    normalized_super_trait,
+                ));
+            }
         }
 
         let assoc_types: Vec<_> = tcx
