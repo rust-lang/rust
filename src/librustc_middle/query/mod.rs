@@ -884,6 +884,7 @@ rustc_queries! {
         query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
             desc { "computing whether `{}` is `Sized`", env.value }
         }
+
         /// Query backing `TyS::is_freeze`.
         query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
             desc { "computing whether `{}` is freeze", env.value }

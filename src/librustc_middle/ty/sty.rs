@@ -19,7 +19,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{Layout, VariantIdx};
 use rustc_target::spec::abi;
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -2250,5 +2250,23 @@ impl<'tcx> TyS<'tcx> {
     /// Is this a zero-sized type?
     pub fn is_zst(&'tcx self, tcx: TyCtxt<'tcx>, did: DefId) -> bool {
         tcx.layout_of(tcx.param_env(did).and(self)).map(|layout| layout.is_zst()).unwrap_or(false)
+    }
+
+    /// Returns an iterator over the sized layouts of the variants of a type given context and
+    /// specific definition. If the type is not an ADT, returns None.
+    pub fn layout_of_variants(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<impl Iterator<Item = &'tcx Layout> + 'tcx> {
+        let iter = match self.kind {
+            ty::Adt(def, _substs) => def.variants.iter().flat_map(move |var_def| {
+                tcx.layout_of(tcx.param_env(var_def.def_id).and(self))
+                    .ok()
+                    .filter(|ty_and_layout| !ty_and_layout.is_unsized())
+                    .map(|ty_and_layout| ty_and_layout.layout)
+            }),
+            _ => return None,
+        };
+        Some(iter)
     }
 }
