@@ -49,5 +49,10 @@ fn main() {
             let y = Y { a: S };
         }
         assert_eq!(CHECK, 2); // 2, dtor of Y is called
+        {
+            let y2 = Y { a: S };
+            std::mem::forget(y2);
+        }
+        assert_eq!(CHECK, 2); // 2, dtor of Y *not* called for y2
     }
 }
