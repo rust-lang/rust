@@ -145,6 +145,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
             StatementKind::AscribeUserType(..)
+            | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
             | StatementKind::Nop
             | StatementKind::Retag(..)

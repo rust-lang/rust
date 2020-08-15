@@ -6,24 +6,10 @@
       let mut _1: ();                      // in scope 0 at /the/src/instrument_coverage.rs:10:1: 16:2
       let mut _2: bool;                    // in scope 0 at /the/src/instrument_coverage.rs:12:12: 12:17
       let mut _3: !;                       // in scope 0 at /the/src/instrument_coverage.rs:12:18: 14:10
-+     let mut _4: ();                      // in scope 0 at /the/src/instrument_coverage.rs:10:11: 10:11
   
       bb0: {
--         falseUnwind -> [real: bb1, cleanup: bb2]; // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
-+         StorageLive(_4);                 // scope 0 at /the/src/instrument_coverage.rs:10:11: 10:11
-+         _4 = const std::intrinsics::count_code_region(const 16004455475339839479_u64, const 0_u32, const "/the/src/instrument_coverage.rs", const 10_u32, const 11_u32, const 16_u32, const 2_u32) -> bb7; // scope 0 at /the/src/instrument_coverage.rs:10:11: 10:11
-+                                          // ty::Const
-+                                          // + ty: unsafe extern "rust-intrinsic" fn(u64, u32, &'static str, u32, u32, u32, u32) {std::intrinsics::count_code_region}
-+                                          // + val: Value(Scalar(<ZST>))
-+                                          // mir::Constant
-+                                          // + span: /the/src/instrument_coverage.rs:10:11: 10:11
-+                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u64, u32, &'static str, u32, u32, u32, u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
-+                                          // ty::Const
-+                                          // + ty: &str
-+                                          // + val: Value(Slice { data: Allocation { bytes: [47, 116, 104, 101, 47, 115, 114, 99, 47, 105, 110, 115, 116, 114, 117, 109, 101, 110, 116, 95, 99, 111, 118, 101, 114, 97, 103, 101, 46, 114, 115], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [2147483647], len: Size { raw: 31 } }, size: Size { raw: 31 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 31 })
-+                                          // mir::Constant
-+                                          // + span: /the/src/instrument_coverage.rs:10:11: 10:11
-+                                          // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [47, 116, 104, 101, 47, 115, 114, 99, 47, 105, 110, 115, 116, 114, 117, 109, 101, 110, 116, 95, 99, 111, 118, 101, 114, 97, 103, 101, 46, 114, 115], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [2147483647], len: Size { raw: 31 } }, size: Size { raw: 31 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 31 }) }
++         Coverage { kind: Counter { function_source_hash: 16004455475339839479, id: CounterValueReference(0) }, code_region: /the/src/instrument_coverage.rs:10:11 - 16:2 }; // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
+          falseUnwind -> [real: bb1, cleanup: bb2]; // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
       }
   
       bb1: {
@@ -72,11 +58,6 @@
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_2);                 // scope 0 at /the/src/instrument_coverage.rs:15:5: 15:6
           return;                          // scope 0 at /the/src/instrument_coverage.rs:16:2: 16:2
-+     }
-+ 
-+     bb7: {
-+         StorageDead(_4);                 // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
-+         falseUnwind -> [real: bb1, cleanup: bb2]; // scope 0 at /the/src/instrument_coverage.rs:11:5: 15:6
       }
   }
   

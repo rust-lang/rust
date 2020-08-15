@@ -302,6 +302,7 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             | mir::StatementKind::StorageLive(..)
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::AscribeUserType(..)
+            | mir::StatementKind::Coverage(..)
             | mir::StatementKind::Nop => {}
         }
     }

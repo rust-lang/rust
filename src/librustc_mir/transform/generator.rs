@@ -1443,6 +1443,7 @@ impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(..)
             | StatementKind::AscribeUserType(..)
+            | StatementKind::Coverage(..)
             | StatementKind::Nop => {}
         }
     }

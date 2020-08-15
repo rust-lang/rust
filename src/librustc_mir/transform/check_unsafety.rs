@@ -114,6 +114,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             | StatementKind::StorageDead(..)
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
+            | StatementKind::Coverage(..)
             | StatementKind::Nop => {
                 // safe (at least as emitted during MIR construction)
             }

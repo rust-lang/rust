@@ -93,6 +93,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 }
             }
             StatementKind::Nop
+            | StatementKind::Coverage(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Retag { .. }
             | StatementKind::StorageLive(..) => {

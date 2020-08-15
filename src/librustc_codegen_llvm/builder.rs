@@ -1117,7 +1117,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         hash: &'ll Value,
         num_counters: &'ll Value,
         index: &'ll Value,
-    ) -> &'ll Value {
+    ) {
         debug!(
             "instrprof_increment() with args ({:?}, {:?}, {:?}, {:?})",
             fn_name, hash, num_counters, index
@@ -1128,13 +1128,13 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let args = self.check_call("call", llfn, args);
 
         unsafe {
-            llvm::LLVMRustBuildCall(
+            let _ = llvm::LLVMRustBuildCall(
                 self.llbuilder,
                 llfn,
                 args.as_ptr() as *const &llvm::Value,
                 args.len() as c_uint,
                 None,
-            )
+            );
         }
     }
 

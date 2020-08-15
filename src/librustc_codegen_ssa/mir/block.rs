@@ -647,17 +647,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if intrinsic.is_some() && intrinsic != Some(sym::drop_in_place) {
             let intrinsic = intrinsic.unwrap();
-
-            // `is_codegen_intrinsic()` allows the backend implementation to perform compile-time
-            // operations before converting the `args` to backend values.
-            if !bx.is_codegen_intrinsic(intrinsic, &args, self.instance) {
-                // If the intrinsic call was fully addressed by the `is_codegen_intrinsic()` call
-                // (as a compile-time operation), return immediately. This avoids the need to
-                // convert the arguments, the call to `codegen_intrinsic_call()`, and the return
-                // value handling.
-                return;
-            }
-
             let dest = match ret_dest {
                 _ if fn_abi.ret.is_indirect() => llargs[0],
                 ReturnDest::Nothing => {
@@ -702,7 +691,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 &args,
                 dest,
                 terminator.source_info.span,
-                self.instance,
             );
 
             if let ReturnDest::IndirectOperand(dst, _) = ret_dest {

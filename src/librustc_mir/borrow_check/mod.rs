@@ -644,6 +644,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 }
             }
             StatementKind::Nop
+            | StatementKind::Coverage(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Retag { .. }
             | StatementKind::StorageLive(..) => {

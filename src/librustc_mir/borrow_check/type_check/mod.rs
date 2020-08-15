@@ -1532,6 +1532,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | StatementKind::StorageDead(..)
             | StatementKind::LlvmInlineAsm { .. }
             | StatementKind::Retag { .. }
+            | StatementKind::Coverage(..)
             | StatementKind::Nop => {}
         }
     }

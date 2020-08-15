@@ -484,6 +484,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 mod analyze;
 mod block;
 pub mod constant;
+pub mod coverageinfo;
 pub mod debuginfo;
 pub mod operand;
 pub mod place;

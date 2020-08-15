@@ -318,6 +318,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
             StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
+            | StatementKind::Coverage(..)
             | StatementKind::Nop => {}
         }
     }
