@@ -1501,6 +1501,8 @@ unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 /// The iterator yields one value if the [`Option`] is a [`Some`], otherwise none.
 ///
 /// This `struct` is created by the [`Option::into_iter`] function.
+///
+/// [`Option::into_iter`]: enum.Option.html#method.into_iter
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<A> {
