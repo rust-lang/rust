@@ -528,17 +528,7 @@ pub(crate) fn rewrite_block_with_visitor(
             let open_pos = snippet.find_uncommented("{")?;
             visitor.last_pos = block.span.lo() + BytePos(open_pos as u32)
         }
-        (ast::BlockCheckMode::Default, None) => {
-            visitor.last_pos = block.span.lo();
-            if let Some(attrs) = attrs {
-                if let Some(first) = attrs.first() {
-                    let first_lo_span = first.span.lo();
-                    if first_lo_span < visitor.last_pos {
-                        visitor.last_pos = first_lo_span;
-                    }
-                }
-            }
-        }
+        (ast::BlockCheckMode::Default, None) => visitor.last_pos = block.span.lo(),
     }
 
     let inner_attrs = attrs.map(inner_attributes);
