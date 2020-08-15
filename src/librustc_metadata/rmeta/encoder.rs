@@ -3,7 +3,7 @@ use crate::rmeta::*;
 
 use log::{debug, trace};
 use rustc_ast::ast;
-use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fingerprint::{Fingerprint, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, Lrc};
@@ -23,11 +23,11 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
 };
-use rustc_middle::mir::{self, interpret};
+use rustc_middle::mir::interpret;
 use rustc_middle::traits::specialization_graph;
-use rustc_middle::ty::codec::{self as ty_codec, TyEncoder};
+use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
-use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder, UseSpecializedEncodable};
+use rustc_serialize::{opaque, Encodable, Encoder};
 use rustc_session::config::CrateType;
 use rustc_span::hygiene::{ExpnDataEncodeMode, HygieneEncodeContext};
 use rustc_span::source_map::Spanned;
@@ -38,7 +38,7 @@ use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
 
-struct EncodeContext<'a, 'tcx> {
+pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::Encoder,
     tcx: TyCtxt<'tcx>,
 
@@ -107,100 +107,87 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, T> SpecializedEncoder<Lazy<T, ()>> for EncodeContext<'a, 'tcx> {
-    fn specialized_encode(&mut self, lazy: &Lazy<T>) -> Result<(), Self::Error> {
-        self.emit_lazy_distance(*lazy)
+impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> Encodable<EncodeContext<'a, 'tcx>>
+    for Lazy<T>
+{
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
+        e.emit_lazy_distance(*self)
     }
 }
 
-impl<'a, 'tcx, T> SpecializedEncoder<Lazy<[T], usize>> for EncodeContext<'a, 'tcx> {
-    fn specialized_encode(&mut self, lazy: &Lazy<[T]>) -> Result<(), Self::Error> {
-        self.emit_usize(lazy.meta)?;
-        if lazy.meta == 0 {
+impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> Encodable<EncodeContext<'a, 'tcx>>
+    for Lazy<[T]>
+{
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
+        e.emit_usize(self.meta)?;
+        if self.meta == 0 {
             return Ok(());
         }
-        self.emit_lazy_distance(*lazy)
+        e.emit_lazy_distance(*self)
     }
 }
 
-impl<'a, 'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>, usize>> for EncodeContext<'a, 'tcx>
+impl<'a, 'tcx, I: Idx, T: Encodable<EncodeContext<'a, 'tcx>>> Encodable<EncodeContext<'a, 'tcx>>
+    for Lazy<Table<I, T>>
 where
     Option<T>: FixedSizeEncoding,
 {
-    fn specialized_encode(&mut self, lazy: &Lazy<Table<I, T>>) -> Result<(), Self::Error> {
-        self.emit_usize(lazy.meta)?;
-        self.emit_lazy_distance(*lazy)
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
+        e.emit_usize(self.meta)?;
+        e.emit_lazy_distance(*self)
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'a, 'tcx> {
-    #[inline]
-    fn specialized_encode(&mut self, cnum: &CrateNum) -> Result<(), Self::Error> {
-        self.emit_u32(cnum.as_u32())
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefIndex {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
+        s.emit_u32(self.as_u32())
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<DefId> for EncodeContext<'a, 'tcx> {
-    #[inline]
-    fn specialized_encode(&mut self, def_id: &DefId) -> Result<(), Self::Error> {
-        let DefId { krate, index } = *def_id;
-
-        krate.encode(self)?;
-        index.encode(self)
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SyntaxContext {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
+        rustc_span::hygiene::raw_encode_syntax_context(*self, &s.hygiene_ctxt, s)
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<SyntaxContext> for EncodeContext<'a, 'tcx> {
-    fn specialized_encode(&mut self, ctxt: &SyntaxContext) -> Result<(), Self::Error> {
-        rustc_span::hygiene::raw_encode_syntax_context(*ctxt, &self.hygiene_ctxt, self)
-    }
-}
-
-impl<'a, 'tcx> SpecializedEncoder<ExpnId> for EncodeContext<'a, 'tcx> {
-    fn specialized_encode(&mut self, expn: &ExpnId) -> Result<(), Self::Error> {
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnId {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
         rustc_span::hygiene::raw_encode_expn_id(
-            *expn,
-            &self.hygiene_ctxt,
+            *self,
+            &s.hygiene_ctxt,
             ExpnDataEncodeMode::Metadata,
-            self,
+            s,
         )
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'a, 'tcx> {
-    #[inline]
-    fn specialized_encode(&mut self, def_index: &DefIndex) -> Result<(), Self::Error> {
-        self.emit_u32(def_index.as_u32())
-    }
-}
-
-impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
-    fn specialized_encode(&mut self, span: &Span) -> Result<(), Self::Error> {
-        if span.is_dummy() {
-            return TAG_INVALID_SPAN.encode(self);
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
+        if self.is_dummy() {
+            return TAG_INVALID_SPAN.encode(s);
         }
 
-        let span = span.data();
+        let span = self.data();
 
         // The Span infrastructure should make sure that this invariant holds:
         debug_assert!(span.lo <= span.hi);
 
-        if !self.source_file_cache.0.contains(span.lo) {
-            let source_map = self.tcx.sess.source_map();
+        if !s.source_file_cache.0.contains(span.lo) {
+            let source_map = s.tcx.sess.source_map();
             let source_file_index = source_map.lookup_source_file_idx(span.lo);
-            self.source_file_cache =
+            s.source_file_cache =
                 (source_map.files()[source_file_index].clone(), source_file_index);
         }
 
-        if !self.source_file_cache.0.contains(span.hi) {
+        if !s.source_file_cache.0.contains(span.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
-            return TAG_INVALID_SPAN.encode(self);
+            return TAG_INVALID_SPAN.encode(s);
         }
 
-        let source_files = self.required_source_files.as_mut().expect("Already encoded SourceMap!");
+        let source_files = s.required_source_files.as_mut().expect("Already encoded SourceMap!");
         // Record the fact that we need to encode the data for this `SourceFile`
-        source_files.insert(self.source_file_cache.1);
+        source_files.insert(s.source_file_cache.1);
 
         // There are two possible cases here:
         // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
@@ -218,7 +205,7 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         // if we're a proc-macro crate.
         // This allows us to avoid loading the dependencies of proc-macro crates: all of
         // the information we need to decode `Span`s is stored in the proc-macro crate.
-        let (tag, lo, hi) = if self.source_file_cache.0.is_imported() && !self.is_proc_macro {
+        let (tag, lo, hi) = if s.source_file_cache.0.is_imported() && !s.is_proc_macro {
             // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
             // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
             // are relative to the source map information for the 'foreign' crate whose CrateNum
@@ -230,26 +217,26 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
             // Span that can be used without any additional trouble.
             let external_start_pos = {
                 // Introduce a new scope so that we drop the 'lock()' temporary
-                match &*self.source_file_cache.0.external_src.lock() {
+                match &*s.source_file_cache.0.external_src.lock() {
                     ExternalSource::Foreign { original_start_pos, .. } => *original_start_pos,
                     src => panic!("Unexpected external source {:?}", src),
                 }
             };
-            let lo = (span.lo - self.source_file_cache.0.start_pos) + external_start_pos;
-            let hi = (span.hi - self.source_file_cache.0.start_pos) + external_start_pos;
+            let lo = (span.lo - s.source_file_cache.0.start_pos) + external_start_pos;
+            let hi = (span.hi - s.source_file_cache.0.start_pos) + external_start_pos;
 
             (TAG_VALID_SPAN_FOREIGN, lo, hi)
         } else {
             (TAG_VALID_SPAN_LOCAL, span.lo, span.hi)
         };
 
-        tag.encode(self)?;
-        lo.encode(self)?;
+        tag.encode(s)?;
+        lo.encode(s)?;
 
         // Encode length which is usually less than span.hi and profits more
         // from the variable-length integer encoding that we use.
         let len = hi - lo;
-        len.encode(self)?;
+        len.encode(s)?;
 
         // Don't serialize any `SyntaxContext`s from a proc-macro crate,
         // since we don't load proc-macro dependencies during serialization.
@@ -282,101 +269,85 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         // IMPORTANT: If this is ever changed, be sure to update
         // `rustc_span::hygiene::raw_encode_expn_id` to handle
         // encoding `ExpnData` for proc-macro crates.
-        if self.is_proc_macro {
-            SyntaxContext::root().encode(self)?;
+        if s.is_proc_macro {
+            SyntaxContext::root().encode(s)?;
         } else {
-            span.ctxt.encode(self)?;
+            span.ctxt.encode(s)?;
         }
 
         if tag == TAG_VALID_SPAN_FOREIGN {
-            // This needs to be two lines to avoid holding the `self.source_file_cache`
-            // while calling `cnum.encode(self)`
-            let cnum = self.source_file_cache.0.cnum;
-            cnum.encode(self)?;
+            // This needs to be two lines to avoid holding the `s.source_file_cache`
+            // while calling `cnum.encode(s)`
+            let cnum = s.source_file_cache.0.cnum;
+            cnum.encode(s)?;
         }
 
         Ok(())
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'a, 'tcx> {
-    #[inline]
-    fn specialized_encode(&mut self, def_id: &LocalDefId) -> Result<(), Self::Error> {
-        self.specialized_encode(&def_id.to_def_id())
-    }
-}
-
-impl<'a, 'b, 'c, 'tcx> SpecializedEncoder<&'a ty::TyS<'b>> for EncodeContext<'c, 'tcx>
-where
-    &'a ty::TyS<'b>: UseSpecializedEncodable,
-{
-    fn specialized_encode(&mut self, ty: &&'a ty::TyS<'b>) -> Result<(), Self::Error> {
-        debug_assert!(self.tcx.lift(ty).is_some());
-        let ty = unsafe { std::mem::transmute::<&&'a ty::TyS<'b>, &&'tcx ty::TyS<'tcx>>(ty) };
-        ty_codec::encode_with_shorthand(self, ty, |ecx| &mut ecx.type_shorthands)
-    }
-}
-
-impl<'a, 'b, 'tcx> SpecializedEncoder<ty::Predicate<'b>> for EncodeContext<'a, 'tcx> {
-    fn specialized_encode(&mut self, predicate: &ty::Predicate<'b>) -> Result<(), Self::Error> {
-        debug_assert!(self.tcx.lift(predicate).is_some());
-        let predicate =
-            unsafe { std::mem::transmute::<&ty::Predicate<'b>, &ty::Predicate<'tcx>>(predicate) };
-        ty_codec::encode_with_shorthand(self, predicate, |encoder| {
-            &mut encoder.predicate_shorthands
-        })
-    }
-}
-
-impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
-    fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
-        let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
-        index.encode(self)
-    }
-}
-
-impl<'a, 'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'a, 'tcx> {
-    fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
+impl<'a, 'tcx> FingerprintEncoder for EncodeContext<'a, 'tcx> {
+    fn encode_fingerprint(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(&mut self.opaque)
     }
 }
 
-impl<'a, 'tcx, T> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'a, 'tcx>
-where
-    mir::ClearCrossCrate<T>: UseSpecializedEncodable,
-{
-    fn specialized_encode(&mut self, _: &mir::ClearCrossCrate<T>) -> Result<(), Self::Error> {
-        Ok(())
+impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
+    const CLEAR_CROSS_CRATE: bool = true;
+
+    fn position(&self) -> usize {
+        self.opaque.position()
+    }
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
+        &mut self.type_shorthands
+    }
+
+    fn predicate_shorthands(&mut self) -> &mut FxHashMap<rustc_middle::ty::Predicate<'tcx>, usize> {
+        &mut self.predicate_shorthands
+    }
+
+    fn encode_alloc_id(
+        &mut self,
+        alloc_id: &rustc_middle::mir::interpret::AllocId,
+    ) -> Result<(), Self::Error> {
+        let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
+
+        index.encode(self)
     }
 }
 
-impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
-    fn position(&self) -> usize {
-        self.opaque.position()
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
+        (**self).encode(s)
     }
 }
 
 /// Helper trait to allow overloading `EncodeContext::lazy` for iterators.
-trait EncodeContentsForLazy<T: ?Sized + LazyMeta> {
+trait EncodeContentsForLazy<'a, 'tcx, T: ?Sized + LazyMeta> {
     fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) -> T::Meta;
 }
 
-impl<T: Encodable> EncodeContentsForLazy<T> for &T {
+impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> EncodeContentsForLazy<'a, 'tcx, T> for &T {
     fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) {
         self.encode(ecx).unwrap()
     }
 }
 
-impl<T: Encodable> EncodeContentsForLazy<T> for T {
+impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> EncodeContentsForLazy<'a, 'tcx, T> for T {
     fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) {
         self.encode(ecx).unwrap()
     }
 }
 
-impl<I, T: Encodable> EncodeContentsForLazy<[T]> for I
+impl<'a, 'tcx, I, T: Encodable<EncodeContext<'a, 'tcx>>> EncodeContentsForLazy<'a, 'tcx, [T]> for I
 where
     I: IntoIterator,
-    I::Item: EncodeContentsForLazy<T>,
+    I::Item: EncodeContentsForLazy<'a, 'tcx, T>,
 {
     fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) -> usize {
         self.into_iter().map(|value| value.encode_contents_for_lazy(ecx)).count()
@@ -421,7 +392,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.emit_usize(distance)
     }
 
-    fn lazy<T: ?Sized + LazyMeta>(&mut self, value: impl EncodeContentsForLazy<T>) -> Lazy<T> {
+    fn lazy<T: ?Sized + LazyMeta>(
+        &mut self,
+        value: impl EncodeContentsForLazy<'a, 'tcx, T>,
+    ) -> Lazy<T> {
         let pos = NonZeroUsize::new(self.position()).unwrap();
 
         assert_eq!(self.lazy_state, LazyState::NoNode);

@@ -15,6 +15,7 @@ log = { package = "tracing", version = "0.1" }
 rustc-rayon-core = "0.3.0"
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
+rustc_macros = { path = "../librustc_macros" }
 rustc_index = { path = "../librustc_index" }
 rustc_serialize = { path = "../librustc_serialize" }
 rustc_span = { path = "../librustc_span" }

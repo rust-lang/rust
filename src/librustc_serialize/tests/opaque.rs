@@ -1,10 +1,11 @@
 #![allow(rustc::internal)]
 
+use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{Decoder, Encoder};
 use rustc_serialize::{Decodable, Encodable};
 use std::fmt::Debug;
 
-#[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Clone, Debug, Encodable, Decodable)]
 struct Struct {
     a: (),
     b: u8,
@@ -27,11 +28,13 @@ struct Struct {
     q: Option<u32>,
 }
 
-fn check_round_trip<T: Encodable + Decodable + PartialEq + Debug>(values: Vec<T>) {
+fn check_round_trip<T: Encodable<Encoder> + for<'a> Decodable<Decoder<'a>> + PartialEq + Debug>(
+    values: Vec<T>,
+) {
     let mut encoder = Encoder::new(Vec::new());
 
     for value in &values {
-        Encodable::encode(&value, &mut encoder).unwrap();
+        Encodable::encode(value, &mut encoder).unwrap();
     }
 
     let data = encoder.into_inner();
@@ -225,7 +228,7 @@ fn test_struct() {
     }]);
 }
 
-#[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Clone, Debug, Encodable, Decodable)]
 enum Enum {
     Variant1,
     Variant2(usize, f32),

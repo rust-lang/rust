@@ -19,7 +19,7 @@ use rustc_data_structures::sync::Lrc;
 
 /// Contains the sub-token-trees of a "delimited" token tree, such as the contents of `(`. Note
 /// that the delimiter itself might be `NoDelim`.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
 struct Delimited {
     delim: token::DelimToken,
     tts: Vec<TokenTree>,
@@ -37,7 +37,7 @@ impl Delimited {
     }
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
 struct SequenceRepetition {
     /// The sequence of token trees
     tts: Vec<TokenTree>,
@@ -49,7 +49,7 @@ struct SequenceRepetition {
     num_captures: usize,
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy)]
 struct KleeneToken {
     span: Span,
     op: KleeneOp,
@@ -63,7 +63,7 @@ impl KleeneToken {
 
 /// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
 /// for token sequences.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy)]
 enum KleeneOp {
     /// Kleene star (`*`) for zero or more repetitions
     ZeroOrMore,
@@ -75,7 +75,7 @@ enum KleeneOp {
 
 /// Similar to `tokenstream::TokenTree`, except that `$i`, `$i:ident`, and `$(...)`
 /// are "first-class" token trees. Useful for parsing macros.
-#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, PartialEq, Encodable, Decodable)]
 enum TokenTree {
     Token(Token),
     Delimited(DelimSpan, Lrc<Delimited>),

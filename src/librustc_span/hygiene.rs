@@ -34,16 +34,14 @@ use log::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{
-    Decodable, Decoder, Encodable, Encoder, UseSpecializedDecodable, UseSpecializedEncodable,
-};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxContext(u32);
 
-#[derive(Debug, RustcEncodable, RustcDecodable, Clone)]
+#[derive(Debug, Encodable, Decodable, Clone)]
 pub struct SyntaxContextData {
     outer_expn: ExpnId,
     outer_transparency: Transparency,
@@ -62,7 +60,7 @@ pub struct ExpnId(u32);
 
 /// A property of a macro expansion that determines how identifiers
 /// produced by that expansion are resolved.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
@@ -664,7 +662,7 @@ impl Span {
 
 /// A subset of properties from both macro definition and macro call available through global data.
 /// Avoid using this if you have access to the original definition or call structures.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub struct ExpnData {
     // --- The part unique to each expansion.
     /// The kind of this expansion - macro or compiler desugaring.
@@ -766,7 +764,7 @@ impl ExpnData {
 }
 
 /// Expansion kind.
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Clone, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum ExpnKind {
     /// No expansion, aka root expansion. Only `ExpnId::root()` has this kind.
     Root,
@@ -794,7 +792,7 @@ impl ExpnKind {
 }
 
 /// The kind of macro invocation or definition.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
@@ -830,7 +828,7 @@ impl MacroKind {
 }
 
 /// The kind of AST transform.
-#[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum AstPass {
     StdImports,
     TestHarness,
@@ -848,7 +846,7 @@ impl AstPass {
 }
 
 /// The kind of compiler desugaring.
-#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum DesugaringKind {
     /// We desugar `if c { i } else { e }` to `match $ExprKind::Use(c) { true => i, _ => e }`.
     /// However, we do not want to blame `c` for unreachability but rather say that `i`
@@ -867,7 +865,7 @@ pub enum DesugaringKind {
 }
 
 /// A location in the desugaring of a `for` loop
-#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum ForLoopLoc {
     Head,
     IntoIter,
@@ -887,9 +885,6 @@ impl DesugaringKind {
         }
     }
 }
-
-impl UseSpecializedEncodable for ExpnId {}
-impl UseSpecializedDecodable for ExpnId {}
 
 #[derive(Default)]
 pub struct HygieneEncodeContext {
@@ -1137,6 +1132,7 @@ pub fn for_all_expns_in<E, F: FnMut(u32, ExpnId, &ExpnData) -> Result<(), E>>(
     }
     Ok(())
 }
+
 pub fn for_all_data<E, F: FnMut((u32, SyntaxContext, &SyntaxContextData)) -> Result<(), E>>(
     mut f: F,
 ) -> Result<(), E> {
@@ -1145,6 +1141,18 @@ pub fn for_all_data<E, F: FnMut((u32, SyntaxContext, &SyntaxContextData)) -> Res
         f((i as u32, SyntaxContext(i as u32), &data))?;
     }
     Ok(())
+}
+
+impl<E: Encoder> Encodable<E> for ExpnId {
+    default fn encode(&self, _: &mut E) -> Result<(), E::Error> {
+        panic!("cannot encode `ExpnId` with `{}`", std::any::type_name::<E>());
+    }
+}
+
+impl<D: Decoder> Decodable<D> for ExpnId {
+    default fn decode(_: &mut D) -> Result<Self, D::Error> {
+        panic!("cannot decode `ExpnId` with `{}`", std::any::type_name::<D>());
+    }
 }
 
 pub fn for_all_expn_data<E, F: FnMut(u32, &ExpnData) -> Result<(), E>>(mut f: F) -> Result<(), E> {
@@ -1218,5 +1226,14 @@ impl<'a> ExpnDataDecodeMode<'a, Box<dyn FnOnce(CrateNum) -> &'a HygieneDecodeCon
     }
 }
 
-impl UseSpecializedEncodable for SyntaxContext {}
-impl UseSpecializedDecodable for SyntaxContext {}
+impl<E: Encoder> Encodable<E> for SyntaxContext {
+    default fn encode(&self, _: &mut E) -> Result<(), E::Error> {
+        panic!("cannot encode `SyntaxContext` with `{}`", std::any::type_name::<E>());
+    }
+}
+
+impl<D: Decoder> Decodable<D> for SyntaxContext {
+    default fn decode(_: &mut D) -> Result<Self, D::Error> {
+        panic!("cannot decode `SyntaxContext` with `{}`", std::any::type_name::<D>());
+    }
+}

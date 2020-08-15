@@ -114,14 +114,14 @@ impl<T> fmt::Pointer for P<T> {
     }
 }
 
-impl<T: 'static + Decodable> Decodable for P<T> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<P<T>, D::Error> {
+impl<D: Decoder, T: 'static + Decodable<D>> Decodable<D> for P<T> {
+    fn decode(d: &mut D) -> Result<P<T>, D::Error> {
         Decodable::decode(d).map(P)
     }
 }
 
-impl<T: Encodable> Encodable for P<T> {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<T> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
     }
 }
@@ -197,14 +197,14 @@ impl<'a, T> IntoIterator for &'a P<[T]> {
     }
 }
 
-impl<T: Encodable> Encodable for P<[T]> {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<[T]> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         Encodable::encode(&**self, s)
     }
 }
 
-impl<T: Decodable> Decodable for P<[T]> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<P<[T]>, D::Error> {
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for P<[T]> {
+    fn decode(d: &mut D) -> Result<P<[T]>, D::Error> {
         Ok(P::from_vec(Decodable::decode(d)?))
     }
 }

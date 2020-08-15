@@ -35,7 +35,7 @@ use std::{iter, mem};
 ///
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
-#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum TokenTree {
     /// A single token
     Token(Token),
@@ -124,7 +124,7 @@ where
 /// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
 /// instead of a representation of the abstract syntax tree.
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for back-compat.
-#[derive(Clone, Debug, Default, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub Lrc<Vec<TreeAndJoint>>);
 
 pub type TreeAndJoint = (TokenTree, IsJoint);
@@ -133,7 +133,7 @@ pub type TreeAndJoint = (TokenTree, IsJoint);
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(TokenStream, 8);
 
-#[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable)]
 pub enum IsJoint {
     Joint,
     NonJoint,
@@ -408,7 +408,7 @@ impl Cursor {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,

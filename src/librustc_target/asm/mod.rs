@@ -13,7 +13,7 @@ macro_rules! def_reg_class {
             $class:ident,
         )*
     }) => {
-        #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, Eq, PartialEq, Hash, HashStable_Generic)]
+        #[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, Hash, HashStable_Generic)]
         #[allow(non_camel_case_types)]
         pub enum $arch_regclass {
             $($class,)*
@@ -62,7 +62,7 @@ macro_rules! def_regs {
         )*
     }) => {
         #[allow(unreachable_code)]
-        #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, Eq, PartialEq, Hash, HashStable_Generic)]
+        #[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, Hash, HashStable_Generic)]
         #[allow(non_camel_case_types)]
         pub enum $arch_reg {
             $($reg,)*
@@ -163,7 +163,7 @@ pub use nvptx::{NvptxInlineAsmReg, NvptxInlineAsmRegClass};
 pub use riscv::{RiscVInlineAsmReg, RiscVInlineAsmRegClass};
 pub use x86::{X86InlineAsmReg, X86InlineAsmRegClass};
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, Hash)]
 pub enum InlineAsmArch {
     X86,
     X86_64,
@@ -193,17 +193,7 @@ impl FromStr for InlineAsmArch {
     }
 }
 
-#[derive(
-    Copy,
-    Clone,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    Eq,
-    PartialEq,
-    Hash,
-    HashStable_Generic
-)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, Hash, HashStable_Generic)]
 pub enum InlineAsmReg {
     X86(X86InlineAsmReg),
     Arm(ArmInlineAsmReg),
@@ -293,17 +283,7 @@ impl InlineAsmReg {
     }
 }
 
-#[derive(
-    Copy,
-    Clone,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    Eq,
-    PartialEq,
-    Hash,
-    HashStable_Generic
-)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, Hash, HashStable_Generic)]
 pub enum InlineAsmRegClass {
     X86(X86InlineAsmRegClass),
     Arm(ArmInlineAsmRegClass),
@@ -429,17 +409,7 @@ impl InlineAsmRegClass {
     }
 }
 
-#[derive(
-    Copy,
-    Clone,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    Eq,
-    PartialEq,
-    Hash,
-    HashStable_Generic
-)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, Hash, HashStable_Generic)]
 pub enum InlineAsmRegOrRegClass {
     Reg(InlineAsmReg),
     RegClass(InlineAsmRegClass),

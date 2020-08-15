@@ -16,18 +16,7 @@ pub use index_map::SortedIndexMultiMap;
 /// stores data in a more compact way. It also supports accessing contiguous
 /// ranges of elements as a slice, and slices of already sorted elements can be
 /// inserted efficiently.
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Default,
-    Debug,
-    RustcEncodable,
-    RustcDecodable
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encodable, Decodable)]
 pub struct SortedMap<K: Ord, V> {
     data: Vec<(K, V)>,
 }

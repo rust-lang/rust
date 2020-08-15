@@ -50,7 +50,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 use std::hash::Hash;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 pub struct DepNode<K> {
     pub kind: K,
     pub hash: Fingerprint,
@@ -152,7 +152,8 @@ impl<Ctxt: DepContext> DepNodeParams<Ctxt> for () {
 /// some independent path or string that persists between runs without
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Encodable, Decodable)]
 pub struct WorkProductId {
     hash: Fingerprint,
 }

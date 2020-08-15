@@ -3334,6 +3334,7 @@ dependencies = [
  "rustc_hir",
  "rustc_incremental",
  "rustc_index",
+ "rustc_macros",
  "rustc_middle",
  "rustc_serialize",
  "rustc_session",
@@ -3364,6 +3365,7 @@ dependencies = [
  "rustc-rayon-core",
  "rustc_graphviz",
  "rustc_index",
+ "rustc_macros",
  "rustc_serialize",
  "smallvec 1.4.0",
  "stable_deref_trait",
@@ -3416,6 +3418,7 @@ dependencies = [
  "annotate-snippets 0.8.0",
  "atty",
  "rustc_data_structures",
+ "rustc_macros",
  "rustc_serialize",
  "rustc_span",
  "termcolor",
@@ -3437,6 +3440,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_lexer",
+ "rustc_macros",
  "rustc_parse",
  "rustc_serialize",
  "rustc_session",
@@ -3499,6 +3503,7 @@ dependencies = [
  "rustc_fs_util",
  "rustc_graphviz",
  "rustc_hir",
+ "rustc_macros",
  "rustc_middle",
  "rustc_serialize",
  "rustc_session",
@@ -3511,6 +3516,7 @@ name = "rustc_index"
 version = "0.0.0"
 dependencies = [
  "arrayvec 0.5.1",
+ "rustc_macros",
  "rustc_serialize",
 ]
 
@@ -3640,6 +3646,7 @@ dependencies = [
  "rustc_hir",
  "rustc_hir_pretty",
  "rustc_index",
+ "rustc_macros",
  "rustc_middle",
  "rustc_serialize",
  "rustc_session",
@@ -3815,6 +3822,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_index",
+ "rustc_macros",
  "rustc_serialize",
  "rustc_span",
  "smallvec 1.4.0",
@@ -3869,6 +3877,7 @@ name = "rustc_serialize"
 version = "0.0.0"
 dependencies = [
  "indexmap",
+ "rustc_macros",
  "smallvec 1.4.0",
 ]
 
@@ -3884,6 +3893,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_fs_util",
+ "rustc_macros",
  "rustc_serialize",
  "rustc_span",
  "rustc_target",

@@ -89,12 +89,11 @@ pub use self::query::queries;
 
 pub use self::consts::{Const, ConstInt, ConstKind, InferConst};
 
+pub mod _match;
 pub mod adjustment;
 pub mod binding;
 pub mod cast;
-#[macro_use]
 pub mod codec;
-pub mod _match;
 mod erase_regions;
 pub mod error;
 pub mod fast_reject;
@@ -171,7 +170,7 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable)]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -316,7 +315,7 @@ impl<'tcx> AssociatedItems<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Copy, RustcEncodable, RustcDecodable, HashStable, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, TyEncodable, TyDecodable, HashStable)]
 pub enum Visibility {
     /// Visible everywhere (including in other crates).
     Public,
@@ -403,7 +402,7 @@ impl Visibility {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, RustcDecodable, RustcEncodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, TyDecodable, TyEncodable, HashStable)]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -652,13 +651,9 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
 #[rustc_diagnostic_item = "Ty"]
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
-impl<'tcx> rustc_serialize::UseSpecializedEncodable for Ty<'tcx> {}
-impl<'tcx> rustc_serialize::UseSpecializedDecodable for Ty<'tcx> {}
-impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx List<Ty<'tcx>> {}
-
 pub type CanonicalTy<'tcx> = Canonical<'tcx, Ty<'tcx>>;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
 pub struct UpvarPath {
     pub hir_id: hir::HirId,
 }
@@ -666,13 +661,13 @@ pub struct UpvarPath {
 /// Upvars do not get their own `NodeId`. Instead, we use the pair of
 /// the original var ID (that is, the root variable that is referenced
 /// by the upvar) and the ID of the closure expression.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
 pub struct UpvarId {
     pub var_path: UpvarPath,
     pub closure_expr_id: LocalDefId,
 }
 
-#[derive(Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, HashStable)]
+#[derive(Clone, PartialEq, Debug, TyEncodable, TyDecodable, Copy, HashStable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,
@@ -720,7 +715,7 @@ pub enum BorrowKind {
 
 /// Information describing the capture of an upvar. This is computed
 /// during `typeck`, specifically by `regionck`.
-#[derive(PartialEq, Clone, Debug, Copy, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, HashStable)]
 pub enum UpvarCapture<'tcx> {
     /// Upvar is captured by value. This is always true when the
     /// closure is labeled `move`, but can also be true in other cases
@@ -731,7 +726,7 @@ pub enum UpvarCapture<'tcx> {
     ByRef(UpvarBorrow<'tcx>),
 }
 
-#[derive(PartialEq, Clone, Copy, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(PartialEq, Clone, Copy, TyEncodable, TyDecodable, HashStable)]
 pub struct UpvarBorrow<'tcx> {
     /// The kind of borrow: by-ref upvars have access to shared
     /// immutable borrows, which are not part of the normal language
@@ -766,7 +761,7 @@ impl ty::EarlyBoundRegion {
     }
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
     Lifetime,
     Type {
@@ -787,7 +782,7 @@ impl GenericParamDefKind {
     }
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct GenericParamDef {
     pub name: Symbol,
     pub def_id: DefId,
@@ -831,7 +826,7 @@ pub struct GenericParamCount {
 ///
 /// The ordering of parameters is the same as in `Subst` (excluding child generics):
 /// `Self` (optionally), `Lifetime` params..., `Type` params...
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct Generics {
     pub parent: Option<DefId>,
     pub parent_count: usize,
@@ -933,7 +928,7 @@ impl<'tcx> Generics {
 }
 
 /// Bounds on generics.
-#[derive(Copy, Clone, Default, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
     pub predicates: &'tcx [(Predicate<'tcx>, Span)],
@@ -1025,9 +1020,6 @@ pub struct Predicate<'tcx> {
     inner: &'tcx PredicateInner<'tcx>,
 }
 
-impl rustc_serialize::UseSpecializedEncodable for Predicate<'_> {}
-impl rustc_serialize::UseSpecializedDecodable for Predicate<'_> {}
-
 impl<'tcx> PartialEq for Predicate<'tcx> {
     fn eq(&self, other: &Self) -> bool {
         // `self.kind` is always interned.
@@ -1103,7 +1095,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub enum PredicateKind<'tcx> {
     /// `for<'a>: ...`
@@ -1111,7 +1103,7 @@ pub enum PredicateKind<'tcx> {
     Atom(PredicateAtom<'tcx>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub enum PredicateAtom<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
@@ -1261,7 +1253,7 @@ impl<'tcx> Predicate<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>,
@@ -1286,7 +1278,7 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub struct OutlivesPredicate<A, B>(pub A, pub B); // `A: B`
 pub type PolyOutlivesPredicate<A, B> = ty::Binder<OutlivesPredicate<A, B>>;
@@ -1295,7 +1287,7 @@ pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'t
 pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<RegionOutlivesPredicate<'tcx>>;
 pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<TypeOutlivesPredicate<'tcx>>;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub struct SubtypePredicate<'tcx> {
     pub a_is_expected: bool,
@@ -1316,7 +1308,7 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<SubtypePredicate<'tcx>>;
 /// equality between arbitrary types. Processing an instance of
 /// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
@@ -1585,7 +1577,7 @@ impl UniverseIndex {
 /// basically a name -- distinct bound regions within the same
 /// universe are just two regions with an unknown relationship to one
 /// another.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub name: T,
@@ -1635,7 +1627,7 @@ pub type PlaceholderConst = Placeholder<BoundVar>;
 ///     a.foo::<7>();
 /// }
 /// ```
-#[derive(Copy, Clone, Debug, TypeFoldable, Lift, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, Lift, TyEncodable, TyDecodable)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Hash, HashStable)]
 pub struct WithOptConstParam<T> {
@@ -2106,7 +2098,7 @@ impl<'tcx> VariantDef {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub enum VariantDiscr {
     /// Explicit value for this variant, i.e., `X = 123`.
     /// The `DefId` corresponds to the embedded constant.
@@ -2178,13 +2170,11 @@ impl Hash for AdtDef {
     }
 }
 
-impl<'tcx> rustc_serialize::UseSpecializedEncodable for &'tcx AdtDef {
-    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+impl<S: Encoder> Encodable<S> for AdtDef {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         self.did.encode(s)
     }
 }
-
-impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx AdtDef {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for AdtDef {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
@@ -2229,7 +2219,7 @@ impl Into<DataTypeKind> for AdtKind {
 }
 
 bitflags! {
-    #[derive(RustcEncodable, RustcDecodable, Default, HashStable)]
+    #[derive(TyEncodable, TyDecodable, Default, HashStable)]
     pub struct ReprFlags: u8 {
         const IS_C               = 1 << 0;
         const IS_SIMD            = 1 << 1;
@@ -2246,7 +2236,7 @@ bitflags! {
 }
 
 /// Represents the repr options provided by the user,
-#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Default, HashStable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Default, HashStable)]
 pub struct ReprOptions {
     pub int: Option<attr::IntType>,
     pub align: Option<Align>,
@@ -2690,7 +2680,7 @@ impl<'tcx> FieldDef {
 ///
 /// You can get the environment type of a closure using
 /// `tcx.closure_env_ty()`.
-#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum ClosureKind {
     // Warning: Ordering is significant here! The ordering is chosen
@@ -3141,7 +3131,7 @@ pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Vec<DefId>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, HashStable)]
 pub struct SymbolName<'tcx> {
     /// `&str` gives a consistent ordering, which ensures reproducible builds.
     pub name: &'tcx str,
@@ -3166,12 +3156,3 @@ impl<'tcx> fmt::Debug for SymbolName<'tcx> {
         fmt::Display::fmt(&self.name, fmt)
     }
 }
-
-impl<'tcx> rustc_serialize::UseSpecializedEncodable for SymbolName<'tcx> {
-    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self.name)
-    }
-}
-
-// The decoding takes place in `decode_symbol_name()`.
-impl<'tcx> rustc_serialize::UseSpecializedDecodable for SymbolName<'tcx> {}

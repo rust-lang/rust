@@ -9,7 +9,7 @@ use rustc_span::hygiene::MacroKind;
 use std::fmt::Debug;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum CtorOf {
     /// This `DefKind::Ctor` is a synthesized constructor of a tuple or unit struct.
@@ -18,7 +18,7 @@ pub enum CtorOf {
     Variant,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum CtorKind {
     /// Constructor function automatically created by a tuple struct/variant.
@@ -29,7 +29,7 @@ pub enum CtorKind {
     Fictive,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum NonMacroAttrKind {
     /// Single-segment attribute defined by the language (`#[inline]`)
@@ -42,7 +42,7 @@ pub enum NonMacroAttrKind {
     Registered,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum DefKind {
     // Type namespace
@@ -191,7 +191,7 @@ impl DefKind {
 }
 
 /// The resolution of a path or export.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum Res<Id = hir::HirId> {
     Def(DefKind, DefId),

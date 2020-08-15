@@ -108,11 +108,11 @@ use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
-use rustc_serialize::{Decodable, Encodable, Encoder};
+use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::{Endian, Size};
 
 use crate::mir;
-use crate::ty::codec::TyDecoder;
+use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 
@@ -132,7 +132,7 @@ pub use self::pointer::{Pointer, PointerArithmetic};
 /// - A constant
 /// - A static
 /// - A const fn where all arguments (if any) are zero-sized types
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, Lift)]
 pub struct GlobalId<'tcx> {
     /// For a constant or static, the `Instance` of the item itself.
@@ -182,17 +182,14 @@ impl fmt::Display for AllocId {
     }
 }
 
-impl rustc_serialize::UseSpecializedEncodable for AllocId {}
-impl rustc_serialize::UseSpecializedDecodable for AllocId {}
-
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(TyDecodable, TyEncodable)]
 enum AllocDiscriminant {
     Alloc,
     Fn,
     Static,
 }
 
-pub fn specialized_encode_alloc_id<'tcx, E: Encoder>(
+pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
     encoder: &mut E,
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
@@ -333,7 +330,7 @@ impl<'s> AllocDecodingSession<'s> {
         let alloc_id = decoder.with_position(pos, |decoder| {
             match alloc_kind {
                 AllocDiscriminant::Alloc => {
-                    let alloc = <&'tcx Allocation as Decodable>::decode(decoder)?;
+                    let alloc = <&'tcx Allocation as Decodable<_>>::decode(decoder)?;
                     // We already have a reserved `AllocId`.
                     let alloc_id = alloc_id.unwrap();
                     trace!("decoded alloc {:?}: {:#?}", alloc_id, alloc);
@@ -351,7 +348,7 @@ impl<'s> AllocDecodingSession<'s> {
                 AllocDiscriminant::Static => {
                     assert!(alloc_id.is_none());
                     trace!("creating extern static alloc ID");
-                    let did = DefId::decode(decoder)?;
+                    let did = <DefId as Decodable<D>>::decode(decoder)?;
                     trace!("decoded static def-ID: {:?}", did);
                     let alloc_id = decoder.tcx().create_static_alloc(did);
                     Ok(alloc_id)
@@ -369,7 +366,7 @@ impl<'s> AllocDecodingSession<'s> {
 
 /// An allocation in the global (tcx-managed) memory can be either a function pointer,
 /// a static, or a "real" allocation with some data in it.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, RustcDecodable, RustcEncodable, HashStable)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, TyDecodable, TyEncodable, HashStable)]
 pub enum GlobalAlloc<'tcx> {
     /// The alloc ID is used as a function pointer.
     Function(Instance<'tcx>),

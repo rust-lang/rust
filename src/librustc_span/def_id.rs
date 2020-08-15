@@ -4,7 +4,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{Decoder, Encoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::borrow::Borrow;
 use std::fmt;
 
@@ -84,13 +84,14 @@ impl fmt::Display for CrateNum {
 
 /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
 /// Therefore, make sure to include the context when encode a `CrateNum`.
-impl rustc_serialize::UseSpecializedEncodable for CrateNum {
-    fn default_encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
-        e.emit_u32(self.as_u32())
+impl<E: Encoder> Encodable<E> for CrateNum {
+    default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+        s.emit_u32(self.as_u32())
     }
 }
-impl rustc_serialize::UseSpecializedDecodable for CrateNum {
-    fn default_decode<D: Decoder>(d: &mut D) -> Result<CrateNum, D::Error> {
+
+impl<D: Decoder> Decodable<D> for CrateNum {
+    default fn decode(d: &mut D) -> Result<CrateNum, D::Error> {
         Ok(CrateNum::from_u32(d.read_u32()?))
     }
 }
@@ -104,8 +105,8 @@ impl ::std::fmt::Debug for CrateNum {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug, RustcEncodable, RustcDecodable)]
-#[derive(HashStable_Generic)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
 pub struct DefPathHash(pub Fingerprint);
 
 impl Borrow<Fingerprint> for DefPathHash {
@@ -120,16 +121,26 @@ rustc_index::newtype_index! {
     /// particular definition. It should really be considered an interned
     /// shorthand for a particular DefPath.
     pub struct DefIndex {
-        DEBUG_FORMAT = "DefIndex({})",
+        ENCODABLE = custom // (only encodable in metadata)
 
+        DEBUG_FORMAT = "DefIndex({})",
         /// The crate root is always assigned index 0 by the AST Map code,
         /// thanks to `NodeCollector::new`.
         const CRATE_DEF_INDEX = 0,
     }
 }
 
-impl rustc_serialize::UseSpecializedEncodable for DefIndex {}
-impl rustc_serialize::UseSpecializedDecodable for DefIndex {}
+impl<E: Encoder> Encodable<E> for DefIndex {
+    default fn encode(&self, _: &mut E) -> Result<(), E::Error> {
+        panic!("cannot encode `DefIndex` with `{}`", std::any::type_name::<E>());
+    }
+}
+
+impl<D: Decoder> Decodable<D> for DefIndex {
+    default fn decode(_: &mut D) -> Result<DefIndex, D::Error> {
+        panic!("cannot decode `DefIndex` with `{}`", std::any::type_name::<D>());
+    }
+}
 
 /// A `DefId` identifies a particular *definition*, by combining a crate
 /// index and a def index.
@@ -168,19 +179,24 @@ impl DefId {
     }
 }
 
-impl rustc_serialize::UseSpecializedEncodable for DefId {
-    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        let krate = u64::from(self.krate.as_u32());
-        let index = u64::from(self.index.as_u32());
-        s.emit_u64((krate << 32) | index)
+impl<E: Encoder> Encodable<E> for DefId {
+    default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+        s.emit_struct("DefId", 2, |s| {
+            s.emit_struct_field("krate", 0, |s| self.krate.encode(s))?;
+
+            s.emit_struct_field("index", 1, |s| self.index.encode(s))
+        })
     }
 }
-impl rustc_serialize::UseSpecializedDecodable for DefId {
-    fn default_decode<D: Decoder>(d: &mut D) -> Result<DefId, D::Error> {
-        let def_id = d.read_u64()?;
-        let krate = CrateNum::from_u32((def_id >> 32) as u32);
-        let index = DefIndex::from_u32((def_id & 0xffffffff) as u32);
-        Ok(DefId { krate, index })
+
+impl<D: Decoder> Decodable<D> for DefId {
+    default fn decode(d: &mut D) -> Result<DefId, D::Error> {
+        d.read_struct("DefId", 2, |d| {
+            Ok(DefId {
+                krate: d.read_struct_field("krate", 0, Decodable::decode)?,
+                index: d.read_struct_field("index", 1, Decodable::decode)?,
+            })
+        })
     }
 }
 
@@ -239,8 +255,17 @@ impl fmt::Debug for LocalDefId {
     }
 }
 
-impl rustc_serialize::UseSpecializedEncodable for LocalDefId {}
-impl rustc_serialize::UseSpecializedDecodable for LocalDefId {}
+impl<E: Encoder> Encodable<E> for LocalDefId {
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+        self.to_def_id().encode(s)
+    }
+}
+
+impl<D: Decoder> Decodable<D> for LocalDefId {
+    fn decode(d: &mut D) -> Result<LocalDefId, D::Error> {
+        DefId::decode(d).map(|d| d.expect_local())
+    }
+}
 
 impl<CTX: HashStableContext> HashStable<CTX> for DefId {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {

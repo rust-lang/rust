@@ -23,6 +23,7 @@ rustc_hir = { path = "../librustc_hir" }
 rustc_hir_pretty = { path = "../librustc_hir_pretty" }
 rustc_target = { path = "../librustc_target" }
 rustc_index = { path = "../librustc_index" }
+rustc_macros = { path = "../librustc_macros" }
 rustc_serialize = { path = "../librustc_serialize" }
 stable_deref_trait = "1.0.0"
 rustc_ast = { path = "../librustc_ast" }

@@ -76,9 +76,16 @@ impl<T: fmt::Debug> fmt::Debug for List<T> {
     }
 }
 
-impl<T: Encodable> Encodable for List<T> {
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for List<T> {
     #[inline]
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        (**self).encode(s)
+    }
+}
+
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for &List<T> {
+    #[inline]
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
     }
 }

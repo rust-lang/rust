@@ -3,7 +3,7 @@ use rustc_attr::{InlineAttr, OptimizeAttr};
 use rustc_session::config::SanitizerSet;
 use rustc_span::symbol::Symbol;
 
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable)]
 pub struct CodegenFnAttrs {
     pub flags: CodegenFnAttrFlags,
     /// Parsed representation of the `#[inline]` attribute
@@ -37,7 +37,7 @@ pub struct CodegenFnAttrs {
 }
 
 bitflags! {
-    #[derive(RustcEncodable, RustcDecodable, HashStable)]
+    #[derive(TyEncodable, TyDecodable, HashStable)]
     pub struct CodegenFnAttrFlags: u32 {
         /// `#[cold]`: a hint to LLVM that this function, when called, is never on
         /// the hot path.

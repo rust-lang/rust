@@ -857,7 +857,7 @@ impl<K: DepKind> DepGraph<K> {
 /// may be added -- for example, new monomorphizations -- even if
 /// nothing in P changed!). We will compare that hash against the
 /// previous hash. If it matches up, we can reuse the object file.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, Encodable, Decodable)]
 pub struct WorkProduct {
     pub cgu_name: String,
     /// Saved file associated with this CGU.

@@ -23,7 +23,7 @@ use rustc_span::symbol::Ident;
 ///   parents of a given specializing impl, which is needed for extracting
 ///   default items amongst other things. In the simple "chain" rule, every impl
 ///   has at most one parent.
-#[derive(RustcEncodable, RustcDecodable, HashStable)]
+#[derive(TyEncodable, TyDecodable, HashStable)]
 pub struct Graph {
     /// All impls have a parent; the "root" impls have as their parent the `def_id`
     /// of the trait.
@@ -50,7 +50,7 @@ impl Graph {
 
 /// Children of a given impl, grouped into blanket/non-blanket varieties as is
 /// done in `TraitDef`.
-#[derive(Default, RustcEncodable, RustcDecodable)]
+#[derive(Default, TyEncodable, TyDecodable)]
 pub struct Children {
     // Impls of a trait (or specializations of a given impl). To allow for
     // quicker lookup, the impls are indexed by a simplified version of their

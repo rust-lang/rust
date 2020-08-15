@@ -47,17 +47,17 @@
 //!
 //! Rust provides a mechanism for low boilerplate encoding & decoding of values to and from JSON via
 //! the serialization API.
-//! To be able to encode a piece of data, it must implement the `serialize::RustcEncodable` trait.
-//! To be able to decode a piece of data, it must implement the `serialize::RustcDecodable` trait.
+//! To be able to encode a piece of data, it must implement the `serialize::Encodable` trait.
+//! To be able to decode a piece of data, it must implement the `serialize::Decodable` trait.
 //! The Rust compiler provides an annotation to automatically generate the code for these traits:
-//! `#[derive(RustcDecodable, RustcEncodable)]`
+//! `#[derive(Decodable, Encodable)]`
 //!
 //! The JSON API provides an enum `json::Json` and a trait `ToJson` to encode objects.
 //! The `ToJson` trait provides a `to_json` method to convert an object into a `json::Json` value.
 //! A `json::Json` value can be encoded as a string or buffer using the functions described above.
 //! You can also use the `json::Encoder` object, which implements the `Encoder` trait.
 //!
-//! When using `ToJson` the `RustcEncodable` trait implementation is not mandatory.
+//! When using `ToJson` the `Encodable` trait implementation is not mandatory.
 //!
 //! # Examples of use
 //!
@@ -68,10 +68,11 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
+//! use rustc_macros::{Decodable, Encodable};
 //! use rustc_serialize::json;
 //!
 //! // Automatically generate `Decodable` and `Encodable` trait implementations
-//! #[derive(RustcDecodable, RustcEncodable)]
+//! #[derive(Decodable, Encodable)]
 //! pub struct TestStruct  {
 //!     data_int: u8,
 //!     data_str: String,
@@ -100,6 +101,7 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
+//! use rustc_macros::Encodable;
 //! use rustc_serialize::json::{self, ToJson, Json};
 //!
 //! // A custom data structure
@@ -115,8 +117,8 @@
 //!     }
 //! }
 //!
-//! // Only generate `RustcEncodable` trait implementation
-//! #[derive(RustcEncodable)]
+//! // Only generate `Encodable` trait implementation
+//! #[derive(Encodable)]
 //! pub struct ComplexNumRecord {
 //!     uid: u8,
 //!     dsc: String,
@@ -137,11 +139,12 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
+//! use rustc_macros::Decodable;
 //! use std::collections::BTreeMap;
 //! use rustc_serialize::json::{self, Json, ToJson};
 //!
-//! // Only generate `RustcDecodable` trait implementation
-//! #[derive(RustcDecodable)]
+//! // Only generate `Decodable` trait implementation
+//! #[derive(Decodable)]
 //! pub struct TestStruct {
 //!     data_int: u8,
 //!     data_str: String,
@@ -292,7 +295,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
 }
 
 /// Shortcut function to decode a JSON `&str` into an object
-pub fn decode<T: crate::Decodable>(s: &str) -> DecodeResult<T> {
+pub fn decode<T: crate::Decodable<Decoder>>(s: &str) -> DecodeResult<T> {
     let json = match from_str(s) {
         Ok(x) => x,
         Err(e) => return Err(ParseError(e)),
@@ -303,7 +306,9 @@ pub fn decode<T: crate::Decodable>(s: &str) -> DecodeResult<T> {
 }
 
 /// Shortcut function to encode a `T` into a JSON `String`
-pub fn encode<T: crate::Encodable>(object: &T) -> Result<string::String, EncoderError> {
+pub fn encode<T: for<'r> crate::Encodable<Encoder<'r>>>(
+    object: &T,
+) -> Result<string::String, EncoderError> {
     let mut s = String::new();
     {
         let mut encoder = Encoder::new(&mut s);
@@ -1144,8 +1149,8 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
     }
 }
 
-impl Encodable for Json {
-    fn encode<E: crate::Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+impl<E: crate::Encoder> Encodable<E> for Json {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         match *self {
             Json::I64(v) => v.encode(e),
             Json::U64(v) => v.encode(e),
@@ -2727,7 +2732,7 @@ impl<'a> fmt::Display for PrettyJson<'a> {
     }
 }
 
-impl<'a, T: Encodable> fmt::Display for AsJson<'a, T> {
+impl<'a, T: for<'r> Encodable<Encoder<'r>>> fmt::Display for AsJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2747,7 +2752,7 @@ impl<'a, T> AsPrettyJson<'a, T> {
     }
 }
 
-impl<'a, T: Encodable> fmt::Display for AsPrettyJson<'a, T> {
+impl<'a, T: for<'x> Encodable<PrettyEncoder<'x>>> fmt::Display for AsPrettyJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };

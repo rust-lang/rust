@@ -7,6 +7,8 @@ use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Not, Range, Shl};
 use std::slice;
 
+use rustc_macros::{Decodable, Encodable};
+
 #[cfg(test)]
 mod tests;
 
@@ -26,7 +28,7 @@ pub const WORD_BITS: usize = WORD_BYTES * 8;
 /// will panic if the bitsets have differing domain sizes.
 ///
 /// [`GrowableBitSet`]: struct.GrowableBitSet.html
-#[derive(Clone, Eq, PartialEq, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Eq, PartialEq, Decodable, Encodable)]
 pub struct BitSet<T: Idx> {
     domain_size: usize,
     words: Vec<Word>,
@@ -700,7 +702,7 @@ impl<T: Idx> GrowableBitSet<T> {
 ///
 /// All operations that involve a row and/or column index will panic if the
 /// index exceeds the relevant bound.
-#[derive(Clone, Eq, PartialEq, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Eq, PartialEq, Decodable, Encodable)]
 pub struct BitMatrix<R: Idx, C: Idx> {
     num_rows: usize,
     num_columns: usize,
@@ -1108,7 +1110,7 @@ impl std::fmt::Debug for FiniteBitSet<u128> {
 
 /// A fixed-sized bitset type represented by an integer type. Indices outwith than the range
 /// representable by `T` are considered set.
-#[derive(Copy, Clone, Eq, PartialEq, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Eq, PartialEq, Decodable, Encodable)]
 pub struct FiniteBitSet<T: FiniteBitSetTy>(pub T);
 
 impl<T: FiniteBitSetTy> FiniteBitSet<T> {

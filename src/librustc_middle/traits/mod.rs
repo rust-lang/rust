@@ -426,7 +426,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `ImplSourceUserDefinedData`.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub enum ImplSource<'tcx, N> {
     /// ImplSource identifying a particular impl.
     ImplSourceUserDefined(ImplSourceUserDefinedData<'tcx, N>),
@@ -557,14 +557,14 @@ impl<'tcx, N> ImplSource<'tcx, N> {
 /// is `Obligation`, as one might expect. During codegen, however, this
 /// is `()`, because codegen only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub impl_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct ImplSourceGeneratorData<'tcx, N> {
     pub generator_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -573,7 +573,7 @@ pub struct ImplSourceGeneratorData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct ImplSourceClosureData<'tcx, N> {
     pub closure_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -582,18 +582,18 @@ pub struct ImplSourceClosureData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct ImplSourceAutoImplData<N> {
     pub trait_def_id: DefId,
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct ImplSourceBuiltinData<N> {
     pub nested: Vec<N>,
 }
 
-#[derive(PartialEq, Eq, Clone, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(PartialEq, Eq, Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct ImplSourceObjectData<'tcx, N> {
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
@@ -606,17 +606,17 @@ pub struct ImplSourceObjectData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct ImplSourceFnPointerData<'tcx, N> {
     pub fn_ty: Ty<'tcx>,
     pub nested: Vec<N>,
 }
 
 // FIXME(@lcnr): This should be  refactored and merged with other builtin vtables.
-#[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub struct ImplSourceDiscriminantKindData;
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct ImplSourceTraitAliasData<'tcx, N> {
     pub alias_def_id: DefId,
     pub substs: SubstsRef<'tcx>,

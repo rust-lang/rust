@@ -9,7 +9,7 @@ use std::fmt;
 /// Hash value constructed out of all the `-C metadata` arguments passed to the
 /// compiler. Together with the crate-name forms a unique global identifier for
 /// the crate.
-#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy, RustcEncodable, RustcDecodable)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy, Encodable, Decodable)]
 pub struct CrateDisambiguator(Fingerprint);
 
 impl CrateDisambiguator {

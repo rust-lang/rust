@@ -75,7 +75,7 @@ pub mod monotonic {
     impl<T> !DerefMut for MonotonicVec<T> {}
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, Copy, HashStable_Generic)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
@@ -118,7 +118,7 @@ impl FileLoader for RealFileLoader {
 // This is a `SourceFile` identifier that is used to correlate `SourceFile`s between
 // subsequent compilation sessions (which is something we need to do during
 // incremental compilation).
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
 pub struct StableSourceFileId(u128);
 
 // FIXME: we need a more globally consistent approach to the problem solved by

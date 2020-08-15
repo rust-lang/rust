@@ -26,8 +26,10 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
+use decoder::DecodeContext;
 pub use decoder::{provide, provide_extern};
 crate use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
+use encoder::EncodeContext;
 use rustc_span::hygiene::SyntaxContextData;
 
 mod decoder;
@@ -141,9 +143,6 @@ impl<T: ?Sized + LazyMeta> Clone for Lazy<T> {
     }
 }
 
-impl<T: ?Sized + LazyMeta> rustc_serialize::UseSpecializedEncodable for Lazy<T> {}
-impl<T: ?Sized + LazyMeta> rustc_serialize::UseSpecializedDecodable for Lazy<T> {}
-
 /// Encoding / decoding state for `Lazy`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum LazyState {
@@ -172,7 +171,7 @@ macro_rules! Lazy {
 type SyntaxContextTable = Lazy<Table<u32, Lazy<SyntaxContextData>>>;
 type ExpnDataTable = Lazy<Table<u32, Lazy<ExpnData>>>;
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(MetadataEncodable, MetadataDecodable)]
 crate struct CrateRoot<'tcx> {
     name: Symbol,
     triple: TargetTriple,
@@ -221,7 +220,7 @@ crate struct CrateRoot<'tcx> {
     symbol_mangling_version: SymbolManglingVersion,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Encodable, Decodable)]
 crate struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
@@ -230,7 +229,7 @@ crate struct CrateDep {
     pub extra_filename: String,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(MetadataEncodable, MetadataDecodable)]
 crate struct TraitImpls {
     trait_id: (u32, DefIndex),
     impls: Lazy<[(DefIndex, Option<ty::fast_reject::SimplifiedType>)]>,
@@ -239,7 +238,7 @@ crate struct TraitImpls {
 /// Define `LazyTables` and `TableBuilders` at the same time.
 macro_rules! define_tables {
     ($($name:ident: Table<DefIndex, $T:ty>),+ $(,)?) => {
-        #[derive(RustcEncodable, RustcDecodable)]
+        #[derive(MetadataEncodable, MetadataDecodable)]
         crate struct LazyTables<'tcx> {
             $($name: Lazy!(Table<DefIndex, $T>)),+
         }
@@ -288,7 +287,7 @@ define_tables! {
     unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u32>>>,
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
 enum EntryKind {
     AnonConst(mir::ConstQualifs, Lazy<RenderedConst>),
     Const(mir::ConstQualifs, Lazy<RenderedConst>),
@@ -324,23 +323,23 @@ enum EntryKind {
 
 /// Contains a constant which has been rendered to a String.
 /// Used by rustdoc.
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Encodable, Decodable)]
 struct RenderedConst(String);
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(MetadataEncodable, MetadataDecodable)]
 struct ModData {
     reexports: Lazy<[Export<hir::HirId>]>,
     expansion: ExpnId,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(MetadataEncodable, MetadataDecodable)]
 struct FnData {
     asyncness: hir::IsAsync,
     constness: hir::Constness,
     param_names: Lazy<[Ident]>,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(TyEncodable, TyDecodable)]
 struct VariantData {
     ctor_kind: CtorKind,
     discr: ty::VariantDiscr,
@@ -349,7 +348,7 @@ struct VariantData {
     is_non_exhaustive: bool,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(TyEncodable, TyDecodable)]
 struct TraitData {
     unsafety: hir::Unsafety,
     paren_sugar: bool,
@@ -358,7 +357,7 @@ struct TraitData {
     specialization_kind: ty::trait_def::TraitSpecializationKind,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(TyEncodable, TyDecodable)]
 struct ImplData {
     polarity: ty::ImplPolarity,
     defaultness: hir::Defaultness,
@@ -372,7 +371,7 @@ struct ImplData {
 /// Describes whether the container of an associated item
 /// is a trait or an impl and whether, in a trait, it has
 /// a default, or an in impl, whether it's marked "default".
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, TyEncodable, TyDecodable)]
 enum AssocContainer {
     TraitRequired,
     TraitWithDefault,
@@ -404,14 +403,14 @@ impl AssocContainer {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(MetadataEncodable, MetadataDecodable)]
 struct AssocFnData {
     fn_data: FnData,
     container: AssocContainer,
     has_self: bool,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(TyEncodable, TyDecodable)]
 struct GeneratorData<'tcx> {
     layout: mir::GeneratorLayout<'tcx>,
 }

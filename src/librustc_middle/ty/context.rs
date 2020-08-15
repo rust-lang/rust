@@ -263,7 +263,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
 }
 
 /// All information necessary to validate and reveal an `impl Trait`.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
+#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct ResolvedOpaqueTy<'tcx> {
     /// The revealed type as seen by this function.
     pub concrete_type: Ty<'tcx>,
@@ -291,7 +291,7 @@ pub struct ResolvedOpaqueTy<'tcx> {
 ///
 /// Here, we would store the type `T`, the span of the value `x`, the "scope-span" for
 /// the scope that contains `x`, the expr `T` evaluated from, and the span of `foo.await`.
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, PartialEq, HashStable)]
+#[derive(TyEncodable, TyDecodable, Clone, Debug, Eq, Hash, PartialEq, HashStable)]
 pub struct GeneratorInteriorTypeCause<'tcx> {
     /// Type of the captured binding.
     pub ty: Ty<'tcx>,
@@ -305,7 +305,7 @@ pub struct GeneratorInteriorTypeCause<'tcx> {
     pub expr: Option<hir::HirId>,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(TyEncodable, TyDecodable, Debug)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
     pub hir_owner: LocalDefId,
@@ -728,7 +728,7 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
     pub span: Span,
@@ -787,7 +787,7 @@ impl CanonicalUserType<'tcx> {
 /// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
@@ -1333,7 +1333,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn serialize_query_result_cache<E>(self, encoder: &mut E) -> Result<(), E::Error>
     where
-        E: ty::codec::TyEncoder,
+        E: ty::codec::OpaqueEncoder,
     {
         self.queries.on_disk_cache.serialize(self, encoder)
     }
