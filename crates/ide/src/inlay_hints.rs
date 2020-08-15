@@ -43,7 +43,7 @@ pub struct InlayHint {
 // rust-analyzer shows additional information inline with the source code.
 // Editors usually render this using read-only virtual text snippets interspersed with code.
 //
-// rust-analyzer shows hits for
+// rust-analyzer shows hints for
 //
 // * types of local variables
 // * names of function arguments
