@@ -880,10 +880,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for NamedBoundVarSubstitutor<'a, 'tcx> {
         result
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        t.super_fold_with(self)
-    }
-
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
         match r {
             ty::ReLateBound(index, br) if *index == self.binder_index => match br {
@@ -914,18 +910,18 @@ crate struct ParamsSubstitutor<'tcx> {
     tcx: TyCtxt<'tcx>,
     binder_index: ty::DebruijnIndex,
     list: Vec<rustc_middle::ty::ParamTy>,
-    next_ty_placehoder: usize,
+    next_ty_placeholder: usize,
     crate params: rustc_data_structures::fx::FxHashMap<usize, rustc_middle::ty::ParamTy>,
     crate named_regions: BTreeMap<DefId, u32>,
 }
 
 impl<'tcx> ParamsSubstitutor<'tcx> {
-    crate fn new(tcx: TyCtxt<'tcx>, next_ty_placehoder: usize) -> Self {
+    crate fn new(tcx: TyCtxt<'tcx>, next_ty_placeholder: usize) -> Self {
         ParamsSubstitutor {
             tcx,
             binder_index: ty::INNERMOST,
             list: vec![],
-            next_ty_placehoder,
+            next_ty_placeholder,
             params: rustc_data_structures::fx::FxHashMap::default(),
             named_regions: BTreeMap::default(),
         }
@@ -957,7 +953,7 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
                 })),
                 None => {
                     self.list.push(param);
-                    let idx = self.list.len() - 1 + self.next_ty_placehoder;
+                    let idx = self.list.len() - 1 + self.next_ty_placeholder;
                     self.params.insert(idx, param);
                     self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
                         universe: ty::UniverseIndex::from_usize(0),
@@ -997,7 +993,7 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
 /// Used to collect `Placeholder`s.
 crate struct PlaceholdersCollector {
     universe_index: ty::UniverseIndex,
-    crate next_ty_placehoder: usize,
+    crate next_ty_placeholder: usize,
     crate next_anon_region_placeholder: u32,
 }
 
@@ -1005,21 +1001,17 @@ impl PlaceholdersCollector {
     crate fn new() -> Self {
         PlaceholdersCollector {
             universe_index: ty::UniverseIndex::ROOT,
-            next_ty_placehoder: 0,
+            next_ty_placeholder: 0,
             next_anon_region_placeholder: 0,
         }
     }
 }
 
 impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
-        t.super_visit_with(self)
-    }
-
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
         match t.kind {
             ty::Placeholder(p) if p.universe == self.universe_index => {
-                self.next_ty_placehoder = self.next_ty_placehoder.max(p.name.as_usize() + 1);
+                self.next_ty_placeholder = self.next_ty_placeholder.max(p.name.as_usize() + 1);
             }
 
             _ => (),
@@ -1063,14 +1055,6 @@ impl<'tcx> RegionsSubstitutor<'tcx> {
 impl<'tcx> TypeFolder<'tcx> for RegionsSubstitutor<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
-    }
-
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> Binder<T> {
-        t.super_fold_with(self)
-    }
-
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        t.super_fold_with(self)
     }
 
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
