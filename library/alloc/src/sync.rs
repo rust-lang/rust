@@ -329,25 +329,25 @@ impl<T> Arc<T> {
     }
 
     /// Constructs a new `Arc<T>` using a weak reference to itself. Attempting
-  /// to upgrade the weak reference before this function returns will result
-  /// in a `None` value. However, the weak reference may be cloned freely and
-  /// stored for use at a later time.
-  ///
-  /// # Examples
-  /// ```
-  /// #![feature(arc_new_cyclic)]
-  /// #![allow(dead_code)]
-  ///
-  /// use std::sync::{Arc, Weak};
-  ///
-  /// struct Foo {
-  ///     me: Weak<Foo>,
-  /// }
-  ///
-  /// let foo = Arc::new_cyclic(|me| Foo {
-  ///     me: me.clone(),
-  /// });
-  /// ```
+    /// to upgrade the weak reference before this function returns will result
+    /// in a `None` value. However, the weak reference may be cloned freely and
+    /// stored for use at a later time.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(arc_new_cyclic)]
+    /// #![allow(dead_code)]
+    ///
+    /// use std::sync::{Arc, Weak};
+    ///
+    /// struct Foo {
+    ///     me: Weak<Foo>,
+    /// }
+    ///
+    /// let foo = Arc::new_cyclic(|me| Foo {
+    ///     me: me.clone(),
+    /// });
+    /// ```
     #[inline]
     #[unstable(feature = "arc_new_cyclic", issue = "none")]
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Arc<T> {
@@ -358,7 +358,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data: mem::MaybeUninit::<T>::uninit(),
         })
-            .into();
+        .into();
         let init_ptr: NonNull<ArcInner<T>> = uninit_ptr.cast();
 
         let weak = Weak { ptr: init_ptr };
@@ -1683,9 +1683,9 @@ impl<T: ?Sized> Weak<T> {
             }
 
             // Relaxed is fine for the failure case because we don't have any expectations about the new state.
-                // Acquire is necessary for the success case to synchronise with `Arc::new_cyclic`, when the inner
-                // value can be initialized after `Weak` references have already been created. In that case, we
-                // expect to observe the fully initialized value.
+            // Acquire is necessary for the success case to synchronise with `Arc::new_cyclic`, when the inner
+            // value can be initialized after `Weak` references have already been created. In that case, we
+            // expect to observe the fully initialized value.
             match inner.strong.compare_exchange_weak(n, n + 1, Acquire, Relaxed) {
                 Ok(_) => return Some(Arc::from_inner(self.ptr)), // null checked above
                 Err(old) => n = old,
