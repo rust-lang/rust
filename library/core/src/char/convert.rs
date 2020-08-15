@@ -23,9 +23,6 @@ use super::MAX;
 /// [`char`]s. `from_u32()` will return `None` if the input is not a valid value
 /// for a [`char`].
 ///
-/// [`char`]: crate::char
-/// [`u32`]: crate::u32
-///
 /// For an unsafe version of this function which ignores these checks, see
 /// [`from_u32_unchecked`].
 ///
@@ -71,9 +68,6 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// However, the reverse is not true: not all valid [`u32`]s are valid
 /// [`char`]s. `from_u32_unchecked()` will ignore this, and blindly cast to
 /// [`char`], possibly creating an invalid one.
-///
-/// [`char`]: crate::char
-/// [`u32`]: crate::u32
 ///
 /// # Safety
 ///
