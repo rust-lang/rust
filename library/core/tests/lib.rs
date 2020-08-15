@@ -32,6 +32,7 @@
 #![feature(raw)]
 #![feature(sort_internals)]
 #![feature(slice_partition_at_index)]
+#![feature(min_const_generics)]
 #![feature(min_specialization)]
 #![feature(step_trait)]
 #![feature(step_trait_ext)]

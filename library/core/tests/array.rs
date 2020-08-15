@@ -323,26 +323,53 @@ fn array_map() {
 fn array_map_drop_safety() {
     use core::sync::atomic::AtomicUsize;
     use core::sync::atomic::Ordering;
-    static DROPPED: AtomicUsize = AtomicUsize::new(0);
-    struct DropCounter;
-    impl Drop for DropCounter {
+    static DROPPED: [AtomicUsize; 3] =
+        [AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0)];
+    struct DropCounter<const N: usize>;
+    impl<const N: usize> Drop for DropCounter<N> {
         fn drop(&mut self) {
-            DROPPED.fetch_add(1, Ordering::SeqCst);
+            DROPPED[N].fetch_add(1, Ordering::SeqCst);
         }
     }
 
-    let num_to_create = 5;
-    let success = std::panic::catch_unwind(|| {
-        let items = [0; 10];
-        let mut nth = 0;
-        items.map(|_| {
-            assert!(nth < num_to_create);
-            nth += 1;
-            DropCounter
+    {
+        let num_to_create = 5;
+        let success = std::panic::catch_unwind(|| {
+            let items = [0; 10];
+            let mut nth = 0;
+            items.map(|_| {
+                assert!(nth < num_to_create);
+                nth += 1;
+                DropCounter::<0>
+            });
         });
-    });
-    assert!(success.is_err());
-    assert_eq!(DROPPED.load(Ordering::SeqCst), num_to_create);
+        assert!(success.is_err());
+        assert_eq!(DROPPED[0].load(Ordering::SeqCst), num_to_create);
+    }
+
+    {
+        assert_eq!(DROPPED[1].load(Ordering::SeqCst), 0);
+        let num_to_create = 3;
+        const TOTAL: usize = 5;
+        let success = std::panic::catch_unwind(|| {
+            let items: [DropCounter<1>; TOTAL] = [
+                DropCounter::<1>,
+                DropCounter::<1>,
+                DropCounter::<1>,
+                DropCounter::<1>,
+                DropCounter::<1>,
+            ];
+            let mut nth = 0;
+            items.map(|_| {
+                assert!(nth < num_to_create);
+                nth += 1;
+                DropCounter::<2>
+            });
+        });
+        assert!(success.is_err());
+        assert_eq!(DROPPED[2].load(Ordering::SeqCst), num_to_create);
+        assert_eq!(DROPPED[1].load(Ordering::SeqCst), TOTAL);
+    }
     panic!("test succeeded")
 }
 
