@@ -29,14 +29,7 @@ const TEST_REPOS: &'static [Test] = &[
     Test {
         name: "tokei",
         repo: "https://github.com/XAMPPRocky/tokei",
-        sha: "5e11c4852fe4aa086b0e4fe5885822fbe57ba928",
-        lock: None,
-        packages: &[],
-    },
-    Test {
-        name: "treeify",
-        repo: "https://github.com/dzamlo/treeify",
-        sha: "999001b223152441198f117a68fb81f57bc086dd",
+        sha: "a950ff128d5a435a8083b1c7577c0431f98360ca",
         lock: None,
         packages: &[],
     },
