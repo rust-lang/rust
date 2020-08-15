@@ -9,7 +9,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 
 /// Unix-specific extensions to [`File`].
 ///
-/// [`File`]: ../../../../std/fs/struct.File.html
+/// [`File`]: crate::fs::File
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
     /// Reads a number of bytes starting from a given offset.
@@ -24,7 +24,7 @@ pub trait FileExt {
     /// Note that similar to [`File::read`], it is not an error to return with a
     /// short read.
     ///
-    /// [`File::read`]: ../../../../std/fs/struct.File.html#method.read
+    /// [`File::read`]: crate::fs::File::read
     ///
     /// # Examples
     ///
@@ -55,8 +55,8 @@ pub trait FileExt {
     ///
     /// Similar to [`Read::read_exact`] but uses [`read_at`] instead of `read`.
     ///
-    /// [`Read::read_exact`]: ../../../../std/io/trait.Read.html#method.read_exact
-    /// [`read_at`]: #tymethod.read_at
+    /// [`Read::read_exact`]: crate::io::Read::read_exact
+    /// [`read_at`]: FileExt::read_at
     ///
     /// # Errors
     ///
@@ -75,8 +75,8 @@ pub trait FileExt {
     /// has read, but it will never read more than would be necessary to
     /// completely fill the buffer.
     ///
-    /// [`ErrorKind::Interrupted`]: ../../../../std/io/enum.ErrorKind.html#variant.Interrupted
-    /// [`ErrorKind::UnexpectedEof`]: ../../../../std/io/enum.ErrorKind.html#variant.UnexpectedEof
+    /// [`ErrorKind::Interrupted`]: crate::io::ErrorKind::Interrupted
+    /// [`ErrorKind::UnexpectedEof`]: crate::io::ErrorKind::UnexpectedEof
     ///
     /// # Examples
     ///
@@ -132,7 +132,7 @@ pub trait FileExt {
     /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
     ///
-    /// [`File::write`]: ../../../../std/fs/struct.File.html#method.write
+    /// [`File::write`]: crate::fs::File::write
     ///
     /// # Examples
     ///
@@ -171,8 +171,8 @@ pub trait FileExt {
     /// This function will return the first error of
     /// non-[`ErrorKind::Interrupted`] kind that [`write_at`] returns.
     ///
-    /// [`ErrorKind::Interrupted`]: ../../../../std/io/enum.ErrorKind.html#variant.Interrupted
-    /// [`write_at`]: #tymethod.write_at
+    /// [`ErrorKind::Interrupted`]: crate::io::ErrorKind::Interrupted
+    /// [`write_at`]: FileExt::write_at
     ///
     /// # Examples
     ///
@@ -224,7 +224,7 @@ impl FileExt for fs::File {
 
 /// Unix-specific extensions to [`fs::Permissions`].
 ///
-/// [`fs::Permissions`]: ../../../../std/fs/struct.Permissions.html
+/// [`fs::Permissions`]: crate::fs::Permissions
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait PermissionsExt {
     /// Returns the underlying raw `st_mode` bits that contain the standard
@@ -301,7 +301,7 @@ impl PermissionsExt for Permissions {
 
 /// Unix-specific extensions to [`fs::OpenOptions`].
 ///
-/// [`fs::OpenOptions`]: ../../../../std/fs/struct.OpenOptions.html
+/// [`fs::OpenOptions`]: crate::fs::OpenOptions
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait OpenOptionsExt {
     /// Sets the mode bits that a new file will be created with.
@@ -370,7 +370,7 @@ impl OpenOptionsExt for OpenOptions {
 
 /// Unix-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
+/// [`fs::Metadata`]: crate::fs::Metadata
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Returns the ID of the device containing the file.
@@ -655,7 +655,7 @@ impl MetadataExt for fs::Metadata {
 /// Adds support for special Unix file types such as block/character devices,
 /// pipes, and sockets.
 ///
-/// [`FileType`]: ../../../../std/fs/struct.FileType.html
+/// [`FileType`]: crate::fs::FileType
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
     /// Returns whether this file type is a block device.
@@ -750,7 +750,7 @@ impl FileTypeExt for fs::FileType {
 
 /// Unix-specific extension methods for [`fs::DirEntry`].
 ///
-/// [`fs::DirEntry`]: ../../../../std/fs/struct.DirEntry.html
+/// [`fs::DirEntry`]: crate::fs::DirEntry
 #[stable(feature = "dir_entry_ext", since = "1.1.0")]
 pub trait DirEntryExt {
     /// Returns the underlying `d_ino` field in the contained `dirent`
@@ -812,7 +812,7 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
 
 /// Unix-specific extensions to [`fs::DirBuilder`].
 ///
-/// [`fs::DirBuilder`]: ../../../../std/fs/struct.DirBuilder.html
+/// [`fs::DirBuilder`]: crate::fs::DirBuilder
 #[stable(feature = "dir_builder", since = "1.6.0")]
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
