@@ -348,8 +348,10 @@ pub fn run_compiler(
             queries.global_ctxt()?;
 
             // Drop AST after creating GlobalCtxt to free memory
-            let _timer = sess.prof.generic_activity("drop_ast");
-            mem::drop(queries.expansion()?.take());
+            {
+                let _timer = sess.prof.generic_activity("drop_ast");
+                mem::drop(queries.expansion()?.take());
+            }
 
             if sess.opts.debugging_opts.no_analysis || sess.opts.debugging_opts.ast_json {
                 return early_exit();
