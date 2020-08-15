@@ -19,12 +19,6 @@ fn main() -> () {
         StorageLive(_3);                 // scope 2 at $DIR/tls-access.rs:9:9: 9:12
         _3 = &/*tls*/ mut FOO;           // scope 2 at $DIR/tls-access.rs:9:9: 9:12
         (*_3) = const 42_u8;             // scope 2 at $DIR/tls-access.rs:9:9: 9:17
-                                         // ty::Const
-                                         // + ty: u8
-                                         // + val: Value(Scalar(0x2a))
-                                         // mir::Constant
-                                         // + span: $DIR/tls-access.rs:9:15: 9:17
-                                         // + literal: Const { ty: u8, val: Value(Scalar(0x2a)) }
         StorageDead(_3);                 // scope 2 at $DIR/tls-access.rs:9:17: 9:18
         _0 = const ();                   // scope 1 at $DIR/tls-access.rs:7:5: 10:6
                                          // ty::Const

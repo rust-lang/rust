@@ -15,45 +15,12 @@
           StorageLive(_2);                 // scope 0 at $DIR/aggregate.rs:5:13: 5:24
           StorageLive(_3);                 // scope 0 at $DIR/aggregate.rs:5:13: 5:22
           (_3.0: i32) = const 0_i32;       // scope 0 at $DIR/aggregate.rs:5:13: 5:22
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000000))
-                                           // mir::Constant
-                                           // + span: $DIR/aggregate.rs:5:14: 5:15
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
           (_3.1: i32) = const 1_i32;       // scope 0 at $DIR/aggregate.rs:5:13: 5:22
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000001))
-                                           // mir::Constant
-                                           // + span: $DIR/aggregate.rs:5:17: 5:18
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
           (_3.2: i32) = const 2_i32;       // scope 0 at $DIR/aggregate.rs:5:13: 5:22
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000002))
-                                           // mir::Constant
-                                           // + span: $DIR/aggregate.rs:5:20: 5:21
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
 -         _2 = (_3.1: i32);                // scope 0 at $DIR/aggregate.rs:5:13: 5:24
 -         _1 = Add(move _2, const 0_i32);  // scope 0 at $DIR/aggregate.rs:5:13: 5:28
 +         _2 = const 1_i32;                // scope 0 at $DIR/aggregate.rs:5:13: 5:24
-                                           // ty::Const
-                                           // + ty: i32
--                                          // + val: Value(Scalar(0x00000000))
-+                                          // + val: Value(Scalar(0x00000001))
-                                           // mir::Constant
--                                          // + span: $DIR/aggregate.rs:5:27: 5:28
--                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
-+                                          // + span: $DIR/aggregate.rs:5:13: 5:24
-+                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
 +         _1 = const 1_i32;                // scope 0 at $DIR/aggregate.rs:5:13: 5:28
-+                                          // ty::Const
-+                                          // + ty: i32
-+                                          // + val: Value(Scalar(0x00000001))
-+                                          // mir::Constant
-+                                          // + span: $DIR/aggregate.rs:5:13: 5:28
-+                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
           StorageDead(_2);                 // scope 0 at $DIR/aggregate.rs:5:27: 5:28
           StorageDead(_3);                 // scope 0 at $DIR/aggregate.rs:5:28: 5:29
           _0 = const ();                   // scope 0 at $DIR/aggregate.rs:4:11: 6:2

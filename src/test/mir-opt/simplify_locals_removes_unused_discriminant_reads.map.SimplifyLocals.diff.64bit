@@ -16,19 +16,7 @@
   
       bb0: {
 -         _5 = const false;                // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:9: 3:13
--                                          // ty::Const
--                                          // + ty: bool
--                                          // + val: Value(Scalar(0x00))
--                                          // mir::Constant
--                                          // + span: $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:9: 3:13
--                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
 -         _5 = const true;                 // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:9: 3:13
--                                          // ty::Const
--                                          // + ty: bool
--                                          // + val: Value(Scalar(0x01))
--                                          // mir::Constant
--                                          // + span: $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:9: 3:13
--                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
 -         _2 = discriminant(_1);           // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:9: 3:13
           _0 = move _1;                    // scope 1 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:4:20: 4:27
 -         _6 = discriminant(_1);           // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:6:1: 6:2

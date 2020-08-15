@@ -9,23 +9,9 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
 -         _1 = const <bool as NeedsDrop>::NEEDS; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
-+         _1 = const false;                // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
-                                           // ty::Const
-                                           // + ty: bool
--                                          // + val: Unevaluated(WithOptConstParam { did: DefId(0:4 ~ control_flow_simplification[317d]::NeedsDrop[0]::NEEDS[0]), const_param_did: None }, [bool], None)
-+                                          // + val: Value(Scalar(0x00))
-                                           // mir::Constant
-                                           // + span: $DIR/control-flow-simplification.rs:12:8: 12:21
--                                          // + literal: Const { ty: bool, val: Unevaluated(WithOptConstParam { did: DefId(0:4 ~ control_flow_simplification[317d]::NeedsDrop[0]::NEEDS[0]), const_param_did: None }, [bool], None) }
 -         switchInt(_1) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
++         _1 = const false;                // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
 +         switchInt(const false) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
-+                                          // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x00))
-+                                          // mir::Constant
-+                                          // + span: $DIR/control-flow-simplification.rs:12:5: 14:6
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
       }
   
       bb1: {

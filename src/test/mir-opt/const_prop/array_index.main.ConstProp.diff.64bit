@@ -16,84 +16,18 @@
           StorageLive(_1);                 // scope 0 at $DIR/array_index.rs:5:9: 5:10
           StorageLive(_2);                 // scope 0 at $DIR/array_index.rs:5:18: 5:30
           _2 = [const 0_u32, const 1_u32, const 2_u32, const 3_u32]; // scope 0 at $DIR/array_index.rs:5:18: 5:30
-                                           // ty::Const
-                                           // + ty: u32
-                                           // + val: Value(Scalar(0x00000000))
-                                           // mir::Constant
-                                           // + span: $DIR/array_index.rs:5:19: 5:20
-                                           // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
-                                           // ty::Const
-                                           // + ty: u32
-                                           // + val: Value(Scalar(0x00000001))
-                                           // mir::Constant
-                                           // + span: $DIR/array_index.rs:5:22: 5:23
-                                           // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
-                                           // ty::Const
-                                           // + ty: u32
-                                           // + val: Value(Scalar(0x00000002))
-                                           // mir::Constant
-                                           // + span: $DIR/array_index.rs:5:25: 5:26
-                                           // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
-                                           // ty::Const
-                                           // + ty: u32
-                                           // + val: Value(Scalar(0x00000003))
-                                           // mir::Constant
-                                           // + span: $DIR/array_index.rs:5:28: 5:29
-                                           // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
           StorageLive(_3);                 // scope 0 at $DIR/array_index.rs:5:31: 5:32
           _3 = const 2_usize;              // scope 0 at $DIR/array_index.rs:5:31: 5:32
-                                           // ty::Const
-                                           // + ty: usize
-                                           // + val: Value(Scalar(0x0000000000000002))
-                                           // mir::Constant
-                                           // + span: $DIR/array_index.rs:5:31: 5:32
-                                           // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000002)) }
           _4 = const 4_usize;              // scope 0 at $DIR/array_index.rs:5:18: 5:33
-                                           // ty::Const
-                                           // + ty: usize
-                                           // + val: Value(Scalar(0x0000000000000004))
-                                           // mir::Constant
-                                           // + span: $DIR/array_index.rs:5:18: 5:33
-                                           // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000004)) }
 -         _5 = Lt(_3, _4);                 // scope 0 at $DIR/array_index.rs:5:18: 5:33
 -         assert(move _5, "index out of bounds: the len is {} but the index is {}", move _4, _3) -> bb1; // scope 0 at $DIR/array_index.rs:5:18: 5:33
 +         _5 = const true;                 // scope 0 at $DIR/array_index.rs:5:18: 5:33
-+                                          // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x01))
-+                                          // mir::Constant
-+                                          // + span: $DIR/array_index.rs:5:18: 5:33
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
 +         assert(const true, "index out of bounds: the len is {} but the index is {}", const 4_usize, const 2_usize) -> bb1; // scope 0 at $DIR/array_index.rs:5:18: 5:33
-+                                          // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x01))
-+                                          // mir::Constant
-+                                          // + span: $DIR/array_index.rs:5:18: 5:33
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
-+                                          // ty::Const
-+                                          // + ty: usize
-+                                          // + val: Value(Scalar(0x0000000000000004))
-+                                          // mir::Constant
-+                                          // + span: $DIR/array_index.rs:5:18: 5:33
-+                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000004)) }
-+                                          // ty::Const
-+                                          // + ty: usize
-+                                          // + val: Value(Scalar(0x0000000000000002))
-+                                          // mir::Constant
-+                                          // + span: $DIR/array_index.rs:5:18: 5:33
-+                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000002)) }
       }
   
       bb1: {
 -         _1 = _2[_3];                     // scope 0 at $DIR/array_index.rs:5:18: 5:33
 +         _1 = const 2_u32;                // scope 0 at $DIR/array_index.rs:5:18: 5:33
-+                                          // ty::Const
-+                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x00000002))
-+                                          // mir::Constant
-+                                          // + span: $DIR/array_index.rs:5:18: 5:33
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
           StorageDead(_3);                 // scope 0 at $DIR/array_index.rs:5:33: 5:34
           StorageDead(_2);                 // scope 0 at $DIR/array_index.rs:5:33: 5:34
           _0 = const ();                   // scope 0 at $DIR/array_index.rs:4:11: 6:2

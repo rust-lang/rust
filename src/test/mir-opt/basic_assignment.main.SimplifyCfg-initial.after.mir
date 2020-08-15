@@ -28,12 +28,6 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/basic_assignment.rs:11:9: 11:17
         _1 = const false;                // scope 0 at $DIR/basic_assignment.rs:11:20: 11:25
-                                         // ty::Const
-                                         // + ty: bool
-                                         // + val: Value(Scalar(0x00))
-                                         // mir::Constant
-                                         // + span: $DIR/basic_assignment.rs:11:20: 11:25
-                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
         FakeRead(ForLet, _1);            // scope 0 at $DIR/basic_assignment.rs:11:9: 11:17
         StorageLive(_2);                 // scope 1 at $DIR/basic_assignment.rs:12:9: 12:17
         StorageLive(_3);                 // scope 2 at $DIR/basic_assignment.rs:16:16: 16:24

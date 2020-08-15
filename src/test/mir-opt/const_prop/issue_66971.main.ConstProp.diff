@@ -20,19 +20,7 @@
 +                                          // + span: $DIR/issue-66971.rs:16:12: 16:22
 +                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           (_2.1: u8) = const 0_u8;         // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
-                                           // ty::Const
-                                           // + ty: u8
-                                           // + val: Value(Scalar(0x00))
-                                           // mir::Constant
-                                           // + span: $DIR/issue-66971.rs:16:17: 16:18
-                                           // + literal: Const { ty: u8, val: Value(Scalar(0x00)) }
           (_2.2: u8) = const 0_u8;         // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
-                                           // ty::Const
-                                           // + ty: u8
-                                           // + val: Value(Scalar(0x00))
-                                           // mir::Constant
-                                           // + span: $DIR/issue-66971.rs:16:20: 16:21
-                                           // + literal: Const { ty: u8, val: Value(Scalar(0x00)) }
           StorageDead(_3);                 // scope 0 at $DIR/issue-66971.rs:16:21: 16:22
           _1 = const encode(move _2) -> bb1; // scope 0 at $DIR/issue-66971.rs:16:5: 16:23
                                            // ty::Const

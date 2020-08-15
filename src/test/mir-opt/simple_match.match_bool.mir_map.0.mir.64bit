@@ -19,23 +19,11 @@ fn match_bool(_1: bool) -> usize {
 
     bb3: {
         _0 = const 20_usize;             // scope 0 at $DIR/simple-match.rs:8:14: 8:16
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x0000000000000014))
-                                         // mir::Constant
-                                         // + span: $DIR/simple-match.rs:8:14: 8:16
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000014)) }
         goto -> bb5;                     // scope 0 at $DIR/simple-match.rs:6:5: 9:6
     }
 
     bb4: {
         _0 = const 10_usize;             // scope 0 at $DIR/simple-match.rs:7:17: 7:19
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x000000000000000a))
-                                         // mir::Constant
-                                         // + span: $DIR/simple-match.rs:7:17: 7:19
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x000000000000000a)) }
         goto -> bb5;                     // scope 0 at $DIR/simple-match.rs:6:5: 9:6
     }
 

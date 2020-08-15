@@ -17,32 +17,14 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/const_prop_miscompile.rs:5:9: 5:14
           (_1.0: i32) = const 1_i32;       // scope 0 at $DIR/const_prop_miscompile.rs:5:17: 5:21
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000001))
-                                           // mir::Constant
-                                           // + span: $DIR/const_prop_miscompile.rs:5:18: 5:19
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
           StorageLive(_2);                 // scope 1 at $DIR/const_prop_miscompile.rs:6:6: 6:14
           _2 = &mut (_1.0: i32);           // scope 1 at $DIR/const_prop_miscompile.rs:6:6: 6:14
           (*_2) = const 5_i32;             // scope 1 at $DIR/const_prop_miscompile.rs:6:5: 6:18
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000005))
-                                           // mir::Constant
-                                           // + span: $DIR/const_prop_miscompile.rs:6:17: 6:18
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000005)) }
           StorageDead(_2);                 // scope 1 at $DIR/const_prop_miscompile.rs:6:18: 6:19
           StorageLive(_3);                 // scope 1 at $DIR/const_prop_miscompile.rs:7:9: 7:10
           StorageLive(_4);                 // scope 1 at $DIR/const_prop_miscompile.rs:7:13: 7:20
           _4 = (_1.0: i32);                // scope 1 at $DIR/const_prop_miscompile.rs:7:15: 7:18
           _3 = Eq(move _4, const 5_i32);   // scope 1 at $DIR/const_prop_miscompile.rs:7:13: 7:25
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000005))
-                                           // mir::Constant
-                                           // + span: $DIR/const_prop_miscompile.rs:7:24: 7:25
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000005)) }
           StorageDead(_4);                 // scope 1 at $DIR/const_prop_miscompile.rs:7:24: 7:25
           _0 = const ();                   // scope 0 at $DIR/const_prop_miscompile.rs:4:10: 8:2
                                            // ty::Const

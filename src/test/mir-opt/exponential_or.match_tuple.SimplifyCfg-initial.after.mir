@@ -24,12 +24,6 @@ fn match_tuple(_1: (u32, bool, std::option::Option<i32>, u32)) -> u32 {
 
     bb1: {
         _0 = const 0_u32;                // scope 0 at $DIR/exponential-or.rs:9:14: 9:15
-                                         // ty::Const
-                                         // + ty: u32
-                                         // + val: Value(Scalar(0x00000000))
-                                         // mir::Constant
-                                         // + span: $DIR/exponential-or.rs:9:14: 9:15
-                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
         goto -> bb10;                    // scope 0 at $DIR/exponential-or.rs:7:5: 10:6
     }
 
@@ -44,45 +38,21 @@ fn match_tuple(_1: (u32, bool, std::option::Option<i32>, u32)) -> u32 {
 
     bb4: {
         _5 = Le(const 6_u32, (_1.3: u32)); // scope 0 at $DIR/exponential-or.rs:8:62: 8:67
-                                         // ty::Const
-                                         // + ty: u32
-                                         // + val: Value(Scalar(0x00000006))
-                                         // mir::Constant
-                                         // + span: $DIR/exponential-or.rs:8:62: 8:67
-                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000006)) }
         switchInt(move _5) -> [false: bb6, otherwise: bb5]; // scope 0 at $DIR/exponential-or.rs:8:62: 8:67
     }
 
     bb5: {
         _6 = Le((_1.3: u32), const 9_u32); // scope 0 at $DIR/exponential-or.rs:8:62: 8:67
-                                         // ty::Const
-                                         // + ty: u32
-                                         // + val: Value(Scalar(0x00000009))
-                                         // mir::Constant
-                                         // + span: $DIR/exponential-or.rs:8:62: 8:67
-                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000009)) }
         switchInt(move _6) -> [false: bb6, otherwise: bb8]; // scope 0 at $DIR/exponential-or.rs:8:62: 8:67
     }
 
     bb6: {
         _3 = Le(const 13_u32, (_1.3: u32)); // scope 0 at $DIR/exponential-or.rs:8:70: 8:77
-                                         // ty::Const
-                                         // + ty: u32
-                                         // + val: Value(Scalar(0x0000000d))
-                                         // mir::Constant
-                                         // + span: $DIR/exponential-or.rs:8:70: 8:77
-                                         // + literal: Const { ty: u32, val: Value(Scalar(0x0000000d)) }
         switchInt(move _3) -> [false: bb1, otherwise: bb7]; // scope 0 at $DIR/exponential-or.rs:8:70: 8:77
     }
 
     bb7: {
         _4 = Le((_1.3: u32), const 16_u32); // scope 0 at $DIR/exponential-or.rs:8:70: 8:77
-                                         // ty::Const
-                                         // + ty: u32
-                                         // + val: Value(Scalar(0x00000010))
-                                         // mir::Constant
-                                         // + span: $DIR/exponential-or.rs:8:70: 8:77
-                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000010)) }
         switchInt(move _4) -> [false: bb1, otherwise: bb8]; // scope 0 at $DIR/exponential-or.rs:8:70: 8:77
     }
 

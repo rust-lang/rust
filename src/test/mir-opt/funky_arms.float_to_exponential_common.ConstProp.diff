@@ -116,12 +116,6 @@
           _15 = move _16 as u32 (Misc);    // scope 3 at $DIR/funky_arms.rs:26:59: 26:75
           StorageDead(_16);                // scope 3 at $DIR/funky_arms.rs:26:74: 26:75
           _14 = Add(move _15, const 1_u32); // scope 3 at $DIR/funky_arms.rs:26:59: 26:79
-                                           // ty::Const
-                                           // + ty: u32
-                                           // + val: Value(Scalar(0x00000001))
-                                           // mir::Constant
-                                           // + span: $DIR/funky_arms.rs:26:78: 26:79
-                                           // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
           StorageDead(_15);                // scope 3 at $DIR/funky_arms.rs:26:78: 26:79
           StorageLive(_17);                // scope 3 at $DIR/funky_arms.rs:26:81: 26:86
           _17 = _3;                        // scope 3 at $DIR/funky_arms.rs:26:81: 26:86

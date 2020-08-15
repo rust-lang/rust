@@ -6,31 +6,7 @@
 
     bb0: {
         _1 = CheckedAdd(const 1_usize, const 1_usize); // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x00000001))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-41697.rs:18:19: 18:20
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x00000001)) }
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x00000001))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-41697.rs:18:21: 18:22
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x00000001)) }
         assert(!move (_1.1: bool), "attempt to compute `{} + {}` which would overflow", const 1_usize, const 1_usize) -> [success: bb2, unwind: bb1]; // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x00000001))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-41697.rs:18:19: 18:20
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x00000001)) }
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x00000001))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-41697.rs:18:21: 18:22
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x00000001)) }
     }
 
     bb1 (cleanup): {

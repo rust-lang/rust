@@ -31,59 +31,17 @@
           StorageDead(_3);                 // scope 0 at $DIR/slice_len.rs:5:18: 5:19
           StorageLive(_6);                 // scope 0 at $DIR/slice_len.rs:5:31: 5:32
           _6 = const 1_usize;              // scope 0 at $DIR/slice_len.rs:5:31: 5:32
-                                           // ty::Const
-                                           // + ty: usize
-                                           // + val: Value(Scalar(0x0000000000000001))
-                                           // mir::Constant
-                                           // + span: $DIR/slice_len.rs:5:31: 5:32
-                                           // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
 -         _7 = Len((*_2));                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 -         _8 = Lt(_6, _7);                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 -         assert(move _8, "index out of bounds: the len is {} but the index is {}", move _7, _6) -> bb1; // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 +         _7 = const 3_usize;              // scope 0 at $DIR/slice_len.rs:5:5: 5:33
-+                                          // ty::Const
-+                                          // + ty: usize
-+                                          // + val: Value(Scalar(0x0000000000000003))
-+                                          // mir::Constant
-+                                          // + span: $DIR/slice_len.rs:5:5: 5:33
-+                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000003)) }
 +         _8 = const true;                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
-+                                          // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x01))
-+                                          // mir::Constant
-+                                          // + span: $DIR/slice_len.rs:5:5: 5:33
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
 +         assert(const true, "index out of bounds: the len is {} but the index is {}", const 3_usize, const 1_usize) -> bb1; // scope 0 at $DIR/slice_len.rs:5:5: 5:33
-+                                          // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x01))
-+                                          // mir::Constant
-+                                          // + span: $DIR/slice_len.rs:5:5: 5:33
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
-+                                          // ty::Const
-+                                          // + ty: usize
-+                                          // + val: Value(Scalar(0x0000000000000003))
-+                                          // mir::Constant
-+                                          // + span: $DIR/slice_len.rs:5:5: 5:33
-+                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000003)) }
-+                                          // ty::Const
-+                                          // + ty: usize
-+                                          // + val: Value(Scalar(0x0000000000000001))
-+                                          // mir::Constant
-+                                          // + span: $DIR/slice_len.rs:5:5: 5:33
-+                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
       }
   
       bb1: {
 -         _1 = (*_2)[_6];                  // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 +         _1 = const 2_u32;                // scope 0 at $DIR/slice_len.rs:5:5: 5:33
-+                                          // ty::Const
-+                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x00000002))
-+                                          // mir::Constant
-+                                          // + span: $DIR/slice_len.rs:5:5: 5:33
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
           StorageDead(_6);                 // scope 0 at $DIR/slice_len.rs:5:33: 5:34
           StorageDead(_4);                 // scope 0 at $DIR/slice_len.rs:5:33: 5:34
           StorageDead(_2);                 // scope 0 at $DIR/slice_len.rs:5:33: 5:34

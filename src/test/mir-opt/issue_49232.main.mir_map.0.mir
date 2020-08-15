@@ -28,12 +28,6 @@ fn main() -> () {
         StorageLive(_2);                 // scope 0 at $DIR/issue-49232.rs:7:13: 7:19
         StorageLive(_3);                 // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
         _3 = const true;                 // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
-                                         // ty::Const
-                                         // + ty: bool
-                                         // + val: Value(Scalar(0x01))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-49232.rs:8:19: 8:23
-                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
         FakeRead(ForMatchedPlace, _3);   // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
         switchInt(_3) -> [false: bb5, otherwise: bb6]; // scope 0 at $DIR/issue-49232.rs:9:17: 9:22
     }
@@ -59,12 +53,6 @@ fn main() -> () {
 
     bb7: {
         _2 = const 4_i32;                // scope 0 at $DIR/issue-49232.rs:9:26: 9:27
-                                         // ty::Const
-                                         // + ty: i32
-                                         // + val: Value(Scalar(0x00000004))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-49232.rs:9:26: 9:27
-                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000004)) }
         goto -> bb12;                    // scope 0 at $DIR/issue-49232.rs:8:13: 11:14
     }
 

@@ -13,16 +13,12 @@
           StorageLive(_2);                 // scope 0 at $DIR/ref_deref.rs:5:6: 5:10
 -         StorageLive(_3);                 // scope 0 at $DIR/ref_deref.rs:5:8: 5:9
 -         _3 = const 4_i32;                // scope 0 at $DIR/ref_deref.rs:5:8: 5:9
+-         _2 = &_3;                        // scope 0 at $DIR/ref_deref.rs:5:6: 5:10
 +         _4 = const main::promoted[0];    // scope 0 at $DIR/ref_deref.rs:5:6: 5:10
-                                           // ty::Const
--                                          // + ty: i32
--                                          // + val: Value(Scalar(0x00000004))
++                                          // ty::Const
 +                                          // + ty: &i32
 +                                          // + val: Unevaluated(WithOptConstParam { did: DefId(0:3 ~ ref_deref[317d]::main[0]), const_param_did: None }, [], Some(promoted[0]))
-                                           // mir::Constant
--                                          // + span: $DIR/ref_deref.rs:5:8: 5:9
--                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000004)) }
--         _2 = &_3;                        // scope 0 at $DIR/ref_deref.rs:5:6: 5:10
++                                          // mir::Constant
 +                                          // + span: $DIR/ref_deref.rs:5:6: 5:10
 +                                          // + literal: Const { ty: &i32, val: Unevaluated(WithOptConstParam { did: DefId(0:3 ~ ref_deref[317d]::main[0]), const_param_did: None }, [], Some(promoted[0])) }
 +         _2 = &(*_4);                     // scope 0 at $DIR/ref_deref.rs:5:6: 5:10

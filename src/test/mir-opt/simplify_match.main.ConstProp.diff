@@ -13,29 +13,11 @@
           StorageLive(_1);                 // scope 0 at $DIR/simplify_match.rs:6:11: 6:31
           StorageLive(_2);                 // scope 0 at $DIR/simplify_match.rs:6:17: 6:18
           _2 = const false;                // scope 0 at $DIR/simplify_match.rs:6:21: 6:26
-                                           // ty::Const
-                                           // + ty: bool
-                                           // + val: Value(Scalar(0x00))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_match.rs:6:21: 6:26
-                                           // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
 -         _1 = _2;                         // scope 1 at $DIR/simplify_match.rs:6:28: 6:29
 +         _1 = const false;                // scope 1 at $DIR/simplify_match.rs:6:28: 6:29
-+                                          // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x00))
-+                                          // mir::Constant
-+                                          // + span: $DIR/simplify_match.rs:6:28: 6:29
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
           StorageDead(_2);                 // scope 0 at $DIR/simplify_match.rs:6:30: 6:31
 -         switchInt(_1) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_match.rs:7:9: 7:13
 +         switchInt(const false) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_match.rs:7:9: 7:13
-+                                          // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x00))
-+                                          // mir::Constant
-+                                          // + span: $DIR/simplify_match.rs:7:9: 7:13
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
       }
   
       bb1: {

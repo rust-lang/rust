@@ -16,55 +16,13 @@
           StorageLive(_1);                 // scope 0 at $DIR/large_array_index.rs:6:9: 6:10
           StorageLive(_2);                 // scope 0 at $DIR/large_array_index.rs:6:17: 6:29
           _2 = [const 0_u8; 5000];         // scope 0 at $DIR/large_array_index.rs:6:17: 6:29
-                                           // ty::Const
-                                           // + ty: u8
-                                           // + val: Value(Scalar(0x00))
-                                           // mir::Constant
-                                           // + span: $DIR/large_array_index.rs:6:18: 6:22
-                                           // + literal: Const { ty: u8, val: Value(Scalar(0x00)) }
           StorageLive(_3);                 // scope 0 at $DIR/large_array_index.rs:6:30: 6:31
           _3 = const 2_usize;              // scope 0 at $DIR/large_array_index.rs:6:30: 6:31
-                                           // ty::Const
-                                           // + ty: usize
-                                           // + val: Value(Scalar(0x0000000000000002))
-                                           // mir::Constant
-                                           // + span: $DIR/large_array_index.rs:6:30: 6:31
-                                           // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000002)) }
           _4 = const 5000_usize;           // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
-                                           // ty::Const
-                                           // + ty: usize
-                                           // + val: Value(Scalar(0x0000000000001388))
-                                           // mir::Constant
-                                           // + span: $DIR/large_array_index.rs:6:17: 6:32
-                                           // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000001388)) }
 -         _5 = Lt(_3, _4);                 // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
 -         assert(move _5, "index out of bounds: the len is {} but the index is {}", move _4, _3) -> bb1; // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
 +         _5 = const true;                 // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
-+                                          // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x01))
-+                                          // mir::Constant
-+                                          // + span: $DIR/large_array_index.rs:6:17: 6:32
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
 +         assert(const true, "index out of bounds: the len is {} but the index is {}", const 5000_usize, const 2_usize) -> bb1; // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
-+                                          // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x01))
-+                                          // mir::Constant
-+                                          // + span: $DIR/large_array_index.rs:6:17: 6:32
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
-+                                          // ty::Const
-+                                          // + ty: usize
-+                                          // + val: Value(Scalar(0x0000000000001388))
-+                                          // mir::Constant
-+                                          // + span: $DIR/large_array_index.rs:6:17: 6:32
-+                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000001388)) }
-+                                          // ty::Const
-+                                          // + ty: usize
-+                                          // + val: Value(Scalar(0x0000000000000002))
-+                                          // mir::Constant
-+                                          // + span: $DIR/large_array_index.rs:6:17: 6:32
-+                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000002)) }
       }
   
       bb1: {

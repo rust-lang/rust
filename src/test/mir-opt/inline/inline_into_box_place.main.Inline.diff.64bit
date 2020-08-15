@@ -40,12 +40,6 @@
 +                                          // + user_ty: UserType(0)
 +                                          // + literal: Const { ty: alloc::raw_vec::RawVec<u32>, val: Value(ByRef { alloc: Allocation { bytes: [4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [65535], len: Size { raw: 16 } }, size: Size { raw: 16 }, align: Align { pow2: 3 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
 +         ((*_4).1: usize) = const 0_usize; // scope 2 at $SRC_DIR/alloc/src/vec.rs:LL:COL
-+                                          // ty::Const
-+                                          // + ty: usize
-+                                          // + val: Value(Scalar(0x0000000000000000))
-+                                          // mir::Constant
-+                                          // + span: $SRC_DIR/alloc/src/vec.rs:LL:COL
-+                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000000)) }
           _1 = move _2;                    // scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
           StorageDead(_2);                 // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
           _0 = const ();                   // scope 0 at $DIR/inline-into-box-place.rs:7:11: 9:2

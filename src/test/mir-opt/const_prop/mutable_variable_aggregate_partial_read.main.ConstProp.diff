@@ -25,28 +25,10 @@
   
       bb1: {
           (_1.1: i32) = const 99_i32;      // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:6:5: 6:13
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000063))
-                                           // mir::Constant
-                                           // + span: $DIR/mutable_variable_aggregate_partial_read.rs:6:11: 6:13
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000063)) }
           (_1.0: i32) = const 42_i32;      // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:7:5: 7:13
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x0000002a))
-                                           // mir::Constant
-                                           // + span: $DIR/mutable_variable_aggregate_partial_read.rs:7:11: 7:13
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:8:9: 8:10
 -         _2 = (_1.1: i32);                // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:8:13: 8:16
 +         _2 = const 99_i32;               // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:8:13: 8:16
-+                                          // ty::Const
-+                                          // + ty: i32
-+                                          // + val: Value(Scalar(0x00000063))
-+                                          // mir::Constant
-+                                          // + span: $DIR/mutable_variable_aggregate_partial_read.rs:8:13: 8:16
-+                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000063)) }
           _0 = const ();                   // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:4:11: 9:2
                                            // ty::Const
                                            // + ty: ()
