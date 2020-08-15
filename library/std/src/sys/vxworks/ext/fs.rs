@@ -223,7 +223,6 @@ impl FileExt for fs::File {
 }
 
 /// Unix-specific extensions to [`fs::Permissions`].
-///
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait PermissionsExt {
     /// Returns the underlying raw `st_mode` bits that contain the standard
@@ -299,7 +298,6 @@ impl PermissionsExt for Permissions {
 }
 
 /// Unix-specific extensions to [`fs::OpenOptions`].
-///
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait OpenOptionsExt {
     /// Sets the mode bits that a new file will be created with.
@@ -367,7 +365,6 @@ impl OpenOptionsExt for OpenOptions {
 */
 
 /// Unix-specific extensions to [`fs::Metadata`].
-///
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Returns the ID of the device containing the file.
@@ -746,7 +743,6 @@ impl FileTypeExt for fs::FileType {
 }
 
 /// Unix-specific extension methods for [`fs::DirEntry`].
-///
 #[stable(feature = "dir_entry_ext", since = "1.1.0")]
 pub trait DirEntryExt {
     /// Returns the underlying `d_ino` field in the contained `dirent`
@@ -807,7 +803,6 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
 }
 
 /// Unix-specific extensions to [`fs::DirBuilder`].
-///
 #[stable(feature = "dir_builder", since = "1.6.0")]
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to

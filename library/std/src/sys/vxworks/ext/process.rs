@@ -10,7 +10,6 @@ use crate::sys::vxworks::ext::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 /// Unix-specific extensions to the [`process::Command`] builder.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait CommandExt {
     /// Sets the child process's user ID. This translates to a
@@ -149,7 +148,6 @@ impl CommandExt for process::Command {
 }
 
 /// Unix-specific extensions to [`process::ExitStatus`].
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExitStatusExt {
     /// Creates a new `ExitStatus` from the raw underlying `i32` return value of
