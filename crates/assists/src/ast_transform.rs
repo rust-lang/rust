@@ -7,6 +7,17 @@ use syntax::{
     ast::{self, AstNode},
 };
 
+pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: N) -> N {
+    SyntaxRewriter::from_fn(|element| match element {
+        syntax::SyntaxElement::Node(n) => {
+            let replacement = transformer.get_substitution(&n)?;
+            Some(replacement.into())
+        }
+        _ => None,
+    })
+    .rewrite_ast(&node)
+}
+
 pub trait AstTransform<'a> {
     fn get_substitution(&self, node: &syntax::SyntaxNode) -> Option<syntax::SyntaxNode>;
 
@@ -107,10 +118,7 @@ impl<'a> SubstituteTypeParams<'a> {
             ast::Type::PathType(path_type) => path_type.path()?,
             _ => return None,
         };
-        // FIXME: use `hir::Path::from_src` instead.
-        #[allow(deprecated)]
-        let path = hir::Path::from_ast(path)?;
-        let resolution = self.source_scope.resolve_hir_path(&path)?;
+        let resolution = self.source_scope.speculative_resolve(&path)?;
         match resolution {
             hir::PathResolution::TypeParam(tp) => Some(self.substs.get(&tp)?.syntax().clone()),
             _ => None,
@@ -146,10 +154,7 @@ impl<'a> QualifyPaths<'a> {
             // don't try to qualify `Fn(Foo) -> Bar` paths, they are in prelude anyway
             return None;
         }
-        // FIXME: use `hir::Path::from_src` instead.
-        #[allow(deprecated)]
-        let hir_path = hir::Path::from_ast(p.clone());
-        let resolution = self.source_scope.resolve_hir_path(&hir_path?)?;
+        let resolution = self.source_scope.speculative_resolve(&p)?;
         match resolution {
             PathResolution::Def(def) => {
                 let found_path = from.find_use_path(self.source_scope.db.upcast(), def)?;
@@ -173,17 +178,6 @@ impl<'a> QualifyPaths<'a> {
             PathResolution::AssocItem(_) => None,
         }
     }
-}
-
-pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: N) -> N {
-    SyntaxRewriter::from_fn(|element| match element {
-        syntax::SyntaxElement::Node(n) => {
-            let replacement = transformer.get_substitution(&n)?;
-            Some(replacement.into())
-        }
-        _ => None,
-    })
-    .rewrite_ast(&node)
 }
 
 impl<'a> AstTransform<'a> for QualifyPaths<'a> {
