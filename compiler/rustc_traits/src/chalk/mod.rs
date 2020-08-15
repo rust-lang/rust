@@ -53,8 +53,9 @@ crate fn evaluate_goal<'tcx>(
     }));
 
     let mut params_substitutor =
-        ParamsSubstitutor::new(tcx, placeholders_collector.next_ty_placehoder);
+        ParamsSubstitutor::new(tcx, placeholders_collector.next_ty_placeholder);
     let obligation = obligation.fold_with(&mut params_substitutor);
+    // FIXME(chalk): we really should be substituting these back in the solution
     let _params: FxHashMap<usize, ParamTy> = params_substitutor.params;
 
     let mut regions_substitutor =
@@ -63,7 +64,7 @@ crate fn evaluate_goal<'tcx>(
 
     let max_universe = obligation.max_universe.index();
 
-    let _lowered_goal: chalk_ir::UCanonical<
+    let lowered_goal: chalk_ir::UCanonical<
         chalk_ir::InEnvironment<chalk_ir::Goal<ChalkRustInterner<'tcx>>>,
     > = chalk_ir::UCanonical {
         canonical: chalk_ir::Canonical {
@@ -101,17 +102,17 @@ crate fn evaluate_goal<'tcx>(
 
     use chalk_solve::Solver;
     let mut solver = chalk_engine::solve::SLGSolver::new(32, None);
-    let db = ChalkRustIrDatabase { tcx, interner, restatic_placeholder, reempty_placeholder };
-    let solution = chalk_solve::logging::with_tracing_logs(|| solver.solve(&db, &_lowered_goal));
+    let db = ChalkRustIrDatabase { interner, restatic_placeholder, reempty_placeholder };
+    let solution = chalk_solve::logging::with_tracing_logs(|| solver.solve(&db, &lowered_goal));
 
     // Ideally, the code to convert *back* to rustc types would live close to
     // the code to convert *from* rustc types. Right now though, we don't
     // really need this and so it's really minimal.
     // Right now, we also treat a `Unique` solution the same as
     // `Ambig(Definite)`. This really isn't right.
-    let make_solution = |_subst: chalk_ir::Substitution<_>| {
+    let make_solution = |subst: chalk_ir::Substitution<_>| {
         let mut var_values: IndexVec<BoundVar, GenericArg<'tcx>> = IndexVec::new();
-        _subst.as_slice(&interner).iter().for_each(|p| {
+        subst.as_slice(&interner).iter().for_each(|p| {
             var_values.push(p.lower_into(&interner));
         });
         let sol = Canonical {
@@ -128,13 +129,13 @@ crate fn evaluate_goal<'tcx>(
     };
     solution
         .map(|s| match s {
-            Solution::Unique(_subst) => {
+            Solution::Unique(subst) => {
                 // FIXME(chalk): handle constraints
-                make_solution(_subst.value.subst)
+                make_solution(subst.value.subst)
             }
-            Solution::Ambig(_guidance) => {
-                match _guidance {
-                    chalk_solve::Guidance::Definite(_subst) => make_solution(_subst.value),
+            Solution::Ambig(guidance) => {
+                match guidance {
+                    chalk_solve::Guidance::Definite(subst) => make_solution(subst.value),
                     chalk_solve::Guidance::Suggested(_) => unimplemented!(),
                     chalk_solve::Guidance::Unknown => {
                         // chalk_fulfill doesn't use the var_values here, so
