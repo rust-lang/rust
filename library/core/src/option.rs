@@ -669,7 +669,6 @@ impl<T> Option<T> {
     /// assert_eq!(Some(4).filter(is_even), Some(4));
     /// ```
     ///
-    /// [`Iterator::filter()`]: Iterator::filter
     #[inline]
     #[stable(feature = "option_filter", since = "1.27.0")]
     pub fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {
