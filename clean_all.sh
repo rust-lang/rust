@@ -2,4 +2,4 @@
 set -e
 
 rm -rf target/ build_sysroot/{sysroot/,sysroot_src/,target/} perf.data{,.old}
-rm -rf regex/ simple-raytracer/
+rm -rf rand/ regex/ simple-raytracer/

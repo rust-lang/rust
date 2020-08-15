@@ -9,5 +9,6 @@ perf.data.old
 /build_sysroot/sysroot
 /build_sysroot/sysroot_src
 /rust
+/rand
 /regex
 /simple-raytracer

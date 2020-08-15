@@ -71,6 +71,11 @@ $RUN_WRAPPER ./target/out/track-caller-attribute
 echo "[BUILD] mod_bench"
 $RUSTC example/mod_bench.rs --crate-type bin --target $TARGET_TRIPLE
 
+pushd rand
+rm -r ./target || true
+../cargo.sh test --workspace
+popd
+
 pushd simple-raytracer
 if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
     echo "[BENCH COMPILE] ebobby/simple-raytracer"
