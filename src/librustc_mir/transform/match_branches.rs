@@ -48,7 +48,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                     ref targets,
                     ref values,
                     ..
-                } if targets.len() == 2 && values.len() == 1 => {
+                } if targets.len() == 2 && values.len() == 1 && targets[0] != targets[1] => {
                     (place, values[0], switch_ty, targets[0], targets[1])
                 }
                 // Only optimize switch int statements
@@ -89,48 +89,45 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             // Take ownership of items now that we know we can optimize.
             let discr = discr.clone();
 
-            let new_stmts = first_stmts
-                .iter()
-                .zip(scnd_stmts.iter())
-                .map(|(f, s)| {
-                    match (&f.kind, &s.kind) {
-                        (f_s, s_s) if f_s == s_s => (*f).clone(),
+            // We already checked that first and second are different blocks,
+            // and bb_idx has a different terminator from both of them.
+            let (from, first, second) = bbs.pick3_mut(bb_idx, first, second);
 
-                        (
-                            StatementKind::Assign(box (lhs, Rvalue::Use(Operand::Constant(f_c)))),
-                            StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(s_c)))),
-                        ) => {
-                            // From earlier loop we know that we are dealing with bool constants only:
-                            let f_b = f_c.literal.try_eval_bool(tcx, param_env).unwrap();
-                            let s_b = s_c.literal.try_eval_bool(tcx, param_env).unwrap();
-                            if f_b == s_b {
-                                // Same value in both blocks. Use statement as is.
-                                (*f).clone()
-                            } else {
-                                // Different value between blocks. Make value conditional on switch condition.
-                                let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
-                                let const_cmp = Operand::const_from_scalar(
-                                    tcx,
-                                    switch_ty,
-                                    crate::interpret::Scalar::from_uint(val, size),
-                                    rustc_span::DUMMY_SP,
-                                );
-                                let op = if f_b { BinOp::Eq } else { BinOp::Ne };
-                                let rhs =
-                                    Rvalue::BinaryOp(op, Operand::Copy(discr.clone()), const_cmp);
-                                Statement {
-                                    source_info: f.source_info,
-                                    kind: StatementKind::Assign(box (*lhs, rhs)),
-                                }
+            let new_stmts = first.statements.iter().zip(second.statements.iter()).map(|(f, s)| {
+                match (&f.kind, &s.kind) {
+                    (f_s, s_s) if f_s == s_s => (*f).clone(),
+
+                    (
+                        StatementKind::Assign(box (lhs, Rvalue::Use(Operand::Constant(f_c)))),
+                        StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(s_c)))),
+                    ) => {
+                        // From earlier loop we know that we are dealing with bool constants only:
+                        let f_b = f_c.literal.try_eval_bool(tcx, param_env).unwrap();
+                        let s_b = s_c.literal.try_eval_bool(tcx, param_env).unwrap();
+                        if f_b == s_b {
+                            // Same value in both blocks. Use statement as is.
+                            (*f).clone()
+                        } else {
+                            // Different value between blocks. Make value conditional on switch condition.
+                            let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
+                            let const_cmp = Operand::const_from_scalar(
+                                tcx,
+                                switch_ty,
+                                crate::interpret::Scalar::from_uint(val, size),
+                                rustc_span::DUMMY_SP,
+                            );
+                            let op = if f_b { BinOp::Eq } else { BinOp::Ne };
+                            let rhs = Rvalue::BinaryOp(op, Operand::Copy(discr.clone()), const_cmp);
+                            Statement {
+                                source_info: f.source_info,
+                                kind: StatementKind::Assign(box (*lhs, rhs)),
                             }
                         }
-
-                        _ => unreachable!(),
                     }
-                })
-                .collect::<Vec<_>>();
 
-            let (from, first) = bbs.pick2_mut(bb_idx, first);
+                    _ => unreachable!(),
+                }
+            });
             from.statements.extend(new_stmts);
             from.terminator_mut().kind = first.terminator().kind.clone();
         }
