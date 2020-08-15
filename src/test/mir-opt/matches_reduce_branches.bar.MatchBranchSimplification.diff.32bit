@@ -1,0 +1,156 @@
+- // MIR for `bar` before MatchBranchSimplification
++ // MIR for `bar` after MatchBranchSimplification
+  
+  fn bar(_1: i32) -> (bool, bool, bool, bool) {
+      debug i => _1;                       // in scope 0 at $DIR/matches_reduce_branches.rs:11:8: 11:9
+      let mut _0: (bool, bool, bool, bool); // return place in scope 0 at $DIR/matches_reduce_branches.rs:11:19: 11:43
+      let _2: bool;                        // in scope 0 at $DIR/matches_reduce_branches.rs:12:9: 12:10
+      let _6: ();                          // in scope 0 at $DIR/matches_reduce_branches.rs:17:5: 32:6
+      let mut _7: bool;                    // in scope 0 at $DIR/matches_reduce_branches.rs:34:6: 34:7
+      let mut _8: bool;                    // in scope 0 at $DIR/matches_reduce_branches.rs:34:9: 34:10
+      let mut _9: bool;                    // in scope 0 at $DIR/matches_reduce_branches.rs:34:12: 34:13
+      let mut _10: bool;                   // in scope 0 at $DIR/matches_reduce_branches.rs:34:15: 34:16
+      scope 1 {
+          debug a => _2;                   // in scope 1 at $DIR/matches_reduce_branches.rs:12:9: 12:10
+          let _3: bool;                    // in scope 1 at $DIR/matches_reduce_branches.rs:13:9: 13:10
+          scope 2 {
+              debug b => _3;               // in scope 2 at $DIR/matches_reduce_branches.rs:13:9: 13:10
+              let _4: bool;                // in scope 2 at $DIR/matches_reduce_branches.rs:14:9: 14:10
+              scope 3 {
+                  debug c => _4;           // in scope 3 at $DIR/matches_reduce_branches.rs:14:9: 14:10
+                  let _5: bool;            // in scope 3 at $DIR/matches_reduce_branches.rs:15:9: 15:10
+                  scope 4 {
+                      debug d => _5;       // in scope 4 at $DIR/matches_reduce_branches.rs:15:9: 15:10
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/matches_reduce_branches.rs:12:9: 12:10
+          StorageLive(_3);                 // scope 1 at $DIR/matches_reduce_branches.rs:13:9: 13:10
+          StorageLive(_4);                 // scope 2 at $DIR/matches_reduce_branches.rs:14:9: 14:10
+          StorageLive(_5);                 // scope 3 at $DIR/matches_reduce_branches.rs:15:9: 15:10
+          StorageLive(_6);                 // scope 4 at $DIR/matches_reduce_branches.rs:17:5: 32:6
+-         switchInt(_1) -> [7_i32: bb2, otherwise: bb1]; // scope 4 at $DIR/matches_reduce_branches.rs:18:9: 18:10
++         _2 = Ne(_1, const 7_i32);        // scope 4 at $DIR/matches_reduce_branches.rs:19:13: 19:22
++                                          // ty::Const
++                                          // + ty: i32
++                                          // + val: Value(Scalar(0x00000007))
++                                          // mir::Constant
++                                          // + span: $DIR/matches_reduce_branches.rs:1:1: 1:1
++                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000007)) }
++         _3 = Eq(_1, const 7_i32);        // scope 4 at $DIR/matches_reduce_branches.rs:20:13: 20:21
++                                          // ty::Const
++                                          // + ty: i32
++                                          // + val: Value(Scalar(0x00000007))
++                                          // mir::Constant
++                                          // + span: $DIR/matches_reduce_branches.rs:1:1: 1:1
++                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000007)) }
++         _4 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:21:13: 21:22
++                                          // ty::Const
++                                          // + ty: bool
++                                          // + val: Value(Scalar(0x00))
++                                          // mir::Constant
++                                          // + span: $DIR/matches_reduce_branches.rs:21:17: 21:22
++                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
++         _5 = const true;                 // scope 4 at $DIR/matches_reduce_branches.rs:22:13: 22:21
++                                          // ty::Const
++                                          // + ty: bool
++                                          // + val: Value(Scalar(0x01))
++                                          // mir::Constant
++                                          // + span: $DIR/matches_reduce_branches.rs:22:17: 22:21
++                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
++         goto -> bb3;                     // scope 4 at $DIR/matches_reduce_branches.rs:18:9: 18:10
+      }
+  
+      bb1: {
+          _2 = const true;                 // scope 4 at $DIR/matches_reduce_branches.rs:26:13: 26:21
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x01))
+                                           // mir::Constant
+                                           // + span: $DIR/matches_reduce_branches.rs:26:17: 26:21
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+          _3 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:27:13: 27:22
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x00))
+                                           // mir::Constant
+                                           // + span: $DIR/matches_reduce_branches.rs:27:17: 27:22
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+          _4 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:28:13: 28:22
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x00))
+                                           // mir::Constant
+                                           // + span: $DIR/matches_reduce_branches.rs:28:17: 28:22
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+          _5 = const true;                 // scope 4 at $DIR/matches_reduce_branches.rs:29:13: 29:21
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x01))
+                                           // mir::Constant
+                                           // + span: $DIR/matches_reduce_branches.rs:29:17: 29:21
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+          goto -> bb3;                     // scope 4 at $DIR/matches_reduce_branches.rs:17:5: 32:6
+      }
+  
+      bb2: {
+          _2 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:19:13: 19:22
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x00))
+                                           // mir::Constant
+                                           // + span: $DIR/matches_reduce_branches.rs:19:17: 19:22
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+          _3 = const true;                 // scope 4 at $DIR/matches_reduce_branches.rs:20:13: 20:21
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x01))
+                                           // mir::Constant
+                                           // + span: $DIR/matches_reduce_branches.rs:20:17: 20:21
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+          _4 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:21:13: 21:22
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x00))
+                                           // mir::Constant
+                                           // + span: $DIR/matches_reduce_branches.rs:21:17: 21:22
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+          _5 = const true;                 // scope 4 at $DIR/matches_reduce_branches.rs:22:13: 22:21
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x01))
+                                           // mir::Constant
+                                           // + span: $DIR/matches_reduce_branches.rs:22:17: 22:21
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+          goto -> bb3;                     // scope 4 at $DIR/matches_reduce_branches.rs:17:5: 32:6
+      }
+  
+      bb3: {
+          StorageDead(_6);                 // scope 4 at $DIR/matches_reduce_branches.rs:32:6: 32:7
+          StorageLive(_7);                 // scope 4 at $DIR/matches_reduce_branches.rs:34:6: 34:7
+          _7 = _2;                         // scope 4 at $DIR/matches_reduce_branches.rs:34:6: 34:7
+          StorageLive(_8);                 // scope 4 at $DIR/matches_reduce_branches.rs:34:9: 34:10
+          _8 = _3;                         // scope 4 at $DIR/matches_reduce_branches.rs:34:9: 34:10
+          StorageLive(_9);                 // scope 4 at $DIR/matches_reduce_branches.rs:34:12: 34:13
+          _9 = _4;                         // scope 4 at $DIR/matches_reduce_branches.rs:34:12: 34:13
+          StorageLive(_10);                // scope 4 at $DIR/matches_reduce_branches.rs:34:15: 34:16
+          _10 = _5;                        // scope 4 at $DIR/matches_reduce_branches.rs:34:15: 34:16
+          (_0.0: bool) = move _7;          // scope 4 at $DIR/matches_reduce_branches.rs:34:5: 34:17
+          (_0.1: bool) = move _8;          // scope 4 at $DIR/matches_reduce_branches.rs:34:5: 34:17
+          (_0.2: bool) = move _9;          // scope 4 at $DIR/matches_reduce_branches.rs:34:5: 34:17
+          (_0.3: bool) = move _10;         // scope 4 at $DIR/matches_reduce_branches.rs:34:5: 34:17
+          StorageDead(_10);                // scope 4 at $DIR/matches_reduce_branches.rs:34:16: 34:17
+          StorageDead(_9);                 // scope 4 at $DIR/matches_reduce_branches.rs:34:16: 34:17
+          StorageDead(_8);                 // scope 4 at $DIR/matches_reduce_branches.rs:34:16: 34:17
+          StorageDead(_7);                 // scope 4 at $DIR/matches_reduce_branches.rs:34:16: 34:17
+          StorageDead(_5);                 // scope 3 at $DIR/matches_reduce_branches.rs:35:1: 35:2
+          StorageDead(_4);                 // scope 2 at $DIR/matches_reduce_branches.rs:35:1: 35:2
+          StorageDead(_3);                 // scope 1 at $DIR/matches_reduce_branches.rs:35:1: 35:2
+          StorageDead(_2);                 // scope 0 at $DIR/matches_reduce_branches.rs:35:1: 35:2
+          return;                          // scope 0 at $DIR/matches_reduce_branches.rs:35:2: 35:2
+      }
+  }
+  
