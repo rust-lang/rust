@@ -126,6 +126,8 @@ fn panic(_: u128) {
 
 #[target_feature(enable = "sse2")]
 unsafe fn test_simd() {
+    assert!(is_x86_feature_detected!("sse2"));
+
     let x = _mm_setzero_si128();
     let y = _mm_set1_epi16(7);
     let or = _mm_or_si128(x, y);

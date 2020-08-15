@@ -94,6 +94,31 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
                 bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
             });
         };
+        llvm.x86.sse2.psrli.d, (c a, o imm8) {
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8).expect("llvm.x86.sse2.psrli.d imm8 not const");
+            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, res_lane_layout, lane| {
+                let res_lane = match imm8.val.try_to_bits(Size::from_bytes(4)).expect(&format!("imm8 not scalar: {:?}", imm8)) {
+                    imm8 if imm8 < 32 => fx.bcx.ins().ushr_imm(lane, i64::from(imm8 as u8)),
+                    _ => fx.bcx.ins().iconst(types::I32, 0),
+                };
+                CValue::by_val(res_lane, res_lane_layout)
+            });
+        };
+        llvm.x86.sse2.pslli.d, (c a, o imm8) {
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8).expect("llvm.x86.sse2.psrli.d imm8 not const");
+            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, res_lane_layout, lane| {
+                let res_lane = match imm8.val.try_to_bits(Size::from_bytes(4)).expect(&format!("imm8 not scalar: {:?}", imm8)) {
+                    imm8 if imm8 < 32 => fx.bcx.ins().ishl_imm(lane, i64::from(imm8 as u8)),
+                    _ => fx.bcx.ins().iconst(types::I32, 0),
+                };
+                CValue::by_val(res_lane, res_lane_layout)
+            });
+        };
+        llvm.x86.sse2.storeu.dq, (v mem_addr, c a) {
+            // FIXME correctly handle the unalignment
+            let dest = CPlace::for_ptr(Pointer::new(mem_addr), a.layout());
+            dest.write_cvalue(fx, a);
+        };
     }
 
     if let Some((_, dest)) = destination {

@@ -681,37 +681,57 @@ fn trans_stmt<'tcx>(
             use rustc_span::symbol::Symbol;
             let LlvmInlineAsm {
                 asm,
-                outputs: _,
-                inputs: _,
+                outputs,
+                inputs,
             } = &**asm;
             let rustc_hir::LlvmInlineAsmInner {
                 asm: asm_code, // Name
-                outputs,       // Vec<Name>
-                inputs,        // Vec<Name>
+                outputs: output_names, // Vec<LlvmInlineAsmOutput>
+                inputs: input_names,   // Vec<Name>
                 clobbers,      // Vec<Name>
                 volatile,      // bool
                 alignstack,    // bool
-                dialect: _,    // rustc_ast::ast::AsmDialect
+                dialect: _,
                 asm_str_style: _,
             } = asm;
-            match &*asm_code.as_str() {
+            match asm_code.as_str().trim() {
                 "" => {
                     // Black box
                 }
-                cpuid if cpuid.contains("cpuid") => {
-                    crate::trap::trap_unimplemented(
-                        fx,
-                        "__cpuid_count arch intrinsic is not supported",
-                    );
+                "mov %rbx, %rsi\n                  cpuid\n                  xchg %rbx, %rsi" => {
+                    assert_eq!(input_names, &[Symbol::intern("{eax}"), Symbol::intern("{ecx}")]);
+                    assert_eq!(output_names.len(), 4);
+                    for (i, c) in (&["={eax}", "={esi}", "={ecx}", "={edx}"]).iter().enumerate() {
+                        assert_eq!(&output_names[i].constraint.as_str(), c);
+                        assert!(!output_names[i].is_rw);
+                        assert!(!output_names[i].is_indirect);
+                    }
+
+                    assert_eq!(clobbers, &[]);
+
+                    assert!(!volatile);
+                    assert!(!alignstack);
+
+                    assert_eq!(inputs.len(), 2);
+                    let leaf = trans_operand(fx, &inputs[0].1).load_scalar(fx); // %eax
+                    let subleaf = trans_operand(fx, &inputs[1].1).load_scalar(fx); // %ecx
+
+                    let (eax, ebx, ecx, edx) = crate::intrinsics::codegen_cpuid_call(fx, leaf, subleaf);
+
+                    assert_eq!(outputs.len(), 4);
+                    trans_place(fx, outputs[0]).write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
+                    trans_place(fx, outputs[1]).write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
+                    trans_place(fx, outputs[2]).write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
+                    trans_place(fx, outputs[3]).write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
                 }
                 "xgetbv" => {
-                    assert_eq!(inputs, &[Symbol::intern("{ecx}")]);
+                    assert_eq!(input_names, &[Symbol::intern("{ecx}")]);
 
-                    assert_eq!(outputs.len(), 2);
+                    assert_eq!(output_names.len(), 2);
                     for (i, c) in (&["={eax}", "={edx}"]).iter().enumerate() {
-                        assert_eq!(&outputs[i].constraint.as_str(), c);
-                        assert!(!outputs[i].is_rw);
-                        assert!(!outputs[i].is_indirect);
+                        assert_eq!(&output_names[i].constraint.as_str(), c);
+                        assert!(!output_names[i].is_rw);
+                        assert!(!output_names[i].is_indirect);
                     }
 
                     assert_eq!(clobbers, &[]);

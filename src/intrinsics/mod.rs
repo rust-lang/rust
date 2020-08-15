@@ -1,6 +1,8 @@
+mod cpuid;
 mod llvm;
 mod simd;
 
+pub(crate) use cpuid::codegen_cpuid_call;
 pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
 use crate::prelude::*;
