@@ -680,6 +680,17 @@ impl<I: Idx, T> IndexVec<I, T> {
         }
     }
 
+    /// Returns mutable references to three distinct elements or panics otherwise.
+    #[inline]
+    pub fn pick3_mut(&mut self, a: I, b: I, c: I) -> (&mut T, &mut T, &mut T) {
+        let (ai, bi, ci) = (a.index(), b.index(), c.index());
+        assert!(ai != bi && bi != ci && ci != ai);
+        let len = self.raw.len();
+        assert!(ai < len && bi < len && ci < len);
+        let ptr = self.raw.as_mut_ptr();
+        unsafe { (&mut *ptr.add(ai), &mut *ptr.add(bi), &mut *ptr.add(ci)) }
+    }
+
     pub fn convert_index_type<Ix: Idx>(self) -> IndexVec<Ix, T> {
         IndexVec { raw: self.raw, _marker: PhantomData }
     }
