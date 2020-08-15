@@ -822,6 +822,7 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         "aarch64-fuchsia"
         | "aarch64-unknown-linux-gnu"
         | "x86_64-fuchsia"
+        | "x86_64-unknown-freebsd"
         | "x86_64-unknown-linux-gnu" => {
             let filename = format!("librustc{}_rt.{}.a", channel, name);
             let path = default_tlib.join(&filename);
