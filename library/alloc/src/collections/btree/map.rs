@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{self, Debug};
@@ -1288,11 +1286,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     pub(super) fn drain_filter_inner(&mut self) -> DrainFilterInner<'_, K, V> {
         let root_node = self.root.as_mut().map(|r| r.node_as_mut());
         let front = root_node.map(|rn| rn.first_leaf_edge());
-        DrainFilterInner {
-            length: &mut self.length,
-            cur_leaf_edge: front,
-            emptied_internal_root: false,
-        }
+        DrainFilterInner { length: &mut self.length, cur_leaf_edge: front }
     }
 
     /// Calculates the number of elements if it is incorrect.
@@ -1708,7 +1702,6 @@ where
 pub(super) struct DrainFilterInner<'a, K: 'a, V: 'a> {
     length: &'a mut usize,
     cur_leaf_edge: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
-    emptied_internal_root: bool,
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -1749,17 +1742,6 @@ where
     }
 }
 
-impl<K, V> Drop for DrainFilterInner<'_, K, V> {
-    fn drop(&mut self) {
-        if self.emptied_internal_root {
-            if let Some(handle) = self.cur_leaf_edge.take() {
-                let root = handle.into_node().into_root_mut();
-                root.pop_internal_level();
-            }
-        }
-    }
-}
-
 impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
     /// Allow Debug implementations to predict the next element.
     pub(super) fn peek(&self) -> Option<(&K, &V)> {
@@ -1776,7 +1758,7 @@ impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
             let (k, v) = kv.kv_mut();
             if pred(k, v) {
                 *self.length -= 1;
-                let (kv, pos) = kv.remove_kv_tracking(|_| self.emptied_internal_root = true);
+                let (kv, pos) = kv.remove_kv_tracking();
                 self.cur_leaf_edge = Some(pos);
                 return Some(kv);
             }
@@ -2799,39 +2781,32 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     fn remove_kv(self) -> (K, V) {
         *self.length -= 1;
 
-        let (old_kv, _) =
-            self.handle.remove_kv_tracking(|root| root.into_root_mut().pop_internal_level());
+        let (old_kv, _) = self.handle.remove_kv_tracking();
         old_kv
     }
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
-    /// Removes a key/value-pair from the tree, and returns that pair, as well as
-    /// the leaf edge corresponding to that former pair. It's possible this leaves
-    /// an empty internal root node, which the caller should subsequently pop from
-    /// the map holding the tree. The caller should also decrement the map's length.
-    fn remove_kv_tracking<F>(
+    /// Removes a key/value-pair from the map, and returns that pair, as well as
+    /// the leaf edge corresponding to that former pair.
+    fn remove_kv_tracking(
         self,
-        handle_emptied_internal_root: F,
-    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>)
-    where
-        F: FnOnce(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
-    {
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
         let (old_kv, mut pos, was_internal) = match self.force() {
             Leaf(leaf) => {
                 let (old_kv, pos) = leaf.remove();
                 (old_kv, pos, false)
             }
             Internal(mut internal) => {
-                // Replace the location freed in the internal node with the next KV,
-                // and remove that next KV from its leaf.
+                // Replace the location freed in the internal node with an
+                // adjacent KV, and remove that adjacent KV from its leaf.
+                // Always choose the adjacent KV on the left side because
+                // it is typically faster to pop an element from the end
+                // of the KV arrays without needing to shift other elements.
 
                 let key_loc = internal.kv_mut().0 as *mut K;
                 let val_loc = internal.kv_mut().1 as *mut V;
 
-                // Deleting from the left side is typically faster since we can
-                // just pop an element from the end of the KV array without
-                // needing to shift the other values.
                 let to_remove = internal.left_edge().descend().last_leaf_edge().left_kv().ok();
                 let to_remove = unsafe { unwrap_unchecked(to_remove) };
 
@@ -2867,8 +2842,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
                     if parent.len() == 0 {
                         // The parent that was just emptied must be the root,
                         // because nodes on a lower level would not have been
-                        // left underfull. It has to be popped off the tree soon.
-                        handle_emptied_internal_root(parent);
+                        // left with a single child.
+                        parent.into_root_mut().pop_internal_level();
                         break;
                     } else {
                         cur_node = parent.forget_type();
@@ -2972,19 +2947,15 @@ fn handle_underfull_node<K, V>(
         Err(_) => return AtRoot,
     };
 
+    // Prefer the left KV if it exists. Merging with the left side is faster,
+    // since merging happens towards the left and `node` has fewer elements.
+    // Stealing from the left side is faster, since we can pop from the end of
+    // the KV arrays.
     let (is_left, mut handle) = match parent.left_kv() {
         Ok(left) => (true, left),
         Err(parent) => {
-            match parent.right_kv() {
-                Ok(right) => (false, right),
-                Err(_) => {
-                    // The underfull node has an empty parent, so it is the only child
-                    // of an empty root. It is destined to become the new root, thus
-                    // allowed to be underfull. The empty parent should be removed later
-                    // by `pop_internal_level`.
-                    return AtRoot;
-                }
-            }
+            let right = unsafe { unwrap_unchecked(parent.right_kv().ok()) };
+            (false, right)
         }
     };
 
