@@ -1689,7 +1689,7 @@ impl<I: Iterator> Peekable<I> {
     }
 
     /// Creates an iterator that consumes elements until predicate is
-    /// true, without consuming that last element.
+    /// true, without consuming the last matching element.
     ///
     /// `until()` takes a closure as an argument. It will call this
     /// closure on each element of the iterator, and consume elements
