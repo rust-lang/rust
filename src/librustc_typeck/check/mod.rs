@@ -974,7 +974,7 @@ fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tc
 /// Currently only used for type inference of `static`s and `const`s to avoid type cycle errors.
 fn diagnostic_only_typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
     let fallback = move || {
-        let span = tcx.hir().span(tcx.hir().as_local_hir_id(def_id));
+        let span = tcx.hir().span(tcx.hir().local_def_id_to_hir_id(def_id));
         tcx.ty_error_with_message(span, "diagnostic only typeck table used")
     };
     typeck_with_fallback(tcx, def_id, fallback)
@@ -992,7 +992,7 @@ fn typeck_with_fallback<'tcx>(
         return tcx.typeck(outer_def_id);
     }
 
-    let id = tcx.hir().as_local_hir_id(def_id);
+    let id = tcx.hir().local_def_id_to_hir_id(def_id);
     let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
@@ -1333,7 +1333,7 @@ fn check_fn<'a, 'tcx>(
     }
 
     let outer_def_id = tcx.closure_base_def_id(hir.local_def_id(fn_id).to_def_id()).expect_local();
-    let outer_hir_id = hir.as_local_hir_id(outer_def_id);
+    let outer_hir_id = hir.local_def_id_to_hir_id(outer_def_id);
     GatherLocalsVisitor { fcx: &fcx, parent_id: outer_hir_id }.visit_body(body);
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
@@ -1444,7 +1444,7 @@ fn check_fn<'a, 'tcx>(
     // Check that the main return type implements the termination trait.
     if let Some(term_id) = tcx.lang_items().termination() {
         if let Some((def_id, EntryFnType::Main)) = tcx.entry_fn(LOCAL_CRATE) {
-            let main_id = hir.as_local_hir_id(def_id);
+            let main_id = hir.local_def_id_to_hir_id(def_id);
             if main_id == fn_id {
                 let substs = tcx.mk_substs_trait(declared_ret_ty, &[]);
                 let trait_ref = ty::TraitRef::new(term_id, substs);
@@ -1622,7 +1622,7 @@ fn check_opaque<'tcx>(
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
 /// in "inheriting lifetimes".
 fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
-    let item = tcx.hir().expect_item(tcx.hir().as_local_hir_id(def_id));
+    let item = tcx.hir().expect_item(tcx.hir().local_def_id_to_hir_id(def_id));
     debug!(
         "check_opaque_for_inheriting_lifetimes: def_id={:?} span={:?} item={:?}",
         def_id, span, item
@@ -1729,7 +1729,7 @@ fn get_owner_return_paths(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> Option<(hir::HirId, ReturnsVisitor<'tcx>)> {
-    let hir_id = tcx.hir().as_local_hir_id(def_id);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let id = tcx.hir().get_parent_item(hir_id);
     tcx.hir()
         .find(id)
@@ -1833,7 +1833,7 @@ fn binding_opaque_type_cycle_error(
     let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
     err.span_label(span, "cannot resolve opaque type");
     // Find the the owner that declared this `impl Trait` type.
-    let hir_id = tcx.hir().as_local_hir_id(def_id);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let mut prev_hir_id = hir_id;
     let mut hir_id = tcx.hir().get_parent_node(hir_id);
     while let Some(node) = tcx.hir().find(hir_id) {
@@ -1858,7 +1858,7 @@ fn binding_opaque_type_cycle_error(
                 source: hir::LocalSource::Normal,
                 ..
             }) => {
-                let hir_id = tcx.hir().as_local_hir_id(def_id);
+                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                 let typeck_results =
                     tcx.typeck(tcx.hir().local_def_id(tcx.hir().get_parent_item(hir_id)));
                 if let Some(ty) = typeck_results.node_type_opt(expr.hir_id) {
@@ -2874,7 +2874,7 @@ pub fn check_enum<'tcx>(
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
             let variant_did = def.variants[VariantIdx::new(i)].def_id;
-            let variant_i_hir_id = tcx.hir().as_local_hir_id(variant_did.expect_local());
+            let variant_i_hir_id = tcx.hir().local_def_id_to_hir_id(variant_did.expect_local());
             let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
             let i_span = match variant_i.disr_expr {
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
@@ -2935,7 +2935,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn get_type_parameter_bounds(&self, _: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
-        let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         let item_id = tcx.hir().ty_param_owner(hir_id);
         let item_def_id = tcx.hir().local_def_id(item_id);
         let generics = tcx.generics_of(item_def_id);

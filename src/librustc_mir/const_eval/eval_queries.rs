@@ -353,7 +353,7 @@ pub fn const_eval_raw_provider<'tcx>(
                     // validation thus preventing such a hard error from being a backwards
                     // compatibility hazard
                     DefKind::Const | DefKind::AssocConst => {
-                        let hir_id = tcx.hir().as_local_hir_id(def.did);
+                        let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
                         err.report_as_lint(
                             tcx.at(tcx.def_span(def.did)),
                             "any use of this value will cause an error",
@@ -376,7 +376,7 @@ pub fn const_eval_raw_provider<'tcx>(
                                 err.report_as_lint(
                                     tcx.at(span),
                                     "reaching this expression at runtime will panic or abort",
-                                    tcx.hir().as_local_hir_id(def.did),
+                                    tcx.hir().local_def_id_to_hir_id(def.did),
                                     Some(err.span),
                                 )
                             }

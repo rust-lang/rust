@@ -1039,7 +1039,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                     // }
                     // ```
                     if let Some(def_id) = def_id.as_local() {
-                        let opaque_hir_id = tcx.hir().as_local_hir_id(def_id);
+                        let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                         let parent_def_id = self.parent_def_id;
                         let def_scope_default = || {
                             let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
@@ -1205,7 +1205,7 @@ pub fn may_define_opaque_type(
     def_id: LocalDefId,
     opaque_hir_id: hir::HirId,
 ) -> bool {
-    let mut hir_id = tcx.hir().as_local_hir_id(def_id);
+    let mut hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
     // Named opaque types can be defined by any siblings or children of siblings.
     let scope = tcx.hir().get_defining_scope(opaque_hir_id);

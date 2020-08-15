@@ -307,11 +307,6 @@ impl Definitions {
     }
 
     #[inline]
-    pub fn as_local_hir_id(&self, def_id: LocalDefId) -> hir::HirId {
-        self.local_def_id_to_hir_id(def_id)
-    }
-
-    #[inline]
     pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
         self.def_id_to_hir_id[id].unwrap()
     }

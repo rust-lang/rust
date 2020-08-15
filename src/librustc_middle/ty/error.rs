@@ -403,7 +403,7 @@ impl<'tcx> TyCtxt<'tcx> {
                             .type_param(p, self)
                             .def_id
                             .as_local()
-                            .map(|id| hir.as_local_hir_id(id))
+                            .map(|id| hir.local_def_id_to_hir_id(id))
                             .and_then(|id| self.hir().find(self.hir().get_parent_node(id)))
                             .as_ref()
                             .and_then(|node| node.generics())
@@ -791,10 +791,11 @@ fn foo(&self) -> Self::T { String::new() }
         body_owner_def_id: DefId,
         found: Ty<'tcx>,
     ) -> bool {
-        let hir_id = match body_owner_def_id.as_local().map(|id| self.hir().as_local_hir_id(id)) {
-            Some(hir_id) => hir_id,
-            None => return false,
-        };
+        let hir_id =
+            match body_owner_def_id.as_local().map(|id| self.hir().local_def_id_to_hir_id(id)) {
+                Some(hir_id) => hir_id,
+                None => return false,
+            };
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
         let parent_id = self.hir().get_parent_item(hir_id);

@@ -129,7 +129,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let tcx = infcx.tcx;
     let param_env = tcx.param_env(def.did);
-    let id = tcx.hir().as_local_hir_id(def.did);
+    let id = tcx.hir().local_def_id_to_hir_id(def.did);
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {

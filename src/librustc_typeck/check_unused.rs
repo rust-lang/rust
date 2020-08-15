@@ -88,7 +88,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
             // Note that if we carry through to the `extern_mod_stmt_cnum` query
             // below it'll cause a panic because `def_id` is actually bogus at this
             // point in time otherwise.
-            if tcx.hir().find(tcx.hir().as_local_hir_id(def_id)).is_none() {
+            if tcx.hir().find(tcx.hir().local_def_id_to_hir_id(def_id)).is_none() {
                 return false;
             }
             true
@@ -113,7 +113,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
 
     for extern_crate in &crates_to_lint {
         let def_id = extern_crate.def_id.expect_local();
-        let id = tcx.hir().as_local_hir_id(def_id);
+        let id = tcx.hir().local_def_id_to_hir_id(def_id);
         let item = tcx.hir().expect_item(id);
 
         // If the crate is fully unused, we suggest removing it altogether.

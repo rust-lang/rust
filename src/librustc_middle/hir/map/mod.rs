@@ -174,11 +174,6 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn as_local_hir_id(&self, def_id: LocalDefId) -> HirId {
-        self.tcx.definitions.as_local_hir_id(def_id)
-    }
-
-    #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
         self.tcx.definitions.local_def_id_to_hir_id(def_id)
     }
@@ -450,7 +445,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_module(&self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
-        let hir_id = self.as_local_hir_id(module);
+        let hir_id = self.local_def_id_to_hir_id(module);
         match self.get_entry(hir_id).node {
             Node::Item(&Item { span, kind: ItemKind::Mod(ref m), .. }) => (m, span, hir_id),
             Node::Crate(item) => (&item.module, item.span, hir_id),
@@ -483,7 +478,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
-        id.as_local().map(|id| self.get(self.as_local_hir_id(id)))
+        id.as_local().map(|id| self.get(self.local_def_id_to_hir_id(id)))
     }
 
     pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics<'hir>> {
@@ -872,7 +867,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
-        id.as_local().map(|id| self.span(self.as_local_hir_id(id)))
+        id.as_local().map(|id| self.span(self.local_def_id_to_hir_id(id)))
     }
 
     pub fn res_span(&self, res: Res) -> Option<Span> {

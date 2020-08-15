@@ -198,10 +198,10 @@ impl<'tcx> MonoItem<'tcx> {
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
         match *self {
             MonoItem::Fn(Instance { def, .. }) => {
-                def.def_id().as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
+                def.def_id().as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
             }
             MonoItem::Static(def_id) => {
-                def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
+                def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
             }
             MonoItem::GlobalAsm(hir_id) => Some(hir_id),
         }
@@ -346,9 +346,10 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // instances into account. The others don't matter for
                             // the codegen tests and can even make item order
                             // unstable.
-                            InstanceDef::Item(def) => {
-                                def.did.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
-                            }
+                            InstanceDef::Item(def) => def
+                                .did
+                                .as_local()
+                                .map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id)),
                             InstanceDef::VtableShim(..)
                             | InstanceDef::ReifyShim(..)
                             | InstanceDef::Intrinsic(..)
@@ -360,7 +361,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                         }
                     }
                     MonoItem::Static(def_id) => {
-                        def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
+                        def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
                     }
                     MonoItem::GlobalAsm(hir_id) => Some(hir_id),
                 },
