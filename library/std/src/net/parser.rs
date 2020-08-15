@@ -302,14 +302,6 @@ impl FromStr for SocketAddr {
 /// // No problem, the `panic!` message has disappeared.
 /// let _foo: SocketAddr = "127.0.0.1:8080".parse().expect("unreachable panic");
 /// ```
-///
-/// [`FromStr`]: ../../std/str/trait.FromStr.html
-/// [`IpAddr`]: ../../std/net/enum.IpAddr.html
-/// [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
-/// [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
-/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
-/// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
-/// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AddrParseError(());

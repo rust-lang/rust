@@ -19,15 +19,15 @@ use crate::time::Duration;
 /// an unordered, unreliable protocol; refer to [`TcpListener`] and [`TcpStream`] for TCP
 /// primitives.
 ///
-/// [`bind`]: #method.bind
-/// [`connect`]: #method.connect
+/// [`bind`]: UdpSocket::bind
+/// [`connect`]: UdpSocket::connect
 /// [IETF RFC 768]: https://tools.ietf.org/html/rfc768
-/// [`recv`]: #method.recv
-/// [received from]: #method.recv_from
-/// [`send`]: #method.send
-/// [sent to]: #method.send_to
-/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
-/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+/// [`recv`]: UdpSocket::recv
+/// [received from]: UdpSocket::recv_from
+/// [`send`]: UdpSocket::send
+/// [sent to]: UdpSocket::send_to
+/// [`TcpListener`]: crate::net::TcpListener
+/// [`TcpStream`]: crate::net::TcpStream
 ///
 /// # Examples
 ///
@@ -64,8 +64,6 @@ impl UdpSocket {
     /// each of the addresses until one succeeds and returns the socket. If none
     /// of the addresses succeed in creating a socket, the error returned from
     /// the last attempt (the last address) is returned.
-    ///
-    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
     /// # Examples
     ///
@@ -160,8 +158,6 @@ impl UdpSocket {
     ///
     /// See issue #34202 for more details.
     ///
-    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
-    ///
     /// # Examples
     ///
     /// ```no_run
@@ -193,7 +189,7 @@ impl UdpSocket {
     ///
     /// If the socket isn't connected, it will return a [`NotConnected`] error.
     ///
-    /// [`NotConnected`]: ../../std/io/enum.ErrorKind.html#variant.NotConnected
+    /// [`NotConnected`]: io::ErrorKind::NotConnected
     ///
     /// ```no_run
     /// use std::net::UdpSocket;
@@ -254,12 +250,9 @@ impl UdpSocket {
     /// a result of setting this option. For example Unix typically returns an
     /// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
-    /// [`Duration`]: ../../std/time/struct.Duration.html
-    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
-    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
+    /// [`read`]: io::Read::read
+    /// [`WouldBlock`]: io::ErrorKind::WouldBlock
+    /// [`TimedOut`]: io::ErrorKind::TimedOut
     ///
     /// # Examples
     ///
@@ -300,12 +293,9 @@ impl UdpSocket {
     /// as a result of setting this option. For example Unix typically returns
     /// an error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
-    /// [`Duration`]: ../../std/time/struct.Duration.html
-    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
-    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
+    /// [`write`]: io::Write::write
+    /// [`WouldBlock`]: io::ErrorKind::WouldBlock
+    /// [`TimedOut`]: io::ErrorKind::TimedOut
     ///
     /// # Examples
     ///
@@ -338,8 +328,7 @@ impl UdpSocket {
     ///
     /// If the timeout is [`None`], then [`read`] calls will block indefinitely.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`read`]: io::Read::read
     ///
     /// # Examples
     ///
@@ -359,8 +348,7 @@ impl UdpSocket {
     ///
     /// If the timeout is [`None`], then [`write`] calls will block indefinitely.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`write`]: io::Write::write
     ///
     /// # Examples
     ///
@@ -396,10 +384,7 @@ impl UdpSocket {
 
     /// Gets the value of the `SO_BROADCAST` option for this socket.
     ///
-    /// For more information about this option, see
-    /// [`set_broadcast`][link].
-    ///
-    /// [link]: #method.set_broadcast
+    /// For more information about this option, see [`UdpSocket::set_broadcast`].
     ///
     /// # Examples
     ///
@@ -435,10 +420,7 @@ impl UdpSocket {
 
     /// Gets the value of the `IP_MULTICAST_LOOP` option for this socket.
     ///
-    /// For more information about this option, see
-    /// [`set_multicast_loop_v4`][link].
-    ///
-    /// [link]: #method.set_multicast_loop_v4
+    /// For more information about this option, see [`UdpSocket::set_multicast_loop_v4`].
     ///
     /// # Examples
     ///
@@ -477,10 +459,7 @@ impl UdpSocket {
 
     /// Gets the value of the `IP_MULTICAST_TTL` option for this socket.
     ///
-    /// For more information about this option, see
-    /// [`set_multicast_ttl_v4`][link].
-    ///
-    /// [link]: #method.set_multicast_ttl_v4
+    /// For more information about this option, see [`UdpSocket::set_multicast_ttl_v4`].
     ///
     /// # Examples
     ///
@@ -516,10 +495,7 @@ impl UdpSocket {
 
     /// Gets the value of the `IPV6_MULTICAST_LOOP` option for this socket.
     ///
-    /// For more information about this option, see
-    /// [`set_multicast_loop_v6`][link].
-    ///
-    /// [link]: #method.set_multicast_loop_v6
+    /// For more information about this option, see [`UdpSocket::set_multicast_loop_v6`].
     ///
     /// # Examples
     ///
@@ -555,9 +531,7 @@ impl UdpSocket {
 
     /// Gets the value of the `IP_TTL` option for this socket.
     ///
-    /// For more information about this option, see [`set_ttl`][link].
-    ///
-    /// [link]: #method.set_ttl
+    /// For more information about this option, see [`UdpSocket::set_ttl`].
     ///
     /// # Examples
     ///
@@ -597,10 +571,7 @@ impl UdpSocket {
 
     /// Executes an operation of the `IP_DROP_MEMBERSHIP` type.
     ///
-    /// For more information about this option, see
-    /// [`join_multicast_v4`][link].
-    ///
-    /// [link]: #method.join_multicast_v4
+    /// For more information about this option, see [`UdpSocket::join_multicast_v4`].
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         self.0.leave_multicast_v4(multiaddr, interface)
@@ -608,10 +579,7 @@ impl UdpSocket {
 
     /// Executes an operation of the `IPV6_DROP_MEMBERSHIP` type.
     ///
-    /// For more information about this option, see
-    /// [`join_multicast_v6`][link].
-    ///
-    /// [link]: #method.join_multicast_v6
+    /// For more information about this option, see [`UdpSocket::join_multicast_v6`].
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         self.0.leave_multicast_v6(multiaddr, interface)
@@ -675,10 +643,8 @@ impl UdpSocket {
 
     /// Sends data on the socket to the remote address to which it is connected.
     ///
-    /// The [`connect`] method will connect this socket to a remote address. This
+    /// [`UdpSocket::connect`] will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
-    ///
-    /// [`connect`]: #method.connect
     ///
     /// # Examples
     ///
@@ -701,10 +667,8 @@ impl UdpSocket {
     /// hold the message bytes. If a message is too long to fit in the supplied buffer,
     /// excess bytes may be discarded.
     ///
-    /// The [`connect`] method will connect this socket to a remote address. This
+    /// [`UdpSocket::connect`] will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
-    ///
-    /// [`connect`]: #method.connect
     ///
     /// # Examples
     ///
@@ -738,10 +702,8 @@ impl UdpSocket {
     /// Do not use this function to implement busy waiting, instead use `libc::poll` to
     /// synchronize IO events on one or more sockets.
     ///
-    /// The [`connect`] method will connect this socket to a remote address. This
+    /// [`UdpSocket::connect`] will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
-    ///
-    /// [`connect`]: #method.connect
     ///
     /// # Errors
     ///
@@ -778,8 +740,6 @@ impl UdpSocket {
     /// On Unix platforms, calling this method corresponds to calling `fcntl`
     /// `FIONBIO`. On Windows calling this method corresponds to calling
     /// `ioctlsocket` `FIONBIO`.
-    ///
-    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     ///
     /// # Examples
     ///

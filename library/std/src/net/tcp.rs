@@ -20,13 +20,12 @@ use crate::time::Duration;
 ///
 /// The Transmission Control Protocol is specified in [IETF RFC 793].
 ///
-/// [`accept`]: ../../std/net/struct.TcpListener.html#method.accept
-/// [`connect`]: #method.connect
+/// [`accept`]: TcpListener::accept
+/// [`connect`]: TcpStream::connect
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
-/// [reading]: ../../std/io/trait.Read.html
-/// [`shutdown`]: #method.shutdown
-/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
-/// [writing]: ../../std/io/trait.Write.html
+/// [reading]: Read
+/// [`shutdown`]: TcpStream::shutdown
+/// [writing]: Write
 ///
 /// # Examples
 ///
@@ -55,11 +54,9 @@ pub struct TcpStream(net_imp::TcpStream);
 ///
 /// The Transmission Control Protocol is specified in [IETF RFC 793].
 ///
-/// [`accept`]: #method.accept
-/// [`bind`]: #method.bind
+/// [`accept`]: TcpListener::accept
+/// [`bind`]: TcpListener::bind
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
-/// [`Incoming`]: ../../std/net/struct.Incoming.html
-/// [`TcpListener::incoming`]: #method.incoming
 ///
 /// # Examples
 ///
@@ -85,12 +82,10 @@ pub struct TcpListener(net_imp::TcpListener);
 
 /// An iterator that infinitely [`accept`]s connections on a [`TcpListener`].
 ///
-/// This `struct` is created by the [`incoming`] method on [`TcpListener`].
+/// This `struct` is created by the [`TcpListener::incoming`] method.
 /// See its documentation for more.
 ///
-/// [`accept`]: ../../std/net/struct.TcpListener.html#method.accept
-/// [`incoming`]: ../../std/net/struct.TcpListener.html#method.incoming
-/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
+/// [`accept`]: TcpListener::accept
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Incoming<'a> {
@@ -108,8 +103,6 @@ impl TcpStream {
     /// each of the addresses until a connection is successful. If none of
     /// the addresses result in a successful connection, the error returned from
     /// the last connection attempt (the last address) is returned.
-    ///
-    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
     /// # Examples
     ///
@@ -157,8 +150,6 @@ impl TcpStream {
     /// single system call. It instead calls `connect` in nonblocking mode and
     /// then uses an OS-specific mechanism to await the completion of the
     /// connection request.
-    ///
-    /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
     #[stable(feature = "tcpstream_connect_timeout", since = "1.21.0")]
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         net_imp::TcpStream::connect_timeout(addr, timeout).map(TcpStream)
@@ -203,8 +194,6 @@ impl TcpStream {
     /// This function will cause all pending and future I/O on the specified
     /// portions to return immediately with an appropriate value (see the
     /// documentation of [`Shutdown`]).
-    ///
-    /// [`Shutdown`]: ../../std/net/enum.Shutdown.html
     ///
     /// # Platform-specific behavior
     ///
@@ -260,12 +249,9 @@ impl TcpStream {
     /// a result of setting this option. For example Unix typically returns an
     /// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
-    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
-    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
-    /// [`Duration`]: ../../std/time/struct.Duration.html
+    /// [`read`]: Read::read
+    /// [`WouldBlock`]: io::ErrorKind::WouldBlock
+    /// [`TimedOut`]: io::ErrorKind::TimedOut
     ///
     /// # Examples
     ///
@@ -307,12 +293,9 @@ impl TcpStream {
     /// as a result of setting this option. For example Unix typically returns
     /// an error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
-    /// [`Duration`]: ../../std/time/struct.Duration.html
-    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
-    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
+    /// [`write`]: Write::write
+    /// [`WouldBlock`]: io::ErrorKind::WouldBlock
+    /// [`TimedOut`]: io::ErrorKind::TimedOut
     ///
     /// # Examples
     ///
@@ -350,8 +333,7 @@ impl TcpStream {
     ///
     /// Some platforms do not provide access to the current timeout.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`read`]: Read::read
     ///
     /// # Examples
     ///
@@ -376,8 +358,7 @@ impl TcpStream {
     ///
     /// Some platforms do not provide access to the current timeout.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`write`]: Write::write
     ///
     /// # Examples
     ///
@@ -440,9 +421,7 @@ impl TcpStream {
 
     /// Gets the value of the `TCP_NODELAY` option on this socket.
     ///
-    /// For more information about this option, see [`set_nodelay`][link].
-    ///
-    /// [link]: #method.set_nodelay
+    /// For more information about this option, see [`TcpStream::set_nodelay`].
     ///
     /// # Examples
     ///
@@ -480,9 +459,7 @@ impl TcpStream {
 
     /// Gets the value of the `IP_TTL` option for this socket.
     ///
-    /// For more information about this option, see [`set_ttl`][link].
-    ///
-    /// [link]: #method.set_ttl
+    /// For more information about this option, see [`TcpStream::set_ttl`].
     ///
     /// # Examples
     ///
@@ -559,8 +536,6 @@ impl TcpStream {
     /// };
     /// println!("bytes: {:?}", buf);
     /// ```
-    ///
-    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
@@ -681,7 +656,7 @@ impl TcpListener {
     ///
     /// Binding with a port number of 0 will request that the OS assigns a port
     /// to this listener. The port allocated can be queried via the
-    /// [`local_addr`] method.
+    /// [`TcpListener::local_addr`] method.
     ///
     /// The address type can be any implementor of [`ToSocketAddrs`] trait. See
     /// its documentation for concrete examples.
@@ -690,9 +665,6 @@ impl TcpListener {
     /// each of the addresses until one succeeds and returns the listener. If
     /// none of the addresses succeed in creating a listener, the error returned
     /// from the last attempt (the last address) is returned.
-    ///
-    /// [`local_addr`]: #method.local_addr
-    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
     /// # Examples
     ///
@@ -743,8 +715,6 @@ impl TcpListener {
     /// object references. Both handles can be used to accept incoming
     /// connections and options set on one listener will affect the other.
     ///
-    /// [`TcpListener`]: ../../std/net/struct.TcpListener.html
-    ///
     /// # Examples
     ///
     /// ```no_run
@@ -763,8 +733,6 @@ impl TcpListener {
     /// This function will block the calling thread until a new TCP connection
     /// is established. When established, the corresponding [`TcpStream`] and the
     /// remote peer's address will be returned.
-    ///
-    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
     ///
     /// # Examples
     ///
@@ -790,11 +758,7 @@ impl TcpListener {
     ///
     /// The returned iterator will never return [`None`] and will also not yield
     /// the peer's [`SocketAddr`] structure. Iterating over it is equivalent to
-    /// calling [`accept`] in a loop.
-    ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
-    /// [`accept`]: #method.accept
+    /// calling [`TcpListener::accept`] in a loop.
     ///
     /// # Examples
     ///
@@ -837,9 +801,7 @@ impl TcpListener {
 
     /// Gets the value of the `IP_TTL` option for this socket.
     ///
-    /// For more information about this option, see [`set_ttl`][link].
-    ///
-    /// [link]: #method.set_ttl
+    /// For more information about this option, see [`TcpListener::set_ttl`].
     ///
     /// # Examples
     ///
@@ -936,8 +898,6 @@ impl TcpListener {
     ///     }
     /// }
     /// ```
-    ///
-    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
