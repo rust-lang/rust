@@ -1706,6 +1706,7 @@ impl<I: Iterator> Peekable<I> {
     /// #![feature(peekable_next_if)]
     /// let mut iter = (0..10).peekable();
     /// assert_eq!(iter.until(|&x| x == 5).collect::<String>(), "1234".to_string());
+    /// assert_eq!(iter.next(), Some(5));
     /// ```
     /// [`skip_while`]: trait.Iterator.html#method.skip_while
     #[unstable(feature = "peekable_next_if", issue = "72480")]
