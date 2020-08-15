@@ -48,12 +48,6 @@ fn main() {
         cmd.arg(arg);
     }
 
-    // Bootstrap's Cargo-command builder sets this variable to the current Rust version; let's pick
-    // it up so we can make rustdoc print this into the docs
-    if let Some(version) = env::var_os("RUSTDOC_CRATE_VERSION") {
-        cmd.arg("--crate-version").arg(version);
-    }
-
     // Needed to be able to run all rustdoc tests.
     if let Some(ref x) = env::var_os("RUSTDOC_RESOURCE_SUFFIX") {
         // This "unstable-options" can be removed when `--resource-suffix` is stabilized
