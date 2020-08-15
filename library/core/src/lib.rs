@@ -145,6 +145,7 @@
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
 #![feature(maybe_uninit_slice)]
+#![feature(maybe_uninit_extra)]
 #![feature(external_doc)]
 #![feature(associated_type_bounds)]
 #![feature(const_caller_location)]

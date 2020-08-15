@@ -34,6 +34,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty);
         self.suggest_missing_await(err, expr, expected, expr_ty);
+        self.suggest_missing_parentheses(err, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
     }
 

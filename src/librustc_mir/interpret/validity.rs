@@ -508,12 +508,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     }
                 } else {
                     // At run-time, for now, we accept *anything* for these types, including
-                    // undef. We should fix that, but let's start low.
+                    // uninit. We should fix that, but let's start low.
                 }
                 Ok(true)
             }
             ty::RawPtr(..) => {
-                // We are conservative with undef for integers, but try to
+                // We are conservative with uninit for integers, but try to
                 // actually enforce the strict rules for raw pointers (mostly because
                 // that lets us re-use `ref_to_mplace`).
                 let place = try_validation!(
@@ -807,12 +807,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // reject it.  However, that's good: We don't inherently want
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.
-                // We also accept undef, for consistency with the slow path.
+                // We also accept uninit, for consistency with the slow path.
                 match self.ecx.memory.get_raw(ptr.alloc_id)?.check_bytes(
                     self.ecx,
                     ptr,
                     size,
-                    /*allow_ptr_and_undef*/ self.ref_tracking_for_consts.is_none(),
+                    /*allow_uninit_and_ptr*/ self.ref_tracking_for_consts.is_none(),
                 ) {
                     // In the happy case, we needn't check anything else.
                     Ok(()) => {}

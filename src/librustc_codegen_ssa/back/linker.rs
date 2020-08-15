@@ -35,7 +35,7 @@ pub fn disable_localization(linker: &mut Command) {
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Encodable, Decodable)]
 pub struct LinkerInfo {
     exports: FxHashMap<CrateType, Vec<String>>,
 }

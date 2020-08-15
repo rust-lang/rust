@@ -14,7 +14,7 @@ use super::{
     UninitBytesAccess,
 };
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct Allocation<Tag = (), Extra = ()> {
     /// The actual bytes of the allocation.
@@ -154,10 +154,10 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     }
 
     /// Looks at a slice which may describe uninitialized bytes or describe a relocation. This differs
-    /// from `get_bytes_with_undef_and_ptr` in that it does no relocation checks (even on the
+    /// from `get_bytes_with_uninit_and_ptr` in that it does no relocation checks (even on the
     /// edges) at all. It further ignores `AllocationExtra` callbacks.
     /// This must not be used for reads affecting the interpreter execution.
-    pub fn inspect_with_undef_and_ptr_outside_interpreter(&self, range: Range<usize>) -> &[u8] {
+    pub fn inspect_with_uninit_and_ptr_outside_interpreter(&self, range: Range<usize>) -> &[u8] {
         &self.bytes[range]
     }
 
@@ -171,8 +171,6 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         &self.relocations
     }
 }
-
-impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Allocation {}
 
 /// Byte accessors.
 impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
@@ -194,7 +192,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
     /// The last argument controls whether we error out when there are uninitialized
     /// or pointer bytes. You should never call this, call `get_bytes` or
-    /// `get_bytes_with_undef_and_ptr` instead,
+    /// `get_bytes_with_uninit_and_ptr` instead,
     ///
     /// This function also guarantees that the resulting pointer will remain stable
     /// even when new allocations are pushed to the `HashMap`. `copy_repeatedly` relies
@@ -244,7 +242,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
     #[inline]
-    pub fn get_bytes_with_undef_and_ptr(
+    pub fn get_bytes_with_uninit_and_ptr(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
@@ -302,19 +300,19 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     }
 
     /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
-    /// relocation. If `allow_ptr_and_undef` is `false`, also enforces that the memory in the
+    /// relocation. If `allow_uninit_and_ptr` is `false`, also enforces that the memory in the
     /// given range contains neither relocations nor uninitialized bytes.
     pub fn check_bytes(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-        allow_ptr_and_undef: bool,
+        allow_uninit_and_ptr: bool,
     ) -> InterpResult<'tcx> {
         // Check bounds and relocations on the edges.
-        self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
+        self.get_bytes_with_uninit_and_ptr(cx, ptr, size)?;
         // Check uninit and ptr.
-        if !allow_ptr_and_undef {
+        if !allow_uninit_and_ptr {
             self.check_init(ptr, size)?;
             self.check_relocations(cx, ptr, size)?;
         }
@@ -361,7 +359,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         size: Size,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         // `get_bytes_unchecked` tests relocation edges.
-        let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
+        let bytes = self.get_bytes_with_uninit_and_ptr(cx, ptr, size)?;
         // Uninit check happens *after* we established that the alignment is correct.
         // We must not return `Ok()` for unaligned pointers!
         if self.is_init(ptr, size).is_err() {
@@ -594,7 +592,7 @@ impl InitMaskCompressed {
 /// Transferring the initialization mask to other allocations.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     /// Creates a run-length encoding of the initialization mask.
-    pub fn compress_undef_range(&self, src: Pointer<Tag>, size: Size) -> InitMaskCompressed {
+    pub fn compress_uninit_range(&self, src: Pointer<Tag>, size: Size) -> InitMaskCompressed {
         // Since we are copying `size` bytes from `src` to `dest + i * size` (`for i in 0..repeat`),
         // a naive initialization mask copying algorithm would repeatedly have to read the initialization mask from
         // the source and write it to the destination. Even if we optimized the memory accesses,
@@ -636,8 +634,8 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         size: Size,
         repeat: u64,
     ) {
-        // An optimization where we can just overwrite an entire range of definedness bits if
-        // they are going to be uniformly `1` or `0`.
+        // An optimization where we can just overwrite an entire range of initialization
+        // bits if they are going to be uniformly `1` or `0`.
         if defined.ranges.len() <= 1 {
             self.init_mask.set_range_inbounds(
                 dest.offset,
@@ -666,7 +664,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
 }
 
 /// Relocations.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 pub struct Relocations<Tag = (), Id = AllocId>(SortedMap<Size, (Tag, Id)>);
 
 impl<Tag, Id> Relocations<Tag, Id> {
@@ -747,7 +745,7 @@ type Block = u64;
 
 /// A bitmask where each bit refers to the byte with the same index. If the bit is `true`, the byte
 /// is initialized. If it is `false` the byte is uninitialized.
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct InitMask {
     blocks: Vec<Block>,

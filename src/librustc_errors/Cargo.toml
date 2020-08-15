@@ -13,6 +13,7 @@ doctest = false
 log = { package = "tracing", version = "0.1" }
 rustc_serialize = { path = "../librustc_serialize" }
 rustc_span = { path = "../librustc_span" }
+rustc_macros = { path = "../librustc_macros" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 unicode-width = "0.1.4"
 atty = "0.2"

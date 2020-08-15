@@ -1052,8 +1052,7 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Readability.
     ///
-    /// **Known problems:** False positive in pattern guards. Will be resolved once
-    /// non-lexical lifetimes are stable.
+    /// **Known problems:** None.
     ///
     /// **Example:**
     /// ```rust
@@ -1408,7 +1407,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
             ["nth", ..] => lint_iter_nth_zero(cx, expr, arg_lists[0]),
             ["step_by", ..] => lint_step_by(cx, expr, arg_lists[0]),
-            ["next", "skip"] => lint_iter_skip_next(cx, expr),
+            ["next", "skip"] => lint_iter_skip_next(cx, expr, arg_lists[1]),
             ["collect", "cloned"] => lint_iter_cloned_collect(cx, expr, arg_lists[1]),
             ["as_ref"] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
             ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
@@ -2433,17 +2432,21 @@ fn lint_get_unwrap<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args:
     );
 }
 
-fn lint_iter_skip_next(cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
+fn lint_iter_skip_next(cx: &LateContext<'_>, expr: &hir::Expr<'_>, skip_args: &[hir::Expr<'_>]) {
     // lint if caller of skip is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        span_lint_and_help(
-            cx,
-            ITER_SKIP_NEXT,
-            expr.span,
-            "called `skip(x).next()` on an iterator",
-            None,
-            "this is more succinctly expressed by calling `nth(x)`",
-        );
+        if let [caller, n] = skip_args {
+            let hint = format!(".nth({})", snippet(cx, n.span, ".."));
+            span_lint_and_sugg(
+                cx,
+                ITER_SKIP_NEXT,
+                expr.span.trim_start(caller.span).unwrap(),
+                "called `skip(x).next()` on an iterator",
+                "use `nth` instead",
+                hint,
+                Applicability::MachineApplicable,
+            );
+        }
     }
 }
 
@@ -2565,17 +2568,34 @@ fn lint_ok_expect(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ok_args: &[hir::Ex
 fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map_args: &'tcx [hir::Expr<'_>]) {
     // lint if caller of `.map().flatten()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `map(..).flatten()` on an `Iterator`. \
-                    This is more succinctly expressed by calling `.flat_map(..)`";
-        let self_snippet = snippet(cx, map_args[0].span, "..");
+        let map_closure_ty = cx.typeck_results().expr_ty(&map_args[1]);
+        let is_map_to_option = match map_closure_ty.kind {
+            ty::Closure(_, _) | ty::FnDef(_, _) | ty::FnPtr(_) => {
+                let map_closure_sig = match map_closure_ty.kind {
+                    ty::Closure(_, substs) => substs.as_closure().sig(),
+                    _ => map_closure_ty.fn_sig(cx.tcx),
+                };
+                let map_closure_return_ty = cx.tcx.erase_late_bound_regions(&map_closure_sig.output());
+                is_type_diagnostic_item(cx, map_closure_return_ty, sym!(option_type))
+            },
+            _ => false,
+        };
+
+        let method_to_use = if is_map_to_option {
+            // `(...).map(...)` has type `impl Iterator<Item=Option<...>>
+            "filter_map"
+        } else {
+            // `(...).map(...)` has type `impl Iterator<Item=impl Iterator<...>>
+            "flat_map"
+        };
         let func_snippet = snippet(cx, map_args[1].span, "..");
-        let hint = format!("{0}.flat_map({1})", self_snippet, func_snippet);
+        let hint = format!(".{0}({1})", method_to_use, func_snippet);
         span_lint_and_sugg(
             cx,
             MAP_FLATTEN,
-            expr.span,
-            msg,
-            "try using `flat_map` instead",
+            expr.span.with_lo(map_args[0].span.hi()),
+            "called `map(..).flatten()` on an `Iterator`",
+            &format!("try using `{}` instead", method_to_use),
             hint,
             Applicability::MachineApplicable,
         );
@@ -2583,16 +2603,13 @@ fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
 
     // lint if caller of `.map().flatten()` is an Option
     if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym!(option_type)) {
-        let msg = "called `map(..).flatten()` on an `Option`. \
-                    This is more succinctly expressed by calling `.and_then(..)`";
-        let self_snippet = snippet(cx, map_args[0].span, "..");
         let func_snippet = snippet(cx, map_args[1].span, "..");
-        let hint = format!("{0}.and_then({1})", self_snippet, func_snippet);
+        let hint = format!(".and_then({})", func_snippet);
         span_lint_and_sugg(
             cx,
             MAP_FLATTEN,
-            expr.span,
-            msg,
+            expr.span.with_lo(map_args[0].span.hi()),
+            "called `map(..).flatten()` on an `Option`",
             "try using `and_then` instead",
             hint,
             Applicability::MachineApplicable,

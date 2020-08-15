@@ -190,7 +190,9 @@ fn exported_symbols_provider_local(
         }
     }
 
-    if tcx.sess.opts.cg.profile_generate.enabled() {
+    if tcx.sess.opts.debugging_opts.instrument_coverage
+        || tcx.sess.opts.cg.profile_generate.enabled()
+    {
         // These are weak symbols that point to the profile version and the
         // profile name, which need to be treated as exported so LTO doesn't nix
         // them.
@@ -198,17 +200,6 @@ fn exported_symbols_provider_local(
             ["__llvm_profile_raw_version", "__llvm_profile_filename"];
 
         symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
-            (exported_symbol, SymbolExportLevel::C)
-        }));
-    }
-
-    if tcx.sess.opts.debugging_opts.instrument_coverage {
-        // Similar to PGO profiling, preserve symbols used by LLVM InstrProf coverage profiling.
-        const COVERAGE_WEAK_SYMBOLS: [&str; 3] =
-            ["__llvm_profile_filename", "__llvm_coverage_mapping", "__llvm_covmap"];
-
-        symbols.extend(COVERAGE_WEAK_SYMBOLS.iter().map(|sym| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
             (exported_symbol, SymbolExportLevel::C)
         }));

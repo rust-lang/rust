@@ -1,17 +1,13 @@
 // MIR for `main::{{closure}}#0` 0 generator_resume
 /* generator_layout = GeneratorLayout {
-    field_tys: {
-        _0: HasDrop,
-    },
+    field_tys: {},
     variant_fields: {
         Unresumed(0): [],
         Returned (1): [],
         Panicked (2): [],
-        Suspend0 (3): [_0],
+        Suspend0 (3): [],
     },
-    storage_conflicts: BitMatrix(1x1) {
-        (_0, _0),
-    },
+    storage_conflicts: BitMatrix(0x0) {},
 } */
 
 fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}]>, _2: u8) -> std::ops::GeneratorState<(), ()> {
@@ -27,7 +23,7 @@ fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:
     let _10: u8;                         // in scope 0 at $DIR/generator-tiny.rs:19:17: 19:19
     let mut _11: u32;                    // in scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
     scope 1 {
-        debug _d => (((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}])) as variant#3).0: HasDrop); // in scope 1 at $DIR/generator-tiny.rs:20:13: 20:15
+        debug _d => _3;                  // in scope 1 at $DIR/generator-tiny.rs:20:13: 20:15
     }
 
     bb0: {
@@ -37,8 +33,7 @@ fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:
 
     bb1: {
         _10 = move _2;                   // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
-        nop;                             // scope 0 at $DIR/generator-tiny.rs:20:13: 20:15
-        (((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}])) as variant#3).0: HasDrop) = HasDrop; // scope 0 at $DIR/generator-tiny.rs:20:18: 20:25
+        StorageLive(_3);                 // scope 0 at $DIR/generator-tiny.rs:20:13: 20:15
         StorageLive(_4);                 // scope 1 at $DIR/generator-tiny.rs:21:9: 24:10
         goto -> bb2;                     // scope 1 at $DIR/generator-tiny.rs:21:9: 24:10
     }
@@ -46,7 +41,6 @@ fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:
     bb2: {
         StorageLive(_6);                 // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         StorageLive(_7);                 // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
-        _7 = ();                         // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         _0 = std::ops::GeneratorState::<(), ()>::Yielded(move _7); // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         discriminant((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}]))) = 3; // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         return;                          // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
@@ -78,6 +72,7 @@ fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:
     }
 
     bb5: {
+        StorageLive(_3);                 // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
         StorageLive(_4);                 // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
         StorageLive(_6);                 // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
         StorageLive(_7);                 // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6

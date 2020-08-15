@@ -388,7 +388,7 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut V
             Bool => tcx.lang_items().bool_impl(),
             Str => tcx.lang_items().str_impl(),
             Slice => tcx.lang_items().slice_impl(),
-            Array => tcx.lang_items().slice_impl(),
+            Array => tcx.lang_items().array_impl(),
             Tuple => None,
             Unit => None,
             RawPointer => tcx.lang_items().const_ptr_impl(),

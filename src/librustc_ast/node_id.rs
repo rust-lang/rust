@@ -1,10 +1,8 @@
-use rustc_serialize::{Decoder, Encoder};
 use rustc_span::ExpnId;
 use std::fmt;
 
 rustc_index::newtype_index! {
     pub struct NodeId {
-        ENCODABLE = custom
         DEBUG_FORMAT = "NodeId({})"
     }
 }
@@ -32,17 +30,5 @@ impl NodeId {
 impl fmt::Display for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.as_u32(), f)
-    }
-}
-
-impl rustc_serialize::UseSpecializedEncodable for NodeId {
-    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u32(self.as_u32())
-    }
-}
-
-impl rustc_serialize::UseSpecializedDecodable for NodeId {
-    fn default_decode<D: Decoder>(d: &mut D) -> Result<NodeId, D::Error> {
-        d.read_u32().map(NodeId::from_u32)
     }
 }

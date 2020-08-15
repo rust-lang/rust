@@ -101,7 +101,7 @@ impl TempState {
 /// of a larger candidate.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Candidate {
-    /// Borrow of a constant temporary.
+    /// Borrow of a constant temporary, candidate for lifetime extension.
     Ref(Location),
 
     /// Promotion of the `x` in `[x; 32]`.

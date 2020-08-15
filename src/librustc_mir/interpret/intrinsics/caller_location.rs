@@ -30,8 +30,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Assert that there is always such a frame.
             .unwrap();
         // Assert that the frame we look at is actually executing code currently
-        // (`current_source_info` is None when we are unwinding and the frame does
-        // not require cleanup).
+        // (`loc` is `Err` when we are unwinding and the frame does not require cleanup).
         let loc = frame.loc.unwrap();
         // If this is a `Call` terminator, use the `fn_span` instead.
         let block = &frame.body.basic_blocks()[loc.block];

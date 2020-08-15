@@ -1,0 +1,11 @@
+error: using `&'static str` as const generic parameters is forbidden
+  --> $DIR/issue-66596-impl-trait-for-str-const-arg.rs:9:25
+   |
+LL | trait Trait<const NAME: &'static str> {
+   |                         ^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = note: more complex types are supported with `#[feature(const_generics)]`
+
+error: aborting due to previous error
+

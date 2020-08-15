@@ -18,8 +18,7 @@
 #![feature(unicode_internals)]
 #![recursion_limit = "256"]
 
-// FIXME(#56935): Work around ICEs during cross-compilation.
-#[allow(unused)]
+#[macro_use]
 extern crate rustc_macros;
 
 #[macro_export]

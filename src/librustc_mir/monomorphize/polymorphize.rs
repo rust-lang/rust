@@ -269,15 +269,21 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UsedGenericParametersVisitor<'a, 'tcx> {
                 self.unused_parameters.clear(param.index);
                 false
             }
-            ty::ConstKind::Unevaluated(_, _, Some(p)) => {
+            ty::ConstKind::Unevaluated(def, _, Some(p))
+                // Avoid considering `T` unused when constants are of the form:
+                //   `<Self as Foo<T>>::foo::promoted[p]`
+                if self.def_id == def.did && !self.tcx.generics_of(def.did).has_self =>
+            {
                 // If there is a promoted, don't look at the substs - since it will always contain
                 // the generic parameters, instead, traverse the promoted MIR.
-                let promoted = self.tcx.promoted_mir(self.def_id);
+                let promoted = self.tcx.promoted_mir(def.did);
                 self.visit_body(&promoted[p]);
                 false
             }
-            ty::ConstKind::Unevaluated(def_id, unevaluated_substs, None) => {
-                self.visit_child_body(def_id.did, unevaluated_substs);
+            ty::ConstKind::Unevaluated(def, unevaluated_substs, None)
+                if self.tcx.def_kind(def.did) == DefKind::AnonConst =>
+            {
+                self.visit_child_body(def.did, unevaluated_substs);
                 false
             }
             _ => c.super_visit_with(self),

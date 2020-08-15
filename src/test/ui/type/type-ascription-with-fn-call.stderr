@@ -4,10 +4,7 @@ error[E0573]: expected type, found function `f`
 LL |     f()  :
    |          - help: maybe you meant to write `;` here
 LL |     f();
-   |     ^^^
-   |     |
-   |     not a type
-   |     expecting a type here because of type ascription
+   |     ^^^ expecting a type here because of type ascription
 
 error: aborting due to previous error
 

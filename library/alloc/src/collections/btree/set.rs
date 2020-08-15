@@ -1572,3 +1572,6 @@ impl<'a, T: Ord> Iterator for Union<'a, T> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T: Ord> FusedIterator for Union<'_, T> {}
+
+#[cfg(test)]
+mod tests;

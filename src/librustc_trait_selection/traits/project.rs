@@ -324,8 +324,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
 
         let ty = ty.super_fold_with(self);
         match ty.kind {
-            ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
-                // (*)
+            ty::Opaque(def_id, substs) => {
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty,
@@ -353,9 +352,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             }
 
             ty::Projection(ref data) if !data.has_escaping_bound_vars() => {
-                // (*)
-
-                // (*) This is kind of hacky -- we need to be able to
+                // This is kind of hacky -- we need to be able to
                 // handle normalization within binders because
                 // otherwise we wind up a need to normalize when doing
                 // trait matching (since you can have a trait

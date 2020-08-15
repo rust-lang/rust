@@ -23,7 +23,7 @@ pub struct RawConst<'tcx> {
 
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
 pub enum ConstValue<'tcx> {
     /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
@@ -58,7 +58,7 @@ impl<'tcx> ConstValue<'tcx> {
 
     pub fn try_to_str_slice(&self) -> Option<&'tcx str> {
         if let ConstValue::Slice { data, start, end } = *self {
-            ::std::str::from_utf8(data.inspect_with_undef_and_ptr_outside_interpreter(start..end))
+            ::std::str::from_utf8(data.inspect_with_uninit_and_ptr_outside_interpreter(start..end))
                 .ok()
         } else {
             None
@@ -108,7 +108,7 @@ impl<'tcx> ConstValue<'tcx> {
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
 pub enum Scalar<Tag = ()> {
     /// The raw bytes of a simple value.
@@ -562,7 +562,7 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, RustcEncodable, RustcDecodable, HashStable, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, TyEncodable, TyDecodable, HashStable, Hash)]
 pub enum ScalarMaybeUninit<Tag = ()> {
     Scalar(Scalar<Tag>),
     Uninit,

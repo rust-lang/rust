@@ -38,6 +38,11 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
   CoverageMappingWriter.write(OS);
 }
 
+extern "C" LLVMValueRef LLVMRustCoverageCreatePGOFuncNameVar(LLVMValueRef F, const char *FuncName) {
+  StringRef FuncNameRef(FuncName);
+  return wrap(createPGOFuncNameVar(*cast<Function>(unwrap(F)), FuncNameRef));
+}
+
 extern "C" uint64_t LLVMRustCoverageComputeHash(const char *Name) {
   StringRef NameRef(Name);
   return IndexedInstrProf::ComputeHash(NameRef);

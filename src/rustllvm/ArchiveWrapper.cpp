@@ -35,7 +35,6 @@ struct RustArchiveIterator {
 };
 
 enum class LLVMRustArchiveKind {
-  Other,
   GNU,
   BSD,
   DARWIN,

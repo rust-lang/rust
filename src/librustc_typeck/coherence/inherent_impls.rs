@@ -112,6 +112,16 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     item.span,
                 );
             }
+            ty::Array(_, _) => {
+                self.check_primitive_impl(
+                    def_id,
+                    lang_items.array_impl(),
+                    None,
+                    "array",
+                    "[T; N]",
+                    item.span,
+                );
+            }
             ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Not })
                 if matches!(inner.kind, ty::Slice(_)) =>
             {

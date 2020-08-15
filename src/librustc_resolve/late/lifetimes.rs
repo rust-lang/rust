@@ -711,9 +711,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         use self::hir::TraitItemKind::*;
-        self.missing_named_lifetime_spots.push((&trait_item.generics).into());
         match trait_item.kind {
             Fn(ref sig, _) => {
+                self.missing_named_lifetime_spots.push((&trait_item.generics).into());
                 let tcx = self.tcx;
                 self.visit_early_late(
                     Some(tcx.hir().get_parent_item(trait_item.hir_id)),
@@ -721,8 +721,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     &trait_item.generics,
                     |this| intravisit::walk_trait_item(this, trait_item),
                 );
+                self.missing_named_lifetime_spots.pop();
             }
             Type(bounds, ref ty) => {
+                self.missing_named_lifetime_spots.push((&trait_item.generics).into());
                 let generics = &trait_item.generics;
                 let mut index = self.next_early_index();
                 debug!("visit_ty: index = {}", index);
@@ -757,31 +759,35 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         this.visit_ty(ty);
                     }
                 });
+                self.missing_named_lifetime_spots.pop();
             }
             Const(_, _) => {
                 // Only methods and types support generics.
                 assert!(trait_item.generics.params.is_empty());
+                self.missing_named_lifetime_spots.push(MissingLifetimeSpot::Static);
                 intravisit::walk_trait_item(self, trait_item);
+                self.missing_named_lifetime_spots.pop();
             }
         }
-        self.missing_named_lifetime_spots.pop();
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         use self::hir::ImplItemKind::*;
-        self.missing_named_lifetime_spots.push((&impl_item.generics).into());
         match impl_item.kind {
             Fn(ref sig, _) => {
+                self.missing_named_lifetime_spots.push((&impl_item.generics).into());
                 let tcx = self.tcx;
                 self.visit_early_late(
                     Some(tcx.hir().get_parent_item(impl_item.hir_id)),
                     &sig.decl,
                     &impl_item.generics,
                     |this| intravisit::walk_impl_item(this, impl_item),
-                )
+                );
+                self.missing_named_lifetime_spots.pop();
             }
             TyAlias(ref ty) => {
                 let generics = &impl_item.generics;
+                self.missing_named_lifetime_spots.push(generics.into());
                 let mut index = self.next_early_index();
                 let mut non_lifetime_count = 0;
                 debug!("visit_ty: index = {}", index);
@@ -810,14 +816,16 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     this.visit_generics(generics);
                     this.visit_ty(ty);
                 });
+                self.missing_named_lifetime_spots.pop();
             }
             Const(_, _) => {
                 // Only methods and types support generics.
                 assert!(impl_item.generics.params.is_empty());
+                self.missing_named_lifetime_spots.push(MissingLifetimeSpot::Static);
                 intravisit::walk_impl_item(self, impl_item);
+                self.missing_named_lifetime_spots.pop();
             }
         }
-        self.missing_named_lifetime_spots.pop();
     }
 
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
@@ -2315,6 +2323,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut late_depth = 0;
         let mut scope = self.scope;
         let mut lifetime_names = FxHashSet::default();
+        let mut lifetime_spans = vec![];
         let error = loop {
             match *scope {
                 // Do not assign any resolution, it will be inferred.
@@ -2326,7 +2335,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     // collect named lifetimes for suggestions
                     for name in lifetimes.keys() {
                         if let hir::ParamName::Plain(name) = name {
-                            lifetime_names.insert(*name);
+                            lifetime_names.insert(name.name);
+                            lifetime_spans.push(name.span);
                         }
                     }
                     late_depth += 1;
@@ -2344,12 +2354,24 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         }
                         Elide::Exact(l) => l.shifted(late_depth),
                         Elide::Error(ref e) => {
-                            if let Scope::Binder { ref lifetimes, .. } = s {
-                                // collect named lifetimes for suggestions
-                                for name in lifetimes.keys() {
-                                    if let hir::ParamName::Plain(name) = name {
-                                        lifetime_names.insert(*name);
+                            let mut scope = s;
+                            loop {
+                                match scope {
+                                    Scope::Binder { ref lifetimes, s, .. } => {
+                                        // Collect named lifetimes for suggestions.
+                                        for name in lifetimes.keys() {
+                                            if let hir::ParamName::Plain(name) = name {
+                                                lifetime_names.insert(name.name);
+                                                lifetime_spans.push(name.span);
+                                            }
+                                        }
+                                        scope = s;
                                     }
+                                    Scope::ObjectLifetimeDefault { ref s, .. }
+                                    | Scope::Elision { ref s, .. } => {
+                                        scope = s;
+                                    }
+                                    _ => break,
                                 }
                             }
                             break Some(e);
@@ -2373,7 +2395,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         if let Some(params) = error {
             // If there's no lifetime available, suggest `'static`.
             if self.report_elision_failure(&mut err, params) && lifetime_names.is_empty() {
-                lifetime_names.insert(Ident::with_dummy_span(kw::StaticLifetime));
+                lifetime_names.insert(kw::StaticLifetime);
             }
         }
         self.add_missing_lifetime_specifiers_label(
@@ -2381,6 +2403,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             span,
             lifetime_refs.len(),
             &lifetime_names,
+            lifetime_spans,
             error.map(|p| &p[..]).unwrap_or(&[]),
         );
         err.emit();

@@ -1,0 +1,13 @@
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/const-param-from-outer-fn.rs:9:9
+   |
+LL | fn foo<const X: u32>() {
+   |              - const parameter from outer function
+LL |     fn bar() -> u32 {
+   |        --- try adding a local generic parameter in this method instead
+LL |         X
+   |         ^ use of generic parameter from outer function
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0401`.

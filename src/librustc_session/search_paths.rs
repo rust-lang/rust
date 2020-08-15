@@ -33,7 +33,7 @@ impl SearchPathFile {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Debug, Hash, Eq, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Clone, Copy, Debug, Hash, Eq, Encodable, Decodable)]
 pub enum PathKind {
     Native,
     Crate,

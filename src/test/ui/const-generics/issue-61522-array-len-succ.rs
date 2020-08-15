@@ -1,12 +1,17 @@
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+// revisions: full min
+
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 pub struct MyArray<const COUNT: usize>([u8; COUNT + 1]);
-//~^ ERROR constant expression depends on a generic parameter
+//[full]~^ ERROR constant expression depends on a generic parameter
+//[min]~^^ ERROR generic parameters must not be used
 
 impl<const COUNT: usize> MyArray<COUNT> {
     fn inner(&self) -> &[u8; COUNT + 1] {
-        //~^ ERROR constant expression depends on a generic parameter
+        //[full]~^ ERROR constant expression depends on a generic parameter
+        //[min]~^^ ERROR generic parameters must not be used
         &self.0
     }
 }

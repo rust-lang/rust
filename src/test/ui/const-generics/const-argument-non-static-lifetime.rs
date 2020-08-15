@@ -1,7 +1,9 @@
 // run-pass
+// revisions: full
+// FIXME(#75323) Omitted min revision for now due to ICE.
 
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
 #![allow(dead_code)]
 
 fn test<const N: usize>() {}

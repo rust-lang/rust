@@ -409,12 +409,4 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     ) -> Self::PointerTag {
         ()
     }
-
-    #[inline(always)]
-    fn init_frame_extra(
-        _ecx: &mut InterpCx<$mir, $tcx, Self>,
-        frame: Frame<$mir, $tcx>,
-    ) -> InterpResult<$tcx, Frame<$mir, $tcx>> {
-        Ok(frame)
-    }
 }

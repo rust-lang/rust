@@ -86,12 +86,11 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                 .skip(1)
                 .take(arg_count)
                 .map(|(local, _)| Place::from(local))
-                .filter(needs_retag)
-                .collect::<Vec<_>>();
+                .filter(needs_retag);
             // Emit their retags.
             basic_blocks[START_BLOCK].statements.splice(
                 0..0,
-                places.into_iter().map(|place| Statement {
+                places.map(|place| Statement {
                     source_info,
                     kind: StatementKind::Retag(RetagKind::FnEntry, box (place)),
                 }),
@@ -101,29 +100,24 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         // PART 2
         // Retag return values of functions.  Also escape-to-raw the argument of `drop`.
         // We collect the return destinations because we cannot mutate while iterating.
-        let mut returns: Vec<(SourceInfo, Place<'tcx>, BasicBlock)> = Vec::new();
-        for block_data in basic_blocks.iter_mut() {
-            match block_data.terminator().kind {
-                TerminatorKind::Call { ref destination, .. } => {
-                    // Remember the return destination for later
-                    if let Some(ref destination) = destination {
-                        if needs_retag(&destination.0) {
-                            returns.push((
-                                block_data.terminator().source_info,
-                                destination.0,
-                                destination.1,
-                            ));
-                        }
+        let returns = basic_blocks
+            .iter_mut()
+            .filter_map(|block_data| {
+                match block_data.terminator().kind {
+                    TerminatorKind::Call { destination: Some(ref destination), .. }
+                        if needs_retag(&destination.0) =>
+                    {
+                        // Remember the return destination for later
+                        Some((block_data.terminator().source_info, destination.0, destination.1))
                     }
-                }
-                TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } => {
+
                     // `Drop` is also a call, but it doesn't return anything so we are good.
-                }
-                _ => {
+                    TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } => None,
                     // Not a block ending in a Call -> ignore.
+                    _ => None,
                 }
-            }
-        }
+            })
+            .collect::<Vec<_>>();
         // Now we go over the returns we collected to retag the return values.
         for (source_info, dest_place, dest_block) in returns {
             basic_blocks[dest_block].statements.insert(

@@ -40,9 +40,8 @@ declare_clippy_lint! {
     ///     assert_eq!(v.len(), 42);
     /// }
     /// ```
-    ///
+    /// should be
     /// ```rust
-    /// // should be
     /// fn foo(v: &[i32]) {
     ///     assert_eq!(v.len(), 42);
     /// }
@@ -159,26 +158,19 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 }
             }
 
+            //
             // * Exclude a type that is specifically bounded by `Borrow`.
             // * Exclude a type whose reference also fulfills its bound. (e.g., `std::convert::AsRef`,
             //   `serde::Serialize`)
             let (implements_borrow_trait, all_borrowable_trait) = {
-                let preds = preds
-                    .iter()
-                    .filter(|t| t.self_ty() == ty)
-                    .collect::<Vec<_>>();
+                let preds = preds.iter().filter(|t| t.self_ty() == ty).collect::<Vec<_>>();
 
                 (
                     preds.iter().any(|t| t.def_id() == borrow_trait),
                     !preds.is_empty() && {
                         let ty_empty_region = cx.tcx.mk_imm_ref(cx.tcx.lifetimes.re_root_empty, ty);
                         preds.iter().all(|t| {
-                            let ty_params = t
-                                .trait_ref
-                                .substs
-                                .iter()
-                                .skip(1)
-                                .collect::<Vec<_>>();
+                            let ty_params = t.trait_ref.substs.iter().skip(1).collect::<Vec<_>>();
                             implements_trait(cx, ty_empty_region, t.def_id(), &ty_params)
                         })
                     },

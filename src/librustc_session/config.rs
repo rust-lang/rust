@@ -39,7 +39,7 @@ pub struct Config {
 }
 
 bitflags! {
-    #[derive(Default, RustcEncodable, RustcDecodable)]
+    #[derive(Default, Encodable, Decodable)]
     pub struct SanitizerSet: u8 {
         const ADDRESS = 1 << 0;
         const LEAK    = 1 << 1;
@@ -194,7 +194,8 @@ impl SwitchWithOptPath {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Encodable, Decodable)]
 pub enum SymbolManglingVersion {
     Legacy,
     V0,
@@ -209,7 +210,8 @@ pub enum DebugInfo {
     Full,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+#[derive(Encodable, Decodable)]
 pub enum OutputType {
     Bitcode,
     Assembly,
@@ -672,7 +674,7 @@ pub enum EntryFnType {
 
 impl_stable_hash_via_hash!(EntryFnType);
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
 pub enum CrateType {
     Executable,
     Dylib,

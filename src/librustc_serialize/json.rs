@@ -47,17 +47,17 @@
 //!
 //! Rust provides a mechanism for low boilerplate encoding & decoding of values to and from JSON via
 //! the serialization API.
-//! To be able to encode a piece of data, it must implement the `serialize::RustcEncodable` trait.
-//! To be able to decode a piece of data, it must implement the `serialize::RustcDecodable` trait.
+//! To be able to encode a piece of data, it must implement the `serialize::Encodable` trait.
+//! To be able to decode a piece of data, it must implement the `serialize::Decodable` trait.
 //! The Rust compiler provides an annotation to automatically generate the code for these traits:
-//! `#[derive(RustcDecodable, RustcEncodable)]`
+//! `#[derive(Decodable, Encodable)]`
 //!
 //! The JSON API provides an enum `json::Json` and a trait `ToJson` to encode objects.
 //! The `ToJson` trait provides a `to_json` method to convert an object into a `json::Json` value.
 //! A `json::Json` value can be encoded as a string or buffer using the functions described above.
 //! You can also use the `json::Encoder` object, which implements the `Encoder` trait.
 //!
-//! When using `ToJson` the `RustcEncodable` trait implementation is not mandatory.
+//! When using `ToJson` the `Encodable` trait implementation is not mandatory.
 //!
 //! # Examples of use
 //!
@@ -68,29 +68,28 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
+//! use rustc_macros::{Decodable, Encodable};
 //! use rustc_serialize::json;
 //!
 //! // Automatically generate `Decodable` and `Encodable` trait implementations
-//! #[derive(RustcDecodable, RustcEncodable)]
+//! #[derive(Decodable, Encodable)]
 //! pub struct TestStruct  {
 //!     data_int: u8,
 //!     data_str: String,
 //!     data_vector: Vec<u8>,
 //! }
 //!
-//! fn main() {
-//!     let object = TestStruct {
-//!         data_int: 1,
-//!         data_str: "homura".to_string(),
-//!         data_vector: vec![2,3,4,5],
-//!     };
+//! let object = TestStruct {
+//!     data_int: 1,
+//!     data_str: "homura".to_string(),
+//!     data_vector: vec![2,3,4,5],
+//! };
 //!
-//!     // Serialize using `json::encode`
-//!     let encoded = json::encode(&object).unwrap();
+//! // Serialize using `json::encode`
+//! let encoded = json::encode(&object).unwrap();
 //!
-//!     // Deserialize using `json::decode`
-//!     let decoded: TestStruct = json::decode(&encoded[..]).unwrap();
-//! }
+//! // Deserialize using `json::decode`
+//! let decoded: TestStruct = json::decode(&encoded[..]).unwrap();
 //! ```
 //!
 //! ## Using the `ToJson` trait
@@ -102,6 +101,7 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
+//! use rustc_macros::Encodable;
 //! use rustc_serialize::json::{self, ToJson, Json};
 //!
 //! // A custom data structure
@@ -117,35 +117,34 @@
 //!     }
 //! }
 //!
-//! // Only generate `RustcEncodable` trait implementation
-//! #[derive(RustcEncodable)]
+//! // Only generate `Encodable` trait implementation
+//! #[derive(Encodable)]
 //! pub struct ComplexNumRecord {
 //!     uid: u8,
 //!     dsc: String,
 //!     val: Json,
 //! }
 //!
-//! fn main() {
-//!     let num = ComplexNum { a: 0.0001, b: 12.539 };
-//!     let data: String = json::encode(&ComplexNumRecord{
-//!         uid: 1,
-//!         dsc: "test".to_string(),
-//!         val: num.to_json(),
-//!     }).unwrap();
-//!     println!("data: {}", data);
-//!     // data: {"uid":1,"dsc":"test","val":"0.0001+12.539i"};
-//! }
+//! let num = ComplexNum { a: 0.0001, b: 12.539 };
+//! let data: String = json::encode(&ComplexNumRecord{
+//!     uid: 1,
+//!     dsc: "test".to_string(),
+//!     val: num.to_json(),
+//! }).unwrap();
+//! println!("data: {}", data);
+//! // data: {"uid":1,"dsc":"test","val":"0.0001+12.539i"};
 //! ```
 //!
 //! ### Verbose example of `ToJson` usage
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
+//! use rustc_macros::Decodable;
 //! use std::collections::BTreeMap;
 //! use rustc_serialize::json::{self, Json, ToJson};
 //!
-//! // Only generate `RustcDecodable` trait implementation
-//! #[derive(RustcDecodable)]
+//! // Only generate `Decodable` trait implementation
+//! #[derive(Decodable)]
 //! pub struct TestStruct {
 //!     data_int: u8,
 //!     data_str: String,
@@ -164,19 +163,17 @@
 //!     }
 //! }
 //!
-//! fn main() {
-//!     // Serialize using `ToJson`
-//!     let input_data = TestStruct {
-//!         data_int: 1,
-//!         data_str: "madoka".to_string(),
-//!         data_vector: vec![2,3,4,5],
-//!     };
-//!     let json_obj: Json = input_data.to_json();
-//!     let json_str: String = json_obj.to_string();
+//! // Serialize using `ToJson`
+//! let input_data = TestStruct {
+//!     data_int: 1,
+//!     data_str: "madoka".to_string(),
+//!     data_vector: vec![2,3,4,5],
+//! };
+//! let json_obj: Json = input_data.to_json();
+//! let json_str: String = json_obj.to_string();
 //!
-//!     // Deserialize like before
-//!     let decoded: TestStruct = json::decode(&json_str).unwrap();
-//! }
+//! // Deserialize like before
+//! let decoded: TestStruct = json::decode(&json_str).unwrap();
 //! ```
 
 use self::DecoderError::*;
@@ -298,7 +295,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
 }
 
 /// Shortcut function to decode a JSON `&str` into an object
-pub fn decode<T: crate::Decodable>(s: &str) -> DecodeResult<T> {
+pub fn decode<T: crate::Decodable<Decoder>>(s: &str) -> DecodeResult<T> {
     let json = match from_str(s) {
         Ok(x) => x,
         Err(e) => return Err(ParseError(e)),
@@ -309,7 +306,9 @@ pub fn decode<T: crate::Decodable>(s: &str) -> DecodeResult<T> {
 }
 
 /// Shortcut function to encode a `T` into a JSON `String`
-pub fn encode<T: crate::Encodable>(object: &T) -> Result<string::String, EncoderError> {
+pub fn encode<T: for<'r> crate::Encodable<Encoder<'r>>>(
+    object: &T,
+) -> Result<string::String, EncoderError> {
     let mut s = String::new();
     {
         let mut encoder = Encoder::new(&mut s);
@@ -1150,8 +1149,8 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
     }
 }
 
-impl Encodable for Json {
-    fn encode<E: crate::Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+impl<E: crate::Encoder> Encodable<E> for Json {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         match *self {
             Json::I64(v) => v.encode(e),
             Json::U64(v) => v.encode(e),
@@ -1269,34 +1268,22 @@ impl Json {
 
     /// Returns `true` if the Json value is a `Number`.
     pub fn is_number(&self) -> bool {
-        match *self {
-            Json::I64(_) | Json::U64(_) | Json::F64(_) => true,
-            _ => false,
-        }
+        matches!(*self, Json::I64(_) | Json::U64(_) | Json::F64(_))
     }
 
     /// Returns `true` if the Json value is a `i64`.
     pub fn is_i64(&self) -> bool {
-        match *self {
-            Json::I64(_) => true,
-            _ => false,
-        }
+        matches!(*self, Json::I64(_))
     }
 
     /// Returns `true` if the Json value is a `u64`.
     pub fn is_u64(&self) -> bool {
-        match *self {
-            Json::U64(_) => true,
-            _ => false,
-        }
+        matches!(*self, Json::U64(_))
     }
 
     /// Returns `true` if the Json value is a `f64`.
     pub fn is_f64(&self) -> bool {
-        match *self {
-            Json::F64(_) => true,
-            _ => false,
-        }
+        matches!(*self, Json::F64(_))
     }
 
     /// If the Json value is a number, returns or cast it to a `i64`;
@@ -1416,6 +1403,7 @@ enum ParserState {
 /// structure of the JSON stream.
 ///
 /// An example is `foo.bar[3].x`.
+#[derive(Default)]
 pub struct Stack {
     stack: Vec<InternalStackElement>,
     str_buffer: Vec<u8>,
@@ -1442,7 +1430,7 @@ enum InternalStackElement {
 
 impl Stack {
     pub fn new() -> Stack {
-        Stack { stack: Vec::new(), str_buffer: Vec::new() }
+        Self::default()
     }
 
     /// Returns The number of elements in the Stack.
@@ -1547,10 +1535,7 @@ impl Stack {
 
     // Used by Parser to test whether the top-most element is an index.
     fn last_is_index(&self) -> bool {
-        match self.stack.last() {
-            Some(InternalIndex(_)) => true,
-            _ => false,
-        }
+        matches!(self.stack.last(), Some(InternalIndex(_)))
     }
 
     // Used by Parser to increment the index of the top-most element.
@@ -2747,7 +2732,7 @@ impl<'a> fmt::Display for PrettyJson<'a> {
     }
 }
 
-impl<'a, T: Encodable> fmt::Display for AsJson<'a, T> {
+impl<'a, T: for<'r> Encodable<Encoder<'r>>> fmt::Display for AsJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2767,7 +2752,7 @@ impl<'a, T> AsPrettyJson<'a, T> {
     }
 }
 
-impl<'a, T: Encodable> fmt::Display for AsPrettyJson<'a, T> {
+impl<'a, T: for<'x> Encodable<PrettyEncoder<'x>>> fmt::Display for AsPrettyJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };

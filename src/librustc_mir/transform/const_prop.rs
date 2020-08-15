@@ -26,7 +26,7 @@ use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
 use rustc_trait_selection::traits;
 
-use crate::const_eval::error_to_const_error;
+use crate::const_eval::ConstEvalErr;
 use crate::interpret::{
     self, compile_time_machine, truncate, AllocId, Allocation, Frame, ImmTy, Immediate, InterpCx,
     LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy,
@@ -252,6 +252,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
             throw_machine_stop_str!("tried to write to a local that is marked as not propagatable")
         }
         if frame == 0 && ecx.machine.only_propagate_inside_block_locals.contains(local) {
+            trace!(
+                "mutating local {:?} which is restricted to its block. \
+                Will remove it from const-prop after block is finished.",
+                local
+            );
             ecx.machine.written_only_inside_own_block_locals.insert(local);
         }
         ecx.machine.stack[frame].locals[local].access_mut()
@@ -274,6 +279,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         }
 
         Ok(())
+    }
+
+    #[inline(always)]
+    fn init_frame_extra(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        frame: Frame<'mir, 'tcx>,
+    ) -> InterpResult<'tcx, Frame<'mir, 'tcx>> {
+        Ok(frame)
     }
 
     #[inline(always)]
@@ -427,6 +440,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
+                trace!("InterpCx operation failed: {:?}", error);
                 // Some errors shouldn't come up because creating them causes
                 // an allocation, which we should avoid. When that happens,
                 // dedicated error variants should be introduced instead.
@@ -451,7 +465,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ok(op) => Some(op),
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);
-                let err = error_to_const_error(&self.ecx, error, Some(c.span));
+                let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal.val {
                         // Promoteds must lint and not error as the user didn't ask for them
@@ -969,10 +983,10 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
                         ConstPropMode::OnlyPropagateInto => {}
                         other @ ConstPropMode::FullConstProp => {
                             trace!(
-                                "local {:?} can't be propagated because of multiple assignments",
-                                local,
+                                "local {:?} can't be propagated because of multiple assignments. Previous state: {:?}",
+                                local, other,
                             );
-                            *other = ConstPropMode::OnlyPropagateInto;
+                            *other = ConstPropMode::OnlyInsideOwnBlock;
                         }
                     }
                 }
@@ -1076,7 +1090,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 // ```rust
                 // let mut x = 42;
                 // x = SOME_MUTABLE_STATIC;
-                // // x must now be undefined
+                // // x must now be uninit
                 // ```
                 // FIXME: we overzealously erase the entire local, because that's easier to
                 // implement.
@@ -1089,6 +1103,20 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             }
         } else {
             match statement.kind {
+                StatementKind::SetDiscriminant { ref place, .. } => {
+                    match self.ecx.machine.can_const_prop[place.local] {
+                        ConstPropMode::FullConstProp | ConstPropMode::OnlyInsideOwnBlock => {
+                            if self.use_ecx(|this| this.ecx.statement(statement)).is_some() {
+                                trace!("propped discriminant into {:?}", place);
+                            } else {
+                                Self::remove_const(&mut self.ecx, place.local);
+                            }
+                        }
+                        ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
+                            Self::remove_const(&mut self.ecx, place.local);
+                        }
+                    }
+                }
                 StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                     let frame = self.ecx.frame_mut();
                     frame.locals[local].value =

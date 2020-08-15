@@ -47,8 +47,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         let loc = match self.frame().loc {
-            Some(loc) => loc,
-            None => {
+            Ok(loc) => loc,
+            Err(_) => {
                 // We are unwinding and this fn has no cleanup code.
                 // Just go on unwinding.
                 trace!("unwinding: skipping frame");
@@ -74,7 +74,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(true)
     }
 
-    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
+    /// Runs the interpretation logic for the given `mir::Statement` at the current frame and
+    /// statement counter. This also moves the statement counter forward.
+    crate fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
 
         use rustc_middle::mir::StatementKind::*;
@@ -281,7 +283,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         self.eval_terminator(terminator)?;
         if !self.stack().is_empty() {
-            if let Some(loc) = self.frame().loc {
+            if let Ok(loc) = self.frame().loc {
                 info!("// executing {:?}", loc.block);
             }
         }

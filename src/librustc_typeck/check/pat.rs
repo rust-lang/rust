@@ -1229,8 +1229,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MaybeIncorrect,
                     );
 
-                    // we don't want to throw `E0027` in case we have thrown `E0026` for them
-                    unmentioned_fields.retain(|&x| x.name != suggested_name);
+                    // When we have a tuple struct used with struct we don't want to suggest using
+                    // the (valid) struct syntax with numeric field names. Instead we want to
+                    // suggest the expected syntax. We infer that this is the case by parsing the
+                    // `Ident` into an unsized integer. The suggestion will be emitted elsewhere in
+                    // `smart_resolve_context_dependent_help`.
+                    if suggested_name.to_ident_string().parse::<usize>().is_err() {
+                        // We don't want to throw `E0027` in case we have thrown `E0026` for them.
+                        unmentioned_fields.retain(|&x| x.name != suggested_name);
+                    }
                 }
             }
         }

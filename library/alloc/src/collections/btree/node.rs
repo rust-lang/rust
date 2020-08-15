@@ -43,6 +43,9 @@ use crate::boxed::Box;
 const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;
 pub const CAPACITY: usize = 2 * B - 1;
+const KV_IDX_CENTER: usize = B - 1;
+const EDGE_IDX_LEFT_OF_CENTER: usize = B - 1;
+const EDGE_IDX_RIGHT_OF_CENTER: usize = B;
 
 /// The underlying representation of leaf nodes.
 #[repr(C)]
@@ -163,7 +166,8 @@ impl<K, V> Root<K, V> {
         Root { node: BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() })), height: 0 }
     }
 
-    pub fn as_ref(&self) -> NodeRef<marker::Immut<'_>, K, V, marker::LeafOrInternal> {
+    /// Borrows and returns an immutable reference to the node owned by the root.
+    pub fn node_as_ref(&self) -> NodeRef<marker::Immut<'_>, K, V, marker::LeafOrInternal> {
         NodeRef {
             height: self.height,
             node: self.node.as_ptr(),
@@ -172,7 +176,8 @@ impl<K, V> Root<K, V> {
         }
     }
 
-    pub fn as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::LeafOrInternal> {
+    /// Borrows and returns a mutable reference to the node owned by the root.
+    pub fn node_as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::LeafOrInternal> {
         NodeRef {
             height: self.height,
             node: self.node.as_ptr(),
@@ -226,12 +231,12 @@ impl<K, V> Root<K, V> {
 
         self.node = unsafe {
             BoxedNode::from_ptr(
-                self.as_mut().cast_unchecked::<marker::Internal>().first_edge().descend().node,
+                self.node_as_mut().cast_unchecked::<marker::Internal>().first_edge().descend().node,
             )
         };
         self.height -= 1;
         unsafe {
-            (*self.as_mut().as_leaf_mut()).parent = ptr::null();
+            (*self.node_as_mut().as_leaf_mut()).parent = ptr::null();
         }
 
         unsafe {
@@ -411,7 +416,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
 impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// Unsafely asserts to the compiler some static information about whether this
     /// node is a `Leaf` or an `Internal`.
-    unsafe fn cast_unchecked<NewType>(&mut self) -> NodeRef<marker::Mut<'_>, K, V, NewType> {
+    unsafe fn cast_unchecked<NewType>(self) -> NodeRef<marker::Mut<'a>, K, V, NewType> {
         NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
     }
 
@@ -616,7 +621,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                     let edge =
                         ptr::read(internal.as_internal().edges.get_unchecked(idx + 1).as_ptr());
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    (*new_root.as_mut().as_leaf_mut()).parent = ptr::null();
+                    (*new_root.node_as_mut().as_leaf_mut()).parent = ptr::null();
                     Some(new_root)
                 }
             };
@@ -648,7 +653,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                     );
 
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    (*new_root.as_mut().as_leaf_mut()).parent = ptr::null();
+                    (*new_root.node_as_mut().as_leaf_mut()).parent = ptr::null();
 
                     for i in 0..old_len {
                         Handle::new_edge(internal.reborrow_mut(), i).correct_parent_link();
@@ -719,7 +724,7 @@ impl<Node: Copy, Type> Clone for Handle<Node, Type> {
 }
 
 impl<Node, Type> Handle<Node, Type> {
-    /// Retrieves the node that contains the edge of key/value pair this handle points to.
+    /// Retrieves the node that contains the edge or key/value pair this handle points to.
     pub fn into_node(self) -> Node {
         self.node
     }
@@ -819,6 +824,27 @@ impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, mar
     }
 }
 
+enum InsertionPlace {
+    Left(usize),
+    Right(usize),
+}
+
+/// Given an edge index where we want to insert into a node filled to capacity,
+/// computes a sensible KV index of a split point and where to perform the insertion.
+/// The goal of the split point is for its key and value to end up in a parent node;
+/// the keys, values and edges to the left of the split point become the left child;
+/// the keys, values and edges to the right of the split point become the right child.
+fn splitpoint(edge_idx: usize) -> (usize, InsertionPlace) {
+    debug_assert!(edge_idx <= CAPACITY);
+    // Rust issue #74834 tries to explain these symmetric rules.
+    match edge_idx {
+        0..EDGE_IDX_LEFT_OF_CENTER => (KV_IDX_CENTER - 1, InsertionPlace::Left(edge_idx)),
+        EDGE_IDX_LEFT_OF_CENTER => (KV_IDX_CENTER, InsertionPlace::Left(edge_idx)),
+        EDGE_IDX_RIGHT_OF_CENTER => (KV_IDX_CENTER, InsertionPlace::Right(0)),
+        _ => (KV_IDX_CENTER + 1, InsertionPlace::Right(edge_idx - (KV_IDX_CENTER + 1 + 1))),
+    }
+}
+
 impl<'a, K, V, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::Edge> {
     /// Helps implementations of `insert_fit` for a particular `NodeType`,
     /// by taking care of leaf data.
@@ -861,18 +887,20 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
             let kv = unsafe { Handle::new_kv(self.node, self.idx) };
             (InsertResult::Fit(kv), ptr)
         } else {
-            let middle = unsafe { Handle::new_kv(self.node, B) };
+            let (middle_kv_idx, insertion) = splitpoint(self.idx);
+            let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
             let (mut left, k, v, mut right) = middle.split();
-            let ptr = if self.idx <= B {
-                unsafe { Handle::new_edge(left.reborrow_mut(), self.idx).insert_fit(key, val) }
-            } else {
-                unsafe {
+            let ptr = match insertion {
+                InsertionPlace::Left(insert_idx) => unsafe {
+                    Handle::new_edge(left.reborrow_mut(), insert_idx).insert_fit(key, val)
+                },
+                InsertionPlace::Right(insert_idx) => unsafe {
                     Handle::new_edge(
-                        right.as_mut().cast_unchecked::<marker::Leaf>(),
-                        self.idx - (B + 1),
+                        right.node_as_mut().cast_unchecked::<marker::Leaf>(),
+                        insert_idx,
                     )
                     .insert_fit(key, val)
-                }
+                },
             };
             (InsertResult::Split(SplitResult { left: left.forget_type(), k, v, right }), ptr)
         }
@@ -934,20 +962,20 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             let kv = unsafe { Handle::new_kv(self.node, self.idx) };
             InsertResult::Fit(kv)
         } else {
-            let middle = unsafe { Handle::new_kv(self.node, B) };
+            let (middle_kv_idx, insertion) = splitpoint(self.idx);
+            let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
             let (mut left, k, v, mut right) = middle.split();
-            if self.idx <= B {
-                unsafe {
-                    Handle::new_edge(left.reborrow_mut(), self.idx).insert_fit(key, val, edge);
-                }
-            } else {
-                unsafe {
+            match insertion {
+                InsertionPlace::Left(insert_idx) => unsafe {
+                    Handle::new_edge(left.reborrow_mut(), insert_idx).insert_fit(key, val, edge);
+                },
+                InsertionPlace::Right(insert_idx) => unsafe {
                     Handle::new_edge(
-                        right.as_mut().cast_unchecked::<marker::Internal>(),
-                        self.idx - (B + 1),
+                        right.node_as_mut().cast_unchecked::<marker::Internal>(),
+                        insert_idx,
                     )
                     .insert_fit(key, val, edge);
-                }
+                },
             }
             InsertResult::Split(SplitResult { left: left.forget_type(), k, v, right })
         }
@@ -1016,6 +1044,16 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeTyp
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
+    pub fn into_key_mut(self) -> &'a mut K {
+        let keys = self.node.into_key_slice_mut();
+        unsafe { keys.get_unchecked_mut(self.idx) }
+    }
+
+    pub fn into_val_mut(self) -> &'a mut V {
+        let vals = self.node.into_val_slice_mut();
+        unsafe { vals.get_unchecked_mut(self.idx) }
+    }
+
     pub fn into_kv_mut(self) -> (&'a mut K, &'a mut V) {
         unsafe {
             let (keys, vals) = self.node.into_slices_mut();
@@ -1080,7 +1118,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
     }
 
     /// Removes the key/value pair pointed to by this handle and returns it, along with the edge
-    /// between the now adjacent key/value pairs (if any) to the left and right of this handle.
+    /// that the key/value pair collapsed into.
     pub fn remove(
         mut self,
     ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
@@ -1117,7 +1155,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             let mut new_root = Root { node: BoxedNode::from_internal(new_node), height };
 
             for i in 0..(new_len + 1) {
-                Handle::new_edge(new_root.as_mut().cast_unchecked(), i).correct_parent_link();
+                Handle::new_edge(new_root.node_as_mut().cast_unchecked(), i).correct_parent_link();
             }
 
             (self.node, k, v, new_root)
@@ -1138,7 +1176,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     /// to by this handle, and the node immediately to the right of this handle into one new
     /// child of the underlying node, returning an edge referencing that new child.
     ///
-    /// Assumes that this edge `.can_merge()`.
+    /// Panics unless this edge `.can_merge()`.
     pub fn merge(
         mut self,
     ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::Edge> {
@@ -1146,10 +1184,9 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         let self2 = unsafe { ptr::read(&self) };
         let mut left_node = self1.left_edge().descend();
         let left_len = left_node.len();
-        let mut right_node = self2.right_edge().descend();
+        let right_node = self2.right_edge().descend();
         let right_len = right_node.len();
 
-        // necessary for correctness, but in a private module
         assert!(left_len + right_len < CAPACITY);
 
         unsafe {
@@ -1180,28 +1217,25 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             (*left_node.as_leaf_mut()).len += right_len as u16 + 1;
 
-            let layout = if self.node.height > 1 {
+            if self.node.height > 1 {
+                // SAFETY: the height of the nodes being merged is one below the height
+                // of the node of this edge, thus above zero, so they are internal.
+                let mut left_node = left_node.cast_unchecked();
+                let right_node = right_node.cast_unchecked();
                 ptr::copy_nonoverlapping(
-                    right_node.cast_unchecked().as_internal().edges.as_ptr(),
-                    left_node
-                        .cast_unchecked()
-                        .as_internal_mut()
-                        .edges
-                        .as_mut_ptr()
-                        .add(left_len + 1),
+                    right_node.reborrow().as_internal().edges.as_ptr(),
+                    left_node.reborrow_mut().as_internal_mut().edges.as_mut_ptr().add(left_len + 1),
                     right_len + 1,
                 );
 
                 for i in left_len + 1..left_len + right_len + 2 {
-                    Handle::new_edge(left_node.cast_unchecked().reborrow_mut(), i)
-                        .correct_parent_link();
+                    Handle::new_edge(left_node.reborrow_mut(), i).correct_parent_link();
                 }
 
-                Layout::new::<InternalNode<K, V>>()
+                Global.dealloc(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
             } else {
-                Layout::new::<LeafNode<K, V>>()
-            };
-            Global.dealloc(right_node.node.cast(), layout);
+                Global.dealloc(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
+            }
 
             Handle::new_edge(self.node, self.idx)
         }
@@ -1214,8 +1248,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         unsafe {
             let (k, v, edge) = self.reborrow_mut().left_edge().descend().pop();
 
-            let k = mem::replace(self.reborrow_mut().into_kv_mut().0, k);
-            let v = mem::replace(self.reborrow_mut().into_kv_mut().1, v);
+            let k = mem::replace(self.kv_mut().0, k);
+            let v = mem::replace(self.kv_mut().1, v);
 
             match self.reborrow_mut().right_edge().descend().force() {
                 ForceResult::Leaf(mut leaf) => leaf.push_front(k, v),
@@ -1231,8 +1265,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         unsafe {
             let (k, v, edge) = self.reborrow_mut().right_edge().descend().pop_front();
 
-            let k = mem::replace(self.reborrow_mut().into_kv_mut().0, k);
-            let v = mem::replace(self.reborrow_mut().into_kv_mut().1, v);
+            let k = mem::replace(self.kv_mut().0, k);
+            let v = mem::replace(self.kv_mut().1, v);
 
             match self.reborrow_mut().left_edge().descend().force() {
                 ForceResult::Leaf(mut leaf) => leaf.push(k, v),
@@ -1260,7 +1294,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 let left_kv = left_node.reborrow_mut().into_kv_pointers_mut();
                 let right_kv = right_node.reborrow_mut().into_kv_pointers_mut();
                 let parent_kv = {
-                    let kv = self.reborrow_mut().into_kv_mut();
+                    let kv = self.kv_mut();
                     (kv.0 as *mut K, kv.1 as *mut V)
                 };
 
@@ -1317,7 +1351,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 let left_kv = left_node.reborrow_mut().into_kv_pointers_mut();
                 let right_kv = right_node.reborrow_mut().into_kv_pointers_mut();
                 let parent_kv = {
-                    let kv = self.reborrow_mut().into_kv_mut();
+                    let kv = self.kv_mut();
                     (kv.0 as *mut K, kv.1 as *mut V)
                 };
 
@@ -1543,3 +1577,6 @@ unsafe fn slice_remove<T>(slice: &mut [T], idx: usize) -> T {
         ret
     }
 }
+
+#[cfg(test)]
+mod tests;

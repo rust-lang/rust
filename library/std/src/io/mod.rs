@@ -1212,7 +1212,7 @@ impl Initializer {
 ///
 /// [`write`]: Self::write
 /// [`flush`]: Self::flush
-/// [`std::io`]: index.html
+/// [`std::io`]: self
 ///
 /// # Examples
 ///
@@ -1590,8 +1590,6 @@ pub trait Seek {
     /// # Errors
     ///
     /// Seeking to a negative offset is considered an error.
-    ///
-    /// [`SeekFrom::Start`]: enum.SeekFrom.html#variant.Start
     #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
 
@@ -1678,8 +1676,6 @@ pub trait Seek {
 /// Enumeration of possible methods to seek within an I/O object.
 ///
 /// It is used by the [`Seek`] trait.
-///
-/// [`Seek`]: trait.Seek.html
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SeekFrom {
@@ -1759,11 +1755,9 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
 /// For example, [`File`] implements [`Read`], but not `BufRead`.
 /// [`BufReader`] to the rescue!
 ///
-/// [`BufReader`]: struct.BufReader.html
 /// [`File`]: crate::fs::File
 /// [`read_line`]: Self::read_line
 /// [`lines`]: Self::lines
-/// [`Read`]: trait.Read.html
 ///
 /// ```no_run
 /// use std::io::{self, BufReader};
@@ -1869,15 +1863,12 @@ pub trait BufRead: Read {
     /// present in `buf` and its length will have been adjusted appropriately.
     ///
     /// [`fill_buf`]: Self::fill_buf
-    /// [`ErrorKind::Interrupted`]: enum.ErrorKind.html#variant.Interrupted
     ///
     /// # Examples
     ///
     /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
     /// this example, we use [`Cursor`] to read all the bytes in a byte slice
     /// in hyphen delimited segments:
-    ///
-    /// [`Cursor`]: struct.Cursor.html
     ///
     /// ```
     /// use std::io::{self, BufRead};
@@ -1940,8 +1931,6 @@ pub trait BufRead: Read {
     /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
     /// this example, we use [`Cursor`] to read all the lines in a byte slice:
     ///
-    /// [`Cursor`]: struct.Cursor.html
-    ///
     /// ```
     /// use std::io::{self, BufRead};
     ///
@@ -1996,8 +1985,6 @@ pub trait BufRead: Read {
     /// this example, we use [`Cursor`] to iterate over all hyphen delimited
     /// segments in a byte slice
     ///
-    /// [`Cursor`]: struct.Cursor.html
-    ///
     /// ```
     /// use std::io::{self, BufRead};
     ///
@@ -2046,8 +2033,6 @@ pub trait BufRead: Read {
     /// # Errors
     ///
     /// Each line of the iterator has the same error semantics as [`BufRead::read_line`].
-    ///
-    /// [`BufRead::read_line`]: trait.BufRead.html#method.read_line
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(self) -> Lines<Self>
     where
@@ -2062,7 +2047,7 @@ pub trait BufRead: Read {
 /// This struct is generally created by calling [`chain`] on a reader.
 /// Please see the documentation of [`chain`] for more details.
 ///
-/// [`chain`]: trait.Read.html#method.chain
+/// [`chain`]: Read::chain
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chain<T, U> {
     first: T,
@@ -2204,7 +2189,7 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
 /// This struct is generally created by calling [`take`] on a reader.
 /// Please see the documentation of [`take`] for more details.
 ///
-/// [`take`]: trait.Read.html#method.take
+/// [`take`]: Read::take
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Take<T> {
@@ -2403,7 +2388,7 @@ impl<T: BufRead> BufRead for Take<T> {
 /// This struct is generally created by calling [`bytes`] on a reader.
 /// Please see the documentation of [`bytes`] for more details.
 ///
-/// [`bytes`]: trait.Read.html#method.bytes
+/// [`bytes`]: Read::bytes
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Bytes<R> {
@@ -2433,7 +2418,7 @@ impl<R: Read> Iterator for Bytes<R> {
 /// This struct is generally created by calling [`split`] on a `BufRead`.
 /// Please see the documentation of [`split`] for more details.
 ///
-/// [`split`]: trait.BufRead.html#method.split
+/// [`split`]: BufRead::split
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Split<B> {
@@ -2465,7 +2450,7 @@ impl<B: BufRead> Iterator for Split<B> {
 /// This struct is generally created by calling [`lines`] on a `BufRead`.
 /// Please see the documentation of [`lines`] for more details.
 ///
-/// [`lines`]: trait.BufRead.html#method.lines
+/// [`lines`]: BufRead::lines
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Lines<B> {

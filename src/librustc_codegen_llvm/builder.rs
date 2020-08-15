@@ -728,20 +728,25 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // codegen. Note that this has a semantic difference in that the
         // intrinsic can trap whereas `fptoui` never traps. That difference,
         // however, is handled by `fptosui_may_trap` above.
+        //
+        // Note that we skip the wasm intrinsics for vector types where `fptoui`
+        // must be used instead.
         if self.wasm_and_missing_nontrapping_fptoint() {
             let src_ty = self.cx.val_ty(val);
-            let float_width = self.cx.float_width(src_ty);
-            let int_width = self.cx.int_width(dest_ty);
-            let name = match (int_width, float_width) {
-                (32, 32) => Some("llvm.wasm.trunc.unsigned.i32.f32"),
-                (32, 64) => Some("llvm.wasm.trunc.unsigned.i32.f64"),
-                (64, 32) => Some("llvm.wasm.trunc.unsigned.i64.f32"),
-                (64, 64) => Some("llvm.wasm.trunc.unsigned.i64.f64"),
-                _ => None,
-            };
-            if let Some(name) = name {
-                let intrinsic = self.get_intrinsic(name);
-                return self.call(intrinsic, &[val], None);
+            if self.cx.type_kind(src_ty) != TypeKind::Vector {
+                let float_width = self.cx.float_width(src_ty);
+                let int_width = self.cx.int_width(dest_ty);
+                let name = match (int_width, float_width) {
+                    (32, 32) => Some("llvm.wasm.trunc.unsigned.i32.f32"),
+                    (32, 64) => Some("llvm.wasm.trunc.unsigned.i32.f64"),
+                    (64, 32) => Some("llvm.wasm.trunc.unsigned.i64.f32"),
+                    (64, 64) => Some("llvm.wasm.trunc.unsigned.i64.f64"),
+                    _ => None,
+                };
+                if let Some(name) = name {
+                    let intrinsic = self.get_intrinsic(name);
+                    return self.call(intrinsic, &[val], None);
+                }
             }
         }
         unsafe { llvm::LLVMBuildFPToUI(self.llbuilder, val, dest_ty, UNNAMED) }
@@ -750,18 +755,20 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fptosi(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         if self.wasm_and_missing_nontrapping_fptoint() {
             let src_ty = self.cx.val_ty(val);
-            let float_width = self.cx.float_width(src_ty);
-            let int_width = self.cx.int_width(dest_ty);
-            let name = match (int_width, float_width) {
-                (32, 32) => Some("llvm.wasm.trunc.signed.i32.f32"),
-                (32, 64) => Some("llvm.wasm.trunc.signed.i32.f64"),
-                (64, 32) => Some("llvm.wasm.trunc.signed.i64.f32"),
-                (64, 64) => Some("llvm.wasm.trunc.signed.i64.f64"),
-                _ => None,
-            };
-            if let Some(name) = name {
-                let intrinsic = self.get_intrinsic(name);
-                return self.call(intrinsic, &[val], None);
+            if self.cx.type_kind(src_ty) != TypeKind::Vector {
+                let float_width = self.cx.float_width(src_ty);
+                let int_width = self.cx.int_width(dest_ty);
+                let name = match (int_width, float_width) {
+                    (32, 32) => Some("llvm.wasm.trunc.signed.i32.f32"),
+                    (32, 64) => Some("llvm.wasm.trunc.signed.i32.f64"),
+                    (64, 32) => Some("llvm.wasm.trunc.signed.i64.f32"),
+                    (64, 64) => Some("llvm.wasm.trunc.signed.i64.f64"),
+                    _ => None,
+                };
+                if let Some(name) = name {
+                    let intrinsic = self.get_intrinsic(name);
+                    return self.call(intrinsic, &[val], None);
+                }
             }
         }
         unsafe { llvm::LLVMBuildFPToSI(self.llbuilder, val, dest_ty, UNNAMED) }

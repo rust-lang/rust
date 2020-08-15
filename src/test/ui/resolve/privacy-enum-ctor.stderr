@@ -16,16 +16,9 @@ LL |         m::Z::Unit;
 error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
    |
-LL |     fn f() {
-   |     ------ similarly named function `f` defined here
-...
 LL |         Z;
    |         ^
    |
-help: a function with a similar name exists
-   |
-LL |         f;
-   |         ^
 help: try using one of the enum's variants
    |
 LL |         m::Z::Fn;
@@ -55,10 +48,6 @@ LL |     fn f() {
 LL |     let _: E = m::E;
    |                ^^^^
    |
-help: a function with a similar name exists
-   |
-LL |     let _: E = m::f;
-   |                   ^
 help: try using one of the enum's variants
    |
 LL |     let _: E = E::Fn;
@@ -67,6 +56,10 @@ LL |     let _: E = E::Struct;
    |                ^^^^^^^^^
 LL |     let _: E = E::Unit;
    |                ^^^^^^^
+help: a function with a similar name exists
+   |
+LL |     let _: E = m::f;
+   |                   ^
 help: consider importing one of these items instead
    |
 LL | use std::f32::consts::E;

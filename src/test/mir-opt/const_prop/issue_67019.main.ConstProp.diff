@@ -11,22 +11,34 @@
           StorageLive(_1);                 // scope 0 at $DIR/issue-67019.rs:11:5: 11:20
           StorageLive(_2);                 // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
           StorageLive(_3);                 // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
-          _3 = (const 1_u8, const 2_u8);   // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
+          (_3.0: u8) = const 1_u8;         // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
                                            // ty::Const
                                            // + ty: u8
                                            // + val: Value(Scalar(0x01))
                                            // mir::Constant
--                                          // + span: $DIR/issue-67019.rs:11:12: 11:13
-+                                          // + span: $DIR/issue-67019.rs:11:11: 11:17
+                                           // + span: $DIR/issue-67019.rs:11:12: 11:13
                                            // + literal: Const { ty: u8, val: Value(Scalar(0x01)) }
+          (_3.1: u8) = const 2_u8;         // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
                                            // ty::Const
                                            // + ty: u8
                                            // + val: Value(Scalar(0x02))
                                            // mir::Constant
--                                          // + span: $DIR/issue-67019.rs:11:15: 11:16
-+                                          // + span: $DIR/issue-67019.rs:11:11: 11:17
+                                           // + span: $DIR/issue-67019.rs:11:15: 11:16
                                            // + literal: Const { ty: u8, val: Value(Scalar(0x02)) }
-          _2 = (move _3,);                 // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
+-         (_2.0: (u8, u8)) = move _3;      // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
++         (_2.0: (u8, u8)) = (const 1_u8, const 2_u8); // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
++                                          // ty::Const
++                                          // + ty: u8
++                                          // + val: Value(Scalar(0x01))
++                                          // mir::Constant
++                                          // + span: $DIR/issue-67019.rs:11:10: 11:19
++                                          // + literal: Const { ty: u8, val: Value(Scalar(0x01)) }
++                                          // ty::Const
++                                          // + ty: u8
++                                          // + val: Value(Scalar(0x02))
++                                          // mir::Constant
++                                          // + span: $DIR/issue-67019.rs:11:10: 11:19
++                                          // + literal: Const { ty: u8, val: Value(Scalar(0x02)) }
           StorageDead(_3);                 // scope 0 at $DIR/issue-67019.rs:11:18: 11:19
           _1 = const test(move _2) -> bb1; // scope 0 at $DIR/issue-67019.rs:11:5: 11:20
                                            // ty::Const

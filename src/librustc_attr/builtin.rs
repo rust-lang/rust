@@ -20,6 +20,7 @@ enum AttrError {
     MultipleItem(String),
     UnknownMetaItem(String, &'static [&'static str]),
     MissingSince,
+    NonIdentFeature,
     MissingFeature,
     MultipleStabilityLevels,
     UnsupportedLiteral(&'static str, /* is_bytestr */ bool),
@@ -39,6 +40,9 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
         }
         AttrError::MissingSince => {
             struct_span_err!(diag, span, E0542, "missing 'since'").emit();
+        }
+        AttrError::NonIdentFeature => {
+            struct_span_err!(diag, span, E0546, "'feature' is not an identifier").emit();
         }
         AttrError::MissingFeature => {
             struct_span_err!(diag, span, E0546, "missing 'feature'").emit();
@@ -63,7 +67,7 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
     }
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Encodable, Decodable)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -71,7 +75,7 @@ pub enum InlineAttr {
     Never,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Encodable, Decodable)]
 pub enum OptimizeAttr {
     None,
     Speed,
@@ -126,7 +130,7 @@ pub fn find_unwind_attr(sess: &Session, attrs: &[Attribute]) -> Option<UnwindAtt
 ///
 /// - `#[stable]`
 /// - `#[unstable]`
-#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct Stability {
     pub level: StabilityLevel,
@@ -134,7 +138,7 @@ pub struct Stability {
 }
 
 /// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
-#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct ConstStability {
     pub level: StabilityLevel,
@@ -146,7 +150,7 @@ pub struct ConstStability {
 }
 
 /// The available stability levels.
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
+#[derive(Encodable, Decodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
@@ -344,6 +348,14 @@ where
 
                     match (feature, reason, issue) {
                         (Some(feature), reason, Some(_)) => {
+                            if !rustc_lexer::is_ident(&feature.as_str()) {
+                                handle_errors(
+                                    &sess.parse_sess,
+                                    attr.span,
+                                    AttrError::NonIdentFeature,
+                                );
+                                continue;
+                            }
                             let level = Unstable { reason, issue: issue_num, is_soft };
                             if sym::unstable == meta_name {
                                 stab = Some(Stability { level, feature });
@@ -620,7 +632,7 @@ pub fn eval_condition(
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Clone, HashStable_Generic)]
+#[derive(Encodable, Decodable, Clone, HashStable_Generic)]
 pub struct Deprecation {
     pub since: Option<Symbol>,
     /// The note to issue a reason.
@@ -785,7 +797,7 @@ where
     depr
 }
 
-#[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
+#[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone)]
 pub enum ReprAttr {
     ReprInt(IntType),
     ReprC,
@@ -796,7 +808,8 @@ pub enum ReprAttr {
     ReprNoNiche,
 }
 
-#[derive(Eq, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone, HashStable_Generic)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy),

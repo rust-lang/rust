@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
-#[derive(PartialEq, Clone, Debug, HashStable, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Clone, Debug, HashStable, Encodable, Decodable)]
 pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
@@ -38,7 +38,7 @@ impl CrateSource {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(Encodable, Decodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 #[derive(HashStable)]
 pub enum CrateDepKind {
     /// A dependency that is only used for its macros.
@@ -60,7 +60,7 @@ impl CrateDepKind {
     }
 }
 
-#[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Clone, Debug, Encodable, Decodable)]
 pub enum LibSource {
     Some(PathBuf),
     MetadataOnly,
@@ -80,13 +80,13 @@ impl LibSource {
     }
 }
 
-#[derive(Copy, Debug, PartialEq, Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Debug, PartialEq, Clone, Encodable, Decodable, HashStable)]
 pub enum LinkagePreference {
     RequireDynamic,
     RequireStatic,
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Option<Symbol>,
@@ -95,7 +95,7 @@ pub struct NativeLib {
     pub wasm_import_module: Option<Symbol>,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable)]
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,
@@ -145,7 +145,7 @@ pub enum ExternCrateSource {
     Path,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Encodable, Decodable)]
 pub struct EncodedMetadata {
     pub raw_data: Vec<u8>,
 }

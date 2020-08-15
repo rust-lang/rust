@@ -1,4 +1,4 @@
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:8:17
    |
 LL | const VAR_ONE: &'static str = "Test constant #1"; // ERROR Consider removing 'static.
@@ -6,91 +6,91 @@ LL | const VAR_ONE: &'static str = "Test constant #1"; // ERROR Consider removin
    |
    = note: `-D clippy::redundant-static-lifetimes` implied by `-D warnings`
 
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:12:21
    |
 LL | const VAR_THREE: &[&'static str] = &["one", "two"]; // ERROR Consider removing 'static
    |                    -^^^^^^^---- help: consider removing `'static`: `&str`
 
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:14:32
    |
 LL | const VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
    |                               -^^^^^^^---- help: consider removing `'static`: `&str`
 
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:14:47
    |
 LL | const VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
    |                                              -^^^^^^^---- help: consider removing `'static`: `&str`
 
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:16:17
    |
 LL | const VAR_SIX: &'static u8 = &5;
    |                -^^^^^^^--- help: consider removing `'static`: `&u8`
 
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:18:20
    |
 LL | const VAR_HEIGHT: &'static Foo = &Foo {};
    |                   -^^^^^^^---- help: consider removing `'static`: `&Foo`
 
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:20:19
    |
 LL | const VAR_SLICE: &'static [u8] = b"Test constant #1"; // ERROR Consider removing 'static.
    |                  -^^^^^^^----- help: consider removing `'static`: `&[u8]`
 
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:22:19
    |
 LL | const VAR_TUPLE: &'static (u8, u8) = &(1, 2); // ERROR Consider removing 'static.
    |                  -^^^^^^^--------- help: consider removing `'static`: `&(u8, u8)`
 
-error: Constants have by default a `'static` lifetime
+error: constants have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:24:19
    |
 LL | const VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removing 'static.
    |                  -^^^^^^^-------- help: consider removing `'static`: `&[u8; 1]`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:26:25
    |
 LL | static STATIC_VAR_ONE: &'static str = "Test static #1"; // ERROR Consider removing 'static.
    |                        -^^^^^^^---- help: consider removing `'static`: `&str`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:30:29
    |
 LL | static STATIC_VAR_THREE: &[&'static str] = &["one", "two"]; // ERROR Consider removing 'static
    |                            -^^^^^^^---- help: consider removing `'static`: `&str`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:32:25
    |
 LL | static STATIC_VAR_SIX: &'static u8 = &5;
    |                        -^^^^^^^--- help: consider removing `'static`: `&u8`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:34:28
    |
 LL | static STATIC_VAR_HEIGHT: &'static Foo = &Foo {};
    |                           -^^^^^^^---- help: consider removing `'static`: `&Foo`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:36:27
    |
 LL | static STATIC_VAR_SLICE: &'static [u8] = b"Test static #3"; // ERROR Consider removing 'static.
    |                          -^^^^^^^----- help: consider removing `'static`: `&[u8]`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:38:27
    |
 LL | static STATIC_VAR_TUPLE: &'static (u8, u8) = &(1, 2); // ERROR Consider removing 'static.
    |                          -^^^^^^^--------- help: consider removing `'static`: `&(u8, u8)`
 
-error: Statics have by default a `'static` lifetime
+error: statics have by default a `'static` lifetime
   --> $DIR/redundant_static_lifetimes.rs:40:27
    |
 LL | static STATIC_VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removing 'static.

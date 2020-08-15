@@ -1,8 +1,6 @@
 use crate::fx::FxIndexSet;
-use crate::stable_hasher::{HashStable, StableHasher};
 use crate::sync::Lock;
 use rustc_index::bit_set::BitMatrix;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
@@ -42,10 +40,10 @@ impl<T: Eq + Hash> Default for TransitiveRelation<T> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug)]
 struct Index(usize);
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 struct Edge {
     source: Index,
     target: Index,
@@ -400,68 +398,5 @@ fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix<usize, usize>) {
             j += 1;
         }
         candidates.truncate(j - dead);
-    }
-}
-
-impl<T> Encodable for TransitiveRelation<T>
-where
-    T: Clone + Encodable + Debug + Eq + Hash + Clone,
-{
-    fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_struct("TransitiveRelation", 2, |s| {
-            s.emit_struct_field("elements", 0, |s| self.elements.encode(s))?;
-            s.emit_struct_field("edges", 1, |s| self.edges.encode(s))?;
-            Ok(())
-        })
-    }
-}
-
-impl<T> Decodable for TransitiveRelation<T>
-where
-    T: Clone + Decodable + Debug + Eq + Hash + Clone,
-{
-    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        d.read_struct("TransitiveRelation", 2, |d| {
-            Ok(TransitiveRelation {
-                elements: d.read_struct_field("elements", 0, |d| Decodable::decode(d))?,
-                edges: d.read_struct_field("edges", 1, |d| Decodable::decode(d))?,
-                closure: Lock::new(None),
-            })
-        })
-    }
-}
-
-impl<CTX, T> HashStable<CTX> for TransitiveRelation<T>
-where
-    T: HashStable<CTX> + Eq + Debug + Clone + Hash,
-{
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        // We are assuming here that the relation graph has been built in a
-        // deterministic way and we can just hash it the way it is.
-        let TransitiveRelation {
-            ref elements,
-            ref edges,
-            // "closure" is just a copy of the data above
-            closure: _,
-        } = *self;
-
-        elements.hash_stable(hcx, hasher);
-        edges.hash_stable(hcx, hasher);
-    }
-}
-
-impl<CTX> HashStable<CTX> for Edge {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        let Edge { ref source, ref target } = *self;
-
-        source.hash_stable(hcx, hasher);
-        target.hash_stable(hcx, hasher);
-    }
-}
-
-impl<CTX> HashStable<CTX> for Index {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        let Index(idx) = *self;
-        idx.hash_stable(hcx, hasher);
     }
 }

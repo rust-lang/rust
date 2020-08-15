@@ -13,7 +13,7 @@ use std::fmt::Debug;
 /// within.
 pub type ExportMap<Id> = FxHashMap<LocalDefId, Vec<Export<Id>>>;
 
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct Export<Id> {
     /// The name of the target.
     pub ident: Ident,

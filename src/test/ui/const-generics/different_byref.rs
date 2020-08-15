@@ -1,11 +1,15 @@
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+// Check that different const types are different.
+// revisions: full min
+
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 struct Const<const V: [usize; 1]> {}
+//[min]~^ using `[usize; 1]` as const generic parameters is forbidden
 
 fn main() {
     let mut x = Const::<{ [3] }> {};
     x = Const::<{ [4] }> {};
-    //~^ ERROR mismatched types
-
+    //[full]~^ ERROR mismatched types
 }

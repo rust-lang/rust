@@ -74,11 +74,11 @@ extern crate log;
 #[macro_use]
 extern crate rustc_middle;
 
-// This is used by Clippy.
+// These are used by Clippy.
+pub mod check;
 pub mod expr_use_visitor;
 
 mod astconv;
-mod check;
 mod check_unused;
 mod coherence;
 mod collect;
@@ -390,6 +390,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
         tcx.sess.time("wf_checking", || check::check_wf_new(tcx));
     })?;
 
+    // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
     tcx.sess.time("item_types_checking", || {
         for &module in tcx.hir().krate().modules.keys() {
             tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));

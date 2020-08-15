@@ -18,13 +18,14 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:5:9: 5:14
-          _1 = (const 42_i32, const 43_i32); // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:5:17: 5:25
+          (_1.0: i32) = const 42_i32;      // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:5:17: 5:25
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x0000002a))
                                            // mir::Constant
                                            // + span: $DIR/mutable_variable_aggregate_mut_ref.rs:5:18: 5:20
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
+          (_1.1: i32) = const 43_i32;      // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:5:17: 5:25
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x0000002b))

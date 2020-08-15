@@ -99,26 +99,18 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
             if let TerminatorKind::SwitchInt { values, targets, .. } =
                 &mut body.basic_blocks_mut()[bb].terminator_mut().kind
             {
-                let vals = &*values;
-                let zipped = vals.iter().zip(targets.iter());
+                // take otherwise out early
+                let otherwise = targets.pop().unwrap();
+                assert_eq!(targets.len(), values.len());
+                let mut i = 0;
+                targets.retain(|_| {
+                    let keep = allowed_variants.contains(&values[i]);
+                    i += 1;
+                    keep
+                });
+                targets.push(otherwise);
 
-                let mut matched_values = Vec::with_capacity(allowed_variants.len());
-                let mut matched_targets = Vec::with_capacity(allowed_variants.len() + 1);
-
-                for (val, target) in zipped {
-                    if allowed_variants.contains(val) {
-                        matched_values.push(*val);
-                        matched_targets.push(*target);
-                    } else {
-                        trace!("eliminating {:?} -> {:?}", val, target);
-                    }
-                }
-
-                // handle the "otherwise" branch
-                matched_targets.push(targets.pop().unwrap());
-
-                *values = matched_values.into();
-                *targets = matched_targets;
+                values.to_mut().retain(|var| allowed_variants.contains(var));
             } else {
                 unreachable!()
             }

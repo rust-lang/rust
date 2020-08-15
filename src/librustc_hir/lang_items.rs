@@ -45,7 +45,7 @@ macro_rules! language_item_table {
 
         enum_from_u32! {
             /// A representation of all the valid language items in Rust.
-            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
             pub enum LangItem {
                 $($variant,)*
             }
@@ -165,6 +165,7 @@ language_item_table! {
     BoolImplItem,                  sym::bool,               bool_impl,               Target::Impl;
     CharImplItem,                  sym::char,               char_impl,               Target::Impl;
     StrImplItem,                   sym::str,                str_impl,                Target::Impl;
+    ArrayImplItem,                 sym::array,              array_impl,              Target::Impl;
     SliceImplItem,                 sym::slice,              slice_impl,              Target::Impl;
     SliceU8ImplItem,               sym::slice_u8,           slice_u8_impl,           Target::Impl;
     StrAllocImplItem,              sym::str_alloc,          str_alloc_impl,          Target::Impl;

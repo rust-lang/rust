@@ -62,8 +62,11 @@ pre {
 	background-color: #14191f;
 }
 
-.logo-container > img {
-	filter: drop-shadow(0 0 5px #fff);
+.logo-container.rust-logo > img {
+	filter: drop-shadow(1px 0 0px #fff)
+		drop-shadow(0 1px 0 #fff)
+		drop-shadow(-1px 0 0 #fff)
+		drop-shadow(0 -1px 0 #fff);
 }
 
 /* Improve the scrollbar display on firefox */
@@ -489,7 +492,7 @@ kbd {
 	box-shadow-color: #c6cbd1;
 }
 
-#theme-picker, #settings-menu {
+#theme-picker, #settings-menu, .help-button {
 	border-color: #5c6773;
 	background-color: #0f1419;
 }
@@ -499,7 +502,8 @@ kbd {
 }
 
 #theme-picker:hover, #theme-picker:focus,
-#settings-menu:hover, #settings-menu:focus {
+#settings-menu:hover, #settings-menu:focus,
+.help-button:hover, .help-button:focus {
 	border-color: #e0e0e0;
 }
 

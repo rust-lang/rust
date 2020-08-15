@@ -43,9 +43,8 @@ pub trait QueryCache: QueryStorage {
         OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R,
         OnMiss: FnOnce(Self::Key, QueryLookup<'_, CTX, Self::Key, Self::Sharded>) -> R;
 
-    fn complete<CTX: QueryContext>(
+    fn complete(
         &self,
-        tcx: CTX,
         lock_sharded_storage: &mut Self::Sharded,
         key: Self::Key,
         value: Self::Value,
@@ -112,9 +111,8 @@ impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
     }
 
     #[inline]
-    fn complete<CTX: QueryContext>(
+    fn complete(
         &self,
-        _: CTX,
         lock_sharded_storage: &mut Self::Sharded,
         key: K,
         value: V,
@@ -195,9 +193,8 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V> {
     }
 
     #[inline]
-    fn complete<CTX: QueryContext>(
+    fn complete(
         &self,
-        _: CTX,
         lock_sharded_storage: &mut Self::Sharded,
         key: K,
         value: V,

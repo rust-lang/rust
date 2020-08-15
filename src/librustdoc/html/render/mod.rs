@@ -1903,23 +1903,41 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
     }
 }
 
-fn name_key(name: &str) -> (&str, u64, usize) {
-    let end = name.bytes().rposition(|b| b.is_ascii_digit()).map_or(name.len(), |i| i + 1);
-
-    // find number at end
-    let split = name[0..end].bytes().rposition(|b| !b.is_ascii_digit()).map_or(0, |i| i + 1);
-
-    // count leading zeroes
-    let after_zeroes =
-        name[split..end].bytes().position(|b| b != b'0').map_or(name.len(), |extra| split + extra);
-
-    // sort leading zeroes last
-    let num_zeroes = after_zeroes - split;
-
-    match name[split..end].parse() {
-        Ok(n) => (&name[..split], n, num_zeroes),
-        Err(_) => (name, 0, num_zeroes),
+/// Compare two strings treating multi-digit numbers as single units (i.e. natural sort order).
+pub fn compare_names(mut lhs: &str, mut rhs: &str) -> Ordering {
+    /// Takes a non-numeric and a numeric part from the given &str.
+    fn take_parts<'a>(s: &mut &'a str) -> (&'a str, &'a str) {
+        let i = s.find(|c: char| c.is_ascii_digit());
+        let (a, b) = s.split_at(i.unwrap_or(s.len()));
+        let i = b.find(|c: char| !c.is_ascii_digit());
+        let (b, c) = b.split_at(i.unwrap_or(b.len()));
+        *s = c;
+        (a, b)
     }
+
+    while !lhs.is_empty() || !rhs.is_empty() {
+        let (la, lb) = take_parts(&mut lhs);
+        let (ra, rb) = take_parts(&mut rhs);
+        // First process the non-numeric part.
+        match la.cmp(ra) {
+            Ordering::Equal => (),
+            x => return x,
+        }
+        // Then process the numeric part, if both sides have one (and they fit in a u64).
+        if let (Ok(ln), Ok(rn)) = (lb.parse::<u64>(), rb.parse::<u64>()) {
+            match ln.cmp(&rn) {
+                Ordering::Equal => (),
+                x => return x,
+            }
+        }
+        // Then process the numeric part again, but this time as strings.
+        match lb.cmp(rb) {
+            Ordering::Equal => (),
+            x => return x,
+        }
+    }
+
+    Ordering::Equal
 }
 
 fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean::Item]) {
@@ -1962,7 +1980,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
         }
         let lhs = i1.name.as_ref().map_or("", |s| &**s);
         let rhs = i2.name.as_ref().map_or("", |s| &**s);
-        name_key(lhs).cmp(&name_key(rhs))
+        compare_names(lhs, rhs)
     }
 
     if cx.shared.sort_modules_alphabetically {
@@ -2126,7 +2144,7 @@ fn stability_tags(item: &clean::Item) -> String {
     if item
         .stability
         .as_ref()
-        .map(|s| s.level == stability::Unstable && s.feature.as_deref() != Some("rustc_private"))
+        .map(|s| s.level == stability::Unstable && s.feature != "rustc_private")
         == Some(true)
     {
         tags += &tag_html("unstable", "Experimental");
@@ -2177,24 +2195,24 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
-    if let Some(stab) = item.stability.as_ref().filter(|stab| {
-        stab.level == stability::Unstable && stab.feature.as_deref() != Some("rustc_private")
-    }) {
+    if let Some(stab) = item
+        .stability
+        .as_ref()
+        .filter(|stab| stab.level == stability::Unstable && stab.feature != "rustc_private")
+    {
         let mut message =
             "<span class='emoji'>🔬</span> This is a nightly-only experimental API.".to_owned();
 
-        if let Some(feature) = stab.feature.as_deref() {
-            let mut feature = format!("<code>{}</code>", Escape(&feature));
-            if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, stab.issue) {
-                feature.push_str(&format!(
-                    "&nbsp;<a href=\"{url}{issue}\">#{issue}</a>",
-                    url = url,
-                    issue = issue
-                ));
-            }
-
-            message.push_str(&format!(" ({})", feature));
+        let mut feature = format!("<code>{}</code>", Escape(&stab.feature));
+        if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, stab.issue) {
+            feature.push_str(&format!(
+                "&nbsp;<a href=\"{url}{issue}\">#{issue}</a>",
+                url = url,
+                issue = issue
+            ));
         }
+
+        message.push_str(&format!(" ({})", feature));
 
         if let Some(unstable_reason) = &stab.unstable_reason {
             let mut ids = cx.id_map.borrow_mut();
@@ -2395,7 +2413,7 @@ fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl) -> Ordering {
     let rhs = format!("{}", rhs.inner_impl().print());
 
     // lhs and rhs are formatted as HTML, which may be unnecessary
-    name_key(&lhs).cmp(&name_key(&rhs))
+    compare_names(&lhs, &rhs)
 }
 
 fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, cache: &Cache) {

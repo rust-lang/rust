@@ -68,10 +68,11 @@ fn inject_deps_into_manifest(
     });
 
     // format a new [dependencies]-block with the new deps we need to inject
-    let mut all_deps = String::from("[dependencies]\n");
+    let mut all_deps = String::from("[target.'cfg(NOT_A_PLATFORM)'.dependencies]\n");
     new_deps.for_each(|dep_line| {
         all_deps.push_str(&dep_line);
     });
+    all_deps.push_str("\n[dependencies]\n");
 
     // replace "[dependencies]" with
     // [dependencies]

@@ -26,14 +26,13 @@ use crate::ty::subst::GenericArg;
 use crate::ty::{self, BoundVar, List, Region, TyCtxt};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
-use rustc_serialize::UseSpecializedDecodable;
 use smallvec::SmallVec;
 use std::ops::Index;
 
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
 pub struct Canonical<'tcx, V> {
     pub max_universe: ty::UniverseIndex,
@@ -42,8 +41,6 @@ pub struct Canonical<'tcx, V> {
 }
 
 pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo>;
-
-impl<'tcx> UseSpecializedDecodable for CanonicalVarInfos<'tcx> {}
 
 /// A set of values corresponding to the canonical variables from some
 /// `Canonical`. You can give these values to
@@ -54,7 +51,7 @@ impl<'tcx> UseSpecializedDecodable for CanonicalVarInfos<'tcx> {}
 /// vectors with the original values that were replaced by canonical
 /// variables. You will need to supply it later to instantiate the
 /// canonicalized query response.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
 pub struct CanonicalVarValues<'tcx> {
     pub var_values: IndexVec<BoundVar, GenericArg<'tcx>>,
@@ -90,7 +87,7 @@ impl Default for OriginalQueryValues<'tcx> {
 /// canonical value. This is sufficient information for code to create
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
 pub struct CanonicalVarInfo {
     pub kind: CanonicalVarKind,
 }
@@ -115,7 +112,7 @@ impl CanonicalVarInfo {
 /// Describes the "kind" of the canonical variable. This is a "kind"
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
 pub enum CanonicalVarKind {
     /// Some kind of type inference variable.
     Ty(CanonicalTyVarKind),
@@ -160,7 +157,7 @@ impl CanonicalVarKind {
 /// 22.) can only be instantiated with integral/float types (e.g.,
 /// usize or f32). In order to faithfully reproduce a type, we need to
 /// know what set of types a given type variable can be unified with.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
 pub enum CanonicalTyVarKind {
     /// General type variable `?T` that can be unified with arbitrary types.
     General(ty::UniverseIndex),

@@ -9,6 +9,7 @@ use json::{
     from_str, DecodeResult, Decoder, DecoderError, Encoder, EncoderError, Json, JsonEvent, Parser,
     StackElement,
 };
+use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::json;
 use rustc_serialize::{Decodable, Encodable};
 
@@ -17,7 +18,7 @@ use std::io::prelude::*;
 use std::string;
 use Animal::*;
 
-#[derive(RustcDecodable, Eq, PartialEq, Debug)]
+#[derive(Decodable, Eq, PartialEq, Debug)]
 struct OptionData {
     opt: Option<usize>,
 }
@@ -48,20 +49,20 @@ fn test_decode_option_malformed() {
     );
 }
 
-#[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(PartialEq, Encodable, Decodable, Debug)]
 enum Animal {
     Dog,
     Frog(string::String, isize),
 }
 
-#[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(PartialEq, Encodable, Decodable, Debug)]
 struct Inner {
     a: (),
     b: usize,
     c: Vec<string::String>,
 }
 
-#[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(PartialEq, Encodable, Decodable, Debug)]
 struct Outer {
     inner: Vec<Inner>,
 }
@@ -568,7 +569,7 @@ fn test_decode_struct() {
     );
 }
 
-#[derive(RustcDecodable)]
+#[derive(Decodable)]
 struct FloatStruct {
     f: f64,
     a: Vec<f64>,
@@ -616,7 +617,7 @@ fn test_multiline_errors() {
     assert_eq!(from_str("{\n  \"foo\":\n \"bar\""), Err(SyntaxError(EOFWhileParsingObject, 3, 8)));
 }
 
-#[derive(RustcDecodable)]
+#[derive(Decodable)]
 #[allow(dead_code)]
 struct DecodeStruct {
     x: f64,
@@ -624,12 +625,12 @@ struct DecodeStruct {
     z: string::String,
     w: Vec<DecodeStruct>,
 }
-#[derive(RustcDecodable)]
+#[derive(Decodable)]
 enum DecodeEnum {
     A(f64),
     B(string::String),
 }
-fn check_err<T: Decodable>(to_parse: &'static str, expected: DecoderError) {
+fn check_err<T: Decodable<Decoder>>(to_parse: &'static str, expected: DecoderError) {
     let res: DecodeResult<T> = match from_str(to_parse) {
         Err(e) => Err(ParseError(e)),
         Ok(json) => Decodable::decode(&mut Decoder::new(json)),
@@ -933,7 +934,7 @@ fn test_prettyencoder_indent_level_param() {
 #[test]
 fn test_hashmap_with_enum_key() {
     use std::collections::HashMap;
-    #[derive(RustcEncodable, Eq, Hash, PartialEq, RustcDecodable, Debug)]
+    #[derive(Encodable, Eq, Hash, PartialEq, Decodable, Debug)]
     enum Enum {
         Foo,
         #[allow(dead_code)]
@@ -1254,7 +1255,7 @@ fn test_to_json() {
 #[test]
 fn test_encode_hashmap_with_arbitrary_key() {
     use std::collections::HashMap;
-    #[derive(PartialEq, Eq, Hash, RustcEncodable)]
+    #[derive(PartialEq, Eq, Hash, Encodable)]
     struct ArbitraryType(usize);
     let mut hm: HashMap<ArbitraryType, bool> = HashMap::new();
     hm.insert(ArbitraryType(1), true);

@@ -29,6 +29,8 @@
 extern crate tracing;
 #[macro_use]
 extern crate cfg_if;
+#[macro_use]
+extern crate rustc_macros;
 
 #[inline(never)]
 #[cold]
@@ -95,6 +97,7 @@ pub mod vec_linked_list;
 pub mod work_queue;
 pub use atomic_ref::AtomicRef;
 pub mod frozen;
+pub mod temp_dir;
 
 pub struct OnDrop<F: Fn()>(pub F);
 

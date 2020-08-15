@@ -67,7 +67,7 @@ type parameter).
 pub mod _match;
 mod autoderef;
 mod callee;
-mod cast;
+pub mod cast;
 mod closure;
 pub mod coercion;
 mod compare_method;
@@ -648,7 +648,7 @@ impl Inherited<'_, 'tcx> {
 }
 
 impl<'tcx> InheritedBuilder<'tcx> {
-    fn enter<F, R>(&mut self, f: F) -> R
+    pub fn enter<F, R>(&mut self, f: F) -> R
     where
         F: for<'a> FnOnce(Inherited<'a, 'tcx>) -> R,
     {
@@ -1967,10 +1967,16 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             check_union(tcx, it.hir_id, it.span);
         }
         hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
-            let def_id = tcx.hir().local_def_id(it.hir_id);
+            // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
+            // `async-std` (and `pub async fn` in general).
+            // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at it!
+            // See https://github.com/rust-lang/rust/issues/75100
+            if !tcx.sess.opts.actually_rustdoc {
+                let def_id = tcx.hir().local_def_id(it.hir_id);
 
-            let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-            check_opaque(tcx, def_id, substs, it.span, &origin);
+                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                check_opaque(tcx, def_id, substs, it.span, &origin);
+            }
         }
         hir::ItemKind::TyAlias(..) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
@@ -5392,6 +5398,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     debug!("suggest_missing_await: obligation did not hold: {:?}", obligation)
                 }
             }
+        }
+    }
+
+    fn suggest_missing_parentheses(&self, err: &mut DiagnosticBuilder<'_>, expr: &hir::Expr<'_>) {
+        let sp = self.tcx.sess.source_map().start_point(expr.span);
+        if let Some(sp) = self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp) {
+            // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
+            self.tcx.sess.parse_sess.expr_parentheses_needed(err, *sp, None);
         }
     }
 

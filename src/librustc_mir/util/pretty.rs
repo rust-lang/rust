@@ -743,8 +743,8 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
         if let Some(&(tag, target_id)) = alloc.relocations().get(&i) {
             // Memory with a relocation must be defined
             let j = i.bytes_usize();
-            let offset =
-                alloc.inspect_with_undef_and_ptr_outside_interpreter(j..j + ptr_size.bytes_usize());
+            let offset = alloc
+                .inspect_with_uninit_and_ptr_outside_interpreter(j..j + ptr_size.bytes_usize());
             let offset = read_target_uint(tcx.data_layout.endian, offset).unwrap();
             let offset = Size::from_bytes(offset);
             let relocation_width = |bytes| bytes * 3;
@@ -803,7 +803,7 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
 
             // Checked definedness (and thus range) and relocations. This access also doesn't
             // influence interpreter execution but is only for debugging.
-            let c = alloc.inspect_with_undef_and_ptr_outside_interpreter(j..j + 1)[0];
+            let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
             write!(w, "{:02x}", c)?;
             if c.is_ascii_control() || c >= 0x80 {
                 ascii.push('.');

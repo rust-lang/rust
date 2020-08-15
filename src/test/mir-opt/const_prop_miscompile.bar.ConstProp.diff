@@ -19,17 +19,13 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/const_prop_miscompile.rs:12:9: 12:14
--         _1 = (const 1_i32,);             // scope 0 at $DIR/const_prop_miscompile.rs:12:17: 12:21
-+         _1 = const (1_i32,);             // scope 0 at $DIR/const_prop_miscompile.rs:12:17: 12:21
+          (_1.0: i32) = const 1_i32;       // scope 0 at $DIR/const_prop_miscompile.rs:12:17: 12:21
                                            // ty::Const
--                                          // + ty: i32
-+                                          // + ty: (i32,)
+                                           // + ty: i32
                                            // + val: Value(Scalar(0x00000001))
                                            // mir::Constant
--                                          // + span: $DIR/const_prop_miscompile.rs:12:18: 12:19
--                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
-+                                          // + span: $DIR/const_prop_miscompile.rs:12:17: 12:21
-+                                          // + literal: Const { ty: (i32,), val: Value(Scalar(0x00000001)) }
+                                           // + span: $DIR/const_prop_miscompile.rs:12:18: 12:19
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
           StorageLive(_2);                 // scope 1 at $DIR/const_prop_miscompile.rs:13:5: 15:6
           StorageLive(_3);                 // scope 2 at $DIR/const_prop_miscompile.rs:14:10: 14:22
           _3 = &raw mut (_1.0: i32);       // scope 2 at $DIR/const_prop_miscompile.rs:14:10: 14:22

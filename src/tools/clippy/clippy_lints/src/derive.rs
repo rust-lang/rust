@@ -1,6 +1,7 @@
 use crate::utils::paths;
 use crate::utils::{
-    is_automatically_derived, is_copy, match_path, span_lint_and_help, span_lint_and_note, span_lint_and_then,
+    get_trait_def_id, is_allowed, is_automatically_derived, is_copy, match_path, span_lint_and_help,
+    span_lint_and_note, span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
@@ -41,6 +42,57 @@ declare_clippy_lint! {
     pub DERIVE_HASH_XOR_EQ,
     correctness,
     "deriving `Hash` but implementing `PartialEq` explicitly"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for deriving `Ord` but implementing `PartialOrd`
+    /// explicitly or vice versa.
+    ///
+    /// **Why is this bad?** The implementation of these traits must agree (for
+    /// example for use with `sort`) so it’s probably a bad idea to use a
+    /// default-generated `Ord` implementation with an explicitly defined
+    /// `PartialOrd`. In particular, the following must hold for any type
+    /// implementing `Ord`:
+    ///
+    /// ```text
+    /// k1.cmp(&k2) == k1.partial_cmp(&k2).unwrap()
+    /// ```
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust,ignore
+    /// #[derive(Ord, PartialEq, Eq)]
+    /// struct Foo;
+    ///
+    /// impl PartialOrd for Foo {
+    ///     ...
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// #[derive(PartialEq, Eq)]
+    /// struct Foo;
+    ///
+    /// impl PartialOrd for Foo {
+    ///     fn partial_cmp(&self, other: &Foo) -> Option<Ordering> {
+    ///        Some(self.cmp(other))
+    ///     }
+    /// }
+    ///
+    /// impl Ord for Foo {
+    ///     ...
+    /// }
+    /// ```
+    /// or, if you don't need a custom ordering:
+    /// ```rust,ignore
+    /// #[derive(Ord, PartialOrd, PartialEq, Eq)]
+    /// struct Foo;
+    /// ```
+    pub DERIVE_ORD_XOR_PARTIAL_ORD,
+    correctness,
+    "deriving `Ord` but implementing `PartialOrd` explicitly"
 }
 
 declare_clippy_lint! {
@@ -103,7 +155,12 @@ declare_clippy_lint! {
     "deriving `serde::Deserialize` on a type that has methods using `unsafe`"
 }
 
-declare_lint_pass!(Derive => [EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ, UNSAFE_DERIVE_DESERIALIZE]);
+declare_lint_pass!(Derive => [
+    EXPL_IMPL_CLONE_ON_COPY,
+    DERIVE_HASH_XOR_EQ,
+    DERIVE_ORD_XOR_PARTIAL_ORD,
+    UNSAFE_DERIVE_DESERIALIZE
+]);
 
 impl<'tcx> LateLintPass<'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -116,6 +173,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             let is_automatically_derived = is_automatically_derived(&*item.attrs);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
+            check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
 
             if is_automatically_derived {
                 check_unsafe_derive_deserialize(cx, item, trait_ref, ty);
@@ -170,6 +228,60 @@ fn check_hash_peq<'tcx>(
                                 diag.span_note(
                                     cx.tcx.hir().span(hir_id),
                                     "`PartialEq` implemented here"
+                                );
+                            }
+                        }
+                    );
+                }
+            });
+        }
+    }
+}
+
+/// Implementation of the `DERIVE_ORD_XOR_PARTIAL_ORD` lint.
+fn check_ord_partial_ord<'tcx>(
+    cx: &LateContext<'tcx>,
+    span: Span,
+    trait_ref: &TraitRef<'_>,
+    ty: Ty<'tcx>,
+    ord_is_automatically_derived: bool,
+) {
+    if_chain! {
+        if let Some(ord_trait_def_id) = get_trait_def_id(cx, &paths::ORD);
+        if let Some(partial_ord_trait_def_id) = cx.tcx.lang_items().partial_ord_trait();
+        if let Some(def_id) = &trait_ref.trait_def_id();
+        if *def_id == ord_trait_def_id;
+        then {
+            // Look for the PartialOrd implementations for `ty`
+            cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
+                let partial_ord_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
+
+                if partial_ord_is_automatically_derived == ord_is_automatically_derived {
+                    return;
+                }
+
+                let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
+
+                // Only care about `impl PartialOrd<Foo> for Foo`
+                // For `impl PartialOrd<B> for A, input_types is [A, B]
+                if trait_ref.substs.type_at(1) == ty {
+                    let mess = if partial_ord_is_automatically_derived {
+                        "you are implementing `Ord` explicitly but have derived `PartialOrd`"
+                    } else {
+                        "you are deriving `Ord` but have implemented `PartialOrd` explicitly"
+                    };
+
+                    span_lint_and_then(
+                        cx,
+                        DERIVE_ORD_XOR_PARTIAL_ORD,
+                        span,
+                        mess,
+                        |diag| {
+                            if let Some(local_def_id) = impl_id.as_local() {
+                                let hir_id = cx.tcx.hir().as_local_hir_id(local_def_id);
+                                diag.span_note(
+                                    cx.tcx.hir().span(hir_id),
+                                    "`PartialOrd` implemented here"
                                 );
                             }
                         }
@@ -242,7 +354,9 @@ fn check_unsafe_derive_deserialize<'tcx>(
     if_chain! {
         if match_path(&trait_ref.path, &paths::SERDE_DESERIALIZE);
         if let ty::Adt(def, _) = ty.kind;
-        if def.did.is_local();
+        if let Some(local_def_id) = def.did.as_local();
+        let adt_hir_id = cx.tcx.hir().as_local_hir_id(local_def_id);
+        if !is_allowed(cx, UNSAFE_DERIVE_DESERIALIZE, adt_hir_id);
         if cx.tcx.inherent_impls(def.did)
             .iter()
             .map(|imp_did| item_from_def_id(cx, *imp_did))

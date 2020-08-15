@@ -195,6 +195,29 @@ impl<'a> Parser<'a> {
                     return Ok(expr);
                 }
             }
+
+            if (op.node == AssocOp::Equal || op.node == AssocOp::NotEqual)
+                && self.token.kind == token::Eq
+                && self.prev_token.span.hi() == self.token.span.lo()
+            {
+                // Look for JS' `===` and `!==` and recover 😇
+                let sp = op.span.to(self.token.span);
+                let sugg = match op.node {
+                    AssocOp::Equal => "==",
+                    AssocOp::NotEqual => "!=",
+                    _ => unreachable!(),
+                };
+                self.struct_span_err(sp, &format!("invalid comparison operator `{}=`", sugg))
+                    .span_suggestion_short(
+                        sp,
+                        &format!("`{s}=` is not a valid comparison operator, use `{s}`", s = sugg),
+                        sugg.to_string(),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                self.bump();
+            }
+
             let op = op.node;
             // Special cases:
             if op == AssocOp::As {
@@ -295,11 +318,18 @@ impl<'a> Parser<'a> {
             // want to keep their span info to improve diagnostics in these cases in a later stage.
             (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
             (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
-            (true, Some(AssocOp::LAnd)) | // `{ 42 } &&x` (#61475)
             (true, Some(AssocOp::Add)) // `{ 42 } + 42
             // If the next token is a keyword, then the tokens above *are* unambiguously incorrect:
             // `if x { a } else { b } && if y { c } else { d }`
-            if !self.look_ahead(1, |t| t.is_reserved_ident()) => {
+            if !self.look_ahead(1, |t| t.is_used_keyword()) => {
+                // These cases are ambiguous and can't be identified in the parser alone.
+                let sp = self.sess.source_map().start_point(self.token.span);
+                self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
+                false
+            }
+            (true, Some(AssocOp::LAnd)) => {
+                // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`. Separated from the
+                // above due to #74233.
                 // These cases are ambiguous and can't be identified in the parser alone.
                 let sp = self.sess.source_map().start_point(self.token.span);
                 self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);

@@ -247,7 +247,7 @@ impl<T> MaybeUninit<T> {
     /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     ///
-    /// [`assume_init`]: #method.assume_init
+    /// [`assume_init`]: MaybeUninit::assume_init
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit", since = "1.36.0")]
     #[inline(always)]
@@ -525,7 +525,7 @@ impl<T> MaybeUninit<T> {
     /// to ensure that that data may indeed be duplicated.
     ///
     /// [inv]: #initialization-invariant
-    /// [`assume_init`]: #method.assume_init
+    /// [`assume_init`]: MaybeUninit::assume_init
     ///
     /// # Examples
     ///

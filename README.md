@@ -1,9 +1,9 @@
-<a href = "https://www.rust-lang.org/"> 
+<a href = "https://www.rust-lang.org/">
 <img width = "90%" height = "auto" src = "https://img.shields.io/badge/Rust-Programming%20Language-black?style=flat&logo=rust" alt = "The Rust Programming Language">
 </a>
 
 This is the main source code repository for [Rust]. It contains the compiler,
-standard library, and documentation. 
+standard library, and documentation.
 
 [Rust]: https://www.rust-lang.org
 
@@ -23,7 +23,7 @@ Read ["Installation"] from [The Book].
 section.**
 
 The Rust build system uses a Python script called `x.py` to build the compiler,
-which manages the bootstrapping process. More information about it can be found 
+which manages the bootstrapping process. More information about it can be found
 by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
 
 [gettingstarted]: https://rustc-dev-guide.rust-lang.org/getting-started.html
@@ -156,17 +156,6 @@ by manually calling the appropriate vcvars file before running the bootstrap.
 > CALL "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
 > python x.py build
 ```
-
-### Building rustc with older host toolchains
-It is still possible to build Rust with the older toolchain versions listed below, but only if the
-LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN option is set to true in the config.toml file.
-
-* Clang 3.1
-* Apple Clang 3.1
-* GCC 4.8
-* Visual Studio 2015 (Update 3)
-
-Toolchain versions older than what is listed above cannot be used to build rustc.
 
 #### Specifying an ABI
 
