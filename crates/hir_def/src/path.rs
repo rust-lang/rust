@@ -154,12 +154,6 @@ pub enum GenericArg {
 
 impl Path {
     /// Converts an `ast::Path` to `Path`. Works with use trees.
-    #[deprecated = "Doesn't handle hygiene, don't add new calls, remove old ones"]
-    pub fn from_ast(path: ast::Path) -> Option<Path> {
-        lower::lower_path(path, &Hygiene::new_unhygienic())
-    }
-
-    /// Converts an `ast::Path` to `Path`. Works with use trees.
     /// It correctly handles `$crate` based path from macro call.
     pub fn from_src(path: ast::Path, hygiene: &Hygiene) -> Option<Path> {
         lower::lower_path(path, hygiene)
