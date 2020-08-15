@@ -46,7 +46,7 @@ fn test3(x: U1) {
 fn test4(x: U2) {
     // Cannot move out of union that implements `Drop`.
     unsafe {
-        move_out(x.f1_nocopy); //~ ERROR cannot move out of type `U2`, which implements the `Drop` trait
+        move_out(x.f1_nocopy); //~ ERROR cannot move out of type `U2`, which implements the `Drop`
     }
 }
 
