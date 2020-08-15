@@ -215,7 +215,7 @@ impl Validator<'mir, 'tcx> {
             && !tcx.is_thread_local_static(def_id.to_def_id());
 
         if should_check_for_sync {
-            let hir_id = tcx.hir().as_local_hir_id(def_id);
+            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
             check_return_ty_is_sync(tcx, &body, hir_id);
         }
     }

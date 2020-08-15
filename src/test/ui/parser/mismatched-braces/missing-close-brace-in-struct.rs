@@ -2,7 +2,6 @@ pub(crate) struct Bar<T> {
   foo: T,
 
 trait T { //~ ERROR expected identifier, found keyword `trait`
-//~^ ERROR expected `:`, found `T`
     fn foo(&self);
 }
 

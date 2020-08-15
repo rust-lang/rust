@@ -813,8 +813,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 {
                     use rustc_hir::def_id::LOCAL_CRATE;
 
-                    let hir_src = self.cx.tcx.hir().as_local_hir_id(src_id);
-                    let hir_dst = self.cx.tcx.hir().as_local_hir_id(dst_id);
+                    let hir_src = self.cx.tcx.hir().local_def_id_to_hir_id(src_id);
+                    let hir_dst = self.cx.tcx.hir().local_def_id_to_hir_id(dst_id);
 
                     if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
                         && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)

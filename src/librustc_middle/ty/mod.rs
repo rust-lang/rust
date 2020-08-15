@@ -2835,12 +2835,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn opt_item_name(self, def_id: DefId) -> Option<Ident> {
         def_id
             .as_local()
-            .and_then(|def_id| self.hir().get(self.hir().as_local_hir_id(def_id)).ident())
+            .and_then(|def_id| self.hir().get(self.hir().local_def_id_to_hir_id(def_id)).ident())
     }
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<&'tcx AssocItem> {
         let is_associated_item = if let Some(def_id) = def_id.as_local() {
-            match self.hir().get(self.hir().as_local_hir_id(def_id)) {
+            match self.hir().get(self.hir().local_def_id_to_hir_id(def_id)) {
                 Node::TraitItem(_) | Node::ImplItem(_) => true,
                 _ => false,
             }
@@ -2999,7 +2999,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Gets the attributes of a definition.
     pub fn get_attrs(self, did: DefId) -> Attributes<'tcx> {
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.hir().as_local_hir_id(did))
+            self.hir().attrs(self.hir().local_def_id_to_hir_id(did))
         } else {
             self.item_attrs(did)
         }
@@ -3038,7 +3038,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// with the name of the crate containing the impl.
     pub fn span_of_impl(self, impl_did: DefId) -> Result<Span, Symbol> {
         if let Some(impl_did) = impl_did.as_local() {
-            let hir_id = self.hir().as_local_hir_id(impl_did);
+            let hir_id = self.hir().local_def_id_to_hir_id(impl_did);
             Ok(self.hir().span(hir_id))
         } else {
             Err(self.crate_name(impl_did.krate))
@@ -3099,7 +3099,7 @@ pub struct AdtSizedConstraint<'tcx>(pub &'tcx [Ty<'tcx>]);
 /// Yields the parent function's `DefId` if `def_id` is an `impl Trait` definition.
 pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     if let Some(def_id) = def_id.as_local() {
-        if let Node::Item(item) = tcx.hir().get(tcx.hir().as_local_hir_id(def_id)) {
+        if let Node::Item(item) = tcx.hir().get(tcx.hir().local_def_id_to_hir_id(def_id)) {
             if let hir::ItemKind::OpaqueTy(ref opaque_ty) = item.kind {
                 return opaque_ty.impl_trait_fn;
             }

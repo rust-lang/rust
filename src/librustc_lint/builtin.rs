@@ -440,7 +440,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
                 if let Some(def_id) = real_trait.as_local() {
-                    let hir_id = cx.tcx.hir().as_local_hir_id(def_id);
+                    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
                     if let Some(Node::Item(item)) = cx.tcx.hir().find(hir_id) {
                         if let hir::VisibilityKind::Inherited = item.vis.node {
                             for impl_item_ref in items {
@@ -614,7 +614,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             cx.tcx.for_each_impl(debug, |d| {
                 if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
                     if let Some(def_id) = ty_def.did.as_local() {
-                        impls.insert(cx.tcx.hir().as_local_hir_id(def_id));
+                        impls.insert(cx.tcx.hir().local_def_id_to_hir_id(def_id));
                     }
                 }
             });

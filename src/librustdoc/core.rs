@@ -143,13 +143,13 @@ impl<'tcx> DocContext<'tcx> {
         def_id
     }
 
-    /// Like the function of the same name on the HIR map, but skips calling it on fake DefIds.
+    /// Like `hir().local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
         if self.all_fake_def_ids.borrow().contains(&def_id) {
             None
         } else {
-            def_id.as_local().map(|def_id| self.tcx.hir().as_local_hir_id(def_id))
+            def_id.as_local().map(|def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
         }
     }
 
@@ -400,7 +400,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 }
 
                 let hir = tcx.hir();
-                let body = hir.body(hir.body_owned_by(hir.as_local_hir_id(def_id)));
+                let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)

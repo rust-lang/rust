@@ -185,6 +185,6 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
 }
 
 fn def_id_corresponds_to_hir_dep_node(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    let hir_id = tcx.hir().as_local_hir_id(def_id);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     def_id == hir_id.owner
 }

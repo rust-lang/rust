@@ -707,7 +707,7 @@ impl EncodeContext<'a, 'tcx> {
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
-        let enum_id = tcx.hir().as_local_hir_id(def.did.expect_local());
+        let enum_id = tcx.hir().local_def_id_to_hir_id(def.did.expect_local());
         let enum_vis = &tcx.hir().expect_item(enum_id).vis;
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
@@ -754,7 +754,7 @@ impl EncodeContext<'a, 'tcx> {
 
         // Variant constructors have the same visibility as the parent enums, unless marked as
         // non-exhaustive, in which case they are lowered to `pub(crate)`.
-        let enum_id = tcx.hir().as_local_hir_id(def.did.expect_local());
+        let enum_id = tcx.hir().local_def_id_to_hir_id(def.did.expect_local());
         let enum_vis = &tcx.hir().expect_item(enum_id).vis;
         let mut ctor_vis = ty::Visibility::from_hir(enum_vis, enum_id, tcx);
         if variant.is_field_list_non_exhaustive() && ctor_vis == ty::Visibility::Public {
@@ -793,11 +793,11 @@ impl EncodeContext<'a, 'tcx> {
         let data = ModData {
             reexports: match tcx.module_exports(local_def_id) {
                 Some(exports) => {
-                    let hir_map = self.tcx.hir();
+                    let hir = self.tcx.hir();
                     self.lazy(
                         exports
                             .iter()
-                            .map(|export| export.map_id(|id| hir_map.as_local_hir_id(id))),
+                            .map(|export| export.map_id(|id| hir.local_def_id_to_hir_id(id))),
                     )
                 }
                 _ => Lazy::empty(),
@@ -829,7 +829,7 @@ impl EncodeContext<'a, 'tcx> {
         let def_id = field.did;
         debug!("EncodeContext::encode_field({:?})", def_id);
 
-        let variant_id = tcx.hir().as_local_hir_id(variant.def_id.expect_local());
+        let variant_id = tcx.hir().local_def_id_to_hir_id(variant.def_id.expect_local());
         let variant_data = tcx.hir().expect_variant_data(variant_id);
 
         record!(self.tables.kind[def_id] <- EntryKind::Field);
@@ -857,7 +857,7 @@ impl EncodeContext<'a, 'tcx> {
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
-        let struct_id = tcx.hir().as_local_hir_id(adt_def.did.expect_local());
+        let struct_id = tcx.hir().local_def_id_to_hir_id(adt_def.did.expect_local());
         let struct_vis = &tcx.hir().expect_item(struct_id).vis;
         let mut ctor_vis = ty::Visibility::from_hir(struct_vis, struct_id, tcx);
         for field in &variant.fields {
@@ -919,7 +919,7 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_info_for_trait_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         let ast_item = tcx.hir().expect_trait_item(hir_id);
         let trait_item = tcx.associated_item(def_id);
 
@@ -1008,7 +1008,7 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_info_for_impl_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let hir_id = self.tcx.hir().as_local_hir_id(def_id.expect_local());
+        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         let ast_item = self.tcx.hir().expect_impl_item(hir_id);
         let impl_item = self.tcx.associated_item(def_id);
 
@@ -1412,7 +1412,7 @@ impl EncodeContext<'a, 'tcx> {
 
         // NOTE(eddyb) `tcx.type_of(def_id)` isn't used because it's fully generic,
         // including on the signature, which is inferred in `typeck.
-        let hir_id = self.tcx.hir().as_local_hir_id(def_id);
+        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let ty = self.tcx.typeck(def_id).node_type(hir_id);
 
         record!(self.tables.kind[def_id.to_def_id()] <- match ty.kind {
@@ -1439,7 +1439,7 @@ impl EncodeContext<'a, 'tcx> {
 
     fn encode_info_for_anon_const(&mut self, def_id: LocalDefId) {
         debug!("EncodeContext::encode_info_for_anon_const({:?})", def_id);
-        let id = self.tcx.hir().as_local_hir_id(def_id);
+        let id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = self.tcx.hir().body_owned_by(id);
         let const_data = self.encode_rendered_const_for_body(body_id);
         let qualifs = self.tcx.mir_const_qualif(def_id);

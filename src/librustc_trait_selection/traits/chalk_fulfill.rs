@@ -41,7 +41,7 @@ fn environment<'tcx>(
 
     let clauses = predicates.into_iter().map(ChalkEnvironmentClause::Predicate);
 
-    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let node = tcx.hir().get(hir_id);
 
     enum NodeKind {

@@ -231,7 +231,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
         let tcx = infcx.tcx;
-        let mir_hir_id = tcx.hir().as_local_hir_id(mir_def.did);
+        let mir_hir_id = tcx.hir().local_def_id_to_hir_id(mir_def.did);
         UniversalRegionsBuilder { infcx, mir_def, mir_hir_id, param_env }.build()
     }
 
