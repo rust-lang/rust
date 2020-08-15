@@ -387,20 +387,30 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
         let Constant { span, user_ty, literal } = constant;
-        self.push("mir::Constant");
-        self.push(&format!("+ span: {}", self.tcx.sess.source_map().span_to_string(*span)));
-        if let Some(user_ty) = user_ty {
-            self.push(&format!("+ user_ty: {:?}", user_ty));
+        match literal.ty.kind {
+            ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char => {}
+            _ => {
+                self.push("mir::Constant");
+                self.push(&format!("+ span: {}", self.tcx.sess.source_map().span_to_string(*span)));
+                if let Some(user_ty) = user_ty {
+                    self.push(&format!("+ user_ty: {:?}", user_ty));
+                }
+                self.push(&format!("+ literal: {:?}", literal));
+            }
         }
-        self.push(&format!("+ literal: {:?}", literal));
     }
 
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
         let ty::Const { ty, val, .. } = constant;
-        self.push("ty::Const");
-        self.push(&format!("+ ty: {:?}", ty));
-        self.push(&format!("+ val: {:?}", val));
+        match ty.kind {
+            ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char => {}
+            _ => {
+                self.push("ty::Const");
+                self.push(&format!("+ ty: {:?}", ty));
+                self.push(&format!("+ val: {:?}", val));
+            }
+        }
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
