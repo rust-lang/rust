@@ -5,7 +5,6 @@
 use std::iter::successors;
 
 use either::Either;
-use hir::{self, ModPath};
 use syntax::{
     ast::{self, NameOwner, VisibilityOwner},
     AstNode, AstToken, Direction, SmolStr,
@@ -35,11 +34,11 @@ pub(crate) fn find_insert_use_container(
 pub(crate) fn insert_use_statement(
     // Ideally the position of the cursor, used to
     position: &SyntaxNode,
-    path_to_import: &ModPath,
+    path_to_import: &str,
     ctx: &AssistContext,
     builder: &mut TextEditBuilder,
 ) {
-    let target = path_to_import.to_string().split("::").map(SmolStr::new).collect::<Vec<_>>();
+    let target = path_to_import.split("::").map(SmolStr::new).collect::<Vec<_>>();
     let container = find_insert_use_container(position, ctx);
 
     if let Some(container) = container {

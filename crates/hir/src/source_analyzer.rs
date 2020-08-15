@@ -13,6 +13,7 @@ use hir_def::{
         Body, BodySourceMap,
     },
     expr::{ExprId, Pat, PatId},
+    path::{ModPath, Path, PathKind},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
     AsMacroCall, DefWithBodyId, FieldId, FunctionId, LocalFieldId, VariantId,
 };
@@ -28,8 +29,7 @@ use syntax::{
 
 use crate::{
     db::HirDatabase, semantics::PathResolution, Adt, Const, EnumVariant, Field, Function, Local,
-    MacroDef, ModPath, ModuleDef, Path, PathKind, Static, Struct, Trait, Type, TypeAlias,
-    TypeParam,
+    MacroDef, ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam,
 };
 use base_db::CrateId;
 
@@ -508,7 +508,7 @@ pub(crate) fn resolve_hir_path(
 /// }
 /// ```
 /// then we know that `foo` in `my::foo::Bar` refers to the module, not the function.
-pub(crate) fn resolve_hir_path_qualifier(
+fn resolve_hir_path_qualifier(
     db: &dyn HirDatabase,
     resolver: &Resolver,
     path: &Path,

@@ -12,6 +12,7 @@ use hir_def::{
     docs::Documentation,
     expr::{BindingAnnotation, Pat, PatId},
     import_map,
+    path::ModPath,
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
@@ -344,11 +345,7 @@ impl Module {
 
     /// Finds a path that can be used to refer to the given item from within
     /// this module, if possible.
-    pub fn find_use_path(
-        self,
-        db: &dyn DefDatabase,
-        item: impl Into<ItemInNs>,
-    ) -> Option<hir_def::path::ModPath> {
+    pub fn find_use_path(self, db: &dyn DefDatabase, item: impl Into<ItemInNs>) -> Option<ModPath> {
         hir_def::find_path::find_path(db, item.into(), self.into())
     }
 }
@@ -1126,7 +1123,7 @@ impl ImplDef {
             .value
             .attrs()
             .filter_map(|it| {
-                let path = hir_def::path::ModPath::from_src(it.path()?, &hygenic)?;
+                let path = ModPath::from_src(it.path()?, &hygenic)?;
                 if path.as_ident()?.to_string() == "derive" {
                     Some(it)
                 } else {

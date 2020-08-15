@@ -1,5 +1,5 @@
-use hir;
-use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SmolStr, SyntaxNode};
+use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SyntaxNode, TextRange};
+use test_utils::mark;
 
 use crate::{
     utils::{find_insert_use_container, insert_use_statement},
@@ -28,12 +28,19 @@ pub(crate) fn replace_qualified_name_with_use(
     if path.syntax().ancestors().find_map(ast::Use::cast).is_some() {
         return None;
     }
-
-    let hir_path = ctx.sema.lower_path(&path)?;
-    let segments = collect_hir_path_segments(&hir_path)?;
-    if segments.len() < 2 {
+    if path.qualifier().is_none() {
+        mark::hit!(dont_import_trivial_paths);
         return None;
     }
+    let path_to_import = path.to_string().clone();
+    let path_to_import = match path.segment()?.generic_arg_list() {
+        Some(generic_args) => {
+            let generic_args_start =
+                generic_args.syntax().text_range().start() - path.syntax().text_range().start();
+            &path_to_import[TextRange::up_to(generic_args_start)]
+        }
+        None => path_to_import.as_str(),
+    };
 
     let target = path.syntax().text_range();
     acc.add(
@@ -41,12 +48,16 @@ pub(crate) fn replace_qualified_name_with_use(
         "Replace qualified path with use",
         target,
         |builder| {
-            let path_to_import = hir_path.mod_path().clone();
             let container = match find_insert_use_container(path.syntax(), ctx) {
                 Some(c) => c,
                 None => return,
             };
-            insert_use_statement(path.syntax(), &path_to_import, ctx, builder.text_edit_builder());
+            insert_use_statement(
+                path.syntax(),
+                &path_to_import.to_string(),
+                ctx,
+                builder.text_edit_builder(),
+            );
 
             // Now that we've brought the name into scope, re-qualify all paths that could be
             // affected (that is, all paths inside the node we added the `use` to).
@@ -56,26 +67,6 @@ pub(crate) fn replace_qualified_name_with_use(
             builder.rewrite(rewriter);
         },
     )
-}
-
-fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
-    let mut ps = Vec::<SmolStr>::with_capacity(10);
-    match path.kind() {
-        hir::PathKind::Abs => ps.push("".into()),
-        hir::PathKind::Crate => ps.push("crate".into()),
-        hir::PathKind::Plain => {}
-        hir::PathKind::Super(0) => ps.push("self".into()),
-        hir::PathKind::Super(lvl) => {
-            let mut chain = "super".to_string();
-            for _ in 0..*lvl {
-                chain += "::super";
-            }
-            ps.push(chain.into());
-        }
-        hir::PathKind::DollarCrate(_) => return None,
-    }
-    ps.extend(path.segments().iter().map(|it| it.name.to_string().into()));
-    Some(ps)
 }
 
 /// Adds replacements to `re` that shorten `path` in all descendants of `node`.
@@ -467,7 +458,8 @@ impl Debug for Foo {
     }
 
     #[test]
-    fn test_replace_not_applicable_one_segment() {
+    fn dont_import_trivial_paths() {
+        mark::check!(dont_import_trivial_paths);
         check_assist_not_applicable(
             replace_qualified_name_with_use,
             r"

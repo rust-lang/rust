@@ -53,7 +53,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
             |builder| {
                 insert_use_statement(
                     &auto_import_assets.syntax_under_caret,
-                    &import,
+                    &import.to_string(),
                     ctx,
                     builder.text_edit_builder(),
                 );

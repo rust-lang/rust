@@ -1,3 +1,4 @@
+use either::Either;
 use hir::{AssocItem, MacroDef, ModuleDef, Name, PathResolution, ScopeDef, SemanticsScope};
 use ide_db::{
     defs::{classify_name_ref, Definition, NameRefClass},
@@ -9,8 +10,6 @@ use crate::{
     assist_context::{AssistBuilder, AssistContext, Assists},
     AssistId, AssistKind,
 };
-
-use either::Either;
 
 // Assist: expand_glob_import
 //
@@ -40,11 +39,15 @@ use either::Either;
 pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let star = ctx.find_token_at_offset(T![*])?;
     let mod_path = find_mod_path(&star)?;
+    let module = match ctx.sema.resolve_path(&mod_path)? {
+        PathResolution::Def(ModuleDef::Module(it)) => it,
+        _ => return None,
+    };
 
     let source_file = ctx.source_file();
     let scope = ctx.sema.scope_at_offset(source_file.syntax(), ctx.offset());
 
-    let defs_in_mod = find_defs_in_mod(ctx, scope, &mod_path)?;
+    let defs_in_mod = find_defs_in_mod(ctx, scope, module)?;
     let name_refs_in_source_file =
         source_file.syntax().descendants().filter_map(ast::NameRef::cast).collect();
     let used_names = find_used_names(ctx, defs_in_mod, name_refs_in_source_file);
@@ -82,17 +85,8 @@ impl Def {
 fn find_defs_in_mod(
     ctx: &AssistContext,
     from: SemanticsScope<'_>,
-    path: &ast::Path,
+    module: hir::Module,
 ) -> Option<Vec<Def>> {
-    let hir_path = ctx.sema.lower_path(&path)?;
-    let module = if let Some(PathResolution::Def(ModuleDef::Module(module))) =
-        from.resolve_hir_path_qualifier(&hir_path)
-    {
-        module
-    } else {
-        return None;
-    };
-
     let module_scope = module.scope(ctx.db(), from.module());
 
     let mut defs = vec![];
