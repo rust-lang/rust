@@ -7,9 +7,7 @@ use crate::sys;
 use crate::sys::platform::fs::MetadataExt as UnixMetadataExt;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 
-/// Unix-specific extensions to [`File`].
-///
-/// [`File`]: fs::File
+/// Unix-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
     /// Reads a number of bytes starting from a given offset.
@@ -644,12 +642,10 @@ impl MetadataExt for fs::Metadata {
     }
 }
 
-/// Unix-specific extensions for [`FileType`].
+/// Unix-specific extensions for [`fs::FileType`].
 ///
 /// Adds support for special Unix file types such as block/character devices,
 /// pipes, and sockets.
-///
-/// [`FileType`]: fs::FileType
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
     /// Returns whether this file type is a block device.
