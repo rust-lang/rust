@@ -319,6 +319,7 @@ pub trait StructuralEq {
 /// shared references of types `T` that are *not* `Copy`. Consider the following struct,
 /// which can implement `Copy`, because it only holds a *shared reference* to our non-`Copy`
 /// type `PointList` from above:
+///
 /// ```
 /// # #![allow(dead_code)]
 /// # struct PointList;
