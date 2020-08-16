@@ -1037,7 +1037,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block",
         deprecation: None,
-        module: "let_and_return",
+        module: "returns",
     },
     Lint {
         name: "let_underscore_lock",
@@ -2493,7 +2493,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "needless unit expression",
         deprecation: None,
-        module: "returns",
+        module: "unused_unit",
     },
     Lint {
         name: "unwrap_used",
