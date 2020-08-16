@@ -1957,6 +1957,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "self_assignment",
+        group: "correctness",
+        desc: "explicit self-assignment",
+        deprecation: None,
+        module: "self_assignment",
+    },
+    Lint {
         name: "serde_api_misuse",
         group: "correctness",
         desc: "various things that will negatively affect your serde experience",

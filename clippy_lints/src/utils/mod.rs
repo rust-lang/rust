@@ -21,7 +21,7 @@ pub mod sugg;
 pub mod usage;
 pub use self::attrs::*;
 pub use self::diagnostics::*;
-pub use self::hir_utils::{both, over, SpanlessEq, SpanlessHash};
+pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
 
 use std::borrow::Cow;
 use std::mem;
