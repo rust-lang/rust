@@ -23,9 +23,7 @@ pub struct SpanlessEq<'a, 'tcx> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
-    /// If is true, never consider as equal expressions containing function
-    /// calls.
-    ignore_fn: bool,
+    allow_side_effects: bool,
 }
 
 impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
@@ -33,13 +31,14 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         Self {
             cx,
             maybe_typeck_results: cx.maybe_typeck_results(),
-            ignore_fn: false,
+            allow_side_effects: true,
         }
     }
 
-    pub fn ignore_fn(self) -> Self {
+    /// Consider expressions containing potential side effects as not equal.
+    pub fn deny_side_effects(self) -> Self {
         Self {
-            ignore_fn: true,
+            allow_side_effects: false,
             ..self
         }
     }
@@ -67,7 +66,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     #[allow(clippy::similar_names)]
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
-        if self.ignore_fn && differing_macro_contexts(left.span, right.span) {
+        if !self.allow_side_effects && differing_macro_contexts(left.span, right.span) {
             return false;
         }
 
@@ -108,7 +107,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             },
             (&ExprKind::Box(ref l), &ExprKind::Box(ref r)) => self.eq_expr(l, r),
             (&ExprKind::Call(l_fun, l_args), &ExprKind::Call(r_fun, r_args)) => {
-                !self.ignore_fn && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
+                self.allow_side_effects && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Cast(ref lx, ref lt), &ExprKind::Cast(ref rx, ref rt))
             | (&ExprKind::Type(ref lx, ref lt), &ExprKind::Type(ref rx, ref rt)) => {
@@ -134,7 +133,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                     })
             },
             (&ExprKind::MethodCall(l_path, _, l_args, _), &ExprKind::MethodCall(r_path, _, r_args, _)) => {
-                !self.ignore_fn && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
+                self.allow_side_effects && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Repeat(ref le, ref ll_id), &ExprKind::Repeat(ref re, ref rl_id)) => {
                 let mut celcx = constant_context(self.cx, self.cx.tcx.typeck_body(ll_id.body));
@@ -342,7 +341,7 @@ pub fn over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -
 
 /// Checks if two expressions evaluate to the same value, and don't contain any side effects.
 pub fn eq_expr_value(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>) -> bool {
-    SpanlessEq::new(cx).ignore_fn().eq_expr(left, right)
+    SpanlessEq::new(cx).deny_side_effects().eq_expr(left, right)
 }
 
 /// Type used to hash an ast element. This is different from the `Hash` trait

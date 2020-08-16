@@ -492,7 +492,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             if let StmtKind::Semi(only_expr) = &stmts[0].kind;
             if let ExprKind::MethodCall(ref ps, _, ref span_call_args, _) = &only_expr.kind;
             let and_then_snippets = get_and_then_snippets(cx, and_then_args);
-            let mut sle = SpanlessEq::new(cx).ignore_fn();
+            let mut sle = SpanlessEq::new(cx).deny_side_effects();
             then {
                 match &*ps.ident.as_str() {
                     "span_suggestion" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
