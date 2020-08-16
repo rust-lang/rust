@@ -484,9 +484,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     tcx.ensure().check_mod_attrs(local_def_id);
                 }
 
-                let access_levels = tcx
-                    .sess
-                    .time("privacy_access_levels", || tcx.privacy_access_levels(LOCAL_CRATE));
+                let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
                 // Convert from a HirId set to a DefId set since we don't always have easy access
                 // to the map from defid -> hirid
                 let access_levels = AccessLevels {
