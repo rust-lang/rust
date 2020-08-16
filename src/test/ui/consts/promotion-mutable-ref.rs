@@ -2,7 +2,7 @@
 #![feature(const_mut_refs)]
 
 static mut TEST: i32 = {
-    // We cannot promote this, as CTFE needs to be able to mutate it later.
+    // We must not promote this, as CTFE needs to be able to mutate it later.
     let x = &mut [1,2,3];
     x[0] += 1;
     x[0]
