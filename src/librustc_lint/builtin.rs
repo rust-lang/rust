@@ -2255,9 +2255,6 @@ impl ClashingExternDeclarations {
                                 // For arrays, we also check the constness of the type.
                                 a_const.val == b_const.val
                                     && structurally_same_type_impl(
-                                        seen_types, cx, a_const.ty, b_const.ty, ckind,
-                                    )
-                                    && structurally_same_type_impl(
                                         seen_types, cx, a_ty, b_ty, ckind,
                                     )
                             }
