@@ -60,6 +60,21 @@ where
     std::mem::size_of::<C>()
 }
 
+// Finally, check that `F` is considered used because `G` is used when neither are in the self-ty
+// of the predicate.
+
+trait Foobar<F, G> {}
+
+impl Foobar<u32, u32> for () {}
+
+#[rustc_polymorphize_error]
+fn foobar<F, G>() -> usize
+where
+    (): Foobar<F, G>,
+{
+    std::mem::size_of::<G>()
+}
+
 fn main() {
     let x = &[2u32];
     foo(x.iter());
@@ -69,4 +84,6 @@ fn main() {
     let _ = a.next();
 
     let _ = quux::<u8, u16, u32>();
+
+    let _ = foobar::<u32, u32>();
 }
