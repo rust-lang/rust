@@ -1959,6 +1959,20 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                             predicates.extend(bounds.predicates(tcx, ty));
                         }
 
+                        &hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
+                            let mut bounds = Bounds::default();
+                            AstConv::instantiate_lang_item_trait_ref(
+                                &icx,
+                                lang_item,
+                                span,
+                                hir_id,
+                                args,
+                                ty,
+                                &mut bounds,
+                            );
+                            predicates.extend(bounds.predicates(tcx, ty));
+                        }
+
                         &hir::GenericBound::Outlives(ref lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx, lifetime, None);
                             predicates.push((
@@ -2106,6 +2120,18 @@ fn predicates_from_bound<'tcx>(
 
             let mut bounds = Bounds::default();
             let _ = astconv.instantiate_poly_trait_ref(tr, constness, param_ty, &mut bounds);
+            bounds.predicates(astconv.tcx(), param_ty)
+        }
+        hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
+            let mut bounds = Bounds::default();
+            astconv.instantiate_lang_item_trait_ref(
+                lang_item,
+                span,
+                hir_id,
+                args,
+                param_ty,
+                &mut bounds,
+            );
             bounds.predicates(astconv.tcx(), param_ty)
         }
         hir::GenericBound::Outlives(ref lifetime) => {

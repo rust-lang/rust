@@ -335,6 +335,7 @@ pub fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, ref path) => &path.segments,
         hir::QPath::TypeRelative(_, ref segment) => return segment.ident.to_string(),
+        hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
     };
 
     let mut s = String::new();

@@ -475,6 +475,7 @@ impl Types {
                             }
                         }
                     },
+                    QPath::LangItem(..) => {},
                 }
             },
             TyKind::Rptr(ref lt, ref mut_ty) => self.check_ty_rptr(cx, hir_ty, is_local, lt, mut_ty),

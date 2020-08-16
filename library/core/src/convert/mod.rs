@@ -385,6 +385,7 @@ pub trait Into<T>: Sized {
 ))]
 pub trait From<T>: Sized {
     /// Performs the conversion.
+    #[cfg_attr(not(bootstrap), lang = "from")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn from(_: T) -> Self;
 }

@@ -1,7 +1,7 @@
 use crate::def::{DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
-use crate::itemlikevisit;
+use crate::{itemlikevisit, LangItem};
 
 use rustc_ast::ast::{self, CrateSugar, LlvmAsmDialect};
 use rustc_ast::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
@@ -13,7 +13,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_macros::HashStable_Generic;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::{SourceMap, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -363,6 +363,8 @@ pub enum TraitBoundModifier {
 #[derive(Debug, HashStable_Generic)]
 pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
+    // FIXME(davidtwco): Introduce `PolyTraitRef::LangItem`
+    LangItemTrait(LangItem, Span, HirId, &'hir GenericArgs<'hir>),
     Outlives(Lifetime),
 }
 
@@ -377,6 +379,7 @@ impl GenericBound<'_> {
     pub fn span(&self) -> Span {
         match self {
             &GenericBound::Trait(ref t, ..) => t.span,
+            &GenericBound::LangItemTrait(_, span, ..) => span,
             &GenericBound::Outlives(ref l) => l.span,
         }
     }
@@ -1419,10 +1422,10 @@ impl Expr<'_> {
         self.is_place_expr(|_| true)
     }
 
-    // Whether this is a place expression.
-    // `allow_projections_from` should return `true` if indexing a field or
-    // index expression based on the given expression should be considered a
-    // place expression.
+    /// Whether this is a place expression.
+    ///
+    /// `allow_projections_from` should return `true` if indexing a field or index expression based
+    /// on the given expression should be considered a place expression.
     pub fn is_place_expr(&self, mut allow_projections_from: impl FnMut(&Self) -> bool) -> bool {
         match self.kind {
             ExprKind::Path(QPath::Resolved(_, ref path)) => match path.res {
@@ -1440,6 +1443,9 @@ impl Expr<'_> {
             ExprKind::Field(ref base, _) | ExprKind::Index(ref base, _) => {
                 allow_projections_from(base) || base.is_place_expr(allow_projections_from)
             }
+
+            // Lang item paths cannot currently be local variables or statics.
+            ExprKind::Path(QPath::LangItem(..)) => false,
 
             // Partially qualified paths in expressions can only legally
             // refer to associated items which are always rvalues.
@@ -1489,58 +1495,28 @@ impl Expr<'_> {
 
 /// Checks if the specified expression is a built-in range literal.
 /// (See: `LoweringContext::lower_expr()`).
-///
-/// FIXME(#60607): This function is a hack. If and when we have `QPath::Lang(...)`,
-/// we can use that instead as simpler, more reliable mechanism, as opposed to using `SourceMap`.
-pub fn is_range_literal(sm: &SourceMap, expr: &Expr<'_>) -> bool {
-    // Returns whether the given path represents a (desugared) range,
-    // either in std or core, i.e. has either a `::std::ops::Range` or
-    // `::core::ops::Range` prefix.
-    fn is_range_path(path: &Path<'_>) -> bool {
-        let segs: Vec<_> = path.segments.iter().map(|seg| seg.ident.to_string()).collect();
-        let segs: Vec<_> = segs.iter().map(|seg| &**seg).collect();
-
-        // "{{root}}" is the equivalent of `::` prefix in `Path`.
-        if let ["{{root}}", std_core, "ops", range] = segs.as_slice() {
-            (*std_core == "std" || *std_core == "core") && range.starts_with("Range")
-        } else {
-            false
-        }
-    };
-
-    // Check whether a span corresponding to a range expression is a
-    // range literal, rather than an explicit struct or `new()` call.
-    fn is_lit(sm: &SourceMap, span: &Span) -> bool {
-        sm.span_to_snippet(*span).map(|range_src| range_src.contains("..")).unwrap_or(false)
-    };
-
+pub fn is_range_literal(expr: &Expr<'_>) -> bool {
     match expr.kind {
         // All built-in range literals but `..=` and `..` desugar to `Struct`s.
-        ExprKind::Struct(ref qpath, _, _) => {
-            if let QPath::Resolved(None, ref path) = **qpath {
-                return is_range_path(&path) && is_lit(sm, &expr.span);
-            }
-        }
-
-        // `..` desugars to its struct path.
-        ExprKind::Path(QPath::Resolved(None, ref path)) => {
-            return is_range_path(&path) && is_lit(sm, &expr.span);
-        }
+        ExprKind::Struct(ref qpath, _, _) => matches!(
+            **qpath,
+            QPath::LangItem(
+                LangItem::Range
+                | LangItem::RangeTo
+                | LangItem::RangeFrom
+                | LangItem::RangeFull
+                | LangItem::RangeToInclusive,
+                _,
+            )
+        ),
 
         // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
         ExprKind::Call(ref func, _) => {
-            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.kind {
-                if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.kind {
-                    let new_call = segment.ident.name == sym::new;
-                    return is_range_path(&path) && is_lit(sm, &expr.span) && new_call;
-                }
-            }
+            matches!(func.kind, ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, _)))
         }
 
-        _ => {}
+        _ => false,
     }
-
-    false
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -1677,6 +1653,40 @@ pub enum QPath<'hir> {
     /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
     /// the `X` and `Y` nodes each being a `TyKind::Path(QPath::TypeRelative(..))`.
     TypeRelative(&'hir Ty<'hir>, &'hir PathSegment<'hir>),
+
+    /// Reference to a `#[lang = "foo"]` item.
+    LangItem(LangItem, Span),
+}
+
+impl<'hir> QPath<'hir> {
+    /// Returns the span of this `QPath`.
+    pub fn span(&self) -> Span {
+        match *self {
+            QPath::Resolved(_, path) => path.span,
+            QPath::TypeRelative(_, ps) => ps.ident.span,
+            QPath::LangItem(_, span) => span,
+        }
+    }
+
+    /// Returns the span of the qself of this `QPath`. For example, `()` in
+    /// `<() as Trait>::method`.
+    pub fn qself_span(&self) -> Span {
+        match *self {
+            QPath::Resolved(_, path) => path.span,
+            QPath::TypeRelative(qself, _) => qself.span,
+            QPath::LangItem(_, span) => span,
+        }
+    }
+
+    /// Returns the span of the last segment of this `QPath`. For example, `method` in
+    /// `<() as Trait>::method`.
+    pub fn last_segment_span(&self) -> Span {
+        match *self {
+            QPath::Resolved(_, path) => path.segments.last().unwrap().ident.span,
+            QPath::TypeRelative(_, segment) => segment.ident.span,
+            QPath::LangItem(_, span) => span,
+        }
+    }
 }
 
 /// Hints at the original code for a let statement.

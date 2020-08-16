@@ -449,7 +449,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             // `::std::ops::Try::from_ok($tail_expr)`
             block.expr = Some(this.wrap_in_try_constructor(
-                sym::from_ok,
+                hir::LangItem::TryFromOk,
                 try_span,
                 tail_expr,
                 ok_wrapped_span,
@@ -461,14 +461,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn wrap_in_try_constructor(
         &mut self,
-        method: Symbol,
+        lang_item: hir::LangItem,
         method_span: Span,
         expr: &'hir hir::Expr<'hir>,
         overall_span: Span,
     ) -> &'hir hir::Expr<'hir> {
-        let path = &[sym::ops, sym::Try, method];
         let constructor =
-            self.arena.alloc(self.expr_std_path(method_span, path, None, ThinVec::new()));
+            self.arena.alloc(self.expr_lang_item_path(method_span, lang_item, ThinVec::new()));
         self.expr_call(overall_span, constructor, std::slice::from_ref(expr))
     }
 
@@ -558,12 +557,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `future::from_generator`:
         let unstable_span =
             self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
-        let gen_future = self.expr_std_path(
-            unstable_span,
-            &[sym::future, sym::from_generator],
-            None,
-            ThinVec::new(),
-        );
+        let gen_future =
+            self.expr_lang_item_path(unstable_span, hir::LangItem::FromGenerator, ThinVec::new());
 
         // `future::from_generator(generator)`:
         hir::ExprKind::Call(self.arena.alloc(gen_future), arena_vec![self; generator])
@@ -630,23 +625,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // Use of `await` outside of an async context, we cannot use `task_context` here.
                 self.expr_err(span)
             };
-            let pin_ty_id = self.next_id();
-            let new_unchecked_expr_kind = self.expr_call_std_assoc_fn(
-                pin_ty_id,
+            let new_unchecked = self.expr_call_lang_item_fn_mut(
                 span,
-                &[sym::pin, sym::Pin],
-                "new_unchecked",
+                hir::LangItem::PinNewUnchecked,
                 arena_vec![self; ref_mut_pinned],
             );
-            let new_unchecked = self.expr(span, new_unchecked_expr_kind, ThinVec::new());
-            let get_context = self.expr_call_std_path_mut(
+            let get_context = self.expr_call_lang_item_fn_mut(
                 gen_future_span,
-                &[sym::future, sym::get_context],
+                hir::LangItem::GetContext,
                 arena_vec![self; task_context],
             );
-            let call = self.expr_call_std_path(
+            let call = self.expr_call_lang_item_fn(
                 span,
-                &[sym::future, sym::Future, sym::poll],
+                hir::LangItem::FuturePoll,
                 arena_vec![self; new_unchecked, get_context],
             );
             self.arena.alloc(self.expr_unsafe(call))
@@ -659,11 +650,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let x_ident = Ident::with_dummy_span(sym::result);
             let (x_pat, x_pat_hid) = self.pat_ident(span, x_ident);
             let x_expr = self.expr_ident(span, x_ident, x_pat_hid);
-            let ready_pat = self.pat_std_enum(
-                span,
-                &[sym::task, sym::Poll, sym::Ready],
-                arena_vec![self; x_pat],
-            );
+            let ready_field = self.single_pat_field(span, x_pat);
+            let ready_pat = self.pat_lang_item_variant(span, hir::LangItem::PollReady, ready_field);
             let break_x = self.with_loop_scope(loop_node_id, move |this| {
                 let expr_break =
                     hir::ExprKind::Break(this.lower_loop_destination(None), Some(x_expr));
@@ -674,7 +662,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `::std::task::Poll::Pending => {}`
         let pending_arm = {
-            let pending_pat = self.pat_std_enum(span, &[sym::task, sym::Poll, sym::Pending], &[]);
+            let pending_pat = self.pat_lang_item_variant(span, hir::LangItem::PollPending, &[]);
             let empty_block = self.expr_block_empty(span);
             self.arm(pending_pat, empty_block)
         };
@@ -842,16 +830,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     /// Desugar `<start>..=<end>` into `std::ops::RangeInclusive::new(<start>, <end>)`.
     fn lower_expr_range_closed(&mut self, span: Span, e1: &Expr, e2: &Expr) -> hir::ExprKind<'hir> {
-        let id = self.next_id();
         let e1 = self.lower_expr_mut(e1);
         let e2 = self.lower_expr_mut(e2);
-        self.expr_call_std_assoc_fn(
-            id,
-            span,
-            &[sym::ops, sym::RangeInclusive],
-            "new",
-            arena_vec![self; e1, e2],
-        )
+        let fn_path = hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, span);
+        let fn_expr =
+            self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path), ThinVec::new()));
+        hir::ExprKind::Call(fn_expr, arena_vec![self; e1, e2])
     }
 
     fn lower_expr_range(
@@ -863,12 +847,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::ExprKind<'hir> {
         use rustc_ast::ast::RangeLimits::*;
 
-        let path = match (e1, e2, lims) {
-            (None, None, HalfOpen) => sym::RangeFull,
-            (Some(..), None, HalfOpen) => sym::RangeFrom,
-            (None, Some(..), HalfOpen) => sym::RangeTo,
-            (Some(..), Some(..), HalfOpen) => sym::Range,
-            (None, Some(..), Closed) => sym::RangeToInclusive,
+        let lang_item = match (e1, e2, lims) {
+            (None, None, HalfOpen) => hir::LangItem::RangeFull,
+            (Some(..), None, HalfOpen) => hir::LangItem::RangeFrom,
+            (None, Some(..), HalfOpen) => hir::LangItem::RangeTo,
+            (Some(..), Some(..), HalfOpen) => hir::LangItem::Range,
+            (None, Some(..), Closed) => hir::LangItem::RangeToInclusive,
             (Some(..), Some(..), Closed) => unreachable!(),
             (_, None, Closed) => {
                 self.diagnostic().span_fatal(span, "inclusive range with no end").raise()
@@ -883,16 +867,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }),
         );
 
-        let is_unit = fields.is_empty();
-        let struct_path = [sym::ops, path];
-        let struct_path = self.std_path(span, &struct_path, None, is_unit);
-        let struct_path = hir::QPath::Resolved(None, struct_path);
-
-        if is_unit {
-            hir::ExprKind::Path(struct_path)
-        } else {
-            hir::ExprKind::Struct(self.arena.alloc(struct_path), fields, None)
-        }
+        hir::ExprKind::Struct(self.arena.alloc(hir::QPath::LangItem(lang_item, span)), fields, None)
     }
 
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
@@ -1412,9 +1387,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let match_expr = {
             let iter = self.expr_ident(desugared_span, iter, iter_pat_nid);
             let ref_mut_iter = self.expr_mut_addr_of(desugared_span, iter);
-            let next_path = &[sym::iter, sym::Iterator, sym::next];
-            let next_expr =
-                self.expr_call_std_path(desugared_span, next_path, arena_vec![self; ref_mut_iter]);
+            let next_expr = self.expr_call_lang_item_fn(
+                desugared_span,
+                hir::LangItem::IteratorNext,
+                arena_vec![self; ref_mut_iter],
+            );
             let arms = arena_vec![self; pat_arm, break_arm];
 
             self.expr_match(desugared_span, next_expr, arms, hir::MatchSource::ForLoopDesugar)
@@ -1472,8 +1449,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
         let into_iter_expr = {
-            let into_iter_path = &[sym::iter, sym::IntoIterator, sym::into_iter];
-            self.expr_call_std_path(into_iter_span, into_iter_path, arena_vec![self; head])
+            self.expr_call_lang_item_fn(
+                into_iter_span,
+                hir::LangItem::IntoIterIntoIter,
+                arena_vec![self; head],
+            )
         };
 
         let match_expr = self.arena.alloc(self.expr_match(
@@ -1521,8 +1501,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // expand <expr>
             let sub_expr = self.lower_expr_mut(sub_expr);
 
-            let path = &[sym::ops, sym::Try, sym::into_result];
-            self.expr_call_std_path(unstable_span, path, arena_vec![self; sub_expr])
+            self.expr_call_lang_item_fn(
+                unstable_span,
+                hir::LangItem::TryIntoResult,
+                arena_vec![self; sub_expr],
+            )
         };
 
         // `#[allow(unreachable_code)]`
@@ -1558,12 +1541,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let err_ident = Ident::with_dummy_span(sym::err);
             let (err_local, err_local_nid) = self.pat_ident(try_span, err_ident);
             let from_expr = {
-                let from_path = &[sym::convert, sym::From, sym::from];
                 let err_expr = self.expr_ident_mut(try_span, err_ident, err_local_nid);
-                self.expr_call_std_path(try_span, from_path, arena_vec![self; err_expr])
+                self.expr_call_lang_item_fn(
+                    try_span,
+                    hir::LangItem::FromFrom,
+                    arena_vec![self; err_expr],
+                )
             };
-            let from_err_expr =
-                self.wrap_in_try_constructor(sym::from_error, unstable_span, from_expr, try_span);
+            let from_err_expr = self.wrap_in_try_constructor(
+                hir::LangItem::TryFromError,
+                unstable_span,
+                from_expr,
+                try_span,
+            );
             let thin_attrs = ThinVec::from(attrs);
             let catch_scope = self.catch_scopes.last().copied();
             let ret_expr = if let Some(catch_node) = catch_scope {
@@ -1674,63 +1664,32 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(self.expr_call_mut(span, e, args))
     }
 
-    // Note: associated functions must use `expr_call_std_path`.
-    fn expr_call_std_path_mut(
+    fn expr_call_lang_item_fn_mut(
         &mut self,
         span: Span,
-        path_components: &[Symbol],
+        lang_item: hir::LangItem,
         args: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
-        let path =
-            self.arena.alloc(self.expr_std_path(span, path_components, None, ThinVec::new()));
+        let path = self.arena.alloc(self.expr_lang_item_path(span, lang_item, ThinVec::new()));
         self.expr_call_mut(span, path, args)
     }
 
-    fn expr_call_std_path(
+    fn expr_call_lang_item_fn(
         &mut self,
         span: Span,
-        path_components: &[Symbol],
+        lang_item: hir::LangItem,
         args: &'hir [hir::Expr<'hir>],
     ) -> &'hir hir::Expr<'hir> {
-        self.arena.alloc(self.expr_call_std_path_mut(span, path_components, args))
+        self.arena.alloc(self.expr_call_lang_item_fn_mut(span, lang_item, args))
     }
 
-    // Create an expression calling an associated function of an std type.
-    //
-    // Associated functions cannot be resolved through the normal `std_path` function,
-    // as they are resolved differently and so cannot use `expr_call_std_path`.
-    //
-    // This function accepts the path component (`ty_path_components`) separately from
-    // the name of the associated function (`assoc_fn_name`) in order to facilitate
-    // separate resolution of the type and creation of a path referring to its associated
-    // function.
-    fn expr_call_std_assoc_fn(
-        &mut self,
-        ty_path_id: hir::HirId,
-        span: Span,
-        ty_path_components: &[Symbol],
-        assoc_fn_name: &str,
-        args: &'hir [hir::Expr<'hir>],
-    ) -> hir::ExprKind<'hir> {
-        let ty_path = self.std_path(span, ty_path_components, None, false);
-        let ty =
-            self.arena.alloc(self.ty_path(ty_path_id, span, hir::QPath::Resolved(None, ty_path)));
-        let fn_seg = self.arena.alloc(hir::PathSegment::from_ident(Ident::from_str(assoc_fn_name)));
-        let fn_path = hir::QPath::TypeRelative(ty, fn_seg);
-        let fn_expr =
-            self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path), ThinVec::new()));
-        hir::ExprKind::Call(fn_expr, args)
-    }
-
-    fn expr_std_path(
+    fn expr_lang_item_path(
         &mut self,
         span: Span,
-        components: &[Symbol],
-        params: Option<&'hir hir::GenericArgs<'hir>>,
+        lang_item: hir::LangItem,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
-        let path = self.std_path(span, components, params, true);
-        self.expr(span, hir::ExprKind::Path(hir::QPath::Resolved(None, path)), attrs)
+        self.expr(span, hir::ExprKind::Path(hir::QPath::LangItem(lang_item, span)), attrs)
     }
 
     pub(super) fn expr_ident(

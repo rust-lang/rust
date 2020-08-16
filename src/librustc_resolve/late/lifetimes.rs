@@ -941,6 +941,24 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
+    fn visit_param_bound(&mut self, bound: &'tcx hir::GenericBound<'tcx>) {
+        match bound {
+            hir::GenericBound::LangItemTrait { .. } if !self.trait_ref_hack => {
+                let scope = Scope::Binder {
+                    lifetimes: FxHashMap::default(),
+                    s: self.scope,
+                    next_early_index: self.next_early_index(),
+                    track_lifetime_uses: true,
+                    opaque_type_parent: false,
+                };
+                self.with(scope, |_, this| {
+                    intravisit::walk_param_bound(this, bound);
+                });
+            }
+            _ => intravisit::walk_param_bound(self, bound),
+        }
+    }
+
     fn visit_poly_trait_ref(
         &mut self,
         trait_ref: &'tcx hir::PolyTraitRef<'tcx>,
@@ -2294,6 +2312,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 self.outer_index.shift_in(1);
                 intravisit::walk_poly_trait_ref(self, trait_ref, modifier);
                 self.outer_index.shift_out(1);
+            }
+
+            fn visit_param_bound(&mut self, bound: &hir::GenericBound<'_>) {
+                if let hir::GenericBound::LangItemTrait { .. } = bound {
+                    self.outer_index.shift_in(1);
+                    intravisit::walk_param_bound(self, bound);
+                    self.outer_index.shift_out(1);
+                } else {
+                    intravisit::walk_param_bound(self, bound);
+                }
             }
 
             fn visit_lifetime(&mut self, lifetime_ref: &hir::Lifetime) {

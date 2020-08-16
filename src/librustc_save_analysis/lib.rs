@@ -551,28 +551,22 @@ impl<'tcx> SaveContext<'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Struct(qpath, ..) => {
-                let segment = match qpath {
-                    hir::QPath::Resolved(_, path) => path.segments.last().unwrap(),
-                    hir::QPath::TypeRelative(_, segment) => segment,
-                };
-                match ty.kind {
-                    ty::Adt(def, _) => {
-                        let sub_span = segment.ident.span;
-                        filter!(self.span_utils, sub_span);
-                        let span = self.span_from_span(sub_span);
-                        Some(Data::RefData(Ref {
-                            kind: RefKind::Type,
-                            span,
-                            ref_id: id_from_def_id(def.did),
-                        }))
-                    }
-                    _ => {
-                        debug!("expected adt, found {:?}", ty);
-                        None
-                    }
+            hir::ExprKind::Struct(qpath, ..) => match ty.kind {
+                ty::Adt(def, _) => {
+                    let sub_span = qpath.last_segment_span();
+                    filter!(self.span_utils, sub_span);
+                    let span = self.span_from_span(sub_span);
+                    Some(Data::RefData(Ref {
+                        kind: RefKind::Type,
+                        span,
+                        ref_id: id_from_def_id(def.did),
+                    }))
                 }
-            }
+                _ => {
+                    debug!("expected adt, found {:?}", ty);
+                    None
+                }
+            },
             hir::ExprKind::MethodCall(ref seg, ..) => {
                 let method_id = match self.typeck_results().type_dependent_def_id(expr.hir_id) {
                     Some(id) => id,
@@ -636,7 +630,7 @@ impl<'tcx> SaveContext<'tcx> {
             })
             | Node::Ty(&hir::Ty { kind: hir::TyKind::Path(ref qpath), .. }) => match qpath {
                 hir::QPath::Resolved(_, path) => path.res,
-                hir::QPath::TypeRelative(..) => self
+                hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
                     .maybe_typeck_results
                     .map_or(Res::Err, |typeck_results| typeck_results.qpath_res(qpath, hir_id)),
             },
@@ -653,6 +647,7 @@ impl<'tcx> SaveContext<'tcx> {
         let segment = match path {
             hir::QPath::Resolved(_, path) => path.segments.last(),
             hir::QPath::TypeRelative(_, segment) => Some(*segment),
+            hir::QPath::LangItem(..) => None,
         };
         segment.and_then(|seg| {
             self.get_path_segment_data(seg).or_else(|| self.get_path_segment_data_with_id(seg, id))

@@ -702,14 +702,18 @@ impl<'tcx> DumpVisitor<'tcx> {
 
         // super-traits
         for super_bound in trait_refs.iter() {
-            let trait_ref = match *super_bound {
-                hir::GenericBound::Trait(ref trait_ref, _) => trait_ref,
+            let (def_id, sub_span) = match *super_bound {
+                hir::GenericBound::Trait(ref trait_ref, _) => (
+                    self.lookup_def_id(trait_ref.trait_ref.hir_ref_id),
+                    trait_ref.trait_ref.path.segments.last().unwrap().ident.span,
+                ),
+                hir::GenericBound::LangItemTrait(lang_item, span, _, _) => {
+                    (Some(self.tcx.require_lang_item(lang_item, Some(span))), span)
+                }
                 hir::GenericBound::Outlives(..) => continue,
             };
 
-            let trait_ref = &trait_ref.trait_ref;
-            if let Some(id) = self.lookup_def_id(trait_ref.hir_ref_id) {
-                let sub_span = trait_ref.path.segments.last().unwrap().ident.span;
+            if let Some(id) = def_id {
                 if !self.span.filter_generated(sub_span) {
                     let span = self.span_from_span(sub_span);
                     self.dumper.dump_ref(Ref {
@@ -762,11 +766,7 @@ impl<'tcx> DumpVisitor<'tcx> {
     }
 
     fn process_path(&mut self, id: hir::HirId, path: &hir::QPath<'tcx>) {
-        let span = match path {
-            hir::QPath::Resolved(_, path) => path.span,
-            hir::QPath::TypeRelative(_, segment) => segment.ident.span,
-        };
-        if self.span.filter_generated(span) {
+        if self.span.filter_generated(path.span()) {
             return;
         }
         self.dump_path_ref(id, path);
@@ -783,6 +783,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 self.visit_ty(ty);
                 std::slice::from_ref(*segment)
             }
+            hir::QPath::LangItem(..) => return,
         };
         for seg in segments {
             if let Some(ref generic_args) = seg.args {
@@ -1355,10 +1356,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 }
 
                 if let Some(id) = self.lookup_def_id(t.hir_id) {
-                    let sub_span = match path {
-                        hir::QPath::Resolved(_, path) => path.segments.last().unwrap().ident.span,
-                        hir::QPath::TypeRelative(_, segment) => segment.ident.span,
-                    };
+                    let sub_span = path.last_segment_span();
                     let span = self.span_from_span(sub_span);
                     self.dumper.dump_ref(Ref {
                         kind: RefKind::Type,

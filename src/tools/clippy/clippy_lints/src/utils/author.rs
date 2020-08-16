@@ -760,5 +760,6 @@ fn print_path(path: &QPath<'_>, first: &mut bool) {
             },
             ref other => print!("/* unimplemented: {:?}*/", other),
         },
+        QPath::LangItem(lang_item, ..) => print!("#[lang = \"{}\"]", lang_item.name()),
     }
 }
