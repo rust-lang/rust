@@ -2198,45 +2198,46 @@ impl ClashingExternDeclarations {
             debug!("structurally_same_type_impl(cx, a = {:?}, b = {:?})", a, b);
             match seen_types.get(a, b) {
                 // If we've already computed the result, just return the memoized result.
-                SeenSetResult::Computed(result) => result,
+                SeenSetResult::Computed(result) => return result,
                 // We are already in the process of computing structural sameness for this type,
                 // meaning we've found a cycle. The types are structurally same, then.
-                SeenSetResult::Computing => true,
-                // We haven't seen this combination of types at all -- compute their sameness.
-                SeenSetResult::Unseen => {
-                    seen_types.mark_computing(a, b);
-                    let tcx = cx.tcx;
-                    let result = if a == b || rustc_middle::ty::TyS::same_type(a, b) {
-                        // All nominally-same types are structurally same, too.
-                        true
-                    } else {
-                        // Do a full, depth-first comparison between the two.
-                        use rustc_middle::ty::TyKind::*;
-                        let a_kind = &a.kind;
-                        let b_kind = &b.kind;
+                SeenSetResult::Computing => return true,
+                // We haven't seen this combination of types at all -- continue on to computing
+                // their sameness.
+                SeenSetResult::Unseen => (),
+            }
+            seen_types.mark_computing(a, b);
+            let tcx = cx.tcx;
+            let result = if a == b || rustc_middle::ty::TyS::same_type(a, b) {
+                // All nominally-same types are structurally same, too.
+                true
+            } else {
+                // Do a full, depth-first comparison between the two.
+                use rustc_middle::ty::TyKind::*;
+                let a_kind = &a.kind;
+                let b_kind = &b.kind;
 
-                        let compare_layouts = |a, b| -> bool {
-                            let a_layout = &cx.layout_of(a).unwrap().layout.abi;
-                            let b_layout = &cx.layout_of(b).unwrap().layout.abi;
-                            debug!("{:?} == {:?} = {}", a_layout, b_layout, a_layout == b_layout);
-                            a_layout == b_layout
-                        };
+                let compare_layouts = |a, b| -> bool {
+                    let a_layout = &cx.layout_of(a).unwrap().layout.abi;
+                    let b_layout = &cx.layout_of(b).unwrap().layout.abi;
+                    debug!("{:?} == {:?} = {}", a_layout, b_layout, a_layout == b_layout);
+                    a_layout == b_layout
+                };
 
-                        #[allow(rustc::usage_of_ty_tykind)]
-                        let is_primitive_or_pointer = |kind: &ty::TyKind<'_>| {
-                            kind.is_primitive() || matches!(kind, RawPtr(..))
-                        };
+                #[allow(rustc::usage_of_ty_tykind)]
+                let is_primitive_or_pointer =
+                    |kind: &ty::TyKind<'_>| kind.is_primitive() || matches!(kind, RawPtr(..));
 
-                        match (a_kind, b_kind) {
-                            (Adt(a_def, a_substs), Adt(b_def, b_substs)) => {
-                                let a = a.subst(cx.tcx, a_substs);
-                                let b = b.subst(cx.tcx, b_substs);
-                                debug!("Comparing {:?} and {:?}", a, b);
+                match (a_kind, b_kind) {
+                    (Adt(a_def, a_substs), Adt(b_def, b_substs)) => {
+                        let a = a.subst(cx.tcx, a_substs);
+                        let b = b.subst(cx.tcx, b_substs);
+                        debug!("Comparing {:?} and {:?}", a, b);
 
-                                // Grab a flattened representation of all fields.
-                                let a_fields = a_def.variants.iter().flat_map(|v| v.fields.iter());
-                                let b_fields = b_def.variants.iter().flat_map(|v| v.fields.iter());
-                                compare_layouts(a, b)
+                        // Grab a flattened representation of all fields.
+                        let a_fields = a_def.variants.iter().flat_map(|v| v.fields.iter());
+                        let b_fields = b_def.variants.iter().flat_map(|v| v.fields.iter());
+                        compare_layouts(a, b)
                             && a_fields.eq_by(
                                 b_fields,
                                 |&ty::FieldDef { did: a_did, .. },
@@ -2250,99 +2251,91 @@ impl ClashingExternDeclarations {
                                     )
                                 },
                             )
-                            }
-                            (Array(a_ty, a_const), Array(b_ty, b_const)) => {
-                                // For arrays, we also check the constness of the type.
-                                a_const.val == b_const.val
-                                    && structurally_same_type_impl(
-                                        seen_types, cx, a_ty, b_ty, ckind,
-                                    )
-                            }
-                            (Slice(a_ty), Slice(b_ty)) => {
-                                structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
-                            }
-                            (RawPtr(a_tymut), RawPtr(b_tymut)) => {
-                                a_tymut.mutbl == b_tymut.mutbl
-                                    && structurally_same_type_impl(
-                                        seen_types,
-                                        cx,
-                                        &a_tymut.ty,
-                                        &b_tymut.ty,
-                                        ckind,
-                                    )
-                            }
-                            (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
-                                // For structural sameness, we don't need the region to be same.
-                                a_mut == b_mut
-                                    && structurally_same_type_impl(
-                                        seen_types, cx, a_ty, b_ty, ckind,
-                                    )
-                            }
-                            (FnDef(..), FnDef(..)) => {
-                                let a_poly_sig = a.fn_sig(tcx);
-                                let b_poly_sig = b.fn_sig(tcx);
+                    }
+                    (Array(a_ty, a_const), Array(b_ty, b_const)) => {
+                        // For arrays, we also check the constness of the type.
+                        a_const.val == b_const.val
+                            && structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
+                    }
+                    (Slice(a_ty), Slice(b_ty)) => {
+                        structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
+                    }
+                    (RawPtr(a_tymut), RawPtr(b_tymut)) => {
+                        a_tymut.mutbl == b_tymut.mutbl
+                            && structurally_same_type_impl(
+                                seen_types,
+                                cx,
+                                &a_tymut.ty,
+                                &b_tymut.ty,
+                                ckind,
+                            )
+                    }
+                    (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
+                        // For structural sameness, we don't need the region to be same.
+                        a_mut == b_mut
+                            && structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
+                    }
+                    (FnDef(..), FnDef(..)) => {
+                        let a_poly_sig = a.fn_sig(tcx);
+                        let b_poly_sig = b.fn_sig(tcx);
 
-                                // As we don't compare regions, skip_binder is fine.
-                                let a_sig = a_poly_sig.skip_binder();
-                                let b_sig = b_poly_sig.skip_binder();
+                        // As we don't compare regions, skip_binder is fine.
+                        let a_sig = a_poly_sig.skip_binder();
+                        let b_sig = b_poly_sig.skip_binder();
 
-                                (a_sig.abi, a_sig.unsafety, a_sig.c_variadic)
-                                    == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic)
-                                    && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
-                                        structurally_same_type_impl(seen_types, cx, a, b, ckind)
-                                    })
-                                    && structurally_same_type_impl(
-                                        seen_types,
-                                        cx,
-                                        a_sig.output(),
-                                        b_sig.output(),
-                                        ckind,
-                                    )
-                            }
-                            (Tuple(a_substs), Tuple(b_substs)) => {
-                                a_substs.types().eq_by(b_substs.types(), |a_ty, b_ty| {
-                                    structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
-                                })
-                            }
-                            // For these, it's not quite as easy to define structural-sameness quite so easily.
-                            // For the purposes of this lint, take the conservative approach and mark them as
-                            // not structurally same.
-                            (Dynamic(..), Dynamic(..))
-                            | (Error(..), Error(..))
-                            | (Closure(..), Closure(..))
-                            | (Generator(..), Generator(..))
-                            | (GeneratorWitness(..), GeneratorWitness(..))
-                            | (Projection(..), Projection(..))
-                            | (Opaque(..), Opaque(..)) => false,
+                        (a_sig.abi, a_sig.unsafety, a_sig.c_variadic)
+                            == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic)
+                            && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
+                                structurally_same_type_impl(seen_types, cx, a, b, ckind)
+                            })
+                            && structurally_same_type_impl(
+                                seen_types,
+                                cx,
+                                a_sig.output(),
+                                b_sig.output(),
+                                ckind,
+                            )
+                    }
+                    (Tuple(a_substs), Tuple(b_substs)) => {
+                        a_substs.types().eq_by(b_substs.types(), |a_ty, b_ty| {
+                            structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
+                        })
+                    }
+                    // For these, it's not quite as easy to define structural-sameness quite so easily.
+                    // For the purposes of this lint, take the conservative approach and mark them as
+                    // not structurally same.
+                    (Dynamic(..), Dynamic(..))
+                    | (Error(..), Error(..))
+                    | (Closure(..), Closure(..))
+                    | (Generator(..), Generator(..))
+                    | (GeneratorWitness(..), GeneratorWitness(..))
+                    | (Projection(..), Projection(..))
+                    | (Opaque(..), Opaque(..)) => false,
 
-                            // These definitely should have been caught above.
-                            (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => {
-                                unreachable!()
-                            }
+                    // These definitely should have been caught above.
+                    (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => unreachable!(),
 
-                            // An Adt and a primitive type. This can be FFI-safe is the ADT is an enum with a
-                            // non-null field.
-                            (Adt(..), other_kind) | (other_kind, Adt(..))
-                                if is_primitive_or_pointer(other_kind) =>
-                            {
-                                let (primitive, adt) =
-                                    if is_primitive_or_pointer(&a.kind) { (a, b) } else { (b, a) };
-                                if let Some(ty) = crate::types::repr_nullable_ptr(cx, adt, ckind) {
-                                    ty == primitive
-                                } else {
-                                    compare_layouts(a, b)
-                                }
-                            }
-                            // Otherwise, just compare the layouts. This may fail to lint for some
-                            // incompatible types, but at the very least, will stop reads into
-                            // uninitialised memory.
-                            _ => compare_layouts(a, b),
+                    // An Adt and a primitive type. This can be FFI-safe is the ADT is an enum with a
+                    // non-null field.
+                    (Adt(..), other_kind) | (other_kind, Adt(..))
+                        if is_primitive_or_pointer(other_kind) =>
+                    {
+                        let (primitive, adt) =
+                            if is_primitive_or_pointer(&a.kind) { (a, b) } else { (b, a) };
+                        if let Some(ty) = crate::types::repr_nullable_ptr(cx, adt, ckind) {
+                            ty == primitive
+                        } else {
+                            compare_layouts(a, b)
                         }
-                    };
-                    seen_types.mark_computed(a, b, result);
-                    result
+                    }
+                    // Otherwise, just compare the layouts. This may fail to lint for some
+                    // incompatible types, but at the very least, will stop reads into
+                    // uninitialised memory.
+                    _ => compare_layouts(a, b),
                 }
-            }
+            };
+            seen_types.mark_computed(a, b, result);
+            result
         }
         let mut seen_types = SeenSet::new();
         structurally_same_type_impl(&mut seen_types, cx, a, b, ckind)
