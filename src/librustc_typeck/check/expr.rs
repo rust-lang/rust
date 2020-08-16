@@ -31,13 +31,14 @@ use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
+use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{AdtKind, Visibility};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_trait_selection::traits::{self, ObligationCauseCode};
+use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::fmt::Display;
 
@@ -1509,6 +1510,70 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx().ty_error()
     }
 
+    fn suggest_await_on_field_access(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        field_ident: Ident,
+        base: &'tcx hir::Expr<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) {
+        let param_env = self.tcx().param_env(def_id);
+        let future_trait = self.tcx.require_lang_item(lang_items::FutureTraitLangItem, None);
+        let future_trait_ref = ty::TraitRef { def_id: future_trait, substs };
+        // Future::Output
+        let future_projection = ty::ProjectionTy::from_ref_and_name(
+            self.tcx,
+            future_trait_ref,
+            Ident::with_dummy_span(sym::Output),
+        );
+
+        let mut projection_ty = None;
+        for (predicate, _) in self.tcx.predicates_of(def_id).predicates {
+            if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
+                if future_projection.item_def_id == projection_predicate.projection_ty.item_def_id {
+                    projection_ty = Some(projection_predicate.projection_ty);
+                    break;
+                }
+            }
+        }
+        debug!("suggest_await_on_field_access: projection_ty={:?}", projection_ty);
+
+        let cause = self.misc(expr.span);
+        let mut selcx = SelectionContext::new(&self.infcx);
+
+        let mut obligations = vec![];
+        if let Some(projection_ty) = projection_ty {
+            let normalized_ty = rustc_trait_selection::traits::normalize_projection_type(
+                &mut selcx,
+                param_env,
+                projection_ty,
+                cause,
+                0,
+                &mut obligations,
+            );
+            debug!(
+                "suggest_await_on_field_access: normalized_ty={:?}, ty_kind={:?}",
+                self.resolve_vars_if_possible(&normalized_ty),
+                normalized_ty.kind,
+            );
+            if let ty::Adt(def, _) = normalized_ty.kind {
+                if def.non_enum_variant().fields.iter().any(|field| field.ident == field_ident) {
+                    if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
+                        let suggestion = format!("{}.await.{}", base, field_ident);
+                        err.span_suggestion(
+                            expr.span,
+                            "consider await before field access",
+                            suggestion,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     fn ban_nonexisting_field(
         &self,
         field: Ident,
@@ -1516,6 +1581,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expr_t: Ty<'tcx>,
     ) {
+        debug!(
+            "ban_nonexisting_field: field={:?}, base={:?}, expr={:?}, expr_ty={:?}",
+            field, base, expr, expr_t
+        );
         let mut err = self.no_such_field_err(field.span, field, expr_t);
 
         match expr_t.peel_refs().kind {
@@ -1530,6 +1599,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::Param(param_ty) => {
                 self.point_at_param_definition(&mut err, param_ty);
+            }
+            ty::Opaque(def_id, subts) => {
+                self.suggest_await_on_field_access(&mut err, field, base, expr, def_id, subts);
             }
             _ => {}
         }

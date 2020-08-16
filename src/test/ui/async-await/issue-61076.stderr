@@ -1,5 +1,5 @@
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
-  --> $DIR/issue-61076.rs:32:5
+  --> $DIR/issue-61076.rs:38:5
    |
 LL |     foo()?;
    |     ^^^^^^
@@ -11,7 +11,7 @@ LL |     foo()?;
    = note: required by `std::ops::Try::into_result`
 
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
-  --> $DIR/issue-61076.rs:38:5
+  --> $DIR/issue-61076.rs:52:5
    |
 LL |     t?;
    |     ^^
@@ -23,37 +23,22 @@ LL |     t?;
    = note: required by `std::ops::Try::into_result`
 
 error[E0609]: no field `0` on type `impl std::future::Future`
-  --> $DIR/issue-61076.rs:42:7
+  --> $DIR/issue-61076.rs:54:26
    |
-LL |     }.0;
-   |       ^
+LL |     let _: i32 = tuple().0;
+   |                  --------^
+   |                  |
+   |                  help: consider await before field access: `tuple().await.0`
 
 error[E0609]: no field `a` on type `impl std::future::Future`
-  --> $DIR/issue-61076.rs:46:7
+  --> $DIR/issue-61076.rs:56:28
    |
-LL |     }.a;
-   |       ^
+LL |     let _: i32 = struct_().a;
+   |                  ----------^
+   |                  |
+   |                  help: consider await before field access: `struct_().await.a`
 
-error[E0308]: mismatched types
-  --> $DIR/issue-61076.rs:48:12
-   |
-LL |     A
-   |     - unit variant defined here
-...
-LL |     if let Enum::A = async { Enum::A } {}
-   |            ^^^^^^^         ----------- the expected generator
-   |            |
-   |            expected opaque type, found enum `Enum`
-   | 
-  ::: $SRC_DIR/libcore/future/mod.rs:LL:COL
-   |
-LL | pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
-   |                                           ------------------------------- the expected opaque type
-   |
-   = note: expected opaque type `impl std::future::Future`
-                     found enum `Enum`
+error: aborting due to 4 previous errors
 
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0277, E0308, E0609.
+Some errors have detailed explanations: E0277, E0609.
 For more information about an error, try `rustc --explain E0277`.
