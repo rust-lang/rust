@@ -1,3 +1,4 @@
+mod borrow;
 pub mod map;
 mod navigate;
 mod node;
