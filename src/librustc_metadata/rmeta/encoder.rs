@@ -1089,7 +1089,7 @@ impl EncodeContext<'a, 'tcx> {
     }
 
     fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[Ident]> {
-        self.tcx.dep_graph.with_ignore(|| self.lazy(self.tcx.hir().body_param_names(body_id)))
+        self.lazy(self.tcx.hir().body_param_names(body_id))
     }
 
     fn encode_fn_param_names(&mut self, param_names: &[Ident]) -> Lazy<[Ident]> {
