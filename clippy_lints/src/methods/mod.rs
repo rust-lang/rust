@@ -1306,6 +1306,29 @@ declare_clippy_lint! {
     "using `.iter().next()` on a sliced array, which can be shortened to just `.get()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Warns when using push_str with a single-character string literal,
+    /// and push with a char would work fine.
+    ///
+    /// **Why is this bad?** It's less clear that we are pushing a single character
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```
+    /// let mut string = String::new();
+    /// string.push_str("R");
+    /// ```
+    /// Could be written as
+    /// ```
+    /// let mut string = String::new();
+    /// string.push('R');
+    /// ```
+    pub SINGLE_CHAR_PUSH_STR,
+    style,
+    "`push_str()` used with a single-character string literal as parameter"
+}
+
 declare_lint_pass!(Methods => [
     UNWRAP_USED,
     EXPECT_USED,
@@ -1327,6 +1350,7 @@ declare_lint_pass!(Methods => [
     INEFFICIENT_TO_STRING,
     NEW_RET_NO_SELF,
     SINGLE_CHAR_PATTERN,
+    SINGLE_CHAR_PUSH_STR,
     SEARCH_IS_SOME,
     TEMPORARY_CSTRING_AS_PTR,
     FILTER_NEXT,
@@ -1439,6 +1463,12 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 }
                 if args.len() == 1 && method_call.ident.name == sym!(to_string) {
                     inefficient_to_string::lint(cx, expr, &args[0], self_ty);
+                }
+
+                if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+                    if match_def_path(cx, fn_def_id, &paths::PUSH_STR) {
+                        lint_single_char_push_string(cx, expr, args);
+                    }
                 }
 
                 match self_ty.kind {
@@ -3124,15 +3154,18 @@ fn lint_chars_last_cmp_with_unwrap<'tcx>(cx: &LateContext<'tcx>, info: &BinaryEx
     }
 }
 
-/// lint for length-1 `str`s for methods in `PATTERN_METHODS`
-fn lint_single_char_pattern<'tcx>(cx: &LateContext<'tcx>, _expr: &'tcx hir::Expr<'_>, arg: &'tcx hir::Expr<'_>) {
+fn get_hint_if_single_char_arg(
+    cx: &LateContext<'_>,
+    arg: &hir::Expr<'_>,
+    applicability: &mut Applicability,
+) -> Option<String> {
     if_chain! {
         if let hir::ExprKind::Lit(lit) = &arg.kind;
         if let ast::LitKind::Str(r, style) = lit.node;
-        if r.as_str().len() == 1;
+        let string = r.as_str();
+        if string.len() == 1;
         then {
-            let mut applicability = Applicability::MachineApplicable;
-            let snip = snippet_with_applicability(cx, arg.span, "..", &mut applicability);
+            let snip = snippet_with_applicability(cx, arg.span, &string, applicability);
             let ch = if let ast::StrStyle::Raw(nhash) = style {
                 let nhash = nhash as usize;
                 // for raw string: r##"a"##
@@ -3142,16 +3175,44 @@ fn lint_single_char_pattern<'tcx>(cx: &LateContext<'tcx>, _expr: &'tcx hir::Expr
                 &snip[1..(snip.len() - 1)]
             };
             let hint = format!("'{}'", if ch == "'" { "\\'" } else { ch });
-            span_lint_and_sugg(
-                cx,
-                SINGLE_CHAR_PATTERN,
-                arg.span,
-                "single-character string constant used as pattern",
-                "try using a `char` instead",
-                hint,
-                applicability,
-            );
+            Some(hint)
+        } else {
+            None
         }
+    }
+}
+
+/// lint for length-1 `str`s for methods in `PATTERN_METHODS`
+fn lint_single_char_pattern(cx: &LateContext<'_>, _expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
+    let mut applicability = Applicability::MachineApplicable;
+    if let Some(hint) = get_hint_if_single_char_arg(cx, arg, &mut applicability) {
+        span_lint_and_sugg(
+            cx,
+            SINGLE_CHAR_PATTERN,
+            arg.span,
+            "single-character string constant used as pattern",
+            "try using a `char` instead",
+            hint,
+            applicability,
+        );
+    }
+}
+
+/// lint for length-1 `str`s as argument for `push_str`
+fn lint_single_char_push_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+    let mut applicability = Applicability::MachineApplicable;
+    if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[1], &mut applicability) {
+        let base_string_snippet = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
+        let sugg = format!("{}.push({})", base_string_snippet, extension_string);
+        span_lint_and_sugg(
+            cx,
+            SINGLE_CHAR_PUSH_STR,
+            expr.span,
+            "calling `push_str()` using a single-character string literal",
+            "consider using `push` with a character literal",
+            sugg,
+            applicability,
+        );
     }
 }
 
