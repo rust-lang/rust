@@ -65,6 +65,12 @@ use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
 
+/// A type that is not publicly constructable. This prevents people from making `TyKind::Error`
+/// except through `tcx.err*()`, which are in this module.
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(TyEncodable, TyDecodable, HashStable)]
+pub struct DelaySpanBugEmitted(());
+
 type InternedSet<'tcx, T> = ShardedHashMap<Interned<'tcx, T>, ()>;
 
 pub struct CtxtInterners<'tcx> {
@@ -1171,7 +1177,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[track_caller]
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
         self.sess.delay_span_bug(span, msg);
-        self.mk_ty(Error(super::sty::DelaySpanBugEmitted(())))
+        self.mk_ty(Error(DelaySpanBugEmitted(())))
     }
 
     /// Like `err` but for constants.
@@ -1179,10 +1185,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_error(self, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
         self.sess
             .delay_span_bug(DUMMY_SP, "ty::ConstKind::Error constructed but no error reported.");
-        self.mk_const(ty::Const {
-            val: ty::ConstKind::Error(super::sty::DelaySpanBugEmitted(())),
-            ty,
-        })
+        self.mk_const(ty::Const { val: ty::ConstKind::Error(DelaySpanBugEmitted(())), ty })
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(&self, msg: T) -> bool {
