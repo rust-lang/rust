@@ -93,15 +93,29 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let effective_field_align = self.align.restrict_for_offset(offset);
 
         let mut simple = || {
-            // Unions and newtypes only use an offset of 0.
-            let llval = if offset.bytes() == 0 {
-                self.llval
-            } else if let Abi::ScalarPair(ref a, ref b) = self.layout.abi {
-                // Offsets have to match either first or second field.
-                assert_eq!(offset, a.value.size(bx.cx()).align_to(b.value.align(bx.cx()).abi));
-                bx.struct_gep(self.llval, 1)
-            } else {
-                bx.struct_gep(self.llval, bx.cx().backend_field_index(self.layout, ix))
+            let llval = match self.layout.abi {
+                _ if offset.bytes() == 0 => {
+                    // Unions and newtypes only use an offset of 0.
+                    // Also handles the first field of Scalar and ScalarPair layouts.
+                    self.llval
+                }
+                Abi::ScalarPair(ref a, ref b)
+                    if offset == a.value.size(bx.cx()).align_to(b.value.align(bx.cx()).abi) =>
+                {
+                    // Offset matches second field.
+                    bx.struct_gep(self.llval, 1)
+                }
+                Abi::ScalarPair(..) | Abi::Scalar(_) => {
+                    // ZST fields are not included in Scalar and ScalarPair layouts, so manually offset the pointer.
+                    assert!(
+                        field.is_zst(),
+                        "non-ZST field offset does not match layout: {:?}",
+                        field
+                    );
+                    let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
+                    bx.gep(byte_ptr, &[bx.const_usize(offset.bytes())])
+                }
+                _ => bx.struct_gep(self.llval, bx.cx().backend_field_index(self.layout, ix)),
             };
             PlaceRef {
                 // HACK(eddyb): have to bitcast pointers until LLVM removes pointee types.
