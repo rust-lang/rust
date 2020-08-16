@@ -933,11 +933,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box cognitive_complexity::CognitiveComplexity::new(cognitive_complexity_threshold));
     let too_large_for_stack = conf.too_large_for_stack;
     store.register_late_pass(move || box escape::BoxedLocal{too_large_for_stack});
+    store.register_late_pass(move || box vec::UselessVec{too_large_for_stack});
     store.register_late_pass(|| box panic_unimplemented::PanicUnimplemented);
     store.register_late_pass(|| box strings::StringLitAsBytes);
     store.register_late_pass(|| box derive::Derive);
     store.register_late_pass(|| box types::CharLitAsU8);
-    store.register_late_pass(|| box vec::UselessVec);
     store.register_late_pass(|| box drop_bounds::DropBounds);
     store.register_late_pass(|| box get_last_with_len::GetLastWithLen);
     store.register_late_pass(|| box drop_forget_ref::DropForgetRef);
