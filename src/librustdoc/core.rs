@@ -32,8 +32,8 @@ use std::rc::Rc;
 
 use crate::clean;
 use crate::clean::{AttributesExt, MAX_DEF_ID};
-use crate::config::{RenderInfo, OutputFormat};
 use crate::config::{Options as RustdocOptions, RenderOptions};
+use crate::config::{OutputFormat, RenderInfo};
 use crate::passes::{self, Condition::*, ConditionalPass};
 
 pub use rustc_session::config::{CodegenOptions, DebuggingOptions, Input, Options};
@@ -457,14 +457,30 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
-            sess.time("run_global_ctxt", || global_ctxt.enter(|tcx| run_global_ctxt(tcx, resolver, default_passes, manual_passes, render_options, output_format)))
+            sess.time("run_global_ctxt", || {
+                global_ctxt.enter(|tcx| {
+                    run_global_ctxt(
+                        tcx,
+                        resolver,
+                        default_passes,
+                        manual_passes,
+                        render_options,
+                        output_format,
+                    )
+                })
+            })
         })
     })
 }
 
-fn run_global_ctxt(tcx: TyCtxt<'_>, resolver: Rc<RefCell<interface::BoxedResolver>>,
-    mut default_passes: passes::DefaultPassOption, mut manual_passes: Vec<String>,
-    render_options: RenderOptions, output_format: Option<OutputFormat>) -> (clean::Crate, RenderInfo, RenderOptions) {
+fn run_global_ctxt(
+    tcx: TyCtxt<'_>,
+    resolver: Rc<RefCell<interface::BoxedResolver>>,
+    mut default_passes: passes::DefaultPassOption,
+    mut manual_passes: Vec<String>,
+    render_options: RenderOptions,
+    output_format: Option<OutputFormat>,
+) -> (clean::Crate, RenderInfo, RenderOptions) {
                 // Certain queries assume that some checks were run elsewhere
                 // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
                 // so type-check everything other than function bodies in this crate before running lints.
@@ -543,9 +559,8 @@ fn run_global_ctxt(tcx: TyCtxt<'_>, resolver: Rc<RefCell<interface::BoxedResolve
                             rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS,
                             ctxt.as_local_hir_id(m.def_id).unwrap(),
                             |lint| {
-                                let mut diag = lint.build(
-                                    "no documentation found for this crate's top-level module",
-                                );
+                    let mut diag =
+                        lint.build("no documentation found for this crate's top-level module");
                                 diag.help(help);
                                 diag.emit();
                             },
@@ -554,10 +569,8 @@ fn run_global_ctxt(tcx: TyCtxt<'_>, resolver: Rc<RefCell<interface::BoxedResolve
                 }
 
                 fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler) {
-                    let mut msg = diag.struct_warn(&format!(
-                        "the `#![doc({})]` attribute is considered deprecated",
-                        name
-                    ));
+        let mut msg = diag
+            .struct_warn(&format!("the `#![doc({})]` attribute is considered deprecated", name));
                     msg.warn(
                         "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
                          for more information",
