@@ -2,12 +2,12 @@ error[E0225]: only auto traits can be used as additional traits in a trait objec
   --> $DIR/missing-associated-types.rs:12:32
    |
 LL | type Foo<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Y<Rhs>;
-   |                     --------   ^^^^^^^^
-   |                     |          |
-   |                     |          additional non-auto trait
-   |                     |          trait alias used in trait object type (additional use)
+   |                     --------   ^^^^^^^^ additional non-auto trait
+   |                     |
    |                     first non-auto trait
-   |                     trait alias used in trait object type (first use)
+   |
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: std::ops::Add<Rhs> + std::ops::Sub<Rhs> + X<Rhs> + Y<Rhs> {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Sub`) must be specified
   --> $DIR/missing-associated-types.rs:12:21
@@ -31,12 +31,12 @@ error[E0225]: only auto traits can be used as additional traits in a trait objec
   --> $DIR/missing-associated-types.rs:15:32
    |
 LL | type Bar<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs>;
-   |                     --------   ^^^^^^^^
-   |                     |          |
-   |                     |          additional non-auto trait
-   |                     |          trait alias used in trait object type (additional use)
+   |                     --------   ^^^^^^^^ additional non-auto trait
+   |                     |
    |                     first non-auto trait
-   |                     trait alias used in trait object type (first use)
+   |
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: std::ops::Add<Rhs> + std::ops::Sub<Rhs> + X<Rhs> + Z<Rhs> {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0191]: the value of the associated types `A` (from trait `Z`), `B` (from trait `Z`), `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Sub`) must be specified
   --> $DIR/missing-associated-types.rs:15:21
@@ -67,12 +67,12 @@ error[E0225]: only auto traits can be used as additional traits in a trait objec
   --> $DIR/missing-associated-types.rs:18:32
    |
 LL | type Baz<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Y<Rhs>;
-   |                     --------   ^^^^^^^^
-   |                     |          |
-   |                     |          additional non-auto trait
-   |                     |          trait alias used in trait object type (additional use)
+   |                     --------   ^^^^^^^^ additional non-auto trait
+   |                     |
    |                     first non-auto trait
-   |                     trait alias used in trait object type (first use)
+   |
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: std::ops::Add<Rhs> + std::ops::Sub<Rhs> + Y<Rhs> {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Sub`) must be specified
   --> $DIR/missing-associated-types.rs:18:21
@@ -95,12 +95,12 @@ error[E0225]: only auto traits can be used as additional traits in a trait objec
   --> $DIR/missing-associated-types.rs:21:32
    |
 LL | type Bat<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Fine<Rhs>;
-   |                     --------   ^^^^^^^^
-   |                     |          |
-   |                     |          additional non-auto trait
-   |                     |          trait alias used in trait object type (additional use)
+   |                     --------   ^^^^^^^^ additional non-auto trait
+   |                     |
    |                     first non-auto trait
-   |                     trait alias used in trait object type (first use)
+   |
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: std::ops::Add<Rhs> + std::ops::Sub<Rhs> + Fine<Rhs> {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0191]: the value of the associated types `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Sub`) must be specified
   --> $DIR/missing-associated-types.rs:21:21

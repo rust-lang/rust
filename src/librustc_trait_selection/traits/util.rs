@@ -53,10 +53,14 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
                 diag.span_label(*sp, format!("referenced here ({})", use_desc));
             }
         }
-        diag.span_label(
-            self.bottom().1,
-            format!("trait alias used in trait object type ({})", use_desc),
-        );
+        if self.top().1 != self.bottom().1 {
+            // When the trait object is in a return type these two spans match, we don't want
+            // redundant labels.
+            diag.span_label(
+                self.bottom().1,
+                format!("trait alias used in trait object type ({})", use_desc),
+            );
+        }
     }
 
     pub fn trait_ref(&self) -> ty::PolyTraitRef<'tcx> {

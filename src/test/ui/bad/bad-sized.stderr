@@ -2,12 +2,12 @@ error[E0225]: only auto traits can be used as additional traits in a trait objec
   --> $DIR/bad-sized.rs:4:28
    |
 LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
-   |                    -----   ^^^^^
-   |                    |       |
-   |                    |       additional non-auto trait
-   |                    |       trait alias used in trait object type (additional use)
+   |                    -----   ^^^^^ additional non-auto trait
+   |                    |
    |                    first non-auto trait
-   |                    trait alias used in trait object type (first use)
+   |
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Trait + std::marker::Sized {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
   --> $DIR/bad-sized.rs:4:12
