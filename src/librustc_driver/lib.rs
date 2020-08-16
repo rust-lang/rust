@@ -35,7 +35,7 @@ use rustc_serialize::json::{self, ToJson};
 use rustc_session::config::nightly_options;
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest};
 use rustc_session::getopts;
-use rustc_session::lint::{Lint, LintId};
+use rustc_session::lint::{Level, Lint, LintId};
 use rustc_session::{config, DiagnosticOutput, Session};
 use rustc_session::{early_error, early_warn};
 use rustc_span::source_map::{FileLoader, FileName};
@@ -179,10 +179,6 @@ pub fn run_compiler(
             registry: diagnostics_registry(),
         };
         callbacks.config(&mut config);
-        // lol no lints at all
-        config.override_queries = Some(|_, providers, _| {
-            providers.lint_mod = |_, _| {};
-        });
         config
     };
 
@@ -260,10 +256,12 @@ pub fn run_compiler(
     };
 
     callbacks.config(&mut config);
-    // lol no lints at all
-    config.override_queries = Some(|_, providers, _| {
-        providers.lint_mod = |_, _| {};
-    });
+    // Since the warnings from these lints will never be shown, there is no need to run them at all!
+    if let Some(Level::Allow) = config.opts.lint_cap {
+        config.override_queries = Some(|_, providers, _| {
+            providers.lint_mod = |_, _| {};
+        });
+    }
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
