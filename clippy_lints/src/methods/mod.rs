@@ -2711,6 +2711,7 @@ fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
 }
 
 /// lint use of `map().unwrap_or_else()` for `Option`s and `Result`s
+/// Return true if lint triggered
 fn lint_map_unwrap_or_else<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
@@ -2761,16 +2762,14 @@ fn lint_map_unwrap_or_else<'tcx>(
                     map_snippet, unwrap_snippet,
                 ),
             );
-            true
+            return true;
         } else if same_span && multiline {
             span_lint(cx, MAP_UNWRAP_OR, expr.span, msg);
-            true
-        } else {
-            false
+            return true;
         }
-    } else {
-        false
     }
+
+    false
 }
 
 /// lint use of `_.map_or(None, _)` for `Option`s and `Result`s
