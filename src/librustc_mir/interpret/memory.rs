@@ -8,7 +8,7 @@
 
 use std::borrow::Cow;
 use std::collections::VecDeque;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::ptr;
 
@@ -380,7 +380,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // if this is already a `Pointer` we want to do the bounds checks!
             sptr
         } else {
-            // A "real" access, we must get a pointer.
+            // A "real" access, we must get a pointer to be able to check the bounds.
             Scalar::from(self.force_ptr(sptr)?)
         };
         Ok(match normalized.to_bits_or_ptr(self.pointer_size(), self) {
@@ -411,15 +411,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
                 if let Some(align) = align {
-                    if alloc_align.bytes() < align.bytes() {
-                        // The allocation itself is not aligned enough.
-                        // FIXME: Alignment check is too strict, depending on the base address that
-                        // got picked we might be aligned even if this check fails.
-                        // We instead have to fall back to converting to an integer and checking
-                        // the "real" alignment.
-                        throw_ub!(AlignmentCheckFailed { has: alloc_align, required: align });
+                    if M::force_int_for_alignment_check(&self.extra) {
+                        let bits = self
+                            .force_bits(ptr.into(), self.pointer_size())
+                            .expect("ptr-to-int cast for align check should never fail");
+                        check_offset_align(bits.try_into().unwrap(), align)?;
+                    } else {
+                        // Check allocation alignment and offset alignment.
+                        if alloc_align.bytes() < align.bytes() {
+                            throw_ub!(AlignmentCheckFailed { has: alloc_align, required: align });
+                        }
+                        check_offset_align(ptr.offset.bytes(), align)?;
                     }
-                    check_offset_align(ptr.offset.bytes(), align)?;
                 }
 
                 // We can still be zero-sized in this branch, in which case we have to
