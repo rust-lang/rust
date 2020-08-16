@@ -22,6 +22,8 @@ use crate::vec;
 /// The size of a `SocketAddr` instance may vary depending on the target operating
 /// system.
 ///
+/// [IP address]: IpAddr
+///
 /// # Examples
 ///
 /// ```

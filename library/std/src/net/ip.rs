@@ -133,8 +133,8 @@ pub enum Ipv6MulticastScope {
 impl IpAddr {
     /// Returns [`true`] for the special 'unspecified' address.
     ///
-    /// See the documentation for [`Ipv4Addr::is_unspecified`] and
-    /// [`Ipv6Addr::is_unspecified`] for more details.
+    /// See the documentation for [`Ipv4Addr::is_unspecified()`] and
+    /// [`Ipv6Addr::is_unspecified()`] for more details.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     ///
@@ -156,8 +156,8 @@ impl IpAddr {
 
     /// Returns [`true`] if this is a loopback address.
     ///
-    /// See the documentation for [`Ipv4Addr::is_loopback`] and
-    /// [`Ipv6Addr::is_loopback`] for more details.
+    /// See the documentation for [`Ipv4Addr::is_loopback()`] and
+    /// [`Ipv6Addr::is_loopback()`] for more details.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     ///
@@ -179,8 +179,8 @@ impl IpAddr {
 
     /// Returns [`true`] if the address appears to be globally routable.
     ///
-    /// See the documentation for [`Ipv4Addr::is_global`] and
-    /// [`Ipv6Addr::is_global`] for more details.
+    /// See the documentation for [`Ipv4Addr::is_global()`] and
+    /// [`Ipv6Addr::is_global()`] for more details.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     ///
@@ -203,8 +203,8 @@ impl IpAddr {
 
     /// Returns [`true`] if this is a multicast address.
     ///
-    /// See the documentation for [`Ipv4Addr::is_multicast`] and
-    /// [`Ipv6Addr::is_multicast`] for more details.
+    /// See the documentation for [`Ipv4Addr::is_multicast()`] and
+    /// [`Ipv6Addr::is_multicast()`] for more details.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     ///
@@ -226,8 +226,8 @@ impl IpAddr {
 
     /// Returns [`true`] if this address is in a range designated for documentation.
     ///
-    /// See the documentation for [`Ipv4Addr::is_documentation`] and
-    /// [`Ipv6Addr::is_documentation`] for more details.
+    /// See the documentation for [`Ipv4Addr::is_documentation()`] and
+    /// [`Ipv6Addr::is_documentation()`] for more details.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     ///
@@ -470,23 +470,24 @@ impl Ipv4Addr {
     /// Returns [`true`] if the address appears to be globally routable.
     /// See [iana-ipv4-special-registry][ipv4-sr].
     ///
-    /// The following return false:
+    /// The following return [`false`]:
     ///
-    /// - private addresses (see [`Ipv4Addr::is_private`])
-    /// - the loopback address (see [`Ipv4Addr::is_loopback`])
-    /// - the link-local address (see [`Ipv4Addr::is_link_local`])
-    /// - the broadcast address (see [`Ipv4Addr::is_broadcast`])
-    /// - addresses used for documentation (see [`Ipv4Addr::is_documentation`])
-    /// - the unspecified address (see [`Ipv4Addr::is_unspecified`]), and the whole
+    /// - private addresses (see [`Ipv4Addr::is_private()`])
+    /// - the loopback address (see [`Ipv4Addr::is_loopback()`])
+    /// - the link-local address (see [`Ipv4Addr::is_link_local()`])
+    /// - the broadcast address (see [`Ipv4Addr::is_broadcast()`])
+    /// - addresses used for documentation (see [`Ipv4Addr::is_documentation()`])
+    /// - the unspecified address (see [`Ipv4Addr::is_unspecified()`]), and the whole
     ///   0.0.0.0/8 block
     /// - addresses reserved for future protocols (see
-    /// [`Ipv4Addr::is_ietf_protocol_assignment`], except
+    /// [`Ipv4Addr::is_ietf_protocol_assignment()`], except
     /// `192.0.0.9/32` and `192.0.0.10/32` which are globally routable
-    /// - addresses reserved for future use (see [`Ipv4Addr::is_reserved`]
+    /// - addresses reserved for future use (see [`Ipv4Addr::is_reserved()`]
     /// - addresses reserved for networking devices benchmarking (see
-    /// [`Ipv4Addr::is_benchmarking`])
+    /// [`Ipv4Addr::is_benchmarking()`])
     ///
     /// [`true`]: ../../std/primitive.bool.html
+    /// [`false`]: ../../std/primitive.bool.html
     /// [ipv4-sr]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     ///
     /// # Examples
@@ -1218,7 +1219,7 @@ impl Ipv6Addr {
     ///
     /// This method validates the format defined in the RFC and won't recognize the following
     /// addresses such as `fe80:0:0:1::` or `fe81::` as unicast link-local addresses for example.
-    /// If you need a less strict validation use [`Ipv6Addr::is_unicast_link_local`] instead.
+    /// If you need a less strict validation use [`Ipv6Addr::is_unicast_link_local()`] instead.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     ///
@@ -1249,7 +1250,7 @@ impl Ipv6Addr {
     /// - [IETF RFC 4291 section 2.5.6]
     /// - [RFC 4291 errata 4406] (which has been rejected but provides useful
     ///   insight)
-    /// - [`Ipv6Addr::is_unicast_link_local`]
+    /// - [`Ipv6Addr::is_unicast_link_local()`]
     ///
     /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     /// [IETF RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
@@ -1275,9 +1276,9 @@ impl Ipv6Addr {
     /// ```
     ///
     /// As a result, this method consider addresses such as `fe80:0:0:1::` or `fe81::` to be
-    /// unicast link-local addresses, whereas [`Ipv6Addr::is_unicast_link_local_strict`] does not.
+    /// unicast link-local addresses, whereas [`Ipv6Addr::is_unicast_link_local_strict()`] does not.
     /// If you need a strict validation fully compliant with the RFC, use
-    /// [`Ipv6Addr::is_unicast_link_local_strict`] instead.
+    /// [`Ipv6Addr::is_unicast_link_local_strict()`] instead.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     ///
