@@ -846,7 +846,7 @@ impl<'a> MinifyingSugg<'a> {
         s.as_ref()
     }
 
-    fn hir(cx: &LateContext<'_, '_>, expr: &Expr<'_>, default: &'a str) -> Self {
+    fn hir(cx: &LateContext<'_>, expr: &Expr<'_>, default: &'a str) -> Self {
         Self(sugg::Sugg::hir(cx, expr, default))
     }
 
@@ -947,11 +947,7 @@ fn get_details_from_idx<'tcx>(
     idx: &Expr<'_>,
     starts: &[Start<'tcx>],
 ) -> Option<(StartKind<'tcx>, Offset)> {
-    fn get_start<'tcx>(
-        cx: &LateContext<'tcx>,
-        e: &Expr<'_>,
-        starts: &[Start<'tcx>],
-    ) -> Option<StartKind<'tcx>> {
+    fn get_start<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>, starts: &[Start<'tcx>]) -> Option<StartKind<'tcx>> {
         starts.iter().find_map(|start| {
             if same_var(cx, e, start.id) {
                 Some(start.kind)
@@ -982,13 +978,9 @@ fn get_details_from_idx<'tcx>(
     match idx.kind {
         ExprKind::Binary(op, lhs, rhs) => match op.node {
             BinOpKind::Add => {
-                let offset_opt = if let Some(s) = get_start(cx, lhs, starts) {
-                    get_offset(cx, rhs, starts).map(|o| (s, o))
-                } else if let Some(s) = get_start(cx, rhs, starts) {
-                    get_offset(cx, lhs, starts).map(|o| (s, o))
-                } else {
-                    None
-                };
+                let offset_opt = get_start(cx, lhs, starts)
+                    .and_then(|s| get_offset(cx, rhs, starts).map(|o| (s, o)))
+                    .or_else(|| get_start(cx, rhs, starts).and_then(|s| get_offset(cx, lhs, starts).map(|o| (s, o))));
 
                 offset_opt.map(|(s, o)| (s, Offset::positive(o)))
             },
@@ -1011,7 +1003,7 @@ fn get_assignment<'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx 
 }
 
 fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     stmts: &'tcx [Stmt<'tcx>],
     expr: Option<&'tcx Expr<'tcx>>,
     loop_counters: &'c [Start<'tcx>],
@@ -1032,7 +1024,7 @@ fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
 }
 
 fn get_loop_counters<'a, 'tcx>(
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     body: &'tcx Block<'tcx>,
     expr: &'tcx Expr<'_>,
 ) -> Option<impl Iterator<Item = Start<'tcx>> + 'a> {
@@ -1042,7 +1034,7 @@ fn get_loop_counters<'a, 'tcx>(
 
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
-    if let Some(block) = get_enclosing_block(&cx, expr.hir_id) {
+    get_enclosing_block(&cx, expr.hir_id).and_then(|block| {
         increment_visitor
             .into_results()
             .filter_map(move |var_id| {
@@ -1055,9 +1047,7 @@ fn get_loop_counters<'a, 'tcx>(
                 })
             })
             .into()
-    } else {
-        None
-    }
+    })
 }
 
 fn build_manual_memcpy_suggestion<'tcx>(
@@ -2315,7 +2305,7 @@ struct IncrementVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
+    fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
             states: FxHashMap::default(),
@@ -2396,7 +2386,10 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
 enum InitializeVisitorState<'hir> {
     Initial,          // Not examined yet
     Declared(Symbol), // Declared but not (yet) initialized
-    Initialized { name: Symbol, initializer: &'hir Expr<'hir> },
+    Initialized {
+        name: Symbol,
+        initializer: &'hir Expr<'hir>,
+    },
     DontWarn,
 }
 
@@ -2412,7 +2405,7 @@ struct InitializeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'a, 'tcx>, end_expr: &'tcx Expr<'tcx>, var_id: HirId) -> Self {
+    fn new(cx: &'a LateContext<'tcx>, end_expr: &'tcx Expr<'tcx>, var_id: HirId) -> Self {
         Self {
             cx,
             end_expr,
@@ -2423,7 +2416,7 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
         }
     }
 
-    fn get_result(&self) -> Option<(Name, &'tcx Expr<'tcx>)> {
+    fn get_result(&self) -> Option<(Symbol, &'tcx Expr<'tcx>)> {
         if let InitializeVisitorState::Initialized { name, initializer } = self.state {
             Some((name, initializer))
         } else {
@@ -2442,14 +2435,12 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
             if local.pat.hir_id == self.var_id;
             if let PatKind::Binding(.., ident, _) = local.pat.kind;
             then {
-                self.state = if let Some(ref init) = local.init {
+                self.state = local.init.map_or(InitializeVisitorState::Declared(ident.name), |init| {
                     InitializeVisitorState::Initialized {
                         initializer: init,
                         name: ident.name,
                     }
-                } else {
-                    InitializeVisitorState::Declared(ident.name)
-                }
+                })
             }
         }
         walk_stmt(self, stmt);
