@@ -62,6 +62,7 @@ pub(crate) fn codegen_cpuid_call<'tcx>(
     crate::trap::trap_unreachable(fx, "__cpuid_count arch intrinsic doesn't yet support specified leaf");
 
     fx.bcx.switch_to_block(dest);
+    fx.bcx.ins().nop();
 
     (eax, ebx, ecx, edx)
 }
