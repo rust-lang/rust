@@ -27,6 +27,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, par_iter, ParallelIterator};
+use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
@@ -46,7 +47,6 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
 use std::ops::Range;
 use std::ptr;
 use std::str;
@@ -1713,39 +1713,43 @@ impl WithOptConstParam<DefId> {
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
 /// particular point.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ParamEnv<'tcx> {
-    // We pack the caller_bounds List pointer and a Reveal enum into this usize.
-    // Specifically, the low bit represents Reveal, with 0 meaning `UserFacing`
-    // and 1 meaning `All`. The rest is the pointer.
-    //
-    // This relies on the List<Predicate<'tcx>> type having at least 2-byte
-    // alignment. Lists start with a usize and are repr(C) so this should be
-    // fine; there is a debug_assert in the constructor as well.
-    //
-    // Note that the choice of 0 for UserFacing is intentional -- since it is the
-    // first variant in Reveal this means that joining the pointer is a simple `or`.
-    packed_data: usize,
-
-    /// `Obligation`s that the caller must satisfy. This is basically
-    /// the set of bounds on the in-scope type parameters, translated
+    /// This packs both caller bounds and the reveal enum into one pointer.
+    ///
+    /// Caller bounds are `Obligation`s that the caller must satisfy. This is
+    /// basically the set of bounds on the in-scope type parameters, translated
     /// into `Obligation`s, and elaborated and normalized.
     ///
-    /// Note: This is packed into the `packed_data` usize above, use the
-    /// `caller_bounds()` method to access it.
-    caller_bounds: PhantomData<&'tcx List<Predicate<'tcx>>>,
-
+    /// Use the `caller_bounds()` method to access.
+    ///
     /// Typically, this is `Reveal::UserFacing`, but during codegen we
     /// want `Reveal::All`.
     ///
-    /// Note: This is packed into the caller_bounds usize above, use the reveal()
-    /// method to access it.
-    reveal: PhantomData<traits::Reveal>,
+    /// Note: This is packed, use the reveal() method to access it.
+    packed: CopyTaggedPtr<&'tcx List<Predicate<'tcx>>, traits::Reveal, true>,
 
     /// If this `ParamEnv` comes from a call to `tcx.param_env(def_id)`,
     /// register that `def_id` (useful for transitioning to the chalk trait
     /// solver).
     pub def_id: Option<DefId>,
+}
+
+unsafe impl rustc_data_structures::tagged_ptr::Tag for traits::Reveal {
+    const BITS: usize = 1;
+    fn into_usize(self) -> usize {
+        match self {
+            traits::Reveal::UserFacing => 0,
+            traits::Reveal::All => 1,
+        }
+    }
+    unsafe fn from_usize(ptr: usize) -> Self {
+        match ptr {
+            0 => traits::Reveal::UserFacing,
+            1 => traits::Reveal::All,
+            _ => std::hint::unreachable_unchecked(),
+        }
+    }
 }
 
 impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
@@ -1757,24 +1761,6 @@ impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
             .finish()
     }
 }
-
-impl<'tcx> Hash for ParamEnv<'tcx> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        // List hashes as the raw pointer, so we can skip splitting into the
-        // pointer and the enum.
-        self.packed_data.hash(state);
-        self.def_id.hash(state);
-    }
-}
-
-impl<'tcx> PartialEq for ParamEnv<'tcx> {
-    fn eq(&self, other: &Self) -> bool {
-        self.caller_bounds() == other.caller_bounds()
-            && self.reveal() == other.reveal()
-            && self.def_id == other.def_id
-    }
-}
-impl<'tcx> Eq for ParamEnv<'tcx> {}
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
@@ -1812,13 +1798,12 @@ impl<'tcx> ParamEnv<'tcx> {
 
     #[inline]
     pub fn caller_bounds(self) -> &'tcx List<Predicate<'tcx>> {
-        // mask out bottom bit
-        unsafe { &*((self.packed_data & (!1)) as *const _) }
+        self.packed.pointer()
     }
 
     #[inline]
     pub fn reveal(self) -> traits::Reveal {
-        if self.packed_data & 1 == 0 { traits::Reveal::UserFacing } else { traits::Reveal::All }
+        self.packed.tag()
     }
 
     /// Construct a trait environment with no where-clauses in scope
@@ -1840,24 +1825,11 @@ impl<'tcx> ParamEnv<'tcx> {
         reveal: Reveal,
         def_id: Option<DefId>,
     ) -> Self {
-        let packed_data = caller_bounds as *const _ as usize;
-        // Check that we can pack the reveal data into the pointer.
-        debug_assert!(packed_data & 1 == 0);
-        ty::ParamEnv {
-            packed_data: packed_data
-                | match reveal {
-                    Reveal::UserFacing => 0,
-                    Reveal::All => 1,
-                },
-            caller_bounds: PhantomData,
-            reveal: PhantomData,
-            def_id,
-        }
+        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, reveal), def_id }
     }
 
     pub fn with_user_facing(mut self) -> Self {
-        // clear bottom bit
-        self.packed_data &= !1;
+        self.packed.set_tag(Reveal::UserFacing);
         self
     }
 
@@ -1871,7 +1843,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// will be normalized to their underlying types.
     /// See PR #65989 and issue #65918 for more details
     pub fn with_reveal_all_normalized(self, tcx: TyCtxt<'tcx>) -> Self {
-        if self.packed_data & 1 == 1 {
+        if self.packed.tag() == traits::Reveal::All {
             return self;
         }
 
