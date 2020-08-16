@@ -1,7 +1,9 @@
-// Even with intptrcast and without validation, we want to be *sure* to catch bugs
-// that arise from pointers being insufficiently aligned. The only way to achieve
-// that is not not let programs exploit integer information for alignment, so here
-// we test that this is indeed the case.
+// compile-flags: -Zmiri-symbolic-alignment-check
+// With the symbolic alignment check, even with intptrcast and without
+// validation, we want to be *sure* to catch bugs that arise from pointers being
+// insufficiently aligned. The only way to achieve that is not not let programs
+// exploit integer information for alignment, so here we test that this is
+// indeed the case.
 //
 // See https://github.com/rust-lang/miri/issues/1074.
 fn main() {

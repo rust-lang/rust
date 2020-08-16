@@ -13,6 +13,16 @@ use rustc_target::abi::LayoutOf;
 
 use crate::*;
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum AlignmentCheck {
+    /// Do not check alignment.
+    None,
+    /// Check alignment "symbolically", i.e., using only the requested alignment for an allocation and not its real base address.
+    Symbolic,
+    /// Check alignment on the actual physical integer address.
+    Int,
+}
+
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
@@ -20,8 +30,8 @@ pub struct MiriConfig {
     pub validate: bool,
     /// Determines if Stacked Borrows is enabled.
     pub stacked_borrows: bool,
-    /// Determines if alignment checking is enabled.
-    pub check_alignment: bool,
+    /// Controls alignment checking.
+    pub check_alignment: AlignmentCheck,
     /// Determines if communication with the host environment is enabled.
     pub communicate: bool,
     /// Determines if memory leaks should be ignored.
@@ -45,7 +55,7 @@ impl Default for MiriConfig {
         MiriConfig {
             validate: true,
             stacked_borrows: true,
-            check_alignment: true,
+            check_alignment: AlignmentCheck::Int,
             communicate: false,
             ignore_leaks: false,
             excluded_env_vars: vec![],

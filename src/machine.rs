@@ -128,7 +128,7 @@ pub struct MemoryExtra {
     tracked_alloc_id: Option<AllocId>,
 
     /// Controls whether alignment of memory accesses is being checked.
-    check_alignment: bool,
+    check_alignment: AlignmentCheck,
 }
 
 impl MemoryExtra {
@@ -138,7 +138,7 @@ impl MemoryExtra {
         tracked_pointer_tag: Option<PtrId>,
         tracked_call_id: Option<CallId>,
         tracked_alloc_id: Option<AllocId>,
-        check_alignment: bool,
+        check_alignment: AlignmentCheck,
     ) -> Self {
         let stacked_borrows = if stacked_borrows {
             Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(tracked_pointer_tag, tracked_call_id))))
@@ -336,7 +336,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn enforce_alignment(memory_extra: &MemoryExtra) -> bool {
-        memory_extra.check_alignment
+        memory_extra.check_alignment != AlignmentCheck::None
+    }
+
+    #[inline(always)]
+    fn force_int_for_alignment_check(memory_extra: &Self::MemoryExtra) -> bool {
+        memory_extra.check_alignment == AlignmentCheck::Int
     }
 
     #[inline(always)]
