@@ -280,7 +280,9 @@ where
     (lint_opts, lint_caps)
 }
 
-pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions) {
+pub fn run_core(
+    options: RustdocOptions,
+) -> (clean::Crate, RenderInfo, RenderOptions, Lrc<Session>) {
     // Parse, resolve, and typecheck the given crate.
 
     let RustdocOptions {
@@ -457,7 +459,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
-            sess.time("run_global_ctxt", || {
+            let (krate, render_info, opts) = sess.time("run_global_ctxt", || {
                 global_ctxt.enter(|tcx| {
                     run_global_ctxt(
                         tcx,
@@ -468,7 +470,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                         output_format,
                     )
                 })
-            })
+            });
+            (krate, render_info, opts, Lrc::clone(sess))
         })
     })
 }
