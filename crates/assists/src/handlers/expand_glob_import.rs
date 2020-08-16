@@ -709,7 +709,7 @@ fn qux(bar: Bar, baz: Baz) {
 
     #[test]
     fn expanding_glob_import_with_macro_defs() {
-        // TODO: this is currently fails because `Definition::find_usages` ignores macros
+        // FIXME: this is currently fails because `Definition::find_usages` ignores macros
         //       https://github.com/rust-analyzer/rust-analyzer/issues/3484
         //
         //         check_assist(

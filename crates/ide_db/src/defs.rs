@@ -225,7 +225,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum NameRefClass {
     ExternCrate(Crate),
     Definition(Definition),
