@@ -2384,6 +2384,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "unnecessary_lazy_evaluations",
+        group: "style",
+        desc: "using unnecessary lazy evaluation, which can be replaced with simpler eager evaluation",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "unnecessary_mut_passed",
         group: "style",
         desc: "an argument passed as a mutable reference although the callee only demands an immutable reference",

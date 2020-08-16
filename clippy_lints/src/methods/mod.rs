@@ -3,6 +3,7 @@ mod inefficient_to_string;
 mod manual_saturating_arithmetic;
 mod option_map_unwrap_or;
 mod unnecessary_filter_map;
+mod unnecessary_lazy_eval;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -1329,6 +1330,42 @@ declare_clippy_lint! {
     "`push_str()` used with a single-character string literal as parameter"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** As the counterpart to `or_fun_call`, this lint looks for unnecessary
+    /// lazily evaluated closures on `Option` and `Result`.
+    ///
+    /// This lint suggests changing the following functions, when eager evaluation results in
+    /// simpler code:
+    ///  - `unwrap_or_else` to `unwrap_or`
+    ///  - `and_then` to `and`
+    ///  - `or_else` to `or`
+    ///  - `get_or_insert_with` to `get_or_insert`
+    ///  - `ok_or_else` to `ok_or`
+    ///
+    /// **Why is this bad?** Using eager evaluation is shorter and simpler in some cases.
+    ///
+    /// **Known problems:** It is possible, but not recommended for `Deref` and `Index` to have
+    /// side effects. Eagerly evaluating them can change the semantics of the program.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // example code where clippy issues a warning
+    /// let opt: Option<u32> = None;
+    ///
+    /// opt.unwrap_or_else(|| 42);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let opt: Option<u32> = None;
+    ///
+    /// opt.unwrap_or(42);
+    /// ```
+    pub UNNECESSARY_LAZY_EVALUATIONS,
+    style,
+    "using unnecessary lazy evaluation, which can be replaced with simpler eager evaluation"
+}
+
 declare_lint_pass!(Methods => [
     UNWRAP_USED,
     EXPECT_USED,
@@ -1378,6 +1415,7 @@ declare_lint_pass!(Methods => [
     ZST_OFFSET,
     FILETYPE_IS_FILE,
     OPTION_AS_REF_DEREF,
+    UNNECESSARY_LAZY_EVALUATIONS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
@@ -1398,13 +1436,19 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["expect", "ok"] => lint_ok_expect(cx, expr, arg_lists[1]),
             ["expect", ..] => lint_expect(cx, expr, arg_lists[0]),
             ["unwrap_or", "map"] => option_map_unwrap_or::lint(cx, expr, arg_lists[1], arg_lists[0], method_spans[1]),
-            ["unwrap_or_else", "map"] => lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0]),
+            ["unwrap_or_else", "map"] => {
+                if !lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0]) {
+                    unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], true, "unwrap_or");
+                }
+            },
             ["map_or", ..] => lint_map_or_none(cx, expr, arg_lists[0]),
             ["and_then", ..] => {
+                unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], false, "and");
                 bind_instead_of_map::OptionAndThenSome::lint(cx, expr, arg_lists[0]);
                 bind_instead_of_map::ResultAndThenOk::lint(cx, expr, arg_lists[0]);
             },
             ["or_else", ..] => {
+                unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], false, "or");
                 bind_instead_of_map::ResultOrElseErrInfo::lint(cx, expr, arg_lists[0]);
             },
             ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
@@ -1448,6 +1492,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["is_file", ..] => lint_filetype_is_file(cx, expr, arg_lists[0]),
             ["map", "as_ref"] => lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], false),
             ["map", "as_mut"] => lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], true),
+            ["unwrap_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], true, "unwrap_or"),
+            ["get_or_insert_with", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], true, "get_or_insert"),
+            ["ok_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], true, "ok_or"),
             _ => {},
         }
 
@@ -2664,12 +2711,13 @@ fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
 }
 
 /// lint use of `map().unwrap_or_else()` for `Option`s and `Result`s
+/// Return true if lint triggered
 fn lint_map_unwrap_or_else<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     map_args: &'tcx [hir::Expr<'_>],
     unwrap_args: &'tcx [hir::Expr<'_>],
-) {
+) -> bool {
     // lint if the caller of `map()` is an `Option`
     let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym!(option_type));
     let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym!(result_type));
@@ -2681,10 +2729,10 @@ fn lint_map_unwrap_or_else<'tcx>(
         let unwrap_mutated_vars = mutated_variables(&unwrap_args[1], cx);
         if let (Some(map_mutated_vars), Some(unwrap_mutated_vars)) = (map_mutated_vars, unwrap_mutated_vars) {
             if map_mutated_vars.intersection(&unwrap_mutated_vars).next().is_some() {
-                return;
+                return false;
             }
         } else {
-            return;
+            return false;
         }
 
         // lint message
@@ -2714,10 +2762,14 @@ fn lint_map_unwrap_or_else<'tcx>(
                     map_snippet, unwrap_snippet,
                 ),
             );
+            return true;
         } else if same_span && multiline {
             span_lint(cx, MAP_UNWRAP_OR, expr.span, msg);
-        };
+            return true;
+        }
     }
+
+    false
 }
 
 /// lint use of `_.map_or(None, _)` for `Option`s and `Result`s
