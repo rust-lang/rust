@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{MacroDef, Module, ModuleDef, Name, PathResolution, ScopeDef, SemanticsScope};
+use hir::{AssocItem, MacroDef, Module, ModuleDef, Name, PathResolution, ScopeDef};
 use ide_db::{
     defs::{classify_name_ref, Definition, NameRefClass},
     search::SearchScope,
@@ -49,7 +49,7 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
 
     let refs_in_target = find_refs_in_mod(ctx, target_module, Some(current_module))?;
     let imported_defs = find_imported_defs(ctx, star)?;
-    let names_to_import = find_names_to_import(ctx, current_scope, refs_in_target, imported_defs);
+    let names_to_import = find_names_to_import(ctx, refs_in_target, imported_defs);
 
     let target = parent.clone().either(|n| n.syntax().clone(), |n| n.syntax().clone());
     acc.add(
@@ -90,6 +90,18 @@ enum Def {
     MacroDef(MacroDef),
 }
 
+impl Def {
+    fn is_referenced_in(&self, ctx: &AssistContext) -> bool {
+        let def = match self {
+            Def::ModuleDef(def) => Definition::ModuleDef(*def),
+            Def::MacroDef(def) => Definition::Macro(*def),
+        };
+
+        let search_scope = SearchScope::single_file(ctx.frange.file_id);
+        !def.find_usages(&ctx.sema, Some(search_scope)).is_empty()
+    }
+}
+
 #[derive(Debug, Clone)]
 struct Ref {
     // could be alias
@@ -105,35 +117,39 @@ impl Ref {
             _ => None,
         }
     }
-
-    fn is_referenced_in(&self, ctx: &AssistContext, scope: &SemanticsScope) -> bool {
-        let def = match self.def {
-            Def::ModuleDef(def) => Definition::ModuleDef(def),
-            Def::MacroDef(def) => Definition::Macro(def),
-        };
-
-        if let Definition::ModuleDef(ModuleDef::Trait(tr)) = def {
-            if scope
-                .traits_in_scope()
-                .into_iter()
-                .find(|other_tr_id| tr == other_tr_id.to_owned().into())
-                .is_some()
-            {
-                return true;
-            }
-        }
-
-        let search_scope = SearchScope::single_file(ctx.frange.file_id);
-        !def.find_usages(&ctx.sema, Some(search_scope)).is_empty()
-    }
 }
 
 #[derive(Debug, Clone)]
 struct Refs(Vec<Ref>);
 
 impl Refs {
-    fn used_refs(&self, ctx: &AssistContext, scope: &SemanticsScope) -> Refs {
-        Refs(self.0.clone().into_iter().filter(|r| r.is_referenced_in(ctx, scope)).collect())
+    fn used_refs(&self, ctx: &AssistContext) -> Refs {
+        Refs(
+            self.0
+                .clone()
+                .into_iter()
+                .filter(|r| {
+                    if let Def::ModuleDef(ModuleDef::Trait(tr)) = r.def {
+                        if tr
+                            .items(ctx.db())
+                            .into_iter()
+                            .find(|ai| {
+                                if let AssocItem::Function(f) = *ai {
+                                    Def::ModuleDef(ModuleDef::Function(f)).is_referenced_in(ctx)
+                                } else {
+                                    false
+                                }
+                            })
+                            .is_some()
+                        {
+                            return true;
+                        }
+                    }
+
+                    r.def.is_referenced_in(ctx)
+                })
+                .collect(),
+        )
     }
 
     fn filter_out_by_defs(&self, defs: Vec<Def>) -> Refs {
@@ -191,11 +207,10 @@ fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Def>
 
 fn find_names_to_import(
     ctx: &AssistContext,
-    current_scope: SemanticsScope,
     refs_in_target: Refs,
     imported_defs: Vec<Def>,
 ) -> Vec<Name> {
-    let used_refs = refs_in_target.used_refs(ctx, &current_scope).filter_out_by_defs(imported_defs);
+    let used_refs = refs_in_target.used_refs(ctx).filter_out_by_defs(imported_defs);
     used_refs.0.iter().map(|r| r.visible_name.clone()).collect()
 }
 
@@ -767,7 +782,37 @@ fn main() {
     ().method();
 }
 ",
-        )
+        );
+
+        check_assist(
+            expand_glob_import,
+            r"
+//- /lib.rs crate:foo
+pub trait Tr {
+    fn method(&self) {}
+}
+impl Tr for () {}
+
+pub trait Tr2 {
+    fn method2(&self) {}
+}
+impl Tr2 for () {}
+
+//- /main.rs crate:main deps:foo
+use foo::*<|>;
+
+fn main() {
+    ().method();
+}
+",
+            r"
+use foo::Tr;
+
+fn main() {
+    ().method();
+}
+",
+        );
     }
 
     #[test]
