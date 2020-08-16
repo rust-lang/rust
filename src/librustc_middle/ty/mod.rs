@@ -73,8 +73,8 @@ pub use self::binding::BindingMode::*;
 
 pub use self::context::{tls, FreeRegionInfo, TyCtxt};
 pub use self::context::{
-    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, ResolvedOpaqueTy,
-    UserType, UserTypeAnnotationIndex,
+    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
+    DelaySpanBugEmitted, ResolvedOpaqueTy, UserType, UserTypeAnnotationIndex,
 };
 pub use self::context::{
     CtxtInterners, GeneratorInteriorTypeCause, GlobalCtxt, Lift, TypeckResults,

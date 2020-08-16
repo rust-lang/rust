@@ -34,7 +34,7 @@ pub enum ConstKind<'tcx> {
 
     /// A placeholder for a const which could not be computed; this is
     /// propagated to avoid useless error messages.
-    Error(ty::sty::DelaySpanBugEmitted),
+    Error(ty::DelaySpanBugEmitted),
 }
 
 #[cfg(target_arch = "x86_64")]

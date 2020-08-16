@@ -10,7 +10,7 @@ use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::{
     self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable, WithConstness,
 };
-use crate::ty::{List, ParamEnv, TyS};
+use crate::ty::{DelaySpanBugEmitted, List, ParamEnv, TyS};
 use polonius_engine::Atom;
 use rustc_ast::ast;
 use rustc_data_structures::captures::Captures;
@@ -211,12 +211,6 @@ impl TyKind<'tcx> {
         }
     }
 }
-
-/// A type that is not publicly constructable. This prevents people from making `TyKind::Error`
-/// except through `tcx.err*()`.
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
-pub struct DelaySpanBugEmitted(pub(super) ());
 
 // `TyKind` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
