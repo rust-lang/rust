@@ -1,3 +1,5 @@
+// compile-flags: -Zmiri-symbolic-alignment-check
+
 fn test_align_offset() {
     let d = Box::new([0u32; 4]);
     // Get u8 pointer to base
