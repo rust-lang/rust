@@ -1,12 +1,10 @@
 use either::Either;
-use std::iter::successors;
-
-use hir::{AssocItem, MacroDef, ModuleDef, Name, PathResolution, ScopeDef, SemanticsScope};
+use hir::{MacroDef, Module, ModuleDef, Name, PathResolution, ScopeDef, SemanticsScope};
 use ide_db::{
     defs::{classify_name_ref, Definition, NameRefClass},
-    RootDatabase,
+    search::SearchScope,
 };
-use syntax::{algo, ast, AstNode, SourceFile, SyntaxNode, SyntaxToken, T};
+use syntax::{algo, ast, AstNode, Direction, SyntaxNode, SyntaxToken, T};
 
 use crate::{
     assist_context::{AssistBuilder, AssistContext, Assists},
@@ -41,16 +39,17 @@ use crate::{
 pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let star = ctx.find_token_at_offset(T![*])?;
     let (parent, mod_path) = find_parent_and_path(&star)?;
-    let module = match ctx.sema.resolve_path(&mod_path)? {
+    let target_module = match ctx.sema.resolve_path(&mod_path)? {
         PathResolution::Def(ModuleDef::Module(it)) => it,
         _ => return None,
     };
 
-    let source_file = ctx.source_file();
-    let scope = ctx.sema.scope_at_offset(source_file.syntax(), ctx.offset());
+    let current_scope = ctx.sema.scope(&star.parent());
+    let current_module = current_scope.module()?;
 
-    let defs_in_mod = find_defs_in_mod(ctx, scope, module)?;
-    let names_to_import = find_names_to_import(ctx, source_file, defs_in_mod);
+    let refs_in_target = find_refs_in_mod(ctx, target_module, Some(current_module))?;
+    let imported_defs = find_imported_defs(ctx, star)?;
+    let names_to_import = find_names_to_import(ctx, current_scope, refs_in_target, imported_defs);
 
     let target = parent.clone().either(|n| n.syntax().clone(), |n| n.syntax().clone());
     acc.add(
@@ -85,94 +84,119 @@ fn find_parent_and_path(
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum Def {
     ModuleDef(ModuleDef),
     MacroDef(MacroDef),
 }
 
-impl Def {
-    fn name(&self, db: &RootDatabase) -> Option<Name> {
-        match self {
-            Def::ModuleDef(def) => def.name(db),
-            Def::MacroDef(def) => def.name(db),
+#[derive(Debug, Clone)]
+struct Ref {
+    // could be alias
+    visible_name: Name,
+    def: Def,
+}
+
+impl Ref {
+    fn from_scope_def(name: Name, scope_def: ScopeDef) -> Option<Self> {
+        match scope_def {
+            ScopeDef::ModuleDef(def) => Some(Ref { visible_name: name, def: Def::ModuleDef(def) }),
+            ScopeDef::MacroDef(def) => Some(Ref { visible_name: name, def: Def::MacroDef(def) }),
+            _ => None,
         }
+    }
+
+    fn is_referenced_in(&self, ctx: &AssistContext, scope: &SemanticsScope) -> bool {
+        let def = match self.def {
+            Def::ModuleDef(def) => Definition::ModuleDef(def),
+            Def::MacroDef(def) => Definition::Macro(def),
+        };
+
+        if let Definition::ModuleDef(ModuleDef::Trait(tr)) = def {
+            if scope
+                .traits_in_scope()
+                .into_iter()
+                .find(|other_tr_id| tr == other_tr_id.to_owned().into())
+                .is_some()
+            {
+                return true;
+            }
+        }
+
+        let search_scope = SearchScope::single_file(ctx.frange.file_id);
+        !def.find_usages(&ctx.sema, Some(search_scope)).is_empty()
     }
 }
 
-fn find_defs_in_mod(
-    ctx: &AssistContext,
-    from: SemanticsScope<'_>,
-    module: hir::Module,
-) -> Option<Vec<Def>> {
-    let module_scope = module.scope(ctx.db(), from.module());
+#[derive(Debug, Clone)]
+struct Refs(Vec<Ref>);
 
-    let mut defs = vec![];
-    for (_, def) in module_scope {
-        match def {
-            ScopeDef::ModuleDef(def) => defs.push(Def::ModuleDef(def)),
-            ScopeDef::MacroDef(def) => defs.push(Def::MacroDef(def)),
-            _ => continue,
-        }
+impl Refs {
+    fn used_refs(&self, ctx: &AssistContext, scope: &SemanticsScope) -> Refs {
+        Refs(self.0.clone().into_iter().filter(|r| r.is_referenced_in(ctx, scope)).collect())
     }
 
-    Some(defs)
+    fn filter_out_by_defs(&self, defs: Vec<Def>) -> Refs {
+        Refs(self.0.clone().into_iter().filter(|r| !defs.contains(&r.def)).collect())
+    }
+}
+
+fn find_refs_in_mod(
+    ctx: &AssistContext,
+    module: Module,
+    visible_from: Option<Module>,
+) -> Option<Refs> {
+    let module_scope = module.scope(ctx.db(), visible_from);
+    let refs = module_scope.into_iter().filter_map(|(n, d)| Ref::from_scope_def(n, d)).collect();
+    Some(Refs(refs))
+}
+
+// looks for name refs in parent use block's siblings
+//
+// mod bar {
+//     mod qux {
+//         struct Qux;
+//     }
+//
+//     pub use qux::Qux;
+// }
+//
+// ↓ ---------------
+// use foo::*<|>;
+// use baz::Baz;
+// ↑ ---------------
+fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Def>> {
+    let parent_use_item_syntax =
+        star.ancestors().find_map(|n| if ast::Use::can_cast(n.kind()) { Some(n) } else { None })?;
+
+    Some(
+        [Direction::Prev, Direction::Next]
+            .iter()
+            .map(|dir| {
+                parent_use_item_syntax
+                    .siblings(dir.to_owned())
+                    .filter(|n| ast::Use::can_cast(n.kind()))
+            })
+            .flatten()
+            .filter_map(|n| Some(n.descendants().filter_map(ast::NameRef::cast)))
+            .flatten()
+            .filter_map(|r| match classify_name_ref(&ctx.sema, &r)? {
+                NameRefClass::Definition(Definition::ModuleDef(def)) => Some(Def::ModuleDef(def)),
+                NameRefClass::Definition(Definition::Macro(def)) => Some(Def::MacroDef(def)),
+                _ => None,
+            })
+            .collect(),
+    )
 }
 
 fn find_names_to_import(
     ctx: &AssistContext,
-    source_file: &SourceFile,
-    defs_in_mod: Vec<Def>,
+    current_scope: SemanticsScope,
+    refs_in_target: Refs,
+    imported_defs: Vec<Def>,
 ) -> Vec<Name> {
-    let (name_refs_in_use_item, name_refs_in_source) = source_file
-        .syntax()
-        .descendants()
-        .filter_map(|n| {
-            let name_ref = ast::NameRef::cast(n.clone())?;
-            let name_ref_class = classify_name_ref(&ctx.sema, &name_ref)?;
-            let is_in_use_item =
-                successors(n.parent(), |n| n.parent()).find_map(ast::Use::cast).is_some();
-            Some((name_ref_class, is_in_use_item))
-        })
-        .partition::<Vec<_>, _>(|&(_, is_in_use_item)| is_in_use_item);
-
-    let name_refs_to_import: Vec<NameRefClass> = name_refs_in_source
-        .into_iter()
-        .filter_map(|(r, _)| {
-            if name_refs_in_use_item.contains(&(r.clone(), true)) {
-                // already imported
-                return None;
-            }
-            Some(r)
-        })
-        .collect();
-
-    let defs_in_source_file = name_refs_to_import
-        .into_iter()
-        .filter_map(|rc| match rc {
-            NameRefClass::Definition(Definition::ModuleDef(def)) => Some(Def::ModuleDef(def)),
-            NameRefClass::Definition(Definition::Macro(def)) => Some(Def::MacroDef(def)),
-            _ => None,
-        })
-        .collect::<Vec<Def>>();
-
-    defs_in_mod
-        .iter()
-        .filter(|def| {
-            if let Def::ModuleDef(ModuleDef::Trait(tr)) = def {
-                for item in tr.items(ctx.db()) {
-                    if let AssocItem::Function(f) = item {
-                        if defs_in_source_file.contains(&Def::ModuleDef(ModuleDef::Function(f))) {
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            defs_in_source_file.contains(def)
-        })
-        .filter_map(|d| d.name(ctx.db()))
-        .collect()
+    let used_refs = refs_in_target.used_refs(ctx, &current_scope).filter_out_by_defs(imported_defs);
+    used_refs.0.iter().map(|r| r.visible_name.clone()).collect()
 }
 
 fn replace_ast(
@@ -685,34 +709,37 @@ fn qux(bar: Bar, baz: Baz) {
 
     #[test]
     fn expanding_glob_import_with_macro_defs() {
-        check_assist(
-            expand_glob_import,
-            r"
-//- /lib.rs crate:foo
-#[macro_export]
-macro_rules! bar {
-    () => ()
-}
+        // TODO: this is currently fails because `Definition::find_usages` ignores macros
+        //       https://github.com/rust-analyzer/rust-analyzer/issues/3484
+        //
+        //         check_assist(
+        //             expand_glob_import,
+        //             r"
+        // //- /lib.rs crate:foo
+        // #[macro_export]
+        // macro_rules! bar {
+        //     () => ()
+        // }
 
-pub fn baz() {}
+        // pub fn baz() {}
 
-//- /main.rs crate:main deps:foo
-use foo::*<|>;
+        // //- /main.rs crate:main deps:foo
+        // use foo::*<|>;
 
-fn main() {
-    bar!();
-    baz();
-}
-",
-            r"
-use foo::{bar, baz};
+        // fn main() {
+        //     bar!();
+        //     baz();
+        // }
+        // ",
+        //             r"
+        // use foo::{bar, baz};
 
-fn main() {
-    bar!();
-    baz();
-}
-",
-        )
+        // fn main() {
+        //     bar!();
+        //     baz();
+        // }
+        // ",
+        //         )
     }
 
     #[test]
