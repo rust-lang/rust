@@ -2228,18 +2228,15 @@ impl ClashingExternDeclarations {
                         };
 
                         match (a_kind, b_kind) {
-                            (Adt(_, a_substs), Adt(_, b_substs)) => {
+                            (Adt(a_def, a_substs), Adt(b_def, b_substs)) => {
                                 let a = a.subst(cx.tcx, a_substs);
                                 let b = b.subst(cx.tcx, b_substs);
                                 debug!("Comparing {:?} and {:?}", a, b);
 
-                                if let (Adt(a_def, ..), Adt(b_def, ..)) = (&a.kind, &b.kind) {
-                                    // Grab a flattened representation of all fields.
-                                    let a_fields =
-                                        a_def.variants.iter().flat_map(|v| v.fields.iter());
-                                    let b_fields =
-                                        b_def.variants.iter().flat_map(|v| v.fields.iter());
-                                    compare_layouts(a, b)
+                                // Grab a flattened representation of all fields.
+                                let a_fields = a_def.variants.iter().flat_map(|v| v.fields.iter());
+                                let b_fields = b_def.variants.iter().flat_map(|v| v.fields.iter());
+                                compare_layouts(a, b)
                             && a_fields.eq_by(
                                 b_fields,
                                 |&ty::FieldDef { did: a_did, .. },
@@ -2253,9 +2250,6 @@ impl ClashingExternDeclarations {
                                     )
                                 },
                             )
-                                } else {
-                                    unreachable!()
-                                }
                             }
                             (Array(a_ty, a_const), Array(b_ty, b_const)) => {
                                 // For arrays, we also check the constness of the type.
