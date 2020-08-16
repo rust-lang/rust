@@ -8,7 +8,7 @@ use cranelift_module::{FuncId, Module};
 use object::{SectionKind, SymbolFlags, RelocationKind, RelocationEncoding};
 use object::write::*;
 
-use cranelift_object::*;
+use cranelift_object::{ObjectBackend, ObjectBuilder, ObjectProduct};
 
 use gimli::SectionId;
 
