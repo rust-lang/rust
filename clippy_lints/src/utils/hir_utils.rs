@@ -340,6 +340,11 @@ pub fn over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
 }
 
+/// Checks if two expressions evaluate to the same value, and don't contain any side effects.
+pub fn eq_expr_value(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>) -> bool {
+    SpanlessEq::new(cx).ignore_fn().eq_expr(left, right)
+}
+
 /// Type used to hash an ast element. This is different from the `Hash` trait
 /// on ast types as this
 /// trait would consider IDs and spans.

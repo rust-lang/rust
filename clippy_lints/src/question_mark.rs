@@ -7,8 +7,8 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    higher, is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet_with_applicability,
-    span_lint_and_sugg, SpanlessEq,
+    eq_expr_value, higher, is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet_with_applicability,
+    span_lint_and_sugg,
 };
 
 declare_clippy_lint! {
@@ -65,7 +65,7 @@ impl QuestionMark {
                         if let ExprKind::Block(block, None) = &else_.kind;
                         if block.stmts.is_empty();
                         if let Some(block_expr) = &block.expr;
-                        if SpanlessEq::new(cx).ignore_fn().eq_expr(subject, block_expr);
+                        if eq_expr_value(cx, subject, block_expr);
                         then {
                             replacement = Some(format!("Some({}?)", receiver_str));
                         }
