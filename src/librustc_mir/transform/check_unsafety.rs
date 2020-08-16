@@ -228,7 +228,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
             match base_ty.kind {
                 ty::RawPtr(..) => self.require_unsafe(
-                    UnsafetyViolationKind::General,
+                    UnsafetyViolationKind::GeneralAndConstFn,
                     UnsafetyViolationDetails::DerefOfRawPointer,
                 ),
                 ty::Adt(adt, _) => {
