@@ -1,19 +1,19 @@
-error: not automatically applying `DerefMut` on union field
-  --> $DIR/union-deref.rs:14:14
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:15:14
    |
 LL |     unsafe { u.f.0 = Vec::new() };
    |              ^^^
    |
-   = help: writing to this field calls the destructor for the old value
+   = help: writing to this reference calls the destructor for the old value
    = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
 
-error: not automatically applying `DerefMut` on union field
-  --> $DIR/union-deref.rs:18:14
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:19:14
    |
 LL |     unsafe { u.f.0.0 = Vec::new() };
    |              ^^^^^^^
    |
-   = help: writing to this field calls the destructor for the old value
+   = help: writing to this reference calls the destructor for the old value
    = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
 
 error: aborting due to 2 previous errors

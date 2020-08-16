@@ -244,14 +244,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let ty::Ref(region, _, mutbl) = method.sig.output().kind {
                                 *deref = OverloadedDeref { region, mutbl };
                             }
-                            // If this is a union field, also throw an error.
-                            // Union fields should not get mutable auto-deref'd (see RFC 2514).
-                            if inside_union {
+                            // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
+                            // This helps avoid accidental drops.
+                            if inside_union
+                                && source.ty_adt_def().map_or(false, |adt| adt.is_manually_drop())
+                            {
                                 let mut err = self.tcx.sess.struct_span_err(
                                     expr.span,
-                                    "not automatically applying `DerefMut` on union field",
+                                    "not automatically applying `DerefMut` on `ManuallyDrop` union field",
                                 );
-                                err.help("writing to this field calls the destructor for the old value");
+                                err.help(
+                                    "writing to this reference calls the destructor for the old value",
+                                );
                                 err.help("add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor");
                                 err.emit();
                             }
