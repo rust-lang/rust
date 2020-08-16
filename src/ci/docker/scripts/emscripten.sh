@@ -19,5 +19,5 @@ exit 1
 
 git clone https://github.com/emscripten-core/emsdk.git /emsdk-portable
 cd /emsdk-portable
-hide_output ./emsdk install 1.38.46-upstream
-./emsdk activate 1.38.46-upstream
+hide_output ./emsdk install 1.38.47-upstream
+./emsdk activate 1.38.47-upstream
