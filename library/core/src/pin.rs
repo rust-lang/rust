@@ -6,9 +6,12 @@
 //! as moving an object with pointers to itself will invalidate them, which could cause undefined
 //! behavior.
 //!
-//! A [`Pin<P>`] ensures that the pointee of any pointer type `P` has a stable location in memory,
-//! meaning it cannot be moved elsewhere and its memory cannot be deallocated
-//! until it gets dropped. We say that the pointee is "pinned".
+//! At a high level, a [`Pin<P>`] ensures that the pointee of any pointer type
+//! `P` has a stable location in memory, meaning it cannot be moved elsewhere
+//! and its memory cannot be deallocated until it gets dropped. We say that the
+//! pointee is "pinned". Things get more subtle when discussing types that
+//! combine pinned with non-pinned data; [see below](#projections-and-structural-pinning)
+//! for more details.
 //!
 //! By default, all types in Rust are movable. Rust allows passing all types by-value,
 //! and common smart-pointer types such as [`Box<T>`] and `&mut T` allow replacing and
@@ -60,6 +63,10 @@
 //! pointed-to type).
 //!
 //! # Example: self-referential struct
+//!
+//! Before we go into more details to explain the guarantees and choices
+//! associated with `Pin<T>`, we discuss some examples for how it might be used.
+//! Feel free to [skip to where the theoretical discussion continues](#drop-guarantee).
 //!
 //! ```rust
 //! use std::pin::Pin;
