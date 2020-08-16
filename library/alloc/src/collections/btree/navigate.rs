@@ -366,7 +366,6 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
 impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge> {
     /// Moves the leaf edge handle to the next leaf edge and returns references to the
     /// key and value in between.
-    /// The returned references might be invalidated when the updated handle is used again.
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
@@ -376,14 +375,12 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
             let kv = unsafe { unwrap_unchecked(kv.ok()) };
             (unsafe { ptr::read(&kv) }.next_leaf_edge(), kv)
         });
-        // Doing the descend (and perhaps another move) invalidates the references
-        // returned by `into_kv_valmut`, so we have to do this last.
+        // Doing this last is faster, according to benchmarks.
         kv.into_kv_valmut()
     }
 
     /// Moves the leaf edge handle to the previous leaf and returns references to the
     /// key and value in between.
-    /// The returned references might be invalidated when the updated handle is used again.
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
@@ -393,8 +390,7 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
             let kv = unsafe { unwrap_unchecked(kv.ok()) };
             (unsafe { ptr::read(&kv) }.next_back_leaf_edge(), kv)
         });
-        // Doing the descend (and perhaps another move) invalidates the references
-        // returned by `into_kv_valmut`, so we have to do this last.
+        // Doing this last is faster, according to benchmarks.
         kv.into_kv_valmut()
     }
 }

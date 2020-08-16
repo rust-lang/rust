@@ -2796,8 +2796,8 @@ enum UnderflowResult<'a, K, V> {
     Stole(bool),
 }
 
-fn handle_underfull_node<K, V>(
-    node: NodeRef<marker::Mut<'_>, K, V, marker::LeafOrInternal>,
+fn handle_underfull_node<'a, K: 'a, V: 'a>(
+    node: NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>,
 ) -> UnderflowResult<'_, K, V> {
     let parent = match node.ascend() {
         Ok(parent) => parent,

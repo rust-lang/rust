@@ -68,11 +68,11 @@ where
     K: Borrow<Q>,
 {
     // This function is defined over all borrow types (immutable, mutable, owned).
-    // Using `keys()` is fine here even if BorrowType is mutable, as all we return
+    // Using `keys_at()` is fine here even if BorrowType is mutable, as all we return
     // is an index -- not a reference.
     let len = node.len();
-    let keys = node.keys();
-    for (i, k) in keys.iter().enumerate() {
+    for i in 0..len {
+        let k = unsafe { node.key_at(i) };
         match key.cmp(k.borrow()) {
             Ordering::Greater => {}
             Ordering::Equal => return (i, true),
