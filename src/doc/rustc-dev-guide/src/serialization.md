@@ -1,7 +1,7 @@
 # Serialization in Rustc
 
 Rustc has to [serialize] and deserialize various data during compilation.
-Specifially:
+Specifically:
 
 - "Crate metadata", mainly query outputs, are serialized in a binary
   format into `rlib` and `rmeta` files that are output when compiling a library
@@ -17,7 +17,7 @@ Specifially:
 
 The [`rustc_serialize`] crate defines two traits for types which can be serialized:
 
-```rust
+```rust,ignore
 pub trait Encodable<S: Encoder> {
     fn encode(&self, s: &mut S) -> Result<(), S::Error>;
 }
@@ -35,7 +35,7 @@ usually implemented by [derives]. These generate implementations that forward
 deserialization to the fields of the struct or enum. For a struct those impls
 look something like this:
 
-```rust
+```rust,ingore
 # #![feature(rustc_private)]
 # extern crate rustc_serialize;
 # use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -59,7 +59,7 @@ impl<D: Decoder> Decodable<D> for MyStruct {
             let int = d.read_struct_field("int", 0, Decodable::decode)?;
             let float = d.read_struct_field("float", 1, Decodable::decode)?;
 
-            Ok(MyStruct::new(int, float, SyntaxContext::root()))
+            Ok(MyStruct { int, float })
         })
     }
 }
@@ -82,7 +82,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for MyStruct<'tcx> {
 }
 ```
 
-The `TyEncodable` and `TyDecodable` [derive macros](derives) will expand to such
+The `TyEncodable` and `TyDecodable` [derive macros][derives] will expand to such
 an implementation.
 
 Decoding the actual arena allocated type is harder, because some of the
