@@ -14,17 +14,6 @@
 //! * [`ToSocketAddrs`] is a trait that used for generic address resolution when interacting
 //!   with networking objects like [`TcpListener`], [`TcpStream`] or [`UdpSocket`]
 //! * Other types are return or parameter types for various methods in this module
-//!
-//! [`IpAddr`]: ../../std/net/enum.IpAddr.html
-//! [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
-//! [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
-//! [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
-//! [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
-//! [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
-//! [`TcpListener`]: ../../std/net/struct.TcpListener.html
-//! [`TcpStream`]: ../../std/net/struct.TcpStream.html
-//! [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
-//! [`UdpSocket`]: ../../std/net/struct.UdpSocket.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -49,38 +38,27 @@ mod tcp;
 mod test;
 mod udp;
 
-/// Possible values which can be passed to the [`shutdown`] method of
-/// [`TcpStream`].
-///
-/// [`shutdown`]: struct.TcpStream.html#method.shutdown
-/// [`TcpStream`]: struct.TcpStream.html
+/// Possible values which can be passed to the [`TcpStream::shutdown`] method.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Shutdown {
     /// The reading portion of the [`TcpStream`] should be shut down.
     ///
-    /// All currently blocked and future [reads] will return [`Ok(0)`].
+    /// All currently blocked and future [reads] will return [`Ok`]`(0)`.
     ///
-    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
-    /// [reads]: ../../std/io/trait.Read.html
-    /// [`Ok(0)`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [reads]: crate::io::Read
     #[stable(feature = "rust1", since = "1.0.0")]
     Read,
     /// The writing portion of the [`TcpStream`] should be shut down.
     ///
     /// All currently blocked and future [writes] will return an error.
     ///
-    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
-    /// [writes]: ../../std/io/trait.Write.html
+    /// [writes]: crate::io::Write
     #[stable(feature = "rust1", since = "1.0.0")]
     Write,
     /// Both the reading and the writing portions of the [`TcpStream`] should be shut down.
     ///
     /// See [`Shutdown::Read`] and [`Shutdown::Write`] for more information.
-    ///
-    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
-    /// [`Shutdown::Read`]: #variant.Read
-    /// [`Shutdown::Write`]: #variant.Write
     #[stable(feature = "rust1", since = "1.0.0")]
     Both,
 }
