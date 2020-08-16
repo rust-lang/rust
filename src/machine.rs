@@ -128,7 +128,7 @@ pub struct MemoryExtra {
     tracked_alloc_id: Option<AllocId>,
 
     /// Controls whether alignment of memory accesses is being checked.
-    check_alignment: AlignmentCheck,
+    pub(crate) check_alignment: AlignmentCheck,
 }
 
 impl MemoryExtra {

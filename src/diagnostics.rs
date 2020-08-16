@@ -100,11 +100,12 @@ pub fn report_error<'tcx, 'mir>(
                     panic!("Error should never be raised by Miri: {:?}", e.kind),
                 Unsupported(_) =>
                     vec![format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support")],
-                UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. }) =>
+                UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. })
+                    if ecx.memory.extra.check_alignment == AlignmentCheck::Symbolic
+                =>
                     vec![
                         format!("this usually indicates that your program performed an invalid operation and caused Undefined Behavior"),
-                        format!("but alignment errors can also be false positives, see https://github.com/rust-lang/miri/issues/1074"),
-                        format!("you can disable the alignment check with `-Zmiri-disable-alignment-check`, but that could hide true bugs")
+                        format!("but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives"),
                     ],
                 UndefinedBehavior(_) =>
                     vec![
