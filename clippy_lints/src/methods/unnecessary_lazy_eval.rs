@@ -1,4 +1,4 @@
-use crate::utils::{match_qpath, span_lint_and_sugg, snippet, is_type_diagnostic_item};
+use crate::utils::{is_type_diagnostic_item, match_qpath, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
