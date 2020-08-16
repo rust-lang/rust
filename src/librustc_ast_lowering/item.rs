@@ -5,7 +5,7 @@ use crate::Arena;
 use rustc_ast::ast::*;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -72,6 +72,18 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
                     visit::walk_item(this, item);
                 }
             });
+        }
+    }
+
+    fn visit_fn(&mut self, fk: FnKind<'a>, sp: Span, _: NodeId) {
+        match fk {
+            FnKind::Fn(FnCtxt::Foreign, _, sig, _, _) => {
+                self.visit_fn_header(&sig.header);
+                visit::walk_fn_decl(self, &sig.decl);
+                // Don't visit the foreign function body even if it has one, since lowering the
+                // body would have no meaning and will have already been caught as a parse error.
+            }
+            _ => visit::walk_fn(self, fk, sp),
         }
     }
 
