@@ -89,10 +89,10 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                 both(&li.label, &ri.label, |l, r| l.ident.as_str() == r.ident.as_str())
             },
             (&ExprKind::Assign(ref ll, ref lr, _), &ExprKind::Assign(ref rl, ref rr, _)) => {
-                self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
+                self.allow_side_effects && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             },
             (&ExprKind::AssignOp(ref lo, ref ll, ref lr), &ExprKind::AssignOp(ref ro, ref rl, ref rr)) => {
-                lo.node == ro.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
+                self.allow_side_effects && lo.node == ro.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             },
             (&ExprKind::Block(ref l, _), &ExprKind::Block(ref r, _)) => self.eq_block(l, r),
             (&ExprKind::Binary(l_op, ref ll, ref lr), &ExprKind::Binary(r_op, ref rl, ref rr)) => {
