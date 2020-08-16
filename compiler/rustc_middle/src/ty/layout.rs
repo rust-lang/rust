@@ -289,25 +289,32 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let optimize = !repr.inhibit_struct_field_reordering_opt();
         if optimize {
-            let end =
-                if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
-            let optimizing = &mut inverse_memory_index[..end];
             let field_align = |f: &TyAndLayout<'_>| {
                 if let Some(pack) = pack { f.align.abi.min(pack) } else { f.align.abi }
             };
             match kind {
-                StructKind::AlwaysSized | StructKind::MaybeUnsized => {
-                    optimizing.sort_by_key(|&x| {
+                StructKind::AlwaysSized => {
+                    inverse_memory_index.sort_by_key(|&x| {
                         // Place ZSTs first to avoid "interesting offsets",
                         // especially with only one or two non-ZST fields.
                         let f = &fields[x as usize];
                         (!f.is_zst(), cmp::Reverse(field_align(f)))
                     });
                 }
+                StructKind::MaybeUnsized => {
+                    // Sort in descending alignment, except for the last field,
+                    // which may be accessed through an unsized type.
+                    inverse_memory_index[..fields.len() - 1]
+                        .sort_by_key(|&x| cmp::Reverse(field_align(&fields[x as usize])));
+                    // Place ZSTs first to avoid "interesting offsets".
+                    // This will reorder the last field if it is a ZST, which is okay because
+                    // there's nothing in memory that could be accessed through an unsized type.
+                    inverse_memory_index.sort_by_key(|&x| !fields[x as usize].is_zst());
+                }
                 StructKind::Prefixed(..) => {
                     // Sort in ascending alignment so that the layout stay optimal
                     // regardless of the prefix
-                    optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
+                    inverse_memory_index.sort_by_key(|&x| field_align(&fields[x as usize]));
                 }
             }
         }
