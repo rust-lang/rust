@@ -1,4 +1,4 @@
-// MIR for `main` after SimplifyCfg-qualify-consts
+// MIR for `main` after SimplifyCfg-promote-consts
 
 fn main() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/loop_test.rs:6:11: 6:11
