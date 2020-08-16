@@ -364,15 +364,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             // In theory, any zero-sized value could be borrowed
                             // mutably without consequences. However, only &mut []
                             // is allowed right now, and only in functions.
-                            if self.const_kind
-                                == Some(hir::ConstContext::Static(hir::Mutability::Mut))
-                            {
-                                // Inside a `static mut`, &mut [...] is also allowed.
-                                match ty.kind() {
-                                    ty::Array(..) | ty::Slice(_) => {}
-                                    _ => return Err(Unpromotable),
-                                }
-                            } else if let ty::Array(_, len) = ty.kind() {
+                            if let ty::Array(_, len) = ty.kind() {
                                 // FIXME(eddyb) the `self.is_non_const_fn` condition
                                 // seems unnecessary, given that this is merely a ZST.
                                 match len.try_eval_usize(self.tcx, self.param_env) {
@@ -673,13 +665,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
                     // is allowed right now, and only in functions.
-                    if self.const_kind == Some(hir::ConstContext::Static(hir::Mutability::Mut)) {
-                        // Inside a `static mut`, &mut [...] is also allowed.
-                        match ty.kind() {
-                            ty::Array(..) | ty::Slice(_) => {}
-                            _ => return Err(Unpromotable),
-                        }
-                    } else if let ty::Array(_, len) = ty.kind() {
+                    if let ty::Array(_, len) = ty.kind() {
                         // FIXME(eddyb): We only return `Unpromotable` for `&mut []` inside a
                         // const context which seems unnecessary given that this is merely a ZST.
                         match len.try_eval_usize(self.tcx, self.param_env) {
