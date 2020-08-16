@@ -158,7 +158,14 @@ pub struct Config {
     pub registry: Registry,
 }
 
-pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
+pub fn create_compiler_and_run<R>(mut config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
+    // Since the warnings from these lints will never be shown, there is no need to run them at all!
+    if let Some(lint::Level::Allow) = config.opts.lint_cap {
+        config.override_queries = Some(|_, providers, _| {
+            providers.lint_mod = |_, _| {};
+        });
+    }
+
     let registry = &config.registry;
     let (sess, codegen_backend) = util::create_session(
         config.opts,
