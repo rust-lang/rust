@@ -3029,7 +3029,7 @@ fn contains_nonascii(v: usize) -> bool {
 ///
 /// - Read the first word with an unaligned load.
 /// - Align the pointer, read subsequent words until end with aligned loads.
-/// - If there's a tail, the last `usize` from `s` with an unaligned load.
+/// - Read the last `usize` from `s` with an unaligned load.
 ///
 /// If any of these loads produces something for which `contains_nonascii`
 /// (above) returns true, then we know the answer is false.
@@ -3077,7 +3077,10 @@ fn is_ascii(s: &[u8]) -> bool {
     // `align_offset` though.
     debug_assert_eq!((word_ptr as usize) % mem::align_of::<usize>(), 0);
 
-    while byte_pos <= len - USIZE_SIZE {
+    // Read subsequent words until the last aligned word, excluding the last
+    // aligned word by itself to be done in tail check later, to ensure that
+    // tail is always one `usize` at most to extra branch `byte_pos == len`.
+    while byte_pos < len - USIZE_SIZE {
         debug_assert!(
             // Sanity check that the read is in bounds
             (word_ptr as usize + USIZE_SIZE) <= (start.wrapping_add(len) as usize) &&
@@ -3098,15 +3101,9 @@ fn is_ascii(s: &[u8]) -> bool {
         word_ptr = unsafe { word_ptr.add(1) };
     }
 
-    // If we have anything left over, it should be at-most 1 usize worth of bytes,
-    // which we check with a read_unaligned.
-    if byte_pos == len {
-        return true;
-    }
-
     // Sanity check to ensure there really is only one `usize` left. This should
     // be guaranteed by our loop condition.
-    debug_assert!(byte_pos < len && len - byte_pos < USIZE_SIZE);
+    debug_assert!(byte_pos <= len && len - byte_pos <= USIZE_SIZE);
 
     // SAFETY: This relies on `len >= USIZE_SIZE`, which we check at the start.
     let last_word = unsafe { (start.add(len - USIZE_SIZE) as *const usize).read_unaligned() };
