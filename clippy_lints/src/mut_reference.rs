@@ -9,8 +9,8 @@ declare_clippy_lint! {
     /// **What it does:** Detects passing a mutable reference to a function that only
     /// requires an immutable reference.
     ///
-    /// **Why is this bad?** The immutable reference rules out all other references
-    /// to the value. Also the code misleads about the intent of the call site.
+    /// **Why is this bad?** The mutable reference rules out all other references to
+    /// the value. Also the code misleads about the intent of the call site.
     ///
     /// **Known problems:** None.
     ///
