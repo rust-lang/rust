@@ -2184,8 +2184,9 @@ impl ClashingExternDeclarations {
                 };
 
                 #[allow(rustc::usage_of_ty_tykind)]
-                let is_primitive_or_pointer =
-                    |kind: &ty::TyKind<'_>| kind.is_primitive() || matches!(kind, RawPtr(..));
+                let is_primitive_or_pointer = |kind: &ty::TyKind<'_>| {
+                    kind.is_primitive() || matches!(kind, RawPtr(..) | Ref(..))
+                };
 
                 match (a_kind, b_kind) {
                     (Adt(a_def, a_substs), Adt(b_def, b_substs)) => {
@@ -2274,8 +2275,8 @@ impl ClashingExternDeclarations {
                     // These definitely should have been caught above.
                     (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => unreachable!(),
 
-                    // An Adt and a primitive type. This can be FFI-safe is the ADT is an enum with a
-                    // non-null field.
+                    // An Adt and a primitive or pointer type. This can be FFI-safe if non-null
+                    // enum layout optimisation is being applied.
                     (Adt(..), other_kind) | (other_kind, Adt(..))
                         if is_primitive_or_pointer(other_kind) =>
                     {
