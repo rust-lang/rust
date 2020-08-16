@@ -35,10 +35,10 @@ usually implemented by [derives]. These generate implementations that forward
 deserialization to the fields of the struct or enum. For a struct those impls
 look something like this:
 
-```rust,ingore
-# #![feature(rustc_private)]
-# extern crate rustc_serialize;
-# use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+```rust,ignore
+#![feature(rustc_private)]
+extern crate rustc_serialize;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 struct MyStruct {
     int: u32,
