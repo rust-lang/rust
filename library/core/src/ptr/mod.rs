@@ -1172,7 +1172,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
     ///
-    /// This implementation is tailored for align_offset and has following preconditions:
+    /// This implementation is tailored for `align_offset` and has following preconditions:
     ///
     /// * `m` is a power-of-two;
     /// * `x < m`; (if `x ≥ m`, pass in `x % m` instead)
@@ -1220,23 +1220,21 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     }
 
     let stride = mem::size_of::<T>();
-    // SAFETY: `a` is a power-of-two, hence non-zero.
+    // SAFETY: `a` is a power-of-two, therefore non-zero.
     let a_minus_one = unsafe { unchecked_sub(a, 1) };
-    let pmoda = p as usize & a_minus_one;
+    if stride == 1 {
+        // `stride == 1` case can be computed more efficiently through `-p (mod a)`.
+        return wrapping_sub(0, p as usize) & a_minus_one;
+    }
 
+    let pmoda = p as usize & a_minus_one;
     if pmoda == 0 {
         // Already aligned. Yay!
         return 0;
-    }
-
-    if stride <= 1 {
-        return if stride == 0 {
-            // If the pointer is not aligned, and the element is zero-sized, then no amount of
-            // elements will ever align the pointer.
-            !0
-        } else {
-            wrapping_sub(a, pmoda)
-        };
+    } else if stride == 0 {
+        // If the pointer is not aligned, and the element is zero-sized, then no amount of
+        // elements will ever align the pointer.
+        return usize::MAX;
     }
 
     let smoda = stride & a_minus_one;
