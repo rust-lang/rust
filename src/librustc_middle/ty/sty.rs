@@ -10,7 +10,7 @@ use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::{
     self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable, WithConstness,
 };
-use crate::ty::{List, ParamEnv, TyS};
+use crate::ty::{DelaySpanBugEmitted, List, ParamEnv, TyS};
 use polonius_engine::Atom;
 use rustc_ast::ast;
 use rustc_data_structures::captures::Captures;
@@ -212,12 +212,6 @@ impl TyKind<'tcx> {
     }
 }
 
-/// A type that is not publicly constructable. This prevents people from making `TyKind::Error`
-/// except through `tcx.err*()`.
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
-pub struct DelaySpanBugEmitted(pub(super) ());
-
 // `TyKind` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(TyKind<'_>, 24);
@@ -325,24 +319,39 @@ pub struct ClosureSubsts<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-/// Struct returned by `split()`. Note that these are subslices of the
-/// parent slice and not canonical substs themselves.
-struct SplitClosureSubsts<'tcx> {
-    parent: &'tcx [GenericArg<'tcx>],
-    closure_kind_ty: GenericArg<'tcx>,
-    closure_sig_as_fn_ptr_ty: GenericArg<'tcx>,
-    tupled_upvars_ty: GenericArg<'tcx>,
+/// Struct returned by `split()`.
+pub struct ClosureSubstsParts<'tcx, T> {
+    pub parent_substs: &'tcx [GenericArg<'tcx>],
+    pub closure_kind_ty: T,
+    pub closure_sig_as_fn_ptr_ty: T,
+    pub tupled_upvars_ty: T,
 }
 
 impl<'tcx> ClosureSubsts<'tcx> {
-    /// Divides the closure substs into their respective
-    /// components. Single source of truth with respect to the
-    /// ordering.
-    fn split(self) -> SplitClosureSubsts<'tcx> {
+    /// Construct `ClosureSubsts` from `ClosureSubstsParts`, containing `Substs`
+    /// for the closure parent, alongside additional closure-specific components.
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        parts: ClosureSubstsParts<'tcx, Ty<'tcx>>,
+    ) -> ClosureSubsts<'tcx> {
+        ClosureSubsts {
+            substs: tcx.mk_substs(
+                parts.parent_substs.iter().copied().chain(
+                    [parts.closure_kind_ty, parts.closure_sig_as_fn_ptr_ty, parts.tupled_upvars_ty]
+                        .iter()
+                        .map(|&ty| ty.into()),
+                ),
+            ),
+        }
+    }
+
+    /// Divides the closure substs into their respective components.
+    /// The ordering assumed here must match that used by `ClosureSubsts::new` above.
+    fn split(self) -> ClosureSubstsParts<'tcx, GenericArg<'tcx>> {
         match self.substs[..] {
-            [ref parent @ .., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
-                SplitClosureSubsts {
-                    parent,
+            [ref parent_substs @ .., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
+                ClosureSubstsParts {
+                    parent_substs,
                     closure_kind_ty,
                     closure_sig_as_fn_ptr_ty,
                     tupled_upvars_ty,
@@ -363,7 +372,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
 
     /// Returns the substitutions of the closure's parent.
     pub fn parent_substs(self) -> &'tcx [GenericArg<'tcx>] {
-        self.split().parent
+        self.split().parent_substs
     }
 
     #[inline]
@@ -418,21 +427,46 @@ pub struct GeneratorSubsts<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-struct SplitGeneratorSubsts<'tcx> {
-    parent: &'tcx [GenericArg<'tcx>],
-    resume_ty: GenericArg<'tcx>,
-    yield_ty: GenericArg<'tcx>,
-    return_ty: GenericArg<'tcx>,
-    witness: GenericArg<'tcx>,
-    tupled_upvars_ty: GenericArg<'tcx>,
+pub struct GeneratorSubstsParts<'tcx, T> {
+    pub parent_substs: &'tcx [GenericArg<'tcx>],
+    pub resume_ty: T,
+    pub yield_ty: T,
+    pub return_ty: T,
+    pub witness: T,
+    pub tupled_upvars_ty: T,
 }
 
 impl<'tcx> GeneratorSubsts<'tcx> {
-    fn split(self) -> SplitGeneratorSubsts<'tcx> {
+    /// Construct `GeneratorSubsts` from `GeneratorSubstsParts`, containing `Substs`
+    /// for the generator parent, alongside additional generator-specific components.
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        parts: GeneratorSubstsParts<'tcx, Ty<'tcx>>,
+    ) -> GeneratorSubsts<'tcx> {
+        GeneratorSubsts {
+            substs: tcx.mk_substs(
+                parts.parent_substs.iter().copied().chain(
+                    [
+                        parts.resume_ty,
+                        parts.yield_ty,
+                        parts.return_ty,
+                        parts.witness,
+                        parts.tupled_upvars_ty,
+                    ]
+                    .iter()
+                    .map(|&ty| ty.into()),
+                ),
+            ),
+        }
+    }
+
+    /// Divides the generator substs into their respective components.
+    /// The ordering assumed here must match that used by `GeneratorSubsts::new` above.
+    fn split(self) -> GeneratorSubstsParts<'tcx, GenericArg<'tcx>> {
         match self.substs[..] {
-            [ref parent @ .., resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty] => {
-                SplitGeneratorSubsts {
-                    parent,
+            [ref parent_substs @ .., resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty] => {
+                GeneratorSubstsParts {
+                    parent_substs,
                     resume_ty,
                     yield_ty,
                     return_ty,
@@ -455,7 +489,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 
     /// Returns the substitutions of the generator's parent.
     pub fn parent_substs(self) -> &'tcx [GenericArg<'tcx>] {
-        self.split().parent
+        self.split().parent_substs
     }
 
     /// This describes the types that can be contained in a generator.

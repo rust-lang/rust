@@ -61,7 +61,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
     let mut reachable_non_generics: DefIdMap<_> = tcx
         .reachable_set(LOCAL_CRATE)
         .iter()
-        .filter_map(|&hir_id| {
+        .filter_map(|&def_id| {
             // We want to ignore some FFI functions that are not exposed from
             // this crate. Reachable FFI functions can be lumped into two
             // categories:
@@ -75,9 +75,8 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
             //
             // As a result, if this id is an FFI item (foreign item) then we only
             // let it through if it's included statically.
-            match tcx.hir().get(hir_id) {
+            match tcx.hir().get(tcx.hir().local_def_id_to_hir_id(def_id)) {
                 Node::ForeignItem(..) => {
-                    let def_id = tcx.hir().local_def_id(hir_id);
                     tcx.is_statically_included_foreign_item(def_id).then_some(def_id)
                 }
 
@@ -87,7 +86,6 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
                     ..
                 })
                 | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
-                    let def_id = tcx.hir().local_def_id(hir_id);
                     let generics = tcx.generics_of(def_id);
                     if !generics.requires_monomorphization(tcx)
                         // Functions marked with #[inline] are codegened with "internal"
@@ -361,7 +359,7 @@ fn upstream_drop_glue_for_provider<'tcx>(
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     if let Some(def_id) = def_id.as_local() {
-        !tcx.reachable_set(LOCAL_CRATE).contains(&tcx.hir().local_def_id_to_hir_id(def_id))
+        !tcx.reachable_set(LOCAL_CRATE).contains(&def_id)
     } else {
         bug!("is_unreachable_local_definition called with non-local DefId: {:?}", def_id)
     }

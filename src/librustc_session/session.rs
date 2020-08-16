@@ -437,6 +437,7 @@ impl Session {
         }
     }
     /// Delay a span_bug() call until abort_if_errors()
+    #[track_caller]
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().delay_span_bug(sp, msg)
     }
