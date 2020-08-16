@@ -323,6 +323,7 @@ pub trait StructuralEq {
 /// ```
 /// # #![allow(dead_code)]
 /// # struct PointList;
+/// #[derive(Copy, Clone)]
 /// struct PointListWrapper<'a> {
 ///     point_list_ref: &'a PointList,
 /// }
