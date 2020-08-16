@@ -315,6 +315,18 @@ pub trait StructuralEq {
 /// the trait `Copy` may not be implemented for this type; field `points` does not implement `Copy`
 /// ```
 ///
+/// Shared references (`&T`) are also `Copy`, so a struct can be `Copy`, even when it holds
+/// shared references of types `T` that are *not* `Copy`. Consider the following struct,
+/// which can implement `Copy`, because it only holds a *shared reference* to our non-`Copy`
+/// type `PointList` from above:
+/// ```
+/// # #![allow(dead_code)]
+/// # struct PointList;
+/// struct PointListWrapper<'a> {
+///     point_list_ref: &'a PointList,
+/// }
+/// ```
+///
 /// ## When *can't* my type be `Copy`?
 ///
 /// Some types can't be copied safely. For example, copying `&mut T` would create an aliased
@@ -347,8 +359,9 @@ pub trait StructuralEq {
 /// * Tuple types, if each component also implements `Copy` (e.g., `()`, `(i32, bool)`)
 /// * Closure types, if they capture no value from the environment
 ///   or if all such captured values implement `Copy` themselves.
-/// * Variables captured by shared reference (e.g. `&T`) implement `Copy`, even if the referent (`T`) doesn't,
-///   while variables captured by mutable reference (e.g. `&mut T`) never implement `Copy`.
+///   Note that variables captured by shared reference always implement `Copy`
+///   (even if the referent doesn't),
+///   while variables captured by mutable reference never implement `Copy`.
 ///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
@@ -539,7 +552,7 @@ macro_rules! impls {
 /// For a more in-depth explanation of how to use `PhantomData<T>`, please see
 /// [the Nomicon](../../nomicon/phantom-data.html).
 ///
-/// # A ghastly note 👻👻👻
+/// # A ghastly note 
 ///
 /// Though they both have scary names, `PhantomData` and 'phantom types' are
 /// related, but not identical. A phantom type parameter is simply a type
