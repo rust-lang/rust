@@ -32,7 +32,7 @@ use std::rc::Rc;
 
 use crate::clean;
 use crate::clean::{AttributesExt, MAX_DEF_ID};
-use crate::config::RenderInfo;
+use crate::config::{RenderInfo, OutputFormat};
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::passes::{self, Condition::*, ConditionalPass};
 
@@ -299,8 +299,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         lint_opts,
         describe_lints,
         lint_cap,
-        mut default_passes,
-        mut manual_passes,
+        default_passes,
+        manual_passes,
         display_warnings,
         render_options,
         output_format,
@@ -457,7 +457,14 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
-            global_ctxt.enter(|tcx| {
+            global_ctxt.enter(|tcx| run_global_ctxt(tcx, resolver, default_passes, manual_passes, render_options, output_format))
+        })
+    })
+}
+
+fn run_global_ctxt(tcx: TyCtxt<'_>, resolver: Rc<RefCell<interface::BoxedResolver>>,
+    mut default_passes: passes::DefaultPassOption, mut manual_passes: Vec<String>,
+    render_options: RenderOptions, output_format: Option<OutputFormat>) -> (clean::Crate, RenderInfo, RenderOptions) {
                 // Certain queries assume that some checks were run elsewhere
                 // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
                 // so type-check everything other than function bodies in this crate before running lints.
@@ -476,13 +483,15 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     }
                 });
                 tcx.sess.abort_if_errors();
-                sess.time("missing_docs", || {
+    tcx.sess.time("missing_docs", || {
                     rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);
                 });
+    tcx.sess.time("check_mod_attrs", || {
                 for &module in tcx.hir().krate().modules.keys() {
                     let local_def_id = tcx.hir().local_def_id(module);
                     tcx.ensure().check_mod_attrs(local_def_id);
                 }
+    });
 
                 let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
                 // Convert from a HirId set to a DefId set since we don't always have easy access
@@ -629,9 +638,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 ctxt.sess().abort_if_errors();
 
                 (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
-            })
-        })
-    })
 }
 
 /// Due to https://github.com/rust-lang/rust/pull/73566,
