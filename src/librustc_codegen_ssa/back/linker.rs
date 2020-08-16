@@ -266,7 +266,7 @@ impl<'a> GccLinker<'a> {
                 if let Some(implib_name) = implib_name {
                     let implib = out_filename.parent().map(|dir| dir.join(&implib_name));
                     if let Some(implib) = implib {
-                        self.linker_arg(&format!("--out-implib,{}", (*implib).to_str().unwrap()));
+                        self.linker_arg(&format!("--out-implib={}", (*implib).to_str().unwrap()));
                     }
                 }
             }
