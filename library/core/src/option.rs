@@ -127,11 +127,7 @@
 //! }
 //! ```
 //!
-//! [`Option`]: enum.Option.html
-//! [`Some`]: enum.Option.html#variant.Some
-//! [`None`]: enum.Option.html#variant.None
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
-//! [`i32`]: ../../std/primitive.i32.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -142,7 +138,7 @@ use crate::{
     ops::{self, Deref, DerefMut},
 };
 
-/// The `Option` type. See [the module level documentation](index.html) for more.
+/// The `Option` type. See [the module level documentation](self) for more.
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[rustc_diagnostic_item = "option_type"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -175,8 +171,6 @@ impl<T> Option<T> {
     /// let x: Option<u32> = None;
     /// assert_eq!(x.is_some(), false);
     /// ```
-    ///
-    /// [`Some`]: #variant.Some
     #[must_use = "if you intended to assert that this has a value, consider `.unwrap()` instead"]
     #[inline]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
@@ -196,8 +190,6 @@ impl<T> Option<T> {
     /// let x: Option<u32> = None;
     /// assert_eq!(x.is_none(), true);
     /// ```
-    ///
-    /// [`None`]: #variant.None
     #[must_use = "if you intended to assert that this doesn't have a value, consider \
                   `.and_then(|| panic!(\"`Option` had a value when expected `None`\"))` instead"]
     #[inline]
@@ -249,9 +241,8 @@ impl<T> Option<T> {
     /// so this technique uses `as_ref` to first take an `Option` to a reference
     /// to the value inside the original.
     ///
-    /// [`map`]: enum.Option.html#method.map
+    /// [`map`]: Option::map
     /// [`String`]: ../../std/string/struct.String.html
-    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// ```
     /// let text: Option<String> = Some("Hello, world!".to_string());
@@ -292,8 +283,6 @@ impl<T> Option<T> {
     }
 
     /// Converts from [`Pin`]`<&Option<T>>` to `Option<`[`Pin`]`<&T>>`.
-    ///
-    /// [`Pin`]: ../pin/struct.Pin.html
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
@@ -303,8 +292,6 @@ impl<T> Option<T> {
     }
 
     /// Converts from [`Pin`]`<&mut Option<T>>` to `Option<`[`Pin`]`<&mut T>>`.
-    ///
-    /// [`Pin`]: ../pin/struct.Pin.html
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
@@ -323,9 +310,6 @@ impl<T> Option<T> {
     ///
     /// Panics if the value is a [`None`] with a custom panic message provided by
     /// `msg`.
-    ///
-    /// [`Some`]: #variant.Some
-    /// [`None`]: #variant.None
     ///
     /// # Examples
     ///
@@ -355,16 +339,13 @@ impl<T> Option<T> {
     /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
     /// [`unwrap_or_default`].
     ///
-    /// [`unwrap_or`]: #method.unwrap_or
-    /// [`unwrap_or_else`]: #method.unwrap_or_else
-    /// [`unwrap_or_default`]: #method.unwrap_or_default
+    /// [`unwrap_or`]: Option::unwrap_or
+    /// [`unwrap_or_else`]: Option::unwrap_or_else
+    /// [`unwrap_or_default`]: Option::unwrap_or_default
     ///
     /// # Panics
     ///
     /// Panics if the self value equals [`None`].
-    ///
-    /// [`Some`]: #variant.Some
-    /// [`None`]: #variant.None
     ///
     /// # Examples
     ///
@@ -394,8 +375,7 @@ impl<T> Option<T> {
     /// the result of a function call, it is recommended to use [`unwrap_or_else`],
     /// which is lazily evaluated.
     ///
-    /// [`Some`]: #variant.Some
-    /// [`unwrap_or_else`]: #method.unwrap_or_else
+    /// [`unwrap_or_else`]: Option::unwrap_or_else
     ///
     /// # Examples
     ///
@@ -441,8 +421,6 @@ impl<T> Option<T> {
     /// Converts an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, consuming the original:
     ///
     /// [`String`]: ../../std/string/struct.String.html
-    /// [`usize`]: ../../std/primitive.usize.html
-    ///
     /// ```
     /// let maybe_some_string = Some(String::from("Hello, World!"));
     /// // `Option::map` takes self *by value*, consuming `maybe_some_string`
@@ -466,7 +444,7 @@ impl<T> Option<T> {
     /// the result of a function call, it is recommended to use [`map_or_else`],
     /// which is lazily evaluated.
     ///
-    /// [`map_or_else`]: #method.map_or_else
+    /// [`map_or_else`]: Option::map_or_else
     ///
     /// # Examples
     ///
@@ -516,12 +494,11 @@ impl<T> Option<T> {
     /// result of a function call, it is recommended to use [`ok_or_else`], which is
     /// lazily evaluated.
     ///
-    /// [`Result<T, E>`]: ../../std/result/enum.Result.html
-    /// [`Ok(v)`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`Err(err)`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`None`]: #variant.None
-    /// [`Some(v)`]: #variant.Some
-    /// [`ok_or_else`]: #method.ok_or_else
+    /// [`Result<T, E>`]: Result
+    /// [`Ok(v)`]: Ok
+    /// [`Err(err)`]: Err
+    /// [`Some(v)`]: Some
+    /// [`ok_or_else`]: Option::ok_or_else
     ///
     /// # Examples
     ///
@@ -544,11 +521,10 @@ impl<T> Option<T> {
     /// Transforms the `Option<T>` into a [`Result<T, E>`], mapping [`Some(v)`] to
     /// [`Ok(v)`] and [`None`] to [`Err(err())`].
     ///
-    /// [`Result<T, E>`]: ../../std/result/enum.Result.html
-    /// [`Ok(v)`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`Err(err())`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`None`]: #variant.None
-    /// [`Some(v)`]: #variant.Some
+    /// [`Result<T, E>`]: Result
+    /// [`Ok(v)`]: Ok
+    /// [`Err(err())`]: Err
+    /// [`Some(v)`]: Some
     ///
     /// # Examples
     ///
@@ -617,8 +593,6 @@ impl<T> Option<T> {
 
     /// Returns [`None`] if the option is [`None`], otherwise returns `optb`.
     ///
-    /// [`None`]: #variant.None
-    ///
     /// # Examples
     ///
     /// ```
@@ -651,8 +625,6 @@ impl<T> Option<T> {
     /// wrapped value and returns the result.
     ///
     /// Some languages call this operation flatmap.
-    ///
-    /// [`None`]: #variant.None
     ///
     /// # Examples
     ///
@@ -697,9 +669,6 @@ impl<T> Option<T> {
     /// assert_eq!(Some(4).filter(is_even), Some(4));
     /// ```
     ///
-    /// [`None`]: #variant.None
-    /// [`Some(t)`]: #variant.Some
-    /// [`Iterator::filter()`]: ../../std/iter/trait.Iterator.html#method.filter
     #[inline]
     #[stable(feature = "option_filter", since = "1.27.0")]
     pub fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {
@@ -717,7 +686,7 @@ impl<T> Option<T> {
     /// result of a function call, it is recommended to use [`or_else`], which is
     /// lazily evaluated.
     ///
-    /// [`or_else`]: #method.or_else
+    /// [`or_else`]: Option::or_else
     ///
     /// # Examples
     ///
@@ -771,9 +740,6 @@ impl<T> Option<T> {
 
     /// Returns [`Some`] if exactly one of `self`, `optb` is [`Some`], otherwise returns [`None`].
     ///
-    /// [`Some`]: #variant.Some
-    /// [`None`]: #variant.None
-    ///
     /// # Examples
     ///
     /// ```
@@ -810,8 +776,6 @@ impl<T> Option<T> {
     /// Inserts `v` into the option if it is [`None`], then
     /// returns a mutable reference to the contained value.
     ///
-    /// [`None`]: #variant.None
-    ///
     /// # Examples
     ///
     /// ```
@@ -834,8 +798,6 @@ impl<T> Option<T> {
 
     /// Inserts a value computed from `f` into the option if it is [`None`], then
     /// returns a mutable reference to the contained value.
-    ///
-    /// [`None`]: #variant.None
     ///
     /// # Examples
     ///
@@ -872,8 +834,6 @@ impl<T> Option<T> {
 
     /// Takes the value out of the option, leaving a [`None`] in its place.
     ///
-    /// [`None`]: #variant.None
-    ///
     /// # Examples
     ///
     /// ```
@@ -896,8 +856,6 @@ impl<T> Option<T> {
     /// Replaces the actual value in the option by the value given in parameter,
     /// returning the old value if present,
     /// leaving a [`Some`] in its place without deinitializing either one.
-    ///
-    /// [`Some`]: #variant.Some
     ///
     /// # Examples
     ///
@@ -1062,9 +1020,6 @@ impl<T: fmt::Debug> Option<T> {
     /// Panics if the value is a [`Some`], with a panic message including the
     /// passed message, and the content of the [`Some`].
     ///
-    /// [`Some`]: #variant.Some
-    /// [`None`]: #variant.None
-    ///
     /// # Examples
     ///
     /// ```
@@ -1105,8 +1060,7 @@ impl<T: fmt::Debug> Option<T> {
     /// Panics if the value is a [`Some`], with a custom panic message provided
     /// by the [`Some`]'s value.
     ///
-    /// [`Some(v)`]: #variant.Some
-    /// [`None`]: #variant.None
+    /// [`Some(v)`]: Some
     ///
     /// # Examples
     ///
@@ -1166,11 +1120,9 @@ impl<T: Default> Option<T> {
     /// assert_eq!(0, bad_year);
     /// ```
     ///
-    /// [`Some`]: #variant.Some
-    /// [`None`]: #variant.None
-    /// [default value]: ../default/trait.Default.html#tymethod.default
-    /// [`parse`]: ../../std/primitive.str.html#method.parse
-    /// [`FromStr`]: ../../std/str/trait.FromStr.html
+    /// [default value]: Default::default
+    /// [`parse`]: str::parse
+    /// [`FromStr`]: crate::str::FromStr
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unwrap_or_default(self) -> T {
@@ -1186,8 +1138,6 @@ impl<T: Deref> Option<T> {
     ///
     /// Leaves the original Option in-place, creating a new one with a reference
     /// to the original one, additionally coercing the contents via [`Deref`].
-    ///
-    /// [`Deref`]: ../../std/ops/trait.Deref.html
     ///
     /// # Examples
     ///
@@ -1231,11 +1181,6 @@ impl<T, E> Option<Result<T, E>> {
     /// [`None`] will be mapped to [`Ok`]`(`[`None`]`)`.
     /// [`Some`]`(`[`Ok`]`(_))` and [`Some`]`(`[`Err`]`(_))` will be mapped to
     /// [`Ok`]`(`[`Some`]`(_))` and [`Err`]`(_)`.
-    ///
-    /// [`None`]: #variant.None
-    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`Some`]: #variant.Some
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -1384,9 +1329,8 @@ impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
     /// so this technique uses `as_ref` to first take an `Option` to a reference
     /// to the value inside the original.
     ///
-    /// [`map`]: ../../std/option/enum.Option.html#method.map
+    /// [`map`]: Option::map
     /// [`String`]: ../../std/string/struct.String.html
-    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// ```
     /// let s: Option<String> = Some(String::from("Hello, Rustaceans!"));
@@ -1465,10 +1409,6 @@ unsafe impl<A> TrustedLen for Item<A> {}
 /// The iterator yields one value if the [`Option`] is a [`Some`], otherwise none.
 ///
 /// This `struct` is created by the [`Option::iter`] function.
-///
-/// [`Option`]: enum.Option.html
-/// [`Some`]: enum.Option.html#variant.Some
-/// [`Option::iter`]: enum.Option.html#method.iter
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Iter<'a, A: 'a> {
@@ -1519,10 +1459,6 @@ impl<A> Clone for Iter<'_, A> {
 /// The iterator yields one value if the [`Option`] is a [`Some`], otherwise none.
 ///
 /// This `struct` is created by the [`Option::iter_mut`] function.
-///
-/// [`Option`]: enum.Option.html
-/// [`Some`]: enum.Option.html#variant.Some
-/// [`Option::iter_mut`]: enum.Option.html#method.iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IterMut<'a, A: 'a> {
@@ -1565,8 +1501,6 @@ unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 ///
 /// This `struct` is created by the [`Option::into_iter`] function.
 ///
-/// [`Option`]: enum.Option.html
-/// [`Some`]: enum.Option.html#variant.Some
 /// [`Option::into_iter`]: enum.Option.html#method.into_iter
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1671,8 +1605,6 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     ///
     /// Since the third element caused an underflow, no further elements were taken,
     /// so the final value of `shared` is 6 (= `3 + 2 + 1`), not 16.
-    ///
-    /// [`Iterator`]: ../iter/trait.Iterator.html
     #[inline]
     fn from_iter<I: IntoIterator<Item = Option<A>>>(iter: I) -> Option<V> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
