@@ -321,6 +321,7 @@ fn mir_validated(
 
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
+    // Also this means promotion can rely on all const checks having been done.
     let _ = tcx.mir_const_qualif_opt_const_arg(def);
 
     let mut body = tcx.mir_const(def).steal();
@@ -336,7 +337,7 @@ fn mir_validated(
     let promote: &[&dyn MirPass<'tcx>] = &[
         // What we need to run borrowck etc.
         &promote_pass,
-        &simplify::SimplifyCfg::new("qualify-consts"),
+        &simplify::SimplifyCfg::new("promote-consts"),
     ];
 
     let opt_coverage: &[&dyn MirPass<'tcx>] = if tcx.sess.opts.debugging_opts.instrument_coverage {
