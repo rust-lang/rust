@@ -4,10 +4,16 @@
 
 use std::mem::ManuallyDrop;
 
-union U<T> { x:(), f: ManuallyDrop<(T,)> }
+union U1<T> { x:(), f: ManuallyDrop<(T,)> }
+
+union U2<T> { x:(), f: (ManuallyDrop<(T,)>,) }
 
 fn main() {
-    let mut u : U<Vec<i32>> = U { x: () };
+    let mut u : U1<Vec<i32>> = U1 { x: () };
     unsafe { (*u.f).0 = Vec::new() }; // explicit deref, this compiles
     unsafe { u.f.0 = Vec::new() }; //~ERROR not automatically applying `DerefMut` on union field
+
+    let mut u : U2<Vec<i32>> = U2 { x: () };
+    unsafe { (*u.f.0).0 = Vec::new() }; // explicit deref, this compiles
+    unsafe { u.f.0.0 = Vec::new() }; //~ERROR not automatically applying `DerefMut` on union field
 }
