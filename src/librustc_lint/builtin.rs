@@ -2161,12 +2161,11 @@ impl ClashingExternDeclarations {
             ckind: CItemKind,
         ) -> bool {
             debug!("structurally_same_type_impl(cx, a = {:?}, b = {:?})", a, b);
-            if seen_types.contains(&(a, b)) {
+            if !seen_types.insert((a, b)) {
                 // We've encountered a cycle. There's no point going any further -- the types are
                 // structurally the same.
                 return true;
             }
-            seen_types.insert((a, b));
             let tcx = cx.tcx;
             if a == b || rustc_middle::ty::TyS::same_type(a, b) {
                 // All nominally-same types are structurally same, too.
