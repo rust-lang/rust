@@ -189,6 +189,17 @@ Miri adds its own set of `-Z` flags:
   entropy.  The default seed is 0.  **NOTE**: This entropy is not good enough
   for cryptographic use!  Do not generate secret keys in Miri or perform other
   kinds of cryptographic operations that rely on proper random numbers.
+* `-Zmiri-symbolic-alignment-check` makes the alignment check more strict.  By
+  default, alignment is checked by casting the pointer to an integer, and making
+  sure that is a multiple of the alignment.  This can lead to cases where a
+  program passes the alignment check by pure chance, because things "happened to
+  be" sufficiently aligned.  To avoid such cases, the symbolic alignment check
+  only takes into account the requested alignment of the relevant allocation,
+  and the offset into that allocation.  This avoids such false negatives, but it
+  also incurs some false positives when the code does manual integer arithmetic
+  to ensure alignment.  (The standard library `align_to` method works fine in
+  both modes; under symbolic alignment it only fills the middle slice when the
+  allocation guarantees sufficient alignment.)
 * `-Zmiri-track-alloc-id=<id>` shows a backtrace when the given allocation is
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs.
