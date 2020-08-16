@@ -552,7 +552,7 @@ macro_rules! impls {
 /// For a more in-depth explanation of how to use `PhantomData<T>`, please see
 /// [the Nomicon](../../nomicon/phantom-data.html).
 ///
-/// # A ghastly note 
+/// # A ghastly note 👻👻👻
 ///
 /// Though they both have scary names, `PhantomData` and 'phantom types' are
 /// related, but not identical. A phantom type parameter is simply a type
