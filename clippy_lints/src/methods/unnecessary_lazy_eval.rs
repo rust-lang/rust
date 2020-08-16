@@ -4,7 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 
-use super::UNNECESSARY_LAZY_EVALUATION;
+use super::UNNECESSARY_LAZY_EVALUATIONS;
 
 // Return true if the expression is an accessor of any of the arguments
 fn expr_uses_argument(expr: &hir::Expr<'_>, params: &[hir::Param<'_>]) -> bool {
@@ -93,7 +93,7 @@ pub(super) fn lint<'tcx>(
 
                 span_lint_and_sugg(
                     cx,
-                    UNNECESSARY_LAZY_EVALUATION,
+                    UNNECESSARY_LAZY_EVALUATIONS,
                     expr.span,
                     msg,
                     &format!("Use `{}` instead", simplify_using),

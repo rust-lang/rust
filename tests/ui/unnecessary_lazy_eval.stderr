@@ -4,7 +4,7 @@ error: unnecessary closure used to substitute value for `Option::None`
 LL |     let _ = opt.unwrap_or_else(|| 2);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: Use `unwrap_or` instead: `opt.unwrap_or(2)`
    |
-   = note: `-D clippy::unnecessary-lazy-evaluation` implied by `-D warnings`
+   = note: `-D clippy::unnecessary-lazy-evaluations` implied by `-D warnings`
 
 error: unnecessary closure used to substitute value for `Option::None`
   --> $DIR/unnecessary_lazy_eval.rs:35:13

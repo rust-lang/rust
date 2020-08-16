@@ -1361,7 +1361,7 @@ declare_clippy_lint! {
     ///
     /// opt.unwrap_or(42);
     /// ```
-    pub UNNECESSARY_LAZY_EVALUATION,
+    pub UNNECESSARY_LAZY_EVALUATIONS,
     style,
     "using unnecessary lazy evaluation, which can be replaced with simpler eager evaluation"
 }
@@ -1415,7 +1415,7 @@ declare_lint_pass!(Methods => [
     ZST_OFFSET,
     FILETYPE_IS_FILE,
     OPTION_AS_REF_DEREF,
-    UNNECESSARY_LAZY_EVALUATION,
+    UNNECESSARY_LAZY_EVALUATIONS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Methods {

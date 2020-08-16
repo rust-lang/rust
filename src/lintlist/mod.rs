@@ -2384,7 +2384,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
-        name: "unnecessary_lazy_evaluation",
+        name: "unnecessary_lazy_evaluations",
         group: "style",
         desc: "using unnecessary lazy evaluation, which can be replaced with simpler eager evaluation",
         deprecation: None,

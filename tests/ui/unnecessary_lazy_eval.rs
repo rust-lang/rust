@@ -1,5 +1,5 @@
 // run-rustfix
-#![warn(clippy::unnecessary_lazy_evaluation)]
+#![warn(clippy::unnecessary_lazy_evaluations)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::bind_instead_of_map)]
 
