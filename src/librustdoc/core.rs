@@ -457,7 +457,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
-            global_ctxt.enter(|tcx| run_global_ctxt(tcx, resolver, default_passes, manual_passes, render_options, output_format))
+            sess.time("run_global_ctxt", || global_ctxt.enter(|tcx| run_global_ctxt(tcx, resolver, default_passes, manual_passes, render_options, output_format)))
         })
     })
 }
