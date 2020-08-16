@@ -431,8 +431,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 // actually be loaded, just in case they're only referred to inside
                 // intra-doc-links
                 resolver.borrow_mut().access(|resolver| {
+                    sess.time("load extern crates", || {
                     for extern_name in &extern_names {
-                        sess.time("load extern crate", || {
                         resolver
                             .resolve_str_path_error(
                                 DUMMY_SP,
@@ -443,8 +443,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                             .unwrap_or_else(|()| {
                                 panic!("Unable to resolve external crate {}", extern_name)
                             });
-                        });
                     }
+                });
                 });
 
                 // Now we're good to clone the resolver because everything should be loaded
