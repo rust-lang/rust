@@ -24,7 +24,6 @@ use crate::intrinsics;
 /// Otherwise, consider using the [`unreachable!`] macro, which does not allow
 /// optimizations but will panic when executed.
 ///
-/// [`unreachable!`]: ../macro.unreachable.html
 ///
 /// # Example
 ///
@@ -61,7 +60,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// **Note**: On platforms that do not support receiving spin-loop hints this function does not
 /// do anything at all.
 ///
-/// [`core::sync::atomic::spin_loop_hint`]: ../sync/atomic/fn.spin_loop_hint.html
+/// [`core::sync::atomic::spin_loop_hint`]: crate::sync::atomic::spin_loop_hint
 #[inline]
 #[unstable(feature = "renamed_spin_loop", issue = "55002")]
 pub fn spin_loop() {
