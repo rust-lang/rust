@@ -9,7 +9,7 @@
 #  4. sort those symbol names for deterministic comparison
 #  5. write the result into a file
 
-dump-symbols = nm "$(TMPDIR)/lib$(1).rlib" \
+dump-symbols = nm -g "$(TMPDIR)/lib$(1).rlib" \
              | grep -E "$(2)" \
              | sed -E "s/.*(_ZN.*E|_R[a-zA-Z0-9_]*).*/\1/" \
              | sort \
