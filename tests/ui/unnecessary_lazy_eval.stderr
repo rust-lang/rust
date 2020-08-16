@@ -144,13 +144,5 @@ error: unnecessary closure used to substitute value for `Result::Err`
 LL |     let _ = res2.unwrap_or_else(|_| ext_str.some_field);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Use `unwrap_or` instead: `res2.unwrap_or(ext_str.some_field)`
 
-error: unknown clippy lint: clippy::unnecessary_lazy_eval
-  --> $DIR/unnecessary_lazy_eval.rs:2:9
-   |
-LL | #![warn(clippy::unnecessary_lazy_eval)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::unnecessary_lazy_evaluation`
-   |
-   = note: `-D clippy::unknown-clippy-lints` implied by `-D warnings`
-
-error: aborting due to 25 previous errors
+error: aborting due to 24 previous errors
 
