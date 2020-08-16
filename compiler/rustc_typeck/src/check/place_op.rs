@@ -193,7 +193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Convert auto-derefs, indices, etc of an expression from `Deref` and `Index`
     /// into `DerefMut` and `IndexMut` respectively.
     ///
-    /// This is a second pass of typechecking derefs/indices. We need this we do not
+    /// This is a second pass of typechecking derefs/indices. We need this because we do not
     /// always know whether a place needs to be mutable or not in the first pass.
     /// This happens whether there is an implicit mutable reborrow, e.g. when the type
     /// is used as the receiver of a method call.
@@ -235,6 +235,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let method = self.register_infer_ok_obligations(ok);
                             if let ty::Ref(region, _, mutbl) = method.sig.output().kind {
                                 *deref = OverloadedDeref { region, mutbl };
+                            }
+                            // If this is a union field, also throw an error.
+                            // Union fields should not get mutable auto-deref'd (see RFC 2514).
+                            if let hir::ExprKind::Field(ref outer_expr, _) = expr.kind {
+                                let ty = self.node_ty(outer_expr.hir_id);
+                                if ty.ty_adt_def().map_or(false, |adt| adt.is_union()) {
+                                    let mut err = self.tcx.sess.struct_span_err(
+                                        expr.span,
+                                        "not automatically applying `DerefMut` on union field",
+                                    );
+                                    err.help("writing to this field calls the destructor for the old value");
+                                    err.help("add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor");
+                                    err.emit();
+                                }
                             }
                         }
                     }
