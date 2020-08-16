@@ -2153,62 +2153,22 @@ impl ClashingExternDeclarations {
         b: Ty<'tcx>,
         ckind: CItemKind,
     ) -> bool {
-        // In order to avoid endlessly recursing on recursive types, we maintain a "seen" set.
-        // We'll need to store every combination of types we encounter anyway, so we also memoize
-        // the result.
-        struct SeenSet<'tcx>(FxHashMap<(Ty<'tcx>, Ty<'tcx>), Option<bool>>);
-
-        enum SeenSetResult {
-            /// We've never seen this combination of types.
-            Unseen,
-            /// We've seen this combination of types, but are still computing the result.
-            Computing,
-            /// We've seen this combination of types, and have already computed the result.
-            Computed(bool),
-        }
-
-        impl<'tcx> SeenSet<'tcx> {
-            fn new() -> Self {
-                SeenSet(FxHashMap::default())
-            }
-            /// Mark (a, b) as `Computing`.
-            fn mark_computing(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
-                self.0.insert((a, b), None);
-            }
-            /// Mark (a, b) as `Computed(result)`.
-            fn mark_computed(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, result: bool) {
-                *self.0.get_mut(&(a, b)).expect("Missing prior call to mark_computing") =
-                    Some(result);
-            }
-            fn get(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> SeenSetResult {
-                match self.0.get(&(a, b)) {
-                    None => SeenSetResult::Unseen,
-                    Some(None) => SeenSetResult::Computing,
-                    Some(Some(b)) => SeenSetResult::Computed(*b),
-                }
-            }
-        }
         fn structurally_same_type_impl<'tcx>(
-            seen_types: &mut SeenSet<'tcx>,
+            seen_types: &mut FxHashSet<(Ty<'tcx>, Ty<'tcx>)>,
             cx: &LateContext<'tcx>,
             a: Ty<'tcx>,
             b: Ty<'tcx>,
             ckind: CItemKind,
         ) -> bool {
             debug!("structurally_same_type_impl(cx, a = {:?}, b = {:?})", a, b);
-            match seen_types.get(a, b) {
-                // If we've already computed the result, just return the memoized result.
-                SeenSetResult::Computed(result) => return result,
-                // We are already in the process of computing structural sameness for this type,
-                // meaning we've found a cycle. The types are structurally same, then.
-                SeenSetResult::Computing => return true,
-                // We haven't seen this combination of types at all -- continue on to computing
-                // their sameness.
-                SeenSetResult::Unseen => (),
+            if seen_types.contains(&(a, b)) {
+                // We've encountered a cycle. There's no point going any further -- the types are
+                // structurally the same.
+                return true;
             }
-            seen_types.mark_computing(a, b);
+            seen_types.insert((a, b));
             let tcx = cx.tcx;
-            let result = if a == b || rustc_middle::ty::TyS::same_type(a, b) {
+            if a == b || rustc_middle::ty::TyS::same_type(a, b) {
                 // All nominally-same types are structurally same, too.
                 true
             } else {
@@ -2333,11 +2293,9 @@ impl ClashingExternDeclarations {
                     // uninitialised memory.
                     _ => compare_layouts(a, b),
                 }
-            };
-            seen_types.mark_computed(a, b, result);
-            result
+            }
         }
-        let mut seen_types = SeenSet::new();
+        let mut seen_types = FxHashSet::default();
         structurally_same_type_impl(&mut seen_types, cx, a, b, ckind)
     }
 }
