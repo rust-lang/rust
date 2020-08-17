@@ -15,8 +15,8 @@ impl<'a> SpanUtils<'a> {
     }
 
     pub fn make_filename_string(&self, file: &SourceFile) -> String {
-        match &file.name {
-            FileName::Real(name) if !file.name_was_remapped => {
+        match file.name.name() {
+            FileName::Real(name) if !file.name.was_remapped() => {
                 let path = name.local_path();
                 if path.is_absolute() {
                     self.sess

@@ -1103,6 +1103,10 @@ impl SourceFileName {
     fn is_real(&self) -> bool {
         self.name.is_real()
     }
+
+    pub fn was_remapped(&self) -> bool {
+        self.was_remapped
+    }
 }
 
 impl Encodable for SourceFileName {
