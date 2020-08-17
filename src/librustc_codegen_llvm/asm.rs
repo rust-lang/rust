@@ -130,7 +130,9 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         for (idx, op) in operands.iter().enumerate() {
             match *op {
                 InlineAsmOperandRef::Out { reg, late, place } => {
-                    let ty = if let Some(place) = place {
+                    let mut layout = None;
+                    let ty = if let Some(ref place) = place {
+                        layout = Some(&place.layout);
                         llvm_fixup_output_type(self.cx, reg.reg_class(), &place.layout)
                     } else {
                         // If the output is discarded, we don't really care what
@@ -141,20 +143,21 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     output_types.push(ty);
                     op_idx.insert(idx, constraints.len());
                     let prefix = if late { "=" } else { "=&" };
-                    constraints.push(format!("{}{}", prefix, reg_to_llvm(reg)));
+                    constraints.push(format!("{}{}", prefix, reg_to_llvm(reg, layout)));
                 }
                 InlineAsmOperandRef::InOut { reg, late, in_value, out_place } => {
-                    let ty = if let Some(ref out_place) = out_place {
-                        llvm_fixup_output_type(self.cx, reg.reg_class(), &out_place.layout)
+                    let layout = if let Some(ref out_place) = out_place {
+                        &out_place.layout
                     } else {
                         // LLVM required tied operands to have the same type,
                         // so we just use the type of the input.
-                        llvm_fixup_output_type(self.cx, reg.reg_class(), &in_value.layout)
+                        &in_value.layout
                     };
+                    let ty = llvm_fixup_output_type(self.cx, reg.reg_class(), layout);
                     output_types.push(ty);
                     op_idx.insert(idx, constraints.len());
                     let prefix = if late { "=" } else { "=&" };
-                    constraints.push(format!("{}{}", prefix, reg_to_llvm(reg)));
+                    constraints.push(format!("{}{}", prefix, reg_to_llvm(reg, Some(layout))));
                 }
                 _ => {}
             }
@@ -165,11 +168,11 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         for (idx, op) in operands.iter().enumerate() {
             match *op {
                 InlineAsmOperandRef::In { reg, value } => {
-                    let value =
+                    let llval =
                         llvm_fixup_input(self, value.immediate(), reg.reg_class(), &value.layout);
-                    inputs.push(value);
+                    inputs.push(llval);
                     op_idx.insert(idx, constraints.len());
-                    constraints.push(reg_to_llvm(reg));
+                    constraints.push(reg_to_llvm(reg, Some(&value.layout)));
                 }
                 InlineAsmOperandRef::InOut { reg, late: _, in_value, out_place: _ } => {
                     let value = llvm_fixup_input(
@@ -410,10 +413,80 @@ fn inline_asm_call(
     }
 }
 
-/// Converts a register class to an LLVM constraint code.
-fn reg_to_llvm(reg: InlineAsmRegOrRegClass) -> String {
+/// If the register is an xmm/ymm/zmm register then return its index.
+fn xmm_reg_index(reg: InlineAsmReg) -> Option<u32> {
     match reg {
-        InlineAsmRegOrRegClass::Reg(reg) => format!("{{{}}}", reg.name()),
+        InlineAsmReg::X86(reg)
+            if reg as u32 >= X86InlineAsmReg::xmm0 as u32
+                && reg as u32 <= X86InlineAsmReg::xmm15 as u32 =>
+        {
+            Some(reg as u32 - X86InlineAsmReg::xmm0 as u32)
+        }
+        InlineAsmReg::X86(reg)
+            if reg as u32 >= X86InlineAsmReg::ymm0 as u32
+                && reg as u32 <= X86InlineAsmReg::ymm15 as u32 =>
+        {
+            Some(reg as u32 - X86InlineAsmReg::ymm0 as u32)
+        }
+        InlineAsmReg::X86(reg)
+            if reg as u32 >= X86InlineAsmReg::zmm0 as u32
+                && reg as u32 <= X86InlineAsmReg::zmm31 as u32 =>
+        {
+            Some(reg as u32 - X86InlineAsmReg::zmm0 as u32)
+        }
+        _ => None,
+    }
+}
+
+/// If the register is an AArch64 vector register then return its index.
+fn a64_vreg_index(reg: InlineAsmReg) -> Option<u32> {
+    match reg {
+        InlineAsmReg::AArch64(reg)
+            if reg as u32 >= AArch64InlineAsmReg::v0 as u32
+                && reg as u32 <= AArch64InlineAsmReg::v31 as u32 =>
+        {
+            Some(reg as u32 - AArch64InlineAsmReg::v0 as u32)
+        }
+        _ => None,
+    }
+}
+
+/// Converts a register class to an LLVM constraint code.
+fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) -> String {
+    match reg {
+        // For vector registers LLVM wants the register name to match the type size.
+        InlineAsmRegOrRegClass::Reg(reg) => {
+            if let Some(idx) = xmm_reg_index(reg) {
+                let class = if let Some(layout) = layout {
+                    match layout.size.bytes() {
+                        64 => 'z',
+                        32 => 'y',
+                        _ => 'x',
+                    }
+                } else {
+                    // We use f32 as the type for discarded outputs
+                    'x'
+                };
+                format!("{{{}mm{}}}", class, idx)
+            } else if let Some(idx) = a64_vreg_index(reg) {
+                let class = if let Some(layout) = layout {
+                    match layout.size.bytes() {
+                        16 => 'q',
+                        8 => 'd',
+                        4 => 's',
+                        2 => 'h',
+                        1 => 'd', // We fixup i8 to i8x8
+                        _ => unreachable!(),
+                    }
+                } else {
+                    // We use i32 as the type for discarded outputs
+                    's'
+                };
+                format!("{{{}{}}}", class, idx)
+            } else {
+                format!("{{{}}}", reg.name())
+            }
+        }
         InlineAsmRegOrRegClass::RegClass(reg) => match reg {
             InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg) => "w",
@@ -601,17 +674,25 @@ fn llvm_fixup_input(
             Abi::Vector { .. },
         ) if layout.size.bytes() == 64 => bx.bitcast(value, bx.cx.type_vector(bx.cx.type_f64(), 8)),
         (
-            InlineAsmRegClass::Arm(
-                ArmInlineAsmRegClass::sreg_low16
-                | ArmInlineAsmRegClass::dreg_low8
-                | ArmInlineAsmRegClass::qreg_low4
-                | ArmInlineAsmRegClass::dreg
-                | ArmInlineAsmRegClass::qreg,
-            ),
+            InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg | ArmInlineAsmRegClass::sreg_low16),
             Abi::Scalar(s),
         ) => {
             if let Primitive::Int(Integer::I32, _) = s.value {
                 bx.bitcast(value, bx.cx.type_f32())
+            } else {
+                value
+            }
+        }
+        (
+            InlineAsmRegClass::Arm(
+                ArmInlineAsmRegClass::dreg
+                | ArmInlineAsmRegClass::dreg_low8
+                | ArmInlineAsmRegClass::dreg_low16,
+            ),
+            Abi::Scalar(s),
+        ) => {
+            if let Primitive::Int(Integer::I64, _) = s.value {
+                bx.bitcast(value, bx.cx.type_f64())
             } else {
                 value
             }
@@ -661,17 +742,25 @@ fn llvm_fixup_output(
             Abi::Vector { .. },
         ) if layout.size.bytes() == 64 => bx.bitcast(value, layout.llvm_type(bx.cx)),
         (
-            InlineAsmRegClass::Arm(
-                ArmInlineAsmRegClass::sreg_low16
-                | ArmInlineAsmRegClass::dreg_low8
-                | ArmInlineAsmRegClass::qreg_low4
-                | ArmInlineAsmRegClass::dreg
-                | ArmInlineAsmRegClass::qreg,
-            ),
+            InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg | ArmInlineAsmRegClass::sreg_low16),
             Abi::Scalar(s),
         ) => {
             if let Primitive::Int(Integer::I32, _) = s.value {
                 bx.bitcast(value, bx.cx.type_i32())
+            } else {
+                value
+            }
+        }
+        (
+            InlineAsmRegClass::Arm(
+                ArmInlineAsmRegClass::dreg
+                | ArmInlineAsmRegClass::dreg_low8
+                | ArmInlineAsmRegClass::dreg_low16,
+            ),
+            Abi::Scalar(s),
+        ) => {
+            if let Primitive::Int(Integer::I64, _) = s.value {
+                bx.bitcast(value, bx.cx.type_i64())
             } else {
                 value
             }
@@ -716,17 +805,25 @@ fn llvm_fixup_output_type(
             Abi::Vector { .. },
         ) if layout.size.bytes() == 64 => cx.type_vector(cx.type_f64(), 8),
         (
-            InlineAsmRegClass::Arm(
-                ArmInlineAsmRegClass::sreg_low16
-                | ArmInlineAsmRegClass::dreg_low8
-                | ArmInlineAsmRegClass::qreg_low4
-                | ArmInlineAsmRegClass::dreg
-                | ArmInlineAsmRegClass::qreg,
-            ),
+            InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg | ArmInlineAsmRegClass::sreg_low16),
             Abi::Scalar(s),
         ) => {
             if let Primitive::Int(Integer::I32, _) = s.value {
                 cx.type_f32()
+            } else {
+                layout.llvm_type(cx)
+            }
+        }
+        (
+            InlineAsmRegClass::Arm(
+                ArmInlineAsmRegClass::dreg
+                | ArmInlineAsmRegClass::dreg_low8
+                | ArmInlineAsmRegClass::dreg_low16,
+            ),
+            Abi::Scalar(s),
+        ) => {
+            if let Primitive::Int(Integer::I64, _) = s.value {
+                cx.type_f64()
             } else {
                 layout.llvm_type(cx)
             }

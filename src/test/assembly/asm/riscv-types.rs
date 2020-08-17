@@ -79,6 +79,23 @@ macro_rules! check {
     };
 }
 
+macro_rules! check_reg {
+    ($func:ident $ty:ident $reg:tt $mov:literal) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            // Hack to avoid function merging
+            extern "Rust" {
+                fn dont_merge(s: &str);
+            }
+            dont_merge(stringify!($func));
+
+            let y;
+            asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
+            y
+        }
+    };
+}
+
 // CHECK-LABEL: reg_i8:
 // CHECK: #APP
 // CHECK: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
@@ -134,3 +151,59 @@ check!(freg_f32 f32 freg "fmv.s");
 // CHECK: fmv.d f{{[a-z0-9]+}}, f{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(freg_f64 f64 freg "fmv.d");
+
+// CHECK-LABEL: a0_i8:
+// CHECK: #APP
+// CHECK: mv a0, a0
+// CHECK: #NO_APP
+check_reg!(a0_i8 i8 "a0" "mv");
+
+// CHECK-LABEL: a0_i16:
+// CHECK: #APP
+// CHECK: mv a0, a0
+// CHECK: #NO_APP
+check_reg!(a0_i16 i16 "a0" "mv");
+
+// CHECK-LABEL: a0_i32:
+// CHECK: #APP
+// CHECK: mv a0, a0
+// CHECK: #NO_APP
+check_reg!(a0_i32 i32 "a0" "mv");
+
+// CHECK-LABEL: a0_f32:
+// CHECK: #APP
+// CHECK: mv a0, a0
+// CHECK: #NO_APP
+check_reg!(a0_f32 f32 "a0" "mv");
+
+// riscv64-LABEL: a0_i64:
+// riscv64: #APP
+// riscv64: mv a0, a0
+// riscv64: #NO_APP
+#[cfg(riscv64)]
+check_reg!(a0_i64 i64 "a0" "mv");
+
+// riscv64-LABEL: a0_f64:
+// riscv64: #APP
+// riscv64: mv a0, a0
+// riscv64: #NO_APP
+#[cfg(riscv64)]
+check_reg!(a0_f64 f64 "a0" "mv");
+
+// CHECK-LABEL: a0_ptr:
+// CHECK: #APP
+// CHECK: mv a0, a0
+// CHECK: #NO_APP
+check_reg!(a0_ptr ptr "a0" "mv");
+
+// CHECK-LABEL: fa0_f32:
+// CHECK: #APP
+// CHECK: fmv.s fa0, fa0
+// CHECK: #NO_APP
+check_reg!(fa0_f32 f32 "fa0" "fmv.s");
+
+// CHECK-LABEL: fa0_f64:
+// CHECK: #APP
+// CHECK: fmv.d fa0, fa0
+// CHECK: #NO_APP
+check_reg!(fa0_f64 f64 "fa0" "fmv.d");
