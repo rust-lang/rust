@@ -3,11 +3,11 @@ use std::default::Default;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
+use std::lazy::SyncOnceCell as OnceCell;
 use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
-use std::lazy::SyncOnceCell as OnceCell;
 
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
@@ -27,7 +27,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
@@ -1296,8 +1296,9 @@ impl PrimitiveType {
             }
 
             let single = |a: Option<DefId>| a.into_iter().collect();
-            let both =
-                |a: Option<DefId>, b: Option<DefId>| -> SmallVec<_> { a.into_iter().chain(b).collect() };
+            let both = |a: Option<DefId>, b: Option<DefId>| -> SmallVec<_> {
+                a.into_iter().chain(b).collect()
+            };
 
             let lang_items = tcx.lang_items();
             map! {
