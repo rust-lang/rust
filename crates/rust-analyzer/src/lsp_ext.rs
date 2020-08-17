@@ -237,8 +237,13 @@ pub enum Status {
     Invalid,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct StatusParams {
+    pub status: Status,
+}
+
 impl Notification for StatusNotification {
-    type Params = Status;
+    type Params = StatusParams;
     const METHOD: &'static str = "rust-analyzer/status";
 }
 

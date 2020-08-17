@@ -36,7 +36,7 @@ export class Ctx {
 
         res.pushCleanup(client.start());
         await client.onReady();
-        client.onNotification(ra.status, (status) => res.setStatus(status));
+        client.onNotification(ra.status, (params) => res.setStatus(params.status));
         return res;
     }
 
