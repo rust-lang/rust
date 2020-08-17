@@ -92,5 +92,8 @@ pub fn provide(providers: &mut Providers) {
             span_bug!(hir.span(hir_id), "fn_arg_names: unexpected item {:?}", id);
         }
     };
+    providers.local_def_id_to_hir_id = |tcx, id| tcx.definitions.opt_local_def_id_to_hir_id(id);
+    providers.hir_owner_defs =
+        |tcx, index| tcx.index_hir(LOCAL_CRATE).map[index].defs.as_ref().map(|defs| &**defs);
     map::provide(providers);
 }

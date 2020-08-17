@@ -4,6 +4,7 @@ use crate::hir::{Owner, OwnerNodes};
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -89,6 +90,7 @@ fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
 pub(super) struct HirOwnerData<'hir> {
     pub(super) signature: Option<&'hir Owner<'hir>>,
     pub(super) with_bodies: Option<&'hir mut OwnerNodes<'hir>>,
+    pub(super) defs: Option<&'hir mut FxHashMap<ItemLocalId, LocalDefId>>,
 }
 
 pub struct IndexedHir<'hir> {
@@ -170,17 +172,22 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<LocalDefId> {
-        self.tcx.definitions.opt_hir_id_to_local_def_id(hir_id)
+        if hir_id.local_id == ItemLocalId::from_u32(0) {
+            // Every HirId owner has a DefId, so we can just return it directly here
+            Some(hir_id.owner)
+        } else {
+            self.tcx.hir_owner_defs(hir_id.owner).and_then(|map| map.get(&hir_id.local_id).copied())
+        }
     }
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
-        self.tcx.definitions.local_def_id_to_hir_id(def_id)
+        self.tcx.local_def_id_to_hir_id(def_id).unwrap()
     }
 
     #[inline]
     pub fn opt_local_def_id_to_hir_id(&self, def_id: LocalDefId) -> Option<HirId> {
-        self.tcx.definitions.opt_local_def_id_to_hir_id(def_id)
+        self.tcx.local_def_id_to_hir_id(def_id)
     }
 
     pub fn def_kind(&self, local_def_id: LocalDefId) -> DefKind {

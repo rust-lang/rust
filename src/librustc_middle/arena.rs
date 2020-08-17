@@ -94,6 +94,7 @@ macro_rules! arena_types {
             [few] hir_definitions: rustc_hir::definitions::Definitions,
             [] hir_owner: rustc_middle::hir::Owner<$tcx>,
             [] hir_owner_nodes: rustc_middle::hir::OwnerNodes<$tcx>,
+            [] hir_owner_defs: rustc_data_structures::fx::FxHashMap<rustc_hir::ItemLocalId, rustc_span::def_id::LocalDefId>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena
