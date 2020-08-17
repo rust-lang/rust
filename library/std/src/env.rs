@@ -28,8 +28,6 @@ use crate::sys::os as os_imp;
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
 ///
-/// [`Err`]: Result::Err
-///
 /// # Examples
 ///
 /// ```
@@ -49,8 +47,6 @@ pub fn current_dir() -> io::Result<PathBuf> {
 /// Changes the current working directory to the specified path.
 ///
 /// Returns an [`Err`] if the operation fails.
-///
-/// [`Err`]: Result::Err
 ///
 /// # Examples
 ///
@@ -217,8 +213,6 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 
 /// Fetches the environment variable `key` from the current process, returning
 /// [`None`] if the variable isn't set.
-///
-/// [`None`]: Option::None
 ///
 /// # Panics
 ///
@@ -446,8 +440,6 @@ pub struct JoinPathsError {
 /// Returns an [`Err`] (containing an error message) if one of the input
 /// [`Path`]s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
-///
-/// [Err]: Result::Err
 ///
 /// # Examples
 ///
