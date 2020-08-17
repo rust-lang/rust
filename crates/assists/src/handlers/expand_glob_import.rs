@@ -162,9 +162,26 @@ fn find_refs_in_mod(
     module: Module,
     visible_from: Option<Module>,
 ) -> Option<Refs> {
+    if let Some(from) = visible_from {
+        if !is_mod_visible_from(ctx, module, from) {
+            return None;
+        }
+    }
+
     let module_scope = module.scope(ctx.db(), visible_from);
     let refs = module_scope.into_iter().filter_map(|(n, d)| Ref::from_scope_def(n, d)).collect();
     Some(Refs(refs))
+}
+
+fn is_mod_visible_from(ctx: &AssistContext, module: Module, from: Module) -> bool {
+    match module.parent(ctx.db()) {
+        Some(parent) => {
+            parent.visibility_of(ctx.db(), &ModuleDef::Module(module)).map_or(true, |vis| {
+                vis.is_visible_from(ctx.db(), from.into()) && is_mod_visible_from(ctx, parent, from)
+            })
+        }
+        None => true,
+    }
 }
 
 // looks for name refs in parent use block's siblings
@@ -811,6 +828,41 @@ use foo::Tr;
 fn main() {
     ().method();
 }
+",
+        );
+    }
+
+    #[test]
+    fn expanding_is_not_applicable_if_target_module_is_not_accessible_from_current_scope() {
+        check_assist_not_applicable(
+            expand_glob_import,
+            r"
+mod foo {
+    mod bar {
+        pub struct Bar;
+    }
+}
+
+use foo::bar::*<|>;
+
+fn baz(bar: Bar) {}
+",
+        );
+
+        check_assist_not_applicable(
+            expand_glob_import,
+            r"
+mod foo {
+    mod bar {
+        pub mod baz {
+            pub struct Baz;
+        }
+    }
+}
+
+use foo::bar::baz::*<|>;
+
+fn qux(baz: Baz) {}
 ",
         );
     }
