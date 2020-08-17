@@ -1,4 +1,8 @@
 // compile-flags: --crate-type=lib
+// normalize-stderr-32bit: "offset 8" -> "offset $$TWO_WORDS"
+// normalize-stderr-64bit: "offset 16" -> "offset $$TWO_WORDS"
+// normalize-stderr-32bit: "size 4" -> "size $$WORD"
+// normalize-stderr-64bit: "size 8" -> "size $$WORD"
 
 #![feature(
     const_panic,
