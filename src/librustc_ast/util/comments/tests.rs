@@ -2,13 +2,6 @@ use super::*;
 use rustc_span::with_default_session_globals;
 
 #[test]
-fn line_doc_comments() {
-    assert!(line_doc_comment_style("///").is_some());
-    assert!(line_doc_comment_style("/// blah").is_some());
-    assert!(line_doc_comment_style("////").is_none());
-}
-
-#[test]
 fn test_block_doc_comment_1() {
     with_default_session_globals(|| {
         let comment = "\n * Test \n **  Test\n *   Test\n";

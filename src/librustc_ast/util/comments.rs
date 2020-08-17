@@ -1,4 +1,3 @@
-use crate::ast::AttrStyle;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, CharPos, FileName, Pos, Symbol};
 
@@ -22,45 +21,6 @@ pub struct Comment {
     pub style: CommentStyle,
     pub lines: Vec<String>,
     pub pos: BytePos,
-}
-
-/// For a full line comment string returns its doc comment style if it's a doc comment
-/// and returns `None` if it's a regular comment.
-pub fn line_doc_comment_style(line_comment: &str) -> Option<AttrStyle> {
-    let line_comment = line_comment.as_bytes();
-    assert!(line_comment.starts_with(b"//"));
-    match line_comment.get(2) {
-        // `//!` is an inner line doc comment.
-        Some(b'!') => Some(AttrStyle::Inner),
-        Some(b'/') => match line_comment.get(3) {
-            // `////` (more than 3 slashes) is not considered a doc comment.
-            Some(b'/') => None,
-            // Otherwise `///` is an outer line doc comment.
-            _ => Some(AttrStyle::Outer),
-        },
-        _ => None,
-    }
-}
-
-/// For a full block comment string returns its doc comment style if it's a doc comment
-/// and returns `None` if it's a regular comment.
-pub fn block_doc_comment_style(block_comment: &str, terminated: bool) -> Option<AttrStyle> {
-    let block_comment = block_comment.as_bytes();
-    assert!(block_comment.starts_with(b"/*"));
-    assert!(!terminated || block_comment.ends_with(b"*/"));
-    match block_comment.get(2) {
-        // `/*!` is an inner block doc comment.
-        Some(b'!') => Some(AttrStyle::Inner),
-        Some(b'*') => match block_comment.get(3) {
-            // `/***` (more than 2 stars) is not considered a doc comment.
-            Some(b'*') => None,
-            // `/**/` is not considered a doc comment.
-            Some(b'/') if block_comment.len() == 4 => None,
-            // Otherwise `/**` is an outer block doc comment.
-            _ => Some(AttrStyle::Outer),
-        },
-        _ => None,
-    }
 }
 
 /// Makes a doc string more presentable to users.
@@ -216,8 +176,8 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                     }
                 }
             }
-            rustc_lexer::TokenKind::BlockComment { terminated } => {
-                if block_doc_comment_style(token_text, terminated).is_none() {
+            rustc_lexer::TokenKind::BlockComment { doc_style, .. } => {
+                if doc_style.is_none() {
                     let code_to_the_right = match text[pos + token.len..].chars().next() {
                         Some('\r' | '\n') => false,
                         _ => true,
@@ -238,8 +198,8 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                     comments.push(Comment { style, lines, pos: pos_in_file })
                 }
             }
-            rustc_lexer::TokenKind::LineComment => {
-                if line_doc_comment_style(token_text).is_none() {
+            rustc_lexer::TokenKind::LineComment { doc_style } => {
+                if doc_style.is_none() {
                     comments.push(Comment {
                         style: if code_to_the_left {
                             CommentStyle::Trailing
