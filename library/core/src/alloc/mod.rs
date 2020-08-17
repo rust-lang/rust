@@ -163,8 +163,6 @@ pub unsafe trait AllocRef {
     /// * `new_size` must be greater than or equal to `layout.size()`, and
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`, must not overflow
     ///   (i.e., the rounded value must be less than or equal to `usize::MAX`).
-    // Note: We can't require that `new_size` is strictly greater than `layout.size()` because of ZSTs.
-    // alternative: `new_size` must be strictly greater than `layout.size()` or both are zero
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
@@ -193,10 +191,6 @@ pub unsafe trait AllocRef {
             new_size >= size,
             "`new_size` must be greater than or equal to `layout.size()`"
         );
-
-        if size == new_size {
-            return Ok(NonNull::slice_from_raw_parts(ptr, size));
-        }
 
         let new_layout =
             // SAFETY: the caller must ensure that the `new_size` does not overflow.
@@ -238,8 +232,6 @@ pub unsafe trait AllocRef {
     /// * `new_size` must be greater than or equal to `layout.size()`, and
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`, must not overflow
     ///   (i.e., the rounded value must be less than or equal to `usize::MAX`).
-    // Note: We can't require that `new_size` is strictly greater than `layout.size()` because of ZSTs.
-    // alternative: `new_size` must be strictly greater than `layout.size()` or both are zero
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
@@ -268,10 +260,6 @@ pub unsafe trait AllocRef {
             new_size >= size,
             "`new_size` must be greater than or equal to `layout.size()`"
         );
-
-        if size == new_size {
-            return Ok(NonNull::slice_from_raw_parts(ptr, size));
-        }
 
         let new_layout =
             // SAFETY: the caller must ensure that the `new_size` does not overflow.
@@ -315,8 +303,6 @@ pub unsafe trait AllocRef {
     /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator,
     /// * `layout` must [*fit*] that block of memory (The `new_size` argument need not fit it.), and
     /// * `new_size` must be smaller than or equal to `layout.size()`.
-    // Note: We can't require that `new_size` is strictly smaller than `layout.size()` because of ZSTs.
-    // alternative: `new_size` must be smaller than `layout.size()` or both are zero
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
@@ -345,10 +331,6 @@ pub unsafe trait AllocRef {
             new_size <= size,
             "`new_size` must be smaller than or equal to `layout.size()`"
         );
-
-        if size == new_size {
-            return Ok(NonNull::slice_from_raw_parts(ptr, size));
-        }
 
         let new_layout =
         // SAFETY: the caller must ensure that the `new_size` does not overflow.
