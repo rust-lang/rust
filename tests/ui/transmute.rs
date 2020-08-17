@@ -1,3 +1,4 @@
+#![feature(const_fn_transmute)]
 #![allow(dead_code)]
 
 extern crate core;
@@ -81,9 +82,17 @@ fn int_to_bool() {
 }
 
 #[warn(clippy::transmute_int_to_float)]
-fn int_to_float() {
-    let _: f32 = unsafe { std::mem::transmute(0_u32) };
-    let _: f32 = unsafe { std::mem::transmute(0_i32) };
+mod int_to_float {
+    fn test() {
+        let _: f32 = unsafe { std::mem::transmute(0_u32) };
+        let _: f32 = unsafe { std::mem::transmute(0_i32) };
+    }
+
+    // See issue #5747
+    const VALUE: f32 = unsafe { std::mem::transmute(0_u32) };
+    const fn from_bits(v: u32) -> f32 {
+        unsafe { std::mem::transmute(v) }
+    }
 }
 
 fn bytes_to_str(b: &[u8], mb: &mut [u8]) {
