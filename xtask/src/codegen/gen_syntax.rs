@@ -14,7 +14,7 @@ use ungrammar::{rust_grammar, Grammar, Rule};
 
 use crate::{
     ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC},
-    codegen::{self, update, Mode},
+    codegen::{self, reformat, update, Mode},
     project_root, Result,
 };
 
@@ -61,7 +61,7 @@ fn generate_tokens(grammar: &AstSrc) -> Result<String> {
         }
     });
 
-    let pretty = crate::reformat(quote! {
+    let pretty = reformat(quote! {
         use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
         #(#tokens)*
     })?
@@ -261,7 +261,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
         }
     }
 
-    let pretty = crate::reformat(res)?;
+    let pretty = reformat(res)?;
     Ok(pretty)
 }
 
@@ -383,7 +383,7 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
         }
     };
 
-    crate::reformat(ast)
+    reformat(ast)
 }
 
 fn to_upper_snake_case(s: &str) -> String {
