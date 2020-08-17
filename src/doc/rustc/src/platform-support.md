@@ -128,7 +128,6 @@ target | std | host | notes
 `x86_64-linux-android` | ✓ |  | 64-bit x86 Android
 `x86_64-rumprun-netbsd` | ✓ |  | 64-bit NetBSD Rump Kernel
 `x86_64-sun-solaris` | ✓ |  | 64-bit Solaris 10/11, illumos
-`x86_64-unknown-cloudabi` | ✓ |  | 64-bit CloudABI
 `x86_64-unknown-freebsd` | ✓ | ✓ | 64-bit FreeBSD
 `x86_64-unknown-illumos` | ✓ | ✓ | illumos
 `x86_64-unknown-linux-gnux32` | ✓ |  | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
@@ -208,6 +207,7 @@ target | std | host | notes
 `x86_64-linux-kernel` | ? |  | Linux kernel modules
 `x86_64-pc-solaris` | ? |  |
 `x86_64-pc-windows-msvc` | ✓ |  | 64-bit Windows XP support
+`x86_64-unknown-cloudabi` | ✓ |  | 64-bit CloudABI
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
 `x86_64-unknown-hermit` | ? |  |
