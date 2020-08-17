@@ -31,7 +31,9 @@ use rustc_session::config::CrateType;
 use rustc_span::hygiene::{ExpnDataEncodeMode, HygieneEncodeContext};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
+use rustc_span::{
+    self, ExternalSource, FileName, SourceFile, Span, SpanData, SyntaxContext, DUMMY_SP,
+};
 use rustc_target::abi::VariantIdx;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
@@ -163,26 +165,29 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnId {
 
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        if self.is_dummy() {
-            return TAG_INVALID_SPAN.encode(s);
-        }
-
-        let span = self.data();
+        let mut span = self.data();
 
         // The Span infrastructure should make sure that this invariant holds:
         debug_assert!(span.lo <= span.hi);
 
-        if !s.source_file_cache.0.contains(span.lo) {
+        // Updates `source_file_cache` to point to the `SourceFile` containing
+        // `data.lo`
+        let update_source_file_cache = |s: &mut EncodeContext<'a, 'tcx>, data: &SpanData| {
             let source_map = s.tcx.sess.source_map();
-            let source_file_index = source_map.lookup_source_file_idx(span.lo);
+            let source_file_index = source_map.lookup_source_file_idx(data.lo);
             s.source_file_cache =
                 (source_map.files()[source_file_index].clone(), source_file_index);
+        };
+
+        if !s.source_file_cache.0.contains(span.lo) {
+            update_source_file_cache(s, &span);
         }
 
         if !s.source_file_cache.0.contains(span.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
-            return TAG_INVALID_SPAN.encode(s);
+            span = DUMMY_SP.data();
+            update_source_file_cache(s, &span);
         }
 
         let source_files = s.required_source_files.as_mut().expect("Already encoded SourceMap!");
@@ -193,11 +198,10 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
         // crate we are writing metadata for. When the metadata for *this* crate gets
         // deserialized, the deserializer will need to know which crate it originally came
-        // from. We use `TAG_VALID_SPAN_FOREIGN` to indicate that a `CrateNum` should
-        // be deserialized after the rest of the span data, which tells the deserializer
+        // from. The `CrateNum` we encode will tell the deserializer
         // which crate contains the source map information.
-        // 2. This span comes from our own crate. No special hamdling is needed - we just
-        // write `TAG_VALID_SPAN_LOCAL` to let the deserializer know that it should use
+        // 2. This span comes from our own crate. No special hamdling is needed - we will
+        // write out `LOCAL_CRATE` to let the deserializer know that it should use
         // our own source map information.
         //
         // If we're a proc-macro crate, we always treat this as a local `Span`.
@@ -205,7 +209,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         // if we're a proc-macro crate.
         // This allows us to avoid loading the dependencies of proc-macro crates: all of
         // the information we need to decode `Span`s is stored in the proc-macro crate.
-        let (tag, lo, hi) = if s.source_file_cache.0.is_imported() && !s.is_proc_macro {
+        let (cnum, lo, hi) = if s.source_file_cache.0.is_imported() && !s.is_proc_macro {
             // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
             // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
             // are relative to the source map information for the 'foreign' crate whose CrateNum
@@ -225,15 +229,17 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
             let lo = (span.lo - s.source_file_cache.0.start_pos) + external_start_pos;
             let hi = (span.hi - s.source_file_cache.0.start_pos) + external_start_pos;
 
-            (TAG_VALID_SPAN_FOREIGN, lo, hi)
+            (s.source_file_cache.0.cnum, lo, hi)
         } else {
-            (TAG_VALID_SPAN_LOCAL, span.lo, span.hi)
+            // Use `LOCAL_CRATE` instead of the `CrateNum` from
+            // source_file_cache, since we may be encoding a proc-macro crate
+            (LOCAL_CRATE, span.lo, span.hi)
         };
 
-        tag.encode(s)?;
+        cnum.encode(s)?;
         lo.encode(s)?;
 
-        // Encode length which is usually less than span.hi and profits more
+        // Encode length which is tusually less than span.hi and profits more
         // from the variable-length integer encoding that we use.
         let len = hi - lo;
         len.encode(s)?;
@@ -273,13 +279,6 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
             SyntaxContext::root().encode(s)?;
         } else {
             span.ctxt.encode(s)?;
-        }
-
-        if tag == TAG_VALID_SPAN_FOREIGN {
-            // This needs to be two lines to avoid holding the `s.source_file_cache`
-            // while calling `cnum.encode(s)`
-            let cnum = s.source_file_cache.0.cnum;
-            cnum.encode(s)?;
         }
 
         Ok(())

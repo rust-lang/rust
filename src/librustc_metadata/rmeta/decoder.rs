@@ -35,7 +35,7 @@ use rustc_session::Session;
 use rustc_span::hygiene::ExpnDataDecodeMode;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{self, hygiene::MacroKind, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
+use rustc_span::{self, hygiene::MacroKind, BytePos, ExpnId, Pos, Span, SyntaxContext};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::cell::Cell;
@@ -351,7 +351,21 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     }
 
     fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
-        if cnum == LOCAL_CRATE { self.cdata().cnum } else { self.cdata().cnum_map[cnum] }
+        if cnum == LOCAL_CRATE {
+            self.cdata().cnum
+        } else {
+            self.cdata().cnum_map.get(cnum).copied().unwrap_or_else(|| {
+                if self.cdata().root.is_proc_macro_crate() {
+                    panic!(
+                        "Decoding of crate {:?} tried to access proc-macro dep {:?}",
+                        self.cdata().root.name,
+                        cnum
+                    )
+                } else {
+                    panic!("Decoded unexpected CrateNum {:?}", cnum)
+                }
+            })
+        }
     }
 
     fn decode_alloc_id(&mut self) -> Result<rustc_middle::mir::interpret::AllocId, Self::Error> {
@@ -438,14 +452,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<Span, String> {
-        let tag = u8::decode(decoder)?;
-
-        if tag == TAG_INVALID_SPAN {
-            return Ok(DUMMY_SP);
-        }
-
-        debug_assert!(tag == TAG_VALID_SPAN_LOCAL || tag == TAG_VALID_SPAN_FOREIGN);
-
+        let cnum = CrateNum::decode(decoder)?;
         let lo = BytePos::decode(decoder)?;
         let len = BytePos::decode(decoder)?;
         let ctxt = SyntaxContext::decode(decoder)?;
@@ -485,23 +492,9 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         // treat the 'local' and 'foreign' cases almost identically during deserialization:
         // we can call `imported_source_files` for the proper crate, and binary search
         // through the returned slice using our span.
-        let imported_source_files = if tag == TAG_VALID_SPAN_LOCAL {
+        let imported_source_files = if cnum == LOCAL_CRATE {
             decoder.cdata().imported_source_files(sess)
         } else {
-            // When we encode a proc-macro crate, all `Span`s should be encoded
-            // with `TAG_VALID_SPAN_LOCAL`
-            if decoder.cdata().root.is_proc_macro_crate() {
-                // Decode `CrateNum` as u32 - using `CrateNum::decode` will ICE
-                // since we don't have `cnum_map` populated.
-                let cnum = u32::decode(decoder)?;
-                panic!(
-                    "Decoding of crate {:?} tried to access proc-macro dep {:?}",
-                    decoder.cdata().root.name,
-                    cnum
-                );
-            }
-            // tag is TAG_VALID_SPAN_FOREIGN, checked by `debug_assert` above
-            let cnum = CrateNum::decode(decoder)?;
             debug!(
                 "SpecializedDecoder<Span>::specialized_decode: loading source files from cnum {:?}",
                 cnum
@@ -532,7 +525,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
 
                 // Don't try to cache the index for foreign spans,
                 // as this would require a map from CrateNums to indices
-                if tag == TAG_VALID_SPAN_LOCAL {
+                if cnum == LOCAL_CRATE {
                     decoder.last_source_file_index = index;
                 }
                 &imported_source_files[index]
