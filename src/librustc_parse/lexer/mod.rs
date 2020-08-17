@@ -323,20 +323,17 @@ impl<'a> StringReader<'a> {
         comment_kind: CommentKind,
         doc_style: DocStyle,
     ) -> TokenKind {
-        let mut idx = 0;
-        loop {
-            idx = match content[idx..].find('\r') {
-                None => break,
-                Some(it) => idx + it + 1,
-            };
-            self.err_span_(
-                content_start + BytePos(idx as u32 - 1),
-                content_start + BytePos(idx as u32),
-                match comment_kind {
-                    CommentKind::Line => "bare CR not allowed in doc-comment",
-                    CommentKind::Block => "bare CR not allowed in block doc-comment",
-                },
-            );
+        if content.contains('\r') {
+            for (idx, _) in content.char_indices().filter(|&(_, c)| c == '\r') {
+                self.err_span_(
+                    content_start + BytePos(idx as u32),
+                    content_start + BytePos(idx as u32 + 1),
+                    match comment_kind {
+                        CommentKind::Line => "bare CR not allowed in doc-comment",
+                        CommentKind::Block => "bare CR not allowed in block doc-comment",
+                    },
+                );
+            }
         }
 
         let attr_style = match doc_style {
