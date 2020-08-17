@@ -165,9 +165,8 @@ up the sysroot.  If you are using `miri` (the Miri driver) directly, see the
 
 Miri adds its own set of `-Z` flags:
 
-* `-Zmiri-disable-alignment-check` disables checking pointer alignment. This is
-  useful to avoid [false positives][alignment-false-positives]. However, setting
-  this flag means Miri could miss bugs in your program.
+* `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you
+  can focus on other failures.
 * `-Zmiri-disable-stacked-borrows` disables checking the experimental
   [Stacked Borrows] aliasing rules.  This can make Miri run faster, but it also
   means no aliasing violations will be detected.
@@ -193,12 +192,13 @@ Miri adds its own set of `-Z` flags:
   default, alignment is checked by casting the pointer to an integer, and making
   sure that is a multiple of the alignment.  This can lead to cases where a
   program passes the alignment check by pure chance, because things "happened to
-  be" sufficiently aligned.  To avoid such cases, the symbolic alignment check
-  only takes into account the requested alignment of the relevant allocation,
-  and the offset into that allocation.  This avoids such false negatives, but it
-  also incurs some false positives when the code does manual integer arithmetic
-  to ensure alignment.  (The standard library `align_to` method works fine in
-  both modes; under symbolic alignment it only fills the middle slice when the
+  be" sufficiently aligned -- there is no UB in this execution but there would
+  be UB in others.  To avoid such cases, the symbolic alignment check only takes
+  into account the requested alignment of the relevant allocation, and the
+  offset into that allocation.  This avoids missing such bugs, but it also
+  incurs some false positives when the code does manual integer arithmetic to
+  ensure alignment.  (The standard library `align_to` method works fine in both
+  modes; under symbolic alignment it only fills the middle slice when the
   allocation guarantees sufficient alignment.)
 * `-Zmiri-track-alloc-id=<id>` shows a backtrace when the given allocation is
   being allocated or freed.  This helps in debugging memory leaks and
@@ -210,8 +210,6 @@ Miri adds its own set of `-Z` flags:
 * `-Zmiri-track-call-id=<id>` shows a backtrace when the given call id is
   assigned to a stack frame.  This helps in debugging UB related to Stacked
   Borrows "protectors".
-
-[alignment-false-positives]: https://github.com/rust-lang/miri/issues/1074
 
 Some native rustc `-Z` flags are also very relevant for Miri:
 
