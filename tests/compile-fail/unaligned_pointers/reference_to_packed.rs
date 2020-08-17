@@ -10,10 +10,12 @@ struct Foo {
 }
 
 fn main() {
-    let foo = Foo {
-        x: 42,
-        y: 99,
-    };
-    let p = unsafe { &foo.x };
-    let i = *p; //~ ERROR alignment 4 is required
+    for _ in 0..10 { // Try many times as this might work by chance.
+        let foo = Foo {
+            x: 42,
+            y: 99,
+        };
+        let p = unsafe { &foo.x };
+        let i = *p; //~ ERROR alignment 4 is required
+    }
 }
