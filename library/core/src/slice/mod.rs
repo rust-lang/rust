@@ -2511,26 +2511,11 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "copy_within", since = "1.37.0")]
     #[track_caller]
-    pub fn copy_within<R: ops::RangeBounds<usize>>(&mut self, src: R, dest: usize)
+    pub fn copy_within<R: RangeBounds<usize>>(&mut self, src: R, dest: usize)
     where
         T: Copy,
     {
-        let src_start = match src.start_bound() {
-            ops::Bound::Included(&n) => n,
-            ops::Bound::Excluded(&n) => {
-                n.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
-            }
-            ops::Bound::Unbounded => 0,
-        };
-        let src_end = match src.end_bound() {
-            ops::Bound::Included(&n) => {
-                n.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
-            }
-            ops::Bound::Excluded(&n) => n,
-            ops::Bound::Unbounded => self.len(),
-        };
-        assert!(src_start <= src_end, "src end is before src start");
-        assert!(src_end <= self.len(), "src is out of bounds");
+        let Range { start: src_start, end: src_end } = self.check_range(src);
         let count = src_end - src_start;
         assert!(dest <= self.len() - count, "dest is out of bounds");
         unsafe {
