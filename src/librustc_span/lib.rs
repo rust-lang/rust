@@ -1356,7 +1356,7 @@ impl SourceFile {
             analyze_source_file::analyze_source_file(&src[..], start_pos);
 
         SourceFile {
-            name: if name_was_remapped { Name::Remapped(name) } else { Name::Normal(name) },
+            name: Name::new(name, name_was_remapped),
             unmapped_path: Some(unmapped_path),
             src: Some(Lrc::new(src)),
             src_hash,
