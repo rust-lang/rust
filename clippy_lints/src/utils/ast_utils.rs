@@ -5,7 +5,7 @@
 #![allow(clippy::similar_names, clippy::wildcard_imports, clippy::enum_glob_use)]
 
 use crate::utils::{both, over};
-use rustc_ast::ast::{self, *};
+use rustc_ast::{self as ast, *};
 use rustc_ast::ptr::P;
 use rustc_span::symbol::Ident;
 use std::mem;
