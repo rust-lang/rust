@@ -6,7 +6,6 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use libc::{c_char, c_uint};
-use log::debug;
 use rustc_codegen_ssa::base::to_immediate;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -26,6 +25,7 @@ use std::ffi::CStr;
 use std::iter::TrustedLen;
 use std::ops::{Deref, Range};
 use std::ptr;
+use tracing::debug;
 
 // All Builders must have an llfn associated with them
 #[must_use]

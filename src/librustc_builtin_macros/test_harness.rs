@@ -1,6 +1,5 @@
 // Code that generates a test runner to run all the tests in a crate
 
-use log::debug;
 use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
@@ -16,6 +15,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::PanicStrategy;
 use smallvec::{smallvec, SmallVec};
+use tracing::debug;
 
 use std::{iter, mem};
 

@@ -19,7 +19,7 @@ use rustc_target::abi::*;
 use rustc_target::asm::*;
 
 use libc::{c_char, c_uint};
-use log::debug;
+use tracing::debug;
 
 impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn codegen_llvm_inline_asm(

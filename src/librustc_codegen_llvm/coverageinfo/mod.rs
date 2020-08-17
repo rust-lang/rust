@@ -5,7 +5,6 @@ use crate::common::CodegenCx;
 
 use libc::c_uint;
 use llvm::coverageinfo::CounterMappingRegion;
-use log::debug;
 use rustc_codegen_ssa::coverageinfo::map::{CounterExpression, ExprKind, FunctionCoverage, Region};
 use rustc_codegen_ssa::traits::{
     BaseTypeMethods, CoverageInfoBuilderMethods, CoverageInfoMethods, MiscMethods, StaticMethods,
@@ -13,6 +12,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_data_structures::fx::FxHashMap;
 use rustc_llvm::RustString;
 use rustc_middle::ty::Instance;
+use tracing::debug;
 
 use std::cell::RefCell;
 use std::ffi::CString;

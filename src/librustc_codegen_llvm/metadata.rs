@@ -4,10 +4,10 @@ use crate::llvm::{mk_section_iter, False, ObjectFile};
 use rustc_middle::middle::cstore::MetadataLoader;
 use rustc_target::spec::Target;
 
-use log::debug;
 use rustc_codegen_ssa::METADATA_FILENAME;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
+use tracing::debug;
 
 use rustc_fs_util::path_to_c_string;
 use std::path::Path;

@@ -26,7 +26,7 @@
 #![allow(rustc::default_hash_types)]
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 #[macro_use]
 extern crate cfg_if;
 #[macro_use]

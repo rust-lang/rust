@@ -299,7 +299,7 @@ pub fn expand_test_or_bench(
     // extern crate test
     let test_extern = cx.item(sp, test_id, vec![], ast::ItemKind::ExternCrate(None));
 
-    log::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
+    tracing::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     vec![
         // Access to libtest under a hygienic name

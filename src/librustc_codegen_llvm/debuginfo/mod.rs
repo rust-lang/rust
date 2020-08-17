@@ -33,9 +33,9 @@ use rustc_span::{self, BytePos, Span};
 use rustc_target::abi::{LayoutOf, Primitive, Size};
 
 use libc::c_uint;
-use log::debug;
 use smallvec::SmallVec;
 use std::cell::RefCell;
+use tracing::debug;
 
 mod create_scope_map;
 pub mod gdb;

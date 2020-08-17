@@ -19,7 +19,7 @@
 #[macro_use]
 extern crate rustc_macros;
 #[macro_use]
-extern crate log;
+extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 

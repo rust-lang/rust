@@ -3,11 +3,11 @@ use crate::coverageinfo;
 use crate::llvm;
 
 use llvm::coverageinfo::CounterMappingRegion;
-use log::debug;
 use rustc_codegen_ssa::coverageinfo::map::{Counter, CounterExpression, Region};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_llvm::RustString;
+use tracing::debug;
 
 use std::ffi::CString;
 
