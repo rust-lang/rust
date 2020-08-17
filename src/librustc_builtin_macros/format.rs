@@ -1,7 +1,7 @@
 use ArgumentType::*;
 use Position::*;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;

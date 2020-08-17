@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_middle::mir::interpret::InterpResult;
 use rustc_middle::ty::{self, query::TyCtxtAt, Ty};
 
-use rustc_ast::ast::Mutability;
+use rustc_ast::Mutability;
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, Scalar, ValueVisitor};
 

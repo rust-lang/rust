@@ -766,9 +766,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx [rustc_ast::ast::InlineAsmTemplatePiece]
-{
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [rustc_ast::InlineAsmTemplatePiece] {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
         RefDecodable::decode(d)
     }

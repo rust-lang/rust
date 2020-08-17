@@ -34,7 +34,7 @@ use super::{InferCtxt, MiscVariable, TypeTrace};
 
 use crate::traits::{Obligation, PredicateObligations};
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;

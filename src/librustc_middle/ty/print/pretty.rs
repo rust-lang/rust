@@ -5,7 +5,7 @@ use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};

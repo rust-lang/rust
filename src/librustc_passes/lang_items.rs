@@ -13,7 +13,7 @@ use crate::weak_lang_items;
 use rustc_middle::middle::cstore::ExternCrate;
 use rustc_middle::ty::TyCtxt;
 
-use rustc_ast::ast::Attribute;
+use rustc_ast::Attribute;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};

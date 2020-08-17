@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -195,8 +195,8 @@ fn report_bin_hex_error(
 //
 // No suggestion for: `isize`, `usize`.
 fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static str> {
-    use rustc_ast::ast::IntTy::*;
-    use rustc_ast::ast::UintTy::*;
+    use rustc_ast::IntTy::*;
+    use rustc_ast::UintTy::*;
     macro_rules! find_fit {
         ($ty:expr, $val:expr, $negative:expr,
          $($type:ident => [$($utypes:expr),*] => [$($itypes:expr),*]),+) => {

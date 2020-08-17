@@ -1,7 +1,9 @@
 use super::Parser;
 
-use rustc_ast::ast::{self, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause};
 use rustc_ast::token;
+use rustc_ast::{
+    self as ast, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause,
+};
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, sym};
 

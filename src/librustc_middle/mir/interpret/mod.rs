@@ -102,7 +102,7 @@ use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
-use rustc_ast::ast::LitKind;
+use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;

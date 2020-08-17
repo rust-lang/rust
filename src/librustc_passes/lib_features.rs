@@ -4,7 +4,7 @@
 // and `#[unstable (..)]`), but are not declared in one single location
 // (unlike lang features), which means we need to collect them instead.
 
-use rustc_ast::ast::{Attribute, MetaItem, MetaItemKind};
+use rustc_ast::{Attribute, MetaItem, MetaItemKind};
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};

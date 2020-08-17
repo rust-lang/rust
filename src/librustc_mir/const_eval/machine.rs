@@ -7,7 +7,7 @@ use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
 
-use rustc_ast::ast::Mutability;
+use rustc_ast::Mutability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::AssertMessage;
 use rustc_session::Limit;

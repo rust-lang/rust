@@ -5,9 +5,9 @@ use crate::path_names_to_string;
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
-use rustc_ast::ast::{self, Expr, ExprKind, Item, ItemKind, NodeId, Path, Ty, TyKind};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::visit::FnKind;
+use rustc_ast::{self as ast, Expr, ExprKind, Item, ItemKind, NodeId, Path, Ty, TyKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;

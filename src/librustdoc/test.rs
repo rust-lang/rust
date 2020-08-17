@@ -1,4 +1,4 @@
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
 use rustc_feature::UnstableFeatures;

@@ -1,6 +1,6 @@
 use crate::base::ExtCtxt;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 use rustc_ast_pretty::pprust;

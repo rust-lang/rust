@@ -5,7 +5,7 @@ use crate::locator::{CrateError, CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
 
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_ast::{ast, visit};
+use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;

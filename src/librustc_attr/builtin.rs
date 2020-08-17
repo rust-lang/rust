@@ -1,6 +1,6 @@
 //! Parsing and validation of builtin attributes
 
-use rustc_ast::ast::{self, Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
+use rustc_ast::{self as ast, Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};

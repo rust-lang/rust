@@ -6,12 +6,12 @@ use super::path::PathStyle;
 use super::{BlockMode, Parser, Restrictions, SemiColonMode};
 use crate::maybe_whole;
 
-use rustc_ast::ast;
-use rustc_ast::ast::{AttrStyle, AttrVec, Attribute, MacCall, MacStmtStyle};
-use rustc_ast::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
+use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::util::classify;
+use rustc_ast::{AttrStyle, AttrVec, Attribute, MacCall, MacStmtStyle};
+use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};

@@ -2,7 +2,7 @@
 //! a literal `true` or `false` based on whether the given cfg matches the
 //! current compilation environment.
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_attr as attr;

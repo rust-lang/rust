@@ -1,6 +1,6 @@
 // Code that generates a test runner to run all the tests in a crate
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::{ExpectOne, *};

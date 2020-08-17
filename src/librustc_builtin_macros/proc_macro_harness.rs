@@ -1,9 +1,9 @@
 use std::mem;
 
-use rustc_ast::ast::{self, NodeId};
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
+use rustc_ast::{self as ast, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};

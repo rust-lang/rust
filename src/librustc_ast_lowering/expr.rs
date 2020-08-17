@@ -1,8 +1,8 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 
-use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
+use rustc_ast::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -845,7 +845,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         e2: Option<&Expr>,
         lims: RangeLimits,
     ) -> hir::ExprKind<'hir> {
-        use rustc_ast::ast::RangeLimits::*;
+        use rustc_ast::RangeLimits::*;
 
         let lang_item = match (e1, e2, lims) {
             (None, None, HalfOpen) => hir::LangItem::RangeFull,

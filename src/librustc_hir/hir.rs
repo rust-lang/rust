@@ -3,13 +3,13 @@ use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::{itemlikevisit, LangItem};
 
-use rustc_ast::ast::{self, CrateSugar, LlvmAsmDialect};
-use rustc_ast::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
-pub use rustc_ast::ast::{BorrowKind, ImplPolarity, IsAuto};
-pub use rustc_ast::ast::{CaptureBy, Movability, Mutability};
-use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_ast::{self as ast, CrateSugar, LlvmAsmDialect};
+use rustc_ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
+pub use rustc_ast::{BorrowKind, ImplPolarity, IsAuto};
+pub use rustc_ast::{CaptureBy, Movability, Mutability};
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_macros::HashStable_Generic;
 use rustc_span::def_id::LocalDefId;

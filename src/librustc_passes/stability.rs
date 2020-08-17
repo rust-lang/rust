@@ -1,7 +1,7 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use rustc_ast::ast::Attribute;
+use rustc_ast::Attribute;
 use rustc_attr::{self as attr, ConstStability, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;

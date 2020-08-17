@@ -1,5 +1,5 @@
 use crate::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::Symbol;
 

@@ -1,5 +1,5 @@
 use super::{Parser, PathStyle};
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast_pretty::pprust;

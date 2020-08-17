@@ -4,7 +4,7 @@ use crate::link_args;
 use crate::native_libs;
 use crate::rmeta::{self, encoder};
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;

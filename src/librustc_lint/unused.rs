@@ -1,8 +1,8 @@
 use crate::Lint;
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_ast::ast;
-use rustc_ast::ast::{ExprKind, StmtKind};
+use rustc_ast as ast;
 use rustc_ast::util::parser;
+use rustc_ast::{ExprKind, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Applicability};
@@ -526,7 +526,7 @@ trait UnusedDelimLint {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        use rustc_ast::ast::ExprKind::*;
+        use rustc_ast::ExprKind::*;
         let (value, ctx, followed_by_block, left_pos, right_pos) = match e.kind {
             // Do not lint `unused_braces` in `if let` expressions.
             If(ref cond, ref block, ..)

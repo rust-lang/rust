@@ -24,7 +24,7 @@ use crate::ty::{
     ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar,
     TyVid, TypeAndMut,
 };
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

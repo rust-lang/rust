@@ -17,7 +17,7 @@ use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;

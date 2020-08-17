@@ -1,5 +1,4 @@
-use rustc_ast::ast::{Attribute, Mod};
-use rustc_ast::token;
+use rustc_ast::{token, Attribute, Mod};
 use rustc_errors::{struct_span_err, PResult};
 use rustc_parse::new_parser_from_file;
 use rustc_session::parse::ParseSess;

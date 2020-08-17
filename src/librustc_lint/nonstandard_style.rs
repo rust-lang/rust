@@ -1,5 +1,5 @@
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

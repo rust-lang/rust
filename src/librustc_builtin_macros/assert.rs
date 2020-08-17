@@ -1,9 +1,9 @@
 use rustc_errors::{Applicability, DiagnosticBuilder};
 
-use rustc_ast::ast::{self, *};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
 use rustc_parse::parser::Parser;

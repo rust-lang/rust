@@ -7,10 +7,10 @@
 // or type checking or some other kind of complex analysis.
 
 use itertools::{Either, Itertools};
-use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
+use rustc_ast::*;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};

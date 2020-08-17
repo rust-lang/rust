@@ -1,7 +1,7 @@
 use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, QueryContext};
 
-use rustc_ast::{self, ast};
+use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::ErrorReported;

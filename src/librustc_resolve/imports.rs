@@ -9,9 +9,9 @@ use crate::{BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{CrateLint, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet, Weak};
 use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
 
-use rustc_ast::ast::NodeId;
 use rustc_ast::unwrap_or;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast::NodeId;
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;

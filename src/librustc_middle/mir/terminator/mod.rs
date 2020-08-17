@@ -1,12 +1,12 @@
 use crate::mir::interpret::Scalar;
 use crate::ty::{self, Ty, TyCtxt};
-use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 
 use super::{
     AssertMessage, BasicBlock, InlineAsmOperand, Operand, Place, SourceInfo, Successors,
     SuccessorsMut,
 };
-pub use rustc_ast::ast::Mutability;
+pub use rustc_ast::Mutability;
 use rustc_macros::HashStable;
 use rustc_span::Span;
 use std::borrow::Cow;

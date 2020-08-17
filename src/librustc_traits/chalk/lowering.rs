@@ -327,7 +327,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>>
 impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::Ty<RustInterner<'tcx>> {
         use chalk_ir::TyData;
-        use rustc_ast::ast;
+        use rustc_ast as ast;
         use TyKind::*;
 
         let empty = || chalk_ir::Substitution::empty(interner);

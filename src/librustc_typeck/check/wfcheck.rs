@@ -1,7 +1,7 @@
 use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;

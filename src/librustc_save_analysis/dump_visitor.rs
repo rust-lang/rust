@@ -13,7 +13,7 @@
 //! DumpVisitor walks the AST and processes it, and Dumper is used for
 //! recording the output.
 
-use rustc_ast::ast::{self};
+use rustc_ast as ast;
 use rustc_ast::{token, walk_list};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;

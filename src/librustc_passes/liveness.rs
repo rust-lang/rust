@@ -84,7 +84,7 @@
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use rustc_ast::ast::InlineAsmOptions;
+use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

@@ -4,16 +4,16 @@ use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
 
-use rustc_ast::ast::{self, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID};
-use rustc_ast::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, Mod};
-use rustc_ast::ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
-use rustc_ast::ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
-use rustc_ast::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
-use rustc_ast::ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
-use rustc_ast::ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use rustc_ast::{self as ast, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID};
+use rustc_ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, Mod};
+use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
+use rustc_ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
+use rustc_ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
+use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
+use rustc_ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
 use rustc_span::edition::Edition;

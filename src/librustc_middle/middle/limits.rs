@@ -6,7 +6,7 @@
 //! just peeks and looks for that attribute.
 
 use crate::bug;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::sync::OnceCell;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};

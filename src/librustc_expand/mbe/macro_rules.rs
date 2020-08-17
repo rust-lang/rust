@@ -8,7 +8,7 @@ use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success};
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq};
 use crate::mbe::transcribe::transcribe;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::token::{self, NonterminalKind, NtTT, Token, TokenKind::*};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast_pretty::pprust;

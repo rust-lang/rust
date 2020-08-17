@@ -35,13 +35,12 @@
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
 
-use rustc_ast::ast;
-use rustc_ast::ast::*;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::walk_list;
+use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;

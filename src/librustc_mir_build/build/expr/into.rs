@@ -3,7 +3,7 @@
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::thir::*;
-use rustc_ast::ast::InlineAsmOptions;
+use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;

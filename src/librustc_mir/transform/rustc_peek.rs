@@ -1,4 +1,4 @@
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;

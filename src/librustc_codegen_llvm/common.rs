@@ -9,7 +9,7 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
-use rustc_ast::ast::Mutability;
+use rustc_ast::Mutability;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;

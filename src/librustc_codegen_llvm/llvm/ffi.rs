@@ -389,10 +389,10 @@ pub enum AsmDialect {
 }
 
 impl AsmDialect {
-    pub fn from_generic(asm: rustc_ast::ast::LlvmAsmDialect) -> Self {
+    pub fn from_generic(asm: rustc_ast::LlvmAsmDialect) -> Self {
         match asm {
-            rustc_ast::ast::LlvmAsmDialect::Att => AsmDialect::Att,
-            rustc_ast::ast::LlvmAsmDialect::Intel => AsmDialect::Intel,
+            rustc_ast::LlvmAsmDialect::Att => AsmDialect::Att,
+            rustc_ast::LlvmAsmDialect::Intel => AsmDialect::Intel,
         }
     }
 }

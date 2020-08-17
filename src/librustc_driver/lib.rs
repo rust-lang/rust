@@ -15,7 +15,7 @@ extern crate lazy_static;
 
 pub extern crate rustc_plugin_impl as plugin;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
 use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::SeqCst;

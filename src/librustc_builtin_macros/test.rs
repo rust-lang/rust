@@ -2,7 +2,7 @@
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::check_builtin_macro_attribute;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;

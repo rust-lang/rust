@@ -15,10 +15,10 @@ use crate::{
 };
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
 
-use rustc_ast::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
-use rustc_ast::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use rustc_ast::token::{self, Token};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast::{self as ast, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
+use rustc_ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;

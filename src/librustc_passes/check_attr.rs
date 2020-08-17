@@ -8,7 +8,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-use rustc_ast::ast::{Attribute, NestedMetaItem};
+use rustc_ast::{Attribute, NestedMetaItem};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;

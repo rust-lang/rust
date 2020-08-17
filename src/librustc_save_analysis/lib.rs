@@ -9,7 +9,7 @@ mod dumper;
 mod span_utils;
 mod sig;
 
-use rustc_ast::ast::{self};
+use rustc_ast as ast;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast_pretty::pprust::attribute_to_string;
 use rustc_hir as hir;

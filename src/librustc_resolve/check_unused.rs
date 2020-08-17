@@ -26,7 +26,7 @@
 use crate::imports::ImportKind;
 use crate::Resolver;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast_lowering::ResolverAstLowering;

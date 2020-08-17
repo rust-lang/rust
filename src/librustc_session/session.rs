@@ -7,9 +7,9 @@ use crate::lint;
 use crate::parse::ParseSess;
 use crate::search_paths::{PathKind, SearchPath};
 
-pub use rustc_ast::ast::Attribute;
 pub use rustc_ast::attr::MarkedAttrs;
 pub use rustc_ast::crate_disambiguator::CrateDisambiguator;
+pub use rustc_ast::Attribute;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::jobserver::{self, Client};

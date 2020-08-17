@@ -81,7 +81,7 @@ macro_rules! arena_types {
             [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<$tcx>,
-            [] attribute: rustc_ast::ast::Attribute,
+            [] attribute: rustc_ast::Attribute,
             [] name_set: rustc_data_structures::fx::FxHashSet<rustc_span::symbol::Symbol>,
             [] hir_id_set: rustc_hir::HirIdSet,
 
@@ -98,7 +98,7 @@ macro_rules! arena_types {
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena
             // (during lowering) and the `librustc_middle` arena (for decoding MIR)
-            [decode] asm_template: rustc_ast::ast::InlineAsmTemplatePiece,
+            [decode] asm_template: rustc_ast::InlineAsmTemplatePiece,
 
             // This is used to decode the &'tcx [Span] for InlineAsm's line_spans.
             [decode] span: rustc_span::Span,

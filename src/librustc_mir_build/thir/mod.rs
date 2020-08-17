@@ -5,7 +5,7 @@
 //! structures.
 
 use self::cx::Cx;
-use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::infer::canonical::Canonical;

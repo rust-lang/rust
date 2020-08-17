@@ -4,7 +4,7 @@
 
 use crate::ty::TyCtxt;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};

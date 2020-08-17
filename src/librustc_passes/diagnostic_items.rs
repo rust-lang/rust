@@ -9,7 +9,7 @@
 //!
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};

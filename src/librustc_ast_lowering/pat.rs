@@ -1,7 +1,7 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 
-use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
+use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
