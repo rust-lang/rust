@@ -122,7 +122,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(memory_extra: &Self::MemoryExtra) -> bool;
 
-    /// Whether, when cehcking alignment, we should `force_int` and thus support
+    /// Whether, when checking alignment, we should `force_int` and thus support
     /// custom alignment logic based on whatever the integer address happens to be.
     fn force_int_for_alignment_check(memory_extra: &Self::MemoryExtra) -> bool;
 
