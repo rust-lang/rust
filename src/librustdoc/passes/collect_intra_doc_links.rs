@@ -275,7 +275,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     let link = cx
                         .tcx
                         .associated_items(impl_)
-                        .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, impl_)
+                        .find_by_name_and_namespace(
+                            cx.tcx,
+                            Ident::with_dummy_span(item_name),
+                            ns,
+                            impl_,
+                        )
                         .and_then(|item| match item.kind {
                             ty::AssocKind::Fn => Some("method"),
                             _ => None,
