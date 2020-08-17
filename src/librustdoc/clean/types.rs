@@ -19,12 +19,14 @@ use rustc_hir::lang_items;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::stability;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
+use smallvec::SmallVec;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
@@ -1263,6 +1265,61 @@ impl PrimitiveType {
             Never => "never",
         }
     }
+
+    pub fn impls(&self, tcx: TyCtxt<'_>) -> SmallVec<[DefId; 4]> {
+        use self::PrimitiveType::*;
+
+        let both =
+            |a: Option<DefId>, b: Option<DefId>| -> SmallVec<_> { a.into_iter().chain(b).collect() };
+
+        let lang_items = tcx.lang_items();
+        let primary_impl = match self {
+            Isize => lang_items.isize_impl(),
+            I8 => lang_items.i8_impl(),
+            I16 => lang_items.i16_impl(),
+            I32 => lang_items.i32_impl(),
+            I64 => lang_items.i64_impl(),
+            I128 => lang_items.i128_impl(),
+            Usize => lang_items.usize_impl(),
+            U8 => lang_items.u8_impl(),
+            U16 => lang_items.u16_impl(),
+            U32 => lang_items.u32_impl(),
+            U64 => lang_items.u64_impl(),
+            U128 => lang_items.u128_impl(),
+            F32 => return both(lang_items.f32_impl(), lang_items.f32_runtime_impl()),
+            F64 => return both(lang_items.f64_impl(), lang_items.f64_runtime_impl()),
+            Char => lang_items.char_impl(),
+            Bool => lang_items.bool_impl(),
+            Str => return both(lang_items.str_impl(), lang_items.str_alloc_impl()),
+            Slice => {
+                return lang_items
+                    .slice_impl()
+                    .into_iter()
+                    .chain(lang_items.slice_u8_impl())
+                    .chain(lang_items.slice_alloc_impl())
+                    .chain(lang_items.slice_u8_alloc_impl())
+                    .collect();
+            }
+            Array => lang_items.array_impl(),
+            Tuple => None,
+            Unit => None,
+            RawPointer => {
+                return lang_items
+                    .const_ptr_impl()
+                    .into_iter()
+                    .chain(lang_items.mut_ptr_impl())
+                    .chain(lang_items.const_slice_ptr_impl())
+                    .chain(lang_items.mut_slice_ptr_impl())
+                    .collect();
+            }
+            Reference => None,
+            Fn => None,
+            Never => None,
+        };
+
+        primary_impl.into_iter().collect()
+    }
+
 
     pub fn to_url_str(&self) -> &'static str {
         self.as_str()
