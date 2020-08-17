@@ -3,7 +3,7 @@
 use std::{fmt, fs, path::Path};
 
 use crate::{
-    codegen::{self, extract_comment_blocks_with_empty_lines, Location, Mode},
+    codegen::{self, extract_comment_blocks_with_empty_lines, reformat, Location, Mode, PREAMBLE},
     project_root, rust_files, Result,
 };
 
@@ -15,7 +15,7 @@ pub fn generate_assists_tests(mode: Mode) -> Result<()> {
 pub fn generate_assists_docs(mode: Mode) -> Result<()> {
     let assists = Assist::collect()?;
     let contents = assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
-    let contents = contents.trim().to_string() + "\n";
+    let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());
     let dst = project_root().join("docs/user/generated_assists.adoc");
     codegen::update(&dst, &contents, mode)
 }
@@ -134,7 +134,7 @@ r#####"
 
         buf.push_str(&test)
     }
-    let buf = crate::reformat(buf)?;
+    let buf = reformat(buf)?;
     codegen::update(&project_root().join(codegen::ASSISTS_TESTS), &buf, mode)
 }
 

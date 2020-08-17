@@ -15,7 +15,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{not_bash::fs2, project_root, Result};
+use crate::{
+    ensure_rustfmt,
+    not_bash::{fs2, pushenv, run},
+    project_root, Result,
+};
 
 pub use self::{
     gen_assists_docs::{generate_assists_docs, generate_assists_tests},
@@ -60,6 +64,18 @@ fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
     fn normalize(s: &str) -> String {
         s.replace("\r\n", "\n")
     }
+}
+
+const PREAMBLE: &str = "Generated file, do not edit by hand, see `xtask/src/codegen`";
+
+fn reformat(text: impl std::fmt::Display) -> Result<String> {
+    let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
+    ensure_rustfmt()?;
+    let stdout = run!(
+        "rustfmt --config-path {} --config fn_single_line=true", project_root().join("rustfmt.toml").display();
+        <text.to_string().as_bytes()
+    )?;
+    Ok(format!("//! {}\n\n{}\n", PREAMBLE, stdout))
 }
 
 fn extract_comment_blocks(text: &str) -> Vec<Vec<String>> {
