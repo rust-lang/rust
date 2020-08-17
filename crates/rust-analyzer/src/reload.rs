@@ -14,6 +14,7 @@ use crate::{
     lsp_ext,
     main_loop::Task,
 };
+use lsp_ext::StatusParams;
 
 impl GlobalState {
     pub(crate) fn update_configuration(&mut self, config: Config) {
@@ -86,7 +87,9 @@ impl GlobalState {
                 Status::Invalid => lsp_ext::Status::Invalid,
                 Status::NeedsReload => lsp_ext::Status::NeedsReload,
             };
-            self.send_notification::<lsp_ext::StatusNotification>(lsp_status);
+            self.send_notification::<lsp_ext::StatusNotification>(StatusParams {
+                status: lsp_status,
+            });
         }
     }
     pub(crate) fn fetch_workspaces(&mut self) {

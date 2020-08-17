@@ -8,7 +8,10 @@ export const analyzerStatus = new lc.RequestType<null, string, void>("rust-analy
 export const memoryUsage = new lc.RequestType<null, string, void>("rust-analyzer/memoryUsage");
 
 export type Status = "loading" | "ready" | "invalid" | "needsReload";
-export const status = new lc.NotificationType<Status>("rust-analyzer/status");
+export interface StatusParams {
+    status: Status;
+}
+export const status = new lc.NotificationType<StatusParams>("rust-analyzer/status");
 
 export const reloadWorkspace = new lc.RequestType<null, null, void>("rust-analyzer/reloadWorkspace");
 
