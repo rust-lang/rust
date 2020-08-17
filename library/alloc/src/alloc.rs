@@ -209,7 +209,7 @@ unsafe impl AllocRef for Global {
         );
 
         // SAFETY: `new_size` must be non-zero, which is checked in the match expression.
-        // If `new_size` is zero, than `old_size` has to be zero as well.
+        // If `new_size` is zero, then `old_size` has to be zero as well.
         // Other conditions must be upheld by the caller
         unsafe {
             match layout.size() {
@@ -238,7 +238,7 @@ unsafe impl AllocRef for Global {
         );
 
         // SAFETY: `new_size` must be non-zero, which is checked in the match expression.
-        // If `new_size` is zero, than `old_size` has to be zero as well.
+        // If `new_size` is zero, then `old_size` has to be zero as well.
         // Other conditions must be upheld by the caller
         unsafe {
             match layout.size() {
