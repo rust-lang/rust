@@ -1267,7 +1267,7 @@ impl PrimitiveType {
         }
     }
 
-    pub fn impls(&self, tcx: TyCtxt<'_>) -> &SmallVec<[DefId; 4]> {
+    pub fn impls(&self, tcx: TyCtxt<'_>) -> &'static SmallVec<[DefId; 4]> {
         Self::all_impls(tcx).get(self).expect("missing impl for primitive type")
     }
 
