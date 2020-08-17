@@ -122,17 +122,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
                             );
                         }
                     } else {
-                        // This `DefPath` does not have a
-                        // corresponding `DepNode` (e.g. a
-                        // struct field), and the ` DefPath`
-                        // collided with the `DefPath` of a
-                        // proper item that existed in the
-                        // previous compilation session.
-                        //
-                        // Since the given `DefPath` does not
-                        // denote the item that previously
-                        // existed, we just fail to mark green.
-                        return false;
+                        bug!("DepNode {:?} collided (DefId {:?})", dep_node, def_id);
                     }
                 } else {
                     // If the node does not exist anymore, we
