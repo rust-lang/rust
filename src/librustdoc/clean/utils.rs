@@ -369,7 +369,7 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut V
                 None => continue,
             },
         };
-        for did in primitive.impls(tcx) {
+        for &did in primitive.impls(tcx) {
             if !did.is_local() {
                 inline::build_impl(cx, did, None, ret);
             }
