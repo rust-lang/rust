@@ -30,7 +30,7 @@ use crate::time::SystemTime;
 ///
 /// # Examples
 ///
-/// Creates a new file and write bytes to it (you can also use [`write`]):
+/// Creates a new file and write bytes to it (you can also use [`write()`]):
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -84,14 +84,8 @@ use crate::time::SystemTime;
 /// by different processes. Avoid assuming that holding a `&File` means that the
 /// file will not change.
 ///
-/// [`Seek`]: ../io/trait.Seek.html
-/// [`String`]: ../string/struct.String.html
-/// [`Read`]: ../io/trait.Read.html
-/// [`Write`]: ../io/trait.Write.html
-/// [`BufReader<R>`]: ../io/struct.BufReader.html
-/// [`sync_all`]: struct.File.html#method.sync_all
-/// [`read`]: fn.read.html
-/// [`write`]: fn.write.html
+/// [`BufReader<R>`]: io::BufReader
+/// [`sync_all`]: File::sync_all
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
@@ -103,9 +97,6 @@ pub struct File {
 /// [`symlink_metadata`] function or method and represents known
 /// metadata about a file such as its permissions, size, modification
 /// times, etc.
-///
-/// [`metadata`]: fn.metadata.html
-/// [`symlink_metadata`]: fn.symlink_metadata.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Metadata(fs_imp::FileAttr);
@@ -124,18 +115,11 @@ pub struct Metadata(fs_imp::FileAttr);
 ///
 /// This [`io::Result`] will be an [`Err`] if there's some sort of intermittent
 /// IO error during iteration.
-///
-/// [`read_dir`]: fn.read_dir.html
-/// [`DirEntry`]: struct.DirEntry.html
-/// [`io::Result`]: ../io/type.Result.html
-/// [`Err`]: ../result/enum.Result.html#variant.Err
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct ReadDir(fs_imp::ReadDir);
 
 /// Entries returned by the [`ReadDir`] iterator.
-///
-/// [`ReadDir`]: struct.ReadDir.html
 ///
 /// An instance of `DirEntry` represents an entry inside of a directory on the
 /// filesystem. Each entry can be inspected via methods to learn about the full
@@ -150,20 +134,11 @@ pub struct DirEntry(fs_imp::DirEntry);
 /// [`File::create`] methods are aliases for commonly used options using this
 /// builder.
 ///
-/// [`File`]: struct.File.html
-/// [`File::open`]: struct.File.html#method.open
-/// [`File::create`]: struct.File.html#method.create
-///
-/// Generally speaking, when using `OpenOptions`, you'll first call [`new`],
-/// then chain calls to methods to set each option, then call [`open`],
-/// passing the path of the file you're trying to open. This will give you a
-/// [`io::Result`][result] with a [`File`][file] inside that you can further
-/// operate on.
-///
-/// [`new`]: struct.OpenOptions.html#method.new
-/// [`open`]: struct.OpenOptions.html#method.open
-/// [result]: ../io/type.Result.html
-/// [file]: struct.File.html
+/// Generally speaking, when using `OpenOptions`, you'll first call
+/// [`OpenOptions::new`], then chain calls to methods to set each option, then
+/// call [`OpenOptions::open`], passing the path of the file you're trying to
+/// open. This will give you a [`io::Result`] with a [`File`] inside that you
+/// can further operate on.
 ///
 /// # Examples
 ///
@@ -193,21 +168,18 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 
 /// Representation of the various permissions on a file.
 ///
-/// This module only currently provides one bit of information, [`readonly`],
-/// which is exposed on all currently supported platforms. Unix-specific
-/// functionality, such as mode bits, is available through the
-/// [`PermissionsExt`] trait.
+/// This module only currently provides one bit of information,
+/// [`Permissions::readonly`], which is exposed on all currently supported
+/// platforms. Unix-specific functionality, such as mode bits, is available
+/// through the [`PermissionsExt`] trait.
 ///
-/// [`readonly`]: struct.Permissions.html#method.readonly
-/// [`PermissionsExt`]: ../os/unix/fs/trait.PermissionsExt.html
+/// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Permissions(fs_imp::FilePermissions);
 
 /// A structure representing a type of file with accessors for each file type.
 /// It is returned by [`Metadata::file_type`] method.
-///
-/// [`Metadata::file_type`]: struct.Metadata.html#method.file_type
 #[stable(feature = "file_type", since = "1.1.0")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType(fs_imp::FileType);
@@ -235,22 +207,17 @@ fn initial_buffer_size(file: &File) -> usize {
 /// This is a convenience function for using [`File::open`] and [`read_to_end`]
 /// with fewer imports and without an intermediate variable. It pre-allocates a
 /// buffer based on the file size when available, so it is generally faster than
-/// reading into a vector created with `Vec::new()`.
+/// reading into a vector created with [`Vec::new()`].
 ///
-/// [`File::open`]: struct.File.html#method.open
-/// [`read_to_end`]: ../io/trait.Read.html#method.read_to_end
+/// [`read_to_end`]: Read::read_to_end
 ///
 /// # Errors
 ///
 /// This function will return an error if `path` does not already exist.
 /// Other errors may also be returned according to [`OpenOptions::open`].
 ///
-/// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
-///
 /// It will also return an error if it encounters while reading an error
-/// of a kind other than [`ErrorKind::Interrupted`].
-///
-/// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+/// of a kind other than [`io::ErrorKind::Interrupted`].
 ///
 /// # Examples
 ///
@@ -279,23 +246,18 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// This is a convenience function for using [`File::open`] and [`read_to_string`]
 /// with fewer imports and without an intermediate variable. It pre-allocates a
 /// buffer based on the file size when available, so it is generally faster than
-/// reading into a string created with `String::new()`.
+/// reading into a string created with [`String::new()`].
 ///
-/// [`File::open`]: struct.File.html#method.open
-/// [`read_to_string`]: ../io/trait.Read.html#method.read_to_string
+/// [`read_to_string`]: Read::read_to_string
 ///
 /// # Errors
 ///
 /// This function will return an error if `path` does not already exist.
 /// Other errors may also be returned according to [`OpenOptions::open`].
 ///
-/// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
-///
 /// It will also return an error if it encounters while reading an error
-/// of a kind other than [`ErrorKind::Interrupted`],
+/// of a kind other than [`io::ErrorKind::Interrupted`],
 /// or if the contents of the file are not valid UTF-8.
-///
-/// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
 ///
 /// # Examples
 ///
@@ -327,8 +289,7 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// This is a convenience function for using [`File::create`] and [`write_all`]
 /// with fewer imports.
 ///
-/// [`File::create`]: struct.File.html#method.create
-/// [`write_all`]: ../io/trait.Write.html#method.write_all
+/// [`write_all`]: Write::write_all
 ///
 /// # Examples
 ///
@@ -359,8 +320,6 @@ impl File {
     /// This function will return an error if `path` does not already exist.
     /// Other errors may also be returned according to [`OpenOptions::open`].
     ///
-    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
-    ///
     /// # Examples
     ///
     /// ```no_run
@@ -382,8 +341,6 @@ impl File {
     /// and will truncate it if it does.
     ///
     /// See the [`OpenOptions::open`] function for more details.
-    ///
-    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
     ///
     /// # Examples
     ///
@@ -412,8 +369,6 @@ impl File {
     /// also avoids the need to import `OpenOptions`.
     ///
     /// See the [`OpenOptions::new`] function for more details.
-    ///
-    /// [`OpenOptions::new`]: struct.OpenOptions.html#method.new
     ///
     /// # Examples
     ///
@@ -469,7 +424,7 @@ impl File {
     /// Note that some platforms may simply implement this in terms of
     /// [`sync_all`].
     ///
-    /// [`sync_all`]: struct.File.html#method.sync_all
+    /// [`sync_all`]: File::sync_all
     ///
     /// # Examples
     ///
@@ -824,15 +779,13 @@ impl OpenOptions {
     ///
     /// ## Note
     ///
-    /// This function doesn't create the file if it doesn't exist. Use the [`create`]
-    /// method to do so.
+    /// This function doesn't create the file if it doesn't exist. Use the
+    /// [`OpenOptions::create`] method to do so.
     ///
-    /// [`write()`]: ../../std/fs/struct.File.html#method.write
-    /// [`flush()`]: ../../std/fs/struct.File.html#method.flush
-    /// [`seek`]: ../../std/fs/struct.File.html#method.seek
-    /// [`SeekFrom`]: ../../std/io/enum.SeekFrom.html
-    /// [`Current`]: ../../std/io/enum.SeekFrom.html#variant.Current
-    /// [`create`]: #method.create
+    /// [`write()`]: Write::write
+    /// [`flush()`]: Write::flush
+    /// [`seek`]: Seek::seek
+    /// [`Current`]: SeekFrom::Current
     ///
     /// # Examples
     ///
@@ -869,11 +822,8 @@ impl OpenOptions {
 
     /// Sets the option to create a new file, or open it if it already exists.
     ///
-    /// In order for the file to be created, [`write`] or [`append`] access must
-    /// be used.
-    ///
-    /// [`write`]: #method.write
-    /// [`append`]: #method.append
+    /// In order for the file to be created, [`OpenOptions::write`] or
+    /// [`OpenOptions::append`] access must be used.
     ///
     /// # Examples
     ///
@@ -903,8 +853,8 @@ impl OpenOptions {
     /// The file must be opened with write or append access in order to create
     /// a new file.
     ///
-    /// [`.create()`]: #method.create
-    /// [`.truncate()`]: #method.truncate
+    /// [`.create()`]: OpenOptions::create
+    /// [`.truncate()`]: OpenOptions::truncate
     ///
     /// # Examples
     ///
@@ -927,9 +877,9 @@ impl OpenOptions {
     ///
     /// This function will return an error under a number of different
     /// circumstances. Some of these error conditions are listed here, together
-    /// with their [`ErrorKind`]. The mapping to [`ErrorKind`]s is not part of
-    /// the compatibility contract of the function, especially the `Other` kind
-    /// might change to more specific kinds in the future.
+    /// with their [`io::ErrorKind`]. The mapping to [`io::ErrorKind`]s is not
+    /// part of the compatibility contract of the function, especially the
+    /// [`Other`] kind might change to more specific kinds in the future.
     ///
     /// * [`NotFound`]: The specified file does not exist and neither `create`
     ///   or `create_new` is set.
@@ -958,12 +908,11 @@ impl OpenOptions {
     /// let file = OpenOptions::new().read(true).open("foo.txt");
     /// ```
     ///
-    /// [`ErrorKind`]: ../io/enum.ErrorKind.html
-    /// [`AlreadyExists`]: ../io/enum.ErrorKind.html#variant.AlreadyExists
-    /// [`InvalidInput`]: ../io/enum.ErrorKind.html#variant.InvalidInput
-    /// [`NotFound`]: ../io/enum.ErrorKind.html#variant.NotFound
-    /// [`Other`]: ../io/enum.ErrorKind.html#variant.Other
-    /// [`PermissionDenied`]: ../io/enum.ErrorKind.html#variant.PermissionDenied
+    /// [`AlreadyExists`]: io::ErrorKind::AlreadyExists
+    /// [`InvalidInput`]: io::ErrorKind::InvalidInput
+    /// [`NotFound`]: io::ErrorKind::NotFound
+    /// [`Other`]: io::ErrorKind::Other
+    /// [`PermissionDenied`]: io::ErrorKind::PermissionDenied
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
         self._open(path.as_ref())
@@ -1008,11 +957,8 @@ impl Metadata {
 
     /// Returns `true` if this metadata is for a directory. The
     /// result is mutually exclusive to the result of
-    /// [`is_file`], and will be false for symlink metadata
+    /// [`Metadata::is_file`], and will be false for symlink metadata
     /// obtained from [`symlink_metadata`].
-    ///
-    /// [`is_file`]: struct.Metadata.html#method.is_file
-    /// [`symlink_metadata`]: fn.symlink_metadata.html
     ///
     /// # Examples
     ///
@@ -1033,7 +979,7 @@ impl Metadata {
 
     /// Returns `true` if this metadata is for a regular file. The
     /// result is mutually exclusive to the result of
-    /// [`is_dir`], and will be false for symlink metadata
+    /// [`Metadata::is_dir`], and will be false for symlink metadata
     /// obtained from [`symlink_metadata`].
     ///
     /// When the goal is simply to read from (or write to) the source, the most
@@ -1041,11 +987,6 @@ impl Metadata {
     /// it. Only using `is_file` can break workflows like `diff <( prog_a )` on
     /// a Unix-like system for example. See [`File::open`] or
     /// [`OpenOptions::open`] for more information.
-    ///
-    /// [`is_dir`]: struct.Metadata.html#method.is_dir
-    /// [`symlink_metadata`]: fn.symlink_metadata.html
-    /// [`File::open`]: struct.File.html#method.open
-    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
     ///
     /// # Examples
     ///
@@ -1256,9 +1197,7 @@ impl Permissions {
     /// writing.
     ///
     /// This operation does **not** modify the filesystem. To modify the
-    /// filesystem use the [`fs::set_permissions`] function.
-    ///
-    /// [`fs::set_permissions`]: fn.set_permissions.html
+    /// filesystem use the [`set_permissions`] function.
     ///
     /// # Examples
     ///
@@ -1292,8 +1231,8 @@ impl FileType {
     /// [`is_file`] and [`is_symlink`]; only zero or one of these
     /// tests may pass.
     ///
-    /// [`is_file`]: struct.FileType.html#method.is_file
-    /// [`is_symlink`]: struct.FileType.html#method.is_symlink
+    /// [`is_file`]: FileType::is_file
+    /// [`is_symlink`]: FileType::is_symlink
     ///
     /// # Examples
     ///
@@ -1324,10 +1263,8 @@ impl FileType {
     /// a Unix-like system for example. See [`File::open`] or
     /// [`OpenOptions::open`] for more information.
     ///
-    /// [`is_dir`]: struct.FileType.html#method.is_dir
-    /// [`is_symlink`]: struct.FileType.html#method.is_symlink
-    /// [`File::open`]: struct.File.html#method.open
-    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
+    /// [`is_dir`]: FileType::is_dir
+    /// [`is_symlink`]: FileType::is_symlink
     ///
     /// # Examples
     ///
@@ -1358,12 +1295,11 @@ impl FileType {
     /// follows symbolic links, so [`is_symlink`] would always
     /// return `false` for the target file.
     ///
-    /// [`Metadata`]: struct.Metadata.html
-    /// [`fs::metadata`]: fn.metadata.html
-    /// [`fs::symlink_metadata`]: fn.symlink_metadata.html
-    /// [`is_dir`]: struct.FileType.html#method.is_dir
-    /// [`is_file`]: struct.FileType.html#method.is_file
-    /// [`is_symlink`]: struct.FileType.html#method.is_symlink
+    /// [`fs::metadata`]: metadata
+    /// [`fs::symlink_metadata`]: symlink_metadata
+    /// [`is_dir`]: FileType::is_dir
+    /// [`is_file`]: FileType::is_file
+    /// [`is_symlink`]: FileType::is_symlink
     ///
     /// # Examples
     ///
@@ -1450,8 +1386,8 @@ impl DirEntry {
     /// This function will not traverse symlinks if this entry points at a
     /// symlink. To traverse symlinks use [`fs::metadata`] or [`fs::File::metadata`].
     ///
-    /// [`fs::metadata`]: fn.metadata.html
-    /// [`fs::File::metadata`]: struct.File.html#method.metadata
+    /// [`fs::metadata`]: metadata
+    /// [`fs::File::metadata`]: File::metadata
     ///
     /// # Platform-specific behavior
     ///
@@ -1721,9 +1657,6 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// If you’re wanting to copy the contents of one file to another and you’re
 /// working with [`File`]s, see the [`io::copy`] function.
 ///
-/// [`io::copy`]: ../io/fn.copy.html
-/// [`File`]: ./struct.File.html
-///
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `open` function in Unix
@@ -1805,10 +1738,9 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// and [`std::os::windows::fs::symlink_file`] or [`symlink_dir`] should be
 /// used instead to make the intent explicit.
 ///
-/// [`std::os::unix::fs::symlink`]: ../os/unix/fs/fn.symlink.html
-/// [`std::os::windows::fs::symlink_file`]: ../os/windows/fs/fn.symlink_file.html
-/// [`symlink_dir`]: ../os/windows/fs/fn.symlink_dir.html
-///
+/// [`std::os::unix::fs::symlink`]: crate::os::unix::fs::symlink
+/// [`std::os::windows::fs::symlink_file`]: crate::os::windows::fs::symlink_file
+/// [`symlink_dir`]: crate::os::windows::fs::symlink_dir
 ///
 /// # Examples
 ///
@@ -1930,8 +1862,6 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///   function.)
 /// * `path` already exists.
 ///
-/// [`create_dir_all`]: fn.create_dir_all.html
-///
 /// # Examples
 ///
 /// ```no_run
@@ -1974,7 +1904,7 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// concurrently from multiple threads or processes is guaranteed not to fail
 /// due to a race condition with itself.
 ///
-/// [`fs::create_dir`]: fn.create_dir.html
+/// [`fs::create_dir`]: create_dir
 ///
 /// # Examples
 ///
@@ -2043,8 +1973,8 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// See [`fs::remove_file`] and [`fs::remove_dir`].
 ///
-/// [`fs::remove_file`]:  fn.remove_file.html
-/// [`fs::remove_dir`]: fn.remove_dir.html
+/// [`fs::remove_file`]: remove_file
+/// [`fs::remove_dir`]: remove_dir
 ///
 /// # Examples
 ///
@@ -2065,9 +1995,6 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// The iterator will yield instances of [`io::Result`]`<`[`DirEntry`]`>`.
 /// New errors may be encountered after an iterator is initially constructed.
-///
-/// [`io::Result`]: ../io/type.Result.html
-/// [`DirEntry`]: struct.DirEntry.html
 ///
 /// # Platform-specific behavior
 ///
