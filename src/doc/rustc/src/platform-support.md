@@ -204,7 +204,7 @@ target | std | host | notes
 `thumbv4t-none-eabi` | * |  | ARMv4T T32
 `x86_64-apple-ios-macabi` | ✓[^apple] |  | Apple Catalyst
 `x86_64-apple-tvos` | *[^apple] | | x86 64-bit tvOS
-`x86_64-linux-kernel` | ? |  | Linux kernel modules
+`x86_64-linux-kernel` | * |  | Linux kernel modules
 `x86_64-pc-solaris` | ? |  |
 `x86_64-pc-windows-msvc` | ✓ |  | 64-bit Windows XP support
 `x86_64-unknown-cloudabi` | ✓ |  | 64-bit CloudABI
