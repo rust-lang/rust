@@ -83,10 +83,10 @@
 //! * [`ptr::NonNull<U>`]
 //! * `#[repr(transparent)]` struct around one of the types in this list.
 //!
-//! For the above cases, it is guaranteed that one can [`mem::transmute`]
-//! from all valid values of `T` to `Option<T>` and from
-//! `Some::<T>(_)` to `T` (but transmuting `None::<T>` to `T` is undefined
-//! behaviour).
+//! It is further guaranteed that, for the cases above, one can
+//! [`mem::transmute`] from all valid values of `T` to `Option<T>` and
+//! from `Some::<T>(_)` to `T` (but transmuting `None::<T>` to `T`
+//! is undefined behaviour).
 //!
 //! # Examples
 //!
