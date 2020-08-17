@@ -1074,97 +1074,71 @@ impl SourceFileHash {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum Name {
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd)]
+pub struct SourceFileName {
     /// The name of the file that the source came from. Source that doesn't
     /// originate from files has names between angle brackets by convention
     /// (e.g., `<anon>`).
-    Normal(FileName),
-    /// FileName modified by `--remap-path-prefix`.
-    Remapped(FileName),
+    name: FileName,
+    /// `true` if the name field was modified by `--remap-path-prefix`.
+    was_remapped: bool,
+    /// The unmapped path of the file that the source came from.
+    /// Set to `None` if the `SourceFile` was imported from an external crate.
+    unmapped_name: Option<FileName>,
 }
 
-impl Name {
-    pub fn new(filename: FileName, was_remapped: bool) -> Self {
-        if was_remapped { Name::Remapped(filename) } else { Name::Normal(filename) }
+impl SourceFileName {
+    pub fn new(name: FileName, was_remapped: bool, unmapped_name: Option<FileName>) -> Self {
+        Self { name, was_remapped, unmapped_name }
+    }
+
+    pub fn name(&self) -> &FileName {
+        &self.name
+    }
+
+    pub fn unmapped_path(&self) -> &FileName {
+        self.unmapped_name.as_ref().unwrap_or(self.name())
     }
 
     fn is_real(&self) -> bool {
-        use Name::*;
-        match *self {
-            Normal(ref name) => name.is_real(),
-            Remapped(ref name) => name.is_real(),
-        }
-    }
-
-    fn is_remapped(&self) -> bool {
-        use Name::*;
-        match *self {
-            Normal(_) => false,
-            Remapped(_) => true,
-        }
-    }
-
-    fn name_and_remapped(&self) -> (FileName, bool) {
-        use Name::*;
-        let name = match *self {
-            Normal(ref name) => name,
-            Remapped(ref name) => name,
-        };
-        (name.clone(), self.is_remapped())
+        self.name.is_real()
     }
 }
 
-/// Does a comparison with the filename, ignoring any remapping.
-impl PartialEq<FileName> for Name {
-    fn eq(&self, other: &FileName) -> bool {
-        use Name::*;
-        match *self {
-            Normal(ref name) => name == other,
-            Remapped(ref name) => name == other,
-        }
-    }
-}
-
-impl std::fmt::Display for Name {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use Name::*;
-        match *self {
-            Normal(ref name) => write!(fmt, "{}", name),
-            Remapped(ref name) => write!(fmt, "remapped {}", name),
-        }
-    }
-}
-
-impl Encodable for Name {
+impl Encodable for SourceFileName {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_enum("Name", |s| match self {
-            Name::Normal(name) => s.emit_enum_variant("Normal", 0, 1, |s| name.encode(s)),
-            Name::Remapped(name) => s.emit_enum_variant("Remapped", 1, 1, |s| name.encode(s)),
+        s.emit_struct("SourceFileName", 3, |s| {
+            s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
+            s.emit_struct_field("was_remapped", 1, |s| self.was_remapped.encode(s))?;
+            s.emit_struct_field("unmapped_name", 2, |s| self.unmapped_name.encode(s))?;
+            Ok(())
         })
     }
 }
 
-impl Decodable for Name {
+impl Decodable for SourceFileName {
     fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        let names = ["Normal", "Remapped"];
-        d.read_enum("Name", |d| {
-            d.read_enum_variant(&names, |d, id| match id {
-                0 => Ok(Name::Normal(FileName::decode(d)?)),
-                1 => Ok(Name::Remapped(FileName::decode(d)?)),
-                _ => Err(d.error("Name enum variant could not be found")),
-            })
+        d.read_struct("SourceFileName", 3, |d| {
+            let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
+            let was_remapped: bool =
+                d.read_struct_field("was_remapped", 1, |d| Decodable::decode(d))?;
+            let unmapped_name: Option<FileName> =
+                d.read_struct_field("unmapped_name", 2, |d| Decodable::decode(d))?;
+            Ok(Self::new(name, was_remapped, unmapped_name))
         })
+    }
+}
+
+impl std::fmt::Display for SourceFileName {
+    fn fmt(&self, _fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
     }
 }
 
 /// A single source in the `SourceMap`.
 #[derive(Clone)]
 pub struct SourceFile {
-    pub name: Name,
-    /// The unmapped path of the file that the source came from.
-    /// Set to `None` if the `SourceFile` was imported from an external crate.
-    pub unmapped_path: Option<FileName>,
+    pub name: SourceFileName,
     /// The complete source code.
     pub src: Option<Lrc<String>>,
     /// The source code's hash.
@@ -1262,7 +1236,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
 impl<D: Decoder> Decodable<D> for SourceFile {
     fn decode(d: &mut D) -> Result<SourceFile, D::Error> {
         d.read_struct("SourceFile", 8, |d| {
-            let name: Name = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
+            let name: SourceFileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let src_hash: SourceFileHash =
                 d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
             let start_pos: BytePos =
@@ -1306,7 +1280,6 @@ impl<D: Decoder> Decodable<D> for SourceFile {
             let cnum: CrateNum = d.read_struct_field("cnum", 10, |d| Decodable::decode(d))?;
             Ok(SourceFile {
                 name,
-                unmapped_path: None,
                 start_pos,
                 end_pos,
                 src: None,
@@ -1356,8 +1329,7 @@ impl SourceFile {
             analyze_source_file::analyze_source_file(&src[..], start_pos);
 
         SourceFile {
-            name: Name::new(name, name_was_remapped),
-            unmapped_path: Some(unmapped_path),
+            name: SourceFileName::new(name, name_was_remapped, Some(unmapped_path)),
             src: Some(Lrc::new(src)),
             src_hash,
             external_src: Lock::new(ExternalSource::Unneeded),
@@ -1774,18 +1746,18 @@ pub enum SpanSnippetError {
     IllFormedSpan(Span),
     DistinctSources(DistinctSources),
     MalformedForSourcemap(MalformedSourceMapPositions),
-    SourceNotAvailable { filename: Name },
+    SourceNotAvailable { filename: SourceFileName },
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct DistinctSources {
-    pub begin: (Name, BytePos),
-    pub end: (Name, BytePos),
+    pub begin: (SourceFileName, BytePos),
+    pub end: (SourceFileName, BytePos),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct MalformedSourceMapPositions {
-    pub name: Name,
+    pub name: SourceFileName,
     pub source_len: usize,
     pub begin_pos: BytePos,
     pub end_pos: BytePos,

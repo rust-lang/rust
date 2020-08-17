@@ -125,11 +125,15 @@ pub struct StableSourceFileId(u128);
 // StableSourceFileId, perhaps built atop source_file.name_hash.
 impl StableSourceFileId {
     pub fn new(source_file: &SourceFile) -> StableSourceFileId {
-        let (source_file_name, source_file_was_remapped) = source_file.name.name_and_remapped();
+        let SourceFileName {
+            name: source_file_name,
+            was_remapped: source_file_was_remapped,
+            unmapped_name: source_file_unmapped_path,
+        } = source_file.name.clone();
         StableSourceFileId::new_from_pieces(
             &source_file_name,
             source_file_was_remapped,
-            source_file.unmapped_path.as_ref(),
+            source_file_unmapped_path.as_ref(),
         )
     }
 
@@ -380,8 +384,7 @@ impl SourceMap {
         }
 
         let source_file = Lrc::new(SourceFile {
-            name: Name::new(filename, name_was_remapped),
-            unmapped_path: None,
+            name: SourceFileName::new(filename, name_was_remapped, None),
             src: None,
             src_hash,
             external_src: Lock::new(ExternalSource::Foreign {
@@ -540,15 +543,11 @@ impl SourceMap {
     }
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
-        self.lookup_char_pos(sp.lo()).file.name.name_and_remapped().0
+        self.lookup_char_pos(sp.lo()).file.name.name().clone()
     }
 
     pub fn span_to_unmapped_path(&self, sp: Span) -> FileName {
-        self.lookup_char_pos(sp.lo())
-            .file
-            .unmapped_path
-            .clone()
-            .expect("`SourceMap::span_to_unmapped_path` called for imported `SourceFile`?")
+        self.lookup_char_pos(sp.lo()).file.name.unmapped_path().clone()
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {
@@ -906,7 +905,7 @@ impl SourceMap {
     }
 
     pub fn get_source_file(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {
-        self.files.borrow().source_files.iter().find(|sf| sf.name == *filename).cloned()
+        self.files.borrow().source_files.iter().find(|sf| sf.name.name() == filename).cloned()
     }
 
     /// For a global `BytePos`, computes the local offset within the containing `SourceFile`.
@@ -1047,8 +1046,8 @@ impl SourceMap {
         None
     }
     pub fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool {
-        source_file.add_external_src(|| match source_file.name.name_and_remapped() {
-            (FileName::Real(ref name), _) => self.file_loader.read_file(name.local_path()).ok(),
+        source_file.add_external_src(|| match source_file.name.name() {
+            FileName::Real(ref name) => self.file_loader.read_file(name.local_path()).ok(),
             _ => None,
         })
     }
