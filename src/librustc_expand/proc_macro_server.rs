@@ -610,7 +610,7 @@ impl server::SourceFile for Rustc<'_> {
         Lrc::ptr_eq(file1, file2)
     }
     fn path(&mut self, file: &Self::SourceFile) -> String {
-        match file.name {
+        match file.name.name() {
             FileName::Real(ref name) => name
                 .local_path()
                 .to_str()
