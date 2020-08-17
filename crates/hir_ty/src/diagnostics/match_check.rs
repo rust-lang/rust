@@ -1342,12 +1342,10 @@ fn panic(a: Category, b: Category) {
 enum Option<T> { Some(T), None }
 
 fn main() {
-    // FIXME: This is a false positive, as the `Never` type is not known here.
     // `Never` is deliberately not defined so that it's an uninferred type.
     match Option::<Never>::None {
         None => (),
         Some(never) => match never {},
-        //                   ^^^^^ Missing match arm
     }
 }
 "#,

@@ -223,10 +223,10 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             db.body_with_source_map(self.owner.into());
 
         let match_expr_ty = match infer.type_of_expr.get(match_expr) {
-            Some(ty) => ty,
             // If we can't resolve the type of the match expression
             // we cannot perform exhaustiveness checks.
-            None => return,
+            None | Some(Ty::Unknown) => return,
+            Some(ty) => ty,
         };
 
         let cx = MatchCheckCtx { match_expr, body, infer: infer.clone(), db };
