@@ -7,6 +7,7 @@ use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
+use std::lazy::SyncOnceCell as OnceCell;
 
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
@@ -26,7 +27,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use smallvec::SmallVec;
+use smallvec::{SmallVec, smallvec};
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
@@ -1266,60 +1267,84 @@ impl PrimitiveType {
         }
     }
 
-    pub fn impls(&self, tcx: TyCtxt<'_>) -> SmallVec<[DefId; 4]> {
-        use self::PrimitiveType::*;
-
-        let both =
-            |a: Option<DefId>, b: Option<DefId>| -> SmallVec<_> { a.into_iter().chain(b).collect() };
-
-        let lang_items = tcx.lang_items();
-        let primary_impl = match self {
-            Isize => lang_items.isize_impl(),
-            I8 => lang_items.i8_impl(),
-            I16 => lang_items.i16_impl(),
-            I32 => lang_items.i32_impl(),
-            I64 => lang_items.i64_impl(),
-            I128 => lang_items.i128_impl(),
-            Usize => lang_items.usize_impl(),
-            U8 => lang_items.u8_impl(),
-            U16 => lang_items.u16_impl(),
-            U32 => lang_items.u32_impl(),
-            U64 => lang_items.u64_impl(),
-            U128 => lang_items.u128_impl(),
-            F32 => return both(lang_items.f32_impl(), lang_items.f32_runtime_impl()),
-            F64 => return both(lang_items.f64_impl(), lang_items.f64_runtime_impl()),
-            Char => lang_items.char_impl(),
-            Bool => lang_items.bool_impl(),
-            Str => return both(lang_items.str_impl(), lang_items.str_alloc_impl()),
-            Slice => {
-                return lang_items
-                    .slice_impl()
-                    .into_iter()
-                    .chain(lang_items.slice_u8_impl())
-                    .chain(lang_items.slice_alloc_impl())
-                    .chain(lang_items.slice_u8_alloc_impl())
-                    .collect();
-            }
-            Array => lang_items.array_impl(),
-            Tuple => None,
-            Unit => None,
-            RawPointer => {
-                return lang_items
-                    .const_ptr_impl()
-                    .into_iter()
-                    .chain(lang_items.mut_ptr_impl())
-                    .chain(lang_items.const_slice_ptr_impl())
-                    .chain(lang_items.mut_slice_ptr_impl())
-                    .collect();
-            }
-            Reference => None,
-            Fn => None,
-            Never => None,
-        };
-
-        primary_impl.into_iter().collect()
+    pub fn impls(&self, tcx: TyCtxt<'_>) -> &SmallVec<[DefId; 4]> {
+        Self::all_impls(tcx).get(self).expect("missing impl for primitive type")
     }
 
+    pub fn all_impls(tcx: TyCtxt<'_>) -> &'static FxHashMap<PrimitiveType, SmallVec<[DefId; 4]>> {
+        static CELL: OnceCell<FxHashMap<PrimitiveType, SmallVec<[DefId; 4]>>> = OnceCell::new();
+
+        CELL.get_or_init(move || {
+            use self::PrimitiveType::*;
+
+            /// A macro to create a FxHashMap.
+            ///
+            /// Example:
+            ///
+            /// ```
+            /// let letters = map!{"a" => "b", "c" => "d"};
+            /// ```
+            ///
+            /// Trailing commas are allowed.
+            /// Commas between elements are required (even if the expression is a block).
+            macro_rules! map {
+                ($( $key: expr => $val: expr ),* $(,)*) => {{
+                    let mut map = ::rustc_data_structures::fx::FxHashMap::default();
+                    $( map.insert($key, $val); )*
+                    map
+                }}
+            }
+
+            let single = |a: Option<DefId>| a.into_iter().collect();
+            let both =
+                |a: Option<DefId>, b: Option<DefId>| -> SmallVec<_> { a.into_iter().chain(b).collect() };
+
+            let lang_items = tcx.lang_items();
+            map! {
+                Isize => single(lang_items.isize_impl()),
+                I8 => single(lang_items.i8_impl()),
+                I16 => single(lang_items.i16_impl()),
+                I32 => single(lang_items.i32_impl()),
+                I64 => single(lang_items.i64_impl()),
+                I128 => single(lang_items.i128_impl()),
+                Usize => single(lang_items.usize_impl()),
+                U8 => single(lang_items.u8_impl()),
+                U16 => single(lang_items.u16_impl()),
+                U32 => single(lang_items.u32_impl()),
+                U64 => single(lang_items.u64_impl()),
+                U128 => single(lang_items.u128_impl()),
+                F32 => both(lang_items.f32_impl(), lang_items.f32_runtime_impl()),
+                F64 => both(lang_items.f64_impl(), lang_items.f64_runtime_impl()),
+                Char => single(lang_items.char_impl()),
+                Bool => single(lang_items.bool_impl()),
+                Str => both(lang_items.str_impl(), lang_items.str_alloc_impl()),
+                Slice => {
+                    lang_items
+                        .slice_impl()
+                        .into_iter()
+                        .chain(lang_items.slice_u8_impl())
+                        .chain(lang_items.slice_alloc_impl())
+                        .chain(lang_items.slice_u8_alloc_impl())
+                        .collect()
+                },
+                Array => single(lang_items.array_impl()),
+                Tuple => smallvec![],
+                Unit => smallvec![],
+                RawPointer => {
+                    lang_items
+                        .const_ptr_impl()
+                        .into_iter()
+                        .chain(lang_items.mut_ptr_impl())
+                        .chain(lang_items.const_slice_ptr_impl())
+                        .chain(lang_items.mut_slice_ptr_impl())
+                        .collect()
+                },
+                Reference => smallvec![],
+                Fn => smallvec![],
+                Never => smallvec![],
+            }
+        })
+    }
 
     pub fn to_url_str(&self) -> &'static str {
         self.as_str()
