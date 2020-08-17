@@ -18,6 +18,7 @@ const LICENSES: &[&str] = &[
     "Unlicense/MIT",
     "Unlicense OR MIT",
     "0BSD OR MIT OR Apache-2.0", // adler license
+    "Zlib OR Apache-2.0 OR MIT", // tinyvec
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
