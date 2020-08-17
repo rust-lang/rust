@@ -1096,6 +1096,10 @@ impl SourceFileName {
         &self.name
     }
 
+    pub fn name_mut(&mut self) -> &mut FileName {
+        &mut self.name
+    }
+
     pub fn unmapped_path(&self) -> &FileName {
         self.unmapped_name.as_ref().unwrap_or(self.name())
     }
@@ -1106,6 +1110,14 @@ impl SourceFileName {
 
     pub fn was_remapped(&self) -> bool {
         self.was_remapped
+    }
+}
+
+/// This conversion assumes that the path was not remapped (ie name == unmapped_name)
+impl From<PathBuf> for SourceFileName {
+    fn from(path: PathBuf) -> Self {
+        let name: FileName = path.into();
+        Self::new(name.clone(), false, Some(name))
     }
 }
 

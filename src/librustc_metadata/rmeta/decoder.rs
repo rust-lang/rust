@@ -1635,7 +1635,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     // containing the information we need.
                     let rustc_span::SourceFile {
                         mut name,
-                        name_was_remapped,
                         src_hash,
                         start_pos,
                         end_pos,
@@ -1652,7 +1651,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     // on `try_to_translate_virtual_to_real`).
                     // FIXME(eddyb) we could check `name_was_remapped` here,
                     // but in practice it seems to be always `false`.
-                    try_to_translate_virtual_to_real(&mut name);
+                    try_to_translate_virtual_to_real(name.name_mut());
 
                     let source_length = (end_pos - start_pos).to_usize();
 
@@ -1675,8 +1674,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     }
 
                     let local_version = sess.source_map().new_imported_source_file(
-                        name,
-                        name_was_remapped,
+                        name.name().clone(),
+                        name.was_remapped(),
                         src_hash,
                         name_hash,
                         source_length,

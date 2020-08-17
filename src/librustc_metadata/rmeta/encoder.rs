@@ -445,11 +445,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 (!source_file.is_imported() || self.is_proc_macro)
             })
             .map(|(_, source_file)| {
-                let mut adapted = match source_file.name {
+                let mut adapted = match source_file.name.name() {
                     // This path of this SourceFile has been modified by
                     // path-remapping, so we use it verbatim (and avoid
                     // cloning the whole map in the process).
-                    _ if source_file.name_was_remapped => source_file.clone(),
+                    _ if source_file.name.was_remapped() => source_file.clone(),
 
                     // Otherwise expand all paths to absolute paths because
                     // any relative paths are potentially relative to a
@@ -460,7 +460,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         adapted.name = Path::new(&working_dir).join(name).into();
                         adapted.name_hash = {
                             let mut hasher: StableHasher = StableHasher::new();
-                            adapted.name.hash(&mut hasher);
+                            adapted.name.name().hash(&mut hasher);
                             hasher.finish::<u128>()
                         };
                         Lrc::new(adapted)
