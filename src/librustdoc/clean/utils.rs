@@ -15,9 +15,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::mir::interpret::{sign_extend, ConstValue, Scalar};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::symbol::{kw, sym, Symbol};
-use smallvec::SmallVec;
 use std::mem;
 
 pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
@@ -351,60 +350,6 @@ pub fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     s
 }
 
-pub fn impl_for_type(tcx: TyCtxt<'_>, primitive: PrimitiveType) -> SmallVec<[DefId; 4]> {
-    use self::PrimitiveType::*;
-
-    let both =
-        |a: Option<DefId>, b: Option<DefId>| -> SmallVec<_> { a.into_iter().chain(b).collect() };
-
-    let lang_items = tcx.lang_items();
-    let primary_impl = match primitive {
-        Isize => lang_items.isize_impl(),
-        I8 => lang_items.i8_impl(),
-        I16 => lang_items.i16_impl(),
-        I32 => lang_items.i32_impl(),
-        I64 => lang_items.i64_impl(),
-        I128 => lang_items.i128_impl(),
-        Usize => lang_items.usize_impl(),
-        U8 => lang_items.u8_impl(),
-        U16 => lang_items.u16_impl(),
-        U32 => lang_items.u32_impl(),
-        U64 => lang_items.u64_impl(),
-        U128 => lang_items.u128_impl(),
-        F32 => return both(lang_items.f32_impl(), lang_items.f32_runtime_impl()),
-        F64 => return both(lang_items.f64_impl(), lang_items.f64_runtime_impl()),
-        Char => lang_items.char_impl(),
-        Bool => lang_items.bool_impl(),
-        Str => return both(lang_items.str_impl(), lang_items.str_alloc_impl()),
-        Slice => {
-            return lang_items
-                .slice_impl()
-                .into_iter()
-                .chain(lang_items.slice_u8_impl())
-                .chain(lang_items.slice_alloc_impl())
-                .chain(lang_items.slice_u8_alloc_impl())
-                .collect();
-        }
-        Array => lang_items.array_impl(),
-        Tuple => None,
-        Unit => None,
-        RawPointer => {
-            return lang_items
-                .const_ptr_impl()
-                .into_iter()
-                .chain(lang_items.mut_ptr_impl())
-                .chain(lang_items.const_slice_ptr_impl())
-                .chain(lang_items.mut_slice_ptr_impl())
-                .collect();
-        }
-        Reference => None,
-        Fn => None,
-        Never => None,
-    };
-
-    primary_impl.into_iter().collect()
-}
-
 pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut Vec<Item>) {
     let tcx = cx.tcx;
 
@@ -424,7 +369,7 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut V
                 None => continue,
             },
         };
-        for did in impl_for_type(tcx, primitive) {
+        for did in primitive.impls(tcx) {
             if !did.is_local() {
                 inline::build_impl(cx, did, None, ret);
             }
