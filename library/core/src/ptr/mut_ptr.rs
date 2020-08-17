@@ -12,6 +12,15 @@ impl<T: ?Sized> *mut T {
     /// Therefore, two pointers that are null may still not compare equal to
     /// each other.
     ///
+    /// ## Behavior during const evaluation
+    ///
+    /// When this function is used during const evaluation, it may return `false` for pointers
+    /// that turn out to be null at runtime. Specifically, when a pointer to some memory
+    /// is offset beyond its bounds in such a way that the resulting pointer is null,
+    /// the function will still return `false`. There is no way for CTFE to know
+    /// the absolute position of that memory, so we cannot tell if the pointer is
+    /// null or not.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -22,11 +31,12 @@ impl<T: ?Sized> *mut T {
     /// assert!(!ptr.is_null());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
     #[inline]
-    pub fn is_null(self) -> bool {
+    pub const fn is_null(self) -> bool {
         // Compare via a cast to a thin pointer, so fat pointers are only
         // considering their "data" part for null-ness.
-        (self as *mut u8) == null_mut()
+        (self as *mut u8).guaranteed_eq(null_mut())
     }
 
     /// Casts to a pointer of another type.
