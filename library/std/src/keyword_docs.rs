@@ -98,7 +98,6 @@ mod as_keyword {}
 /// [Reference on "break expression"]: ../reference/expressions/loop-expr.html#break-expressions
 /// [Reference on "break and loop values"]:
 /// ../reference/expressions/loop-expr.html#break-and-loop-values
-///
 mod break_keyword {}
 
 #[doc(keyword = "const")]
@@ -336,7 +335,6 @@ mod else_keyword {}
 /// For more information, take a look at the [Rust Book] or the [Reference]
 ///
 /// [ADT]: https://en.wikipedia.org/wiki/Algebraic_data_type
-/// [`Option`]: option/enum.Option.html
 /// [Rust Book]: ../book/ch06-01-defining-an-enum.html
 /// [Reference]: ../reference/items/enumerations.html
 mod enum_keyword {}
@@ -534,7 +532,6 @@ mod fn_keyword {}
 /// [`in`]: keyword.in.html
 /// [`impl`]: keyword.impl.html
 /// [higher-ranked trait bounds]: ../reference/trait-bounds.html#higher-ranked-trait-bounds
-/// [`IntoIterator`]: iter/trait.IntoIterator.html
 /// [Rust book]:
 /// ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
 /// [Reference]: ../reference/expressions/loop-expr.html#iterator-loops
@@ -993,7 +990,6 @@ mod mod_keyword {}
 /// For more information on the `move` keyword, see the [closure]'s section
 /// of the Rust book or the [threads] section
 ///
-/// [`Fn` trait]: ../std/ops/trait.Fn.html
 /// [closure]: ../book/ch13-01-closures.html
 /// [threads]: ../book/ch16-01-threads.html#using-move-closures-with-threads
 mod move_keyword {}
@@ -1413,9 +1409,7 @@ mod self_upper_keyword {}
 /// [`extern`]: keyword.extern.html
 /// [`mut`]: keyword.mut.html
 /// [`unsafe`]: keyword.unsafe.html
-/// [`drop`]: mem/fn.drop.html
-/// [`Sync`]: marker/trait.Sync.html
-/// [`RefCell`]: cell/struct.RefCell.html
+/// [`RefCell`]: cell::RefCell
 /// [Reference]: ../reference/items/static-items.html
 mod static_keyword {}
 
@@ -1522,7 +1516,7 @@ mod static_keyword {}
 /// For more information on structs, take a look at the [Rust Book][book] or the
 /// [Reference][reference].
 ///
-/// [`PhantomData`]: marker/struct.PhantomData.html
+/// [`PhantomData`]: marker::PhantomData
 /// [book]: ../book/ch05-01-defining-structs.html
 /// [reference]: ../reference/items/structs.html
 mod struct_keyword {}
@@ -1733,8 +1727,6 @@ mod super_keyword {}
 /// [`for`]: keyword.for.html
 /// [`impl`]: keyword.impl.html
 /// [`unsafe`]: keyword.unsafe.html
-/// [`Send`]: marker/trait.Send.html
-/// [`Sync`]: marker/trait.Sync.html
 /// [Ref-Traits]: ../reference/items/traits.html
 /// [Ref-Trait-Objects]: ../reference/types/trait-object.html
 mod trait_keyword {}
@@ -1764,7 +1756,6 @@ mod trait_keyword {}
 /// [`while`]: keyword.while.html
 /// [`match`]: ../reference/expressions/match-expr.html#match-guards
 /// [`false`]: keyword.false.html
-/// [`bool`]: primitive.bool.html
 mod true_keyword {}
 
 #[doc(keyword = "type")]
@@ -1986,9 +1977,6 @@ mod type_keyword {}
 /// [`static`]: keyword.static.html
 /// [`union`]: keyword.union.html
 /// [`impl`]: keyword.impl.html
-/// [Send]: marker/trait.Send.html
-/// [Sync]: marker/trait.Sync.html
-/// [`Vec::set_len`]: vec/struct.Vec.html#method.set_len
 /// [raw pointers]: ../reference/types/pointer.html
 /// [memory safety]: ../book/ch19-01-unsafe-rust.html
 /// [Rustnomicon]: ../nomicon/index.html
@@ -2178,7 +2166,7 @@ mod where_keyword {}
 ///
 /// It is available for use in stable rust from version 1.39 onwards.
 ///
-/// [`Future`]: ./future/trait.Future.html
+/// [`Future`]: future::Future
 /// [async book]: https://rust-lang.github.io/async-book/
 mod async_keyword {}
 
@@ -2197,7 +2185,7 @@ mod async_keyword {}
 ///
 /// It is available for use in stable rust from version 1.39 onwards.
 ///
-/// [`Future`]: ./future/trait.Future.html
+/// [`Future`]: future::Future
 /// [async book]: https://rust-lang.github.io/async-book/
 mod await_keyword {}
 
