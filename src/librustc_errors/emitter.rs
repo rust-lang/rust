@@ -1299,7 +1299,7 @@ impl EmitterWriter {
                         &format!(
                             "{}:{}:{}",
                             loc.file.name,
-                            sm.doctest_offset_line(&loc.file.name, loc.line),
+                            sm.doctest_offset_line(&loc.file.name.name(), loc.line),
                             loc.col.0 + 1,
                         ),
                         Style::LineAndColumn,
@@ -1313,7 +1313,7 @@ impl EmitterWriter {
                         &format!(
                             "{}:{}:{}: ",
                             loc.file.name,
-                            sm.doctest_offset_line(&loc.file.name, loc.line),
+                            sm.doctest_offset_line(&loc.file.name.name(), loc.line),
                             loc.col.0 + 1,
                         ),
                         Style::LineAndColumn,
@@ -1337,7 +1337,10 @@ impl EmitterWriter {
                     format!(
                         "{}:{}{}",
                         annotated_file.file.name,
-                        sm.doctest_offset_line(&annotated_file.file.name, first_line.line_index),
+                        sm.doctest_offset_line(
+                            &annotated_file.file.name.name(),
+                            first_line.line_index
+                        ),
                         col
                     )
                 } else {

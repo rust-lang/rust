@@ -1074,7 +1074,7 @@ impl SourceFileHash {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SourceFileName {
     /// The name of the file that the source came from. Source that doesn't
     /// originate from files has names between angle brackets by convention
