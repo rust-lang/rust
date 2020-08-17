@@ -859,10 +859,10 @@ pub(crate) fn handle_resolve_code_action(
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
     let assists = snap.analysis.resolved_assists(&snap.config.assist, frange)?;
-    let (id_string, index) = split_once(&params.id, ':').unwrap();
+    let (id, index) = split_once(&params.id, ':').unwrap();
     let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];
-    assert!(assist.assist.id().0 == id_string);
+    assert!(assist.assist.id.0 == id);
     Ok(to_proto::resolved_code_action(&snap, assist.clone())?.edit)
 }
 
