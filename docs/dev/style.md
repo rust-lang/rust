@@ -176,6 +176,35 @@ fn frobnicate(walrus: Option<Walrus>) {
 }
 ```
 
+# Getters & Setters
+
+If a field can have any value without breaking invariants, make the field public.
+Conversely, if there is an invariant, document it, enforce it in the "constructor" function, make the field private, and provide a getter.
+Never provide setters.
+
+Getters should return borrowed data:
+
+```
+struct Person {
+    // Invariant: never empty
+    first_name: String,
+    middle_name: Option<String>
+}
+
+// Good
+impl Person {
+    fn first_name(&self) -> &str { self.first_name.as_str() }
+    fn middle_name(&self) -> Option<&str> { self.middle_name.as_ref() }
+}
+
+// Not as good
+impl Person {
+    fn first_name(&self) -> String { self.first_name.clone() }
+    fn middle_name(&self) -> &Option<String> { &self.middle_name }
+}
+```
+
+
 # Premature Pessimization
 
 Avoid writing code which is slower than it needs to be.
