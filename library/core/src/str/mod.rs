@@ -13,8 +13,9 @@ use self::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
 
 use crate::char;
 use crate::fmt::{self, Write};
+use crate::iter::TrustedRandomAccess;
 use crate::iter::{Chain, FlatMap, Flatten};
-use crate::iter::{Copied, Filter, FusedIterator, Map, TrustedLen, TrustedRandomAccess};
+use crate::iter::{Copied, Filter, FusedIterator, Map, TrustedLen};
 use crate::mem;
 use crate::ops::Try;
 use crate::option;
@@ -819,6 +820,13 @@ impl Iterator for Bytes<'_> {
     {
         self.0.rposition(predicate)
     }
+
+    #[inline]
+    unsafe fn get_unchecked(&mut self, idx: usize) -> u8 {
+        // SAFETY: the caller must uphold the safety contract
+        // for `Iterator::get_unchecked`.
+        unsafe { self.0.get_unchecked(idx) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -862,12 +870,8 @@ impl FusedIterator for Bytes<'_> {}
 unsafe impl TrustedLen for Bytes<'_> {}
 
 #[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl TrustedRandomAccess for Bytes<'_> {
-    unsafe fn get_unchecked(&mut self, i: usize) -> u8 {
-        // SAFETY: the caller must uphold the safety contract
-        // for `TrustedRandomAccess::get_unchecked`.
-        unsafe { self.0.get_unchecked(i) }
-    }
     fn may_have_side_effect() -> bool {
         false
     }
