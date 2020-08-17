@@ -1141,11 +1141,31 @@ fn detect_same_item_push<'tcx>(
     if same_item_push_visitor.should_lint {
         if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push {
             // Make sure that the push does not involve possibly mutating values
-            if mutated_variables(pushed_item, cx).map_or(false, |mutvars| mutvars.is_empty()) {
-                if let PatKind::Wild = pat.kind {
-                    let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
-                    let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
-
+            if let PatKind::Wild = pat.kind {
+                let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
+                let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
+                if let ExprKind::Path(ref qpath) = pushed_item.kind {
+                    if_chain! {
+                        if let Res::Local(hir_id) = qpath_res(cx, qpath, pushed_item.hir_id);
+                        let node = cx.tcx.hir().get(hir_id);
+                        if let Node::Binding(pat) = node;
+                        if let PatKind::Binding(bind_ann, ..) = pat.kind;
+                        if !matches!(bind_ann, BindingAnnotation::RefMut | BindingAnnotation::Mutable);
+                        then {
+                            span_lint_and_help(
+                                cx,
+                                SAME_ITEM_PUSH,
+                                vec.span,
+                                "it looks like the same item is being pushed into this Vec",
+                                None,
+                                &format!(
+                                    "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
+                                    item_str, vec_str, item_str
+                                ),
+                            )
+                        }
+                    }
+                } else if mutated_variables(pushed_item, cx).map_or(false, |mutvars| mutvars.is_empty()) {
                     span_lint_and_help(
                         cx,
                         SAME_ITEM_PUSH,
