@@ -137,18 +137,20 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         mut context: PlaceContext,
         location: Location,
     ) {
-        debug!("visit_place(place={:?}, context={:?})", place, context);
+        let mir::Place { local, projection } = *place;
+
+        self.super_projection(local, projection, context, location);
 
         // Non-uses do not force locals onto the stack.
         if !context.is_use() {
             return;
         }
 
-        let mir::Place { local, projection } = *place;
+        let is_consume = is_consume(context);
 
         // Reads from ZSTs do not require memory accesses and do not count when determining what
         // needs to live on the stack.
-        if is_consume(context) {
+        if is_consume {
             let ty = place.ty(self.fx.mir, self.fx.cx.tcx()).ty;
             let ty = self.fx.monomorphize(&ty);
             let span = self.fx.mir.local_decls[local].source_info.span;
@@ -157,41 +159,53 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             }
         }
 
-        let mut has_disqualifying_projection = false;
-
-        let mut projection: &[_] = projection.as_ref();
-        while let [ref proj_base @ .., elem] = *projection {
-            projection = proj_base;
-            self.super_projection_elem(local, proj_base, elem, context, location);
-
-            // Projections like `(*x)[12]` are allowed but not `*(x[12])`, since a `Deref` of a
-            // local acts like a `Copy` of that local.
-            if let mir::PlaceElem::Deref = elem {
-                has_disqualifying_projection = false;
-                context = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
-                continue;
-            }
-
-            // Ignoring `Deref`s, the only allowed projections are reads of scalar fields.
-            if is_consume(context) && matches!(elem, mir::ProjectionElem::Field(..)) {
-                let base_ty = mir::Place::ty_from(local, proj_base, self.fx.mir, self.fx.cx.tcx());
-                let base_ty = self.fx.monomorphize(&base_ty);
-                let span = self.fx.mir.local_decls[local].source_info.span;
-                let layout = self.fx.cx.spanned_layout_of(base_ty.ty, span);
-
-                if !ty_requires_alloca(self.fx, layout) {
-                    continue;
-                }
-            }
-
-            has_disqualifying_projection = true;
-        }
-
-        if has_disqualifying_projection {
-            self.not_ssa(local);
+        let is_indirect = place.is_indirect();
+        if is_indirect {
+            context = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
         }
 
         self.visit_local(&local, context, location);
+
+        // In any context besides a simple read or pointer deref, any projections whatsoever force
+        // a value onto the stack.
+        if !is_consume && !is_indirect {
+            if !projection.is_empty() {
+                self.not_ssa(local);
+            }
+
+            return;
+        }
+
+        // Only projections inside a `Deref` can disqualify a local from being placed on the stack.
+        // In other words, `(*x)[idx]` does not disqualify `x` but `*(x[idx])` does.
+        let first_deref = projection.iter().position(|elem| matches!(elem, mir::PlaceElem::Deref));
+        let projections_on_base_local = &projection[..first_deref.unwrap_or(projection.len())];
+
+        // Only field projections are allowed. We check this before checking the layout of each
+        // projection below since computing layouts is relatively expensive.
+        if !projections_on_base_local.iter().all(|elem| matches!(elem, mir::PlaceElem::Field(..))) {
+            self.not_ssa(local);
+            return;
+        }
+
+        // Ensure that each field being projected through is handled correctly.
+        for (i, elem) in projections_on_base_local.iter().enumerate() {
+            assert!(matches!(elem, mir::PlaceElem::Field(..)));
+
+            // The inclusive range here means we check every projection prefix but the empty one.
+            // This is okay since the type of each local is checked in `non_ssa_locals`.
+            let base = &projection[..=i];
+
+            let base_ty = mir::Place::ty_from(local, base, self.fx.mir, self.fx.cx.tcx());
+            let base_ty = self.fx.monomorphize(&base_ty);
+            let span = self.fx.mir.local_decls[local].source_info.span;
+            let layout = self.fx.cx.spanned_layout_of(base_ty.ty, span);
+
+            if ty_requires_alloca(self.fx, layout) {
+                self.not_ssa(local);
+                return;
+            }
+        }
     }
 
     fn visit_local(&mut self, &local: &mir::Local, context: PlaceContext, location: Location) {
