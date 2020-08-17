@@ -28,6 +28,28 @@ you can write:
 in your `.vscode/settings.json` file. This will ask `rust-analyzer` to use
 `x.py check` to check the sources, and the stage 0 rustfmt to format them.
 
+If running `x.py check` on save is inconvenient, in VS Code you can use a [Build
+Task] instead:
+
+```JSON
+// .vscode/tasks.json
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "./x.py check",
+            "command": "./x.py check",
+            "type": "shell",
+            "problemMatcher": "$rustc",
+            "presentation": { "clear": true },
+            "group": { "kind": "build", "isDefault": true }
+        }
+    ]
+}
+```
+
+[Build Task]: https://code.visualstudio.com/docs/editor/tasks
+
 ## Check, check, and check again
 
 When doing simple refactorings, it can be useful to run `./x.py check`
