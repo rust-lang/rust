@@ -13,8 +13,6 @@ pub mod tls;
 
 // End module management, begin local code
 
-use std::convert::TryFrom;
-
 use log::trace;
 
 use rustc_middle::{mir, ty};
@@ -37,8 +35,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
             let &[ptr, align] = check_arg_count(args)?;
-            this.align_offset(ptr, align, ret, unwind)?;
-            return Ok(None);
+            if this.align_offset(ptr, align, ret, unwind)? {
+                return Ok(None);
+            }
         }
 
         // Try to see if we can do something about foreign items.
@@ -56,46 +55,48 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(Some(&*this.load_mir(instance.def, None)?))
     }
 
+    /// Returns `true` if the computation was performed, and `false` if we should just evaluate
+    /// the actual MIR of `align_offset`.
     fn align_offset(
         &mut self,
         ptr_op: OpTy<'tcx, Tag>,
         align_op: OpTy<'tcx, Tag>,
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         let (dest, ret) = ret.unwrap();
+
+        if this.memory.extra.check_alignment != AlignmentCheck::Symbolic {
+            // Just use actual implementation.
+            return Ok(false);
+        }
 
         let req_align = this
             .force_bits(this.read_scalar(align_op)?.check_init()?, this.pointer_size())?;
 
         // Stop if the alignment is not a power of two.
         if !req_align.is_power_of_two() {
-            return this.start_panic("align_offset: align is not a power-of-two", unwind);
+            this.start_panic("align_offset: align is not a power-of-two", unwind)?;
+            return Ok(true); // nothing left to do
         }
 
         let ptr_scalar = this.read_scalar(ptr_op)?.check_init()?;
 
-        // Default: no result.
-        let mut result = this.machine_usize_max();
         if let Ok(ptr) = this.force_ptr(ptr_scalar) {
             // Only do anything if we can identify the allocation this goes to.
             let cur_align =
                 this.memory.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)?.1.bytes();
             if u128::from(cur_align) >= req_align {
                 // If the allocation alignment is at least the required alignment we use the
-                // libcore implementation.
-                // FIXME: is this correct in case of truncation?
-                result = u64::try_from(
-                    (this.force_bits(ptr_scalar, this.pointer_size())? as *const i8)
-                        .align_offset(usize::try_from(req_align).unwrap())
-                ).unwrap();
+                // real implementation.
+                return Ok(false);
             }
         }
 
-        // Return result, and jump to caller.
-        this.write_scalar(Scalar::from_machine_usize(result, this), dest)?;
+        // Return error result (usize::MAX), and jump to caller.
+        this.write_scalar(Scalar::from_machine_usize(this.machine_usize_max(), this), dest)?;
         this.go_to_block(ret);
-        Ok(())
+        Ok(true)
     }
 }

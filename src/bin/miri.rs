@@ -172,48 +172,41 @@ fn main() {
     init_early_loggers();
 
     // Parse our arguments and split them across `rustc` and `miri`.
-    let mut validate = true;
-    let mut stacked_borrows = true;
-    let mut check_alignment = true;
-    let mut communicate = false;
-    let mut ignore_leaks = false;
-    let mut seed: Option<u64> = None;
-    let mut tracked_pointer_tag: Option<miri::PtrId> = None;
-    let mut tracked_call_id: Option<miri::CallId> = None;
-    let mut tracked_alloc_id: Option<miri::AllocId> = None;
+    let mut miri_config = miri::MiriConfig::default();
     let mut rustc_args = vec![];
-    let mut crate_args = vec![];
     let mut after_dashdash = false;
-    let mut excluded_env_vars = vec![];
     for arg in env::args() {
         if rustc_args.is_empty() {
             // Very first arg: binary name.
             rustc_args.push(arg);
         } else if after_dashdash {
             // Everything that comes after `--` is forwarded to the interpreted crate.
-            crate_args.push(arg);
+            miri_config.args.push(arg);
         } else {
             match arg.as_str() {
                 "-Zmiri-disable-validation" => {
-                    validate = false;
+                    miri_config.validate = false;
                 }
                 "-Zmiri-disable-stacked-borrows" => {
-                    stacked_borrows = false;
+                    miri_config.stacked_borrows = false;
                 }
                 "-Zmiri-disable-alignment-check" => {
-                    check_alignment = false;
+                    miri_config.check_alignment = miri::AlignmentCheck::None;
+                }
+                "-Zmiri-symbolic-alignment-check" => {
+                    miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
                 }
                 "-Zmiri-disable-isolation" => {
-                    communicate = true;
+                    miri_config.communicate = true;
                 }
                 "-Zmiri-ignore-leaks" => {
-                    ignore_leaks = true;
+                    miri_config.ignore_leaks = true;
                 }
                 "--" => {
                     after_dashdash = true;
                 }
                 arg if arg.starts_with("-Zmiri-seed=") => {
-                    if seed.is_some() {
+                    if miri_config.seed.is_some() {
                         panic!("Cannot specify -Zmiri-seed multiple times!");
                     }
                     let seed_raw = hex::decode(arg.strip_prefix("-Zmiri-seed=").unwrap())
@@ -234,10 +227,10 @@ fn main() {
 
                     let mut bytes = [0; 8];
                     bytes[..seed_raw.len()].copy_from_slice(&seed_raw);
-                    seed = Some(u64::from_be_bytes(bytes));
+                    miri_config.seed = Some(u64::from_be_bytes(bytes));
                 }
                 arg if arg.starts_with("-Zmiri-env-exclude=") => {
-                    excluded_env_vars
+                    miri_config.excluded_env_vars
                         .push(arg.strip_prefix("-Zmiri-env-exclude=").unwrap().to_owned());
                 }
                 arg if arg.starts_with("-Zmiri-track-pointer-tag=") => {
@@ -249,7 +242,7 @@ fn main() {
                         ),
                     };
                     if let Some(id) = miri::PtrId::new(id) {
-                        tracked_pointer_tag = Some(id);
+                        miri_config.tracked_pointer_tag = Some(id);
                     } else {
                         panic!("-Zmiri-track-pointer-tag requires a nonzero argument");
                     }
@@ -263,7 +256,7 @@ fn main() {
                         ),
                     };
                     if let Some(id) = miri::CallId::new(id) {
-                        tracked_call_id = Some(id);
+                        miri_config.tracked_call_id = Some(id);
                     } else {
                         panic!("-Zmiri-track-call-id requires a nonzero argument");
                     }
@@ -276,7 +269,7 @@ fn main() {
                             err
                         ),
                     };
-                    tracked_alloc_id = Some(miri::AllocId(id));
+                    miri_config.tracked_alloc_id = Some(miri::AllocId(id));
                 }
                 _ => {
                     // Forward to rustc.
@@ -287,19 +280,6 @@ fn main() {
     }
 
     debug!("rustc arguments: {:?}", rustc_args);
-    debug!("crate arguments: {:?}", crate_args);
-    let miri_config = miri::MiriConfig {
-        validate,
-        stacked_borrows,
-        check_alignment,
-        communicate,
-        ignore_leaks,
-        excluded_env_vars,
-        seed,
-        args: crate_args,
-        tracked_pointer_tag,
-        tracked_call_id,
-        tracked_alloc_id,
-    };
+    debug!("crate arguments: {:?}", miri_config.args);
     run_compiler(rustc_args, &mut MiriCompilerCalls { miri_config })
 }

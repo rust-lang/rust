@@ -1,4 +1,7 @@
 // normalize-stderr-test "[^ ]*core/[a-z_/]+.rs[0-9:]*" -> "$$LOC"
+// normalize-stderr-test "catch_panic\.rs:[0-9]{2}" -> "catch_panic.rs:LL"
+// We test the `align_offset` panic below, make sure we test the interpreter impl and not the "real" one.
+// compile-flags: -Zmiri-symbolic-alignment-check
 #![feature(never_type)]
 #![allow(unconditional_panic)]
 
@@ -99,7 +102,7 @@ fn test(expect_msg: Option<&str>, do_panic: impl FnOnce(usize) -> !) {
         eprintln!("Caught panic message (&str): {}", s);
         Some(*s)
     } else {
-        eprintln!("Failed get caught panic message.");
+        eprintln!("Failed to get caught panic message.");
         None
     };
     if let Some(expect_msg) = expect_msg {
