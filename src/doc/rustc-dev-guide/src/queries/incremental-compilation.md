@@ -12,7 +12,7 @@ called the **red-green** algorithm[^salsa]. The high-level idea is
 that, after each run of the compiler, we will save the results of all
 the queries that we do, as well as the **query DAG**. The
 **query DAG** is a [DAG] that indexes which queries executed which
-other queries. So, for example, there would be an edge from a query Q1
+other queries. So, for example, there would be an [edge] from a query Q1
 to another query Q2 if computing Q1 required computing Q2 (note that
 because queries cannot depend on themselves, this results in a DAG and
 not a general graph).
@@ -145,4 +145,5 @@ for this system.
 
 [^salsa]: I have long wanted to rename it to the Salsa algorithm, but it never caught on. -@nikomatsakis
 
+[edge]: https://en.wikipedia.org/wiki/Glossary_of_graph_theory_terms#edge
 [initial-design]: https://github.com/nikomatsakis/rustc-on-demand-incremental-design-doc/blob/master/0000-rustc-on-demand-and-incremental.md
