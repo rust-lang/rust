@@ -262,7 +262,7 @@ fn check_len(
 fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     /// Special case ranges until `range_is_empty` is stabilized. See issue 3807.
     fn should_skip_range(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-        higher::range(cx, expr).map_or(false, |_| {
+        higher::range(expr).map_or(false, |_| {
             !cx.tcx
                 .features()
                 .declared_lib_features

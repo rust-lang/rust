@@ -30,7 +30,13 @@ struct LanguageItemCollector<'tcx> {
 
 impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        self.check_for_lang(Target::from_item(item), item.hir_id, item.attrs)
+        self.check_for_lang(Target::from_item(item), item.hir_id, item.attrs);
+
+        if let hir::ItemKind::Enum(def, ..) = &item.kind {
+            for variant in def.variants {
+                self.check_for_lang(Target::Variant, variant.id, variant.attrs);
+            }
+        }
     }
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {

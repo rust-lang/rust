@@ -129,6 +129,7 @@ pub trait Iterator {
     /// assert_eq!(None, iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[cfg_attr(not(bootstrap), lang = "next")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next(&mut self) -> Option<Self::Item>;
 

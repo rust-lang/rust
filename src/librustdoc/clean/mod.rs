@@ -17,6 +17,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
+use rustc_middle::bug;
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::fold::TypeFolder;
@@ -291,6 +292,22 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> GenericBound {
         match *self {
             hir::GenericBound::Outlives(lt) => GenericBound::Outlives(lt.clean(cx)),
+            hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
+                let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
+
+                let trait_ref = ty::TraitRef::identity(cx.tcx, def_id);
+
+                let generic_args = generic_args.clean(cx);
+                let bindings = match generic_args {
+                    GenericArgs::AngleBracketed { bindings, .. } => bindings,
+                    _ => bug!("clean: parenthesized `GenericBound::LangItemTrait`"),
+                };
+
+                GenericBound::TraitBound(
+                    PolyTrait { trait_: (trait_ref, &*bindings).clean(cx), generic_params: vec![] },
+                    hir::TraitBoundModifier::None,
+                )
+            }
             hir::GenericBound::Trait(ref t, modifier) => {
                 GenericBound::TraitBound(t.clean(cx), modifier)
             }
@@ -1503,6 +1520,9 @@ impl Clean<Type> for hir::Ty<'_> {
                     self_type: box qself.clean(cx),
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.hir_id),
                 }
+            }
+            TyKind::Path(hir::QPath::LangItem(..)) => {
+                bug!("clean: requiring documentation of lang item")
             }
             TyKind::TraitObject(ref bounds, ref lifetime) => {
                 match bounds[0].clean(cx).trait_ {

@@ -122,10 +122,9 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::subst::{GenericArgKind, UserSelfTy, UserSubsts};
 use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
-use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
-    ToPredicate, Ty, TyCtxt, UserType, WithConstness,
-};
+use rustc_middle::ty::WithConstness;
+use rustc_middle::ty::{self, AdtKind, CanonicalUserType, Const, DefIdTree, GenericParamDefKind};
+use rustc_middle::ty::{RegionKind, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, UserType};
 use rustc_session::config::{self, EntryFnType};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
@@ -4430,10 +4429,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &QPath<'_>,
         hir_id: hir::HirId,
     ) -> Option<(&'tcx ty::VariantDef, Ty<'tcx>)> {
-        let path_span = match *qpath {
-            QPath::Resolved(_, ref path) => path.span,
-            QPath::TypeRelative(ref qself, _) => qself.span,
-        };
+        let path_span = qpath.qself_span();
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
         let variant = match def {
             Res::Err => {
@@ -4511,7 +4507,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 (result.map(|(kind, def_id)| Res::Def(kind, def_id)).unwrap_or(Res::Err), ty)
             }
+            QPath::LangItem(lang_item, span) => {
+                self.resolve_lang_item_path(lang_item, span, hir_id)
+            }
         }
+    }
+
+    fn resolve_lang_item_path(
+        &self,
+        lang_item: hir::LangItem,
+        span: Span,
+        hir_id: hir::HirId,
+    ) -> (Res, Ty<'tcx>) {
+        let def_id = self.tcx.require_lang_item(lang_item, Some(span));
+        let def_kind = self.tcx.def_kind(def_id);
+
+        let item_ty = if let DefKind::Variant = def_kind {
+            self.tcx.type_of(self.tcx.parent(def_id).expect("variant w/out parent"))
+        } else {
+            self.tcx.type_of(def_id)
+        };
+        let substs = self.infcx.fresh_substs_for_item(span, def_id);
+        let ty = item_ty.subst(self.tcx, substs);
+
+        self.write_resolution(hir_id, Ok((def_kind, def_id)));
+        self.add_required_obligations(span, def_id, &substs);
+        (Res::Def(def_kind, def_id), ty)
     }
 
     /// Resolves an associated value path into a base type and associated constant, or method
@@ -4532,6 +4553,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
             QPath::TypeRelative(ref qself, ref segment) => (self.to_ty(qself), qself, segment),
+            QPath::LangItem(..) => bug!("`resolve_ty_and_res_ufcs` called on `LangItem`"),
         };
         if let Some(&cached_result) = self.typeck_results.borrow().type_dependent_defs().get(hir_id)
         {

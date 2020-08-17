@@ -1729,6 +1729,11 @@ impl<'a> State<'a> {
                     colons_before_params,
                 )
             }
+            hir::QPath::LangItem(lang_item, span) => {
+                self.s.word("#[lang = \"");
+                self.print_ident(Ident::new(lang_item.name(), span));
+                self.s.word("\"]");
+            }
         }
     }
 
@@ -2141,6 +2146,11 @@ impl<'a> State<'a> {
                         self.s.word("?");
                     }
                     self.print_poly_trait_ref(tref);
+                }
+                GenericBound::LangItemTrait(lang_item, span, ..) => {
+                    self.s.word("#[lang = \"");
+                    self.print_ident(Ident::new(lang_item.name(), *span));
+                    self.s.word("\"]");
                 }
                 GenericBound::Outlives(lt) => {
                     self.print_lifetime(lt);

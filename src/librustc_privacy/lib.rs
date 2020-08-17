@@ -1325,7 +1325,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 Res::Def(kind, def_id) => Some((kind, def_id)),
                 _ => None,
             },
-            hir::QPath::TypeRelative(..) => self
+            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
                 .maybe_typeck_results
                 .and_then(|typeck_results| typeck_results.type_dependent_def(id)),
         };
@@ -1340,7 +1340,9 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 let sess = self.tcx.sess;
                 let sm = sess.source_map();
                 let name = match qpath {
-                    hir::QPath::Resolved(_, path) => sm.span_to_snippet(path.span).ok(),
+                    hir::QPath::Resolved(..) | hir::QPath::LangItem(..) => {
+                        sm.span_to_snippet(qpath.span()).ok()
+                    }
                     hir::QPath::TypeRelative(_, segment) => Some(segment.ident.to_string()),
                 };
                 let kind = kind.descr(def_id);

@@ -947,13 +947,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //   |
                 // L |     let A(()) = A(());
                 //   |          ^  ^
-                [] => {
-                    let qpath_span = match qpath {
-                        hir::QPath::Resolved(_, path) => path.span,
-                        hir::QPath::TypeRelative(_, ps) => ps.ident.span,
-                    };
-                    (qpath_span.shrink_to_hi(), pat_span)
-                }
+                [] => (qpath.span().shrink_to_hi(), pat_span),
                 // Easy case. Just take the "lo" of the first sub-pattern and the "hi" of the
                 // last sub-pattern. In the case of `A(x)` the first and last may coincide.
                 // This looks like:
