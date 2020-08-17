@@ -119,27 +119,23 @@ impl ast::AssocItemList {
 
     /// Remove extra whitespace between last item and closing curly brace.
     fn fixup_trailing_whitespace(&self) -> Option<ast::AssocItemList> {
-        let first_token_after_items = self
-            .assoc_items()
-            .last()?
-            .syntax()
-            .next_sibling_or_token()?;
-        let last_token_before_curly = self
-            .r_curly_token()?
-            .prev_sibling_or_token()?;
+        let first_token_after_items =
+            self.assoc_items().last()?.syntax().next_sibling_or_token()?;
+        let last_token_before_curly = self.r_curly_token()?.prev_sibling_or_token()?;
         if last_token_before_curly != first_token_after_items {
             // there is something more between last item and
             // right curly than just whitespace - bail out
             return None;
         }
-        let whitespace = last_token_before_curly
-            .clone()
-            .into_token()
-            .and_then(ast::Whitespace::cast)?;
+        let whitespace =
+            last_token_before_curly.clone().into_token().and_then(ast::Whitespace::cast)?;
         let text = whitespace.syntax().text();
         let newline = text.rfind("\n")?;
         let keep = tokens::WsBuilder::new(&text[newline..]);
-        Some(self.replace_children(first_token_after_items..=last_token_before_curly, std::iter::once(keep.ws().into())))
+        Some(self.replace_children(
+            first_token_after_items..=last_token_before_curly,
+            std::iter::once(keep.ws().into()),
+        ))
     }
 }
 
