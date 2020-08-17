@@ -72,15 +72,15 @@
 //!
 //! # Representation
 //!
-//! Rust guarantees to optimize the following types `<T>` such that an
+//! Rust guarantees to optimize the following types `T` such that
 //! [`Option<T>`] has the same size as `T`:
 //!
-//! * [`Box<T>`]
-//! * `&T`
-//! * `&mut T`
+//! * [`Box<U>`]
+//! * `&U`
+//! * `&mut U`
 //! * `fn`, `extern "C" fn`
 //! * [`num::NonZero*`]
-//! * [`ptr::NonNull<T>`]
+//! * [`ptr::NonNull<U>`]
 //! * `#[repr(transparent)]` struct around one of the types in this list.
 //!
 //! For the above cases, it is guaranteed that one can [`mem::transmute`]
