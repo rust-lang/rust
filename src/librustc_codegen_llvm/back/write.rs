@@ -191,21 +191,197 @@ pub fn target_machine_factory(
     })
 }
 
-pub(crate) fn save_temp_bitcode(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
-    module: &ModuleCodegen<ModuleLlvm>,
-    name: &str,
-) {
-    if !cgcx.save_temps {
-        return;
+/// Module-specific configuration for `optimize_and_codegen`.
+pub struct ModuleConfig {
+    /// Names of additional optimization passes to run.
+    passes: Vec<String>,
+    /// Some(level) to optimize at a certain level, or None to run
+    /// absolutely no optimizations (used for the metadata module).
+    pub opt_level: Option<llvm::CodeGenOptLevel>,
+
+    /// Some(level) to optimize binary size, or None to not affect program size.
+    opt_size: Option<llvm::CodeGenOptSize>,
+
+    pgo_gen: Option<String>,
+    pgo_use: String,
+
+    // Flags indicating which outputs to produce.
+    pub emit_pre_thin_lto_bc: bool,
+    emit_no_opt_bc: bool,
+    emit_bc: bool,
+    emit_bc_compressed: bool,
+    emit_lto_bc: bool,
+    emit_ir: bool,
+    emit_asm: bool,
+    emit_obj: bool,
+    // Miscellaneous flags.  These are mostly copied from command-line
+    // options.
+    pub verify_llvm_ir: bool,
+    no_prepopulate_passes: bool,
+    no_builtins: bool,
+    time_passes: bool,
+    vectorize_loop: bool,
+    vectorize_slp: bool,
+    merge_functions: bool,
+    inline_threshold: Option<usize>,
+    // Instead of creating an object file by doing LLVM codegen, just
+    // make the object file bitcode. Provides easy compatibility with
+    // emscripten's ecc compiler, when used as the linker.
+    obj_is_bitcode: bool,
+    no_integrated_as: bool,
+    embed_bitcode: bool,
+    embed_bitcode_marker: bool,
+}
+
+impl ModuleConfig {
+    fn new(passes: Vec<String>) -> ModuleConfig {
+        ModuleConfig {
+            passes,
+            opt_level: None,
+            opt_size: None,
+
+            pgo_gen: None,
+            pgo_use: String::new(),
+
+            emit_no_opt_bc: false,
+            emit_pre_thin_lto_bc: false,
+            emit_bc: false,
+            emit_bc_compressed: false,
+            emit_lto_bc: false,
+            emit_ir: false,
+            emit_asm: false,
+            emit_obj: false,
+            obj_is_bitcode: false,
+            embed_bitcode: false,
+            embed_bitcode_marker: false,
+            no_integrated_as: false,
+
+            verify_llvm_ir: false,
+            no_prepopulate_passes: false,
+            no_builtins: false,
+            time_passes: false,
+            vectorize_loop: false,
+            vectorize_slp: false,
+            merge_functions: false,
+            inline_threshold: None
+        }
     }
-    unsafe {
-        let ext = format!("{}.bc", name);
-        let cgu = Some(&module.name[..]);
-        let path = cgcx.output_filenames.temp_path_ext(&ext, cgu);
-        let cstr = path_to_c_string(&path);
-        let llmod = module.module_llvm.llmod();
-        llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
+
+    fn set_flags(&mut self, sess: &Session, no_builtins: bool) {
+        self.verify_llvm_ir = sess.verify_llvm_ir();
+        self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
+        self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
+        self.time_passes = sess.time_passes();
+        self.inline_threshold = sess.opts.cg.inline_threshold;
+        self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode ||
+                              sess.opts.debugging_opts.cross_lang_lto.enabled();
+        let embed_bitcode = sess.target.target.options.embed_bitcode ||
+                            sess.opts.debugging_opts.embed_bitcode;
+        if embed_bitcode {
+            match sess.opts.optimize {
+                config::OptLevel::No |
+                config::OptLevel::Less => {
+                    self.embed_bitcode_marker = embed_bitcode;
+                }
+                _ => self.embed_bitcode = embed_bitcode,
+            }
+        }
+
+        // Copy what clang does by turning on loop vectorization at O2 and
+        // slp vectorization at O3. Otherwise configure other optimization aspects
+        // of this pass manager builder.
+        // Turn off vectorization for emscripten, as it's not very well supported.
+        self.vectorize_loop = !sess.opts.cg.no_vectorize_loops &&
+                             (sess.opts.optimize == config::OptLevel::Default ||
+                              sess.opts.optimize == config::OptLevel::Aggressive) &&
+                             !sess.target.target.options.is_like_emscripten;
+
+        self.vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
+                            sess.opts.optimize == config::OptLevel::Aggressive &&
+                            !sess.target.target.options.is_like_emscripten;
+
+        self.merge_functions = sess.opts.optimize == config::OptLevel::Default ||
+                               sess.opts.optimize == config::OptLevel::Aggressive;
+    }
+}
+
+/// Assembler name and command used by codegen when no_integrated_as is enabled
+struct AssemblerCommand {
+    name: PathBuf,
+    cmd: Command,
+}
+
+/// Additional resources used by optimize_and_codegen (not module specific)
+#[derive(Clone)]
+pub struct CodegenContext {
+    // Resources needed when running LTO
+    pub time_passes: bool,
+    pub lto: Lto,
+    pub no_landing_pads: bool,
+    pub save_temps: bool,
+    pub fewer_names: bool,
+    pub exported_symbols: Option<Arc<ExportedSymbols>>,
+    pub opts: Arc<config::Options>,
+    pub crate_types: Vec<config::CrateType>,
+    pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
+    output_filenames: Arc<OutputFilenames>,
+    regular_module_config: Arc<ModuleConfig>,
+    metadata_module_config: Arc<ModuleConfig>,
+    allocator_module_config: Arc<ModuleConfig>,
+    pub tm_factory: Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync>,
+    pub msvc_imps_needed: bool,
+    pub target_pointer_width: String,
+    debuginfo: config::DebugInfo,
+
+    // Number of cgus excluding the allocator/metadata modules
+    pub total_cgus: usize,
+    // Handler to use for diagnostics produced during codegen.
+    pub diag_emitter: SharedEmitter,
+    // LLVM passes added by plugins.
+    pub plugin_passes: Vec<String>,
+    // LLVM optimizations for which we want to print remarks.
+    pub remark: Passes,
+    // Worker thread number
+    pub worker: usize,
+    // The incremental compilation session directory, or None if we are not
+    // compiling incrementally
+    pub incr_comp_session_dir: Option<PathBuf>,
+    // Used to update CGU re-use information during the thinlto phase.
+    pub cgu_reuse_tracker: CguReuseTracker,
+    // Channel back to the main control thread to send messages to
+    coordinator_send: Sender<Box<dyn Any + Send>>,
+    // A reference to the TimeGraph so we can register timings. None means that
+    // measuring is disabled.
+    time_graph: Option<TimeGraph>,
+    // The assembler command if no_integrated_as option is enabled, None otherwise
+    assembler_cmd: Option<Arc<AssemblerCommand>>,
+}
+
+impl CodegenContext {
+    pub fn create_diag_handler(&self) -> Handler {
+        Handler::with_emitter(true, false, Box::new(self.diag_emitter.clone()))
+    }
+
+    pub(crate) fn config(&self, kind: ModuleKind) -> &ModuleConfig {
+        match kind {
+            ModuleKind::Regular => &self.regular_module_config,
+            ModuleKind::Metadata => &self.metadata_module_config,
+            ModuleKind::Allocator => &self.allocator_module_config,
+        }
+    }
+
+    pub(crate) fn save_temp_bitcode(&self, module: &ModuleCodegen, name: &str) {
+        if !self.save_temps {
+            return
+        }
+        unsafe {
+            let ext = format!("{}.bc", name);
+            let cgu = Some(&module.name[..]);
+            let path = self.output_filenames.temp_path_ext(&ext, cgu);
+            let cstr = path2cstr(&path);
+            let llmod = module.module_llvm.llmod();
+            llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
+        }
     }
 }
 
@@ -529,12 +705,16 @@ pub(crate) unsafe fn optimize(
             // we'll get errors in LLVM.
             let using_thin_buffers = config.bitcode_needed();
             if !config.no_prepopulate_passes {
-                llvm::LLVMAddAnalysisPasses(tm, fpm);
-                llvm::LLVMAddAnalysisPasses(tm, mpm);
-                let opt_level = to_llvm_opt_settings(opt_level).0;
-                let prepare_for_thin_lto = cgcx.lto == Lto::Thin
-                    || cgcx.lto == Lto::ThinLocal
-                    || (cgcx.lto != Lto::Fat && cgcx.opts.cg.linker_plugin_lto.enabled());
+                llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
+                llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
+                let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
+                let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal ||
+                    (cgcx.lto != Lto::Fat && cgcx.opts.debugging_opts.cross_lang_lto.enabled());
+                have_name_anon_globals_pass = have_name_anon_globals_pass || prepare_for_thin_lto;
+                if using_thin_buffers && !prepare_for_thin_lto {
+                    assert!(addpass("name-anon-globals"));
+                    have_name_anon_globals_pass = true;
+                }
                 with_llvm_pmb(llmod, &config, opt_level, prepare_for_thin_lto, &mut |b| {
                     llvm::LLVMRustAddLastExtensionPasses(
                         b,
@@ -644,17 +824,14 @@ pub(crate) unsafe fn codegen(
         // pass manager passed to the closure should be ensured to not
         // escape the closure itself, and the manager should only be
         // used once.
-        unsafe fn with_codegen<'ll, F, R>(
-            tm: &'ll llvm::TargetMachine,
-            llmod: &'ll llvm::Module,
-            no_builtins: bool,
-            f: F,
-        ) -> R
-        where
-            F: FnOnce(&'ll mut PassManager<'ll>) -> R,
+        unsafe fn with_codegen<'ll, F, R>(tm: &'ll llvm::TargetMachine,
+                                    llmod: &'ll llvm::Module,
+                                    no_builtins: bool,
+                                    f: F) -> R
+            where F: FnOnce(&'ll mut PassManager<'ll>) -> R,
         {
             let cpm = llvm::LLVMCreatePassManager();
-            llvm::LLVMAddAnalysisPasses(tm, cpm);
+            llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
             llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
             f(cpm)
         }
@@ -732,7 +909,11 @@ pub(crate) unsafe fn codegen(
                     return 0;
                 }
 
-                cursor.position() as size_t
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                    llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr(), demangle_callback);
+                    llvm::LLVMDisposePassManager(cpm);
+                });
+                timeline.record("ir");
             }
 
             let result = llvm::LLVMRustPrintModule(llmod, out_c.as_ptr(), demangle_callback);
@@ -779,11 +960,16 @@ pub(crate) unsafe fn codegen(
                 })?;
             }
 
-            EmitObj::Bitcode => {
-                debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-                if let Err(e) = link_or_copy(&bc_out, &obj_out) {
-                    diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
-                }
+            if write_obj {
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                    write_output_file(diag_handler, tm, cpm, llmod, &obj_out,
+                                    llvm::FileType::ObjectFile)
+                })?;
+                timeline.record("obj");
+            } else if asm_to_obj {
+                let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+                run_assembler(cgcx, diag_handler, &assembly, &obj_out);
+                timeline.record("asm_to_obj");
 
                 if !config.emit_bc {
                     debug!("removing_bitcode {:?}", bc_out);

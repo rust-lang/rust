@@ -1060,6 +1060,9 @@ impl Step for Compiletest {
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
         flags.push("-Zunstable-options".to_string());
         flags.push(builder.config.cmd.rustc_args().join(" "));
+        if builder.config.rust_polly_self {
+            flags.push("-Zpolly".into());
+        }
 
         // Don't use LLD here since we want to test that rustc finds and uses a linker by itself.
         if let Some(linker) = builder.linker(target, false) {

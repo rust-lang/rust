@@ -169,7 +169,6 @@ impl Step for Llvm {
             .define("LLVM_INCLUDE_TESTS", "OFF")
             .define("LLVM_INCLUDE_DOCS", "OFF")
             .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
-            .define("WITH_POLLY", "OFF")
             .define("LLVM_ENABLE_TERMINFO", "OFF")
             .define("LLVM_ENABLE_LIBEDIT", "OFF")
             .define("LLVM_ENABLE_BINDINGS", "OFF")
@@ -177,6 +176,11 @@ impl Step for Llvm {
             .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
             .define("LLVM_TARGET_ARCH", target_native.split('-').next().unwrap())
             .define("LLVM_DEFAULT_TARGET_TRIPLE", target_native);
+
+        if !self.emscripten {
+            let polly_src = builder.src.join("src/polly");
+            cfg.define("LLVM_EXTERNAL_POLLY_SOURCE_DIR", polly_src);
+        }
 
         if !target.contains("netbsd") && target != "aarch64-apple-darwin" {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");

@@ -1675,7 +1675,7 @@ extern "C" {
 
     pub fn LLVMTimeTraceProfilerFinish(FileName: *const c_char);
 
-    pub fn LLVMAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>);
+    pub fn LLVMAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>, Polly: bool);
 
     pub fn LLVMPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
     pub fn LLVMPassManagerBuilderDispose(PMB: &'static mut PassManagerBuilder);
@@ -2150,6 +2150,7 @@ extern "C" {
         PMB: &'a PassManagerBuilder,
         M: &'a Module,
         DisableSimplifyLibCalls: bool,
+        Polly: bool,
     );
     pub fn LLVMRustConfigurePassManagerBuilder(
         PMB: &PassManagerBuilder,

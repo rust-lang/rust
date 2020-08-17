@@ -400,6 +400,10 @@
 # Flag indicating whether tests are compiled with optimizations (the -O flag).
 #optimize-tests = true
 
+# Flag indicating whether tests are optimized with Polly. If optimize-tests is false,
+# polly-tests will be false regardless of its value here.
+#polly-tests = false
+
 # Flag indicating whether codegen tests will be run or not. If you get an error
 # saying that the FileCheck executable is missing, you may want to disable this.
 # Also see the target's llvm-filecheck option.
@@ -455,6 +459,10 @@
 # If `incremental` is set to true above, the import limit will default to 10
 # instead of LLVM's default of 100.
 #thin-lto-import-instr-limit = 100
+
+# Use Polly on the rust compiler itself. If optimize is false, this will be
+# false as well.
+#polly-self = false
 
 # Map debuginfo paths to `/rust/$sha/...`, generally only set for releases
 #remap-debuginfo = false

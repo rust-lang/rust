@@ -659,7 +659,7 @@ pub(crate) fn run_pass_manager(
         }
 
         let pm = llvm::LLVMCreatePassManager();
-        llvm::LLVMAddAnalysisPasses(module.module_llvm.tm, pm);
+        llvm::LLVMAddAnalysisPasses(module.module_llvm.tm, pm, config.polly);
 
         if config.verify_llvm_ir {
             let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr().cast());

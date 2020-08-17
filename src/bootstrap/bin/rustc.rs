@@ -45,6 +45,7 @@ fn main() {
         ("RUSTC_REAL", "RUSTC_LIBDIR")
     };
     let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
+    let stage = usize::from_str(stage.as_str()).expect("RUSTC_STAGE not a usize");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let on_fail = env::var_os("RUSTC_ON_FAIL").map(Command::new);
 
@@ -100,7 +101,7 @@ fn main() {
         // workaround undefined references to `rust_eh_unwind_resume` generated
         // otherwise, see issue https://github.com/rust-lang/rust/issues/43095.
         if crate_name == Some("panic_abort")
-            || crate_name == Some("compiler_builtins") && stage != "0"
+            || crate_name == Some("compiler_builtins") && stage != 0
         {
             cmd.arg("-C").arg("panic=abort");
         }
@@ -127,11 +128,19 @@ fn main() {
         cmd.arg("--remap-path-prefix").arg(&map);
     }
 
+    let use_polly = match env::var("RUSTC_USE_POLLY") {
+        Ok(v) => v != "0",
+        Err(_) => false,
+    };
+    if use_polly && stage >= 1 {
+        cmd.arg("-Z").arg("polly");
+    }
+
     // Force all crates compiled by this compiler to (a) be unstable and (b)
     // allow the `rustc_private` feature to link to other unstable crates
     // also in the sysroot. We also do this for host crates, since those
     // may be proc macros, in which case we might ship them.
-    if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() && (stage != "0" || target.is_some()) {
+    if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() && (stage != 0 || target.is_some()) {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
 
