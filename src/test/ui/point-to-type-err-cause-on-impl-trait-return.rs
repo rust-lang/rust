@@ -53,7 +53,13 @@ fn cat() -> impl std::fmt::Display {
             1u32 //~ ERROR mismatched types
         }
     }
-        }
+}
+
+fn dog() -> impl std::fmt::Display {
+    match 13 {
+        0 => 0i32,
+        1 => 1u32, //~ ERROR `match` arms have incompatible types
+        _ => 2u32,
     }
 }
 

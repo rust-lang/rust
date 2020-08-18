@@ -617,11 +617,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 ref prior_arms,
                 last_ty,
                 scrut_hir_id,
+                suggest_box,
+                arm_span,
                 ..
             }) => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
                     let msg = "`if let` arms have incompatible types";
                     err.span_label(cause.span, msg);
+                    if let Some(ret_sp) = suggest_box {
+                        self.suggest_boxing_for_return_impl_trait(
+                            err,
+                            ret_sp,
+                            prior_arms.iter().chain(std::iter::once(&arm_span)).map(|s| *s),
+                        );
+                    }
                 }
                 hir::MatchSource::TryDesugar => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
@@ -675,9 +684,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                     }
+                    if let Some(ret_sp) = suggest_box {
+                        // Get return type span and point to it.
+                        self.suggest_boxing_for_return_impl_trait(
+                            err,
+                            ret_sp,
+                            prior_arms.iter().chain(std::iter::once(&arm_span)).map(|s| *s),
+                        );
+                    }
                 }
             },
-            ObligationCauseCode::IfExpression(box IfExpressionCause { then, outer, semicolon }) => {
+            ObligationCauseCode::IfExpression(box IfExpressionCause {
+                then,
+                else_sp,
+                outer,
+                semicolon,
+                suggest_box,
+            }) => {
                 err.span_label(then, "expected because of this");
                 if let Some(sp) = outer {
                     err.span_label(sp, "`if` and `else` have incompatible types");
@@ -690,9 +713,50 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 }
+                if let Some(ret_sp) = suggest_box {
+                    self.suggest_boxing_for_return_impl_trait(
+                        err,
+                        ret_sp,
+                        vec![then, else_sp].into_iter(),
+                    );
+                }
             }
             _ => (),
         }
+    }
+
+    fn suggest_boxing_for_return_impl_trait(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        return_sp: Span,
+        arm_spans: impl Iterator<Item = Span>,
+    ) {
+        let snippet = self
+            .tcx
+            .sess
+            .source_map()
+            .span_to_snippet(return_sp)
+            .unwrap_or_else(|_| "dyn Trait".to_string());
+        err.span_suggestion_verbose(
+            return_sp,
+            "you could change the return type to be a boxed trait object",
+            format!("Box<dyn {}>", &snippet[5..]),
+            Applicability::MaybeIncorrect,
+        );
+        let sugg = arm_spans
+            .flat_map(|sp| {
+                vec![
+                    (sp.shrink_to_lo(), "Box::new(".to_string()),
+                    (sp.shrink_to_hi(), ")".to_string()),
+                ]
+                .into_iter()
+            })
+            .collect::<Vec<_>>();
+        err.multipart_suggestion(
+            "if you change the return type to expect trait objects box the returned expressions",
+            sugg,
+            Applicability::MaybeIncorrect,
+        );
     }
 
     /// Given that `other_ty` is the same as a type argument for `name` in `sub`, populate `value`

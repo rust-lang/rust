@@ -72,6 +72,17 @@ LL | |         1u32
    | |         ^^^^ expected `i32`, found `u32`
 LL | |     }
    | |_____- `if` and `else` have incompatible types
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn qux() -> Box<dyn std::fmt::Display> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: if you change the return type to expect trait objects box the returned expressions
+   |
+LL |         Box::new(0i32)
+LL |     } else {
+LL |         Box::new(1u32)
+   |
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:35:14
@@ -136,6 +147,28 @@ help: you could change the return type to be a boxed trait object
 LL | fn cat() -> Box<dyn std::fmt::Display> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:61:14
+   |
+LL | /     match 13 {
+LL | |         0 => 0i32,
+   | |              ---- this is found to be of type `i32`
+LL | |         1 => 1u32,
+   | |              ^^^^ expected `i32`, found `u32`
+LL | |         _ => 2u32,
+LL | |     }
+   | |_____- `match` arms have incompatible types
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn dog() -> Box<dyn std::fmt::Display> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: if you change the return type to expect trait objects box the returned expressions
+   |
+LL |         0 => Box::new(0i32),
+LL |         1 => Box::new(1u32),
+   |
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
