@@ -1236,10 +1236,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
         right_root.fix_left_border();
 
         if left_root.height() < right_root.height() {
-            self.recalc_length();
+            self.length = left_root.node_as_ref().calc_length();
             right.length = total_num - self.len();
         } else {
-            right.recalc_length();
+            right.length = right_root.node_as_ref().calc_length();
             self.length = total_num - right.len();
         }
 
@@ -1283,40 +1283,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     {
         DrainFilter { pred, inner: self.drain_filter_inner() }
     }
+
     pub(super) fn drain_filter_inner(&mut self) -> DrainFilterInner<'_, K, V> {
         let root_node = self.root.as_mut().map(|r| r.node_as_mut());
         let front = root_node.map(|rn| rn.first_leaf_edge());
         DrainFilterInner { length: &mut self.length, cur_leaf_edge: front }
-    }
-
-    /// Calculates the number of elements if it is incorrect.
-    fn recalc_length(&mut self) {
-        fn dfs<'a, K, V>(node: NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>) -> usize
-        where
-            K: 'a,
-            V: 'a,
-        {
-            let mut res = node.len();
-
-            if let Internal(node) = node.force() {
-                let mut edge = node.first_edge();
-                loop {
-                    res += dfs(edge.reborrow().descend());
-                    match edge.right_kv() {
-                        Ok(right_kv) => {
-                            edge = right_kv.right_edge();
-                        }
-                        Err(_) => {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            res
-        }
-
-        self.length = dfs(self.root.as_ref().unwrap().node_as_ref());
     }
 
     /// Creates a consuming iterator visiting all the keys, in sorted order.

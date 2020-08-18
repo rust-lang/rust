@@ -49,6 +49,29 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::E
     }
 }
 
+impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge> {
+    /// Given an internal edge handle, returns [`Result::Ok`] with a handle to the neighboring KV
+    /// on the right side, which is either in the same internal node or in an ancestor node.
+    /// If the internal edge is the last one in the tree, returns [`Result::Err`] with the root node.
+    pub fn next_kv(
+        self,
+    ) -> Result<
+        Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::KV>,
+        NodeRef<BorrowType, K, V, marker::Internal>,
+    > {
+        let mut edge = self;
+        loop {
+            edge = match edge.right_kv() {
+                Ok(internal_kv) => return Ok(internal_kv),
+                Err(last_edge) => match last_edge.into_node().ascend() {
+                    Ok(parent_edge) => parent_edge,
+                    Err(root) => return Err(root),
+                },
+            }
+        }
+    }
+}
+
 macro_rules! def_next_kv_uncheched_dealloc {
     { unsafe fn $name:ident : $adjacent_kv:ident } => {
         /// Given a leaf edge handle into an owned tree, returns a handle to the next KV,
@@ -229,6 +252,59 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
                 Internal(internal) => node = internal.last_edge().descend(),
             }
         }
+    }
+}
+
+pub enum Position<BorrowType, K, V> {
+    Leaf(NodeRef<BorrowType, K, V, marker::Leaf>),
+    Internal(NodeRef<BorrowType, K, V, marker::Internal>),
+    InternalKV(Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::KV>),
+}
+
+impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
+    /// Visits leaf nodes and internal KVs in order of ascending keys, and also
+    /// visits internal nodes as a whole in a depth first order, meaning that
+    /// internal nodes precede their individual KVs and their child nodes.
+    pub fn visit_nodes_in_order<F>(self, mut visit: F)
+    where
+        F: FnMut(Position<marker::Immut<'a>, K, V>),
+    {
+        match self.force() {
+            Leaf(leaf) => visit(Position::Leaf(leaf)),
+            Internal(internal) => {
+                visit(Position::Internal(internal));
+                let mut edge = internal.first_edge();
+                loop {
+                    edge = match edge.descend().force() {
+                        Leaf(leaf) => {
+                            visit(Position::Leaf(leaf));
+                            match edge.next_kv() {
+                                Ok(kv) => {
+                                    visit(Position::InternalKV(kv));
+                                    kv.right_edge()
+                                }
+                                Err(_) => return,
+                            }
+                        }
+                        Internal(internal) => {
+                            visit(Position::Internal(internal));
+                            internal.first_edge()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Calculates the number of elements in a (sub)tree.
+    pub fn calc_length(self) -> usize {
+        let mut result = 0;
+        self.visit_nodes_in_order(|pos| match pos {
+            Position::Leaf(node) => result += node.len(),
+            Position::Internal(node) => result += node.len(),
+            Position::InternalKV(_) => (),
+        });
+        result
     }
 }
 
