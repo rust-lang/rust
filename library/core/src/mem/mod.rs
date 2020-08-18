@@ -670,6 +670,9 @@ pub unsafe fn uninitialized<T>() -> T {
 
 /// Swaps the values at two mutable locations, without deinitializing either one.
 ///
+/// * If you want to swap with a default or dummy value, see [`take`].
+/// * If you want to swap with a passed value, returning the old value, see [`replace`].
+///
 /// # Examples
 ///
 /// ```
@@ -683,6 +686,9 @@ pub unsafe fn uninitialized<T>() -> T {
 /// assert_eq!(42, x);
 /// assert_eq!(5, y);
 /// ```
+///
+/// [`replace`]: fn.replace.html
+/// [`take`]: fn.take.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
@@ -694,6 +700,9 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 }
 
 /// Replaces `dest` with the default value of `T`, returning the previous `dest` value.
+///
+/// * If you want to replace the values of two variables, see [`swap`].
+/// * If you want to replace with a passed value instead of the default value, see [`replace`].
 ///
 /// # Examples
 ///
@@ -747,6 +756,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// ```
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
+/// [`replace`]: fn.replace.html
+/// [`swap`]: fn.swap.html
 #[inline]
 #[stable(feature = "mem_take", since = "1.40.0")]
 pub fn take<T: Default>(dest: &mut T) -> T {
@@ -756,6 +767,9 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 /// Moves `src` into the referenced `dest`, returning the previous `dest` value.
 ///
 /// Neither value is dropped.
+///
+/// * If you want to replace the values of two variables, see [`swap`].
+/// * If you want to replace with a default value, see [`take`].
 ///
 /// # Examples
 ///
@@ -810,6 +824,8 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 /// ```
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
+/// [`swap`]: fn.swap.html
+/// [`take`]: fn.take.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]
