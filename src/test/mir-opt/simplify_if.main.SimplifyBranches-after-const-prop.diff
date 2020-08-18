@@ -9,19 +9,7 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/simplify_if.rs:6:8: 6:13
           _1 = const false;                // scope 0 at $DIR/simplify_if.rs:6:8: 6:13
-                                           // ty::Const
-                                           // + ty: bool
-                                           // + val: Value(Scalar(0x00))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_if.rs:6:8: 6:13
-                                           // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
 -         switchInt(const false) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
--                                          // ty::Const
--                                          // + ty: bool
--                                          // + val: Value(Scalar(0x00))
--                                          // mir::Constant
--                                          // + span: $DIR/simplify_if.rs:6:5: 8:6
--                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
 +         goto -> bb1;                     // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
       }
   

@@ -16,29 +16,9 @@
           StorageLive(_1);                 // scope 0 at $DIR/cast.rs:4:9: 4:10
 -         _1 = const 42_u8 as u32 (Misc);  // scope 0 at $DIR/cast.rs:4:13: 4:24
 +         _1 = const 42_u32;               // scope 0 at $DIR/cast.rs:4:13: 4:24
-                                           // ty::Const
--                                          // + ty: u8
--                                          // + val: Value(Scalar(0x2a))
--                                          // mir::Constant
--                                          // + span: $DIR/cast.rs:4:13: 4:17
--                                          // + literal: Const { ty: u8, val: Value(Scalar(0x2a)) }
--         StorageLive(_2);                 // scope 1 at $DIR/cast.rs:6:9: 6:10
+          StorageLive(_2);                 // scope 1 at $DIR/cast.rs:6:9: 6:10
 -         _2 = const 42_u32 as u8 (Misc);  // scope 1 at $DIR/cast.rs:6:13: 6:24
--                                          // ty::Const
-                                           // + ty: u32
-                                           // + val: Value(Scalar(0x0000002a))
-                                           // mir::Constant
--                                          // + span: $DIR/cast.rs:6:13: 6:18
-+                                          // + span: $DIR/cast.rs:4:13: 4:24
-                                           // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
-+         StorageLive(_2);                 // scope 1 at $DIR/cast.rs:6:9: 6:10
 +         _2 = const 42_u8;                // scope 1 at $DIR/cast.rs:6:13: 6:24
-+                                          // ty::Const
-+                                          // + ty: u8
-+                                          // + val: Value(Scalar(0x2a))
-+                                          // mir::Constant
-+                                          // + span: $DIR/cast.rs:6:13: 6:24
-+                                          // + literal: Const { ty: u8, val: Value(Scalar(0x2a)) }
           _0 = const ();                   // scope 0 at $DIR/cast.rs:3:11: 7:2
                                            // ty::Const
                                            // + ty: ()

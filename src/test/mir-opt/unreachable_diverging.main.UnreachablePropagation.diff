@@ -20,12 +20,6 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/unreachable_diverging.rs:13:9: 13:10
           _1 = const true;                 // scope 0 at $DIR/unreachable_diverging.rs:13:13: 13:17
-                                           // ty::Const
-                                           // + ty: bool
-                                           // + val: Value(Scalar(0x01))
-                                           // mir::Constant
-                                           // + span: $DIR/unreachable_diverging.rs:13:13: 13:17
-                                           // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
           StorageLive(_2);                 // scope 1 at $DIR/unreachable_diverging.rs:14:25: 14:32
           _2 = const empty() -> bb1;       // scope 1 at $DIR/unreachable_diverging.rs:14:25: 14:32
                                            // ty::Const

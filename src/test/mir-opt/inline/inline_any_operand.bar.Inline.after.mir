@@ -26,19 +26,7 @@ fn bar() -> bool {
         StorageLive(_2);                 // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:6
         _2 = _1;                         // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:6
         _3 = const 1_i32;                // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
-                                         // ty::Const
-                                         // + ty: i32
-                                         // + val: Value(Scalar(0x00000001))
-                                         // mir::Constant
-                                         // + span: $DIR/inline-any-operand.rs:12:7: 12:8
-                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
         _4 = const -1_i32;               // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
-                                         // ty::Const
-                                         // + ty: i32
-                                         // + val: Value(Scalar(0xffffffff))
-                                         // mir::Constant
-                                         // + span: $DIR/inline-any-operand.rs:12:10: 12:12
-                                         // + literal: Const { ty: i32, val: Value(Scalar(0xffffffff)) }
         _0 = Eq(move _3, move _4);       // scope 2 at $DIR/inline-any-operand.rs:17:5: 17:11
         StorageDead(_2);                 // scope 1 at $DIR/inline-any-operand.rs:12:12: 12:13
         StorageDead(_1);                 // scope 0 at $DIR/inline-any-operand.rs:13:1: 13:2

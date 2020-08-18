@@ -13,23 +13,11 @@
   
       bb1: {
           _0 = const 1_i8;                 // scope 0 at $DIR/matches_u8.rs:22:17: 22:18
-                                           // ty::Const
-                                           // + ty: i8
-                                           // + val: Value(Scalar(0x01))
-                                           // mir::Constant
-                                           // + span: $DIR/matches_u8.rs:22:17: 22:18
-                                           // + literal: Const { ty: i8, val: Value(Scalar(0x01)) }
           goto -> bb3;                     // scope 0 at $DIR/matches_u8.rs:20:5: 23:6
       }
   
       bb2: {
           _0 = const 0_i8;                 // scope 0 at $DIR/matches_u8.rs:21:17: 21:18
-                                           // ty::Const
-                                           // + ty: i8
-                                           // + val: Value(Scalar(0x00))
-                                           // mir::Constant
-                                           // + span: $DIR/matches_u8.rs:21:17: 21:18
-                                           // + literal: Const { ty: i8, val: Value(Scalar(0x00)) }
           goto -> bb3;                     // scope 0 at $DIR/matches_u8.rs:20:5: 23:6
       }
   

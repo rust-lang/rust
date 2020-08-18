@@ -32,12 +32,6 @@ fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
     bb3 (cleanup): {
         _5 = &raw mut (*_1)[_4];         // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _4 = Add(move _4, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x0000000000000001))
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
         drop((*_5)) -> bb4;              // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
@@ -49,12 +43,6 @@ fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
     bb5: {
         _7 = &raw mut (*_1)[_4];         // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _4 = Add(move _4, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x0000000000000001))
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
         drop((*_7)) -> [return: bb6, unwind: bb4]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
@@ -65,12 +53,6 @@ fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
 
     bb7: {
         _4 = const 0_usize;              // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x0000000000000000))
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000000)) }
         goto -> bb6;                     // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
@@ -81,12 +63,6 @@ fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
     bb9 (cleanup): {
         _11 = _9;                        // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _9 = Offset(move _9, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x0000000000000001))
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
         drop((*_11)) -> bb10;            // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
@@ -98,12 +74,6 @@ fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
     bb11: {
         _13 = _9;                        // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _9 = Offset(move _9, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x0000000000000001))
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
         drop((*_13)) -> [return: bb12, unwind: bb10]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 

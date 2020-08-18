@@ -17,12 +17,6 @@ fn main() -> () {
         StorageLive(_2);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:24: 6:42
         StorageLive(_3);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:32: 6:41
         _3 = Droppy(const 0_usize);      // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:32: 6:41
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x0000000000000000))
-                                         // mir::Constant
-                                         // + span: $DIR/packed-struct-drop-aligned.rs:6:39: 6:40
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000000)) }
         _2 = Aligned(move _3);           // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:24: 6:42
         StorageDead(_3);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:41: 6:42
         _1 = Packed(move _2);            // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:17: 6:43
@@ -30,12 +24,6 @@ fn main() -> () {
         StorageLive(_4);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:11: 7:29
         StorageLive(_5);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:19: 7:28
         _5 = Droppy(const 0_usize);      // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:19: 7:28
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x0000000000000000))
-                                         // mir::Constant
-                                         // + span: $DIR/packed-struct-drop-aligned.rs:7:26: 7:27
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000000)) }
         _4 = Aligned(move _5);           // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:11: 7:29
         StorageDead(_5);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:28: 7:29
         StorageLive(_6);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:5: 7:8

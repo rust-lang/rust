@@ -26,32 +26,8 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/array-index-is-temporary.rs:13:9: 13:14
         _1 = [const 42_u32, const 43_u32, const 44_u32]; // scope 0 at $DIR/array-index-is-temporary.rs:13:17: 13:29
-                                         // ty::Const
-                                         // + ty: u32
-                                         // + val: Value(Scalar(0x0000002a))
-                                         // mir::Constant
-                                         // + span: $DIR/array-index-is-temporary.rs:13:18: 13:20
-                                         // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
-                                         // ty::Const
-                                         // + ty: u32
-                                         // + val: Value(Scalar(0x0000002b))
-                                         // mir::Constant
-                                         // + span: $DIR/array-index-is-temporary.rs:13:22: 13:24
-                                         // + literal: Const { ty: u32, val: Value(Scalar(0x0000002b)) }
-                                         // ty::Const
-                                         // + ty: u32
-                                         // + val: Value(Scalar(0x0000002c))
-                                         // mir::Constant
-                                         // + span: $DIR/array-index-is-temporary.rs:13:26: 13:28
-                                         // + literal: Const { ty: u32, val: Value(Scalar(0x0000002c)) }
         StorageLive(_2);                 // scope 1 at $DIR/array-index-is-temporary.rs:14:9: 14:14
         _2 = const 1_usize;              // scope 1 at $DIR/array-index-is-temporary.rs:14:17: 14:18
-                                         // ty::Const
-                                         // + ty: usize
-                                         // + val: Value(Scalar(0x0000000000000001))
-                                         // mir::Constant
-                                         // + span: $DIR/array-index-is-temporary.rs:14:17: 14:18
-                                         // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
         StorageLive(_3);                 // scope 2 at $DIR/array-index-is-temporary.rs:15:9: 15:10
         StorageLive(_4);                 // scope 2 at $DIR/array-index-is-temporary.rs:15:25: 15:31
         _4 = &mut _2;                    // scope 2 at $DIR/array-index-is-temporary.rs:15:25: 15:31

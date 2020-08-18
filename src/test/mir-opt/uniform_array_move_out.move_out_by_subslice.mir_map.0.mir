@@ -21,12 +21,6 @@ fn move_out_by_subslice() -> () {
         StorageLive(_3);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
         _3 = Box(i32);                   // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
         (*_3) = const 1_i32;             // scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
-                                         // ty::Const
-                                         // + ty: i32
-                                         // + val: Value(Scalar(0x00000001))
-                                         // mir::Constant
-                                         // + span: $DIR/uniform_array_move_out.rs:11:18: 11:19
-                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
         _2 = move _3;                    // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
         drop(_3) -> [return: bb4, unwind: bb2]; // scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
     }
@@ -49,12 +43,6 @@ fn move_out_by_subslice() -> () {
         StorageLive(_5);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
         _5 = Box(i32);                   // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
         (*_5) = const 2_i32;             // scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
-                                         // ty::Const
-                                         // + ty: i32
-                                         // + val: Value(Scalar(0x00000002))
-                                         // mir::Constant
-                                         // + span: $DIR/uniform_array_move_out.rs:11:25: 11:26
-                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
         _4 = move _5;                    // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
         drop(_5) -> [return: bb7, unwind: bb5]; // scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
     }

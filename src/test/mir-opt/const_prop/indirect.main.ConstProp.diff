@@ -14,65 +14,16 @@
           StorageLive(_1);                 // scope 0 at $DIR/indirect.rs:5:9: 5:10
           StorageLive(_2);                 // scope 0 at $DIR/indirect.rs:5:13: 5:25
 -         _2 = const 2_u32 as u8 (Misc);   // scope 0 at $DIR/indirect.rs:5:13: 5:25
-+         _2 = const 2_u8;                 // scope 0 at $DIR/indirect.rs:5:13: 5:25
-                                           // ty::Const
--                                          // + ty: u32
--                                          // + val: Value(Scalar(0x00000002))
-+                                          // + ty: u8
-+                                          // + val: Value(Scalar(0x02))
-                                           // mir::Constant
--                                          // + span: $DIR/indirect.rs:5:14: 5:18
--                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
 -         _3 = CheckedAdd(_2, const 1_u8); // scope 0 at $DIR/indirect.rs:5:13: 5:29
-+                                          // + span: $DIR/indirect.rs:5:13: 5:25
-+                                          // + literal: Const { ty: u8, val: Value(Scalar(0x02)) }
-+         _3 = (const 3_u8, const false);  // scope 0 at $DIR/indirect.rs:5:13: 5:29
-                                           // ty::Const
-                                           // + ty: u8
--                                          // + val: Value(Scalar(0x01))
-+                                          // + val: Value(Scalar(0x03))
-                                           // mir::Constant
--                                          // + span: $DIR/indirect.rs:5:28: 5:29
--                                          // + literal: Const { ty: u8, val: Value(Scalar(0x01)) }
 -         assert(!move (_3.1: bool), "attempt to compute `{} + {}` which would overflow", move _2, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:5:13: 5:29
-+                                          // + span: $DIR/indirect.rs:5:13: 5:29
-+                                          // + literal: Const { ty: u8, val: Value(Scalar(0x03)) }
-                                           // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x00))
-+                                          // mir::Constant
-+                                          // + span: $DIR/indirect.rs:5:13: 5:29
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
++         _2 = const 2_u8;                 // scope 0 at $DIR/indirect.rs:5:13: 5:25
++         _3 = (const 3_u8, const false);  // scope 0 at $DIR/indirect.rs:5:13: 5:29
 +         assert(!const false, "attempt to compute `{} + {}` which would overflow", const 2_u8, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:5:13: 5:29
-+                                          // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x00))
-+                                          // mir::Constant
-+                                          // + span: $DIR/indirect.rs:5:13: 5:29
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-+                                          // ty::Const
-                                           // + ty: u8
-+                                          // + val: Value(Scalar(0x02))
-+                                          // mir::Constant
-+                                          // + span: $DIR/indirect.rs:5:13: 5:29
-+                                          // + literal: Const { ty: u8, val: Value(Scalar(0x02)) }
-+                                          // ty::Const
-+                                          // + ty: u8
-                                           // + val: Value(Scalar(0x01))
-                                           // mir::Constant
-                                           // + span: $DIR/indirect.rs:5:28: 5:29
-                                           // + literal: Const { ty: u8, val: Value(Scalar(0x01)) }
       }
   
       bb1: {
 -         _1 = move (_3.0: u8);            // scope 0 at $DIR/indirect.rs:5:13: 5:29
 +         _1 = const 3_u8;                 // scope 0 at $DIR/indirect.rs:5:13: 5:29
-+                                          // ty::Const
-+                                          // + ty: u8
-+                                          // + val: Value(Scalar(0x03))
-+                                          // mir::Constant
-+                                          // + span: $DIR/indirect.rs:5:13: 5:29
-+                                          // + literal: Const { ty: u8, val: Value(Scalar(0x03)) }
           StorageDead(_2);                 // scope 0 at $DIR/indirect.rs:5:28: 5:29
           _0 = const ();                   // scope 0 at $DIR/indirect.rs:4:11: 6:2
                                            // ty::Const

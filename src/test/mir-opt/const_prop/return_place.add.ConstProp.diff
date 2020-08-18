@@ -7,57 +7,14 @@
   
       bb0: {
 -         _1 = CheckedAdd(const 2_u32, const 2_u32); // scope 0 at $DIR/return_place.rs:6:5: 6:10
-+         _1 = (const 4_u32, const false); // scope 0 at $DIR/return_place.rs:6:5: 6:10
-                                           // ty::Const
-                                           // + ty: u32
--                                          // + val: Value(Scalar(0x00000002))
-+                                          // + val: Value(Scalar(0x00000004))
-                                           // mir::Constant
--                                          // + span: $DIR/return_place.rs:6:5: 6:6
--                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
-+                                          // + span: $DIR/return_place.rs:6:5: 6:10
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000004)) }
-                                           // ty::Const
--                                          // + ty: u32
--                                          // + val: Value(Scalar(0x00000002))
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x00))
-                                           // mir::Constant
--                                          // + span: $DIR/return_place.rs:6:9: 6:10
--                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
 -         assert(!move (_1.1: bool), "attempt to compute `{} + {}` which would overflow", const 2_u32, const 2_u32) -> bb1; // scope 0 at $DIR/return_place.rs:6:5: 6:10
-+                                          // + span: $DIR/return_place.rs:6:5: 6:10
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
++         _1 = (const 4_u32, const false); // scope 0 at $DIR/return_place.rs:6:5: 6:10
 +         assert(!const false, "attempt to compute `{} + {}` which would overflow", const 2_u32, const 2_u32) -> bb1; // scope 0 at $DIR/return_place.rs:6:5: 6:10
-                                           // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x00))
-+                                          // mir::Constant
-+                                          // + span: $DIR/return_place.rs:6:5: 6:10
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-+                                          // ty::Const
-                                           // + ty: u32
-                                           // + val: Value(Scalar(0x00000002))
-                                           // mir::Constant
-                                           // + span: $DIR/return_place.rs:6:5: 6:6
-                                           // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
-                                           // ty::Const
-                                           // + ty: u32
-                                           // + val: Value(Scalar(0x00000002))
-                                           // mir::Constant
-                                           // + span: $DIR/return_place.rs:6:9: 6:10
-                                           // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
       }
   
       bb1: {
 -         _0 = move (_1.0: u32);           // scope 0 at $DIR/return_place.rs:6:5: 6:10
 +         _0 = const 4_u32;                // scope 0 at $DIR/return_place.rs:6:5: 6:10
-+                                          // ty::Const
-+                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x00000004))
-+                                          // mir::Constant
-+                                          // + span: $DIR/return_place.rs:6:5: 6:10
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000004)) }
           return;                          // scope 0 at $DIR/return_place.rs:7:2: 7:2
       }
   }

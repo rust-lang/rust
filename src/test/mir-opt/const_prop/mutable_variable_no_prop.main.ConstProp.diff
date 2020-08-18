@@ -20,12 +20,6 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_no_prop.rs:7:9: 7:14
           _1 = const 42_u32;               // scope 0 at $DIR/mutable_variable_no_prop.rs:7:17: 7:19
-                                           // ty::Const
-                                           // + ty: u32
-                                           // + val: Value(Scalar(0x0000002a))
-                                           // mir::Constant
-                                           // + span: $DIR/mutable_variable_no_prop.rs:7:17: 7:19
-                                           // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_no_prop.rs:8:5: 10:6
           StorageLive(_3);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:9:13: 9:19
           StorageLive(_4);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:9:13: 9:19

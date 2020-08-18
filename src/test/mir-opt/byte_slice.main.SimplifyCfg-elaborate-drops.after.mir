@@ -22,18 +22,6 @@ fn main() -> () {
                                          // + literal: Const { ty: &[u8; 3], val: Value(Scalar(alloc0)) }
         StorageLive(_2);                 // scope 1 at $DIR/byte_slice.rs:6:9: 6:10
         _2 = [const 5_u8, const 120_u8]; // scope 1 at $DIR/byte_slice.rs:6:13: 6:24
-                                         // ty::Const
-                                         // + ty: u8
-                                         // + val: Value(Scalar(0x05))
-                                         // mir::Constant
-                                         // + span: $DIR/byte_slice.rs:6:14: 6:17
-                                         // + literal: Const { ty: u8, val: Value(Scalar(0x05)) }
-                                         // ty::Const
-                                         // + ty: u8
-                                         // + val: Value(Scalar(0x78))
-                                         // mir::Constant
-                                         // + span: $DIR/byte_slice.rs:6:19: 6:23
-                                         // + literal: Const { ty: u8, val: Value(Scalar(0x78)) }
         _0 = const ();                   // scope 0 at $DIR/byte_slice.rs:4:11: 7:2
                                          // ty::Const
                                          // + ty: ()

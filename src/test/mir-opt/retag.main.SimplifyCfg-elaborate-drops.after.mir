@@ -57,23 +57,11 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/retag.rs:30:9: 30:14
         _1 = const 0_i32;                // scope 0 at $DIR/retag.rs:30:17: 30:18
-                                         // ty::Const
-                                         // + ty: i32
-                                         // + val: Value(Scalar(0x00000000))
-                                         // mir::Constant
-                                         // + span: $DIR/retag.rs:30:17: 30:18
-                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
         StorageLive(_2);                 // scope 1 at $DIR/retag.rs:31:5: 37:6
         StorageLive(_3);                 // scope 1 at $DIR/retag.rs:32:13: 32:14
         StorageLive(_4);                 // scope 1 at $DIR/retag.rs:32:17: 32:24
         StorageLive(_5);                 // scope 1 at $DIR/retag.rs:32:17: 32:24
         _5 = Test(const 0_i32);          // scope 1 at $DIR/retag.rs:32:17: 32:24
-                                         // ty::Const
-                                         // + ty: i32
-                                         // + val: Value(Scalar(0x00000000))
-                                         // mir::Constant
-                                         // + span: $DIR/retag.rs:32:22: 32:23
-                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
         _4 = &_5;                        // scope 1 at $DIR/retag.rs:32:17: 32:24
         Retag(_4);                       // scope 1 at $DIR/retag.rs:32:17: 32:24
         StorageLive(_6);                 // scope 1 at $DIR/retag.rs:32:29: 32:35
@@ -171,12 +159,6 @@ fn main() -> () {
         StorageLive(_20);                // scope 7 at $DIR/retag.rs:47:5: 47:12
         StorageLive(_21);                // scope 7 at $DIR/retag.rs:47:5: 47:12
         _21 = Test(const 0_i32);         // scope 7 at $DIR/retag.rs:47:5: 47:12
-                                         // ty::Const
-                                         // + ty: i32
-                                         // + val: Value(Scalar(0x00000000))
-                                         // mir::Constant
-                                         // + span: $DIR/retag.rs:47:10: 47:11
-                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
         _20 = &_21;                      // scope 7 at $DIR/retag.rs:47:5: 47:12
         Retag(_20);                      // scope 7 at $DIR/retag.rs:47:5: 47:12
         StorageLive(_22);                // scope 7 at $DIR/retag.rs:47:21: 47:23

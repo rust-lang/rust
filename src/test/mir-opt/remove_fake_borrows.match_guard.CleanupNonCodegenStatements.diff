@@ -21,12 +21,6 @@
   
       bb1: {
           _0 = const 1_i32;                // scope 0 at $DIR/remove_fake_borrows.rs:9:14: 9:15
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000001))
-                                           // mir::Constant
-                                           // + span: $DIR/remove_fake_borrows.rs:9:14: 9:15
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
           goto -> bb7;                     // scope 0 at $DIR/remove_fake_borrows.rs:7:5: 10:6
       }
   
@@ -63,12 +57,6 @@
 +         nop;                             // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
 +         nop;                             // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
           _0 = const 0_i32;                // scope 0 at $DIR/remove_fake_borrows.rs:8:25: 8:26
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000000))
-                                           // mir::Constant
-                                           // + span: $DIR/remove_fake_borrows.rs:8:25: 8:26
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
           goto -> bb7;                     // scope 0 at $DIR/remove_fake_borrows.rs:7:5: 10:6
       }
   

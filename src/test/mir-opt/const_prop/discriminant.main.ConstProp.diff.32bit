@@ -16,39 +16,15 @@
           StorageLive(_2);                 // scope 0 at $DIR/discriminant.rs:11:13: 11:64
           StorageLive(_3);                 // scope 0 at $DIR/discriminant.rs:11:34: 11:44
           ((_3 as Some).0: bool) = const true; // scope 0 at $DIR/discriminant.rs:11:34: 11:44
-                                           // ty::Const
-                                           // + ty: bool
-                                           // + val: Value(Scalar(0x01))
-                                           // mir::Constant
-                                           // + span: $DIR/discriminant.rs:11:39: 11:43
-                                           // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
           discriminant(_3) = 1;            // scope 0 at $DIR/discriminant.rs:11:34: 11:44
 -         _4 = discriminant(_3);           // scope 0 at $DIR/discriminant.rs:11:21: 11:31
 -         switchInt(move _4) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
 +         _4 = const 1_isize;              // scope 0 at $DIR/discriminant.rs:11:21: 11:31
-+                                          // ty::Const
-+                                          // + ty: isize
-+                                          // + val: Value(Scalar(0x00000001))
-+                                          // mir::Constant
-+                                          // + span: $DIR/discriminant.rs:11:21: 11:31
-+                                          // + literal: Const { ty: isize, val: Value(Scalar(0x00000001)) }
 +         switchInt(const 1_isize) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
-+                                          // ty::Const
-+                                          // + ty: isize
-+                                          // + val: Value(Scalar(0x00000001))
-+                                          // mir::Constant
-+                                          // + span: $DIR/discriminant.rs:11:21: 11:31
-+                                          // + literal: Const { ty: isize, val: Value(Scalar(0x00000001)) }
       }
   
       bb1: {
           _2 = const 10_i32;               // scope 0 at $DIR/discriminant.rs:11:59: 11:61
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x0000000a))
-                                           // mir::Constant
-                                           // + span: $DIR/discriminant.rs:11:59: 11:61
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x0000000a)) }
           goto -> bb4;                     // scope 0 at $DIR/discriminant.rs:11:13: 11:64
       }
   
@@ -58,23 +34,11 @@
   
       bb3: {
           _2 = const 42_i32;               // scope 0 at $DIR/discriminant.rs:11:47: 11:49
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x0000002a))
-                                           // mir::Constant
-                                           // + span: $DIR/discriminant.rs:11:47: 11:49
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
           goto -> bb4;                     // scope 0 at $DIR/discriminant.rs:11:13: 11:64
       }
   
       bb4: {
           _1 = Add(move _2, const 0_i32);  // scope 0 at $DIR/discriminant.rs:11:13: 11:68
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000000))
-                                           // mir::Constant
-                                           // + span: $DIR/discriminant.rs:11:67: 11:68
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
           StorageDead(_2);                 // scope 0 at $DIR/discriminant.rs:11:67: 11:68
           StorageDead(_3);                 // scope 0 at $DIR/discriminant.rs:11:68: 11:69
           _0 = const ();                   // scope 0 at $DIR/discriminant.rs:10:11: 12:2

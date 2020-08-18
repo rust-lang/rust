@@ -19,12 +19,6 @@
                                            // + span: $DIR/deaggregator_test.rs:9:20: 9:23
                                            // + literal: Const { ty: f32, val: Value(Scalar(0x00000000)) }
 +         (_0.2: bool) = const false;      // scope 0 at $DIR/deaggregator_test.rs:9:5: 9:35
-                                           // ty::Const
-                                           // + ty: bool
-                                           // + val: Value(Scalar(0x00))
-                                           // mir::Constant
-                                           // + span: $DIR/deaggregator_test.rs:9:28: 9:33
-                                           // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
           StorageDead(_2);                 // scope 0 at $DIR/deaggregator_test.rs:9:34: 9:35
           return;                          // scope 0 at $DIR/deaggregator_test.rs:10:2: 10:2
       }

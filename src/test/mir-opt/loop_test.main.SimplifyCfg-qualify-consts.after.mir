@@ -16,12 +16,6 @@ fn main() -> () {
         StorageLive(_1);                 // scope 0 at $DIR/loop_test.rs:10:5: 12:6
         StorageLive(_2);                 // scope 0 at $DIR/loop_test.rs:10:8: 10:12
         _2 = const true;                 // scope 0 at $DIR/loop_test.rs:10:8: 10:12
-                                         // ty::Const
-                                         // + ty: bool
-                                         // + val: Value(Scalar(0x01))
-                                         // mir::Constant
-                                         // + span: $DIR/loop_test.rs:10:8: 10:12
-                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
         FakeRead(ForMatchedPlace, _2);   // scope 0 at $DIR/loop_test.rs:10:8: 10:12
         switchInt(_2) -> [false: bb3, otherwise: bb2]; // scope 0 at $DIR/loop_test.rs:10:5: 12:6
     }
@@ -68,12 +62,6 @@ fn main() -> () {
     bb6: {
         StorageLive(_6);                 // scope 0 at $DIR/loop_test.rs:14:13: 14:14
         _6 = const 1_i32;                // scope 0 at $DIR/loop_test.rs:14:17: 14:18
-                                         // ty::Const
-                                         // + ty: i32
-                                         // + val: Value(Scalar(0x00000001))
-                                         // mir::Constant
-                                         // + span: $DIR/loop_test.rs:14:17: 14:18
-                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
         FakeRead(ForLet, _6);            // scope 0 at $DIR/loop_test.rs:14:13: 14:14
         StorageDead(_6);                 // scope 0 at $DIR/loop_test.rs:16:5: 16:6
         goto -> bb5;                     // scope 0 at $DIR/loop_test.rs:15:9: 15:17

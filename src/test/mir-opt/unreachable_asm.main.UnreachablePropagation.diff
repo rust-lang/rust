@@ -55,23 +55,11 @@
           StorageLive(_5);                 // scope 2 at $DIR/unreachable_asm.rs:14:9: 18:10
           StorageLive(_6);                 // scope 2 at $DIR/unreachable_asm.rs:14:12: 14:16
           _6 = const true;                 // scope 2 at $DIR/unreachable_asm.rs:14:12: 14:16
-                                           // ty::Const
-                                           // + ty: bool
-                                           // + val: Value(Scalar(0x01))
-                                           // mir::Constant
-                                           // + span: $DIR/unreachable_asm.rs:14:12: 14:16
-                                           // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
           switchInt(_6) -> [false: bb4, otherwise: bb5]; // scope 2 at $DIR/unreachable_asm.rs:14:9: 18:10
       }
   
       bb4: {
           _4 = const 42_i32;               // scope 2 at $DIR/unreachable_asm.rs:17:13: 17:20
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x0000002a))
-                                           // mir::Constant
-                                           // + span: $DIR/unreachable_asm.rs:17:18: 17:20
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
           _5 = const ();                   // scope 2 at $DIR/unreachable_asm.rs:16:16: 18:10
                                            // ty::Const
                                            // + ty: ()
@@ -84,12 +72,6 @@
   
       bb5: {
           _4 = const 21_i32;               // scope 2 at $DIR/unreachable_asm.rs:15:13: 15:20
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000015))
-                                           // mir::Constant
-                                           // + span: $DIR/unreachable_asm.rs:15:18: 15:20
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000015)) }
           _5 = const ();                   // scope 2 at $DIR/unreachable_asm.rs:14:17: 16:10
                                            // ty::Const
                                            // + ty: ()

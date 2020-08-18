@@ -8,20 +8,8 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/switch_int.rs:7:11: 7:12
           _1 = const 1_i32;                // scope 0 at $DIR/switch_int.rs:7:11: 7:12
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000001))
-                                           // mir::Constant
-                                           // + span: $DIR/switch_int.rs:7:11: 7:12
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
 -         switchInt(_1) -> [1_i32: bb2, otherwise: bb1]; // scope 0 at $DIR/switch_int.rs:8:9: 8:10
 +         switchInt(const 1_i32) -> [1_i32: bb2, otherwise: bb1]; // scope 0 at $DIR/switch_int.rs:8:9: 8:10
-+                                          // ty::Const
-+                                          // + ty: i32
-+                                          // + val: Value(Scalar(0x00000001))
-+                                          // mir::Constant
-+                                          // + span: $DIR/switch_int.rs:8:9: 8:10
-+                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
       }
   
       bb1: {
@@ -32,12 +20,6 @@
                                            // mir::Constant
                                            // + span: $DIR/switch_int.rs:9:14: 9:17
                                            // + literal: Const { ty: fn(i32) {foo}, val: Value(Scalar(<ZST>)) }
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0xffffffff))
-                                           // mir::Constant
-                                           // + span: $DIR/switch_int.rs:9:18: 9:20
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0xffffffff)) }
       }
   
       bb2: {
@@ -48,12 +30,6 @@
                                            // mir::Constant
                                            // + span: $DIR/switch_int.rs:8:14: 8:17
                                            // + literal: Const { ty: fn(i32) {foo}, val: Value(Scalar(<ZST>)) }
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x00000000))
-                                           // mir::Constant
-                                           // + span: $DIR/switch_int.rs:8:18: 8:19
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
       }
   
       bb3: {
