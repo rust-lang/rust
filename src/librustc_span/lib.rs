@@ -1146,8 +1146,12 @@ impl<D: Decoder> Decodable<D> for SourceFileName {
 }
 
 impl std::fmt::Display for SourceFileName {
-    fn fmt(&self, _fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.was_remapped() {
+            write!(fmt, "SourceFileName({}, remapped from {})", self.name, self.unmapped_path())
+        } else {
+            write!(fmt, "SourceFileName({})", self.name)
+        }
     }
 }
 
