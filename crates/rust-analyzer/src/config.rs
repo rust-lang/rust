@@ -10,7 +10,7 @@
 use std::{collections::HashSet, ffi::OsString, path::PathBuf};
 
 use flycheck::FlycheckConfig;
-use ide::{AnalysisConfig, AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
+use ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
 use lsp_types::ClientCapabilities;
 use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
 use serde::Deserialize;
@@ -47,6 +47,12 @@ pub struct Config {
     pub root_path: AbsPathBuf,
 
     pub analysis: AnalysisConfig,
+}
+
+/// Configuration parameters for the analysis run.
+#[derive(Debug, Default, Clone)]
+pub struct AnalysisConfig {
+    pub disabled_diagnostics: HashSet<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

@@ -99,12 +99,6 @@ pub use text_edit::{Indel, TextEdit};
 
 pub type Cancelable<T> = Result<T, Canceled>;
 
-/// Configuration parameters for the analysis run.
-#[derive(Debug, Default, Clone)]
-pub struct AnalysisConfig {
-    pub disabled_diagnostics: HashSet<String>,
-}
-
 #[derive(Debug)]
 pub struct Diagnostic {
     pub name: Option<String>,
