@@ -10,6 +10,7 @@
 
 use std::env;
 
+use codegen::CodegenCmd;
 use pico_args::Arguments;
 use xtask::{
     codegen::{self, Mode},
@@ -75,14 +76,9 @@ FLAGS:
             .run()
         }
         "codegen" => {
+            let features = args.contains("--features");
             args.finish()?;
-            codegen::generate_syntax(Mode::Overwrite)?;
-            codegen::generate_unstable_future_descriptor(Mode::Overwrite)?;
-            codegen::generate_parser_tests(Mode::Overwrite)?;
-            codegen::generate_assists_tests(Mode::Overwrite)?;
-            codegen::generate_assists_docs(Mode::Overwrite)?;
-            codegen::generate_feature_docs(Mode::Overwrite)?;
-            Ok(())
+            CodegenCmd { features }.run()
         }
         "format" => {
             args.finish()?;
