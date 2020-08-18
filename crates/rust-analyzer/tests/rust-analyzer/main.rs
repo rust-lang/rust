@@ -1,3 +1,13 @@
+//! The most high-level integrated tests for rust-analyzer.
+//!
+//! This tests run a full LSP event loop, spawn cargo and process stdlib from
+//! sysroot. For this reason, the tests here are very slow, and should be
+//! avoided unless absolutely necessary.
+//!
+//! In particular, it's fine *not* to test that client & server agree on
+//! specific JSON shapes here -- there's little value in such tests, as we can't
+//! be sure without a real client anyway.
+
 mod testdir;
 mod support;
 

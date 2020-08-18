@@ -3,14 +3,14 @@
 use std::{fmt, fs, path::PathBuf};
 
 use crate::{
-    codegen::{self, extract_comment_blocks_with_empty_lines, Location, Mode},
+    codegen::{self, extract_comment_blocks_with_empty_lines, Location, Mode, PREAMBLE},
     project_root, rust_files, Result,
 };
 
 pub fn generate_feature_docs(mode: Mode) -> Result<()> {
     let features = Feature::collect()?;
     let contents = features.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
-    let contents = contents.trim().to_string() + "\n";
+    let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());
     let dst = project_root().join("docs/user/generated_features.adoc");
     codegen::update(&dst, &contents, mode)?;
     Ok(())

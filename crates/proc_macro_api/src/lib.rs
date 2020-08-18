@@ -89,9 +89,8 @@ impl ProcMacroClient {
                 macros
                     .into_iter()
                     .filter_map(|(name, kind)| {
-                        // FIXME: Support custom derive only for now.
                         match kind {
-                            ProcMacroKind::CustomDerive => {
+                            ProcMacroKind::CustomDerive | ProcMacroKind::FuncLike => {
                                 let name = SmolStr::new(&name);
                                 let expander: Arc<dyn tt::TokenExpander> =
                                     Arc::new(ProcMacroProcessExpander {
@@ -101,7 +100,8 @@ impl ProcMacroClient {
                                     });
                                 Some((name, expander))
                             }
-                            _ => None,
+                            // FIXME: Attribute macro are currently unsupported.
+                            ProcMacroKind::Attr => None,
                         }
                     })
                     .collect()

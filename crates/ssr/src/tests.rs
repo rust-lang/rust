@@ -31,7 +31,7 @@ fn parser_two_delimiters() {
 fn parser_repeated_name() {
     assert_eq!(
         parse_error_text("foo($a, $a) ==>>"),
-        "Parse error: Name `a` repeats more than once"
+        "Parse error: Placeholder `$a` repeats more than once"
     );
 }
 
@@ -1171,4 +1171,111 @@ fn match_trait_method_call() {
         "#;
     assert_matches("Bar::foo($a, $b)", code, &["v1.foo(1)", "Bar::foo(&v1, 3)", "v1_ref.foo(5)"]);
     assert_matches("Bar2::foo($a, $b)", code, &["v2.foo(2)", "Bar2::foo(&v2, 4)", "v2_ref.foo(6)"]);
+}
+
+#[test]
+fn replace_autoref_autoderef_capture() {
+    // Here we have several calls to `$a.foo()`. In the first case autoref is applied, in the
+    // second, we already have a reference, so it isn't. When $a is used in a context where autoref
+    // doesn't apply, we need to prefix it with `&`. Finally, we have some cases where autoderef
+    // needs to be applied.
+    mark::check!(replace_autoref_autoderef_capture);
+    let code = r#"
+        struct Foo {}
+        impl Foo {
+            fn foo(&self) {}
+            fn foo2(&self) {}
+        }
+        fn bar(_: &Foo) {}
+        fn main() {
+            let f = Foo {};
+            let fr = &f;
+            let fr2 = &fr;
+            let fr3 = &fr2;
+            f.foo();
+            fr.foo();
+            fr2.foo();
+            fr3.foo();
+        }
+        "#;
+    assert_ssr_transform(
+        "Foo::foo($a) ==>> bar($a)",
+        code,
+        expect![[r#"
+            struct Foo {}
+            impl Foo {
+                fn foo(&self) {}
+                fn foo2(&self) {}
+            }
+            fn bar(_: &Foo) {}
+            fn main() {
+                let f = Foo {};
+                let fr = &f;
+                let fr2 = &fr;
+                let fr3 = &fr2;
+                bar(&f);
+                bar(&*fr);
+                bar(&**fr2);
+                bar(&***fr3);
+            }
+        "#]],
+    );
+    // If the placeholder is used as the receiver of another method call, then we don't need to
+    // explicitly autoderef or autoref.
+    assert_ssr_transform(
+        "Foo::foo($a) ==>> $a.foo2()",
+        code,
+        expect![[r#"
+            struct Foo {}
+            impl Foo {
+                fn foo(&self) {}
+                fn foo2(&self) {}
+            }
+            fn bar(_: &Foo) {}
+            fn main() {
+                let f = Foo {};
+                let fr = &f;
+                let fr2 = &fr;
+                let fr3 = &fr2;
+                f.foo2();
+                fr.foo2();
+                fr2.foo2();
+                fr3.foo2();
+            }
+        "#]],
+    );
+}
+
+#[test]
+fn replace_autoref_mut() {
+    let code = r#"
+        struct Foo {}
+        impl Foo {
+            fn foo(&mut self) {}
+        }
+        fn bar(_: &mut Foo) {}
+        fn main() {
+            let mut f = Foo {};
+            f.foo();
+            let fr = &mut f;
+            fr.foo();
+        }
+        "#;
+    assert_ssr_transform(
+        "Foo::foo($a) ==>> bar($a)",
+        code,
+        expect![[r#"
+            struct Foo {}
+            impl Foo {
+                fn foo(&mut self) {}
+            }
+            fn bar(_: &mut Foo) {}
+            fn main() {
+                let mut f = Foo {};
+                bar(&mut f);
+                let fr = &mut f;
+                bar(&mut *fr);
+            }
+        "#]],
+    );
 }

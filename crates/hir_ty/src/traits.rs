@@ -170,11 +170,11 @@ fn solve(
     let mut solve = || {
         if is_chalk_print() {
             let logging_db = LoggingRustIrDatabase::new(context);
-            let solution = solver.solve_limited(&logging_db, goal, should_continue);
+            let solution = solver.solve_limited(&logging_db, goal, &should_continue);
             log::debug!("chalk program:\n{}", logging_db);
             solution
         } else {
-            solver.solve_limited(&context, goal, should_continue)
+            solver.solve_limited(&context, goal, &should_continue)
         }
     };
 

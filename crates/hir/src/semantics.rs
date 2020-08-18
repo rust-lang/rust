@@ -6,7 +6,7 @@ use std::{cell::RefCell, fmt, iter::successors};
 
 use base_db::{FileId, FileRange};
 use hir_def::{
-    resolver::{self, HasResolver, Resolver},
+    resolver::{self, HasResolver, Resolver, TypeNs},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
 use hir_expand::{hygiene::Hygiene, name::AsName, ExpansionInfo};
@@ -22,12 +22,11 @@ use crate::{
     db::HirDatabase,
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
-    source_analyzer::{resolve_hir_path, resolve_hir_path_qualifier, SourceAnalyzer},
+    source_analyzer::{resolve_hir_path, SourceAnalyzer},
     AssocItem, Callable, Crate, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef,
     Module, ModuleDef, Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, TypeRef,
     VariantDef,
 };
-use resolver::TypeNs;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PathResolution {
@@ -226,10 +225,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantDef> {
         self.imp.resolve_variant(record_lit).map(VariantDef::from)
-    }
-
-    pub fn lower_path(&self, path: &ast::Path) -> Option<Path> {
-        self.imp.lower_path(path)
     }
 
     pub fn resolve_bind_pat_to_const(&self, pat: &ast::IdentPat) -> Option<ModuleDef> {
@@ -465,11 +460,6 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {
         self.analyze(record_lit.syntax()).resolve_variant(self.db, record_lit)
-    }
-
-    fn lower_path(&self, path: &ast::Path) -> Option<Path> {
-        let src = self.find_file(path.syntax().clone());
-        Path::from_src(path.clone(), &Hygiene::new(self.db.upcast(), src.file_id.into()))
     }
 
     fn resolve_bind_pat_to_const(&self, pat: &ast::IdentPat) -> Option<ModuleDef> {
@@ -758,28 +748,7 @@ impl<'a> SemanticsScope<'a> {
     pub fn speculative_resolve(&self, path: &ast::Path) -> Option<PathResolution> {
         let hygiene = Hygiene::new(self.db.upcast(), self.file_id);
         let path = Path::from_src(path.clone(), &hygiene)?;
-        self.resolve_hir_path(&path)
-    }
-
-    pub fn resolve_hir_path(&self, path: &Path) -> Option<PathResolution> {
-        resolve_hir_path(self.db, &self.resolver, path)
-    }
-
-    /// Resolves a path where we know it is a qualifier of another path.
-    ///
-    /// For example, if we have:
-    /// ```
-    /// mod my {
-    ///     pub mod foo {
-    ///         struct Bar;
-    ///     }
-    ///
-    ///     pub fn foo() {}
-    /// }
-    /// ```
-    /// then we know that `foo` in `my::foo::Bar` refers to the module, not the function.
-    pub fn resolve_hir_path_qualifier(&self, path: &Path) -> Option<PathResolution> {
-        resolve_hir_path_qualifier(self.db, &self.resolver, path)
+        resolve_hir_path(self.db, &self.resolver, &path)
     }
 }
 

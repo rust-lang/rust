@@ -71,7 +71,7 @@ impl BenchCmd {
         match &self.what {
             BenchWhat::Highlight { .. } => {
                 let res = do_work(&mut host, file_id, |analysis| {
-                    analysis.diagnostics(file_id, true).unwrap();
+                    analysis.diagnostics(file_id, true, None).unwrap();
                     analysis.highlight_as_html(file_id, false).unwrap()
                 });
                 if verbosity.is_verbose() {

@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest] #, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -69,10 +69,6 @@ jobs:
 
     - name: Prepare cache
       run: cargo xtask pre-cache
-
-    - name: Prepare cache 2
-      if: matrix.os == 'windows-latest'
-      run: Remove-Item ./target/debug/xtask.exe, ./target/debug/deps/xtask.exe
 
   # Weird targets to catch non-portable code
   rust-cross:

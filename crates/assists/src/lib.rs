@@ -66,13 +66,13 @@ pub struct GroupLabel(pub String);
 
 #[derive(Debug, Clone)]
 pub struct Assist {
-    id: AssistId,
+    pub id: AssistId,
     /// Short description of the assist, as shown in the UI.
     label: String,
-    group: Option<GroupLabel>,
+    pub group: Option<GroupLabel>,
     /// Target ranges are used to sort assists: the smaller the target range,
     /// the more specific assist is, and so it should be sorted first.
-    target: TextRange,
+    pub target: TextRange,
 }
 
 #[derive(Debug, Clone)]
@@ -82,6 +82,11 @@ pub struct ResolvedAssist {
 }
 
 impl Assist {
+    fn new(id: AssistId, label: String, group: Option<GroupLabel>, target: TextRange) -> Assist {
+        assert!(label.starts_with(char::is_uppercase));
+        Assist { id, label, group, target }
+    }
+
     /// Return all the assists applicable at the given position.
     ///
     /// Assists are returned in the "unresolved" state, that is only labels are
@@ -114,30 +119,8 @@ impl Assist {
         acc.finish_resolved()
     }
 
-    pub(crate) fn new(
-        id: AssistId,
-        label: String,
-        group: Option<GroupLabel>,
-        target: TextRange,
-    ) -> Assist {
-        assert!(label.starts_with(|c: char| c.is_uppercase()));
-        Assist { id, label, group, target }
-    }
-
-    pub fn id(&self) -> AssistId {
-        self.id
-    }
-
-    pub fn label(&self) -> String {
-        self.label.clone()
-    }
-
-    pub fn group(&self) -> Option<GroupLabel> {
-        self.group.clone()
-    }
-
-    pub fn target(&self) -> TextRange {
-        self.target
+    pub fn label(&self) -> &str {
+        self.label.as_str()
     }
 }
 

@@ -13,7 +13,7 @@ mod fixtures {
     // Use current project metadata to get the proc-macro dylib path
     pub fn dylib_path(crate_name: &str, version: &str) -> std::path::PathBuf {
         let command = Command::new(toolchain::cargo())
-            .args(&["check", "--message-format", "json"])
+            .args(&["check", "--tests", "--message-format", "json"])
             .output()
             .unwrap()
             .stdout;

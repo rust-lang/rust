@@ -7,7 +7,7 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{ffi::OsString, path::PathBuf};
+use std::{collections::HashSet, ffi::OsString, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
@@ -45,6 +45,14 @@ pub struct Config {
     pub with_sysroot: bool,
     pub linked_projects: Vec<LinkedProject>,
     pub root_path: AbsPathBuf,
+
+    pub analysis: AnalysisConfig,
+}
+
+/// Configuration parameters for the analysis run.
+#[derive(Debug, Default, Clone)]
+pub struct AnalysisConfig {
+    pub disabled_diagnostics: HashSet<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -176,6 +184,8 @@ impl Config {
             hover: HoverConfig::default(),
             linked_projects: Vec::new(),
             root_path,
+
+            analysis: AnalysisConfig::default(),
         }
     }
 
@@ -293,6 +303,8 @@ impl Config {
             goto_type_def: data.hoverActions_enable && data.hoverActions_gotoTypeDef,
         };
 
+        self.analysis = AnalysisConfig { disabled_diagnostics: data.analysis_disabledDiagnostics };
+
         log::info!("Config::update() = {:#?}", self);
     }
 
@@ -355,6 +367,14 @@ impl Config {
             self.client_caps.resolve_code_action = get_bool("resolveCodeAction");
             self.client_caps.hover_actions = get_bool("hoverActions");
             self.client_caps.status_notification = get_bool("statusNotification");
+        }
+    }
+
+    pub fn disabled_diagnostics(&self) -> Option<HashSet<String>> {
+        if self.analysis.disabled_diagnostics.is_empty() {
+            None
+        } else {
+            Some(self.analysis.disabled_diagnostics.clone())
         }
     }
 }
@@ -444,5 +464,7 @@ config_data! {
         rustfmt_overrideCommand: Option<Vec<String>> = None,
 
         withSysroot: bool = true,
+
+        analysis_disabledDiagnostics: HashSet<String> = HashSet::new(),
     }
 }

@@ -32,6 +32,10 @@ pub struct NoSuchField {
 }
 
 impl Diagnostic for NoSuchField {
+    fn name(&self) -> &'static str {
+        "no-such-field"
+    }
+
     fn message(&self) -> String {
         "no such field".to_string()
     }
@@ -54,6 +58,9 @@ pub struct MissingFields {
 }
 
 impl Diagnostic for MissingFields {
+    fn name(&self) -> &'static str {
+        "missing-structure-fields"
+    }
     fn message(&self) -> String {
         let mut buf = String::from("Missing structure fields:\n");
         for field in &self.missed_fields {
@@ -87,6 +94,9 @@ pub struct MissingPatFields {
 }
 
 impl Diagnostic for MissingPatFields {
+    fn name(&self) -> &'static str {
+        "missing-pat-fields"
+    }
     fn message(&self) -> String {
         let mut buf = String::from("Missing structure fields:\n");
         for field in &self.missed_fields {
@@ -117,6 +127,9 @@ pub struct MissingMatchArms {
 }
 
 impl Diagnostic for MissingMatchArms {
+    fn name(&self) -> &'static str {
+        "missing-match-arm"
+    }
     fn message(&self) -> String {
         String::from("Missing match arm")
     }
@@ -135,6 +148,9 @@ pub struct MissingOkInTailExpr {
 }
 
 impl Diagnostic for MissingOkInTailExpr {
+    fn name(&self) -> &'static str {
+        "missing-ok-in-tail-expr"
+    }
     fn message(&self) -> String {
         "wrap return expression in Ok".to_string()
     }
@@ -153,6 +169,9 @@ pub struct BreakOutsideOfLoop {
 }
 
 impl Diagnostic for BreakOutsideOfLoop {
+    fn name(&self) -> &'static str {
+        "break-outside-of-loop"
+    }
     fn message(&self) -> String {
         "break outside of loop".to_string()
     }
@@ -171,6 +190,9 @@ pub struct MissingUnsafe {
 }
 
 impl Diagnostic for MissingUnsafe {
+    fn name(&self) -> &'static str {
+        "missing-unsafe"
+    }
     fn message(&self) -> String {
         format!("This operation is unsafe and requires an unsafe function or block")
     }
@@ -191,6 +213,9 @@ pub struct MismatchedArgCount {
 }
 
 impl Diagnostic for MismatchedArgCount {
+    fn name(&self) -> &'static str {
+        "mismatched-arg-count"
+    }
     fn message(&self) -> String {
         let s = if self.expected == 1 { "" } else { "s" };
         format!("Expected {} argument{}, found {}", self.expected, s, self.found)

@@ -82,8 +82,8 @@ trait Trait {
 impl Trait for () {
     Type X = ();
     fn foo(&self) {}
-    $0fn bar(&self) {}
 
+    $0fn bar(&self) {}
 }
 "#####,
     )
@@ -115,7 +115,6 @@ impl Trait<u32> for () {
     fn foo(&self) -> u32 {
         ${0:todo!()}
     }
-
 }
 "#####,
     )

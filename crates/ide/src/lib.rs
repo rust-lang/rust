@@ -44,7 +44,7 @@ mod syntax_highlighting;
 mod syntax_tree;
 mod typing;
 
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use base_db::{
     salsa::{self, ParallelDatabase},
@@ -101,6 +101,7 @@ pub type Cancelable<T> = Result<T, Canceled>;
 
 #[derive(Debug)]
 pub struct Diagnostic {
+    pub name: Option<String>,
     pub message: String,
     pub range: TextRange,
     pub severity: Severity,
@@ -147,7 +148,7 @@ pub struct AnalysisHost {
 }
 
 impl AnalysisHost {
-    pub fn new(lru_capacity: Option<usize>) -> AnalysisHost {
+    pub fn new(lru_capacity: Option<usize>) -> Self {
         AnalysisHost { db: RootDatabase::new(lru_capacity) }
     }
 
@@ -496,8 +497,11 @@ impl Analysis {
         &self,
         file_id: FileId,
         enable_experimental: bool,
+        disabled_diagnostics: Option<HashSet<String>>,
     ) -> Cancelable<Vec<Diagnostic>> {
-        self.with_db(|db| diagnostics::diagnostics(db, file_id, enable_experimental))
+        self.with_db(|db| {
+            diagnostics::diagnostics(db, file_id, enable_experimental, disabled_diagnostics)
+        })
     }
 
     /// Returns the edit required to rename reference at the position to the new

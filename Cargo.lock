@@ -162,9 +162,9 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
 name = "chalk-derive"
-version = "0.21.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1df0dbb57d74b4acd20f20fa66ab2acd09776b79eaeb9d8f947b2f3e01c40bf"
+checksum = "c3cb438e961fd7f1183dc5e0bdcfd09253bf9b90592cf665d1ce6787d8a4908f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -174,9 +174,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.21.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44361a25dbdb1dc428f56ad7a3c21ba9ca12f3225c26a47919ff6fcb10a583d4"
+checksum = "bb332abfcb015b148c6fbab39b1d13282745b0f7f312019dd8e138f5f3f0855d"
 dependencies = [
  "chalk-derive",
  "lazy_static",
@@ -184,9 +184,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.21.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd89556b98de156d5eaf21077d297cd2198628f10f2df140798ea3a5dd84bc86"
+checksum = "e7c7673f10c5fa1acf7fa07d4f4c5917cbcf161ed3a952d14530c79950de32d2"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -197,9 +197,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.21.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a886da37a0dc457057d86f78f026f7a09c6d8088aa13f4f4127fdb8dc80119a3"
+checksum = "802de4eff72e5a5d2828e6c07224c74d66949dc6308aff025d0ae2871a11b4eb"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -214,9 +214,9 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.13"
+version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c74d84029116787153e02106bf53e66828452a4b325cc8652b788b5967c0a0b6"
+checksum = "942f72db697d8767c22d46a598e01f2d3b475501ea43d0db4f16d90259182d0b"
 dependencies = [
  "num-integer",
  "num-traits",
@@ -765,9 +765,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-server"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53b4ace8ebe5d2aff3687ce0ed507f6020d6a47a7de2b0d3d664ea237ffb0c62"
+checksum = "87fce8851309a325974ec76efe7c9d954d152c9ff4fded6520eb3c96d0aa3a96"
 dependencies = [
  "crossbeam-channel",
  "log",
@@ -971,9 +971,9 @@ checksum = "1ab52be62400ca80aa00285d25253d7f7c437b7375c4de678f5405d3afe82ca5"
 
 [[package]]
 name = "once_cell"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b631f7e854af39a1739f401cf34a8a013dfe09eac4fa4dba91e9768bd28168d"
+checksum = "260e51e7efe62b592207e9e13a68e43692a7a279171d6ba57abd208bf23645ad"
 
 [[package]]
 name = "oorandom"
@@ -1036,9 +1036,9 @@ dependencies = [
 
 [[package]]
 name = "perf-event-open-sys"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83e7183862f36d10263d0a1ccaef50fef734ade948bf026afd1bd97355c78273"
+checksum = "d9ebe2b9ef0cb884ef778c5a533144e348e9839a9fcf67f3d24e1890ac9088d6"
 dependencies = [
  "libc",
 ]
@@ -1097,11 +1097,16 @@ dependencies = [
  "mbe",
  "memmap",
  "proc_macro_api",
+ "proc_macro_test",
  "serde_derive",
  "test_utils",
  "toolchain",
  "tt",
 ]
+
+[[package]]
+name = "proc_macro_test"
+version = "0.0.0"
 
 [[package]]
 name = "profile"
@@ -1259,9 +1264,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "671.0.0"
+version = "673.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22e1221f3bfa2943c942cf8da319ab2346887f8757778c29c7f1822cd27b521f"
+checksum = "f6b71fa1285bdefe5fb61e59b63d6cc246abf337f4acafdd620d721bc488e671"
 dependencies = [
  "unicode-xid",
 ]
@@ -1450,6 +1455,7 @@ dependencies = [
  "expect",
  "hir",
  "ide_db",
+ "itertools",
  "rustc-hash",
  "syntax",
  "test_utils",
@@ -1573,9 +1579,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53953d2d3a5ad81d9f844a32f14ebb121f50b650cd59d0ee2a07cf13c617efed"
+checksum = "238ce071d267c5710f9d31451efec16c5ee22de34df17cc05e56cbc92e967117"
 
 [[package]]
 name = "toolchain"

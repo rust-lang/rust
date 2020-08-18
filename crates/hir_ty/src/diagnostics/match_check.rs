@@ -1335,6 +1335,23 @@ fn panic(a: Category, b: Category) {
         );
     }
 
+    #[test]
+    fn unknown_type() {
+        check_diagnostics(
+            r#"
+enum Option<T> { Some(T), None }
+
+fn main() {
+    // `Never` is deliberately not defined so that it's an uninferred type.
+    match Option::<Never>::None {
+        None => (),
+        Some(never) => match never {},
+    }
+}
+"#,
+        );
+    }
+
     mod false_negatives {
         //! The implementation of match checking here is a work in progress. As we roll this out, we
         //! prefer false negatives to false positives (ideally there would be no false positives). This

@@ -21,6 +21,7 @@ use syntax::SyntaxNodePtr;
 use crate::InFile;
 
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
+    fn name(&self) -> &'static str;
     fn message(&self) -> String;
     /// Used in highlighting and related purposes
     fn display_source(&self) -> InFile<SyntaxNodePtr>;

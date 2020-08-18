@@ -704,10 +704,10 @@ pub(crate) fn unresolved_code_action(
     index: usize,
 ) -> Result<lsp_ext::CodeAction> {
     let res = lsp_ext::CodeAction {
-        title: assist.label(),
-        id: Some(format!("{}:{}", assist.id().0.to_owned(), index.to_string())),
-        group: assist.group().filter(|_| snap.config.client_caps.code_action_group).map(|gr| gr.0),
-        kind: Some(code_action_kind(assist.id().1)),
+        title: assist.label().to_string(),
+        id: Some(format!("{}:{}", assist.id.0, index.to_string())),
+        group: assist.group.filter(|_| snap.config.client_caps.code_action_group).map(|gr| gr.0),
+        kind: Some(code_action_kind(assist.id.1)),
         edit: None,
         is_preferred: None,
     };

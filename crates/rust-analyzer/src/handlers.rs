@@ -272,18 +272,23 @@ pub(crate) fn handle_document_symbol(
         parents.push((doc_symbol, symbol.parent));
     }
     let mut document_symbols = Vec::new();
+    // Constructs `document_symbols` from `parents`, in order from the end.
     while let Some((node, parent)) = parents.pop() {
         match parent {
             None => document_symbols.push(node),
             Some(i) => {
-                let children = &mut parents[i].0.children;
-                if children.is_none() {
-                    *children = Some(Vec::new());
-                }
-                children.as_mut().unwrap().push(node);
+                parents[i].0.children.get_or_insert_with(Vec::new).push(node);
             }
         }
     }
+
+    fn reverse(symbols: &mut Vec<DocumentSymbol>) {
+        for sym in symbols.iter_mut() {
+            sym.children.as_mut().map(|c| reverse(c));
+        }
+        symbols.reverse();
+    }
+    reverse(&mut document_symbols);
 
     let res = if snap.config.client_caps.hierarchical_symbols {
         document_symbols.into()
@@ -770,7 +775,11 @@ fn handle_fixes(
         None => {}
     };
 
-    let diagnostics = snap.analysis.diagnostics(file_id, snap.config.experimental_diagnostics)?;
+    let diagnostics = snap.analysis.diagnostics(
+        file_id,
+        snap.config.experimental_diagnostics,
+        snap.config.disabled_diagnostics(),
+    )?;
 
     for fix in diagnostics
         .into_iter()
@@ -859,10 +868,10 @@ pub(crate) fn handle_resolve_code_action(
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
     let assists = snap.analysis.resolved_assists(&snap.config.assist, frange)?;
-    let (id_string, index) = split_once(&params.id, ':').unwrap();
+    let (id, index) = split_once(&params.id, ':').unwrap();
     let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];
-    assert!(assist.assist.id().0 == id_string);
+    assert!(assist.assist.id.0 == id);
     Ok(to_proto::resolved_code_action(&snap, assist.clone())?.edit)
 }
 
@@ -1044,7 +1053,11 @@ pub(crate) fn publish_diagnostics(
     let line_index = snap.analysis.file_line_index(file_id)?;
     let diagnostics: Vec<Diagnostic> = snap
         .analysis
-        .diagnostics(file_id, snap.config.experimental_diagnostics)?
+        .diagnostics(
+            file_id,
+            snap.config.experimental_diagnostics,
+            snap.config.disabled_diagnostics(),
+        )?
         .into_iter()
         .map(|d| Diagnostic {
             range: to_proto::range(&line_index, d.range),
