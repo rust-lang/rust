@@ -351,7 +351,6 @@ pub fn qpath_to_string(p: &hir::QPath<'_>) -> String {
 }
 
 pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut Vec<Item>) {
-    use self::PrimitiveType::*;
     let tcx = cx.tcx;
 
     for item in items {
@@ -370,34 +369,7 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut V
                 None => continue,
             },
         };
-        let did = match primitive {
-            Isize => tcx.lang_items().isize_impl(),
-            I8 => tcx.lang_items().i8_impl(),
-            I16 => tcx.lang_items().i16_impl(),
-            I32 => tcx.lang_items().i32_impl(),
-            I64 => tcx.lang_items().i64_impl(),
-            I128 => tcx.lang_items().i128_impl(),
-            Usize => tcx.lang_items().usize_impl(),
-            U8 => tcx.lang_items().u8_impl(),
-            U16 => tcx.lang_items().u16_impl(),
-            U32 => tcx.lang_items().u32_impl(),
-            U64 => tcx.lang_items().u64_impl(),
-            U128 => tcx.lang_items().u128_impl(),
-            F32 => tcx.lang_items().f32_impl(),
-            F64 => tcx.lang_items().f64_impl(),
-            Char => tcx.lang_items().char_impl(),
-            Bool => tcx.lang_items().bool_impl(),
-            Str => tcx.lang_items().str_impl(),
-            Slice => tcx.lang_items().slice_impl(),
-            Array => tcx.lang_items().array_impl(),
-            Tuple => None,
-            Unit => None,
-            RawPointer => tcx.lang_items().const_ptr_impl(),
-            Reference => None,
-            Fn => None,
-            Never => None,
-        };
-        if let Some(did) = did {
+        for &did in primitive.impls(tcx) {
             if !did.is_local() {
                 inline::build_impl(cx, did, None, ret);
             }
