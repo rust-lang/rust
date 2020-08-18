@@ -685,13 +685,19 @@ impl<'a> CrateLocator<'a> {
                     && file.ends_with(&self.target.options.dll_suffix)
             {
                 // Make sure there's at most one rlib and at most one dylib.
-                let loc = fs::canonicalize(&loc).unwrap_or_else(|_| loc.clone());
+                // Note to take care and match against the non-canonicalized name:
+                // some systems save build artifacts into content-addressed stores
+                // that do not preserve extensions, and then link to them using
+                // e.g. symbolic links. If we canonicalize too early, we resolve
+                // the symlink, the file type is lost and we might treat rlibs and
+                // rmetas as dylibs.
+                let loc_canon = fs::canonicalize(&loc).unwrap_or_else(|_| loc.clone());
                 if loc.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
-                    rlibs.insert(loc, PathKind::ExternFlag);
+                    rlibs.insert(loc_canon, PathKind::ExternFlag);
                 } else if loc.file_name().unwrap().to_str().unwrap().ends_with(".rmeta") {
-                    rmetas.insert(loc, PathKind::ExternFlag);
+                    rmetas.insert(loc_canon, PathKind::ExternFlag);
                 } else {
-                    dylibs.insert(loc, PathKind::ExternFlag);
+                    dylibs.insert(loc_canon, PathKind::ExternFlag);
                 }
             } else {
                 self.rejected_via_filename
