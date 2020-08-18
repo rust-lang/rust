@@ -281,7 +281,7 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
-        /// The `DefId` is the `DefId` of the containing MIR body. Promoteds to not have their own
+        /// The `DefId` is the `DefId` of the containing MIR body. Promoteds do not have their own
         /// `DefId`. This function returns all promoteds in the specified body. The body references
         /// promoteds by the `DefId` and the `mir::Promoted` index. This is necessary, because
         /// after inlining a body may refer to promoteds from other bodies. In that case you still
