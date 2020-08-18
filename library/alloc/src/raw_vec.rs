@@ -465,8 +465,9 @@ impl<T, A: AllocRef> RawVec<T, A> {
         let new_size = amount * mem::size_of::<T>();
 
         let ptr = unsafe {
-            self.alloc.shrink(ptr, layout, new_size).map_err(|_| TryReserveError::AllocError {
-                layout: Layout::from_size_align_unchecked(new_size, layout.align()),
+            let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+            self.alloc.shrink(ptr, layout, new_layout).map_err(|_| TryReserveError::AllocError {
+                layout: new_layout,
                 non_exhaustive: (),
             })?
         };
@@ -493,14 +494,12 @@ where
     alloc_guard(new_layout.size())?;
 
     let memory = if let Some((ptr, old_layout)) = current_memory {
-        debug_assert_eq!(old_layout.align(), new_layout.align());
-        unsafe { alloc.grow(ptr, old_layout, new_layout.size()) }
+        unsafe { alloc.grow(ptr, old_layout, new_layout) }
     } else {
         alloc.alloc(new_layout)
-    }
-    .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?;
+    };
 
-    Ok(memory)
+    memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })
 }
 
 unsafe impl<#[may_dangle] T, A: AllocRef> Drop for RawVec<T, A> {

@@ -154,35 +154,44 @@ impl System {
     unsafe fn grow_impl(
         &mut self,
         ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
+        old_layout: Layout,
+        new_layout: Layout,
         zeroed: bool,
     ) -> Result<NonNull<[u8]>, AllocErr> {
         debug_assert!(
-            new_size >= layout.size(),
-            "`new_size` must be greater than or equal to `layout.size()`"
+            new_layout.size() >= old_layout.size(),
+            "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
         );
 
-        match layout.size() {
-            // SAFETY: the caller must ensure that the `new_size` does not overflow.
-            // `layout.align()` comes from a `Layout` and is thus guaranteed to be valid for a Layout.
-            0 => unsafe {
-                let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-                self.alloc_impl(new_layout, zeroed)
-            },
+        match old_layout.size() {
+            0 => self.alloc_impl(new_layout, zeroed),
 
             // SAFETY: `new_size` is non-zero as `old_size` is greater than or equal to `new_size`
             // as required by safety conditions. Other conditions must be upheld by the caller
-            old_size => unsafe {
-                // `realloc` probably checks for `new_size >= size` or something similar.
-                intrinsics::assume(new_size >= layout.size());
+            old_size if old_layout.align() == new_layout.align() => unsafe {
+                let new_size = new_layout.size();
 
-                let raw_ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
+                // `realloc` probably checks for `new_size >= old_layout.size()` or something similar.
+                intrinsics::assume(new_size >= old_layout.size());
+
+                let raw_ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
                 if zeroed {
                     raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
                 }
                 Ok(NonNull::slice_from_raw_parts(ptr, new_size))
+            },
+
+            // SAFETY: because `new_layout.size()` must be greater than or equal to `old_size`,
+            // both the old and new memory allocation are valid for reads and writes for `old_size`
+            // bytes. Also, because the old allocation wasn't yet deallocated, it cannot overlap
+            // `new_ptr`. Thus, the call to `copy_nonoverlapping` is safe. The safety contract
+            // for `dealloc` must be upheld by the caller.
+            old_size => unsafe {
+                let new_ptr = self.alloc_impl(new_layout, zeroed)?;
+                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_size);
+                self.dealloc(ptr, old_layout);
+                Ok(new_ptr)
             },
         }
     }
@@ -215,51 +224,63 @@ unsafe impl AllocRef for System {
     unsafe fn grow(
         &mut self,
         ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
+        old_layout: Layout,
+        new_layout: Layout,
     ) -> Result<NonNull<[u8]>, AllocErr> {
         // SAFETY: all conditions must be upheld by the caller
-        unsafe { self.grow_impl(ptr, layout, new_size, false) }
+        unsafe { self.grow_impl(ptr, old_layout, new_layout, false) }
     }
 
     #[inline]
     unsafe fn grow_zeroed(
         &mut self,
         ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
+        old_layout: Layout,
+        new_layout: Layout,
     ) -> Result<NonNull<[u8]>, AllocErr> {
         // SAFETY: all conditions must be upheld by the caller
-        unsafe { self.grow_impl(ptr, layout, new_size, true) }
+        unsafe { self.grow_impl(ptr, old_layout, new_layout, true) }
     }
 
     #[inline]
     unsafe fn shrink(
         &mut self,
         ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
+        old_layout: Layout,
+        new_layout: Layout,
     ) -> Result<NonNull<[u8]>, AllocErr> {
         debug_assert!(
-            new_size <= layout.size(),
-            "`new_size` must be smaller than or equal to `layout.size()`"
+            new_layout.size() <= old_layout.size(),
+            "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
         );
 
-        match new_size {
+        match new_layout.size() {
             // SAFETY: conditions must be upheld by the caller
             0 => unsafe {
-                self.dealloc(ptr, layout);
-                Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0))
+                self.dealloc(ptr, old_layout);
+                Ok(NonNull::slice_from_raw_parts(new_layout.dangling(), 0))
             },
 
             // SAFETY: `new_size` is non-zero. Other conditions must be upheld by the caller
-            new_size => unsafe {
-                // `realloc` probably checks for `new_size <= size` or something similar.
-                intrinsics::assume(new_size <= layout.size());
+            new_size if old_layout.align() == new_layout.align() => unsafe {
+                // `realloc` probably checks for `new_size <= old_layout.size()` or something similar.
+                intrinsics::assume(new_size <= old_layout.size());
 
-                let raw_ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
+                let raw_ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
                 Ok(NonNull::slice_from_raw_parts(ptr, new_size))
+            },
+
+            // SAFETY: because `new_size` must be smaller than or equal to `old_layout.size()`,
+            // both the old and new memory allocation are valid for reads and writes for `new_size`
+            // bytes. Also, because the old allocation wasn't yet deallocated, it cannot overlap
+            // `new_ptr`. Thus, the call to `copy_nonoverlapping` is safe. The safety contract
+            // for `dealloc` must be upheld by the caller.
+            new_size => unsafe {
+                let new_ptr = self.alloc(new_layout)?;
+                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_size);
+                self.dealloc(ptr, old_layout);
+                Ok(new_ptr)
             },
         }
     }
