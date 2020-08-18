@@ -47,7 +47,7 @@ pub fn diagnostics(
                 String::from("unknown")
             };
             println!("processing crate: {}, module: {}", crate_name, _vfs.file_path(file_id));
-            for diagnostic in analysis.diagnostics(file_id, true).unwrap() {
+            for diagnostic in analysis.diagnostics(file_id, true, None).unwrap() {
                 if matches!(diagnostic.severity, Severity::Error) {
                     found_error = true;
                 }
