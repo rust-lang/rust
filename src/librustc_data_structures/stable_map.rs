@@ -1,4 +1,4 @@
-pub use rustc_hash::FxHashMap;
+pub use zwohash::HashMap as FxHashMap;
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::fmt;

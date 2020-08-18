@@ -3360,7 +3360,6 @@ dependencies = [
  "measureme",
  "once_cell",
  "parking_lot 0.10.2",
- "rustc-hash",
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_graphviz",
@@ -3373,6 +3372,7 @@ dependencies = [
  "tempfile",
  "tracing",
  "winapi 0.3.8",
+ "zwohash",
 ]
 
 [[package]]
@@ -5267,3 +5267,9 @@ checksum = "65923dd1784f44da1d2c3dbbc5e822045628c590ba72123e1c73d3c230c4434d"
 dependencies = [
  "linked-hash-map",
 ]
+
+[[package]]
+name = "zwohash"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd4213bc5461449218f58d465a623c76e81423f2b3a517d58acfeb6315ffec8e"

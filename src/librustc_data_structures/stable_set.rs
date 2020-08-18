@@ -1,4 +1,4 @@
-pub use rustc_hash::FxHashSet;
+pub use zwohash::HashSet as FxHashSet;
 use std::borrow::Borrow;
 use std::fmt;
 use std::hash::Hash;
