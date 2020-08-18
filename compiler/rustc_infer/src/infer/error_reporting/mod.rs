@@ -70,7 +70,7 @@ use rustc_middle::ty::{
     subst::{Subst, SubstsRef},
     Region, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{DesugaringKind, Pos, Span};
+use rustc_span::{BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::{cmp, fmt};
 
@@ -731,16 +731,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         return_sp: Span,
         arm_spans: impl Iterator<Item = Span>,
     ) {
-        let snippet = self
-            .tcx
-            .sess
-            .source_map()
-            .span_to_snippet(return_sp)
-            .unwrap_or_else(|_| "dyn Trait".to_string());
-        err.span_suggestion_verbose(
-            return_sp,
+        err.multipart_suggestion(
             "you could change the return type to be a boxed trait object",
-            format!("Box<dyn {}>", &snippet[5..]),
+            vec![
+                (return_sp.with_hi(return_sp.lo() + BytePos(4)), "Box<dyn".to_string()),
+                (return_sp.shrink_to_hi(), ">".to_string()),
+            ],
             Applicability::MaybeIncorrect,
         );
         let sugg = arm_spans

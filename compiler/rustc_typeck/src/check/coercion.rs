@@ -51,7 +51,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
-use rustc_span::{self, Span};
+use rustc_span::{self, BytePos, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
@@ -1523,10 +1523,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         };
         if has_impl {
             if is_object_safe {
-                err.span_suggestion_verbose(
-                    return_sp,
+                err.multipart_suggestion(
                     "you could change the return type to be a boxed trait object",
-                    format!("Box<dyn {}>", &snippet[5..]),
+                    vec![
+                        (return_sp.with_hi(return_sp.lo() + BytePos(4)), "Box<dyn".to_string()),
+                        (return_sp.shrink_to_hi(), ">".to_string()),
+                    ],
                     Applicability::MachineApplicable,
                 );
             } else {

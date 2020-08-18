@@ -35,7 +35,7 @@ LL |     B
 help: you could change the return type to be a boxed trait object
    |
 LL | fn cat() -> Box<dyn ObjectSafe> {
-   |             ^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^           ^
 
 error: aborting due to 2 previous errors
 
