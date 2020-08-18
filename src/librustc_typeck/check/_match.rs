@@ -124,11 +124,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             } else {
-                let arm_span = if let hir::ExprKind::Block(blk, _) = &arm.body.kind {
-                    // Point at the block expr instead of the entire block
-                    blk.expr.as_ref().map(|e| e.span).unwrap_or(arm.body.span)
+                let (arm_span, semi_span) = if let hir::ExprKind::Block(blk, _) = &arm.body.kind {
+                    self.find_block_span(blk, prior_arm_ty)
                 } else {
-                    arm.body.span
+                    (arm.body.span, None)
                 };
                 let (span, code) = match i {
                     // The reason for the first arm to fail is not that the match arms diverge,
@@ -138,6 +137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         expr.span,
                         ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                             arm_span,
+                            semi_span,
                             source: match_src,
                             prior_arms: other_arms.clone(),
                             last_ty: prior_arm_ty.unwrap(),
@@ -295,14 +295,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut remove_semicolon = None;
         let error_sp = if let ExprKind::Block(block, _) = &else_expr.kind {
-            if let Some(expr) = &block.expr {
-                expr.span
-            } else if let Some(stmt) = block.stmts.last() {
-                // possibly incorrect trailing `;` in the else arm
-                remove_semicolon = self.could_remove_semicolon(block, then_ty);
-                stmt.span
-            } else {
-                // empty block; point at its entirety
+            let (error_sp, semi_sp) = self.find_block_span(block, Some(then_ty));
+            remove_semicolon = semi_sp;
+            if block.expr.is_none() && block.stmts.is_empty() {
                 // Avoid overlapping spans that aren't as readable:
                 // ```
                 // 2 |        let x = if true {
@@ -333,8 +328,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if outer_sp.is_some() {
                     outer_sp = Some(self.tcx.sess.source_map().guess_head_span(span));
                 }
-                else_expr.span
             }
+            error_sp
         } else {
             // shouldn't happen unless the parser has done something weird
             else_expr.span
@@ -342,17 +337,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Compute `Span` of `then` part of `if`-expression.
         let then_sp = if let ExprKind::Block(block, _) = &then_expr.kind {
-            if let Some(expr) = &block.expr {
-                expr.span
-            } else if let Some(stmt) = block.stmts.last() {
-                // possibly incorrect trailing `;` in the else arm
-                remove_semicolon = remove_semicolon.or(self.could_remove_semicolon(block, else_ty));
-                stmt.span
-            } else {
-                // empty block; point at its entirety
+            let (then_sp, semi_sp) = self.find_block_span(block, Some(else_ty));
+            remove_semicolon = remove_semicolon.or(semi_sp);
+            if block.expr.is_none() && block.stmts.is_empty() {
                 outer_sp = None; // same as in `error_sp`; cleanup output
-                then_expr.span
             }
+            then_sp
         } else {
             // shouldn't happen unless the parser has done something weird
             then_expr.span
@@ -448,6 +438,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
             self.check_expr_has_type_or_error(scrut, scrut_ty, |_| {});
             scrut_ty
+        }
+    }
+
+    fn find_block_span(
+        &self,
+        block: &'tcx hir::Block<'tcx>,
+        expected_ty: Option<Ty<'tcx>>,
+    ) -> (Span, Option<Span>) {
+        if let Some(expr) = &block.expr {
+            (expr.span, None)
+        } else if let Some(stmt) = block.stmts.last() {
+            // possibly incorrect trailing `;` in the else arm
+            (stmt.span, expected_ty.and_then(|ty| self.could_remove_semicolon(block, ty)))
+        } else {
+            // empty block; point at its entirety
+            (block.span, None)
         }
     }
 }
