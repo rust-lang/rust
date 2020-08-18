@@ -1,7 +1,5 @@
 //! Provides a way to attach fixes to the diagnostics.
 //! The same module also has all curret custom fixes for the diagnostics implemented.
-use crate::Fix;
-use ast::{edit::IndentLevel, make};
 use base_db::FileId;
 use hir::{
     db::AstDatabase,
@@ -12,8 +10,14 @@ use ide_db::{
     source_change::{FileSystemEdit, SourceFileEdit},
     RootDatabase,
 };
-use syntax::{algo, ast, AstNode};
+use syntax::{
+    algo,
+    ast::{self, edit::IndentLevel, make},
+    AstNode,
+};
 use text_edit::TextEdit;
+
+use crate::diagnostics::Fix;
 
 /// A [Diagnostic] that potentially has a fix available.
 ///
