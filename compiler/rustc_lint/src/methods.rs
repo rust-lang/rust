@@ -43,12 +43,13 @@ impl<'tcx> LateLintPass<'tcx> for TemporaryCStringAsPtr {
         match first_method_call(expr) {
             Some((path, args)) if path.ident.name == sym::as_ptr => {
                 let unwrap_arg = &args[0];
+                let as_ptr_span = path.ident.span;
                 match first_method_call(unwrap_arg) {
                     Some((path, args))
                         if path.ident.name == sym::unwrap || path.ident.name == sym::expect =>
                     {
                         let source_arg = &args[0];
-                        lint_cstring_as_ptr(cx, source_arg, unwrap_arg);
+                        lint_cstring_as_ptr(cx, as_ptr_span, source_arg, unwrap_arg);
                     }
                     _ => return,
                 }
@@ -62,6 +63,7 @@ const CSTRING_PATH: [Symbol; 4] = [sym::std, sym::ffi, sym::c_str, sym::CString]
 
 fn lint_cstring_as_ptr(
     cx: &LateContext<'_>,
+    as_ptr_span: Span,
     source: &rustc_hir::Expr<'_>,
     unwrap: &rustc_hir::Expr<'_>,
 ) {
@@ -70,11 +72,11 @@ fn lint_cstring_as_ptr(
         if cx.tcx.is_diagnostic_item(sym::result_type, def.did) {
             if let ty::Adt(adt, _) = substs.type_at(0).kind {
                 if cx.match_def_path(adt.did, &CSTRING_PATH) {
-                    cx.struct_span_lint(TEMPORARY_CSTRING_AS_PTR, source.span, |diag| {
+                    cx.struct_span_lint(TEMPORARY_CSTRING_AS_PTR, as_ptr_span, |diag| {
                         let mut diag = diag
                             .build("getting the inner pointer of a temporary `CString`");
-                        diag.span_label(source.span, "this pointer will be invalid");
-                        diag.span_help(
+                        diag.span_label(as_ptr_span, "this pointer will be invalid");
+                        diag.span_label(
                             unwrap.span,
                             "this `CString` is deallocated at the end of the expression, bind it to a variable to extend its lifetime",
                         );
