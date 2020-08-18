@@ -9,7 +9,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
@@ -495,7 +495,7 @@ fn check_type_defn<'tcx, F>(
                 let last = idx == variant.fields.len() - 1;
                 fcx.register_bound(
                     field.ty,
-                    fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
+                    fcx.tcx.require_lang_item(LangItem::Sized, None),
                     traits::ObligationCause::new(
                         field.span,
                         fcx.body_id,
@@ -718,7 +718,7 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: hir::HirId, ty_span: Span, allow_fo
         if forbid_unsized {
             fcx.register_bound(
                 item_ty,
-                fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
+                fcx.tcx.require_lang_item(LangItem::Sized, None),
                 traits::ObligationCause::new(ty_span, fcx.body_id, traits::MiscObligation),
             );
         }
@@ -1223,7 +1223,7 @@ fn receiver_is_valid<'fcx, 'tcx>(
     // The first type is `receiver_ty`, which we know its not equal to `self_ty`; skip it.
     autoderef.next();
 
-    let receiver_trait_def_id = fcx.tcx.require_lang_item(lang_items::ReceiverTraitLangItem, None);
+    let receiver_trait_def_id = fcx.tcx.require_lang_item(LangItem::Receiver, None);
 
     // Keep dereferencing `receiver_ty` until we get to `self_ty`.
     loop {

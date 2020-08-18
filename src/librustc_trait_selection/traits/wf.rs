@@ -3,7 +3,7 @@ use crate::opaque_types::required_region_bounds;
 use crate::traits;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::Span;
@@ -340,7 +340,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         if !subty.has_escaping_bound_vars() {
             let cause = self.cause(cause);
             let trait_ref = ty::TraitRef {
-                def_id: self.infcx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
+                def_id: self.infcx.tcx.require_lang_item(LangItem::Sized, None),
                 substs: self.infcx.tcx.mk_substs_trait(subty, &[]),
             };
             self.out.push(traits::Obligation::new(

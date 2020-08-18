@@ -31,7 +31,7 @@ use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
-use rustc_hir::lang_items::StartFnLangItem;
+use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::cstore::EncodedMetadata;
@@ -458,7 +458,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
 
         let (start_fn, args) = if use_start_lang_item {
-            let start_def_id = cx.tcx().require_lang_item(StartFnLangItem, None);
+            let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
             let start_fn = cx.get_fn_addr(
                 ty::Instance::resolve(
                     cx.tcx(),

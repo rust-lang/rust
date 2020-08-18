@@ -62,7 +62,7 @@ use crate::util::storage;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::{GeneratorStateLangItem, PinTypeLangItem};
+use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::{BitMatrix, BitSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
@@ -395,7 +395,7 @@ fn make_generator_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Bo
 fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let ref_gen_ty = body.local_decls.raw[1].ty;
 
-    let pin_did = tcx.require_lang_item(PinTypeLangItem, Some(body.span));
+    let pin_did = tcx.require_lang_item(LangItem::Pin, Some(body.span));
     let pin_adt_ref = tcx.adt_def(pin_did);
     let substs = tcx.intern_substs(&[ref_gen_ty.into()]);
     let pin_ref_gen_ty = tcx.mk_adt(pin_adt_ref, substs);
@@ -1270,7 +1270,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         };
 
         // Compute GeneratorState<yield_ty, return_ty>
-        let state_did = tcx.require_lang_item(GeneratorStateLangItem, None);
+        let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
         let state_adt_ref = tcx.adt_def(state_did);
         let state_substs = tcx.intern_substs(&[yield_ty.into(), body.return_ty().into()]);
         let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);

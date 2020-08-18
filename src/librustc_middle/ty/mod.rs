@@ -32,7 +32,7 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
-use rustc_hir::lang_items::{FnMutTraitLangItem, FnOnceTraitLangItem, FnTraitLangItem};
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Constness, Node};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -2670,9 +2670,9 @@ impl<'tcx> ClosureKind {
 
     pub fn trait_did(&self, tcx: TyCtxt<'tcx>) -> DefId {
         match *self {
-            ClosureKind::Fn => tcx.require_lang_item(FnTraitLangItem, None),
-            ClosureKind::FnMut => tcx.require_lang_item(FnMutTraitLangItem, None),
-            ClosureKind::FnOnce => tcx.require_lang_item(FnOnceTraitLangItem, None),
+            ClosureKind::Fn => tcx.require_lang_item(LangItem::Fn, None),
+            ClosureKind::FnMut => tcx.require_lang_item(LangItem::FnMut, None),
+            ClosureKind::FnOnce => tcx.require_lang_item(LangItem::FnOnce, None),
         }
     }
 

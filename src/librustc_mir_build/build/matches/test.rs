@@ -10,7 +10,7 @@ use crate::build::Builder;
 use crate::thir::pattern::compare_const_vals;
 use crate::thir::*;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir::RangeEnd;
+use rustc_hir::{LangItem, RangeEnd};
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
@@ -359,8 +359,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
-        use rustc_hir::lang_items::EqTraitLangItem;
-
         let mut expect = self.literal_operand(source_info.span, value);
         let mut val = Operand::Copy(place);
 
@@ -414,7 +412,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => bug!("non_scalar_compare called on non-reference type: {}", ty),
         };
 
-        let eq_def_id = self.hir.tcx().require_lang_item(EqTraitLangItem, None);
+        let eq_def_id = self.hir.tcx().require_lang_item(LangItem::PartialEq, None);
         let method = self.hir.trait_method(eq_def_id, sym::eq, deref_ty, &[deref_ty.into()]);
 
         let bool_ty = self.hir.bool_ty();
@@ -537,10 +535,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Some(index)
             }
 
-            (
-                &TestKind::SwitchInt { switch_ty: _, ref options },
-                &PatKind::Range(range),
-            ) => {
+            (&TestKind::SwitchInt { switch_ty: _, ref options }, &PatKind::Range(range)) => {
                 let not_contained =
                     self.values_not_contained_in_range(range, options).unwrap_or(false);
 

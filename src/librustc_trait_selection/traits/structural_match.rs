@@ -4,7 +4,7 @@ use crate::traits::{self, TraitEngine};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::lang_items::{StructuralPeqTraitLangItem, StructuralTeqTraitLangItem};
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::Span;
@@ -75,7 +75,7 @@ fn type_marked_structural(
     let mut fulfillment_cx = traits::FulfillmentContext::new();
     // require `#[derive(PartialEq)]`
     let structural_peq_def_id =
-        infcx.tcx.require_lang_item(StructuralPeqTraitLangItem, Some(cause.span));
+        infcx.tcx.require_lang_item(LangItem::StructuralPeq, Some(cause.span));
     fulfillment_cx.register_bound(
         infcx,
         ty::ParamEnv::empty(),
@@ -86,7 +86,7 @@ fn type_marked_structural(
     // for now, require `#[derive(Eq)]`. (Doing so is a hack to work around
     // the type `for<'a> fn(&'a ())` failing to implement `Eq` itself.)
     let structural_teq_def_id =
-        infcx.tcx.require_lang_item(StructuralTeqTraitLangItem, Some(cause.span));
+        infcx.tcx.require_lang_item(LangItem::StructuralTeq, Some(cause.span));
     fulfillment_cx.register_bound(
         infcx,
         ty::ParamEnv::empty(),

@@ -2,7 +2,7 @@ use crate::traits::query::outlives_bounds::InferCtxtExt as _;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
 
 use rustc_hir as hir;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::arena::ArenaAllocatable;
@@ -47,7 +47,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
             return ty.is_copy_modulo_regions(self.tcx.at(span), param_env);
         }
 
-        let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem, None);
+        let copy_def_id = self.tcx.require_lang_item(LangItem::Copy, None);
 
         // This can get called from typeck (by euv), and `moves_by_default`
         // rightly refuses to work with inference variables, but

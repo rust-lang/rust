@@ -17,7 +17,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyOwnerKind, HirId};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
@@ -456,7 +456,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         if let DefiningTy::FnDef(def_id, _) = defining_ty {
             if self.infcx.tcx.fn_sig(def_id).c_variadic() {
                 let va_list_did = self.infcx.tcx.require_lang_item(
-                    lang_items::VaListTypeLangItem,
+                    LangItem::VaList,
                     Some(self.infcx.tcx.def_span(self.mir_def.did)),
                 );
                 let region = self

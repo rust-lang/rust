@@ -15,7 +15,7 @@ macro_rules! weak_lang_items {
 lazy_static! {
     pub static ref WEAK_ITEMS_REFS: FxHashMap<Symbol, LangItem> = {
         let mut map = FxHashMap::default();
-        $(map.insert(sym::$name, lang_items::$item);)*
+        $(map.insert(sym::$name, LangItem::$item);)*
         map
     };
 }
@@ -46,7 +46,7 @@ impl LanguageItems {
 ) }
 
 weak_lang_items! {
-    panic_impl,         PanicImplLangItem,          rust_begin_unwind;
-    eh_personality,     EhPersonalityLangItem,      rust_eh_personality;
-    oom,                OomLangItem,                rust_oom;
+    panic_impl,         PanicImpl,          rust_begin_unwind;
+    eh_personality,     EhPersonality,      rust_eh_personality;
+    oom,                Oom,                rust_oom;
 }

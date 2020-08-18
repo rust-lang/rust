@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use rustc_hir::lang_items::PanicLocationLangItem;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::subst::Subst;
 use rustc_span::{Span, Symbol};
@@ -63,7 +63,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Allocate memory for `CallerLocation` struct.
         let loc_ty = self
             .tcx
-            .type_of(self.tcx.require_lang_item(PanicLocationLangItem, None))
+            .type_of(self.tcx.require_lang_item(LangItem::PanicLocation, None))
             .subst(*self.tcx, self.tcx.mk_substs([self.tcx.lifetimes.re_erased.into()].iter()));
         let loc_layout = self.layout_of(loc_ty).unwrap();
         let location = self.allocate(loc_layout, MemoryKind::CallerLocation);

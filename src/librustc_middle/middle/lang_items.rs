@@ -53,7 +53,7 @@ pub fn required(tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
     // symbols. Other panic runtimes ensure that the relevant symbols are
     // available to link things together, but they're never exercised.
     match tcx.sess.panic_strategy() {
-        PanicStrategy::Abort => lang_item != LangItem::EhPersonalityLangItem,
+        PanicStrategy::Abort => lang_item != LangItem::EhPersonality,
         PanicStrategy::Unwind => true,
     }
 }
