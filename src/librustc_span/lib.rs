@@ -1121,8 +1121,8 @@ impl From<PathBuf> for SourceFileName {
     }
 }
 
-impl Encodable for SourceFileName {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+impl<S: Encoder> Encodable<S> for SourceFileName {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("SourceFileName", 3, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
             s.emit_struct_field("was_remapped", 1, |s| self.was_remapped.encode(s))?;
@@ -1132,8 +1132,8 @@ impl Encodable for SourceFileName {
     }
 }
 
-impl Decodable for SourceFileName {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+impl<D: Decoder> Decodable<D> for SourceFileName {
+    fn decode(d: &mut D) -> Result<Self, D::Error> {
         d.read_struct("SourceFileName", 3, |d| {
             let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let was_remapped: bool =
