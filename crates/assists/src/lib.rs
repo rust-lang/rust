@@ -19,7 +19,7 @@ pub mod ast_transform;
 
 use base_db::FileRange;
 use hir::Semantics;
-use ide_db::{source_change::SourceChange, RootDatabase};
+use ide_db::{label::Label, source_change::SourceChange, RootDatabase};
 use syntax::TextRange;
 
 pub(crate) use crate::assist_context::{AssistContext, Assists};
@@ -68,7 +68,7 @@ pub struct GroupLabel(pub String);
 pub struct Assist {
     pub id: AssistId,
     /// Short description of the assist, as shown in the UI.
-    label: String,
+    pub label: Label,
     pub group: Option<GroupLabel>,
     /// Target ranges are used to sort assists: the smaller the target range,
     /// the more specific assist is, and so it should be sorted first.
@@ -82,11 +82,6 @@ pub struct ResolvedAssist {
 }
 
 impl Assist {
-    fn new(id: AssistId, label: String, group: Option<GroupLabel>, target: TextRange) -> Assist {
-        assert!(label.starts_with(char::is_uppercase));
-        Assist { id, label, group, target }
-    }
-
     /// Return all the assists applicable at the given position.
     ///
     /// Assists are returned in the "unresolved" state, that is only labels are
@@ -117,10 +112,6 @@ impl Assist {
             handler(&mut acc, &ctx);
         });
         acc.finish_resolved()
-    }
-
-    pub fn label(&self) -> &str {
-        self.label.as_str()
     }
 }
 

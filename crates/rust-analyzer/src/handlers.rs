@@ -782,10 +782,9 @@ fn handle_fixes(
         .filter_map(|d| d.fix)
         .filter(|fix| fix.fix_trigger_range.intersect(range).is_some())
     {
-        let title = fix.label;
         let edit = to_proto::snippet_workspace_edit(&snap, fix.source_change)?;
         let action = lsp_ext::CodeAction {
-            title,
+            title: fix.label.to_string(),
             id: None,
             group: None,
             kind: Some(CodeActionKind::QUICKFIX),

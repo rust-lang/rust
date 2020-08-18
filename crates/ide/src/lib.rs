@@ -88,6 +88,7 @@ pub use base_db::{
 pub use hir::{Documentation, Semantics};
 pub use ide_db::{
     change::AnalysisChange,
+    label::Label,
     line_index::{LineCol, LineIndex},
     search::SearchScope,
     source_change::{FileSystemEdit, SourceChange, SourceFileEdit},

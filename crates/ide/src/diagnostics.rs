@@ -19,7 +19,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{FileId, SourceChange, SourceFileEdit};
+use crate::{FileId, Label, SourceChange, SourceFileEdit};
 
 use self::fixes::DiagnosticWithFix;
 
@@ -34,20 +34,15 @@ pub struct Diagnostic {
 
 #[derive(Debug)]
 pub struct Fix {
-    pub label: String,
+    pub label: Label,
     pub source_change: SourceChange,
     /// Allows to trigger the fix only when the caret is in the range given
     pub fix_trigger_range: TextRange,
 }
 
 impl Fix {
-    fn new(
-        label: impl Into<String>,
-        source_change: SourceChange,
-        fix_trigger_range: TextRange,
-    ) -> Self {
-        let label = label.into();
-        assert!(label.starts_with(char::is_uppercase) && !label.ends_with('.'));
+    fn new(label: &str, source_change: SourceChange, fix_trigger_range: TextRange) -> Self {
+        let label = Label::new(label);
         Self { label, source_change, fix_trigger_range }
     }
 }
