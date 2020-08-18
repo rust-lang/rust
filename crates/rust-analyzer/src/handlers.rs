@@ -271,24 +271,24 @@ pub(crate) fn handle_document_symbol(
         };
         parents.push((doc_symbol, symbol.parent));
     }
-    let mut document_symbols = Vec::new();
-    // Constructs `document_symbols` from `parents`, in order from the end.
-    while let Some((node, parent)) = parents.pop() {
-        match parent {
-            None => document_symbols.push(node),
-            Some(i) => {
-                parents[i].0.children.get_or_insert_with(Vec::new).push(node);
-            }
-        }
-    }
 
-    fn reverse(symbols: &mut Vec<DocumentSymbol>) {
-        for sym in symbols.iter_mut() {
-            sym.children.as_mut().map(|c| reverse(c));
+    // Builds hierarchy from a flat list, in reverse order (so that indices
+    // makes sense)
+    let document_symbols = {
+        let mut acc = Vec::new();
+        while let Some((mut node, parent_idx)) = parents.pop() {
+            if let Some(children) = &mut node.children {
+                children.reverse();
+            }
+            let parent = match parent_idx {
+                None => &mut acc,
+                Some(i) => parents[i].0.children.get_or_insert_with(Vec::new),
+            };
+            parent.push(node);
         }
-        symbols.reverse();
-    }
-    reverse(&mut document_symbols);
+        acc.reverse();
+        acc
+    };
 
     let res = if snap.config.client_caps.hierarchical_symbols {
         document_symbols.into()
