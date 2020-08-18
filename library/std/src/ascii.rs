@@ -10,9 +10,6 @@
 //!
 //! The [`escape_default`] function provides an iterator over the bytes of an
 //! escaped version of the character given.
-//!
-//! [`AsciiExt`]: trait.AsciiExt.html
-//! [`escape_default`]: fn.escape_default.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -52,7 +49,7 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method will be deprecated in favor of the identically-named
+    /// This method is deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn is_ascii(&self) -> bool;
@@ -69,10 +66,10 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method will be deprecated in favor of the identically-named
+    /// This method is deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
-    /// [`make_ascii_uppercase`]: #tymethod.make_ascii_uppercase
+    /// [`make_ascii_uppercase`]: AsciiExt::make_ascii_uppercase
     /// [`str::to_uppercase`]: ../primitive.str.html#method.to_uppercase
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
@@ -90,10 +87,10 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method will be deprecated in favor of the identically-named
+    /// This method is deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
-    /// [`make_ascii_lowercase`]: #tymethod.make_ascii_lowercase
+    /// [`make_ascii_lowercase`]: AsciiExt::make_ascii_lowercase
     /// [`str::to_lowercase`]: ../primitive.str.html#method.to_lowercase
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
@@ -106,7 +103,7 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method will be deprecated in favor of the identically-named
+    /// This method is deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn eq_ignore_ascii_case(&self, other: &Self) -> bool;
@@ -121,10 +118,10 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method will be deprecated in favor of the identically-named
+    /// This method is deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
-    /// [`to_ascii_uppercase`]: #tymethod.to_ascii_uppercase
+    /// [`to_ascii_uppercase`]: AsciiExt::to_ascii_uppercase
     #[stable(feature = "ascii", since = "1.9.0")]
     fn make_ascii_uppercase(&mut self);
 
@@ -138,10 +135,10 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method will be deprecated in favor of the identically-named
+    /// This method is deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
-    /// [`to_ascii_lowercase`]: #tymethod.to_ascii_lowercase
+    /// [`to_ascii_lowercase`]: AsciiExt::to_ascii_lowercase
     #[stable(feature = "ascii", since = "1.9.0")]
     fn make_ascii_lowercase(&mut self);
 }

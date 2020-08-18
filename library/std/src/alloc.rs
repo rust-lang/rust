@@ -7,8 +7,6 @@
 //! like `cdylib`s and `staticlib`s are guaranteed to use the [`System`] by
 //! default.
 //!
-//! [`System`]: struct.System.html
-//!
 //! # The `#[global_allocator]` attribute
 //!
 //! This attribute allows configuring the choice of global allocator.
@@ -42,8 +40,6 @@
 //!
 //! The attribute is used on a `static` item whose type implements the
 //! [`GlobalAlloc`] trait. This type can be provided by an external library:
-//!
-//! [`GlobalAlloc`]: ../../core/alloc/trait.GlobalAlloc.html
 //!
 //! ```rust,ignore (demonstrates crates.io usage)
 //! extern crate jemallocator;
@@ -284,9 +280,6 @@ static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 /// about the allocation that failed.
 ///
 /// The allocation error hook is a global resource.
-///
-/// [`set_alloc_error_hook`]: fn.set_alloc_error_hook.html
-/// [`take_alloc_error_hook`]: fn.take_alloc_error_hook.html
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn set_alloc_error_hook(hook: fn(Layout)) {
     HOOK.store(hook as *mut (), Ordering::SeqCst);
@@ -297,8 +290,6 @@ pub fn set_alloc_error_hook(hook: fn(Layout)) {
 /// *See also the function [`set_alloc_error_hook`].*
 ///
 /// If no custom hook is registered, the default hook will be returned.
-///
-/// [`set_alloc_error_hook`]: fn.set_alloc_error_hook.html
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn take_alloc_error_hook() -> fn(Layout) {
     let hook = HOOK.swap(ptr::null_mut(), Ordering::SeqCst);

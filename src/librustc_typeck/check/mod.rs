@@ -5198,6 +5198,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn note_internal_mutation_in_method(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expr: &hir::Expr<'_>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        if found != self.tcx.types.unit {
+            return;
+        }
+        if let ExprKind::MethodCall(path_segment, _, [rcvr, ..], _) = expr.kind {
+            if self
+                .typeck_results
+                .borrow()
+                .expr_ty_adjusted_opt(rcvr)
+                .map_or(true, |ty| expected.peel_refs() != ty.peel_refs())
+            {
+                return;
+            }
+            let mut sp = MultiSpan::from_span(path_segment.ident.span);
+            sp.push_span_label(
+                path_segment.ident.span,
+                format!(
+                    "this call modifies {} in-place",
+                    match rcvr.kind {
+                        ExprKind::Path(QPath::Resolved(
+                            None,
+                            hir::Path { segments: [segment], .. },
+                        )) => format!("`{}`", segment.ident),
+                        _ => "its receiver".to_string(),
+                    }
+                ),
+            );
+            sp.push_span_label(
+                rcvr.span,
+                "you probably want to use this value after calling the method...".to_string(),
+            );
+            err.span_note(
+                sp,
+                &format!("method `{}` modifies its receiver in-place", path_segment.ident),
+            );
+            err.note(&format!("...instead of the `()` output of method `{}`", path_segment.ident));
+        }
+    }
+
     /// When encountering an `impl Future` where `BoxFuture` is expected, suggest `Box::pin`.
     fn suggest_calling_boxed_future_when_appropriate(
         &self,

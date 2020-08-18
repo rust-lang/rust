@@ -7,9 +7,6 @@
 //! There are several functions and structs in this module that have a
 //! counterpart ending in `os`. Those ending in `os` will return an [`OsString`]
 //! and those without will return a [`String`].
-//!
-//! [`OsString`]: ../../std/ffi/struct.OsString.html
-//! [`String`]: ../string/struct.String.html
 
 #![stable(feature = "env", since = "1.0.0")]
 
@@ -31,9 +28,6 @@ use crate::sys::os as os_imp;
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
 ///
-/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
-/// [`Err`]: ../../std/result/enum.Result.html#method.err
-///
 /// # Examples
 ///
 /// ```
@@ -53,8 +47,6 @@ pub fn current_dir() -> io::Result<PathBuf> {
 /// Changes the current working directory to the specified path.
 ///
 /// Returns an [`Err`] if the operation fails.
-///
-/// [`Err`]: ../../std/result/enum.Result.html#method.err
 ///
 /// # Examples
 ///
@@ -76,7 +68,7 @@ pub fn set_current_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This structure is created by the [`std::env::vars`] function. See its
 /// documentation for more.
 ///
-/// [`std::env::vars`]: fn.vars.html
+/// [`std::env::vars`]: vars
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Vars {
     inner: VarsOs,
@@ -87,7 +79,7 @@ pub struct Vars {
 /// This structure is created by the [`std::env::vars_os`] function. See
 /// its documentation for more.
 ///
-/// [`std::env::vars_os`]: fn.vars_os.html
+/// [`std::env::vars_os`]: vars_os
 #[stable(feature = "env", since = "1.0.0")]
 pub struct VarsOs {
     inner: os_imp::Env,
@@ -106,7 +98,7 @@ pub struct VarsOs {
 /// environment is not valid unicode. If this is not desired, consider using the
 /// [`env::vars_os`] function.
 ///
-/// [`env::vars_os`]: fn.vars_os.html
+/// [`env::vars_os`]: vars_os
 ///
 /// # Examples
 ///
@@ -222,8 +214,6 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 /// Fetches the environment variable `key` from the current process, returning
 /// [`None`] if the variable isn't set.
 ///
-/// [`None`]: ../option/enum.Option.html#variant.None
-///
 /// # Panics
 ///
 /// This function may panic if `key` is empty, contains an ASCII equals sign
@@ -254,7 +244,7 @@ fn _var_os(key: &OsStr) -> Option<OsString> {
 /// The error type for operations interacting with environment variables.
 /// Possibly returned from the [`env::var`] function.
 ///
-/// [`env::var`]: fn.var.html
+/// [`env::var`]: var
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[stable(feature = "env", since = "1.0.0")]
 pub enum VarError {
@@ -382,8 +372,7 @@ fn _remove_var(k: &OsStr) {
 /// This structure is created by the [`std::env::split_paths`] function. See its
 /// documentation for more.
 ///
-/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
-/// [`std::env::split_paths`]: fn.split_paths.html
+/// [`std::env::split_paths`]: split_paths
 #[stable(feature = "env", since = "1.0.0")]
 pub struct SplitPaths<'a> {
     inner: os_imp::SplitPaths<'a>,
@@ -410,8 +399,6 @@ pub struct SplitPaths<'a> {
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
-///
-/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths<'_> {
     SplitPaths { inner: os_imp::split_paths(unparsed.as_ref()) }
@@ -438,7 +425,7 @@ impl fmt::Debug for SplitPaths<'_> {
 /// The error type for operations on the `PATH` variable. Possibly returned from
 /// the [`env::join_paths`] function.
 ///
-/// [`env::join_paths`]: fn.join_paths.html
+/// [`env::join_paths`]: join_paths
 #[derive(Debug)]
 #[stable(feature = "env", since = "1.0.0")]
 pub struct JoinPathsError {
@@ -450,13 +437,9 @@ pub struct JoinPathsError {
 ///
 /// # Errors
 ///
-/// Returns an [`Err`][err] (containing an error message) if one of the input
+/// Returns an [`Err`] (containing an error message) if one of the input
 /// [`Path`]s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
-///
-/// [`Path`]: ../../std/path/struct.Path.html
-/// [`OsString`]: ../../std/ffi/struct.OsString.html
-/// [err]: ../../std/result/enum.Result.html#variant.Err
 ///
 /// # Examples
 ///
@@ -508,7 +491,7 @@ pub struct JoinPathsError {
 /// }
 /// ```
 ///
-/// [`env::split_paths`]: fn.split_paths.html
+/// [`env::split_paths`]: split_paths
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 where
@@ -688,8 +671,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 /// set to arbitrary text, and may not even exist. This means this property
 /// should not be relied upon for security purposes.
 ///
-/// [`String`]: ../string/struct.String.html
-/// [`std::env::args`]: ./fn.args.html
+/// [`std::env::args`]: args
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Args {
     inner: ArgsOs,
@@ -705,8 +687,7 @@ pub struct Args {
 /// set to arbitrary text, and may not even exist. This means this property
 /// should not be relied upon for security purposes.
 ///
-/// [`OsString`]: ../ffi/struct.OsString.html
-/// [`std::env::args_os`]: ./fn.args_os.html
+/// [`std::env::args_os`]: args_os
 #[stable(feature = "env", since = "1.0.0")]
 pub struct ArgsOs {
     inner: sys::args::Args,
@@ -744,8 +725,6 @@ pub struct ArgsOs {
 ///     println!("{}", argument);
 /// }
 /// ```
-///
-/// [`args_os`]: ./fn.args_os.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn args() -> Args {
     Args { inner: args_os() }
