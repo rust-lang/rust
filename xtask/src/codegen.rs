@@ -9,7 +9,7 @@ mod gen_syntax;
 mod gen_parser_tests;
 mod gen_assists_docs;
 mod gen_feature_docs;
-mod gen_unstable_future_descriptor;
+mod gen_features;
 
 use std::{
     fmt, mem,
@@ -25,33 +25,33 @@ use crate::{
 pub use self::{
     gen_assists_docs::{generate_assists_docs, generate_assists_tests},
     gen_feature_docs::generate_feature_docs,
+    gen_features::generate_features,
     gen_parser_tests::generate_parser_tests,
     gen_syntax::generate_syntax,
-    gen_unstable_future_descriptor::generate_unstable_future_descriptor,
 };
-
-// Directory used by xtask
-const STORAGE: &str = ".xtask";
-
-const GRAMMAR_DIR: &str = "crates/parser/src/grammar";
-const OK_INLINE_TESTS_DIR: &str = "crates/syntax/test_data/parser/inline/ok";
-const ERR_INLINE_TESTS_DIR: &str = "crates/syntax/test_data/parser/inline/err";
-
-const SYNTAX_KINDS: &str = "crates/parser/src/syntax_kind/generated.rs";
-const AST_NODES: &str = "crates/syntax/src/ast/generated/nodes.rs";
-const AST_TOKENS: &str = "crates/syntax/src/ast/generated/tokens.rs";
-
-const ASSISTS_DIR: &str = "crates/assists/src/handlers";
-const ASSISTS_TESTS: &str = "crates/assists/src/tests/generated.rs";
-
-const REPOSITORY_URL: &str = "https://github.com/rust-lang/rust";
-const UNSTABLE_FEATURE: &str = "crates/ide/src/completion/unstable_feature_descriptor.rs";
-const REPO_PATH: &str = "src/doc/unstable-book/src";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Mode {
     Overwrite,
     Verify,
+}
+
+pub struct CodegenCmd {
+    pub features: bool,
+}
+
+impl CodegenCmd {
+    pub fn run(self) -> Result<()> {
+        if self.features {
+            generate_features(Mode::Overwrite)?;
+        }
+        generate_syntax(Mode::Overwrite)?;
+        generate_parser_tests(Mode::Overwrite)?;
+        generate_assists_tests(Mode::Overwrite)?;
+        generate_assists_docs(Mode::Overwrite)?;
+        generate_feature_docs(Mode::Overwrite)?;
+        Ok(())
+    }
 }
 
 /// A helper to update file on disk if it has changed.

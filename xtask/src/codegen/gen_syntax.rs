@@ -14,7 +14,7 @@ use ungrammar::{rust_grammar, Grammar, Rule};
 
 use crate::{
     ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC},
-    codegen::{self, reformat, update, Mode},
+    codegen::{reformat, update, Mode},
     project_root, Result,
 };
 
@@ -22,15 +22,15 @@ pub fn generate_syntax(mode: Mode) -> Result<()> {
     let grammar = rust_grammar();
     let ast = lower(&grammar);
 
-    let syntax_kinds_file = project_root().join(codegen::SYNTAX_KINDS);
+    let syntax_kinds_file = project_root().join("crates/parser/src/syntax_kind/generated.rs");
     let syntax_kinds = generate_syntax_kinds(KINDS_SRC)?;
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
-    let ast_tokens_file = project_root().join(codegen::AST_TOKENS);
+    let ast_tokens_file = project_root().join("crates/syntax/src/ast/generated/tokens.rs");
     let contents = generate_tokens(&ast)?;
     update(ast_tokens_file.as_path(), &contents, mode)?;
 
-    let ast_nodes_file = project_root().join(codegen::AST_NODES);
+    let ast_nodes_file = project_root().join("crates/syntax/src/ast/generated/nodes.rs");
     let contents = generate_nodes(KINDS_SRC, &ast)?;
     update(ast_nodes_file.as_path(), &contents, mode)?;
 

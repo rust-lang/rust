@@ -9,7 +9,7 @@ use syntax::{ast, AstNode, SyntaxKind};
 use crate::completion::{
     completion_context::CompletionContext,
     completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions},
-    UNSTABLE_FEATURE_DESCRIPTOR,
+    generated_features::FEATURES,
 };
 
 pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
@@ -19,7 +19,7 @@ pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             complete_derive(acc, ctx, token_tree)
         }
         (Some(path), Some(token_tree)) if path.to_string() == "feature" => {
-            complete_lint(acc, ctx, token_tree, UNSTABLE_FEATURE_DESCRIPTOR)
+            complete_lint(acc, ctx, token_tree, FEATURES)
         }
         (Some(path), Some(token_tree))
             if ["allow", "warn", "deny", "forbid"]
@@ -237,7 +237,7 @@ fn get_derive_names_in_scope(ctx: &CompletionContext) -> FxHashSet<String> {
     result
 }
 
-pub(crate) struct DeriveCompletion {
+struct DeriveCompletion {
     label: &'static str,
     dependencies: &'static [&'static str],
 }
@@ -257,9 +257,9 @@ const DEFAULT_DERIVE_COMPLETIONS: &[DeriveCompletion] = &[
     DeriveCompletion { label: "Ord", dependencies: &["PartialOrd", "Eq", "PartialEq"] },
 ];
 
-pub(crate) struct LintCompletion {
-    pub(crate) label: &'static str,
-    pub(crate) description: &'static str,
+pub(super) struct LintCompletion {
+    pub(super) label: &'static str,
+    pub(super) description: &'static str,
 }
 
 #[rustfmt::skip]

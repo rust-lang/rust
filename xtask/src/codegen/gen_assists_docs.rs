@@ -32,7 +32,7 @@ struct Assist {
 impl Assist {
     fn collect() -> Result<Vec<Assist>> {
         let mut res = Vec::new();
-        for path in rust_files(&project_root().join(codegen::ASSISTS_DIR)) {
+        for path in rust_files(&project_root().join("crates/assists/src/handlers")) {
             collect_file(&mut res, path.as_path())?;
         }
         res.sort_by(|lhs, rhs| lhs.id.cmp(&rhs.id));
@@ -135,7 +135,7 @@ r#####"
         buf.push_str(&test)
     }
     let buf = reformat(buf)?;
-    codegen::update(&project_root().join(codegen::ASSISTS_TESTS), &buf, mode)
+    codegen::update(&project_root().join("crates/assists/src/tests/generated.rs"), &buf, mode)
 }
 
 fn hide_hash_comments(text: &str) -> String {
