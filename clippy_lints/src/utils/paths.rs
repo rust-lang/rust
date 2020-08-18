@@ -84,6 +84,7 @@ pub const POLL: [&str; 4] = ["core", "task", "poll", "Poll"];
 pub const PTR_EQ: [&str; 3] = ["core", "ptr", "eq"];
 pub const PTR_NULL: [&str; 2] = ["ptr", "null"];
 pub const PTR_NULL_MUT: [&str; 2] = ["ptr", "null_mut"];
+pub const PUSH_STR: [&str; 4] = ["alloc", "string", "String", "push_str"];
 pub const RANGE_ARGUMENT_TRAIT: [&str; 3] = ["core", "ops", "RangeBounds"];
 pub const RC: [&str; 3] = ["alloc", "rc", "Rc"];
 pub const RC_PTR_EQ: [&str; 4] = ["alloc", "rc", "Rc", "ptr_eq"];

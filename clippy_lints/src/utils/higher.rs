@@ -56,43 +56,45 @@ pub fn range<'a>(expr: &'a hir::Expr<'_>) -> Option<Range<'a>> {
     }
 
     match expr.kind {
-        hir::ExprKind::Call(ref path, ref args) if matches!(
-            path.kind,
-            hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, _))
-        ) => Some(Range {
-            start: Some(&args[0]),
-            end: Some(&args[1]),
-            limits: ast::RangeLimits::Closed,
-        }),
-        hir::ExprKind::Struct(ref path, ref fields, None) => {
-            match path {
-                hir::QPath::LangItem(hir::LangItem::RangeFull, _) => Some(Range {
-                    start: None,
-                    end: None,
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                hir::QPath::LangItem(hir::LangItem::RangeFrom, _) => Some(Range {
-                    start: Some(get_field("start", fields)?),
-                    end: None,
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                hir::QPath::LangItem(hir::LangItem::Range, _) => Some(Range {
-                    start: Some(get_field("start", fields)?),
-                    end: Some(get_field("end", fields)?),
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                hir::QPath::LangItem(hir::LangItem::RangeToInclusive, _) => Some(Range {
-                    start: None,
-                    end: Some(get_field("end", fields)?),
-                    limits: ast::RangeLimits::Closed,
-                }),
-                hir::QPath::LangItem(hir::LangItem::RangeTo, _) => Some(Range {
-                    start: None,
-                    end: Some(get_field("end", fields)?),
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                _ => None,
-            }
+        hir::ExprKind::Call(ref path, ref args)
+            if matches!(
+                path.kind,
+                hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, _))
+            ) =>
+        {
+            Some(Range {
+                start: Some(&args[0]),
+                end: Some(&args[1]),
+                limits: ast::RangeLimits::Closed,
+            })
+        },
+        hir::ExprKind::Struct(ref path, ref fields, None) => match path {
+            hir::QPath::LangItem(hir::LangItem::RangeFull, _) => Some(Range {
+                start: None,
+                end: None,
+                limits: ast::RangeLimits::HalfOpen,
+            }),
+            hir::QPath::LangItem(hir::LangItem::RangeFrom, _) => Some(Range {
+                start: Some(get_field("start", fields)?),
+                end: None,
+                limits: ast::RangeLimits::HalfOpen,
+            }),
+            hir::QPath::LangItem(hir::LangItem::Range, _) => Some(Range {
+                start: Some(get_field("start", fields)?),
+                end: Some(get_field("end", fields)?),
+                limits: ast::RangeLimits::HalfOpen,
+            }),
+            hir::QPath::LangItem(hir::LangItem::RangeToInclusive, _) => Some(Range {
+                start: None,
+                end: Some(get_field("end", fields)?),
+                limits: ast::RangeLimits::Closed,
+            }),
+            hir::QPath::LangItem(hir::LangItem::RangeTo, _) => Some(Range {
+                start: None,
+                end: Some(get_field("end", fields)?),
+                limits: ast::RangeLimits::HalfOpen,
+            }),
+            _ => None,
         },
         _ => None,
     }

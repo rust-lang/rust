@@ -1037,7 +1037,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block",
         deprecation: None,
-        module: "let_and_return",
+        module: "returns",
     },
     Lint {
         name: "let_underscore_lock",
@@ -1957,6 +1957,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "self_assignment",
+        group: "correctness",
+        desc: "explicit self-assignment",
+        deprecation: None,
+        module: "self_assignment",
+    },
+    Lint {
         name: "serde_api_misuse",
         group: "correctness",
         desc: "various things that will negatively affect your serde experience",
@@ -2009,6 +2016,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         name: "single_char_pattern",
         group: "perf",
         desc: "using a single-character str where a char could be used, e.g., `_.split(\"x\")`",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
+        name: "single_char_push_str",
+        group: "style",
+        desc: "`push_str()` used with a single-character string literal as parameter",
         deprecation: None,
         module: "methods",
     },
@@ -2165,6 +2179,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "`char.is_digit()` is clearer",
         deprecation: None,
         module: "to_digit_is_some",
+    },
+    Lint {
+        name: "to_string_in_display",
+        group: "correctness",
+        desc: "to_string method used while implementing Display trait",
+        deprecation: None,
+        module: "to_string_in_display",
     },
     Lint {
         name: "todo",
@@ -2370,6 +2391,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "unnecessary_lazy_evaluations",
+        group: "style",
+        desc: "using unnecessary lazy evaluation, which can be replaced with simpler eager evaluation",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "unnecessary_mut_passed",
         group: "style",
         desc: "an argument passed as a mutable reference although the callee only demands an immutable reference",
@@ -2479,7 +2507,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "needless unit expression",
         deprecation: None,
-        module: "returns",
+        module: "unused_unit",
     },
     Lint {
         name: "unwrap_used",
@@ -2498,7 +2526,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "use_self",
         group: "nursery",
-        desc: "Unnecessary structure name repetition whereas `Self` is applicable",
+        desc: "unnecessary structure name repetition whereas `Self` is applicable",
         deprecation: None,
         module: "use_self",
     },

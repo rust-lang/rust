@@ -1,3 +1,4 @@
+use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_parent_expr, is_type_diagnostic_item, match_def_path, match_trait_method, paths, snippet,
     snippet_with_macro_callsite, span_lint_and_help, span_lint_and_sugg,
@@ -158,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             if TyS::same_type(a, b);
 
                             then {
-                                let sugg = snippet(cx, args[0].span.source_callsite(), "<expr>").into_owned();
+                                let sugg = Sugg::hir_with_macro_callsite(cx, &args[0], "<expr>").maybe_par();
                                 let sugg_msg =
                                     format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
                                 span_lint_and_sugg(
@@ -167,7 +168,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                     e.span,
                                     "useless conversion to the same type",
                                     &sugg_msg,
-                                    sugg,
+                                    sugg.to_string(),
                                     Applicability::MachineApplicable, // snippet
                                 );
                             }
