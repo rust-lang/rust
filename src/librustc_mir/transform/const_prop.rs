@@ -856,6 +856,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             });
 
                             if let Some(Some(alloc)) = alloc {
+                                // Assign entire constant in a single statement.
+                                // We can't use aggregates, as we are post-aggregate-lowering.
                                 *rval = Rvalue::Use(Operand::Constant(Box::new(Constant {
                                     span: source_info.span,
                                     user_ty: None,
