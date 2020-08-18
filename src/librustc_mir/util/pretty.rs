@@ -405,6 +405,7 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
         let ty::Const { ty, val, .. } = constant;
         match ty.kind {
             ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char => {}
+            ty::FnDef(..) => {}
             _ => {
                 self.push("ty::Const");
                 self.push(&format!("+ ty: {:?}", ty));
