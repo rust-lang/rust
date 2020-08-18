@@ -1,9 +1,11 @@
 //! Code for applying replacement templates for matches that have previously been found.
 
 use crate::{resolving::ResolvedRule, Match, SsrMatches};
+use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast::{self, AstToken};
 use syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize};
+use test_utils::mark;
 use text_edit::TextEdit;
 
 /// Returns a text edit that will replace each match in `matches` with its corresponding replacement
@@ -127,6 +129,7 @@ impl ReplacementRenderer<'_> {
                     && (placeholder_value.autoderef_count > 0
                         || placeholder_value.autoref_kind != ast::SelfParamKind::Owned)
                 {
+                    mark::hit!(replace_autoref_autoderef_capture);
                     let ref_kind = match placeholder_value.autoref_kind {
                         ast::SelfParamKind::Owned => "",
                         ast::SelfParamKind::Ref => "&",
@@ -206,18 +209,16 @@ fn token_is_method_call_receiver(token: &SyntaxToken) -> bool {
     use syntax::ast::AstNode;
     // Find the first method call among the ancestors of `token`, then check if the only token
     // within the receiver is `token`.
-    if let Some(receiver) = token
-        .ancestors()
-        .find(|node| node.kind() == SyntaxKind::METHOD_CALL_EXPR)
-        .and_then(|node| ast::MethodCallExpr::cast(node).unwrap().expr())
+    if let Some(receiver) =
+        token.ancestors().find_map(ast::MethodCallExpr::cast).and_then(|call| call.expr())
     {
-        let mut tokens = receiver.syntax().descendants_with_tokens().filter_map(|node_or_token| {
+        let tokens = receiver.syntax().descendants_with_tokens().filter_map(|node_or_token| {
             match node_or_token {
                 SyntaxElement::Token(t) => Some(t),
                 _ => None,
             }
         });
-        if let (Some(only_token), None) = (tokens.next(), tokens.next()) {
+        if let Some((only_token,)) = tokens.collect_tuple() {
             return only_token == *token;
         }
     }

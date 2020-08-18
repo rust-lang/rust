@@ -1179,6 +1179,7 @@ fn replace_autoref_autoderef_capture() {
     // second, we already have a reference, so it isn't. When $a is used in a context where autoref
     // doesn't apply, we need to prefix it with `&`. Finally, we have some cases where autoderef
     // needs to be applied.
+    mark::check!(replace_autoref_autoderef_capture);
     let code = r#"
         struct Foo {}
         impl Foo {

@@ -1450,6 +1450,7 @@ dependencies = [
  "expect",
  "hir",
  "ide_db",
+ "itertools",
  "rustc-hash",
  "syntax",
  "test_utils",
