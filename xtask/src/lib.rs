@@ -3,14 +3,15 @@
 //! See https://github.com/matklad/cargo-xtask/
 
 pub mod not_bash;
+pub mod codegen;
+mod ast_src;
+
 pub mod install;
 pub mod release;
 pub mod dist;
 pub mod pre_commit;
 pub mod metrics;
-
-pub mod codegen;
-mod ast_src;
+pub mod pre_cache;
 
 use std::{
     env,
@@ -21,7 +22,7 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::{
     codegen::Mode,
-    not_bash::{fs2, pushd, pushenv, rm_rf},
+    not_bash::{pushd, pushenv},
 };
 
 pub use anyhow::{bail, Context as _, Result};
@@ -105,42 +106,6 @@ pub fn run_fuzzer() -> Result<()> {
     }
 
     run!("cargo fuzz run parser")?;
-    Ok(())
-}
-
-/// Cleans the `./target` dir after the build such that only
-/// dependencies are cached on CI.
-pub fn run_pre_cache() -> Result<()> {
-    let slow_tests_cookie = Path::new("./target/.slow_tests_cookie");
-    if !slow_tests_cookie.exists() {
-        panic!("slow tests were skipped on CI!")
-    }
-    rm_rf(slow_tests_cookie)?;
-
-    for entry in Path::new("./target/debug").read_dir()? {
-        let entry = entry?;
-        if entry.file_type().map(|it| it.is_file()).ok() == Some(true) {
-            // Can't delete yourself on windows :-(
-            if !entry.path().ends_with("xtask.exe") {
-                rm_rf(&entry.path())?
-            }
-        }
-    }
-
-    fs2::remove_file("./target/.rustc_info.json")?;
-    let to_delete = ["hir", "heavy_test", "xtask", "ide", "rust-analyzer"];
-    for &dir in ["./target/debug/deps", "target/debug/.fingerprint"].iter() {
-        for entry in Path::new(dir).read_dir()? {
-            let entry = entry?;
-            if to_delete.iter().any(|&it| entry.path().display().to_string().contains(it)) {
-                // Can't delete yourself on windows :-(
-                if !entry.path().ends_with("xtask.exe") {
-                    rm_rf(&entry.path())?
-                }
-            }
-        }
-    }
-
     Ok(())
 }
 

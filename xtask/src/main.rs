@@ -17,9 +17,10 @@ use xtask::{
     install::{ClientOpt, InstallCmd, Malloc, ServerOpt},
     metrics::MetricsCmd,
     not_bash::pushd,
+    pre_cache::PreCacheCmd,
     pre_commit, project_root,
     release::{PromoteCmd, ReleaseCmd},
-    run_clippy, run_fuzzer, run_pre_cache, run_rustfmt, Result,
+    run_clippy, run_fuzzer, run_rustfmt, Result,
 };
 
 fn main() -> Result<()> {
@@ -100,7 +101,7 @@ FLAGS:
         }
         "pre-cache" => {
             args.finish()?;
-            run_pre_cache()
+            PreCacheCmd.run()
         }
         "release" => {
             let dry_run = args.contains("--dry-run");
