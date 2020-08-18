@@ -1,0 +1,16 @@
+error: you are getting the inner pointer of a temporary `CString`
+  --> $DIR/lint-temporary-cstring-as-ptr.rs:7:13
+   |
+LL |     let s = CString::new("some text").unwrap().as_ptr();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(temporary_cstring_as_ptr)]` on by default
+   = note: that pointer will be invalid outside this expression
+help: assign the `CString` to a variable to extend its lifetime
+  --> $DIR/lint-temporary-cstring-as-ptr.rs:7:13
+   |
+LL |     let s = CString::new("some text").unwrap().as_ptr();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
