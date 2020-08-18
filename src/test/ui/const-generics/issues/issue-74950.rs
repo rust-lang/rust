@@ -16,10 +16,10 @@ struct Inner;
 // - impl StructuralEq
 #[derive(PartialEq, Eq)]
 struct Outer<const I: Inner>;
-//[min]~^ using `Inner` as const generic parameters is forbidden
-//[min]~| using `Inner` as const generic parameters is forbidden
-//[min]~| using `Inner` as const generic parameters is forbidden
-//[min]~| using `Inner` as const generic parameters is forbidden
-//[min]~| using `Inner` as const generic parameters is forbidden
+//[min]~^ `Inner` is forbidden
+//[min]~| `Inner` is forbidden
+//[min]~| `Inner` is forbidden
+//[min]~| `Inner` is forbidden
+//[min]~| `Inner` is forbidden
 
 fn main() {}

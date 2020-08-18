@@ -289,12 +289,14 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
             let ty = tcx.type_of(tcx.hir().local_def_id(param.hir_id));
 
             let err_ty_str;
+            let mut is_ptr = true;
             let err = if tcx.features().min_const_generics {
                 match ty.kind {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
                     ty::FnPtr(_) => Some("function pointers"),
                     ty::RawPtr(_) => Some("raw pointers"),
                     _ => {
+                        is_ptr = false;
                         err_ty_str = format!("`{}`", ty);
                         Some(err_ty_str.as_str())
                     }
@@ -307,19 +309,29 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                 }
             };
             if let Some(unsupported_type) = err {
-                let mut err = tcx.sess.struct_span_err(
-                    hir_ty.span,
-                    &format!("using {} as const generic parameters is forbidden", unsupported_type),
-                );
-
-                if tcx.features().min_const_generics {
-                    err.note("the only supported types are integers, `bool` and `char`")
+                if is_ptr {
+                    tcx.sess.span_err(
+                        hir_ty.span,
+                        &format!(
+                            "using {} as const generic parameters is forbidden",
+                            unsupported_type
+                        ),
+                    )
+                } else {
+                    tcx.sess
+                        .struct_span_err(
+                            hir_ty.span,
+                            &format!(
+                                "{} is forbidden as the type of a const generic parameter",
+                                unsupported_type
+                            ),
+                        )
+                        .note("the only supported types are integers, `bool` and `char`")
                         .note("more complex types are supported with `#[feature(const_generics)]`")
                         .emit()
-                } else {
-                    err.emit();
                 }
             };
+
             if traits::search_for_structural_match_violation(param.hir_id, param.span, tcx, ty)
                 .is_some()
             {

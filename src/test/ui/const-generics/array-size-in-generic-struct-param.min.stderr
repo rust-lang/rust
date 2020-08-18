@@ -14,7 +14,7 @@ LL |     arr: [u8; CFG.arr_size],
    |
    = help: it is currently only allowed to use either `CFG` or `{ CFG }` as generic constants
 
-error: using `Config` as const generic parameters is forbidden
+error: `Config` is forbidden as the type of a const generic parameter
   --> $DIR/array-size-in-generic-struct-param.rs:18:21
    |
 LL | struct B<const CFG: Config> {
