@@ -2031,7 +2031,7 @@ mod traits {
     /// # Panics
     ///
     /// Panics if `begin` does not point to the starting byte offset of
-    /// a character (as defined by `is_char_boundary`), or if `begin >= len`.
+    /// a character (as defined by `is_char_boundary`), or if `begin > len`.
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     unsafe impl SliceIndex<str> for ops::RangeFrom<usize> {
         type Output = str;
