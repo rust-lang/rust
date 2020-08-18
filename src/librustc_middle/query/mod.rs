@@ -116,6 +116,7 @@ rustc_queries! {
         // This can be conveniently accessed by `tcx.hir().as_local_hir_id`.
         // Avoid calling this query directly.
         query local_def_id_to_hir_id(key: LocalDefId) -> Option<hir::HirId> {
+            storage(IndexVecCacheSelector)
             eval_always
             desc { "converting a LocalDefId to HirId" }
         }
@@ -124,6 +125,7 @@ rustc_queries! {
         // This can be conveniently accessed by `tcx.hir().opt_local_def_id`.
         // Avoid calling this query directly.
         query hir_owner_defs(key: LocalDefId) -> Option<&'tcx FxHashMap<ItemLocalId, LocalDefId>> {
+            storage(IndexVecCacheSelector)
             eval_always
             desc { "getting a LocalDefId map" }
         }

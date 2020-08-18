@@ -1,6 +1,7 @@
 use crate::dep_graph::DepNodeIndex;
 use crate::query::plumbing::{QueryLookup, QueryState};
 use crate::query::QueryContext;
+use rustc_index::vec::{Idx, IndexVec};
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
@@ -215,6 +216,86 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V> {
         let mut shards = shards.lock_shards();
         let mut shards: Vec<_> = shards.iter_mut().map(|shard| get_shard(shard)).collect();
         let results = shards.iter_mut().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
+        f(Box::new(results))
+    }
+}
+
+pub struct IndexVecCacheSelector;
+
+impl<K: Eq + Hash, V: Clone> CacheSelector<K, V> for IndexVecCacheSelector {
+    type Cache = IndexVecCache<K, V>;
+}
+
+pub struct IndexVecCache<K, V>(PhantomData<(K, V)>);
+
+impl<K, V> Default for IndexVecCache<K, V> {
+    fn default() -> Self {
+        IndexVecCache(PhantomData)
+    }
+}
+
+impl<K: Eq + Idx, V: Clone> QueryStorage for IndexVecCache<K, V> {
+    type Value = V;
+    type Stored = V;
+
+    #[inline]
+    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
+        // We have no dedicated storage
+        value
+    }
+}
+
+impl<K: Eq + Idx, V: Clone> QueryCache for IndexVecCache<K, V> {
+    type Key = K;
+    type Sharded = IndexVec<K, Option<(K, V, DepNodeIndex)>>;
+
+    #[inline(always)]
+    fn lookup<CTX: QueryContext, R, OnHit, OnMiss>(
+        &self,
+        state: &QueryState<CTX, Self>,
+        key: K,
+        on_hit: OnHit,
+        on_miss: OnMiss,
+    ) -> R
+    where
+        OnHit: FnOnce(&V, DepNodeIndex) -> R,
+        OnMiss: FnOnce(K, QueryLookup<'_, CTX, K, Self::Sharded>) -> R,
+    {
+        let mut lookup = state.get_lookup(&key);
+        let lock = &mut *lookup.lock;
+
+        let result = lock.cache.get(key);
+
+        if let Some(Some(value)) = result { on_hit(&value.1, value.2) } else { on_miss(key, lookup) }
+    }
+
+    #[inline]
+    fn complete(
+        &self,
+        lock_sharded_storage: &mut Self::Sharded,
+        key: K,
+        value: V,
+        index: DepNodeIndex,
+    ) -> Self::Stored {
+        lock_sharded_storage.ensure_contains_elem(key, || None);
+        lock_sharded_storage[key] = Some((key, value.clone(), index));
+        value
+    }
+
+
+    fn iter<R, L>(
+        &self,
+        shards: &Sharded<L>,
+        get_shard: impl Fn(&mut L) -> &mut Self::Sharded,
+        f: impl for<'a> FnOnce(Box<dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)> + 'a>) -> R,
+    ) -> R {
+        let mut shards = shards.lock_shards();
+        let mut shards: Vec<_> = shards.iter_mut().map(|shard| get_shard(shard)).collect();
+        let results = shards.iter_mut().flat_map(|shard| {
+            shard.iter().flat_map(|v| {
+                v.as_ref().map(|val| (&val.0, &val.1, val.2))
+            })
+        });
         f(Box::new(results))
     }
 }
