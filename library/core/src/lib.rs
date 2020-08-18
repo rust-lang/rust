@@ -114,6 +114,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(or_patterns)]
 #![feature(prelude_import)]
+#![feature(ptr_as_uninit)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
 #![feature(simd_ffi)]
