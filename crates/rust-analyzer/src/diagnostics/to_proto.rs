@@ -7,11 +7,11 @@ use stdx::format_to;
 
 use crate::{lsp_ext, to_proto::url_from_abs_path};
 
-use super::DiagnosticsConfig;
+use super::DiagnosticsMapConfig;
 
 /// Determines the LSP severity from a diagnostic
 fn diagnostic_severity(
-    config: &DiagnosticsConfig,
+    config: &DiagnosticsMapConfig,
     level: flycheck::DiagnosticLevel,
     code: Option<flycheck::DiagnosticCode>,
 ) -> Option<lsp_types::DiagnosticSeverity> {
@@ -141,7 +141,7 @@ pub(crate) struct MappedRustDiagnostic {
 ///
 /// If the diagnostic has no primary span this will return `None`
 pub(crate) fn map_rust_diagnostic_to_lsp(
-    config: &DiagnosticsConfig,
+    config: &DiagnosticsMapConfig,
     rd: &flycheck::Diagnostic,
     workspace_root: &Path,
 ) -> Vec<MappedRustDiagnostic> {
@@ -259,10 +259,10 @@ mod tests {
     use expect::{expect_file, ExpectFile};
 
     fn check(diagnostics_json: &str, expect: ExpectFile) {
-        check_with_config(DiagnosticsConfig::default(), diagnostics_json, expect)
+        check_with_config(DiagnosticsMapConfig::default(), diagnostics_json, expect)
     }
 
-    fn check_with_config(config: DiagnosticsConfig, diagnostics_json: &str, expect: ExpectFile) {
+    fn check_with_config(config: DiagnosticsMapConfig, diagnostics_json: &str, expect: ExpectFile) {
         let diagnostic: flycheck::Diagnostic = serde_json::from_str(diagnostics_json).unwrap();
         let workspace_root = Path::new("/test/");
         let actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root);
@@ -402,9 +402,9 @@ mod tests {
     #[cfg(not(windows))]
     fn rustc_unused_variable_as_info() {
         check_with_config(
-            DiagnosticsConfig {
+            DiagnosticsMapConfig {
                 warnings_as_info: vec!["unused_variables".to_string()],
-                ..DiagnosticsConfig::default()
+                ..DiagnosticsMapConfig::default()
             },
             r##"{
     "message": "unused variable: `foo`",
@@ -486,9 +486,9 @@ mod tests {
     #[cfg(not(windows))]
     fn rustc_unused_variable_as_hint() {
         check_with_config(
-            DiagnosticsConfig {
+            DiagnosticsMapConfig {
                 warnings_as_hint: vec!["unused_variables".to_string()],
-                ..DiagnosticsConfig::default()
+                ..DiagnosticsMapConfig::default()
             },
             r##"{
     "message": "unused variable: `foo`",

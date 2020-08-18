@@ -11,7 +11,7 @@ use crate::lsp_ext;
 pub(crate) type CheckFixes = Arc<FxHashMap<FileId, Vec<Fix>>>;
 
 #[derive(Debug, Default, Clone)]
-pub struct DiagnosticsConfig {
+pub struct DiagnosticsMapConfig {
     pub warnings_as_info: Vec<String>,
     pub warnings_as_hint: Vec<String>,
 }

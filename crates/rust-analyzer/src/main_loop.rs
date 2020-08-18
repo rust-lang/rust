@@ -248,7 +248,7 @@ impl GlobalState {
             Event::Flycheck(task) => match task {
                 flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
                     let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
-                        &self.config.diagnostics,
+                        &self.config.diagnostics_map,
                         &diagnostic,
                         &workspace_root,
                     );

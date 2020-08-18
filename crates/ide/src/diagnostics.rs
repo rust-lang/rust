@@ -4,12 +4,15 @@
 //! macro-expanded files, but we need to present them to the users in terms of
 //! original files. So we need to map the ranges.
 
-use std::{cell::RefCell, collections::HashSet};
+mod diagnostics_with_fix;
+
+use std::cell::RefCell;
 
 use base_db::SourceDatabase;
 use hir::{diagnostics::DiagnosticSinkBuilder, Semantics};
 use ide_db::RootDatabase;
 use itertools::Itertools;
+use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, AstNode},
     SyntaxNode, TextRange, T,
@@ -18,8 +21,7 @@ use text_edit::TextEdit;
 
 use crate::{Diagnostic, FileId, Fix, SourceFileEdit};
 
-mod diagnostics_with_fix;
-use diagnostics_with_fix::DiagnosticWithFix;
+use self::diagnostics_with_fix::DiagnosticWithFix;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {
@@ -27,11 +29,16 @@ pub enum Severity {
     WeakWarning,
 }
 
+#[derive(Default, Debug, Clone)]
+pub struct DiagnosticsConfig {
+    pub disable_experimental: bool,
+    pub disabled: FxHashSet<String>,
+}
+
 pub(crate) fn diagnostics(
     db: &RootDatabase,
+    config: &DiagnosticsConfig,
     file_id: FileId,
-    enable_experimental: bool,
-    disabled_diagnostics: Option<HashSet<String>>,
 ) -> Vec<Diagnostic> {
     let _p = profile::span("diagnostics");
     let sema = Semantics::new(db);
@@ -52,7 +59,7 @@ pub(crate) fn diagnostics(
         check_struct_shorthand_initialization(&mut res, file_id, &node);
     }
     let res = RefCell::new(res);
-    let mut sink_builder = DiagnosticSinkBuilder::new()
+    let sink_builder = DiagnosticSinkBuilder::new()
         .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
             res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
@@ -66,12 +73,8 @@ pub(crate) fn diagnostics(
             res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
         // Only collect experimental diagnostics when they're enabled.
-        .filter(|diag| !diag.is_experimental() || enable_experimental);
-
-    if let Some(disabled_diagnostics) = disabled_diagnostics {
-        // Do not collect disabled diagnostics.
-        sink_builder = sink_builder.filter(move |diag| !disabled_diagnostics.contains(diag.name()));
-    }
+        .filter(|diag| !(diag.is_experimental() && config.disable_experimental))
+        .filter(|diag| !config.disabled.contains(diag.name()));
 
     // Finalize the `DiagnosticSink` building process.
     let mut sink = sink_builder
@@ -187,12 +190,14 @@ fn check_struct_shorthand_initialization(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use expect::{expect, Expect};
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
-    use crate::mock_analysis::{analysis_and_position, single_file, MockAnalysis};
-    use expect::{expect, Expect};
+    use crate::{
+        mock_analysis::{analysis_and_position, single_file, MockAnalysis},
+        DiagnosticsConfig,
+    };
 
     /// Takes a multi-file input fixture with annotated cursor positions,
     /// and checks that:
@@ -203,8 +208,11 @@ mod tests {
         let after = trim_indent(ra_fixture_after);
 
         let (analysis, file_position) = analysis_and_position(ra_fixture_before);
-        let diagnostic =
-            analysis.diagnostics(file_position.file_id, true, None).unwrap().pop().unwrap();
+        let diagnostic = analysis
+            .diagnostics(&DiagnosticsConfig::default(), file_position.file_id)
+            .unwrap()
+            .pop()
+            .unwrap();
         let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_change.source_file_edits.pop().unwrap().edit;
         let target_file_contents = analysis.file_text(file_position.file_id).unwrap();
@@ -230,7 +238,11 @@ mod tests {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, file_pos) = analysis_and_position(ra_fixture_before);
         let current_file_id = file_pos.file_id;
-        let diagnostic = analysis.diagnostics(current_file_id, true, None).unwrap().pop().unwrap();
+        let diagnostic = analysis
+            .diagnostics(&DiagnosticsConfig::default(), current_file_id)
+            .unwrap()
+            .pop()
+            .unwrap();
         let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_change.source_file_edits.pop().unwrap();
         let changed_file_id = edit.file_id;
@@ -251,7 +263,9 @@ mod tests {
         let analysis = mock.analysis();
         let diagnostics = files
             .into_iter()
-            .flat_map(|file_id| analysis.diagnostics(file_id, true, None).unwrap())
+            .flat_map(|file_id| {
+                analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap()
+            })
             .collect::<Vec<_>>();
         assert_eq!(diagnostics.len(), 0, "unexpected diagnostics:\n{:#?}", diagnostics);
     }
@@ -259,8 +273,8 @@ mod tests {
     /// Takes a multi-file input fixture with annotated cursor position and the list of disabled diagnostics,
     /// and checks that provided diagnostics aren't spawned during analysis.
     fn check_disabled_diagnostics(ra_fixture: &str, disabled_diagnostics: &[&'static str]) {
-        let disabled_diagnostics: HashSet<_> =
-            disabled_diagnostics.into_iter().map(|diag| diag.to_string()).collect();
+        let mut config = DiagnosticsConfig::default();
+        config.disabled = disabled_diagnostics.into_iter().map(|diag| diag.to_string()).collect();
 
         let mock = MockAnalysis::with_files(ra_fixture);
         let files = mock.files().map(|(it, _)| it).collect::<Vec<_>>();
@@ -269,15 +283,17 @@ mod tests {
         let diagnostics = files
             .clone()
             .into_iter()
-            .flat_map(|file_id| {
-                analysis.diagnostics(file_id, true, Some(disabled_diagnostics.clone())).unwrap()
-            })
+            .flat_map(|file_id| analysis.diagnostics(&config, file_id).unwrap())
             .collect::<Vec<_>>();
 
         // First, we have to check that diagnostic is not emitted when it's added to the disabled diagnostics list.
         for diagnostic in diagnostics {
             if let Some(name) = diagnostic.name {
-                assert!(!disabled_diagnostics.contains(&name), "Diagnostic {} is disabled", name);
+                assert!(
+                    !disabled_diagnostics.contains(&name.as_str()),
+                    "Diagnostic {} is disabled",
+                    name
+                );
             }
         }
 
@@ -288,21 +304,23 @@ mod tests {
         // will no longer exist.
         let diagnostics = files
             .into_iter()
-            .flat_map(|file_id| analysis.diagnostics(file_id, true, None).unwrap())
+            .flat_map(|file_id| {
+                analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap()
+            })
             .collect::<Vec<_>>();
 
         assert!(
             diagnostics
                 .into_iter()
                 .filter_map(|diag| diag.name)
-                .any(|name| disabled_diagnostics.contains(&name)),
+                .any(|name| disabled_diagnostics.contains(&name.as_str())),
             "At least one of the diagnostics was not emitted even without config; are the diagnostics names correct?"
         );
     }
 
     fn check_expect(ra_fixture: &str, expect: Expect) {
         let (analysis, file_id) = single_file(ra_fixture);
-        let diagnostics = analysis.diagnostics(file_id, true, None).unwrap();
+        let diagnostics = analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap();
         expect.assert_debug_eq(&diagnostics)
     }
 

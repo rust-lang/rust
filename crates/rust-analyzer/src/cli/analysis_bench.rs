@@ -7,7 +7,10 @@ use base_db::{
     salsa::{Database, Durability},
     FileId,
 };
-use ide::{Analysis, AnalysisChange, AnalysisHost, CompletionConfig, FilePosition, LineCol};
+use ide::{
+    Analysis, AnalysisChange, AnalysisHost, CompletionConfig, DiagnosticsConfig, FilePosition,
+    LineCol,
+};
 use vfs::AbsPathBuf;
 
 use crate::{
@@ -71,7 +74,7 @@ impl BenchCmd {
         match &self.what {
             BenchWhat::Highlight { .. } => {
                 let res = do_work(&mut host, file_id, |analysis| {
-                    analysis.diagnostics(file_id, true, None).unwrap();
+                    analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap();
                     analysis.highlight_as_html(file_id, false).unwrap()
                 });
                 if verbosity.is_verbose() {

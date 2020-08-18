@@ -592,6 +592,15 @@
                     "default": true,
                     "markdownDescription": "Whether to show experimental rust-analyzer diagnostics that might have more false positives than usual."
                 },
+                "rust-analyzer.diagnostics.disabled": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of rust-analyzer diagnostics to disable",
+                    "default": []
+                },
                 "rust-analyzer.diagnostics.warningsAsInfo": {
                     "type": "array",
                     "uniqueItems": true,
@@ -608,15 +617,6 @@
                         "type": "string"
                     },
                     "description": "List of warnings that should be displayed with hint severity.\nThe warnings will be indicated by faded text or three dots in code and will not show up in the problems panel.",
-                    "default": []
-                },
-                "rust-analyzer.analysis.disabledDiagnostics": {
-                    "type": "array",
-                    "uniqueItems": true,
-                    "items": {
-                        "type": "string"
-                    },
-                    "description": "List of rust-analyzer diagnostics to disable",
                     "default": []
                 }
             }
