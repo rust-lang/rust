@@ -765,9 +765,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-server"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53b4ace8ebe5d2aff3687ce0ed507f6020d6a47a7de2b0d3d664ea237ffb0c62"
+checksum = "87fce8851309a325974ec76efe7c9d954d152c9ff4fded6520eb3c96d0aa3a96"
 dependencies = [
  "crossbeam-channel",
  "log",
@@ -971,9 +971,9 @@ checksum = "1ab52be62400ca80aa00285d25253d7f7c437b7375c4de678f5405d3afe82ca5"
 
 [[package]]
 name = "once_cell"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b631f7e854af39a1739f401cf34a8a013dfe09eac4fa4dba91e9768bd28168d"
+checksum = "260e51e7efe62b592207e9e13a68e43692a7a279171d6ba57abd208bf23645ad"
 
 [[package]]
 name = "oorandom"
@@ -1036,9 +1036,9 @@ dependencies = [
 
 [[package]]
 name = "perf-event-open-sys"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83e7183862f36d10263d0a1ccaef50fef734ade948bf026afd1bd97355c78273"
+checksum = "d9ebe2b9ef0cb884ef778c5a533144e348e9839a9fcf67f3d24e1890ac9088d6"
 dependencies = [
  "libc",
 ]
@@ -1578,9 +1578,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53953d2d3a5ad81d9f844a32f14ebb121f50b650cd59d0ee2a07cf13c617efed"
+checksum = "238ce071d267c5710f9d31451efec16c5ee22de34df17cc05e56cbc92e967117"
 
 [[package]]
 name = "toolchain"
