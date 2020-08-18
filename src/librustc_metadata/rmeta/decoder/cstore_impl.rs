@@ -136,10 +136,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     item_attrs => { tcx.arena.alloc_from_iter(
         cdata.get_item_attrs(def_id.index, tcx.sess).into_iter()
     ) }
-    // FIXME(#38501) We've skipped a `read` on the `hir_owner_nodes` of
-    // a `fn` when encoding, so the dep-tracking wouldn't work.
-    // This is only used by rustdoc anyway, which shouldn't have
-    // incremental recompilation ever enabled.
     fn_arg_names => { cdata.get_fn_param_names(tcx, def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
