@@ -749,7 +749,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             })
             .collect::<Vec<_>>();
         err.multipart_suggestion(
-            "if you change the return type to expect trait objects box the returned expressions",
+            "if you change the return type to expect trait objects, box the returned expressions",
             sugg,
             Applicability::MaybeIncorrect,
         );

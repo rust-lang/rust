@@ -23,7 +23,7 @@ LL |     0_u32
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = help: if the trait `Foo` were object safe, you could return a boxed trait object
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
 
 error[E0277]: cannot add `impl Foo` to `u32`
   --> $DIR/equality.rs:24:11

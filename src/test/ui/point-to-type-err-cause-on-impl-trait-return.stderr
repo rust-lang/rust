@@ -13,11 +13,17 @@ LL |     1u32
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
 help: you could change the return type to be a boxed trait object
    |
 LL | fn foo() -> Box<dyn std::fmt::Display> {
    |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |         return Box::new(0i32);
+LL |     }
+LL |     Box::new(1u32)
+   |
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:12:16
@@ -34,11 +40,17 @@ LL |         return 1u32;
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
 help: you could change the return type to be a boxed trait object
    |
 LL | fn bar() -> Box<dyn std::fmt::Display> {
    |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |         return Box::new(0i32);
+LL |     } else {
+LL |         return Box::new(1u32);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:20:9
@@ -55,11 +67,17 @@ LL |         1u32
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
 help: you could change the return type to be a boxed trait object
    |
 LL | fn baz() -> Box<dyn std::fmt::Display> {
    |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |         return Box::new(0i32);
+LL |     } else {
+LL |         Box::new(1u32)
+   |
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:28:9
@@ -77,7 +95,7 @@ help: you could change the return type to be a boxed trait object
    |
 LL | fn qux() -> Box<dyn std::fmt::Display> {
    |             ^^^^^^^                  ^
-help: if you change the return type to expect trait objects box the returned expressions
+help: if you change the return type to expect trait objects, box the returned expressions
    |
 LL |         Box::new(0i32)
 LL |     } else {
@@ -98,11 +116,16 @@ LL |         _ => 1u32,
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
 help: you could change the return type to be a boxed trait object
    |
 LL | fn bat() -> Box<dyn std::fmt::Display> {
    |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |         0 => return Box::new(0i32),
+LL |         _ => Box::new(1u32),
+   |
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:40:5
@@ -120,11 +143,19 @@ LL | |     }
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
 help: you could change the return type to be a boxed trait object
    |
 LL | fn can() -> Box<dyn std::fmt::Display> {
    |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |     Box::new(match 13 {
+LL |         0 => return Box::new(0i32),
+LL |         1 => 1u32,
+LL |         _ => 2u32,
+LL |     })
+   |
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:53:13
@@ -141,11 +172,18 @@ LL |             1u32
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
 help: you could change the return type to be a boxed trait object
    |
 LL | fn cat() -> Box<dyn std::fmt::Display> {
    |             ^^^^^^^                  ^
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL |             return Box::new(0i32);
+LL |         }
+LL |         _ => {
+LL |             Box::new(1u32)
+   |
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:61:14
@@ -163,7 +201,7 @@ help: you could change the return type to be a boxed trait object
    |
 LL | fn dog() -> Box<dyn std::fmt::Display> {
    |             ^^^^^^^                  ^
-help: if you change the return type to expect trait objects box the returned expressions
+help: if you change the return type to expect trait objects, box the returned expressions
    |
 LL |         0 => Box::new(0i32),
 LL |         1 => Box::new(1u32),

@@ -1459,7 +1459,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         }
         if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.borrow().as_ref(), fn_output) {
-            self.add_impl_trait_explanation(&mut err, fcx, expected, *sp, fn_output);
+            self.add_impl_trait_explanation(&mut err, cause, fcx, expected, *sp, fn_output);
         }
         err
     }
@@ -1467,6 +1467,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     fn add_impl_trait_explanation<'a>(
         &self,
         err: &mut DiagnosticBuilder<'a>,
+        cause: &ObligationCause<'tcx>,
         fcx: &FnCtxt<'a, 'tcx>,
         expected: Ty<'tcx>,
         sp: Span,
@@ -1531,6 +1532,22 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     ],
                     Applicability::MachineApplicable,
                 );
+                let sugg = vec![sp, cause.span]
+                    .into_iter()
+                    .flat_map(|sp| {
+                        vec![
+                            (sp.shrink_to_lo(), "Box::new(".to_string()),
+                            (sp.shrink_to_hi(), ")".to_string()),
+                        ]
+                        .into_iter()
+                    })
+                    .collect::<Vec<_>>();
+                err.multipart_suggestion(
+                    "if you change the return type to expect trait objects, box the returned \
+                     expressions",
+                    sugg,
+                    Applicability::MaybeIncorrect,
+                );
             } else {
                 err.help(&format!(
                     "if the trait `{}` were object safe, you could return a boxed trait object",
@@ -1539,7 +1556,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
             err.note(trait_obj_msg);
         }
-        err.help("alternatively, create a new `enum` with a variant for each returned type");
+        err.help("you could instead create a new `enum` with a variant for each returned type");
     }
 
     fn is_return_ty_unsized(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
