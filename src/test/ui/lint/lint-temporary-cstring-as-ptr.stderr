@@ -1,15 +1,12 @@
 error: getting the inner pointer of a temporary `CString`
-  --> $DIR/lint-temporary-cstring-as-ptr.rs:6:13
+  --> $DIR/lint-temporary-cstring-as-ptr.rs:6:48
    |
 LL |     let s = CString::new("some text").unwrap().as_ptr();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ this pointer will be invalid
+   |             ---------------------------------- ^^^^^^ this pointer will be invalid
+   |             |
+   |             this `CString` is deallocated at the end of the expression, bind it to a variable to extend its lifetime
    |
    = note: `#[deny(temporary_cstring_as_ptr)]` on by default
-help: this `CString` is deallocated at the end of the expression, bind it to a variable to extend its lifetime
-  --> $DIR/lint-temporary-cstring-as-ptr.rs:6:13
-   |
-LL |     let s = CString::new("some text").unwrap().as_ptr();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` is deallocated because nothing is referencing it as far as the type system is concerned
 
 error: aborting due to previous error
