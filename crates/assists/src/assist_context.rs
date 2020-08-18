@@ -6,6 +6,7 @@ use algo::find_covering_element;
 use base_db::{FileId, FileRange};
 use hir::Semantics;
 use ide_db::{
+    label::Label,
     source_change::{SourceChange, SourceFileEdit},
     RootDatabase,
 };
@@ -157,8 +158,9 @@ impl Assists {
         if !self.is_allowed(&id) {
             return None;
         }
-        let label = Assist::new(id, label.into(), None, target);
-        self.add_impl(label, f)
+        let label = Label::new(label.into());
+        let assist = Assist { id, label, group: None, target };
+        self.add_impl(assist, f)
     }
 
     pub(crate) fn add_group(
@@ -172,12 +174,12 @@ impl Assists {
         if !self.is_allowed(&id) {
             return None;
         }
-
-        let label = Assist::new(id, label.into(), Some(group.clone()), target);
-        self.add_impl(label, f)
+        let label = Label::new(label.into());
+        let assist = Assist { id, label, group: Some(group.clone()), target };
+        self.add_impl(assist, f)
     }
 
-    fn add_impl(&mut self, label: Assist, f: impl FnOnce(&mut AssistBuilder)) -> Option<()> {
+    fn add_impl(&mut self, assist: Assist, f: impl FnOnce(&mut AssistBuilder)) -> Option<()> {
         let source_change = if self.resolve {
             let mut builder = AssistBuilder::new(self.file);
             f(&mut builder);
@@ -186,7 +188,7 @@ impl Assists {
             None
         };
 
-        self.buf.push((label, source_change));
+        self.buf.push((assist, source_change));
         Some(())
     }
 
