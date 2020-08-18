@@ -161,7 +161,7 @@ declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES]);
 impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use crate::utils::{snippet, snippet_with_applicability};
-        use rustc_ast::ast::LitKind;
+        use rustc_ast::LitKind;
 
         if_chain! {
             if let ExprKind::MethodCall(path, _, args, _) = &e.kind;

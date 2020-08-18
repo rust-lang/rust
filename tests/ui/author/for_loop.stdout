@@ -3,10 +3,10 @@ if_chain! {
     if let ExprKind::Match(ref expr1, ref arms, MatchSource::ForLoopDesugar) = expr.kind;
     if let ExprKind::Call(ref func, ref args) = expr1.kind;
     if let ExprKind::Path(ref path) = func.kind;
-    if match_qpath(path, &["{{root}}", "std", "iter", "IntoIterator", "into_iter"]);
+    if matches!(path, QPath::LangItem(LangItem::IntoIterIntoIter, _));
     if args.len() == 1;
     if let ExprKind::Struct(ref path1, ref fields, None) = args[0].kind;
-    if match_qpath(path1, &["{{root}}", "std", "ops", "Range"]);
+    if matches!(path1, QPath::LangItem(LangItem::Range, _));
     if fields.len() == 2;
     // unimplemented: field checks
     if arms.len() == 1;
@@ -20,7 +20,7 @@ if_chain! {
     if let ExprKind::Match(ref expr2, ref arms1, MatchSource::ForLoopDesugar) = e.kind;
     if let ExprKind::Call(ref func1, ref args1) = expr2.kind;
     if let ExprKind::Path(ref path2) = func1.kind;
-    if match_qpath(path2, &["{{root}}", "std", "iter", "Iterator", "next"]);
+    if matches!(path2, QPath::LangItem(LangItem::IteratorNext, _));
     if args1.len() == 1;
     if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, ref inner) = args1[0].kind;
     if let ExprKind::Path(ref path3) = inner.kind;
@@ -31,13 +31,15 @@ if_chain! {
     if match_qpath(path4, &["__next"]);
     if let ExprKind::Path(ref path5) = value.kind;
     if match_qpath(path5, &["val"]);
-    if let PatKind::TupleStruct(ref path6, ref fields1, None) = arms1[0].pat.kind;
-    if match_qpath(path6, &["{{root}}", "std", "option", "Option", "Some"]);
+    if let PatKind::Struct(ref path6, ref fields1, false) = arms1[0].pat.kind;
+    if matches!(path6, QPath::LangItem(LangItem::OptionSome, _));
     if fields1.len() == 1;
     // unimplemented: field checks
     if let ExprKind::Break(ref destination, None) = arms1[1].body.kind;
-    if let PatKind::Path(ref path7) = arms1[1].pat.kind;
-    if match_qpath(path7, &["{{root}}", "std", "option", "Option", "None"]);
+    if let PatKind::Struct(ref path7, ref fields2, false) = arms1[1].pat.kind;
+    if matches!(path7, QPath::LangItem(LangItem::OptionNone, _));
+    if fields2.len() == 0;
+    // unimplemented: field checks
     if let StmtKind::Local(ref local1) = body.stmts[2].kind;
     if let Some(ref init) = local1.init;
     if let ExprKind::Path(ref path8) = init.kind;

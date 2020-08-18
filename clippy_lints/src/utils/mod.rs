@@ -142,6 +142,14 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
     }
 }
 
+/// Checks if the type is equal to a lang item
+pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
+    match ty.kind {
+        ty::Adt(adt, _) => cx.tcx.lang_items().require(lang_item).unwrap() == adt.did,
+        _ => false,
+    }
+}
+
 /// Checks if the method call given in `expr` belongs to the given trait.
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
     let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
@@ -163,6 +171,7 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
     match *path {
         QPath::Resolved(_, ref path) => path.segments.last().expect("A path must have at least one segment"),
         QPath::TypeRelative(_, ref seg) => seg,
+        QPath::LangItem(..) => panic!("last_path_segment: lang item has no path segments"),
     }
 }
 
@@ -170,6 +179,7 @@ pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment
     match *path {
         QPath::Resolved(_, ref path) => path.segments.get(0),
         QPath::TypeRelative(_, ref seg) => Some(seg),
+        QPath::LangItem(..) => None,
     }
 }
 
@@ -196,6 +206,7 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
             },
             _ => false,
         },
+        QPath::LangItem(..) => false,
     }
 }
 
@@ -277,7 +288,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<def::Res> {
 pub fn qpath_res(cx: &LateContext<'_>, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
     match qpath {
         hir::QPath::Resolved(_, path) => path.res,
-        hir::QPath::TypeRelative(..) => {
+        hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
             if cx.tcx.has_typeck_results(id.owner.to_def_id()) {
                 cx.tcx.typeck(id.owner.to_def_id().expect_local()).qpath_res(qpath, id)
             } else {

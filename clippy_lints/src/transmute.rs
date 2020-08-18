@@ -3,7 +3,7 @@ use crate::utils::{
     span_lint_and_then, sugg,
 };
 use if_chain::if_chain;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, GenericArg, Mutability, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};

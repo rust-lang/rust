@@ -4,7 +4,7 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, MatchSource};
+use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
             if let ExprKind::Match(ref match_arg, _, MatchSource::TryDesugar) = expr.kind;
             if let ExprKind::Call(ref match_fun, ref try_args) = match_arg.kind;
             if let ExprKind::Path(ref match_fun_path) = match_fun.kind;
-            if match_qpath(match_fun_path, &paths::TRY_INTO_RESULT);
+            if matches!(match_fun_path, QPath::LangItem(LangItem::TryIntoResult, _));
             if let Some(ref try_arg) = try_args.get(0);
             if let ExprKind::Call(ref err_fun, ref err_args) = try_arg.kind;
             if let Some(ref err_arg) = err_args.get(0);
