@@ -72,7 +72,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
@@ -82,7 +82,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
@@ -92,9 +92,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `success` and
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
@@ -104,9 +104,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `success` and
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
@@ -116,7 +116,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
@@ -126,9 +126,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `success` and
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
@@ -138,9 +138,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `success` and
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
@@ -150,9 +150,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `success` and
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
@@ -162,9 +162,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `success` and
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
@@ -175,7 +175,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
@@ -185,7 +185,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
@@ -195,9 +195,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `success` and
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
@@ -207,9 +207,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `success` and
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
@@ -219,7 +219,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
@@ -229,9 +229,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `success` and
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
@@ -241,9 +241,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `success` and
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
@@ -253,9 +253,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `success` and
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
@@ -265,9 +265,9 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `success` and
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
@@ -278,7 +278,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `load` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicBool::load`](../../std/sync/atomic/struct.AtomicBool.html#method.load).
     pub fn atomic_load<T: Copy>(src: *const T) -> T;
@@ -286,7 +286,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `load` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicBool::load`](../../std/sync/atomic/struct.AtomicBool.html#method.load).
     pub fn atomic_load_acq<T: Copy>(src: *const T) -> T;
@@ -294,7 +294,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `load` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicBool::load`](../../std/sync/atomic/struct.AtomicBool.html#method.load).
     pub fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
@@ -304,7 +304,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `store` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicBool::store`](../../std/sync/atomic/struct.AtomicBool.html#method.store).
     pub fn atomic_store<T: Copy>(dst: *mut T, val: T);
@@ -312,7 +312,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `store` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicBool::store`](../../std/sync/atomic/struct.AtomicBool.html#method.store).
     pub fn atomic_store_rel<T: Copy>(dst: *mut T, val: T);
@@ -320,7 +320,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `store` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicBool::store`](../../std/sync/atomic/struct.AtomicBool.html#method.store).
     pub fn atomic_store_relaxed<T: Copy>(dst: *mut T, val: T);
@@ -330,7 +330,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `swap` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
     pub fn atomic_xchg<T: Copy>(dst: *mut T, src: T) -> T;
@@ -338,7 +338,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `swap` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
     pub fn atomic_xchg_acq<T: Copy>(dst: *mut T, src: T) -> T;
@@ -346,7 +346,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `swap` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
     pub fn atomic_xchg_rel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -354,7 +354,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `swap` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
     /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
     pub fn atomic_xchg_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -362,7 +362,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `swap` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
     pub fn atomic_xchg_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
@@ -371,7 +371,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd<T: Copy>(dst: *mut T, src: T) -> T;
@@ -379,7 +379,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_acq<T: Copy>(dst: *mut T, src: T) -> T;
@@ -387,7 +387,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_rel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -395,7 +395,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -403,7 +403,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
@@ -412,7 +412,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
     pub fn atomic_xsub<T: Copy>(dst: *mut T, src: T) -> T;
@@ -420,7 +420,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
     pub fn atomic_xsub_acq<T: Copy>(dst: *mut T, src: T) -> T;
@@ -428,7 +428,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
     pub fn atomic_xsub_rel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -436,7 +436,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
     pub fn atomic_xsub_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -444,7 +444,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
     pub fn atomic_xsub_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
@@ -453,7 +453,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_and` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
     pub fn atomic_and<T: Copy>(dst: *mut T, src: T) -> T;
@@ -461,7 +461,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_and` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
     pub fn atomic_and_acq<T: Copy>(dst: *mut T, src: T) -> T;
@@ -469,7 +469,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_and` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
     pub fn atomic_and_rel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -477,7 +477,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_and` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
     pub fn atomic_and_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -485,7 +485,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_and` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
     pub fn atomic_and_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
@@ -494,7 +494,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
     pub fn atomic_nand<T: Copy>(dst: *mut T, src: T) -> T;
@@ -502,7 +502,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
     pub fn atomic_nand_acq<T: Copy>(dst: *mut T, src: T) -> T;
@@ -510,7 +510,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
     pub fn atomic_nand_rel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -518,7 +518,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
     pub fn atomic_nand_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -526,7 +526,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
     pub fn atomic_nand_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
@@ -535,7 +535,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_or` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
     pub fn atomic_or<T: Copy>(dst: *mut T, src: T) -> T;
@@ -543,7 +543,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_or` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
     pub fn atomic_or_acq<T: Copy>(dst: *mut T, src: T) -> T;
@@ -551,7 +551,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_or` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
     pub fn atomic_or_rel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -559,7 +559,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_or` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
     pub fn atomic_or_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -567,7 +567,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_or` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
     pub fn atomic_or_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
@@ -576,7 +576,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
     pub fn atomic_xor<T: Copy>(dst: *mut T, src: T) -> T;
@@ -584,7 +584,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
     pub fn atomic_xor_acq<T: Copy>(dst: *mut T, src: T) -> T;
@@ -592,7 +592,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
     pub fn atomic_xor_rel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -600,7 +600,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
     pub fn atomic_xor_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -608,7 +608,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
     pub fn atomic_xor_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
@@ -617,7 +617,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html#variant.SeqCst)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max<T: Copy>(dst: *mut T, src: T) -> T;
@@ -625,7 +625,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html#variant.Acquire)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max_acq<T: Copy>(dst: *mut T, src: T) -> T;
@@ -633,7 +633,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html#variant.Release)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max_rel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -641,7 +641,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html#variant.AcqRel)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -649,7 +649,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html#variant.Relaxed)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
@@ -658,7 +658,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html#variant.SeqCst)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min<T: Copy>(dst: *mut T, src: T) -> T;
@@ -666,7 +666,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html#variant.Acquire)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min_acq<T: Copy>(dst: *mut T, src: T) -> T;
@@ -674,7 +674,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html#variant.Release)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min_rel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -682,7 +682,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html#variant.AcqRel)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -690,7 +690,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html#variant.Relaxed)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
@@ -699,7 +699,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html#variant.SeqCst)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin<T: Copy>(dst: *mut T, src: T) -> T;
@@ -707,7 +707,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html#variant.Acquire)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin_acq<T: Copy>(dst: *mut T, src: T) -> T;
@@ -715,7 +715,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html#variant.Release)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin_rel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -723,7 +723,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html#variant.AcqRel)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -731,7 +731,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html#variant.Relaxed)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
@@ -740,7 +740,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html#variant.SeqCst)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax<T: Copy>(dst: *mut T, src: T) -> T;
@@ -748,7 +748,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html#variant.Acquire)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax_acq<T: Copy>(dst: *mut T, src: T) -> T;
@@ -756,7 +756,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html#variant.Release)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax_rel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -764,7 +764,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html#variant.AcqRel)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
@@ -772,7 +772,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
-    /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html#variant.Relaxed)
+    /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
@@ -825,7 +825,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
     /// by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html#variant.SeqCst)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`.
     pub fn atomic_fence();
     /// An atomic fence.
@@ -833,7 +833,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
     /// by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html#variant.Acquire)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`.
     pub fn atomic_fence_acq();
     /// An atomic fence.
@@ -841,7 +841,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
     /// by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html#variant.Release)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`.
     pub fn atomic_fence_rel();
     /// An atomic fence.
@@ -849,7 +849,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
     /// by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html#variant.AcqRel)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`.
     pub fn atomic_fence_acqrel();
 
@@ -863,7 +863,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
     /// by passing
-    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html#variant.SeqCst)
+    /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`.
     pub fn atomic_singlethreadfence();
     /// A compiler-only memory barrier.
@@ -876,7 +876,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
     /// by passing
-    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html#variant.Acquire)
+    /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`.
     pub fn atomic_singlethreadfence_acq();
     /// A compiler-only memory barrier.
@@ -889,7 +889,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
     /// by passing
-    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html#variant.Release)
+    /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`.
     pub fn atomic_singlethreadfence_rel();
     /// A compiler-only memory barrier.
@@ -902,7 +902,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
     /// by passing
-    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html#variant.AcqRel)
+    /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`.
     pub fn atomic_singlethreadfence_acqrel();
 
