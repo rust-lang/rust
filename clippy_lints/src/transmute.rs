@@ -331,7 +331,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::TRANSMUTE);
             then {
-                // Avoid suggesting f32::(from|to)_bits in const contexts.
+                // Avoid suggesting from/to bits in const contexts.
                 // See https://github.com/rust-lang/rust/issues/73736 for progress on making them `const fn`.
                 let const_context = in_constant(cx, e.hir_id);
 

@@ -11,9 +11,14 @@ fn float_to_int() {
 }
 
 mod issue_5747 {
-    const VALUE: u32 = unsafe { std::mem::transmute(1f32) };
+    const VALUE32: i32 = unsafe { std::mem::transmute(1f32) };
+    const VALUE64: u64 = unsafe { std::mem::transmute(1f64) };
 
-    const fn to_bits(v: f32) -> u32 {
+    const fn to_bits_32(v: f32) -> u32 {
+        unsafe { std::mem::transmute(v) }
+    }
+
+    const fn to_bits_64(v: f64) -> i64 {
         unsafe { std::mem::transmute(v) }
     }
 }

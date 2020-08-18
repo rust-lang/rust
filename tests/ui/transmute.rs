@@ -86,12 +86,21 @@ mod int_to_float {
     fn test() {
         let _: f32 = unsafe { std::mem::transmute(0_u32) };
         let _: f32 = unsafe { std::mem::transmute(0_i32) };
+        let _: f64 = unsafe { std::mem::transmute(0_u64) };
+        let _: f64 = unsafe { std::mem::transmute(0_i64) };
     }
 
-    // See issue #5747
-    const VALUE: f32 = unsafe { std::mem::transmute(0_u32) };
-    const fn from_bits(v: u32) -> f32 {
-        unsafe { std::mem::transmute(v) }
+    mod issue_5747 {
+        const VALUE32: f32 = unsafe { std::mem::transmute(0_u32) };
+        const VALUE64: f64 = unsafe { std::mem::transmute(0_i64) };
+
+        const fn from_bits_32(v: i32) -> f32 {
+            unsafe { std::mem::transmute(v) }
+        }
+
+        const fn from_bits_64(v: u64) -> f64 {
+            unsafe { std::mem::transmute(v) }
+        }
     }
 }
 
