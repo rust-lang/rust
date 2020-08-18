@@ -187,6 +187,8 @@ impl System {
     }
 }
 
+// The AllocRef impl checks the layout size to be non-zero and forwards to the GlobalAlloc impl,
+// which is in `std::sys::*::alloc`.
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for System {
     #[inline]
