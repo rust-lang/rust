@@ -30,9 +30,12 @@ LL |     B
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a boxed trait object using `Box<dyn ObjectSafe>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
    = help: alternatively, create a new `enum` with a variant for each returned type
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn cat() -> Box<dyn ObjectSafe> {
+   |             ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -37,7 +37,7 @@
 
 use crate::astconv::AstConv;
 use crate::check::FnCtxt;
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
@@ -1523,10 +1523,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         };
         if has_impl {
             if is_object_safe {
-                err.help(&format!(
-                    "you can instead return a boxed trait object using `Box<dyn {}>`",
-                    &snippet[5..]
-                ));
+                err.span_suggestion_verbose(
+                    return_sp,
+                    "you could change the return type to be a boxed trait object",
+                    format!("Box<dyn {}>", &snippet[5..]),
+                    Applicability::MachineApplicable,
+                );
             } else {
                 err.help(&format!(
                     "if the trait `{}` were object safe, you could return a boxed trait object",
