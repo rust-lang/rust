@@ -49,6 +49,7 @@ mod early;
 mod internal;
 mod late;
 mod levels;
+mod methods;
 mod non_ascii_idents;
 mod nonstandard_style;
 mod passes;
@@ -73,6 +74,7 @@ use rustc_span::Span;
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
 use internal::*;
+use methods::*;
 use non_ascii_idents::*;
 use nonstandard_style::*;
 use redundant_semicolon::*;
@@ -160,6 +162,7 @@ macro_rules! late_lint_passes {
                 ArrayIntoIter: ArrayIntoIter,
                 ClashingExternDeclarations: ClashingExternDeclarations::new(),
                 DropTraitConstraints: DropTraitConstraints,
+                TemporaryCStringAsPtr: TemporaryCStringAsPtr,
             ]
         );
     };
