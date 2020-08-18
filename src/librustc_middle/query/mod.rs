@@ -282,7 +282,10 @@ rustc_queries! {
         }
 
         /// The `DefId` is the `DefId` of the containing MIR body. Promoteds to not have their own
-        /// `DefId`.
+        /// `DefId`. This function returns all promoteds in the specified body. The body references
+        /// promoteds by the `DefId` and the `mir::Promoted` index. This is necessary, because
+        /// after inlining a body may refer to promoteds from other bodies. In that case you still
+        /// need to use the `DefId` of the original body.
         query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
             desc { |tcx| "optimizing promoted MIR for `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
