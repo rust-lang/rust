@@ -454,7 +454,8 @@ fn configure_cmake(
             }
         }
         cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
-            .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
+            .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx))
+            .define("CMAKE_ASM_COMPILER", sanitize_cc(cc));
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
