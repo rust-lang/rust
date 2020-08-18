@@ -1265,7 +1265,7 @@ impl CStr {
     /// behavior when `ptr` is used inside the `unsafe` block:
     ///
     /// ```no_run
-    /// # #![allow(unused_must_use)]
+    /// # #![allow(unused_must_use)] #![allow(temporary_cstring_as_ptr)]
     /// use std::ffi::CString;
     ///
     /// let ptr = CString::new("Hello").expect("CString::new failed").as_ptr();
