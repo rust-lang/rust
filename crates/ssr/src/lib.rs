@@ -21,7 +21,10 @@
 // code in the `foo` module, we'll insert just `Bar`.
 //
 // Inherent method calls should generally be written in UFCS form. e.g. `foo::Bar::baz($s, $a)` will
-// match `$s.baz($a)`, provided the method call `baz` resolves to the method `foo::Bar::baz`.
+// match `$s.baz($a)`, provided the method call `baz` resolves to the method `foo::Bar::baz`. When a
+// placeholder is the receiver of a method call in the search pattern (e.g. `$s.foo()`), but not in
+// the replacement template (e.g. `bar($s)`), then *, & and &mut will be added as needed to mirror
+// whatever autoderef and autoref was happening implicitly in the matched code.
 //
 // The scope of the search / replace will be restricted to the current selection if any, otherwise
 // it will apply to the whole workspace.
