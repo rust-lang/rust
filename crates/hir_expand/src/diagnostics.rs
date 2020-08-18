@@ -20,8 +20,17 @@ use syntax::SyntaxNodePtr;
 
 use crate::InFile;
 
+#[derive(Copy, Clone, PartialEq)]
+pub struct DiagnosticCode(pub &'static str);
+
+impl DiagnosticCode {
+    pub fn as_str(&self) -> &str {
+        self.0
+    }
+}
+
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
-    fn name(&self) -> &'static str;
+    fn code(&self) -> DiagnosticCode;
     fn message(&self) -> String;
     /// Used in highlighting and related purposes
     fn display_source(&self) -> InFile<SyntaxNodePtr>;

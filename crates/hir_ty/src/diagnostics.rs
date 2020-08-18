@@ -6,7 +6,7 @@ mod unsafe_check;
 use std::any::Any;
 
 use hir_def::DefWithBodyId;
-use hir_expand::diagnostics::{Diagnostic, DiagnosticSink};
+use hir_expand::diagnostics::{Diagnostic, DiagnosticCode, DiagnosticSink};
 use hir_expand::{name::Name, HirFileId, InFile};
 use stdx::format_to;
 use syntax::{ast, AstPtr, SyntaxNodePtr};
@@ -32,8 +32,8 @@ pub struct NoSuchField {
 }
 
 impl Diagnostic for NoSuchField {
-    fn name(&self) -> &'static str {
-        "no-such-field"
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("no-such-field")
     }
 
     fn message(&self) -> String {
@@ -58,8 +58,8 @@ pub struct MissingFields {
 }
 
 impl Diagnostic for MissingFields {
-    fn name(&self) -> &'static str {
-        "missing-structure-fields"
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("missing-structure-fields")
     }
     fn message(&self) -> String {
         let mut buf = String::from("Missing structure fields:\n");
@@ -94,8 +94,8 @@ pub struct MissingPatFields {
 }
 
 impl Diagnostic for MissingPatFields {
-    fn name(&self) -> &'static str {
-        "missing-pat-fields"
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("missing-pat-fields")
     }
     fn message(&self) -> String {
         let mut buf = String::from("Missing structure fields:\n");
@@ -127,8 +127,8 @@ pub struct MissingMatchArms {
 }
 
 impl Diagnostic for MissingMatchArms {
-    fn name(&self) -> &'static str {
-        "missing-match-arm"
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("missing-match-arm")
     }
     fn message(&self) -> String {
         String::from("Missing match arm")
@@ -148,8 +148,8 @@ pub struct MissingOkInTailExpr {
 }
 
 impl Diagnostic for MissingOkInTailExpr {
-    fn name(&self) -> &'static str {
-        "missing-ok-in-tail-expr"
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("missing-ok-in-tail-expr")
     }
     fn message(&self) -> String {
         "wrap return expression in Ok".to_string()
@@ -169,8 +169,8 @@ pub struct BreakOutsideOfLoop {
 }
 
 impl Diagnostic for BreakOutsideOfLoop {
-    fn name(&self) -> &'static str {
-        "break-outside-of-loop"
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("break-outside-of-loop")
     }
     fn message(&self) -> String {
         "break outside of loop".to_string()
@@ -190,8 +190,8 @@ pub struct MissingUnsafe {
 }
 
 impl Diagnostic for MissingUnsafe {
-    fn name(&self) -> &'static str {
-        "missing-unsafe"
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("missing-unsafe")
     }
     fn message(&self) -> String {
         format!("This operation is unsafe and requires an unsafe function or block")
@@ -213,8 +213,8 @@ pub struct MismatchedArgCount {
 }
 
 impl Diagnostic for MismatchedArgCount {
-    fn name(&self) -> &'static str {
-        "mismatched-arg-count"
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("mismatched-arg-count")
     }
     fn message(&self) -> String {
         let s = if self.expected == 1 { "" } else { "s" };
