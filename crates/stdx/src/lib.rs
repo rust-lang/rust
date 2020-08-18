@@ -17,7 +17,7 @@ pub fn timeit(label: &'static str) -> impl Drop {
 
     impl Drop for Guard {
         fn drop(&mut self) {
-            eprintln!("{}: {:?}", self.label, self.start.elapsed())
+            eprintln!("{}: {:.2?}", self.label, self.start.elapsed())
         }
     }
 
