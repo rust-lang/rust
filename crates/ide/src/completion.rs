@@ -18,6 +18,7 @@ mod complete_unqualified_path;
 mod complete_postfix;
 mod complete_macro_in_item_position;
 mod complete_trait_impl;
+mod unstable_feature_descriptor;
 
 use ide_db::RootDatabase;
 
@@ -27,6 +28,11 @@ use crate::{
         completion_item::{CompletionKind, Completions},
     },
     FilePosition,
+};
+
+//FIXME: cyclic imports caused by xtask generation, this should be better
+use crate::completion::{
+    complete_attribute::LintCompletion, unstable_feature_descriptor::UNSTABLE_FEATURE_DESCRIPTOR,
 };
 
 pub use crate::completion::{

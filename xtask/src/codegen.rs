@@ -9,6 +9,7 @@ mod gen_syntax;
 mod gen_parser_tests;
 mod gen_assists_docs;
 mod gen_feature_docs;
+mod gen_unstable_future_descriptor;
 
 use std::{
     fmt, mem,
@@ -26,7 +27,11 @@ pub use self::{
     gen_feature_docs::generate_feature_docs,
     gen_parser_tests::generate_parser_tests,
     gen_syntax::generate_syntax,
+    gen_unstable_future_descriptor::generate_unstable_future_descriptor,
 };
+
+// Directory used by xtask
+const STORAGE: &str = ".xtask";
 
 const GRAMMAR_DIR: &str = "crates/parser/src/grammar";
 const OK_INLINE_TESTS_DIR: &str = "crates/syntax/test_data/parser/inline/ok";
@@ -38,6 +43,10 @@ const AST_TOKENS: &str = "crates/syntax/src/ast/generated/tokens.rs";
 
 const ASSISTS_DIR: &str = "crates/assists/src/handlers";
 const ASSISTS_TESTS: &str = "crates/assists/src/tests/generated.rs";
+
+const REPOSITORY_URL: &str = "https://github.com/rust-lang/rust";
+const UNSTABLE_FEATURE: &str = "crates/ide/src/completion/unstable_feature_descriptor.rs";
+const REPO_PATH: &str = "src/doc/unstable-book/src";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Mode {

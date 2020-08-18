@@ -112,6 +112,8 @@ fn check_todo(path: &Path, text: &str) {
         // To support generating `todo!()` in assists, we have `expr_todo()` in
         // `ast::make`.
         "ast/make.rs",
+        // The documentation in string literals may contain anything for its own purposes
+        "completion/unstable_feature_descriptor.rs",
     ];
     if need_todo.iter().any(|p| path.ends_with(p)) {
         return;
