@@ -70,10 +70,6 @@ jobs:
     - name: Prepare cache
       run: cargo xtask pre-cache
 
-    - name: Prepare cache 2
-      if: matrix.os == 'windows-latest'
-      run: Remove-Item ./target/debug/xtask.exe, ./target/debug/deps/xtask.exe
-
   # Weird targets to catch non-portable code
   rust-cross:
     name: Rust Cross
