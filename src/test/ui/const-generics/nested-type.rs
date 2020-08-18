@@ -4,8 +4,7 @@
 #![cfg_attr(full, allow(incomplete_features))]
 #![cfg_attr(min, feature(min_const_generics))]
 
-struct Foo<const N: [u8; {
-//[min]~^ ERROR using `[u8; _]` as const generic
+struct Foo<const N: [u8; { //[min]~ ERROR `[u8; _]` is forbidden
     struct Foo<const N: usize>;
 
     impl<const N: usize> Foo<N> {

@@ -6,12 +6,12 @@
 #![cfg_attr(min, feature(min_const_generics))]
 
 pub fn function_with_str<const STRING: &'static str>() -> &'static str {
-    //[min]~^ ERROR using `&'static str` as const
+    //[min]~^ ERROR `&'static str` is forbidden
     STRING
 }
 
 pub fn function_with_bytes<const BYTES: &'static [u8]>() -> &'static [u8] {
-    //[min]~^ ERROR using `&'static [u8]` as const
+    //[min]~^ ERROR `&'static [u8]` is forbidden
     BYTES
 }
 

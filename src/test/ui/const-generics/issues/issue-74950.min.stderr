@@ -1,4 +1,4 @@
-error: using `Inner` as const generic parameters is forbidden
+error: `Inner` is forbidden as the type of a const generic parameter
   --> $DIR/issue-74950.rs:18:23
    |
 LL | struct Outer<const I: Inner>;
@@ -7,7 +7,7 @@ LL | struct Outer<const I: Inner>;
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error: using `Inner` as const generic parameters is forbidden
+error: `Inner` is forbidden as the type of a const generic parameter
   --> $DIR/issue-74950.rs:18:23
    |
 LL | struct Outer<const I: Inner>;
@@ -16,7 +16,7 @@ LL | struct Outer<const I: Inner>;
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error: using `Inner` as const generic parameters is forbidden
+error: `Inner` is forbidden as the type of a const generic parameter
   --> $DIR/issue-74950.rs:18:23
    |
 LL | struct Outer<const I: Inner>;
@@ -25,7 +25,7 @@ LL | struct Outer<const I: Inner>;
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error: using `Inner` as const generic parameters is forbidden
+error: `Inner` is forbidden as the type of a const generic parameter
   --> $DIR/issue-74950.rs:18:23
    |
 LL | struct Outer<const I: Inner>;
@@ -34,7 +34,7 @@ LL | struct Outer<const I: Inner>;
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error: using `Inner` as const generic parameters is forbidden
+error: `Inner` is forbidden as the type of a const generic parameter
   --> $DIR/issue-74950.rs:18:23
    |
 LL | struct Outer<const I: Inner>;

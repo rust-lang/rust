@@ -1,4 +1,4 @@
-error: using `&'static str` as const generic parameters is forbidden
+error: `&'static str` is forbidden as the type of a const generic parameter
   --> $DIR/slice-const-param.rs:8:40
    |
 LL | pub fn function_with_str<const STRING: &'static str>() -> &'static str {
@@ -7,7 +7,7 @@ LL | pub fn function_with_str<const STRING: &'static str>() -> &'static str {
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error: using `&'static [u8]` as const generic parameters is forbidden
+error: `&'static [u8]` is forbidden as the type of a const generic parameter
   --> $DIR/slice-const-param.rs:13:41
    |
 LL | pub fn function_with_bytes<const BYTES: &'static [u8]>() -> &'static [u8] {
