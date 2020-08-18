@@ -7,23 +7,7 @@ LL |     let _ = a and b;
    = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
 
 error: `and` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:13:15
-   |
-LL |     let _ = a and b;
-   |               ^^^ help: use `&&` to perform logical conjunction
-   |
-   = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
-
-error: `and` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:16:10
-   |
-LL |     if a and b {
-   |          ^^^ help: use `&&` to perform logical conjunction
-   |
-   = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
-
-error: `and` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:16:10
+  --> $DIR/issue-54109-without-witness.rs:15:10
    |
 LL |     if a and b {
    |          ^^^ help: use `&&` to perform logical conjunction
@@ -31,7 +15,7 @@ LL |     if a and b {
    = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
 
 error: `or` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:26:15
+  --> $DIR/issue-54109-without-witness.rs:24:15
    |
 LL |     let _ = a or b;
    |               ^^ help: use `||` to perform logical disjunction
@@ -39,23 +23,7 @@ LL |     let _ = a or b;
    = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
 
 error: `or` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:26:15
-   |
-LL |     let _ = a or b;
-   |               ^^ help: use `||` to perform logical disjunction
-   |
-   = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
-
-error: `or` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:29:10
-   |
-LL |     if a or b {
-   |          ^^ help: use `||` to perform logical disjunction
-   |
-   = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
-
-error: `or` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:29:10
+  --> $DIR/issue-54109-without-witness.rs:26:10
    |
 LL |     if a or b {
    |          ^^ help: use `||` to perform logical disjunction
@@ -63,15 +31,7 @@ LL |     if a or b {
    = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
 
 error: `and` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:38:11
-   |
-LL |     if (a and b) {
-   |           ^^^ help: use `&&` to perform logical conjunction
-   |
-   = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
-
-error: `and` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:38:11
+  --> $DIR/issue-54109-without-witness.rs:34:11
    |
 LL |     if (a and b) {
    |           ^^^ help: use `&&` to perform logical conjunction
@@ -79,15 +39,7 @@ LL |     if (a and b) {
    = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
 
 error: `or` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:47:11
-   |
-LL |     if (a or b) {
-   |           ^^ help: use `||` to perform logical disjunction
-   |
-   = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
-
-error: `or` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:47:11
+  --> $DIR/issue-54109-without-witness.rs:42:11
    |
 LL |     if (a or b) {
    |           ^^ help: use `||` to perform logical disjunction
@@ -95,15 +47,7 @@ LL |     if (a or b) {
    = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
 
 error: `and` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:56:13
-   |
-LL |     while a and b {
-   |             ^^^ help: use `&&` to perform logical conjunction
-   |
-   = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
-
-error: `and` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:56:13
+  --> $DIR/issue-54109-without-witness.rs:50:13
    |
 LL |     while a and b {
    |             ^^^ help: use `&&` to perform logical conjunction
@@ -111,20 +55,12 @@ LL |     while a and b {
    = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
 
 error: `or` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:65:13
+  --> $DIR/issue-54109-without-witness.rs:58:13
    |
 LL |     while a or b {
    |             ^^ help: use `||` to perform logical disjunction
    |
    = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
 
-error: `or` is not a logical operator
-  --> $DIR/issue-54109-without-witness.rs:65:13
-   |
-LL |     while a or b {
-   |             ^^ help: use `||` to perform logical disjunction
-   |
-   = note: unlike in e.g., python and PHP, `&&` and `||` are used for logical operators
-
-error: aborting due to 16 previous errors
+error: aborting due to 8 previous errors
 
