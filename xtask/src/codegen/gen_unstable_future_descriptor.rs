@@ -1,7 +1,7 @@
 //! Generates descriptors structure for unstable feature from Unstable Book
 
-use crate::codegen::{update, reformat};
 use crate::codegen::{self, project_root, Mode, Result};
+use crate::codegen::{reformat, update};
 use crate::not_bash::{fs2, pushd, run};
 use proc_macro2::TokenStream;
 use quote::quote;
