@@ -16,13 +16,16 @@ use crate::mem::MaybeUninit;
 /// If you’re wanting to copy the contents of one file to another and you’re
 /// working with filesystem paths, see the [`fs::copy`] function.
 ///
-/// [`fs::copy`]: ../fs/fn.copy.html
+/// [`fs::copy`]: crate::fs::copy
 ///
 /// # Errors
 ///
-/// This function will return an error immediately if any call to `read` or
-/// `write` returns an error. All instances of `ErrorKind::Interrupted` are
+/// This function will return an error immediately if any call to [`read`] or
+/// [`write`] returns an error. All instances of [`ErrorKind::Interrupted`] are
 /// handled by this function and the underlying operation is retried.
+///
+/// [`read`]: Read::read
+/// [`write`]: Write::write
 ///
 /// # Examples
 ///
@@ -70,10 +73,8 @@ where
 
 /// A reader which is always at EOF.
 ///
-/// This struct is generally created by calling [`empty`]. Please see
-/// the documentation of [`empty()`][`empty`] for more details.
-///
-/// [`empty`]: fn.empty.html
+/// This struct is generally created by calling [`empty()`]. Please see
+/// the documentation of [`empty()`] for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Empty {
     _priv: (),
@@ -82,8 +83,6 @@ pub struct Empty {
 /// Constructs a new handle to an empty reader.
 ///
 /// All reads from the returned reader will return [`Ok`]`(0)`.
-///
-/// [`Ok`]: ../result/enum.Result.html#variant.Ok
 ///
 /// # Examples
 ///
@@ -132,10 +131,8 @@ impl fmt::Debug for Empty {
 
 /// A reader which yields one byte over and over and over and over and over and...
 ///
-/// This struct is generally created by calling [`repeat`][repeat]. Please
-/// see the documentation of `repeat()` for more details.
-///
-/// [repeat]: fn.repeat.html
+/// This struct is generally created by calling [`repeat()`]. Please
+/// see the documentation of [`repeat()`] for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat {
     byte: u8,
@@ -199,10 +196,8 @@ impl fmt::Debug for Repeat {
 
 /// A writer which will move data into the void.
 ///
-/// This struct is generally created by calling [`sink`][sink]. Please
-/// see the documentation of `sink()` for more details.
-///
-/// [sink]: fn.sink.html
+/// This struct is generally created by calling [`sink`]. Please
+/// see the documentation of [`sink()`] for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Sink {
     _priv: (),
@@ -210,8 +205,10 @@ pub struct Sink {
 
 /// Creates an instance of a writer which will successfully consume all data.
 ///
-/// All calls to `write` on the returned instance will return `Ok(buf.len())`
+/// All calls to [`write`] on the returned instance will return `Ok(buf.len())`
 /// and the contents of the buffer will not be inspected.
+///
+/// [`write`]: Write::write
 ///
 /// # Examples
 ///
