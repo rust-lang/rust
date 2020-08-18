@@ -373,7 +373,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
-    /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
+    /// [`AtomicIsize::fetch_add`](crate::sync::atomic::AtomicIsize::fetch_add).
     pub fn atomic_xadd<T: Copy>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
     ///
@@ -381,7 +381,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
-    /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
+    /// [`AtomicIsize::fetch_add`](crate::sync::atomic::AtomicIsize::fetch_add).
     pub fn atomic_xadd_acq<T: Copy>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
     ///
@@ -389,7 +389,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
-    /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
+    /// [`AtomicIsize::fetch_add`](crate::sync::atomic::AtomicIsize::fetch_add).
     pub fn atomic_xadd_rel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
     ///
@@ -397,7 +397,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
-    /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
+    /// [`AtomicIsize::fetch_add`](crate::sync::atomic::AtomicIsize::fetch_add).
     pub fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
     ///
@@ -405,7 +405,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
-    /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
+    /// [`AtomicIsize::fetch_add`](crate::sync::atomic::AtomicIsize::fetch_add).
     pub fn atomic_xadd_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Subtract from the current value, returning the previous value.
@@ -414,7 +414,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
-    /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
+    /// [`AtomicIsize::fetch_sub`](crate::sync::atomic::AtomicIsize::fetch_sub).
     pub fn atomic_xsub<T: Copy>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
     ///
@@ -422,7 +422,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
-    /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
+    /// [`AtomicIsize::fetch_sub`](crate::sync::atomic::AtomicIsize::fetch_sub).
     pub fn atomic_xsub_acq<T: Copy>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
     ///
@@ -430,7 +430,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
-    /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
+    /// [`AtomicIsize::fetch_sub`](crate::sync::atomic::AtomicIsize::fetch_sub).
     pub fn atomic_xsub_rel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
     ///
@@ -438,7 +438,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
     /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
-    /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
+    /// [`AtomicIsize::fetch_sub`](crate::sync::atomic::AtomicIsize::fetch_sub).
     pub fn atomic_xsub_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
     ///
@@ -446,7 +446,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
     /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
-    /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
+    /// [`AtomicIsize::fetch_sub`](crate::sync::atomic::AtomicIsize::fetch_sub).
     pub fn atomic_xsub_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Bitwise and with the current value, returning the previous value.
