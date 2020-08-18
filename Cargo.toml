@@ -77,12 +77,13 @@ object.debug = 0
 [patch."https://github.com/rust-lang/cargo"]
 cargo = { path = "src/tools/cargo" }
 
-[patch.crates-io]
+[patch."https://github.com/rust-lang/rustfmt"]
 # Similar to Cargo above we want the RLS to use a vendored version of `rustfmt`
 # that we're shipping as well (to ensure that the rustfmt in RLS and the
 # `rustfmt` executable are the same exact version).
 rustfmt-nightly = { path = "src/tools/rustfmt" }
 
+[patch.crates-io]
 # See comments in `src/tools/rustc-workspace-hack/README.md` for what's going on
 # here
 rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
