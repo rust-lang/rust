@@ -280,7 +280,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `load` method by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
-    /// [`AtomicBool::load`](../../std/sync/atomic/struct.AtomicBool.html#method.load).
+    /// [`AtomicBool::load`](crate::sync::atomic::AtomicBool::load).
     pub fn atomic_load<T: Copy>(src: *const T) -> T;
     /// Loads the current value of the pointer.
     ///
@@ -288,7 +288,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `load` method by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
-    /// [`AtomicBool::load`](../../std/sync/atomic/struct.AtomicBool.html#method.load).
+    /// [`AtomicBool::load`](crate::sync::atomic::AtomicBool::load).
     pub fn atomic_load_acq<T: Copy>(src: *const T) -> T;
     /// Loads the current value of the pointer.
     ///
@@ -296,7 +296,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `load` method by passing
     /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
-    /// [`AtomicBool::load`](../../std/sync/atomic/struct.AtomicBool.html#method.load).
+    /// [`AtomicBool::load`](crate::sync::atomic::AtomicBool::load).
     pub fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
     pub fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
 
@@ -306,7 +306,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `store` method by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
-    /// [`AtomicBool::store`](../../std/sync/atomic/struct.AtomicBool.html#method.store).
+    /// [`AtomicBool::store`](crate::sync::atomic::AtomicBool::store).
     pub fn atomic_store<T: Copy>(dst: *mut T, val: T);
     /// Stores the value at the specified memory location.
     ///
@@ -314,7 +314,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `store` method by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
-    /// [`AtomicBool::store`](../../std/sync/atomic/struct.AtomicBool.html#method.store).
+    /// [`AtomicBool::store`](crate::sync::atomic::AtomicBool::store).
     pub fn atomic_store_rel<T: Copy>(dst: *mut T, val: T);
     /// Stores the value at the specified memory location.
     ///
@@ -322,7 +322,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `store` method by passing
     /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
-    /// [`AtomicBool::store`](../../std/sync/atomic/struct.AtomicBool.html#method.store).
+    /// [`AtomicBool::store`](crate::sync::atomic::AtomicBool::store).
     pub fn atomic_store_relaxed<T: Copy>(dst: *mut T, val: T);
     pub fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
 
@@ -332,7 +332,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `swap` method by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
-    /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
+    /// [`AtomicBool::swap`](crate::sync::atomic::AtomicBool::swap).
     pub fn atomic_xchg<T: Copy>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
     ///
@@ -340,7 +340,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `swap` method by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
-    /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
+    /// [`AtomicBool::swap`](crate::sync::atomic::AtomicBool::swap).
     pub fn atomic_xchg_acq<T: Copy>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
     ///
@@ -348,7 +348,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `swap` method by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
-    /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
+    /// [`AtomicBool::swap`](crate::sync::atomic::AtomicBool::swap).
     pub fn atomic_xchg_rel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
     ///
@@ -356,7 +356,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `swap` method by passing
     /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
-    /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
+    /// [`AtomicBool::swap`](crate::sync::atomic::AtomicBool::swap).
     pub fn atomic_xchg_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
     ///
@@ -364,7 +364,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `swap` method by passing
     /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
-    /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
+    /// [`AtomicBool::swap`](crate::sync::atomic::AtomicBool::swap).
     pub fn atomic_xchg_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Adds to the current value, returning the previous value.
@@ -455,7 +455,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_and` method by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
+    /// [`AtomicBool::fetch_and`](crate::sync::atomic::AtomicBool::fetch_and).
     pub fn atomic_and<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
     ///
@@ -463,7 +463,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_and` method by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
+    /// [`AtomicBool::fetch_and`](crate::sync::atomic::AtomicBool::fetch_and).
     pub fn atomic_and_acq<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
     ///
@@ -471,7 +471,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_and` method by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
+    /// [`AtomicBool::fetch_and`](crate::sync::atomic::AtomicBool::fetch_and).
     pub fn atomic_and_rel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
     ///
@@ -479,7 +479,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_and` method by passing
     /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
+    /// [`AtomicBool::fetch_and`](crate::sync::atomic::AtomicBool::fetch_and).
     pub fn atomic_and_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
     ///
@@ -487,7 +487,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_and` method by passing
     /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
+    /// [`AtomicBool::fetch_and`](crate::sync::atomic::AtomicBool::fetch_and).
     pub fn atomic_and_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Bitwise nand with the current value, returning the previous value.
@@ -496,7 +496,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
+    /// [`AtomicBool::fetch_nand`](crate::sync::atomic::AtomicBool::fetch_nand).
     pub fn atomic_nand<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
     ///
@@ -504,7 +504,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
+    /// [`AtomicBool::fetch_nand`](crate::sync::atomic::AtomicBool::fetch_nand).
     pub fn atomic_nand_acq<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
     ///
@@ -512,7 +512,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
+    /// [`AtomicBool::fetch_nand`](crate::sync::atomic::AtomicBool::fetch_nand).
     pub fn atomic_nand_rel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
     ///
@@ -520,7 +520,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
     /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
+    /// [`AtomicBool::fetch_nand`](crate::sync::atomic::AtomicBool::fetch_nand).
     pub fn atomic_nand_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
     ///
@@ -528,7 +528,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
     /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
+    /// [`AtomicBool::fetch_nand`](crate::sync::atomic::AtomicBool::fetch_nand).
     pub fn atomic_nand_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Bitwise or with the current value, returning the previous value.
@@ -537,7 +537,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_or` method by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
+    /// [`AtomicBool::fetch_or`](crate::sync::atomic::AtomicBool::fetch_or).
     pub fn atomic_or<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
     ///
@@ -545,7 +545,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_or` method by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
+    /// [`AtomicBool::fetch_or`](crate::sync::atomic::AtomicBool::fetch_or).
     pub fn atomic_or_acq<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
     ///
@@ -553,7 +553,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_or` method by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
+    /// [`AtomicBool::fetch_or`](crate::sync::atomic::AtomicBool::fetch_or).
     pub fn atomic_or_rel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
     ///
@@ -561,7 +561,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_or` method by passing
     /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
+    /// [`AtomicBool::fetch_or`](crate::sync::atomic::AtomicBool::fetch_or).
     pub fn atomic_or_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
     ///
@@ -569,7 +569,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_or` method by passing
     /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
+    /// [`AtomicBool::fetch_or`](crate::sync::atomic::AtomicBool::fetch_or).
     pub fn atomic_or_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Bitwise xor with the current value, returning the previous value.
@@ -578,7 +578,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
+    /// [`AtomicBool::fetch_xor`](crate::sync::atomic::AtomicBool::fetch_xor).
     pub fn atomic_xor<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
     ///
@@ -586,7 +586,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
+    /// [`AtomicBool::fetch_xor`](crate::sync::atomic::AtomicBool::fetch_xor).
     pub fn atomic_xor_acq<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
     ///
@@ -594,7 +594,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
+    /// [`AtomicBool::fetch_xor`](crate::sync::atomic::AtomicBool::fetch_xor).
     pub fn atomic_xor_rel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
     ///
@@ -602,7 +602,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
     /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
+    /// [`AtomicBool::fetch_xor`](crate::sync::atomic::AtomicBool::fetch_xor).
     pub fn atomic_xor_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
     ///
@@ -610,7 +610,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
     /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
-    /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
+    /// [`AtomicBool::fetch_xor`](crate::sync::atomic::AtomicBool::fetch_xor).
     pub fn atomic_xor_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Maximum with the current value using a signed comparison.
