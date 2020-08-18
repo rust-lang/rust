@@ -492,8 +492,9 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         // treat the 'local' and 'foreign' cases almost identically during deserialization:
         // we can call `imported_source_files` for the proper crate, and binary search
         // through the returned slice using our span.
-        let imported_source_files = if cnum == LOCAL_CRATE {
-            decoder.cdata().imported_source_files(sess)
+        let cdata = decoder.cdata();
+        let imported_source_files = if cnum == cdata.cnum {
+            cdata.imported_source_files(sess)
         } else {
             debug!(
                 "SpecializedDecoder<Span>::specialized_decode: loading source files from cnum {:?}",
@@ -506,7 +507,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
             // of bounds for our initial 'guess'
             decoder.last_source_file_index = 0;
 
-            let foreign_data = decoder.cdata().cstore.get_crate_data(cnum);
+            let foreign_data = cdata.cstore.get_crate_data(cnum);
             foreign_data.imported_source_files(sess)
         };
 
@@ -525,7 +526,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
 
                 // Don't try to cache the index for foreign spans,
                 // as this would require a map from CrateNums to indices
-                if cnum == LOCAL_CRATE {
+                if cnum == cdata.cnum {
                     decoder.last_source_file_index = index;
                 }
                 &imported_source_files[index]
