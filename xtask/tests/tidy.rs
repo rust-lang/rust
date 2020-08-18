@@ -82,7 +82,7 @@ MIT/Apache-2.0
 MIT/Apache-2.0 AND BSD-2-Clause
 Unlicense OR MIT
 Unlicense/MIT
-Zlib
+Zlib OR Apache-2.0 OR MIT
 "
     .lines()
     .filter(|it| !it.is_empty())
