@@ -40,10 +40,8 @@ use crate::string;
 /// provide its own errors while also revealing some of the implementation for
 /// debugging via [`source`] chains.
 ///
-/// [`Result<T, E>`]: ../result/enum.Result.html
-/// [`Display`]: ../fmt/trait.Display.html
-/// [`Debug`]: ../fmt/trait.Debug.html
-/// [`source`]: trait.Error.html#method.source
+/// [`Result<T, E>`]: Result
+/// [`source`]: Error::source
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Error: Debug + Display {
     /// The lower-level source of this error, if any.
@@ -164,8 +162,6 @@ mod private {
 impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     /// Converts a type of [`Error`] into a box of dyn [`Error`].
     ///
-    /// [`Error`]: ../error/trait.Error.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -198,8 +194,6 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of
     /// dyn [`Error`] + [`Send`] + [`Sync`].
-    ///
-    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -237,8 +231,6 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for Box<dyn Error + Send + Sync> {
     /// Converts a [`String`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
-    ///
-    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -283,8 +275,6 @@ impl From<String> for Box<dyn Error + Send + Sync> {
 impl From<String> for Box<dyn Error> {
     /// Converts a [`String`] into a box of dyn [`Error`].
     ///
-    /// [`Error`]: ../error/trait.Error.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -305,8 +295,6 @@ impl From<String> for Box<dyn Error> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
-    ///
-    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -329,8 +317,6 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
 impl From<&str> for Box<dyn Error> {
     /// Converts a [`str`] into a box of dyn [`Error`].
     ///
-    /// [`Error`]: ../error/trait.Error.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -349,9 +335,6 @@ impl From<&str> for Box<dyn Error> {
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`Cow`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
-    ///
-    /// [`Cow`]: ../borrow/enum.Cow.html
-    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -373,9 +356,6 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     /// Converts a [`Cow`] into a box of dyn [`Error`].
-    ///
-    /// [`Cow`]: ../borrow/enum.Cow.html
-    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -703,7 +683,7 @@ impl dyn Error {
     /// assert!(iter.next().is_none());
     /// ```
     ///
-    /// [`source`]: trait.Error.html#method.source
+    /// [`source`]: Error::source
     #[unstable(feature = "error_iter", issue = "58520")]
     #[inline]
     pub fn chain(&self) -> Chain<'_> {
@@ -715,8 +695,6 @@ impl dyn Error {
 ///
 /// If you want to omit the initial error and only process
 /// its sources, use `skip(1)`.
-///
-/// [`Error`]: trait.Error.html
 #[unstable(feature = "error_iter", issue = "58520")]
 #[derive(Clone, Debug)]
 pub struct Chain<'a> {
