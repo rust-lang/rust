@@ -209,16 +209,14 @@ unsafe impl AllocRef for Global {
         );
 
         // SAFETY: `new_size` must be non-zero, which is checked in the match expression.
+        // If `new_size` is zero, then `old_size` has to be zero as well.
         // Other conditions must be upheld by the caller
         unsafe {
             match layout.size() {
-                old_size if old_size == new_size => {
-                    Ok(NonNull::slice_from_raw_parts(ptr, new_size))
-                }
                 0 => self.alloc(Layout::from_size_align_unchecked(new_size, layout.align())),
                 old_size => {
-                    // `realloc` probably checks for `new_size > size` or something similar.
-                    intrinsics::assume(new_size > old_size);
+                    // `realloc` probably checks for `new_size >= size` or something similar.
+                    intrinsics::assume(new_size >= old_size);
                     let raw_ptr = realloc(ptr.as_ptr(), layout, new_size);
                     let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
                     Ok(NonNull::slice_from_raw_parts(ptr, new_size))
@@ -240,16 +238,14 @@ unsafe impl AllocRef for Global {
         );
 
         // SAFETY: `new_size` must be non-zero, which is checked in the match expression.
+        // If `new_size` is zero, then `old_size` has to be zero as well.
         // Other conditions must be upheld by the caller
         unsafe {
             match layout.size() {
-                old_size if old_size == new_size => {
-                    Ok(NonNull::slice_from_raw_parts(ptr, new_size))
-                }
                 0 => self.alloc_zeroed(Layout::from_size_align_unchecked(new_size, layout.align())),
                 old_size => {
-                    // `realloc` probably checks for `new_size > size` or something similar.
-                    intrinsics::assume(new_size > old_size);
+                    // `realloc` probably checks for `new_size >= size` or something similar.
+                    intrinsics::assume(new_size >= old_size);
                     let raw_ptr = realloc(ptr.as_ptr(), layout, new_size);
                     raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
                     let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
@@ -272,11 +268,8 @@ unsafe impl AllocRef for Global {
             "`new_size` must be smaller than or equal to `layout.size()`"
         );
 
-        let ptr = if new_size == old_size {
-            ptr
-        } else if new_size == 0 {
-            // SAFETY: `layout` is non-zero in size as `old_size` != `new_size`
-            // Other conditions must be upheld by the caller
+        let ptr = if new_size == 0 {
+            // SAFETY: conditions must be upheld by the caller
             unsafe {
                 self.dealloc(ptr, layout);
             }
@@ -285,8 +278,8 @@ unsafe impl AllocRef for Global {
             // SAFETY: new_size is not zero,
             // Other conditions must be upheld by the caller
             let raw_ptr = unsafe {
-                // `realloc` probably checks for `new_size < old_size` or something similar.
-                intrinsics::assume(new_size < old_size);
+                // `realloc` probably checks for `new_size <= old_size` or something similar.
+                intrinsics::assume(new_size <= old_size);
                 realloc(ptr.as_ptr(), layout, new_size)
             };
             NonNull::new(raw_ptr).ok_or(AllocErr)?
