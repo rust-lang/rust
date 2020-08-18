@@ -16,6 +16,6 @@ fn main() {
             y: 99,
         };
         let p = unsafe { &foo.x };
-        let i = *p; //~ ERROR alignment 4 is required
+        let i = *p; //~ERROR alignment 4 is required
     }
 }
