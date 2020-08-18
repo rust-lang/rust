@@ -524,10 +524,10 @@ fn main_options(options: config::Options) -> MainResult {
     let (error_format, edition, debugging_options) = diag_opts;
     let diag = core::new_handler(error_format, None, &debugging_options);
     match output_format {
-        None | Some(config::OutputFormat::Html) => sess.time("render html", || {
+        None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
             run_renderer::<html::render::Context>(krate, renderopts, renderinfo, &diag, edition)
         }),
-        Some(config::OutputFormat::Json) => sess.time("render json", || {
+        Some(config::OutputFormat::Json) => sess.time("render_json", || {
             run_renderer::<json::JsonRenderer>(krate, renderopts, renderinfo, &diag, edition)
         }),
     }

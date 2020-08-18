@@ -409,7 +409,7 @@ pub fn run_core(
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
-                tcx.sess.time("emit ignored resolution errors", || {
+                tcx.sess.time("emit_ignored_resolution_errors", || {
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 });
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
@@ -433,7 +433,7 @@ pub fn run_core(
                 // actually be loaded, just in case they're only referred to inside
                 // intra-doc-links
                 resolver.borrow_mut().access(|resolver| {
-                    sess.time("load extern crates", || {
+                    sess.time("load_extern_crates", || {
                     for extern_name in &extern_names {
                         resolver
                             .resolve_str_path_error(
@@ -551,7 +551,7 @@ fn run_global_ctxt(
                 };
                 debug!("crate: {:?}", tcx.hir().krate());
 
-                let mut krate = tcx.sess.time("clean crate", || clean::krate(&mut ctxt));
+    let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
                 if let Some(ref m) = krate.module {
                     if let None | Some("") = m.doc_value() {
