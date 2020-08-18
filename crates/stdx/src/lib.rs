@@ -141,7 +141,7 @@ pub struct RacyFlag(AtomicUsize);
 
 impl RacyFlag {
     pub const fn new() -> RacyFlag {
-        RacyFlag(AtomicUsize::new(0))
+        RacyFlag(AtomicUsize::new(!0))
     }
 
     pub fn get(&self, init: impl FnMut() -> bool) -> bool {
