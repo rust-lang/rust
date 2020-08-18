@@ -175,8 +175,9 @@ impl Global {
         }
     }
 
+    // Safety: Same as `AllocRef::grow`
     #[inline]
-    fn grow_impl(
+    unsafe fn grow_impl(
         &mut self,
         ptr: NonNull<u8>,
         layout: Layout,
@@ -241,7 +242,8 @@ unsafe impl AllocRef for Global {
         layout: Layout,
         new_size: usize,
     ) -> Result<NonNull<[u8]>, AllocErr> {
-        self.grow_impl(ptr, layout, new_size, false)
+        // SAFETY: all conditions must be upheld by the caller
+        unsafe { self.grow_impl(ptr, layout, new_size, false) }
     }
 
     #[inline]
@@ -251,7 +253,8 @@ unsafe impl AllocRef for Global {
         layout: Layout,
         new_size: usize,
     ) -> Result<NonNull<[u8]>, AllocErr> {
-        self.grow_impl(ptr, layout, new_size, true)
+        // SAFETY: all conditions must be upheld by the caller
+        unsafe { self.grow_impl(ptr, layout, new_size, true) }
     }
 
     #[inline]
