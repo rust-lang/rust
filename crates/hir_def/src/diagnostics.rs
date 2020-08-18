@@ -2,7 +2,7 @@
 
 use std::any::Any;
 
-use hir_expand::diagnostics::Diagnostic;
+use hir_expand::diagnostics::{Diagnostic, DiagnosticCode};
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 
 use hir_expand::{HirFileId, InFile};
@@ -15,8 +15,8 @@ pub struct UnresolvedModule {
 }
 
 impl Diagnostic for UnresolvedModule {
-    fn name(&self) -> &'static str {
-        "unresolved-module"
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("unresolved-module")
     }
     fn message(&self) -> String {
         "unresolved module".to_string()

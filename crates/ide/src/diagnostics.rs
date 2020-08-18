@@ -25,7 +25,7 @@ use self::fixes::DiagnosticWithFix;
 
 #[derive(Debug)]
 pub struct Diagnostic {
-    pub name: Option<String>,
+    // pub name: Option<String>,
     pub message: String,
     pub range: TextRange,
     pub severity: Severity,
@@ -71,7 +71,7 @@ pub(crate) fn diagnostics(
 
     // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
     res.extend(parse.errors().iter().take(128).map(|err| Diagnostic {
-        name: None,
+        // name: None,
         range: err.range(),
         message: format!("Syntax Error: {}", err),
         severity: Severity::Error,
@@ -98,14 +98,14 @@ pub(crate) fn diagnostics(
         })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !(diag.is_experimental() && config.disable_experimental))
-        .filter(|diag| !config.disabled.contains(diag.name()));
+        .filter(|diag| !config.disabled.contains(diag.code().as_str()));
 
     // Finalize the `DiagnosticSink` building process.
     let mut sink = sink_builder
         // Diagnostics not handled above get no fix and default treatment.
         .build(|d| {
             res.borrow_mut().push(Diagnostic {
-                name: Some(d.name().into()),
+                // name: Some(d.name().into()),
                 message: d.message(),
                 range: sema.diagnostics_display_range(d).range,
                 severity: Severity::Error,
@@ -122,7 +122,7 @@ pub(crate) fn diagnostics(
 
 fn diagnostic_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabase>) -> Diagnostic {
     Diagnostic {
-        name: Some(d.name().into()),
+        // name: Some(d.name().into()),
         range: sema.diagnostics_display_range(d).range,
         message: d.message(),
         severity: Severity::Error,
@@ -149,7 +149,7 @@ fn check_unnecessary_braces_in_use_statement(
                 });
 
         acc.push(Diagnostic {
-            name: None,
+            // name: None,
             range: use_range,
             message: "Unnecessary braces in use statement".to_string(),
             severity: Severity::WeakWarning,
@@ -196,7 +196,7 @@ fn check_struct_shorthand_initialization(
 
                 let field_range = record_field.syntax().text_range();
                 acc.push(Diagnostic {
-                    name: None,
+                    // name: None,
                     range: field_range,
                     message: "Shorthand struct initialization".to_string(),
                     severity: Severity::WeakWarning,
@@ -292,54 +292,6 @@ mod tests {
             })
             .collect::<Vec<_>>();
         assert_eq!(diagnostics.len(), 0, "unexpected diagnostics:\n{:#?}", diagnostics);
-    }
-
-    /// Takes a multi-file input fixture with annotated cursor position and the list of disabled diagnostics,
-    /// and checks that provided diagnostics aren't spawned during analysis.
-    fn check_disabled_diagnostics(ra_fixture: &str, disabled_diagnostics: &[&'static str]) {
-        let mut config = DiagnosticsConfig::default();
-        config.disabled = disabled_diagnostics.into_iter().map(|diag| diag.to_string()).collect();
-
-        let mock = MockAnalysis::with_files(ra_fixture);
-        let files = mock.files().map(|(it, _)| it).collect::<Vec<_>>();
-        let analysis = mock.analysis();
-
-        let diagnostics = files
-            .clone()
-            .into_iter()
-            .flat_map(|file_id| analysis.diagnostics(&config, file_id).unwrap())
-            .collect::<Vec<_>>();
-
-        // First, we have to check that diagnostic is not emitted when it's added to the disabled diagnostics list.
-        for diagnostic in diagnostics {
-            if let Some(name) = diagnostic.name {
-                assert!(
-                    !disabled_diagnostics.contains(&name.as_str()),
-                    "Diagnostic {} is disabled",
-                    name
-                );
-            }
-        }
-
-        // Then, we must reset the config and repeat the check, so that we'll be sure that without
-        // config these diagnostics are emitted.
-        // This is required for tests to not become outdated if e.g. diagnostics name changes:
-        // without this additional run the test will pass simply because a diagnostic with an old name
-        // will no longer exist.
-        let diagnostics = files
-            .into_iter()
-            .flat_map(|file_id| {
-                analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap()
-            })
-            .collect::<Vec<_>>();
-
-        assert!(
-            diagnostics
-                .into_iter()
-                .filter_map(|diag| diag.name)
-                .any(|name| disabled_diagnostics.contains(&name.as_str())),
-            "At least one of the diagnostics was not emitted even without config; are the diagnostics names correct?"
-        );
     }
 
     fn check_expect(ra_fixture: &str, expect: Expect) {
@@ -604,9 +556,6 @@ fn test_fn() {
             expect![[r#"
                 [
                     Diagnostic {
-                        name: Some(
-                            "unresolved-module",
-                        ),
                         message: "unresolved module",
                         range: 0..8,
                         severity: Error,
@@ -783,6 +732,15 @@ struct Foo {
 
     #[test]
     fn test_disabled_diagnostics() {
-        check_disabled_diagnostics(r#"mod foo;"#, &["unresolved-module"]);
+        let mut config = DiagnosticsConfig::default();
+        config.disabled.insert("unresolved-module".into());
+
+        let (analysis, file_id) = single_file(r#"mod foo;"#);
+
+        let diagnostics = analysis.diagnostics(&config, file_id).unwrap();
+        assert!(diagnostics.is_empty());
+
+        let diagnostics = analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap();
+        assert!(!diagnostics.is_empty());
     }
 }
