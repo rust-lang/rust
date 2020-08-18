@@ -1026,9 +1026,9 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "perf-event"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76c42ba5d85a2f4472b99f475fb60cf336d9b4c85b1ea8bb300fef2e3c7c8f89"
+checksum = "273069d0b956939ba75e8b5663328b9b7f0dc2e262b3306c6be66c4d87e2240a"
 dependencies = [
  "libc",
  "perf-event-open-sys",
@@ -1036,9 +1036,9 @@ dependencies = [
 
 [[package]]
 name = "perf-event-open-sys"
-version = "0.3.3"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9ebe2b9ef0cb884ef778c5a533144e348e9839a9fcf67f3d24e1890ac9088d6"
+checksum = "66f37842e29d92d05872a3c0271ba6717842695ecb896cb2e147a825c804b207"
 dependencies = [
  "libc",
 ]
@@ -1603,9 +1603,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fe233f4227389ab7df5b32649239da7ebe0b281824b4e84b342d04d3fd8c25e"
+checksum = "80e0ccfc3378da0cce270c946b676a376943f5cd16aeba64568e7939806f4ada"
 dependencies = [
  "proc-macro2",
  "quote",
