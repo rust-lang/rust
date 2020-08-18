@@ -8,7 +8,7 @@ mod method_resolution;
 mod macros;
 mod display_source_code;
 
-use std::sync::Arc;
+use std::{env, sync::Arc};
 
 use base_db::{fixture::WithFixture, FileRange, SourceDatabase, SourceDatabaseExt};
 use expect::Expect;
@@ -22,12 +22,14 @@ use hir_def::{
     AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::{db::AstDatabase, InFile};
-use stdx::format_to;
+use stdx::{format_to, RacyFlag};
 use syntax::{
     algo,
     ast::{self, AstNode},
     SyntaxNode,
 };
+use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
+use tracing_tree::HierarchicalLayer;
 
 use crate::{
     db::HirDatabase, display::HirDisplay, infer::TypeMismatch, test_db::TestDB, InferenceResult, Ty,
@@ -37,9 +39,12 @@ use crate::{
 // against snapshots of the expected results using expect. Use
 // `env UPDATE_EXPECT=1 cargo test -p hir_ty` to update the snapshots.
 
-fn setup_tracing() -> tracing::subscriber::DefaultGuard {
-    use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
-    use tracing_tree::HierarchicalLayer;
+fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
+    static ENABLE: RacyFlag = RacyFlag::new();
+    if !ENABLE.get(|| env::var("CHALK_DEBUG").is_ok()) {
+        return None;
+    }
+
     let filter = EnvFilter::from_env("CHALK_DEBUG");
     let layer = HierarchicalLayer::default()
         .with_indent_lines(true)
@@ -47,7 +52,7 @@ fn setup_tracing() -> tracing::subscriber::DefaultGuard {
         .with_indent_amount(2)
         .with_writer(std::io::stderr);
     let subscriber = Registry::default().with(filter).with(layer);
-    tracing::subscriber::set_default(subscriber)
+    Some(tracing::subscriber::set_default(subscriber))
 }
 
 fn check_types(ra_fixture: &str) {

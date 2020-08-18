@@ -1,5 +1,8 @@
 //! Missing batteries for standard libraries.
-use std::time::Instant;
+use std::{
+    sync::atomic::{AtomicUsize, Ordering},
+    time::Instant,
+};
 
 mod macros;
 
@@ -132,6 +135,31 @@ where
     }
 
     left
+}
+
+pub struct RacyFlag(AtomicUsize);
+
+impl RacyFlag {
+    pub const fn new() -> RacyFlag {
+        RacyFlag(AtomicUsize::new(0))
+    }
+
+    pub fn get(&self, init: impl FnMut() -> bool) -> bool {
+        let mut init = Some(init);
+        self.get_impl(&mut || init.take().map_or(false, |mut f| f()))
+    }
+
+    fn get_impl(&self, init: &mut dyn FnMut() -> bool) -> bool {
+        match self.0.load(Ordering::Relaxed) {
+            0 => false,
+            1 => true,
+            _ => {
+                let res = init();
+                self.0.store(if res { 1 } else { 0 }, Ordering::Relaxed);
+                res
+            }
+        }
+    }
 }
 
 #[cfg(test)]
