@@ -6,14 +6,16 @@
 struct MuchAlign;
 
 fn main() {
-    let buf = [0u32; 256];
-    // `buf` is sufficiently aligned for `layout.align` on a `dyn Debug`, but not
-    // for the actual alignment required by `MuchAlign`.
-    // We craft a wide reference `&dyn Debug` with the vtable for `MuchAlign`. That should be UB,
-    // as the reference is not aligned to its dynamic alignment requirements.
-    let mut ptr = &MuchAlign as &dyn std::fmt::Debug;
-    // Overwrite the data part of `ptr` so it points to `buf`.
-    unsafe { (&mut ptr as *mut _ as *mut *const u8).write(&buf as *const _ as *const u8); }
-    // Re-borrow that. This should be UB.
-    let _ptr = &*ptr; //~ ERROR alignment 256 is required
+    for _ in 0..10 { // Try many times as this might work by chance.
+        let buf = [0u32; 256];
+        // `buf` is sufficiently aligned for `layout.align` on a `dyn Debug`, but not
+        // for the actual alignment required by `MuchAlign`.
+        // We craft a wide reference `&dyn Debug` with the vtable for `MuchAlign`. That should be UB,
+        // as the reference is not aligned to its dynamic alignment requirements.
+        let mut ptr = &MuchAlign as &dyn std::fmt::Debug;
+        // Overwrite the data part of `ptr` so it points to `buf`.
+        unsafe { (&mut ptr as *mut _ as *mut *const u8).write(&buf as *const _ as *const u8); }
+        // Re-borrow that. This should be UB.
+        let _ptr = &*ptr; //~ERROR alignment 256 is required
+    }
 }
