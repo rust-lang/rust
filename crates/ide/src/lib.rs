@@ -151,16 +151,11 @@ impl<T> RangeInfo<T> {
 #[derive(Debug)]
 pub struct AnalysisHost {
     db: RootDatabase,
-    config: AnalysisConfig,
 }
 
 impl AnalysisHost {
     pub fn new(lru_capacity: Option<usize>) -> Self {
-        Self::with_config(lru_capacity, AnalysisConfig::default())
-    }
-
-    pub fn with_config(lru_capacity: Option<usize>, config: AnalysisConfig) -> Self {
-        AnalysisHost { db: RootDatabase::new(lru_capacity), config }
+        AnalysisHost { db: RootDatabase::new(lru_capacity) }
     }
 
     pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
@@ -170,7 +165,7 @@ impl AnalysisHost {
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
     pub fn analysis(&self) -> Analysis {
-        Analysis { db: self.db.snapshot(), config: self.config.clone() }
+        Analysis { db: self.db.snapshot() }
     }
 
     /// Applies changes to the current state of the world. If there are
@@ -214,7 +209,6 @@ impl Default for AnalysisHost {
 #[derive(Debug)]
 pub struct Analysis {
     db: salsa::Snapshot<RootDatabase>,
-    config: AnalysisConfig,
 }
 
 // As a general design guideline, `Analysis` API are intended to be independent
@@ -509,8 +503,11 @@ impl Analysis {
         &self,
         file_id: FileId,
         enable_experimental: bool,
+        disabled_diagnostics: Option<HashSet<String>>,
     ) -> Cancelable<Vec<Diagnostic>> {
-        self.with_db(|db| diagnostics::diagnostics(db, file_id, enable_experimental, &self.config))
+        self.with_db(|db| {
+            diagnostics::diagnostics(db, file_id, enable_experimental, disabled_diagnostics)
+        })
     }
 
     /// Returns the edit required to rename reference at the position to the new
@@ -537,11 +534,6 @@ impl Analysis {
             let edits = if parse_only { Vec::new() } else { match_finder.edits() };
             Ok(SourceChange::from(edits))
         })
-    }
-
-    /// Sets the provided config.
-    pub fn set_config(&mut self, config: AnalysisConfig) {
-        self.config = config;
     }
 
     /// Performs an operation on that may be Canceled.

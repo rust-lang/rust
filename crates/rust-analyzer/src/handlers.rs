@@ -770,7 +770,11 @@ fn handle_fixes(
         None => {}
     };
 
-    let diagnostics = snap.analysis.diagnostics(file_id, snap.config.experimental_diagnostics)?;
+    let diagnostics = snap.analysis.diagnostics(
+        file_id,
+        snap.config.experimental_diagnostics,
+        snap.config.disabled_diagnostics(),
+    )?;
 
     for fix in diagnostics
         .into_iter()
@@ -1044,7 +1048,11 @@ pub(crate) fn publish_diagnostics(
     let line_index = snap.analysis.file_line_index(file_id)?;
     let diagnostics: Vec<Diagnostic> = snap
         .analysis
-        .diagnostics(file_id, snap.config.experimental_diagnostics)?
+        .diagnostics(
+            file_id,
+            snap.config.experimental_diagnostics,
+            snap.config.disabled_diagnostics(),
+        )?
         .into_iter()
         .map(|d| Diagnostic {
             range: to_proto::range(&line_index, d.range),

@@ -363,6 +363,14 @@ impl Config {
             self.client_caps.status_notification = get_bool("statusNotification");
         }
     }
+
+    pub fn disabled_diagnostics(&self) -> Option<HashSet<String>> {
+        if self.analysis.disabled_diagnostics.is_empty() {
+            None
+        } else {
+            Some(self.analysis.disabled_diagnostics.clone())
+        }
+    }
 }
 
 #[derive(Deserialize)]
