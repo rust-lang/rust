@@ -253,16 +253,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub MISSING_FRAGMENT_SPECIFIER,
-    Deny,
-    "detects missing fragment specifiers in unused `macro_rules!` patterns",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
-        edition: None,
-    };
-}
-
-declare_lint! {
     pub LATE_BOUND_LIFETIME_ARGUMENTS,
     Warn,
     "detects generic lifetime arguments in path segments with late bound lifetime parameters",
@@ -584,7 +574,6 @@ declare_lint_pass! {
         UNALIGNED_REFERENCES,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
-        MISSING_FRAGMENT_SPECIFIER,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         COHERENCE_LEAK_CHECK,
