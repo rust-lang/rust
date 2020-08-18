@@ -65,7 +65,7 @@ pub use crate::{
     completion::{
         CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
     },
-    diagnostics::{DiagnosticsConfig, Severity},
+    diagnostics::{Diagnostic, DiagnosticsConfig, Fix, Severity},
     display::NavigationTarget,
     expand_macro::ExpandedMacro,
     file_structure::StructureNode,
@@ -98,35 +98,6 @@ pub use ssr::SsrError;
 pub use text_edit::{Indel, TextEdit};
 
 pub type Cancelable<T> = Result<T, Canceled>;
-
-#[derive(Debug)]
-pub struct Diagnostic {
-    pub name: Option<String>,
-    pub message: String,
-    pub range: TextRange,
-    pub severity: Severity,
-    pub fix: Option<Fix>,
-}
-
-#[derive(Debug)]
-pub struct Fix {
-    pub label: String,
-    pub source_change: SourceChange,
-    /// Allows to trigger the fix only when the caret is in the range given
-    pub fix_trigger_range: TextRange,
-}
-
-impl Fix {
-    pub fn new(
-        label: impl Into<String>,
-        source_change: SourceChange,
-        fix_trigger_range: TextRange,
-    ) -> Self {
-        let label = label.into();
-        assert!(label.starts_with(char::is_uppercase) && !label.ends_with('.'));
-        Self { label, source_change, fix_trigger_range }
-    }
-}
 
 /// Info associated with a text range.
 #[derive(Debug)]

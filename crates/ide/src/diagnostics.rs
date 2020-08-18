@@ -4,7 +4,7 @@
 //! macro-expanded files, but we need to present them to the users in terms of
 //! original files. So we need to map the ranges.
 
-mod diagnostics_with_fix;
+mod fixes;
 
 use std::cell::RefCell;
 
@@ -19,9 +19,38 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{Diagnostic, FileId, Fix, SourceFileEdit};
+use crate::{FileId, SourceChange, SourceFileEdit};
 
-use self::diagnostics_with_fix::DiagnosticWithFix;
+use self::fixes::DiagnosticWithFix;
+
+#[derive(Debug)]
+pub struct Diagnostic {
+    pub name: Option<String>,
+    pub message: String,
+    pub range: TextRange,
+    pub severity: Severity,
+    pub fix: Option<Fix>,
+}
+
+#[derive(Debug)]
+pub struct Fix {
+    pub label: String,
+    pub source_change: SourceChange,
+    /// Allows to trigger the fix only when the caret is in the range given
+    pub fix_trigger_range: TextRange,
+}
+
+impl Fix {
+    fn new(
+        label: impl Into<String>,
+        source_change: SourceChange,
+        fix_trigger_range: TextRange,
+    ) -> Self {
+        let label = label.into();
+        assert!(label.starts_with(char::is_uppercase) && !label.ends_with('.'));
+        Self { label, source_change, fix_trigger_range }
+    }
+}
 
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {
