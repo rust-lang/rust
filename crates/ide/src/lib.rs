@@ -44,7 +44,7 @@ mod syntax_highlighting;
 mod syntax_tree;
 mod typing;
 
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use base_db::{
     salsa::{self, ParallelDatabase},
@@ -65,7 +65,7 @@ pub use crate::{
     completion::{
         CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
     },
-    diagnostics::Severity,
+    diagnostics::{DiagnosticsConfig, Severity},
     display::NavigationTarget,
     expand_macro::ExpandedMacro,
     file_structure::StructureNode,
@@ -148,7 +148,7 @@ pub struct AnalysisHost {
 }
 
 impl AnalysisHost {
-    pub fn new(lru_capacity: Option<usize>) -> Self {
+    pub fn new(lru_capacity: Option<usize>) -> AnalysisHost {
         AnalysisHost { db: RootDatabase::new(lru_capacity) }
     }
 
@@ -495,13 +495,10 @@ impl Analysis {
     /// Computes the set of diagnostics for the given file.
     pub fn diagnostics(
         &self,
+        config: &DiagnosticsConfig,
         file_id: FileId,
-        enable_experimental: bool,
-        disabled_diagnostics: Option<HashSet<String>>,
     ) -> Cancelable<Vec<Diagnostic>> {
-        self.with_db(|db| {
-            diagnostics::diagnostics(db, file_id, enable_experimental, disabled_diagnostics)
-        })
+        self.with_db(|db| diagnostics::diagnostics(db, config, file_id))
     }
 
     /// Returns the edit required to rename reference at the position to the new
