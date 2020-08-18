@@ -13,7 +13,7 @@ use crate::query::QueryContext;
 use rustc_data_structures::cold_path;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHasher};
-use rustc_data_structures::sharded::Sharded;
+use rustc_data_structures::sharded::{Sharded, SHARDS};
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, FatalError};
@@ -55,17 +55,28 @@ impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
     pub(super) fn get_lookup<'tcx>(
         &'tcx self,
         key: &C::Key,
-    ) -> QueryLookup<'tcx, CTX, C::Key, C::Sharded> {
-        // We compute the key's hash once and then use it for both the
-        // shard lookup and the hashmap lookup. This relies on the fact
-        // that both of them use `FxHasher`.
-        let mut hasher = FxHasher::default();
-        key.hash(&mut hasher);
-        let key_hash = hasher.finish();
+        needs_hash: bool
+    ) -> (QueryLookup<'tcx, CTX, C::Key, C::Sharded>, Option<u64>) {
+        let key_hash = if needs_hash || SHARDS != 1 {
+            // We compute the key's hash once and then use it for both the
+            // shard lookup and the hashmap lookup. This relies on the fact
+            // that both of them use `FxHasher`.
+            let mut hasher = FxHasher::default();
+            key.hash(&mut hasher);
+            Some(hasher.finish())
+        } else {
+            None
+        };
 
-        let shard = self.shards.get_shard_index_by_hash(key_hash);
-        let lock = self.shards.get_shard_by_index(shard).lock();
-        QueryLookup { key_hash, shard, lock }
+        let (shard, lock) = if SHARDS == 1 {
+            (0, self.shards.get_shard_by_index(0).lock())
+        } else {
+            let shard = self.shards.get_shard_index_by_hash(key_hash.unwrap());
+            let lock = self.shards.get_shard_by_index(shard).lock();
+            (shard, lock)
+        };
+
+        (QueryLookup { shard, lock }, key_hash)
     }
 }
 
@@ -139,7 +150,6 @@ impl<CTX: QueryContext, C: QueryCache> Default for QueryState<CTX, C> {
 
 /// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
 pub struct QueryLookup<'tcx, CTX: QueryContext, K, C> {
-    pub(super) key_hash: u64,
     shard: usize,
     pub(super) lock: LockGuard<'tcx, QueryStateShard<CTX, K, C>>,
 }

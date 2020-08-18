@@ -103,10 +103,10 @@ impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
         OnMiss: FnOnce(K, QueryLookup<'_, CTX, K, Self::Sharded>) -> R,
     {
-        let mut lookup = state.get_lookup(&key);
+        let (mut lookup, key_hash) = state.get_lookup(&key, true);
         let lock = &mut *lookup.lock;
 
-        let result = lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, &key);
+        let result = lock.cache.raw_entry().from_key_hashed_nocheck(key_hash.unwrap(), &key);
 
         if let Some((_, value)) = result { on_hit(&value.0, value.1) } else { on_miss(key, lookup) }
     }
@@ -181,10 +181,10 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V> {
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
         OnMiss: FnOnce(K, QueryLookup<'_, CTX, K, Self::Sharded>) -> R,
     {
-        let mut lookup = state.get_lookup(&key);
+        let (mut lookup, key_hash) = state.get_lookup(&key, true);
         let lock = &mut *lookup.lock;
 
-        let result = lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, &key);
+        let result = lock.cache.raw_entry().from_key_hashed_nocheck(key_hash.unwrap(), &key);
 
         if let Some((_, value)) = result {
             on_hit(&&value.0, value.1)
@@ -261,7 +261,7 @@ impl<K: Eq + Idx, V: Clone> QueryCache for IndexVecCache<K, V> {
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
         OnMiss: FnOnce(K, QueryLookup<'_, CTX, K, Self::Sharded>) -> R,
     {
-        let mut lookup = state.get_lookup(&key);
+        let (mut lookup, _) = state.get_lookup(&key, false);
         let lock = &mut *lookup.lock;
 
         let result = lock.cache.get(key);
