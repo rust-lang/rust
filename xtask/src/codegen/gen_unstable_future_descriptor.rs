@@ -1,6 +1,6 @@
 //! Generates descriptors structure for unstable feature from Unstable Book
 
-use crate::codegen::update;
+use crate::codegen::{update, reformat};
 use crate::codegen::{self, project_root, Mode, Result};
 use crate::not_bash::{fs2, pushd, run};
 use proc_macro2::TokenStream;
@@ -53,7 +53,7 @@ pub fn generate_unstable_future_descriptor(mode: Mode) -> Result<()> {
     let src_dir = path.join(codegen::REPO_PATH);
     let content = generate_descriptor(src_dir)?.to_string();
 
-    let contents = crate::reformat(content)?;
+    let contents = reformat(content)?;
     let destination = project_root().join(codegen::UNSTABLE_FEATURE);
     update(destination.as_path(), &contents, mode)?;
 
