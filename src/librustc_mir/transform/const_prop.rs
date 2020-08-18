@@ -845,7 +845,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                 if ty_is_scalar(ty1) && ty_is_scalar(ty2) {
                                     let alloc = this
                                         .ecx
-                                        .with_temp_alloc(value.layout, |ecx, dest| {
+                                        .intern_with_temp_alloc(value.layout, |ecx, dest| {
                                             ecx.write_immediate_to_mplace(*imm, dest)
                                         })
                                         .unwrap();

@@ -228,7 +228,7 @@ pub fn run_passes(
 
     body.phase = mir_phase;
 
-    if mir_phase == MirPhase::Optimized {
+    if mir_phase == MirPhase::Optimization {
         validate::Validator { when: format!("end of phase {:?}", mir_phase), mir_phase }
             .run_pass(tcx, source, body);
     }
@@ -504,7 +504,7 @@ fn run_optimization_passes<'tcx>(
         body,
         InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id())),
         promoted,
-        MirPhase::Optimized,
+        MirPhase::Optimization,
         &[
             if mir_opt_level > 0 { optimizations } else { no_optimizations },
             pre_codegen_cleanup,

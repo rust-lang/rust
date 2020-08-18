@@ -101,7 +101,7 @@ pub enum MirPhase {
     /// After this phase, generators are explicit state machines (no more `Yield`).
     /// `AggregateKind::Generator` is gone for good.
     GeneratorLowering = 4,
-    Optimized = 5,
+    Optimization = 5,
 }
 
 impl MirPhase {
