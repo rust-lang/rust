@@ -148,8 +148,13 @@ struct Foo {
 Use boring and long names for local variables ([yay code completion](https://github.com/rust-analyzer/rust-analyzer/pull/4162#discussion_r417130973)).
 The default name is a lowercased name of the type: `global_state: GlobalState`.
 Avoid ad-hoc acronyms and contractions, but use the ones that exist consistently (`db`, `ctx`, `acc`).
-The default name for "result of the function" local variable is `res`.
-The default name for "I don't really care about the name" variable is `it`.
+
+Default names:
+
+* `res` -- "result of the function" local variable
+* `it` -- I don't really care about the name
+* `n_foo` -- number of foos
+* `foo_idx` -- index of `foo`
 
 # Collection types
 
