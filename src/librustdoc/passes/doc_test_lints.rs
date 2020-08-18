@@ -43,6 +43,22 @@ impl<'a, 'tcx> DocFolder for PrivateItemDocTestLinter<'a, 'tcx> {
     }
 }
 
+pub(crate) struct Tests {
+    pub(crate) found_tests: usize,
+}
+
+impl Tests {
+    pub(crate) fn new() -> Tests {
+        Tests { found_tests: 0 }
+    }
+}
+
+impl crate::test::Tester for Tests {
+    fn add_test(&mut self, _: String, _: LangString, _: usize) {
+        self.found_tests += 1;
+    }
+}
+
 pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
     let hir_id = match cx.as_local_hir_id(item.def_id) {
         Some(hir_id) => hir_id,
@@ -52,17 +68,7 @@ pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
         }
     };
 
-    struct Tests {
-        found_tests: usize,
-    }
-
-    impl crate::test::Tester for Tests {
-        fn add_test(&mut self, _: String, _: LangString, _: usize) {
-            self.found_tests += 1;
-        }
-    }
-
-    let mut tests = Tests { found_tests: 0 };
+    let mut tests = Tests::new();
 
     find_testable_code(&dox, &mut tests, ErrorCodes::No, false, None);
 
