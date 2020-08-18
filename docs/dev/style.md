@@ -239,8 +239,9 @@ If the line is too long, you want to split the sentence in two :-)
 # Commit Style
 
 We don't have specific rules around git history hygiene.
-Maintaining clean git history is encouraged, but not enforced.
+Maintaining clean git history is strongly encouraged, but not enforced.
 Use rebase workflow, it's OK to rewrite history during PR review process.
+After you are happy with the state of the code, please use [interactive rebase](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History) to squash fixup commits.
 
 Avoid @mentioning people in commit messages and pull request descriptions(they are added to commit message by bors).
 Such messages create a lot of duplicate notification traffic during rebases.
