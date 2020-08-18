@@ -34,40 +34,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     }
 
     // Also try to inline primitive impls from other crates.
-    let lang_items = cx.tcx.lang_items();
-    let primitive_impls = [
-        lang_items.isize_impl(),
-        lang_items.i8_impl(),
-        lang_items.i16_impl(),
-        lang_items.i32_impl(),
-        lang_items.i64_impl(),
-        lang_items.i128_impl(),
-        lang_items.usize_impl(),
-        lang_items.u8_impl(),
-        lang_items.u16_impl(),
-        lang_items.u32_impl(),
-        lang_items.u64_impl(),
-        lang_items.u128_impl(),
-        lang_items.f32_impl(),
-        lang_items.f64_impl(),
-        lang_items.f32_runtime_impl(),
-        lang_items.f64_runtime_impl(),
-        lang_items.bool_impl(),
-        lang_items.char_impl(),
-        lang_items.str_impl(),
-        lang_items.array_impl(),
-        lang_items.slice_impl(),
-        lang_items.slice_u8_impl(),
-        lang_items.str_alloc_impl(),
-        lang_items.slice_alloc_impl(),
-        lang_items.slice_u8_alloc_impl(),
-        lang_items.const_ptr_impl(),
-        lang_items.mut_ptr_impl(),
-        lang_items.const_slice_ptr_impl(),
-        lang_items.mut_slice_ptr_impl(),
-    ];
-
-    for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {
+    for &def_id in PrimitiveType::all_impls(cx.tcx).values().flatten() {
         if !def_id.is_local() {
             inline::build_impl(cx, def_id, None, &mut new_items);
 
