@@ -13,14 +13,14 @@ use crate::thread::LocalKey;
 
 thread_local! {
     /// Stdout used by print! and println! macros
-    static LOCAL_STDOUT: RefCell<Option<Box<dyn Write + Send>>> = {
+    static LOCAL_STDOUT: RefCell<Option<Box<dyn LocalOutput>>> = {
         RefCell::new(None)
     }
 }
 
 thread_local! {
     /// Stderr used by eprint! and eprintln! macros, and panics
-    static LOCAL_STDERR: RefCell<Option<Box<dyn Write + Send>>> = {
+    static LOCAL_STDERR: RefCell<Option<Box<dyn LocalOutput>>> = {
         RefCell::new(None)
     }
 }
@@ -903,6 +903,18 @@ impl fmt::Debug for StderrLock<'_> {
     }
 }
 
+/// A writer than can be cloned to new threads.
+#[unstable(
+    feature = "set_stdio",
+    reason = "this trait may disappear completely or be replaced \
+                     with a more general mechanism",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub trait LocalOutput: Write + Send {
+    fn clone_box(&self) -> Box<dyn LocalOutput>;
+}
+
 /// Resets the thread-local stderr handle to the specified writer
 ///
 /// This will replace the current thread's stderr handle, returning the old
@@ -918,7 +930,7 @@ impl fmt::Debug for StderrLock<'_> {
     issue = "none"
 )]
 #[doc(hidden)]
-pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
+pub fn set_panic(sink: Option<Box<dyn LocalOutput>>) -> Option<Box<dyn LocalOutput>> {
     use crate::mem;
     LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|mut s| {
         let _ = s.flush();
@@ -941,11 +953,22 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
     issue = "none"
 )]
 #[doc(hidden)]
-pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
+pub fn set_print(sink: Option<Box<dyn LocalOutput>>) -> Option<Box<dyn LocalOutput>> {
     use crate::mem;
     LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|mut s| {
         let _ = s.flush();
         Some(s)
+    })
+}
+
+pub(crate) fn clone_io() -> (Option<Box<dyn LocalOutput>>, Option<Box<dyn LocalOutput>>) {
+    LOCAL_STDOUT.with(|stdout| {
+        LOCAL_STDERR.with(|stderr| {
+            (
+                stdout.borrow().as_ref().map(|o| o.clone_box()),
+                stderr.borrow().as_ref().map(|o| o.clone_box()),
+            )
+        })
     })
 }
 
@@ -961,7 +984,7 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 /// However, if the actual I/O causes an error, this function does panic.
 fn print_to<T>(
     args: fmt::Arguments<'_>,
-    local_s: &'static LocalKey<RefCell<Option<Box<dyn Write + Send>>>>,
+    local_s: &'static LocalKey<RefCell<Option<Box<dyn LocalOutput>>>>,
     global_s: fn() -> T,
     label: &str,
 ) where

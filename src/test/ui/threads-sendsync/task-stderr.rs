@@ -16,6 +16,11 @@ impl Write for Sink {
     }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
+impl io::LocalOutput for Sink {
+    fn clone_box(&self) -> Box<dyn io::LocalOutput> {
+        Box::new(Sink(self.0.clone()))
+    }
+}
 
 fn main() {
     let data = Arc::new(Mutex::new(Vec::new()));
