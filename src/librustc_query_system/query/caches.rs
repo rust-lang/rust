@@ -266,7 +266,11 @@ impl<K: Eq + Idx, V: Clone> QueryCache for IndexVecCache<K, V> {
 
         let result = lock.cache.get(key);
 
-        if let Some(Some(value)) = result { on_hit(&value.1, value.2) } else { on_miss(key, lookup) }
+        if let Some(Some(value)) = result {
+            on_hit(&value.1, value.2)
+        } else {
+            on_miss(key, lookup)
+        }
     }
 
     #[inline]
@@ -282,7 +286,6 @@ impl<K: Eq + Idx, V: Clone> QueryCache for IndexVecCache<K, V> {
         value
     }
 
-
     fn iter<R, L>(
         &self,
         shards: &Sharded<L>,
@@ -292,9 +295,7 @@ impl<K: Eq + Idx, V: Clone> QueryCache for IndexVecCache<K, V> {
         let mut shards = shards.lock_shards();
         let mut shards: Vec<_> = shards.iter_mut().map(|shard| get_shard(shard)).collect();
         let results = shards.iter_mut().flat_map(|shard| {
-            shard.iter().flat_map(|v| {
-                v.as_ref().map(|val| (&val.0, &val.1, val.2))
-            })
+            shard.iter().flat_map(|v| v.as_ref().map(|val| (&val.0, &val.1, val.2)))
         });
         f(Box::new(results))
     }

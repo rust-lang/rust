@@ -55,7 +55,7 @@ impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
     pub(super) fn get_lookup<'tcx>(
         &'tcx self,
         key: &C::Key,
-        needs_hash: bool
+        needs_hash: bool,
     ) -> (QueryLookup<'tcx, CTX, C::Key, C::Sharded>, Option<u64>) {
         let key_hash = if needs_hash || SHARDS != 1 {
             // We compute the key's hash once and then use it for both the
