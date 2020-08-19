@@ -585,8 +585,8 @@ impl UdpSocket {
 
     pub fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         let mreq = c::ip_mreq {
-            imr_multiaddr: *multiaddr.as_inner(),
-            imr_interface: *interface.as_inner(),
+            imr_multiaddr: multiaddr.into_inner(),
+            imr_interface: interface.into_inner(),
         };
         setsockopt(&self.inner, c::IPPROTO_IP, c::IP_ADD_MEMBERSHIP, mreq)
     }
@@ -601,8 +601,8 @@ impl UdpSocket {
 
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         let mreq = c::ip_mreq {
-            imr_multiaddr: *multiaddr.as_inner(),
-            imr_interface: *interface.as_inner(),
+            imr_multiaddr: multiaddr.into_inner(),
+            imr_interface: interface.into_inner(),
         };
         setsockopt(&self.inner, c::IPPROTO_IP, c::IP_DROP_MEMBERSHIP, mreq)
     }
