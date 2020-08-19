@@ -1,3 +1,4 @@
+///! A module for working with iterators and string slices.
 use crate::iter::FusedIterator;
 use crate::str::Chars;
 

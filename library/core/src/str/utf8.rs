@@ -1,3 +1,5 @@
+///! A module for working with Utf8 errors
+
 /// Errors which can occur when attempting to interpret a sequence of [`u8`]
 /// as a string.
 ///

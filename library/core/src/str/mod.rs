@@ -20,17 +20,13 @@ use crate::ops::Try;
 use crate::option;
 use crate::slice::{self, SliceIndex, Split as SliceSplit};
 
-#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod utf8;
 
-#[allow(missing_docs)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod indices;
 
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use indices::CharIndices;
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use utf8::Utf8Error;
 
 pub mod pattern;
