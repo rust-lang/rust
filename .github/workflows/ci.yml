@@ -364,9 +364,6 @@ jobs:
           - name: x86_64-gnu-distcheck
             os: ubuntu-latest-xl
             env: {}
-          - name: x86_64-gnu-full-bootstrap
-            os: ubuntu-latest-xl
-            env: {}
           - name: x86_64-gnu-llvm-8
             env:
               RUST_BACKTRACE: 1

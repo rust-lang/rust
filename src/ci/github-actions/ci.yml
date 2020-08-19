@@ -419,9 +419,6 @@ jobs:
           - name: x86_64-gnu-distcheck
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-full-bootstrap
-            <<: *job-linux-xl
-
           - name: x86_64-gnu-llvm-8
             env:
               RUST_BACKTRACE: 1
