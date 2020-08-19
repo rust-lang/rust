@@ -20,6 +20,19 @@ use crate::ops::Try;
 use crate::option;
 use crate::slice::{self, SliceIndex, Split as SliceSplit};
 
+#[allow(missing_docs)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub mod utf8;
+
+#[allow(missing_docs)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub mod indices;
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use indices::CharIndices;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use utf8::Utf8Error;
+
 pub mod pattern;
 
 #[unstable(feature = "str_internals", issue = "none")]
@@ -199,61 +212,6 @@ Section: Creating a string
 ///     }
 /// }
 /// ```
-#[derive(Copy, Eq, PartialEq, Clone, Debug)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct Utf8Error {
-    valid_up_to: usize,
-    error_len: Option<u8>,
-}
-
-impl Utf8Error {
-    /// Returns the index in the given string up to which valid UTF-8 was
-    /// verified.
-    ///
-    /// It is the maximum index such that `from_utf8(&input[..index])`
-    /// would return `Ok(_)`.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// use std::str;
-    ///
-    /// // some invalid bytes, in a vector
-    /// let sparkle_heart = vec![0, 159, 146, 150];
-    ///
-    /// // std::str::from_utf8 returns a Utf8Error
-    /// let error = str::from_utf8(&sparkle_heart).unwrap_err();
-    ///
-    /// // the second byte is invalid here
-    /// assert_eq!(1, error.valid_up_to());
-    /// ```
-    #[stable(feature = "utf8_error", since = "1.5.0")]
-    pub fn valid_up_to(&self) -> usize {
-        self.valid_up_to
-    }
-
-    /// Provides more information about the failure:
-    ///
-    /// * `None`: the end of the input was reached unexpectedly.
-    ///   `self.valid_up_to()` is 1 to 3 bytes from the end of the input.
-    ///   If a byte stream (such as a file or a network socket) is being decoded incrementally,
-    ///   this could be a valid `char` whose UTF-8 byte sequence is spanning multiple chunks.
-    ///
-    /// * `Some(len)`: an unexpected byte was encountered.
-    ///   The length provided is that of the invalid byte sequence
-    ///   that starts at the index given by `valid_up_to()`.
-    ///   Decoding should resume after that sequence
-    ///   (after inserting a [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD]) in case of
-    ///   lossy decoding.
-    ///
-    /// [U+FFFD]: ../../std/char/constant.REPLACEMENT_CHARACTER.html
-    #[stable(feature = "utf8_error_error_len", since = "1.20.0")]
-    pub fn error_len(&self) -> Option<usize> {
-        self.error_len.map(|len| len as usize)
-    }
-}
 
 /// Converts a slice of bytes to a string slice.
 ///
@@ -667,79 +625,7 @@ impl<'a> Chars<'a> {
     }
 }
 
-/// An iterator over the [`char`]s of a string slice, and their positions.
-///
-/// This struct is created by the [`char_indices`] method on [`str`].
-/// See its documentation for more.
-///
-/// [`char_indices`]: str::char_indices
-#[derive(Clone, Debug)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct CharIndices<'a> {
-    front_offset: usize,
-    iter: Chars<'a>,
-}
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for CharIndices<'a> {
-    type Item = (usize, char);
-
-    #[inline]
-    fn next(&mut self) -> Option<(usize, char)> {
-        let pre_len = self.iter.iter.len();
-        match self.iter.next() {
-            None => None,
-            Some(ch) => {
-                let index = self.front_offset;
-                let len = self.iter.iter.len();
-                self.front_offset += pre_len - len;
-                Some((index, ch))
-            }
-        }
-    }
-
-    #[inline]
-    fn count(self) -> usize {
-        self.iter.count()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-
-    #[inline]
-    fn last(mut self) -> Option<(usize, char)> {
-        // No need to go through the entire string.
-        self.next_back()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> DoubleEndedIterator for CharIndices<'a> {
-    #[inline]
-    fn next_back(&mut self) -> Option<(usize, char)> {
-        self.iter.next_back().map(|ch| {
-            let index = self.front_offset + self.iter.iter.len();
-            (index, ch)
-        })
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl FusedIterator for CharIndices<'_> {}
-
-impl<'a> CharIndices<'a> {
-    /// Views the underlying data as a subslice of the original data.
-    ///
-    /// This has the same lifetime as the original slice, and so the
-    /// iterator can continue to be used while this exists.
-    #[stable(feature = "iter_to_slice", since = "1.4.0")]
-    #[inline]
-    pub fn as_str(&self) -> &'a str {
-        self.iter.as_str()
-    }
-}
 
 /// An iterator over the bytes of a string slice.
 ///
