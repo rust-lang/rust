@@ -222,11 +222,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             disambiguator,
                             None | Some(Disambiguator::Namespace(Namespace::TypeNS))
                         ) {
-                            if let Some(prim) = is_primitive(path_str, ns) {
+                            if let Some((path, prim)) = is_primitive(path_str, ns) {
                                 if extra_fragment.is_some() {
                                     return Err(ErrorKind::AnchorFailure(AnchorFailure::Primitive));
                                 }
-                                return Ok((prim, Some(path_str.to_owned())));
+                                return Ok((prim, Some(path.to_owned())));
                             }
                         }
                         return Ok((res, extra_fragment.clone()));
@@ -239,11 +239,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 if value != (ns == ValueNS) {
                     return Err(ErrorKind::ResolutionFailure);
                 }
-            } else if let Some(prim) = is_primitive(path_str, ns) {
+            } else if let Some((path, prim)) = is_primitive(path_str, ns) {
                 if extra_fragment.is_some() {
                     return Err(ErrorKind::AnchorFailure(AnchorFailure::Primitive));
                 }
-                return Ok((prim, Some(path_str.to_owned())));
+                return Ok((prim, Some(path.to_owned())));
             } else {
                 // If resolution failed, it may still be a method
                 // because methods are not handled by the resolver
@@ -269,7 +269,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 })
                 .ok_or(ErrorKind::ResolutionFailure)?;
 
-            if let Some(prim) = is_primitive(&path, TypeNS) {
+            if let Some((path, prim)) = is_primitive(&path, TypeNS) {
                 let did = primitive_impl(cx, &path).ok_or(ErrorKind::ResolutionFailure)?;
                 return cx
                     .tcx
@@ -1220,11 +1220,22 @@ const PRIMITIVES: &[(&str, Res)] = &[
     ("f64", Res::PrimTy(hir::PrimTy::Float(rustc_ast::FloatTy::F64))),
     ("str", Res::PrimTy(hir::PrimTy::Str)),
     ("bool", Res::PrimTy(hir::PrimTy::Bool)),
+    ("true", Res::PrimTy(hir::PrimTy::Bool)),
+    ("false", Res::PrimTy(hir::PrimTy::Bool)),
     ("char", Res::PrimTy(hir::PrimTy::Char)),
 ];
 
-fn is_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
-    if ns == TypeNS { PRIMITIVES.iter().find(|x| x.0 == path_str).map(|x| x.1) } else { None }
+fn is_primitive(path_str: &str, ns: Namespace) -> Option<(&'static str, Res)> {
+    if ns == TypeNS {
+        PRIMITIVES
+            .iter()
+            .filter(|x| x.0 == path_str)
+            .copied()
+            .map(|x| if x.0 == "true" || x.0 == "false" { ("bool", x.1) } else { x })
+            .next()
+    } else {
+        None
+    }
 }
 
 fn primitive_impl(cx: &DocContext<'_>, path_str: &str) -> Option<DefId> {
