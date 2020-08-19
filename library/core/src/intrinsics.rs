@@ -823,7 +823,7 @@ extern "rust-intrinsic" {
     /// An atomic fence.
     ///
     /// The stabilized version of this intrinsic is available in
-    /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
+    /// [`std::sync::atomic::fence`](crate::sync::atomic::fence)
     /// by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`.
@@ -831,7 +831,7 @@ extern "rust-intrinsic" {
     /// An atomic fence.
     ///
     /// The stabilized version of this intrinsic is available in
-    /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
+    /// [`std::sync::atomic::fence`](crate::sync::atomic::fence)
     /// by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`.
@@ -839,7 +839,7 @@ extern "rust-intrinsic" {
     /// An atomic fence.
     ///
     /// The stabilized version of this intrinsic is available in
-    /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
+    /// [`std::sync::atomic::fence`](crate::sync::atomic::fence)
     /// by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`.
@@ -847,7 +847,7 @@ extern "rust-intrinsic" {
     /// An atomic fence.
     ///
     /// The stabilized version of this intrinsic is available in
-    /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
+    /// [`std::sync::atomic::fence`](crate::sync::atomic::fence)
     /// by passing
     /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`.
@@ -861,7 +861,7 @@ extern "rust-intrinsic" {
     /// such as when interacting with signal handlers.
     ///
     /// The stabilized version of this intrinsic is available in
-    /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
+    /// [`std::sync::atomic::compiler_fence`](crate::sync::atomic::compiler_fence)
     /// by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`.
@@ -874,7 +874,7 @@ extern "rust-intrinsic" {
     /// such as when interacting with signal handlers.
     ///
     /// The stabilized version of this intrinsic is available in
-    /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
+    /// [`std::sync::atomic::compiler_fence`](crate::sync::atomic::compiler_fence)
     /// by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`.
@@ -887,7 +887,7 @@ extern "rust-intrinsic" {
     /// such as when interacting with signal handlers.
     ///
     /// The stabilized version of this intrinsic is available in
-    /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
+    /// [`std::sync::atomic::compiler_fence`](crate::sync::atomic::compiler_fence)
     /// by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`.
@@ -900,7 +900,7 @@ extern "rust-intrinsic" {
     /// such as when interacting with signal handlers.
     ///
     /// The stabilized version of this intrinsic is available in
-    /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
+    /// [`std::sync::atomic::compiler_fence`](crate::sync::atomic::compiler_fence)
     /// by passing
     /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`.
