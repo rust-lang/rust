@@ -98,7 +98,7 @@ impl Def {
         };
 
         let search_scope = SearchScope::single_file(ctx.frange.file_id);
-        !def.find_usages(&ctx.sema, Some(search_scope)).is_empty()
+        def.usages(&ctx.sema).in_scope(search_scope).at_least_one()
     }
 }
 
