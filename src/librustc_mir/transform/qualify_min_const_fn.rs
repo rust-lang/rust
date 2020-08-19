@@ -273,6 +273,7 @@ fn check_statement(
         | StatementKind::StorageDead(_)
         | StatementKind::Retag { .. }
         | StatementKind::AscribeUserType(..)
+        | StatementKind::Coverage(..)
         | StatementKind::Nop => Ok(()),
     }
 }

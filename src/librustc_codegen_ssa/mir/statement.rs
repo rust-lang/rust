@@ -111,6 +111,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 bx
             }
+            mir::StatementKind::Coverage(box ref coverage) => {
+                self.codegen_coverage(&mut bx, coverage.clone());
+                bx
+            }
             mir::StatementKind::FakeRead(..)
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::AscribeUserType(..)

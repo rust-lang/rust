@@ -19,7 +19,6 @@ mod arena;
 pub mod def;
 pub mod definitions;
 pub use rustc_span::def_id;
-pub mod fake_lang_items;
 mod hir;
 pub mod hir_id;
 pub mod intravisit;

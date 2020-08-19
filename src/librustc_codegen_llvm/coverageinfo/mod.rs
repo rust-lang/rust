@@ -5,17 +5,21 @@ use crate::common::CodegenCx;
 
 use libc::c_uint;
 use llvm::coverageinfo::CounterMappingRegion;
-use rustc_codegen_ssa::coverageinfo::map::{CounterExpression, ExprKind, FunctionCoverage, Region};
+use rustc_codegen_ssa::coverageinfo::map::{CounterExpression, FunctionCoverage};
 use rustc_codegen_ssa::traits::{
     BaseTypeMethods, CoverageInfoBuilderMethods, CoverageInfoMethods, MiscMethods, StaticMethods,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_llvm::RustString;
+use rustc_middle::mir::coverage::{
+    CodeRegion, CounterValueReference, ExpressionOperandId, InjectedExpressionIndex, Op,
+};
 use rustc_middle::ty::Instance;
-use tracing::debug;
 
 use std::cell::RefCell;
 use std::ffi::CString;
+
+use tracing::debug;
 
 pub mod mapgen;
 
@@ -24,7 +28,7 @@ const COVMAP_VAR_ALIGN_BYTES: usize = 8;
 /// A context object for maintaining all state needed by the coverageinfo module.
 pub struct CrateCoverageContext<'tcx> {
     // Coverage region data for each instrumented function identified by DefId.
-    pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>>>,
+    pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage>>,
 }
 
 impl<'tcx> CrateCoverageContext<'tcx> {
@@ -32,7 +36,7 @@ impl<'tcx> CrateCoverageContext<'tcx> {
         Self { function_coverage_map: Default::default() }
     }
 
-    pub fn take_function_coverage_map(&self) -> FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>> {
+    pub fn take_function_coverage_map(&self) -> FxHashMap<Instance<'tcx>, FunctionCoverage> {
         self.function_coverage_map.replace(FxHashMap::default())
     }
 }
@@ -58,11 +62,11 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         instance: Instance<'tcx>,
         function_source_hash: u64,
-        id: u32,
-        region: Region<'tcx>,
+        id: CounterValueReference,
+        region: CodeRegion,
     ) {
         debug!(
-            "adding counter to coverage_regions: instance={:?}, function_source_hash={}, id={}, \
+            "adding counter to coverage_regions: instance={:?}, function_source_hash={}, id={:?}, \
              at {:?}",
             instance, function_source_hash, id, region,
         );
@@ -76,25 +80,25 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn add_counter_expression_region(
         &mut self,
         instance: Instance<'tcx>,
-        id_descending_from_max: u32,
-        lhs: u32,
-        op: ExprKind,
-        rhs: u32,
-        region: Region<'tcx>,
+        id: InjectedExpressionIndex,
+        lhs: ExpressionOperandId,
+        op: Op,
+        rhs: ExpressionOperandId,
+        region: CodeRegion,
     ) {
         debug!(
-            "adding counter expression to coverage_regions: instance={:?}, id={}, {} {:?} {}, \
+            "adding counter expression to coverage_regions: instance={:?}, id={:?}, {:?} {:?} {:?}, \
              at {:?}",
-            instance, id_descending_from_max, lhs, op, rhs, region,
+            instance, id, lhs, op, rhs, region,
         );
         let mut coverage_regions = self.coverage_context().function_coverage_map.borrow_mut();
         coverage_regions
             .entry(instance)
             .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
-            .add_counter_expression(id_descending_from_max, lhs, op, rhs, region);
+            .add_counter_expression(id, lhs, op, rhs, region);
     }
 
-    fn add_unreachable_region(&mut self, instance: Instance<'tcx>, region: Region<'tcx>) {
+    fn add_unreachable_region(&mut self, instance: Instance<'tcx>, region: CodeRegion) {
         debug!(
             "adding unreachable code to coverage_regions: instance={:?}, at {:?}",
             instance, region,

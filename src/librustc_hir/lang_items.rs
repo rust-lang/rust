@@ -303,11 +303,6 @@ language_item_table! {
 
     TryTraitLangItem,              kw::Try,                 try_trait,               Target::Trait;
 
-    // language items related to source code coverage instrumentation (-Zinstrument-coverage)
-    CountCodeRegionFnLangItem,         sym::count_code_region,         count_code_region_fn,         Target::Fn;
-    CoverageCounterAddFnLangItem,      sym::coverage_counter_add,      coverage_counter_add_fn,      Target::Fn;
-    CoverageCounterSubtractFnLangItem, sym::coverage_counter_subtract, coverage_counter_subtract_fn, Target::Fn;
-
     // Language items from AST lowering
     TryFromError,                  sym::from_error,         from_error_fn,           Target::Method(MethodKind::Trait { body: false });
     TryFromOk,                     sym::from_ok,            from_ok_fn,              Target::Method(MethodKind::Trait { body: false });

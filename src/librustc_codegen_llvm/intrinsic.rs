@@ -11,22 +11,18 @@ use rustc_ast as ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
-use rustc_codegen_ssa::coverageinfo;
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_hir as hir;
-use rustc_middle::mir::coverage;
-use rustc_middle::mir::Operand;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, symbol::kw, Span, Symbol};
 use rustc_target::abi::{self, HasDataLayout, LayoutOf, Primitive};
 use rustc_target::spec::PanicStrategy;
-use tracing::debug;
 
 use std::cmp::Ordering;
 use std::iter;
@@ -83,77 +79,6 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: Symbol) -> Option<&'ll Va
 }
 
 impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
-    fn is_codegen_intrinsic(
-        &mut self,
-        intrinsic: Symbol,
-        args: &Vec<Operand<'tcx>>,
-        caller_instance: ty::Instance<'tcx>,
-    ) -> bool {
-        let mut is_codegen_intrinsic = true;
-        // Set `is_codegen_intrinsic` to `false` to bypass `codegen_intrinsic_call()`.
-
-        // FIXME(richkadel): Make sure to add coverage analysis tests on a crate with
-        // external crate dependencies, where:
-        //   1. Both binary and dependent crates are compiled with `-Zinstrument-coverage`
-        //   2. Only binary is compiled with `-Zinstrument-coverage`
-        //   3. Only dependent crates are compiled with `-Zinstrument-coverage`
-        match intrinsic {
-            sym::count_code_region => {
-                use coverage::count_code_region_args::*;
-                self.add_counter_region(
-                    caller_instance,
-                    op_to_u64(&args[FUNCTION_SOURCE_HASH]),
-                    op_to_u32(&args[COUNTER_ID]),
-                    coverageinfo::Region::new(
-                        op_to_str_slice(&args[FILE_NAME]),
-                        op_to_u32(&args[START_LINE]),
-                        op_to_u32(&args[START_COL]),
-                        op_to_u32(&args[END_LINE]),
-                        op_to_u32(&args[END_COL]),
-                    ),
-                );
-            }
-            sym::coverage_counter_add | sym::coverage_counter_subtract => {
-                is_codegen_intrinsic = false;
-                use coverage::coverage_counter_expression_args::*;
-                self.add_counter_expression_region(
-                    caller_instance,
-                    op_to_u32(&args[EXPRESSION_ID]),
-                    op_to_u32(&args[LEFT_ID]),
-                    if intrinsic == sym::coverage_counter_add {
-                        coverageinfo::ExprKind::Add
-                    } else {
-                        coverageinfo::ExprKind::Subtract
-                    },
-                    op_to_u32(&args[RIGHT_ID]),
-                    coverageinfo::Region::new(
-                        op_to_str_slice(&args[FILE_NAME]),
-                        op_to_u32(&args[START_LINE]),
-                        op_to_u32(&args[START_COL]),
-                        op_to_u32(&args[END_LINE]),
-                        op_to_u32(&args[END_COL]),
-                    ),
-                );
-            }
-            sym::coverage_unreachable => {
-                is_codegen_intrinsic = false;
-                use coverage::coverage_unreachable_args::*;
-                self.add_unreachable_region(
-                    caller_instance,
-                    coverageinfo::Region::new(
-                        op_to_str_slice(&args[FILE_NAME]),
-                        op_to_u32(&args[START_LINE]),
-                        op_to_u32(&args[START_COL]),
-                        op_to_u32(&args[END_LINE]),
-                        op_to_u32(&args[END_COL]),
-                    ),
-                );
-            }
-            _ => {}
-        }
-        is_codegen_intrinsic
-    }
-
     fn codegen_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -161,7 +86,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         args: &[OperandRef<'tcx, &'ll Value>],
         llresult: &'ll Value,
         span: Span,
-        caller_instance: ty::Instance<'tcx>,
     ) {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
@@ -212,21 +136,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             sym::breakpoint => {
                 let llfn = self.get_intrinsic(&("llvm.debugtrap"));
                 self.call(llfn, &[], None)
-            }
-            sym::count_code_region => {
-                use coverage::count_code_region_args::*;
-                let coverageinfo = tcx.coverageinfo(caller_instance.def_id());
-
-                let fn_name = self.create_pgo_func_name_var(caller_instance);
-                let hash = args[FUNCTION_SOURCE_HASH].immediate();
-                let num_counters = self.const_u32(coverageinfo.num_counters);
-                let index = args[COUNTER_ID].immediate();
-                debug!(
-                    "translating Rust intrinsic `count_code_region()` to LLVM intrinsic: \
-                    instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
-                    fn_name, hash, num_counters, index,
-                );
-                self.instrprof_increment(fn_name, hash, num_counters, index)
             }
             sym::va_start => self.va_start(args[0].immediate()),
             sym::va_end => self.va_end(args[0].immediate()),
@@ -2237,16 +2146,4 @@ fn float_type_width(ty: Ty<'_>) -> Option<u64> {
         ty::Float(t) => Some(t.bit_width()),
         _ => None,
     }
-}
-
-fn op_to_str_slice<'tcx>(op: &Operand<'tcx>) -> &'tcx str {
-    Operand::value_from_const(op).try_to_str_slice().expect("Value is &str")
-}
-
-fn op_to_u32<'tcx>(op: &Operand<'tcx>) -> u32 {
-    Operand::scalar_from_const(op).to_u32().expect("Scalar is u32")
-}
-
-fn op_to_u64<'tcx>(op: &Operand<'tcx>) -> u64 {
-    Operand::scalar_from_const(op).to_u64().expect("Scalar is u64")
 }

@@ -134,6 +134,12 @@ macro_rules! make_mir_visitor {
                 self.super_ascribe_user_ty(place, variance, user_ty, location);
             }
 
+            fn visit_coverage(&mut self,
+                              coverage: & $($mutability)? Coverage,
+                              location: Location) {
+                self.super_coverage(coverage, location);
+            }
+
             fn visit_retag(&mut self,
                            kind: & $($mutability)? RetagKind,
                            place: & $($mutability)? Place<'tcx>,
@@ -388,6 +394,12 @@ macro_rules! make_mir_visitor {
                         variance
                     ) => {
                         self.visit_ascribe_user_ty(place, variance, user_ty, location);
+                    }
+                    StatementKind::Coverage(coverage) => {
+                        self.visit_coverage(
+                            coverage,
+                            location
+                        )
                     }
                     StatementKind::Nop => {}
                 }
@@ -737,6 +749,11 @@ macro_rules! make_mir_visitor {
                     location
                 );
                 self.visit_user_type_projection(user_ty);
+            }
+
+            fn super_coverage(&mut self,
+                              _kind: & $($mutability)? Coverage,
+                              _location: Location) {
             }
 
             fn super_retag(&mut self,
@@ -1133,6 +1150,8 @@ pub enum NonUseContext {
     StorageDead,
     /// User type annotation assertions for NLL.
     AscribeUserTy,
+    /// Coverage code region and counter metadata.
+    Coverage,
     /// The data of an user variable, for debug info.
     VarDebugInfo,
 }

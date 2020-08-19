@@ -440,11 +440,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // These just return their argument
                 self.copy_op(args[0], dest)?;
             }
-            // FIXME(#73156): Handle source code coverage in const eval
-            sym::count_code_region
-            | sym::coverage_counter_add
-            | sym::coverage_counter_subtract
-            | sym::coverage_unreachable => (),
             _ => return Ok(false),
         }
 

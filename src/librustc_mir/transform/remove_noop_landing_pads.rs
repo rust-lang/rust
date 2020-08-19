@@ -38,6 +38,7 @@ impl RemoveNoopLandingPads {
                 | StatementKind::StorageLive(_)
                 | StatementKind::StorageDead(_)
                 | StatementKind::AscribeUserType(..)
+                | StatementKind::Coverage(..)
                 | StatementKind::Nop => {
                     // These are all nops in a landing pad
                 }

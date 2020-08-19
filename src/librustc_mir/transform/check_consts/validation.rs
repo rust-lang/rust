@@ -485,6 +485,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             | StatementKind::StorageDead(_)
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
+            | StatementKind::Coverage(..)
             | StatementKind::Nop => {}
         }
     }

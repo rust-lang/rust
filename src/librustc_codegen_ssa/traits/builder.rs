@@ -271,7 +271,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         hash: Self::Value,
         num_counters: Self::Value,
         index: Self::Value,
-    ) -> Self::Value;
+    );
 
     fn call(
         &mut self,

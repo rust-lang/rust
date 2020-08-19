@@ -2,6 +2,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
+use crate::mir::coverage::{CodeRegion, CoverageKind};
 use crate::mir::interpret::{Allocation, ConstValue, GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
@@ -25,7 +26,6 @@ use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
@@ -1400,6 +1400,12 @@ pub enum StatementKind<'tcx> {
     /// - `Bivariant` -- no effect
     AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
 
+    /// Marks the start of a "coverage region", injected with '-Zinstrument-coverage'. A
+    /// `CoverageInfo` statement carries metadata about the coverage region, used to inject a coverage
+    /// map into the binary. The `Counter` kind also generates executable code, to increment a
+    /// counter varible at runtime, each time the code region is executed.
+    Coverage(Box<Coverage>),
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }
@@ -1495,9 +1501,16 @@ impl Debug for Statement<'_> {
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
+            Coverage(box ref coverage) => write!(fmt, "{:?}", coverage),
             Nop => write!(fmt, "nop"),
         }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+pub struct Coverage {
+    pub kind: CoverageKind,
+    pub code_region: CodeRegion,
 }
 
 ///////////////////////////////////////////////////////////////////////////

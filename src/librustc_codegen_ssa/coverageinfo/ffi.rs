@@ -1,4 +1,4 @@
-use super::map::{CounterValueReference, MappedExpressionIndex};
+use rustc_middle::mir::coverage::{CounterValueReference, MappedExpressionIndex};
 
 /// Aligns with [llvm::coverage::Counter::CounterKind](https://github.com/rust-lang/llvm-project/blob/rustc/10.0-2020-05-05/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L91)
 #[derive(Copy, Clone, Debug)]

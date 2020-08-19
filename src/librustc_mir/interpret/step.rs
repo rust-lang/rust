@@ -118,6 +118,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Statements we do not track.
             AscribeUserType(..) => {}
 
+            // Currently, Miri discards Coverage statements. Coverage statements are only injected
+            // via an optional compile time MIR pass and have no side effects. Since Coverage
+            // statements don't exist at the source level, it is safe for Miri to ignore them, even
+            // for undefined behavior (UB) checks.
+            //
+            // A coverage counter inside a const expression (for example, a counter injected in a
+            // const function) is discarded when the const is evaluated at compile time. Whether
+            // this should change, and/or how to implement a const eval counter, is a subject of the
+            // following issue:
+            //
+            // FIXME(#73156): Handle source code coverage in const eval
+            Coverage(..) => {}
+
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
             Nop => {}
