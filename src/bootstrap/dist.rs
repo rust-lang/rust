@@ -162,7 +162,7 @@ impl Step for RustcDocs {
         let image = tmpdir(builder).join(format!("{}-{}-image", name, host.triple));
         let _ = fs::remove_dir_all(&image);
 
-        let dst = image.join("share/doc/rust/html");
+        let dst = image.join("share/doc/rust/html/rustc");
         t!(fs::create_dir_all(&dst));
         let src = builder.compiler_doc_out(host);
         builder.cp_r(&src, &dst);
@@ -181,7 +181,7 @@ impl Step for RustcDocs {
             .arg(format!("--package-name={}-{}", name, host.triple))
             .arg("--component-name=rustc-docs")
             .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--bulk-dirs=share/doc/rust/html");
+            .arg("--bulk-dirs=share/doc/rust/html/rustc");
 
         builder.info(&format!("Dist compiler docs ({})", host));
         let _time = timeit(builder);
