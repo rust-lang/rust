@@ -129,9 +129,8 @@
 # MIR to Binaries
 
 - [Prologue](./part-5-intro.md)
-- [The MIR (Mid-level IR)](./mir/index.md)
-    - [MIR optimizations](./mir/optimizations.md)
-    - [Debugging](./mir/debugging.md)
+- [MIR optimizations](./mir/optimizations.md)
+- [Debugging](./mir/debugging.md)
 - [Constant evaluation](./const-eval.md)
     - [miri const evaluator](./miri.md)
 - [Monomorphization](./backend/monomorph.md)

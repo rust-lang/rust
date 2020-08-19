@@ -5,14 +5,16 @@ generated any executable machine code at all! With this chapter, all of that
 changes.
 
 So far, we've shown how the compiler can take raw source code in text format
-and transform it into MIR. We have also shown how the compiler does various
+and transform it into [MIR]. We have also shown how the compiler does various
 analyses on the code to detect things like type or lifetime errors. Now, we
 will finally take the MIR and produce some executable machine code.
+
+[MIR]: ./mir/index.html
 
 > NOTE: This part of a compiler is often called the _backend_ the term is a bit
 > overloaded because in the compiler source, it usually refers to the "codegen
 > backend" (i.e. LLVM or Cranelift). Usually, when you see the word "backend"
-> in this part, we are refering to the "codegen backend".
+> in this part, we are referring to the "codegen backend".
 
 So what do we need to do?
 
