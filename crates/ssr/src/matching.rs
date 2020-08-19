@@ -545,7 +545,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         // If the function we're calling takes a self parameter, then we store additional
         // information on the placeholder match about autoderef and autoref. This allows us to use
         // the placeholder in a context where autoderef and autoref don't apply.
-        if code_resolved_function.has_self_param(self.sema.db) {
+        if code_resolved_function.self_param(self.sema.db).is_some() {
             if let (Some(pattern_type), Some(expr)) = (&pattern_ufcs.qualifier_type, &code.expr()) {
                 let deref_count = self.check_expr_type(pattern_type, expr)?;
                 let pattern_receiver = pattern_args.next();

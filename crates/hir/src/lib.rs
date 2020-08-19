@@ -32,10 +32,10 @@ mod has_source;
 
 pub use crate::{
     code_model::{
-        Adt, AsAssocItem, AssocItem, AssocItemContainer, AttrDef, Callable, CallableKind, Const,
-        Crate, CrateDependency, DefWithBody, Docs, Enum, EnumVariant, Field, FieldSource, Function,
-        GenericDef, HasAttrs, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, ScopeDef,
-        Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, VariantDef, Visibility,
+        Access, Adt, AsAssocItem, AssocItem, AssocItemContainer, AttrDef, Callable, CallableKind,
+        Const, Crate, CrateDependency, DefWithBody, Docs, Enum, EnumVariant, Field, FieldSource,
+        Function, GenericDef, HasAttrs, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef,
+        ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, VariantDef, Visibility,
     },
     has_source::HasSource,
     semantics::{original_range, PathResolution, SelfKind, Semantics, SemanticsScope},

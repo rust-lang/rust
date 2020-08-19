@@ -21,13 +21,13 @@ use syntax::{
 };
 
 use crate::{
+    code_model::Access,
     db::HirDatabase,
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     AssocItem, Callable, Crate, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef,
-    Module, ModuleDef, Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, TypeRef,
-    VariantDef,
+    Module, ModuleDef, Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -627,9 +627,11 @@ impl<'db> SemanticsImpl<'db> {
                 }
 
                 let func = self.resolve_method_call(&method_call_expr).map(Function::from)?;
-                let is_unsafe = func.has_self_param(self.db)
-                    && matches!(func.params(self.db).first(), Some(TypeRef::Reference(..)));
-                Some(is_unsafe)
+                let res = match func.self_param(self.db)?.access(self.db) {
+                    Access::Shared | Access::Exclusive => true,
+                    Access::Owned => false,
+                };
+                Some(res)
             })
             .unwrap_or(false)
     }

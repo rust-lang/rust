@@ -4,7 +4,7 @@ mod injection;
 #[cfg(test)]
 mod tests;
 
-use hir::{Mutability, Name, SelfKind, Semantics, VariantDef};
+use hir::{Name, SelfKind, Semantics, VariantDef};
 use ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -761,17 +761,13 @@ fn highlight_name(
                             h |= HighlightModifier::Unsafe;
                         }
 
-                        return if func.has_self_param(db) {
-                            match func.mutability_of_self_param(db) {
-                                Some(mutability) => match mutability {
-                                    Mutability::Mut => h | HighlightModifier::Mutable,
-                                    Mutability::Shared => h,
-                                },
-                                None => h,
-                            }
-                        } else {
-                            h
-                        };
+                        match func.self_param(db) {
+                            None => h,
+                            Some(self_param) => match self_param.access(db) {
+                                hir::Access::Exclusive => h | HighlightModifier::Mutable,
+                                hir::Access::Shared | hir::Access::Owned => h,
+                            },
+                        }
                     });
             }
             hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,

@@ -165,7 +165,7 @@ impl Resolver<'_, '_> {
     fn ok_to_use_path_resolution(&self, resolution: &hir::PathResolution) -> bool {
         match resolution {
             hir::PathResolution::AssocItem(hir::AssocItem::Function(function)) => {
-                if function.has_self_param(self.resolution_scope.scope.db) {
+                if function.self_param(self.resolution_scope.scope.db).is_some() {
                     // If we don't use this path resolution, then we won't be able to match method
                     // calls. e.g. `Foo::bar($s)` should match `x.bar()`.
                     true
