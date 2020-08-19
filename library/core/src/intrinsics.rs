@@ -701,7 +701,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
-    /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
+    /// [`AtomicU32::fetch_min`](crate::sync::atomic::AtomicU32::fetch_min).
     pub fn atomic_umin<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsigned comparison.
     ///
@@ -709,7 +709,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
-    /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
+    /// [`AtomicU32::fetch_min`](crate::sync::atomic::AtomicU32::fetch_min).
     pub fn atomic_umin_acq<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsigned comparison.
     ///
@@ -717,7 +717,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
-    /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
+    /// [`AtomicU32::fetch_min`](crate::sync::atomic::AtomicU32::fetch_min).
     pub fn atomic_umin_rel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsigned comparison.
     ///
@@ -725,7 +725,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
-    /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
+    /// [`AtomicU32::fetch_min`](crate::sync::atomic::AtomicU32::fetch_min).
     pub fn atomic_umin_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsigned comparison.
     ///
@@ -733,7 +733,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
-    /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
+    /// [`AtomicU32::fetch_min`](crate::sync::atomic::AtomicU32::fetch_min).
     pub fn atomic_umin_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Maximum with the current value using an unsigned comparison.
@@ -742,7 +742,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::SeqCst`](crate::sync::atomic::Ordering::SeqCst)
     /// as the `order`. For example,
-    /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
+    /// [`AtomicU32::fetch_max`](crate::sync::atomic::AtomicU32::fetch_max).
     pub fn atomic_umax<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsigned comparison.
     ///
@@ -750,7 +750,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::Acquire`](crate::sync::atomic::Ordering::Acquire)
     /// as the `order`. For example,
-    /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
+    /// [`AtomicU32::fetch_max`](crate::sync::atomic::AtomicU32::fetch_max).
     pub fn atomic_umax_acq<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsigned comparison.
     ///
@@ -758,7 +758,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::Release`](crate::sync::atomic::Ordering::Release)
     /// as the `order`. For example,
-    /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
+    /// [`AtomicU32::fetch_max`](crate::sync::atomic::AtomicU32::fetch_max).
     pub fn atomic_umax_rel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsigned comparison.
     ///
@@ -766,7 +766,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::AcqRel`](crate::sync::atomic::Ordering::AcqRel)
     /// as the `order`. For example,
-    /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
+    /// [`AtomicU32::fetch_max`](crate::sync::atomic::AtomicU32::fetch_max).
     pub fn atomic_umax_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsigned comparison.
     ///
@@ -774,7 +774,7 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::Relaxed`](crate::sync::atomic::Ordering::Relaxed)
     /// as the `order`. For example,
-    /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
+    /// [`AtomicU32::fetch_max`](crate::sync::atomic::AtomicU32::fetch_max).
     pub fn atomic_umax_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
