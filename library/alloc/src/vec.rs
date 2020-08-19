@@ -1,4 +1,3 @@
-// ignore-tidy-filelength
 //! A contiguous growable array type with heap-allocated contents, written
 //! `Vec<T>`.
 //!
