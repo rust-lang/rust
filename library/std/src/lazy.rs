@@ -386,9 +386,10 @@ impl<T> SyncOnceCell<T> {
     }
 }
 
-impl<T> Drop for SyncOnceCell<T> {
+unsafe impl<#[may_dangle] T> Drop for SyncOnceCell<T> {
     fn drop(&mut self) {
-        // Safety: The cell is being dropped, so it can't be accessed again
+        // Safety: The cell is being dropped, so it can't be accessed again.
+        // We also don't touch the `T`, which validates our usage of #[may_dangle].
         unsafe { self.take_inner() };
     }
 }
@@ -516,6 +517,7 @@ mod tests {
             mpsc::channel,
             Mutex,
         },
+        thread,
     };
 
     #[test]
@@ -552,26 +554,8 @@ mod tests {
         }
     }
 
-    // miri doesn't support threads
-    #[cfg(not(miri))]
     fn spawn_and_wait<R: Send + 'static>(f: impl FnOnce() -> R + Send + 'static) -> R {
-        crate::thread::spawn(f).join().unwrap()
-    }
-
-    #[cfg(not(miri))]
-    fn spawn(f: impl FnOnce() + Send + 'static) {
-        let _ = crate::thread::spawn(f);
-    }
-
-    // "stub threads" for Miri
-    #[cfg(miri)]
-    fn spawn_and_wait<R: Send + 'static>(f: impl FnOnce() -> R + Send + 'static) -> R {
-        f(())
-    }
-
-    #[cfg(miri)]
-    fn spawn(f: impl FnOnce() + Send + 'static) {
-        f(())
+        thread::spawn(f).join().unwrap()
     }
 
     #[test]
@@ -734,7 +718,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore)] // leaks memory
     fn static_sync_lazy() {
         static XS: SyncLazy<Vec<i32>> = SyncLazy::new(|| {
             let mut xs = Vec::new();
@@ -752,7 +735,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore)] // leaks memory
     fn static_sync_lazy_via_fn() {
         fn xs() -> &'static Vec<i32> {
             static XS: SyncOnceCell<Vec<i32>> = SyncOnceCell::new();
@@ -811,7 +793,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore)] // deadlocks without real threads
     fn sync_once_cell_does_not_leak_partially_constructed_boxes() {
         static ONCE_CELL: SyncOnceCell<String> = SyncOnceCell::new();
 
@@ -823,7 +804,7 @@ mod tests {
 
         for _ in 0..n_readers {
             let tx = tx.clone();
-            spawn(move || {
+            thread::spawn(move || {
                 loop {
                     if let Some(msg) = ONCE_CELL.get() {
                         tx.send(msg).unwrap();
@@ -835,7 +816,7 @@ mod tests {
             });
         }
         for _ in 0..n_writers {
-            spawn(move || {
+            thread::spawn(move || {
                 let _ = ONCE_CELL.set(MSG.to_owned());
             });
         }
@@ -843,6 +824,15 @@ mod tests {
         for _ in 0..n_readers {
             let msg = rx.recv().unwrap();
             assert_eq!(msg, MSG);
+        }
+    }
+
+    #[test]
+    fn dropck() {
+        let cell = SyncOnceCell::new();
+        {
+            let s = String::new();
+            cell.set(&s).unwrap();
         }
     }
 }

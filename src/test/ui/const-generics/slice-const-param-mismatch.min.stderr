@@ -1,4 +1,4 @@
-error: using `&'static str` as const generic parameters is forbidden
+error: `&'static str` is forbidden as the type of a const generic parameter
   --> $DIR/slice-const-param-mismatch.rs:8:29
    |
 LL | struct ConstString<const T: &'static str>;
@@ -7,7 +7,7 @@ LL | struct ConstString<const T: &'static str>;
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error: using `&'static [u8]` as const generic parameters is forbidden
+error: `&'static [u8]` is forbidden as the type of a const generic parameter
   --> $DIR/slice-const-param-mismatch.rs:10:28
    |
 LL | struct ConstBytes<const T: &'static [u8]>;

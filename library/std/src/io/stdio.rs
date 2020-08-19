@@ -252,8 +252,7 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 ///
 /// Created by the [`io::stdin`] method.
 ///
-/// [`io::stdin`]: fn.stdin.html
-/// [`BufRead`]: trait.BufRead.html
+/// [`io::stdin`]: stdin
 ///
 /// ### Note: Windows Portability Consideration
 ///
@@ -282,10 +281,6 @@ pub struct Stdin {
 ///
 /// This handle implements both the [`Read`] and [`BufRead`] traits, and
 /// is constructed via the [`Stdin::lock`] method.
-///
-/// [`Read`]: trait.Read.html
-/// [`BufRead`]: trait.BufRead.html
-/// [`Stdin::lock`]: struct.Stdin.html#method.lock
 ///
 /// ### Note: Windows Portability Consideration
 ///
@@ -318,8 +313,6 @@ pub struct StdinLock<'a> {
 /// Each handle returned is a reference to a shared global buffer whose access
 /// is synchronized via a mutex. If you need more explicit control over
 /// locking, see the [`Stdin::lock`] method.
-///
-/// [`Stdin::lock`]: struct.Stdin.html#method.lock
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -380,9 +373,6 @@ impl Stdin {
     /// returned guard also implements the [`Read`] and [`BufRead`] traits for
     /// accessing the underlying data.
     ///
-    /// [`Read`]: trait.Read.html
-    /// [`BufRead`]: trait.BufRead.html
-    ///
     /// # Examples
     ///
     /// ```no_run
@@ -406,8 +396,6 @@ impl Stdin {
     ///
     /// For detailed semantics of this method, see the documentation on
     /// [`BufRead::read_line`].
-    ///
-    /// [`BufRead::read_line`]: trait.BufRead.html#method.read_line
     ///
     /// # Examples
     ///
@@ -542,8 +530,8 @@ impl fmt::Debug for StdinLock<'_> {
 /// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
 /// an error.
 ///
-/// [`lock`]: #method.lock
-/// [`io::stdout`]: fn.stdout.html
+/// [`lock`]: Stdout::lock
+/// [`io::stdout`]: stdout
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
@@ -561,9 +549,6 @@ pub struct Stdout {
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
 /// an error.
-///
-/// [`Write`]: trait.Write.html
-/// [`Stdout::lock`]: struct.Stdout.html#method.lock
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
     inner: ReentrantMutexGuard<'a, RefCell<LineWriter<Maybe<StdoutRaw>>>>,
@@ -574,8 +559,6 @@ pub struct StdoutLock<'a> {
 /// Each handle returned is a reference to a shared global buffer whose access
 /// is synchronized via a mutex. If you need more explicit control over
 /// locking, see the [`Stdout::lock`] method.
-///
-/// [`Stdout::lock`]: struct.Stdout.html#method.lock
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -724,7 +707,7 @@ impl fmt::Debug for StdoutLock<'_> {
 ///
 /// For more information, see the [`io::stderr`] method.
 ///
-/// [`io::stderr`]: fn.stderr.html
+/// [`io::stderr`]: stderr
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -739,8 +722,6 @@ pub struct Stderr {
 ///
 /// This handle implements the `Write` trait and is constructed via
 /// the [`Stderr::lock`] method.
-///
-/// [`Stderr::lock`]: struct.Stderr.html#method.lock
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -819,7 +800,7 @@ impl Stderr {
     /// guard.
     ///
     /// The lock is released when the returned lock goes out of scope. The
-    /// returned guard also implements the `Write` trait for writing data.
+    /// returned guard also implements the [`Write`] trait for writing data.
     ///
     /// # Examples
     ///

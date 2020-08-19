@@ -21,17 +21,16 @@ use crate::memchr;
 /// *repeated* read calls to the same file or network socket. It does not
 /// help when reading very large amounts at once, or reading just one or a few
 /// times. It also provides no advantage when reading from a source that is
-/// already in memory, like a `Vec<u8>`.
+/// already in memory, like a [`Vec`]`<u8>`.
 ///
 /// When the `BufReader<R>` is dropped, the contents of its buffer will be
 /// discarded. Creating multiple instances of a `BufReader<R>` on the same
 /// stream can cause data loss. Reading from the underlying reader after
-/// unwrapping the `BufReader<R>` with `BufReader::into_inner` can also cause
+/// unwrapping the `BufReader<R>` with [`BufReader::into_inner`] can also cause
 /// data loss.
 ///
-/// [`Read`]: ../../std/io/trait.Read.html
-/// [`TcpStream::read`]: ../../std/net/struct.TcpStream.html#method.read
-/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+/// [`TcpStream::read`]: Read::read
+/// [`TcpStream`]: crate::net::TcpStream
 ///
 /// # Examples
 ///
@@ -155,7 +154,9 @@ impl<R> BufReader<R> {
 
     /// Returns a reference to the internally buffered data.
     ///
-    /// Unlike `fill_buf`, this will not attempt to fill the buffer if it is empty.
+    /// Unlike [`fill_buf`], this will not attempt to fill the buffer if it is empty.
+    ///
+    /// [`fill_buf`]: BufRead::fill_buf
     ///
     /// # Examples
     ///
@@ -338,27 +339,26 @@ where
 impl<R: Seek> Seek for BufReader<R> {
     /// Seek to an offset, in bytes, in the underlying reader.
     ///
-    /// The position used for seeking with `SeekFrom::Current(_)` is the
+    /// The position used for seeking with [`SeekFrom::Current`]`(_)` is the
     /// position the underlying reader would be at if the `BufReader<R>` had no
     /// internal buffer.
     ///
     /// Seeking always discards the internal buffer, even if the seek position
     /// would otherwise fall within it. This guarantees that calling
-    /// `.into_inner()` immediately after a seek yields the underlying reader
+    /// [`BufReader::into_inner()`] immediately after a seek yields the underlying reader
     /// at the same position.
     ///
     /// To seek without discarding the internal buffer, use [`BufReader::seek_relative`].
     ///
     /// See [`std::io::Seek`] for more details.
     ///
-    /// Note: In the edge case where you're seeking with `SeekFrom::Current(n)`
+    /// Note: In the edge case where you're seeking with [`SeekFrom::Current`]`(n)`
     /// where `n` minus the internal buffer length overflows an `i64`, two
     /// seeks will be performed instead of one. If the second seek returns
-    /// `Err`, the underlying reader will be left at the same position it would
-    /// have if you called `seek` with `SeekFrom::Current(0)`.
+    /// [`Err`], the underlying reader will be left at the same position it would
+    /// have if you called `seek` with [`SeekFrom::Current`]`(0)`.
     ///
-    /// [`BufReader::seek_relative`]: struct.BufReader.html#method.seek_relative
-    /// [`std::io::Seek`]: trait.Seek.html
+    /// [`std::io::Seek`]: Seek
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         let result: u64;
         if let SeekFrom::Current(n) = pos {
@@ -397,7 +397,7 @@ impl<R: Seek> Seek for BufReader<R> {
 /// *repeated* write calls to the same file or network socket. It does not
 /// help when writing very large amounts at once, or writing just one or a few
 /// times. It also provides no advantage when writing to a destination that is
-/// in memory, like a `Vec<u8>`.
+/// in memory, like a [`Vec`]<u8>`.
 ///
 /// It is critical to call [`flush`] before `BufWriter<W>` is dropped. Though
 /// dropping will attempt to flush the contents of the buffer, any errors
@@ -441,10 +441,9 @@ impl<R: Seek> Seek for BufReader<R> {
 /// together by the buffer and will all be written out in one system call when
 /// the `stream` is flushed.
 ///
-/// [`Write`]: ../../std/io/trait.Write.html
-/// [`TcpStream::write`]: ../../std/net/struct.TcpStream.html#method.write
-/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
-/// [`flush`]: #method.flush
+/// [`TcpStream::write`]: Write::write
+/// [`TcpStream`]: crate::net::TcpStream
+/// [`flush`]: Write::flush
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
     inner: Option<W>,
@@ -455,7 +454,7 @@ pub struct BufWriter<W: Write> {
     panicked: bool,
 }
 
-/// An error returned by `into_inner` which combines an error that
+/// An error returned by [`BufWriter::into_inner`] which combines an error that
 /// happened while writing out the buffer, and the buffered writer object
 /// which may be used to recover from the condition.
 ///
@@ -629,7 +628,7 @@ impl<W: Write> BufWriter<W> {
     ///
     /// # Errors
     ///
-    /// An `Err` will be returned if an error occurs while flushing the buffer.
+    /// An [`Err`] will be returned if an error occurs while flushing the buffer.
     ///
     /// # Examples
     ///
@@ -725,7 +724,8 @@ impl<W: Write> Drop for BufWriter<W> {
 }
 
 impl<W> IntoInnerError<W> {
-    /// Returns the error which caused the call to `into_inner()` to fail.
+    /// Returns the error which caused the call to [`BufWriter::into_inner()`]
+    /// to fail.
     ///
     /// This error was returned when attempting to write the internal buffer.
     ///
@@ -819,16 +819,14 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// Wraps a writer and buffers output to it, flushing whenever a newline
 /// (`0x0a`, `'\n'`) is detected.
 ///
-/// The [`BufWriter`][bufwriter] struct wraps a writer and buffers its output.
+/// The [`BufWriter`] struct wraps a writer and buffers its output.
 /// But it only does this batched write when it goes out of scope, or when the
 /// internal buffer is full. Sometimes, you'd prefer to write each line as it's
 /// completed, rather than the entire buffer at once. Enter `LineWriter`. It
 /// does exactly that.
 ///
-/// Like [`BufWriter`][bufwriter], a `LineWriter`’s buffer will also be flushed when the
+/// Like [`BufWriter`], a `LineWriter`’s buffer will also be flushed when the
 /// `LineWriter` goes out of scope or when its internal buffer is full.
-///
-/// [bufwriter]: struct.BufWriter.html
 ///
 /// If there's still a partial line in the buffer when the `LineWriter` is
 /// dropped, it will flush those contents.
@@ -979,7 +977,7 @@ impl<W: Write> LineWriter<W> {
     ///
     /// # Errors
     ///
-    /// An `Err` will be returned if an error occurs while flushing the buffer.
+    /// An [`Err`] will be returned if an error occurs while flushing the buffer.
     ///
     /// # Examples
     ///
