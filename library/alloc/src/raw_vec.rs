@@ -494,6 +494,7 @@ where
     alloc_guard(new_layout.size())?;
 
     let memory = if let Some((ptr, old_layout)) = current_memory {
+        debug_assert_eq!(old_layout.align(), new_layout.align());
         unsafe { alloc.grow(ptr, old_layout, new_layout) }
     } else {
         alloc.alloc(new_layout)
