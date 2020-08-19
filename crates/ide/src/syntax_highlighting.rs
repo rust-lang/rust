@@ -706,8 +706,7 @@ fn highlight_func_by_name_ref(
     sema: &Semantics<RootDatabase>,
     name_ref: &ast::NameRef,
 ) -> Option<Highlight> {
-    let parent = name_ref.syntax().parent()?;
-    let method_call = ast::MethodCallExpr::cast(parent)?;
+    let method_call = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
     highlight_method_call(sema, &method_call)
 }
 
