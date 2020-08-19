@@ -249,7 +249,12 @@ impl fold::DocFolder for CoverageCalculator {
                 );
                 if should_have_doc_examples {
                     find_testable_code(
-                        &i.attrs.doc_strings.iter().map(|d| d.as_str()).collect::<Vec<_>>().join("\n"),
+                        &i.attrs
+                            .doc_strings
+                            .iter()
+                            .map(|d| d.as_str())
+                            .collect::<Vec<_>>()
+                            .join("\n"),
                         &mut tests,
                         ErrorCodes::No,
                         false,
@@ -259,10 +264,11 @@ impl fold::DocFolder for CoverageCalculator {
 
                 let has_doc_example = tests.found_tests != 0;
                 debug!("counting {:?} {:?} in {}", i.type_(), i.name, i.source.filename);
-                self.items
-                    .entry(i.source.filename.clone())
-                    .or_default()
-                    .count_item(has_docs, has_doc_example, should_have_doc_examples);
+                self.items.entry(i.source.filename.clone()).or_default().count_item(
+                    has_docs,
+                    has_doc_example,
+                    should_have_doc_examples,
+                );
             }
         }
 
