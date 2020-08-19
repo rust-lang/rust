@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! A contiguous growable array type with heap-allocated contents, written
 //! `Vec<T>`.
 //!
@@ -75,9 +77,9 @@ use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::raw_vec::RawVec;
 
-#[stable(feature="drain", since="1.6.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 mod drain;
-#[stable(feature="drain", since="1.6.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 pub use drain::Drain;
 
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
