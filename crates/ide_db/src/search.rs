@@ -203,7 +203,7 @@ impl<'a> FindUsages<'a> {
     }
 
     pub fn at_least_one(self) -> bool {
-        self.all().is_empty()
+        !self.all().is_empty()
     }
 
     pub fn all(self) -> Vec<Reference> {

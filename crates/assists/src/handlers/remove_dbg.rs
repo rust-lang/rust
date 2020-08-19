@@ -82,8 +82,9 @@ fn is_valid_macrocall(macro_call: &ast::MacroCall, macro_name: &str) -> Option<b
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+
+    use super::*;
 
     #[test]
     fn test_remove_dbg() {

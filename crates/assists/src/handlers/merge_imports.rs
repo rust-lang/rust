@@ -8,6 +8,7 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistContext, Assists},
+    utils::next_prev,
     AssistId, AssistKind,
 };
 
@@ -64,10 +65,6 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()
             builder.rewrite(rewriter);
         },
     )
-}
-
-fn next_prev() -> impl Iterator<Item = Direction> {
-    [Direction::Next, Direction::Prev].iter().copied()
 }
 
 fn try_merge_trees(old: &ast::UseTree, new: &ast::UseTree) -> Option<ast::UseTree> {

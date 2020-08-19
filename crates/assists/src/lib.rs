@@ -152,6 +152,7 @@ mod handlers {
     mod raw_string;
     mod remove_dbg;
     mod remove_mut;
+    mod remove_unused_param;
     mod reorder_fields;
     mod replace_if_let_with_match;
     mod replace_let_with_if_let;
@@ -198,6 +199,7 @@ mod handlers {
             raw_string::remove_hash,
             remove_dbg::remove_dbg,
             remove_mut::remove_mut,
+            remove_unused_param::remove_unused_param,
             reorder_fields::reorder_fields,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_let_with_if_let::replace_let_with_if_let,
