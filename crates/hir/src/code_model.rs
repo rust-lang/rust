@@ -673,8 +673,13 @@ impl Function {
         Some(SelfParam { func: self.id })
     }
 
-    pub fn params(self, db: &dyn HirDatabase) -> Vec<TypeRef> {
-        db.function_data(self.id).params.clone()
+    pub fn params(self, db: &dyn HirDatabase) -> Vec<Param> {
+        db.function_data(self.id)
+            .params
+            .iter()
+            .skip(if self.self_param(db).is_some() { 1 } else { 0 })
+            .map(|_| Param { _ty: () })
+            .collect()
     }
 
     pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
@@ -705,6 +710,10 @@ impl From<Mutability> for Access {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SelfParam {
     func: FunctionId,
+}
+
+pub struct Param {
+    _ty: (),
 }
 
 impl SelfParam {
