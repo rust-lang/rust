@@ -931,7 +931,7 @@ extern "rust-intrinsic" {
     /// reach code marked with this function.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::hint::unreachable_unchecked`](../../std/hint/fn.unreachable_unchecked.html).
+    /// [`std::hint::unreachable_unchecked`](crate::hint::unreachable_unchecked).
     #[rustc_const_unstable(feature = "const_unreachable_unchecked", issue = "53188")]
     pub fn unreachable() -> !;
 
@@ -1016,7 +1016,7 @@ extern "rust-intrinsic" {
     /// Gets a static string slice containing the name of a type.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::any::type_name`](../../std/any/fn.type_name.html)
+    /// [`std::any::type_name`](crate::any::type_name)
     #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
@@ -1025,7 +1025,7 @@ extern "rust-intrinsic" {
     /// crate it is invoked in.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::any::TypeId::of`](../../std/any/struct.TypeId.html#method.of)
+    /// [`std::any::TypeId::of`](crate::any::TypeId::of)
     #[rustc_const_stable(feature = "const_type_id", since = "1.46.0")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
@@ -1049,7 +1049,7 @@ extern "rust-intrinsic" {
 
     /// Gets a reference to a static `Location` indicating where it was called.
     ///
-    /// Consider using [`std::panic::Location::caller`](../../std/panic/struct.Location.html#method.caller)
+    /// Consider using [`std::panic::Location::caller`](crate::panic::Location::caller)
     /// instead.
     #[rustc_const_unstable(feature = "const_caller_location", issue = "47809")]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
@@ -2053,7 +2053,6 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
 /// with the argument order swapped.
 ///
-/// [`copy`]: ./fn.copy.html
 /// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy
 ///
 /// # Safety
@@ -2078,8 +2077,8 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
 /// `0`, the pointers must be non-NULL and properly aligned.
 ///
-/// [`Copy`]: ../marker/trait.Copy.html
-/// [`read`]: ../ptr/fn.read.html
+/// [`Copy`]: crate::marker::Copy
+/// [`read`]: crate::ptr::read
 /// [read-ownership]: ../ptr/fn.read.html#ownership-of-the-returned-value
 /// [valid]: ../ptr/index.html#safety
 ///
@@ -2160,7 +2159,6 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 /// order swapped. Copying takes place as if the bytes were copied from `src`
 /// to a temporary array and then copied from the array to `dst`.
 ///
-/// [`copy_nonoverlapping`]: ./fn.copy_nonoverlapping.html
 /// [`memmove`]: https://en.cppreference.com/w/c/string/byte/memmove
 ///
 /// # Safety
@@ -2181,8 +2179,8 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
 /// `0`, the pointers must be non-NULL and properly aligned.
 ///
-/// [`Copy`]: ../marker/trait.Copy.html
-/// [`read`]: ../ptr/fn.read.html
+/// [`Copy`]: crate::marker::Copy
+/// [`read`]: crate::ptr::read
 /// [read-ownership]: ../ptr/fn.read.html#ownership-of-the-returned-value
 /// [valid]: ../ptr/index.html#safety
 ///
