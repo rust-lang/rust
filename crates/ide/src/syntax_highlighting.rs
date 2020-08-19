@@ -496,9 +496,9 @@ fn highlight_element(
             match name_kind {
                 Some(NameClass::ExternCrate(_)) => HighlightTag::Module.into(),
                 Some(NameClass::Definition(def)) => {
-                    highlight_name(sema, db, def, None, false) | HighlightModifier::Definition
+                    highlight_def(sema, db, def, None, false) | HighlightModifier::Definition
                 }
-                Some(NameClass::ConstReference(def)) => highlight_name(sema, db, def, None, false),
+                Some(NameClass::ConstReference(def)) => highlight_def(sema, db, def, None, false),
                 Some(NameClass::FieldShorthand { field, .. }) => {
                     let mut h = HighlightTag::Field.into();
                     if let Definition::Field(field) = field {
@@ -532,7 +532,7 @@ fn highlight_element(
                                     binding_hash = Some(calc_binding_hash(&name, *shadow_count))
                                 }
                             };
-                            highlight_name(sema, db, def, Some(name_ref), possibly_unsafe)
+                            highlight_def(sema, db, def, Some(name_ref), possibly_unsafe)
                         }
                         NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
                     },
@@ -737,7 +737,7 @@ fn highlight_method_call(
     Some(h)
 }
 
-fn highlight_name(
+fn highlight_def(
     sema: &Semantics<RootDatabase>,
     db: &RootDatabase,
     def: Definition,
