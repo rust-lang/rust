@@ -9,9 +9,7 @@ use crate::sys;
 use crate::sys::platform::fs::MetadataExt as UnixMetadataExt;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 
-/// Unix-specific extensions to [`File`].
-///
-/// [`File`]: ../../../../std/fs/struct.File.html
+/// Unix-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
     /// Reads a number of bytes starting from a given offset.
@@ -55,19 +53,18 @@ pub trait FileExt {
     ///
     /// The current file cursor is not affected by this function.
     ///
-    /// Similar to [`Read::read_exact`] but uses [`read_at`] instead of `read`.
+    /// Similar to [`io::Read::read_exact`] but uses [`read_at`] instead of `read`.
     ///
-    /// [`Read::read_exact`]: ../../../../std/io/trait.Read.html#method.read_exact
-    /// [`read_at`]: #tymethod.read_at
+    /// [`read_at`]: FileExt::read_at
     ///
     /// # Errors
     ///
     /// If this function encounters an error of the kind
-    /// [`ErrorKind::Interrupted`] then the error is ignored and the operation
+    /// [`io::ErrorKind::Interrupted`] then the error is ignored and the operation
     /// will continue.
     ///
     /// If this function encounters an "end of file" before completely filling
-    /// the buffer, it returns an error of the kind [`ErrorKind::UnexpectedEof`].
+    /// the buffer, it returns an error of the kind [`io::ErrorKind::UnexpectedEof`].
     /// The contents of `buf` are unspecified in this case.
     ///
     /// If any other read error is encountered then this function immediately
@@ -76,9 +73,6 @@ pub trait FileExt {
     /// If this function returns an error, it is unspecified how many bytes it
     /// has read, but it will never read more than would be necessary to
     /// completely fill the buffer.
-    ///
-    /// [`ErrorKind::Interrupted`]: ../../../../std/io/enum.ErrorKind.html#variant.Interrupted
-    /// [`ErrorKind::UnexpectedEof`]: ../../../../std/io/enum.ErrorKind.html#variant.UnexpectedEof
     ///
     /// # Examples
     ///
@@ -161,19 +155,18 @@ pub trait FileExt {
     /// The current file cursor is not affected by this function.
     ///
     /// This method will continuously call [`write_at`] until there is no more data
-    /// to be written or an error of non-[`ErrorKind::Interrupted`] kind is
+    /// to be written or an error of non-[`io::ErrorKind::Interrupted`] kind is
     /// returned. This method will not return until the entire buffer has been
     /// successfully written or such an error occurs. The first error that is
-    /// not of [`ErrorKind::Interrupted`] kind generated from this method will be
+    /// not of [`io::ErrorKind::Interrupted`] kind generated from this method will be
     /// returned.
     ///
     /// # Errors
     ///
     /// This function will return the first error of
-    /// non-[`ErrorKind::Interrupted`] kind that [`write_at`] returns.
+    /// non-[`io::ErrorKind::Interrupted`] kind that [`write_at`] returns.
     ///
-    /// [`ErrorKind::Interrupted`]: ../../../../std/io/enum.ErrorKind.html#variant.Interrupted
-    /// [`write_at`]: #tymethod.write_at
+    /// [`write_at`]: FileExt::write_at
     ///
     /// # Examples
     ///
@@ -223,8 +216,6 @@ impl FileExt for fs::File {
 }
 
 /// Unix-specific extensions to [`fs::Permissions`].
-///
-/// [`fs::Permissions`]: ../../../../std/fs/struct.Permissions.html
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait PermissionsExt {
     /// Returns the underlying raw `st_mode` bits that contain the standard
@@ -302,8 +293,6 @@ impl PermissionsExt for Permissions {
 }
 
 /// Unix-specific extensions to [`fs::OpenOptions`].
-///
-/// [`fs::OpenOptions`]: ../../../../std/fs/struct.OpenOptions.html
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait OpenOptionsExt {
     /// Sets the mode bits that a new file will be created with.
@@ -372,8 +361,6 @@ impl OpenOptionsExt for OpenOptions {
 }
 
 /// Unix-specific extensions to [`fs::Metadata`].
-///
-/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Returns the ID of the device containing the file.
@@ -535,7 +522,7 @@ pub trait MetadataExt {
     fn atime(&self) -> i64;
     /// Returns the last access time of the file, in nanoseconds since [`atime`].
     ///
-    /// [`atime`]: #tymethod.atime
+    /// [`atime`]: MetadataExt::atime
     ///
     /// # Examples
     ///
@@ -571,7 +558,7 @@ pub trait MetadataExt {
     fn mtime(&self) -> i64;
     /// Returns the last modification time of the file, in nanoseconds since [`mtime`].
     ///
-    /// [`mtime`]: #tymethod.mtime
+    /// [`mtime`]: MetadataExt::mtime
     ///
     /// # Examples
     ///
@@ -607,7 +594,7 @@ pub trait MetadataExt {
     fn ctime(&self) -> i64;
     /// Returns the last status change time of the file, in nanoseconds since [`ctime`].
     ///
-    /// [`ctime`]: #tymethod.ctime
+    /// [`ctime`]: MetadataExt::ctime
     ///
     /// # Examples
     ///
@@ -714,12 +701,10 @@ impl MetadataExt for fs::Metadata {
     }
 }
 
-/// Unix-specific extensions for [`FileType`].
+/// Unix-specific extensions for [`fs::FileType`].
 ///
 /// Adds support for special Unix file types such as block/character devices,
 /// pipes, and sockets.
-///
-/// [`FileType`]: ../../../../std/fs/struct.FileType.html
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
     /// Returns `true` if this file type is a block device.
@@ -813,8 +798,6 @@ impl FileTypeExt for fs::FileType {
 }
 
 /// Unix-specific extension methods for [`fs::DirEntry`].
-///
-/// [`fs::DirEntry`]: ../../../../std/fs/struct.DirEntry.html
 #[stable(feature = "dir_entry_ext", since = "1.1.0")]
 pub trait DirEntryExt {
     /// Returns the underlying `d_ino` field in the contained `dirent`
@@ -875,8 +858,6 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
 }
 
 /// Unix-specific extensions to [`fs::DirBuilder`].
-///
-/// [`fs::DirBuilder`]: ../../../../std/fs/struct.DirBuilder.html
 #[stable(feature = "dir_builder", since = "1.6.0")]
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
