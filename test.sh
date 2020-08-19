@@ -1,7 +1,7 @@
 #!/bin/bash
-
 set -e
 
+# Build cg_clif
 if [[ "$1" == "--release" ]]; then
     export CHANNEL='release'
     CARGO_INCREMENTAL=1 cargo rustc --release -- -Zrun_dsymutil=no
@@ -10,11 +10,15 @@ else
     cargo rustc -- -Zrun_dsymutil=no
 fi
 
+# Config
 source config.sh
+export CG_CLIF_INCR_CACHE_DISABLED=1
 
+# Cleanup
 rm -r target/out || true
 mkdir -p target/out/clif
 
+# Perform all tests
 echo "[BUILD] mini_core"
 $RUSTC example/mini_core.rs --crate-name mini_core --crate-type lib,dylib --target $TARGET_TRIPLE
 

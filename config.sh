@@ -45,4 +45,3 @@ export LD_LIBRARY_PATH="$(pwd)/target/out:$(pwd)/build_sysroot/sysroot/lib/rustl
 export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH
 
 export CG_CLIF_DISPLAY_CG_TIME=1
-export CG_CLIF_INCR_CACHE_DISABLED=1
