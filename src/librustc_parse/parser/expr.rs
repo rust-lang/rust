@@ -308,7 +308,7 @@ impl<'a> Parser<'a> {
     }
 
     fn should_continue_as_assoc_expr(&mut self, lhs: &Expr) -> bool {
-        match (self.expr_is_complete(lhs), self.check_assoc_op().map(|op| op.node)) {
+        match (self.expr_is_complete(lhs), AssocOp::from_token(&self.token)) {
             // Semi-statement forms are odd:
             // See https://github.com/rust-lang/rust/issues/29071
             (true, None) => false,
