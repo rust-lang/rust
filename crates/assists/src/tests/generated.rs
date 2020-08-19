@@ -751,6 +751,27 @@ impl Walrus {
 }
 
 #[test]
+fn doctest_remove_unused_param() {
+    check_doc_test(
+        "remove_unused_param",
+        r#####"
+fn frobnicate(x: i32<|>) {}
+
+fn main() {
+    frobnicate(92);
+}
+"#####,
+        r#####"
+fn frobnicate() {}
+
+fn main() {
+    frobnicate();
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_reorder_fields() {
     check_doc_test(
         "reorder_fields",

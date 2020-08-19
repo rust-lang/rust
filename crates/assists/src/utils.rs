@@ -9,7 +9,7 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, make, NameOwner},
-    AstNode,
+    AstNode, Direction,
     SyntaxKind::*,
     SyntaxNode, TextSize, T,
 };
@@ -310,4 +310,8 @@ pub use prelude::*;
             module.scope(db, None).into_iter().find(|(name, _def)| &name.to_string() == trait_)?.1;
         Some(def)
     }
+}
+
+pub(crate) fn next_prev() -> impl Iterator<Item = Direction> {
+    [Direction::Next, Direction::Prev].iter().copied()
 }
