@@ -368,7 +368,7 @@ impl<T> Vec<T> {
     /// into a `Vec` with the [`from_raw_parts`] function, allowing
     /// the destructor to perform the cleanup.
     ///
-    /// [`from_raw_parts`]: #method.from_raw_parts
+    /// [`from_raw_parts`]: Vec::from_raw_parts
     ///
     /// # Examples
     ///
@@ -722,8 +722,8 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, []);
     /// ```
     ///
-    /// [`clear`]: #method.clear
-    /// [`drain`]: #method.drain
+    /// [`clear`]: Vec::clear
+    /// [`drain`]: Vec::drain
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: usize) {
         // This is safe because:
@@ -802,7 +802,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     ///
-    /// [`as_mut_ptr`]: #method.as_mut_ptr
+    /// [`as_mut_ptr`]: Vec::as_mut_ptr
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[inline]
     pub fn as_ptr(&self) -> *const T {
@@ -858,17 +858,17 @@ impl<T> Vec<T> {
     /// is done using one of the safe operations instead, such as
     /// [`truncate`], [`resize`], [`extend`], or [`clear`].
     ///
-    /// [`truncate`]: #method.truncate
-    /// [`resize`]: #method.resize
+    /// [`truncate`]: Vec::truncate
+    /// [`resize`]: Vec::resize
     /// [`extend`]: Extend::extend
-    /// [`clear`]: #method.clear
+    /// [`clear`]: Vec::clear
     ///
     /// # Safety
     ///
     /// - `new_len` must be less than or equal to [`capacity()`].
     /// - The elements at `old_len..new_len` must be initialized.
     ///
-    /// [`capacity()`]: #method.capacity
+    /// [`capacity()`]: Vec::capacity
     ///
     /// # Examples
     ///
@@ -1470,7 +1470,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, [2, 4, 8, 16]);
     /// ```
     ///
-    /// [`resize`]: #method.resize
+    /// [`resize`]: Vec::resize
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
     pub fn resize_with<F>(&mut self, new_len: usize, f: F)
     where
@@ -1521,7 +1521,7 @@ impl<T> Vec<T> {
     /// reading from a file) before marking the data as initialized using the
     /// [`set_len`] method.
     ///
-    /// [`set_len`]: #method.set_len
+    /// [`set_len`]: Vec::set_len
     ///
     /// # Examples
     ///
@@ -1580,7 +1580,7 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     ///
-    /// [`resize_with`]: #method.resize_with
+    /// [`resize_with`]: Vec::resize_with
     #[stable(feature = "vec_resize", since = "1.5.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
@@ -1642,8 +1642,7 @@ impl<T: Default> Vec<T> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     ///
-    /// [`resize`]: #method.resize
-    /// [`Default::default()`]: Default::default
+    /// [`resize`]: Vec::resize
     #[unstable(feature = "vec_resize_default", issue = "41758")]
     #[rustc_deprecated(
         reason = "This is moving towards being removed in favor \
