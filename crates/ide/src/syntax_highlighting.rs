@@ -454,18 +454,6 @@ fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
     Some(TextRange::new(range_start, range_end))
 }
 
-fn is_possibly_unsafe(name_ref: &ast::NameRef) -> bool {
-    name_ref
-        .syntax()
-        .parent()
-        .and_then(|parent| {
-            ast::FieldExpr::cast(parent.clone())
-                .map(|_| true)
-                .or_else(|| ast::RecordPatField::cast(parent).map(|_| true))
-        })
-        .unwrap_or(false)
-}
-
 fn highlight_element(
     sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
@@ -496,9 +484,9 @@ fn highlight_element(
             match name_kind {
                 Some(NameClass::ExternCrate(_)) => HighlightTag::Module.into(),
                 Some(NameClass::Definition(def)) => {
-                    highlight_name(sema, db, def, None, false) | HighlightModifier::Definition
+                    highlight_def(sema, db, def, None, false) | HighlightModifier::Definition
                 }
-                Some(NameClass::ConstReference(def)) => highlight_name(sema, db, def, None, false),
+                Some(NameClass::ConstReference(def)) => highlight_def(sema, db, def, None, false),
                 Some(NameClass::FieldShorthand { field, .. }) => {
                     let mut h = HighlightTag::Field.into();
                     if let Definition::Field(field) = field {
@@ -520,7 +508,6 @@ fn highlight_element(
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
             highlight_func_by_name_ref(sema, &name_ref).unwrap_or_else(|| {
-                let possibly_unsafe = is_possibly_unsafe(&name_ref);
                 match classify_name_ref(sema, &name_ref) {
                     Some(name_kind) => match name_kind {
                         NameRefClass::ExternCrate(_) => HighlightTag::Module.into(),
@@ -532,7 +519,13 @@ fn highlight_element(
                                     binding_hash = Some(calc_binding_hash(&name, *shadow_count))
                                 }
                             };
-                            highlight_name(sema, db, def, Some(name_ref), possibly_unsafe)
+                            let possibly_unsafe = match name_ref.syntax().parent() {
+                                Some(parent) => {
+                                    matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD)
+                                }
+                                None => false,
+                            };
+                            highlight_def(sema, db, def, Some(name_ref), possibly_unsafe)
                         }
                         NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
                     },
@@ -706,8 +699,7 @@ fn highlight_func_by_name_ref(
     sema: &Semantics<RootDatabase>,
     name_ref: &ast::NameRef,
 ) -> Option<Highlight> {
-    let parent = name_ref.syntax().parent()?;
-    let method_call = ast::MethodCallExpr::cast(parent)?;
+    let method_call = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
     highlight_method_call(sema, &method_call)
 }
 
@@ -737,7 +729,7 @@ fn highlight_method_call(
     Some(h)
 }
 
-fn highlight_name(
+fn highlight_def(
     sema: &Semantics<RootDatabase>,
     db: &RootDatabase,
     def: Definition,
