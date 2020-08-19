@@ -181,22 +181,44 @@ impl Definition {
         SearchScope::new(res)
     }
 
-    pub fn find_usages(
-        &self,
-        sema: &Semantics<RootDatabase>,
-        search_scope: Option<SearchScope>,
-    ) -> Vec<Reference> {
+    pub fn usages<'a>(&'a self, sema: &'a Semantics<RootDatabase>) -> FindUsages<'a> {
+        FindUsages { def: self, sema, scope: None }
+    }
+}
+
+pub struct FindUsages<'a> {
+    def: &'a Definition,
+    sema: &'a Semantics<'a, RootDatabase>,
+    scope: Option<SearchScope>,
+}
+
+impl<'a> FindUsages<'a> {
+    pub fn in_scope(self, scope: SearchScope) -> FindUsages<'a> {
+        self.set_scope(Some(scope))
+    }
+    pub fn set_scope(mut self, scope: Option<SearchScope>) -> FindUsages<'a> {
+        assert!(self.scope.is_none());
+        self.scope = scope;
+        self
+    }
+
+    pub fn at_least_one(self) -> bool {
+        self.all().is_empty()
+    }
+
+    pub fn all(self) -> Vec<Reference> {
         let _p = profile::span("Definition::find_usages");
+        let sema = self.sema;
 
         let search_scope = {
-            let base = self.search_scope(sema.db);
-            match search_scope {
+            let base = self.def.search_scope(sema.db);
+            match self.scope {
                 None => base,
                 Some(scope) => base.intersection(&scope),
             }
         };
 
-        let name = match self.name(sema.db) {
+        let name = match self.def.name(sema.db) {
             None => return Vec::new(),
             Some(it) => it.to_string(),
         };
@@ -225,7 +247,7 @@ impl Definition {
                     };
 
                 match classify_name_ref(&sema, &name_ref) {
-                    Some(NameRefClass::Definition(def)) if &def == self => {
+                    Some(NameRefClass::Definition(def)) if &def == self.def => {
                         let kind = if is_record_lit_name_ref(&name_ref)
                             || is_call_expr_name_ref(&name_ref)
                         {
@@ -242,14 +264,14 @@ impl Definition {
                         });
                     }
                     Some(NameRefClass::FieldShorthand { local, field }) => {
-                        match self {
-                            Definition::Field(_) if &field == self => refs.push(Reference {
-                                file_range: sema.original_range(name_ref.syntax()),
+                        match self.def {
+                            Definition::Field(_) if &field == self.def => refs.push(Reference {
+                                file_range: self.sema.original_range(name_ref.syntax()),
                                 kind: ReferenceKind::FieldShorthandForField,
                                 access: reference_access(&field, &name_ref),
                             }),
                             Definition::Local(l) if &local == l => refs.push(Reference {
-                                file_range: sema.original_range(name_ref.syntax()),
+                                file_range: self.sema.original_range(name_ref.syntax()),
                                 kind: ReferenceKind::FieldShorthandForLocal,
                                 access: reference_access(&Definition::Local(local), &name_ref),
                             }),

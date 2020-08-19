@@ -106,7 +106,9 @@ pub(crate) fn find_all_refs(
     let RangeInfo { range, info: def } = find_name(&sema, &syntax, position, opt_name)?;
 
     let references = def
-        .find_usages(sema, search_scope)
+        .usages(sema)
+        .set_scope(search_scope)
+        .all()
         .into_iter()
         .filter(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
         .collect();

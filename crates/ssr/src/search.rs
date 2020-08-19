@@ -114,7 +114,7 @@ impl<'db> MatchFinder<'db> {
         // cache miss. This is a limitation of NLL and is fixed with Polonius. For now we do two
         // lookups in the case of a cache hit.
         if usage_cache.find(&definition).is_none() {
-            let usages = definition.find_usages(&self.sema, Some(self.search_scope()));
+            let usages = definition.usages(&self.sema).in_scope(self.search_scope()).all();
             usage_cache.usages.push((definition, usages));
             return &usage_cache.usages.last().unwrap().1;
         }
