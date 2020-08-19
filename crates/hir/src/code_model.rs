@@ -666,23 +666,11 @@ impl Function {
         db.function_data(self.id).name.clone()
     }
 
-    pub fn has_self_param(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).has_self_param
-    }
-
-    pub fn mutability_of_self_param(self, db: &dyn HirDatabase) -> Option<Mutability> {
-        let func_data = db.function_data(self.id);
-        if !func_data.has_self_param {
+    pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
+        if !db.function_data(self.id).has_self_param {
             return None;
         }
-
-        func_data.params.first().and_then(|param| {
-            if let TypeRef::Reference(_, mutability) = param {
-                Some(*mutability)
-            } else {
-                None
-            }
-        })
+        Some(SelfParam { func: self.id })
     }
 
     pub fn params(self, db: &dyn HirDatabase) -> Vec<TypeRef> {
@@ -695,6 +683,41 @@ impl Function {
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
         hir_ty::diagnostics::validate_body(db, self.id.into(), sink)
+    }
+}
+
+// Note: logically, this belongs to `hir_ty`, but we are not using it there yet.
+pub enum Access {
+    Shared,
+    Exclusive,
+    Owned,
+}
+
+impl From<Mutability> for Access {
+    fn from(mutability: Mutability) -> Access {
+        match mutability {
+            Mutability::Shared => Access::Shared,
+            Mutability::Mut => Access::Exclusive,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SelfParam {
+    func: FunctionId,
+}
+
+impl SelfParam {
+    pub fn access(self, db: &dyn HirDatabase) -> Access {
+        let func_data = db.function_data(self.func);
+        func_data
+            .params
+            .first()
+            .map(|param| match *param {
+                TypeRef::Reference(_, mutability) => mutability.into(),
+                _ => Access::Owned,
+            })
+            .unwrap_or(Access::Owned)
     }
 }
 

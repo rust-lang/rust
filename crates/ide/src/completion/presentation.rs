@@ -191,14 +191,12 @@ impl Completions {
         func: hir::Function,
         local_name: Option<String>,
     ) {
-        let has_self_param = func.has_self_param(ctx.db);
-
         let name = local_name.unwrap_or_else(|| func.name(ctx.db).to_string());
         let ast_node = func.source(ctx.db).value;
 
         let mut builder =
             CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone())
-                .kind(if has_self_param {
+                .kind(if func.self_param(ctx.db).is_some() {
                     CompletionItemKind::Method
                 } else {
                     CompletionItemKind::Function
