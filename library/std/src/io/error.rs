@@ -4,8 +4,7 @@ use crate::fmt;
 use crate::result;
 use crate::sys;
 
-/// A specialized [`Result`](../result/enum.Result.html) type for I/O
-/// operations.
+/// A specialized [`Result`] type for I/O operations.
 ///
 /// This type is broadly used across [`std::io`] for any operation which may
 /// produce an error.
@@ -16,12 +15,13 @@ use crate::sys;
 /// While usual Rust style is to import types directly, aliases of [`Result`]
 /// often are not, to make it easier to distinguish between them. [`Result`] is
 /// generally assumed to be [`std::result::Result`][`Result`], and so users of this alias
-/// will generally use `io::Result` instead of shadowing the prelude's import
+/// will generally use `io::Result` instead of shadowing the [prelude]'s import
 /// of [`std::result::Result`][`Result`].
 ///
-/// [`std::io`]: ../io/index.html
-/// [`io::Error`]: ../io/struct.Error.html
-/// [`Result`]: ../result/enum.Result.html
+/// [`std::io`]: crate::io
+/// [`io::Error`]: Error
+/// [`Result`]: crate::result::Result
+/// [prelude]: crate::prelude
 ///
 /// # Examples
 ///
@@ -48,10 +48,9 @@ pub type Result<T> = result::Result<T, Error>;
 /// `Error` can be created with crafted error messages and a particular value of
 /// [`ErrorKind`].
 ///
-/// [`Read`]: ../io/trait.Read.html
-/// [`Write`]: ../io/trait.Write.html
-/// [`Seek`]: ../io/trait.Seek.html
-/// [`ErrorKind`]: enum.ErrorKind.html
+/// [`Read`]: crate::io::Read
+/// [`Write`]: crate::io::Write
+/// [`Seek`]: crate::io::Seek
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Error {
     repr: Repr,
@@ -83,7 +82,7 @@ struct Custom {
 ///
 /// It is used with the [`io::Error`] type.
 ///
-/// [`io::Error`]: struct.Error.html
+/// [`io::Error`]: Error
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
@@ -137,7 +136,7 @@ pub enum ErrorKind {
     /// For example, a function that reads a file into a string will error with
     /// `InvalidData` if the file's contents are not valid UTF-8.
     ///
-    /// [`InvalidInput`]: #variant.InvalidInput
+    /// [`InvalidInput`]: ErrorKind::InvalidInput
     #[stable(feature = "io_invalid_data", since = "1.2.0")]
     InvalidData,
     /// The I/O operation's timeout expired, causing it to be canceled.
@@ -150,8 +149,8 @@ pub enum ErrorKind {
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
     ///
-    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
-    /// [`Ok(0)`]: ../../std/io/type.Result.html
+    /// [`write`]: crate::io::Write::write
+    /// [`Ok(0)`]: Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
     /// This operation was interrupted.
@@ -220,9 +219,6 @@ impl From<ErrorKind> for Error {
     /// let error = Error::from(not_found);
     /// assert_eq!("entity not found", format!("{}", error));
     /// ```
-    ///
-    /// [`ErrorKind`]: ../../std/io/enum.ErrorKind.html
-    /// [`Error`]: ../../std/io/struct.Error.html
     #[inline]
     fn from(kind: ErrorKind) -> Error {
         Error { repr: Repr::Simple(kind) }
@@ -235,7 +231,7 @@ impl Error {
     ///
     /// This function is used to generically create I/O errors which do not
     /// originate from the OS itself. The `error` argument is an arbitrary
-    /// payload which will be contained in this `Error`.
+    /// payload which will be contained in this [`Error`].
     ///
     /// # Examples
     ///
@@ -264,7 +260,7 @@ impl Error {
     ///
     /// This function reads the value of `errno` for the target platform (e.g.
     /// `GetLastError` on Windows) and will return a corresponding instance of
-    /// `Error` for the error code.
+    /// [`Error`] for the error code.
     ///
     /// # Examples
     ///
@@ -278,7 +274,7 @@ impl Error {
         Error::from_raw_os_error(sys::os::errno() as i32)
     }
 
-    /// Creates a new instance of an `Error` from a particular OS error code.
+    /// Creates a new instance of an [`Error`] from a particular OS error code.
     ///
     /// # Examples
     ///
@@ -310,9 +306,12 @@ impl Error {
 
     /// Returns the OS error that this error represents (if any).
     ///
-    /// If this `Error` was constructed via `last_os_error` or
-    /// `from_raw_os_error`, then this function will return `Some`, otherwise
-    /// it will return `None`.
+    /// If this [`Error`] was constructed via [`last_os_error`] or
+    /// [`from_raw_os_error`], then this function will return [`Some`], otherwise
+    /// it will return [`None`].
+    ///
+    /// [`last_os_error`]: Error::last_os_error
+    /// [`from_raw_os_error`]: Error::from_raw_os_error
     ///
     /// # Examples
     ///
@@ -345,8 +344,10 @@ impl Error {
 
     /// Returns a reference to the inner error wrapped by this error (if any).
     ///
-    /// If this `Error` was constructed via `new` then this function will
-    /// return `Some`, otherwise it will return `None`.
+    /// If this [`Error`] was constructed via [`new`] then this function will
+    /// return [`Some`], otherwise it will return [`None`].
+    ///
+    /// [`new`]: Error::new
     ///
     /// # Examples
     ///
@@ -380,8 +381,10 @@ impl Error {
     /// Returns a mutable reference to the inner error wrapped by this error
     /// (if any).
     ///
-    /// If this `Error` was constructed via `new` then this function will
-    /// return `Some`, otherwise it will return `None`.
+    /// If this [`Error`] was constructed via [`new`] then this function will
+    /// return [`Some`], otherwise it will return [`None`].
+    ///
+    /// [`new`]: Error::new
     ///
     /// # Examples
     ///
@@ -448,8 +451,10 @@ impl Error {
 
     /// Consumes the `Error`, returning its inner error (if any).
     ///
-    /// If this `Error` was constructed via `new` then this function will
-    /// return `Some`, otherwise it will return `None`.
+    /// If this [`Error`] was constructed via [`new`] then this function will
+    /// return [`Some`], otherwise it will return [`None`].
+    ///
+    /// [`new`]: Error::new
     ///
     /// # Examples
     ///
@@ -480,7 +485,7 @@ impl Error {
         }
     }
 
-    /// Returns the corresponding `ErrorKind` for this error.
+    /// Returns the corresponding [`ErrorKind`] for this error.
     ///
     /// # Examples
     ///
