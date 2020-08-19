@@ -479,11 +479,11 @@ where
 /// }
 /// ```
 ///
-/// [`read()`]: Self::read
+/// [`read()`]: Read::read
 /// [`&str`]: str
 /// [`std::io`]: self
 /// [`File`]: crate::fs::File
-/// [slice]: crate::slice
+/// [slice]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(spotlight)]
 pub trait Read {
@@ -633,7 +633,7 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`read()`]: Self::read
+    /// [`read()`]: Read::read
     /// [`Ok(0)`]: Ok
     /// [`File`]: crate::fs::File
     ///
@@ -673,7 +673,7 @@ pub trait Read {
     ///
     /// See [`read_to_end`] for other error semantics.
     ///
-    /// [`read_to_end`]: Self::read_to_end
+    /// [`read_to_end`]: Read::read_to_end
     ///
     /// # Examples
     ///
@@ -746,7 +746,7 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`read`]: Self::read
+    /// [`read`]: Read::read
     /// [`File`]: crate::fs::File
     ///
     /// ```no_run
@@ -1209,8 +1209,8 @@ impl Initializer {
 /// throughout [`std::io`] take and provide types which implement the `Write`
 /// trait.
 ///
-/// [`write`]: Self::write
-/// [`flush`]: Self::flush
+/// [`write`]: Write::write
+/// [`flush`]: Write::flush
 /// [`std::io`]: self
 ///
 /// # Examples
@@ -1236,7 +1236,7 @@ impl Initializer {
 /// The trait also provides convenience methods like [`write_all`], which calls
 /// `write` in a loop until its entire input has been written.
 ///
-/// [`write_all`]: Self::write_all
+/// [`write_all`]: Write::write_all
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(spotlight)]
 pub trait Write {
@@ -1296,7 +1296,7 @@ pub trait Write {
     /// The default implementation calls [`write`] with either the first nonempty
     /// buffer provided, or an empty one if none exists.
     ///
-    /// [`write`]: Self::write
+    /// [`write`]: Write::write
     #[stable(feature = "iovec", since = "1.36.0")]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
         default_write_vectored(|b| self.write(b), bufs)
@@ -1311,7 +1311,7 @@ pub trait Write {
     ///
     /// The default implementation returns `false`.
     ///
-    /// [`write_vectored`]: Self::write_vectored
+    /// [`write_vectored`]: Write::write_vectored
     #[unstable(feature = "can_vector", issue = "69941")]
     fn is_write_vectored(&self) -> bool {
         false
@@ -1359,7 +1359,7 @@ pub trait Write {
     /// This function will return the first error of
     /// non-[`ErrorKind::Interrupted`] kind that [`write`] returns.
     ///
-    /// [`write`]: Self::write
+    /// [`write`]: Write::write
     ///
     /// # Examples
     ///
@@ -1400,8 +1400,6 @@ pub trait Write {
     ///
     /// If the buffer contains no data, this will never call [`write_vectored`].
     ///
-    /// [`write_vectored`]: Self::write_vectored
-    ///
     /// # Notes
     ///
     /// Unlike [`write_vectored`], this takes a *mutable* reference to
@@ -1414,6 +1412,8 @@ pub trait Write {
     /// not use `bufs` afterwards. The underlying buffers, to which the
     /// [`IoSlice`]s point (but not the [`IoSlice`]s themselves), are unchanged and
     /// can be reused.
+    ///
+    /// [`write_vectored`]: Write::write_vectored
     ///
     /// # Examples
     ///
@@ -1467,7 +1467,7 @@ pub trait Write {
     /// are received. This also means that partial writes are not indicated in
     /// this signature.
     ///
-    /// [`write_all`]: Self::write_all
+    /// [`write_all`]: Write::write_all
     ///
     /// # Errors
     ///
@@ -1758,8 +1758,8 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
 /// [`BufReader`] to the rescue!
 ///
 /// [`File`]: crate::fs::File
-/// [`read_line`]: Self::read_line
-/// [`lines`]: Self::lines
+/// [`read_line`]: BufRead::read_line
+/// [`lines`]: BufRead::lines
 ///
 /// ```no_run
 /// use std::io::{self, BufReader};
@@ -1789,7 +1789,7 @@ pub trait BufRead: Read {
     /// be called with the number of bytes that are consumed from this buffer to
     /// ensure that the bytes are never returned twice.
     ///
-    /// [`consume`]: Self::consume
+    /// [`consume`]: BufRead::consume
     ///
     /// An empty buffer returned indicates that the stream has reached EOF.
     ///
@@ -1839,7 +1839,7 @@ pub trait BufRead: Read {
     /// Since `consume()` is meant to be used with [`fill_buf`],
     /// that method's example includes an example of `consume()`.
     ///
-    /// [`fill_buf`]: Self::fill_buf
+    /// [`fill_buf`]: BufRead::fill_buf
     #[stable(feature = "rust1", since = "1.0.0")]
     fn consume(&mut self, amt: usize);
 
@@ -1863,7 +1863,7 @@ pub trait BufRead: Read {
     /// If an I/O error is encountered then all bytes read so far will be
     /// present in `buf` and its length will have been adjusted appropriately.
     ///
-    /// [`fill_buf`]: Self::fill_buf
+    /// [`fill_buf`]: BufRead::fill_buf
     ///
     /// # Examples
     ///
@@ -1927,7 +1927,7 @@ pub trait BufRead: Read {
     /// error is encountered then `buf` may contain some bytes already read in
     /// the event that all data read so far was valid UTF-8.
     ///
-    /// [`read_until`]: Self::read_until
+    /// [`read_until`]: BufRead::read_until
     ///
     /// # Examples
     ///
@@ -1980,7 +1980,7 @@ pub trait BufRead: Read {
     ///
     /// [`io::Result`]: self::Result
     /// [`Vec<u8>`]: Vec
-    /// [`read_until`]: Self::read_until
+    /// [`read_until`]: BufRead::read_until
     ///
     /// # Examples
     ///
@@ -2011,7 +2011,7 @@ pub trait BufRead: Read {
     ///
     /// The iterator returned from this function will yield instances of
     /// [`io::Result`]`<`[`String`]`>`. Each string returned will *not* have a newline
-    /// byte (the `0xA` byte) or CRLF (0xD, 0xA bytes) at the end.
+    /// byte (the `0xA` byte) or `CRLF` (`0xD`, `0xA` bytes) at the end.
     ///
     /// [`io::Result`]: self::Result
     ///
