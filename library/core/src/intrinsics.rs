@@ -76,7 +76,7 @@ extern "rust-intrinsic" {
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
-    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
+    /// [compare_exchange]: crate::sync::atomic::AtomicBool::compare_exchange
     pub fn atomic_cxchg<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -86,7 +86,7 @@ extern "rust-intrinsic" {
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
-    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
+    /// [compare_exchange]: crate::sync::atomic::AtomicBool::compare_exchange
     pub fn atomic_cxchg_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -98,7 +98,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
-    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
+    /// [compare_exchange]: crate::sync::atomic::AtomicBool::compare_exchange
     pub fn atomic_cxchg_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -110,7 +110,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
-    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
+    /// [compare_exchange]: crate::sync::atomic::AtomicBool::compare_exchange
     pub fn atomic_cxchg_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -120,7 +120,7 @@ extern "rust-intrinsic" {
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
-    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
+    /// [compare_exchange]: crate::sync::atomic::AtomicBool::compare_exchange
     pub fn atomic_cxchg_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -132,7 +132,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
-    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
+    /// [compare_exchange]: crate::sync::atomic::AtomicBool::compare_exchange
     pub fn atomic_cxchg_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -144,7 +144,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
-    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
+    /// [compare_exchange]: crate::sync::atomic::AtomicBool::compare_exchange
     pub fn atomic_cxchg_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -156,7 +156,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
-    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
+    /// [compare_exchange]: crate::sync::atomic::AtomicBool::compare_exchange
     pub fn atomic_cxchg_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -168,7 +168,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange`][compare_exchange].
     ///
-    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
+    /// [compare_exchange]: crate::sync::atomic::AtomicBool::compare_exchange
     pub fn atomic_cxchg_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     /// Stores a value if the current value is the same as the `old` value.
@@ -179,7 +179,7 @@ extern "rust-intrinsic" {
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
-    /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
+    /// [cew]: crate::sync::atomic::AtomicBool::compare_exchange_weak
     pub fn atomic_cxchgweak<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -189,7 +189,7 @@ extern "rust-intrinsic" {
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
-    /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
+    /// [cew]: crate::sync::atomic::AtomicBool::compare_exchange_weak
     pub fn atomic_cxchgweak_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -201,7 +201,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
-    /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
+    /// [cew]: crate::sync::atomic::AtomicBool::compare_exchange_weak
     pub fn atomic_cxchgweak_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -213,7 +213,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
-    /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
+    /// [cew]: crate::sync::atomic::AtomicBool::compare_exchange_weak
     pub fn atomic_cxchgweak_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -223,7 +223,7 @@ extern "rust-intrinsic" {
     /// as both the `success` and `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
-    /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
+    /// [cew]: crate::sync::atomic::AtomicBool::compare_exchange_weak
     pub fn atomic_cxchgweak_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -235,7 +235,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
-    /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
+    /// [cew]: crate::sync::atomic::AtomicBool::compare_exchange_weak
     pub fn atomic_cxchgweak_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -247,7 +247,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
-    /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
+    /// [cew]: crate::sync::atomic::AtomicBool::compare_exchange_weak
     pub fn atomic_cxchgweak_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -259,7 +259,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
-    /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
+    /// [cew]: crate::sync::atomic::AtomicBool::compare_exchange_weak
     pub fn atomic_cxchgweak_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -271,7 +271,7 @@ extern "rust-intrinsic" {
     /// as the `failure` parameters. For example,
     /// [`AtomicBool::compare_exchange_weak`][cew].
     ///
-    /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
+    /// [cew]: crate::sync::atomic::AtomicBool::compare_exchange_weak
     pub fn atomic_cxchgweak_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     /// Loads the current value of the pointer.
