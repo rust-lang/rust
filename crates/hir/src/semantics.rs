@@ -6,10 +6,8 @@ use std::{cell::RefCell, fmt, iter::successors};
 
 use base_db::{FileId, FileRange};
 use hir_def::{
-    lang_item::LangItemTarget,
     resolver::{self, HasResolver, Resolver, TypeNs},
-    src::HasSource,
-    AsMacroCall, FunctionId, Lookup, TraitId, VariantId,
+    AsMacroCall, FunctionId, TraitId, VariantId,
 };
 use hir_expand::{hygiene::Hygiene, name::AsName, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
@@ -17,7 +15,7 @@ use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     algo::{find_node_at_offset, skip_trivia_token},
-    ast, AstNode, Direction, SmolStr, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::{
@@ -79,13 +77,6 @@ impl PathResolution {
     ) -> Option<R> {
         associated_type_shorthand_candidates(db, self.in_type_ns()?, |_, _, id| cb(id.into()))
     }
-}
-
-pub enum SelfKind {
-    Shared,
-    Mutable,
-    Consuming,
-    Copied,
 }
 
 /// Primary API to get semantic information, like types, from syntax trees.
@@ -195,10 +186,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
         self.imp.type_of_self(param)
-    }
-
-    pub fn method_reciever_kind(&self, call: &ast::MethodCallExpr) -> Option<SelfKind> {
-        self.imp.method_receiver_kind(call)
     }
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
@@ -421,35 +408,6 @@ impl<'db> SemanticsImpl<'db> {
 
     fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
         self.analyze(param.syntax()).type_of_self(self.db, &param)
-    }
-
-    fn method_receiver_kind(&self, call: &ast::MethodCallExpr) -> Option<SelfKind> {
-        self.resolve_method_call(call).and_then(|func| {
-            let lookup = func.lookup(self.db.upcast());
-            let src = lookup.source(self.db.upcast());
-            let param_list = src.value.param_list()?;
-            let self_param = param_list.self_param()?;
-            if self_param.amp_token().is_some() {
-                return Some(if self_param.mut_token().is_some() {
-                    SelfKind::Mutable
-                } else {
-                    SelfKind::Shared
-                });
-            }
-
-            let ty = self.type_of_expr(&call.expr()?)?;
-            let krate = Function::from(func).krate(self.db)?;
-            let lang_item = self.db.lang_item(krate.id, SmolStr::new("copy"));
-            let copy_trait = match lang_item? {
-                LangItemTarget::TraitId(copy_trait) => Trait::from(copy_trait),
-                _ => return None,
-            };
-            Some(if ty.impls_trait(self.db, copy_trait, &[]) {
-                SelfKind::Copied
-            } else {
-                SelfKind::Consuming
-            })
-        })
     }
 
     fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<FunctionId> {

@@ -4,7 +4,7 @@ mod injection;
 #[cfg(test)]
 mod tests;
 
-use hir::{Name, SelfKind, Semantics, VariantDef};
+use hir::{Name, Semantics, VariantDef};
 use ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -720,15 +720,21 @@ fn highlight_method_call(
     if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(&method_call) {
         h |= HighlightModifier::Unsafe;
     }
-
-    sema.method_reciever_kind(&method_call)
-        .map(|self_kind| match self_kind {
-            SelfKind::Shared => h,
-            SelfKind::Mutable => h | HighlightModifier::Mutable,
-            SelfKind::Consuming => h | HighlightModifier::Consuming,
-            SelfKind::Copied => h,
-        })
-        .or_else(|| Some(h))
+    if let Some(self_param) = func.self_param(sema.db) {
+        match self_param.access(sema.db) {
+            hir::Access::Shared => (),
+            hir::Access::Exclusive => h |= HighlightModifier::Mutable,
+            hir::Access::Owned => {
+                if let Some(receiver_ty) = method_call.expr().and_then(|it| sema.type_of_expr(&it))
+                {
+                    if !receiver_ty.is_copy(sema.db) {
+                        h |= HighlightModifier::Consuming
+                    }
+                }
+            }
+        }
+    }
+    Some(h)
 }
 
 fn highlight_name(
