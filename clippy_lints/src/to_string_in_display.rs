@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// ```
     pub TO_STRING_IN_DISPLAY,
     correctness,
-    "to_string method used while implementing Display trait"
+    "`to_string` method used while implementing `Display` trait"
 }
 
 #[derive(Default)]
@@ -80,7 +80,7 @@ impl LateLintPass<'_> for ToStringInDisplay {
                     cx,
                     TO_STRING_IN_DISPLAY,
                     expr.span,
-                    "Using to_string in fmt::Display implementation might lead to infinite recursion",
+                    "using `to_string` in `fmt::Display` implementation might lead to infinite recursion",
                 );
             }
         }
