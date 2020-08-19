@@ -37,9 +37,6 @@ fn main() -> () {
         StorageLive(_6);                 // scope 4 at $DIR/array-index-is-temporary.rs:16:25: 16:26
         _6 = _3;                         // scope 4 at $DIR/array-index-is-temporary.rs:16:25: 16:26
         _5 = const foo(move _6) -> bb1;  // scope 4 at $DIR/array-index-is-temporary.rs:16:21: 16:27
-                                         // ty::Const
-                                         // + ty: unsafe fn(*mut usize) -> u32 {foo}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/array-index-is-temporary.rs:16:21: 16:24
                                          // + literal: Const { ty: unsafe fn(*mut usize) -> u32 {foo}, val: Value(Scalar(<ZST>)) }

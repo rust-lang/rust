@@ -9,9 +9,6 @@ fn std::intrinsics::drop_in_place(_1: *mut Test) -> () {
         Retag([raw] _1);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _2 = &mut (*_1);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _3 = const <Test as std::ops::Drop>::drop(move _2) -> bb1; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // ty::Const
-                                         // + ty: for<'r> fn(&'r mut Test) {<Test as std::ops::Drop>::drop}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // + literal: Const { ty: for<'r> fn(&'r mut Test) {<Test as std::ops::Drop>::drop}, val: Value(Scalar(<ZST>)) }

@@ -33,9 +33,6 @@
   
       bb2: {
           _0 = const noop() -> bb3;        // scope 0 at $DIR/simplify_match.rs:7:17: 7:23
-                                           // ty::Const
-                                           // + ty: fn() {noop}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/simplify_match.rs:7:17: 7:21
                                            // + literal: Const { ty: fn() {noop}, val: Value(Scalar(<ZST>)) }

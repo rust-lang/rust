@@ -64,9 +64,6 @@ fn full_tested_match2() -> () {
         _4 = &shallow _2;                // scope 0 at $DIR/match_false_edges.rs:26:19: 26:27
         StorageLive(_7);                 // scope 0 at $DIR/match_false_edges.rs:27:20: 27:27
         _7 = const guard() -> [return: bb7, unwind: bb1]; // scope 0 at $DIR/match_false_edges.rs:27:20: 27:27
-                                         // ty::Const
-                                         // + ty: fn() -> bool {guard}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/match_false_edges.rs:27:20: 27:25
                                          // + literal: Const { ty: fn() -> bool {guard}, val: Value(Scalar(<ZST>)) }

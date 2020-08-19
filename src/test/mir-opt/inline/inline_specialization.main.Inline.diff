@@ -13,9 +13,6 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/inline-specialization.rs:5:9: 5:10
 -         _1 = const <std::vec::Vec<()> as Foo>::bar() -> bb1; // scope 0 at $DIR/inline-specialization.rs:5:13: 5:38
--                                          // ty::Const
--                                          // + ty: fn() -> u32 {<std::vec::Vec<()> as Foo>::bar}
--                                          // + val: Value(Scalar(<ZST>))
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-specialization.rs:5:13: 5:36
 -                                          // + literal: Const { ty: fn() -> u32 {<std::vec::Vec<()> as Foo>::bar}, val: Value(Scalar(<ZST>)) }

@@ -17,9 +17,6 @@
 +         (_2.0: (u8, u8)) = (const 1_u8, const 2_u8); // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
           StorageDead(_3);                 // scope 0 at $DIR/issue-67019.rs:11:18: 11:19
           _1 = const test(move _2) -> bb1; // scope 0 at $DIR/issue-67019.rs:11:5: 11:20
-                                           // ty::Const
-                                           // + ty: fn(((u8, u8),)) {test}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/issue-67019.rs:11:5: 11:9
                                            // + literal: Const { ty: fn(((u8, u8),)) {test}, val: Value(Scalar(<ZST>)) }

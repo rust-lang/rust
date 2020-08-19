@@ -14,9 +14,6 @@
           StorageLive(_2);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:26
           StorageLive(_3);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:17
           _3 = const main as fn() (Pointer(ReifyFnPointer)); // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:17
-                                           // ty::Const
-                                           // + ty: fn() {main}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/reify_fn_ptr.rs:4:13: 4:17
                                            // + literal: Const { ty: fn() {main}, val: Value(Scalar(<ZST>)) }

@@ -34,9 +34,6 @@
 +         _2 = &(*_6);                     // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
           _1 = move _2 as &[&i32] (Pointer(Unsize)); // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
           _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1]; // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
-                                           // ty::Const
-                                           // + ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/const-promotion-extern-static.rs:9:36: 9:42
                                            // + literal: Const { ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}, val: Value(Scalar(<ZST>)) }
