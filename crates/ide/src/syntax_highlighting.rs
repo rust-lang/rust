@@ -484,9 +484,9 @@ fn highlight_element(
             match name_kind {
                 Some(NameClass::ExternCrate(_)) => HighlightTag::Module.into(),
                 Some(NameClass::Definition(def)) => {
-                    highlight_def(sema, db, def, None, false) | HighlightModifier::Definition
+                    highlight_def(sema, db, def, None) | HighlightModifier::Definition
                 }
-                Some(NameClass::ConstReference(def)) => highlight_def(sema, db, def, None, false),
+                Some(NameClass::ConstReference(def)) => highlight_def(sema, db, def, None),
                 Some(NameClass::FieldShorthand { field, .. }) => {
                     let mut h = HighlightTag::Field.into();
                     if let Definition::Field(field) = field {
@@ -519,13 +519,20 @@ fn highlight_element(
                                     binding_hash = Some(calc_binding_hash(&name, *shadow_count))
                                 }
                             };
-                            let possibly_unsafe = match name_ref.syntax().parent() {
-                                Some(parent) => {
-                                    matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD)
+
+                            let mut h = highlight_def(sema, db, def, Some(name_ref.clone()));
+
+                            if let Some(parent) = name_ref.syntax().parent() {
+                                if matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD) {
+                                    if let Definition::Field(field) = def {
+                                        if let VariantDef::Union(_) = field.parent_def(db) {
+                                            h |= HighlightModifier::Unsafe;
+                                        }
+                                    }
                                 }
-                                None => false,
-                            };
-                            highlight_def(sema, db, def, Some(name_ref), possibly_unsafe)
+                            }
+
+                            h
                         }
                         NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
                     },
@@ -734,20 +741,10 @@ fn highlight_def(
     db: &RootDatabase,
     def: Definition,
     name_ref: Option<ast::NameRef>,
-    possibly_unsafe: bool,
 ) -> Highlight {
     match def {
         Definition::Macro(_) => HighlightTag::Macro,
-        Definition::Field(field) => {
-            let mut h = HighlightTag::Field.into();
-            if possibly_unsafe {
-                if let VariantDef::Union(_) = field.parent_def(db) {
-                    h |= HighlightModifier::Unsafe;
-                }
-            }
-
-            return h;
-        }
+        Definition::Field(_) => HighlightTag::Field,
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
             hir::ModuleDef::Function(func) => {
