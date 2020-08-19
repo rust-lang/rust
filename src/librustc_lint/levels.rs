@@ -10,6 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::map::Map;
+use rustc_middle::lint::LevelSource;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::lint::{struct_lint_level, LintLevelMap, LintLevelSets, LintSet, LintSource};
 use rustc_middle::ty::query::Providers;
@@ -95,6 +96,44 @@ impl<'s> LintLevelsBuilder<'s> {
         self.sets.list.push(LintSet::CommandLine { specs });
     }
 
+    /// Attempts to insert the `id` to `level_src` map entry. If unsuccessful
+    /// (e.g. if a forbid was already inserted on the same scope), then emits a
+    /// diagnostic with no change to `specs`.
+    fn insert_spec(
+        &mut self,
+        specs: &mut FxHashMap<LintId, LevelSource>,
+        id: LintId,
+        (level, src): LevelSource,
+    ) {
+        if let Some((old_level, old_src)) = specs.get(&id) {
+            if old_level == &Level::Forbid && level != Level::Forbid {
+                let mut diag_builder = struct_span_err!(
+                    self.sess,
+                    src.span(),
+                    E0453,
+                    "{}({}) incompatible with previous forbid in same scope",
+                    level.as_str(),
+                    src.name(),
+                );
+                match *old_src {
+                    LintSource::Default => {}
+                    LintSource::Node(_, forbid_source_span, reason) => {
+                        diag_builder.span_label(forbid_source_span, "`forbid` level set here");
+                        if let Some(rationale) = reason {
+                            diag_builder.note(&rationale.as_str());
+                        }
+                    }
+                    LintSource::CommandLine(_) => {
+                        diag_builder.note("`forbid` lint level was set on command line");
+                    }
+                }
+                diag_builder.emit();
+                return;
+            }
+        }
+        specs.insert(id, (level, src));
+    }
+
     /// Pushes a list of AST lint attributes onto this context.
     ///
     /// This function will return a `BuilderPush` object which should be passed
@@ -109,7 +148,7 @@ impl<'s> LintLevelsBuilder<'s> {
     ///   `#[allow]`
     ///
     /// Don't forget to call `pop`!
-    pub fn push(
+    pub(crate) fn push(
         &mut self,
         attrs: &[ast::Attribute],
         store: &LintStore,
@@ -221,7 +260,7 @@ impl<'s> LintLevelsBuilder<'s> {
                         let src = LintSource::Node(name, li.span(), reason);
                         for &id in ids {
                             self.check_gated_lint(id, attr.span);
-                            specs.insert(id, (level, src));
+                            self.insert_spec(&mut specs, id, (level, src));
                         }
                     }
 
@@ -235,7 +274,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                     reason,
                                 );
                                 for id in ids {
-                                    specs.insert(*id, (level, src));
+                                    self.insert_spec(&mut specs, *id, (level, src));
                                 }
                             }
                             Err((Some(ids), new_lint_name)) => {
@@ -272,7 +311,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                     reason,
                                 );
                                 for id in ids {
-                                    specs.insert(*id, (level, src));
+                                    self.insert_spec(&mut specs, *id, (level, src));
                                 }
                             }
                             Err((None, _)) => {
