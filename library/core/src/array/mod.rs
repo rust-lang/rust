@@ -11,7 +11,6 @@ use crate::cmp::Ordering;
 use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
-use crate::iter::FromIterator;
 use crate::marker::Unsize;
 use crate::mem::MaybeUninit;
 use crate::slice::{Iter, IterMut};
@@ -176,7 +175,10 @@ impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
     }
 }
 
-/// Return Error of the FromIterator impl for array
+/// The error returned by the `FromIterator` implementation of
+/// arrays once these are implemented.
+///
+/// Until then `FillError::new().fill(iter)` can be used instead.
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
 pub struct FillError<T, const N: usize> {
     array: [MaybeUninit<T>; N],
@@ -194,12 +196,9 @@ impl<T, const N: usize> fmt::Display for FillError<T, N> {
 }
 
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
-impl<T: fmt::Debug, const N: usize> fmt::Debug for FillError<T, N> {
+impl<T, const N: usize> fmt::Debug for FillError<T, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FillError")
-            .field("array", &self.as_slice())
-            .field("len", &self.len())
-            .finish()
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -207,14 +206,16 @@ impl<T: fmt::Debug, const N: usize> fmt::Debug for FillError<T, N> {
 impl<T, const N: usize> Drop for FillError<T, N> {
     fn drop(&mut self) {
         // SAFETY: This is safe: `as_mut_slice` returns exactly the sub-slice
-        // of elements that have been initialized and need to be droped
+        // of elements that have been initialized and need to be dropped.
         unsafe { crate::ptr::drop_in_place(self.as_mut_slice()) }
     }
 }
 
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
 impl<T, const N: usize> FillError<T, N> {
-    fn new() -> Self {
+    /// Creates a new empty `FillError` which can be used
+    /// to build `[T; N]` from an iterator.
+    pub fn new() -> Self {
         Self { array: MaybeUninit::uninit_array(), len: 0 }
     }
 
@@ -242,8 +243,8 @@ impl<T, const N: usize> FillError<T, N> {
         for i in self.len..N {
             if let Some(value) = iter.next() {
                 self.array[i].write(value);
+                self.len = i + 1;
             } else {
-                self.len = i;
                 return Err(self);
             }
         }
@@ -262,14 +263,6 @@ impl<T, const N: usize> FillError<T, N> {
         // works with const generics:
         //     `mem::transmute::<[MaybeUninit<T>; N], [T; N]>(array)`
         Ok(unsafe { crate::ptr::read(&self.array as *const [MaybeUninit<T>; N] as *const [T; N]) })
-    }
-}
-
-#[unstable(feature = "array_from_iter_impl", issue = "none")]
-impl<T, const N: usize> FromIterator<T> for Result<[T; N], FillError<T, N>> {
-    #[inline]
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        FillError::<T, N>::new().fill(iter)
     }
 }
 
@@ -484,42 +477,11 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(y, [6, 9, 3, 3]);
     /// ```
     #[unstable(feature = "array_map", issue = "75243")]
-    pub fn map<F, U>(self, mut f: F) -> [U; N]
+    pub fn map<F, U>(self, f: F) -> [U; N]
     where
         F: FnMut(T) -> U,
     {
-        use crate::mem::MaybeUninit;
-        struct Guard<T, const N: usize> {
-            dst: *mut T,
-            initialized: usize,
-        }
-
-        impl<T, const N: usize> Drop for Guard<T, N> {
-            fn drop(&mut self) {
-                debug_assert!(self.initialized <= N);
-
-                let initialized_part =
-                    crate::ptr::slice_from_raw_parts_mut(self.dst, self.initialized);
-                // SAFETY: this raw slice will contain only initialized objects
-                // that's why, it is allowed to drop it.
-                unsafe {
-                    crate::ptr::drop_in_place(initialized_part);
-                }
-            }
-        }
-        let mut dst = MaybeUninit::uninit_array::<N>();
-        let mut guard: Guard<U, N> =
-            Guard { dst: MaybeUninit::slice_as_mut_ptr(&mut dst), initialized: 0 };
-        for (src, dst) in IntoIter::new(self).zip(&mut dst) {
-            dst.write(f(src));
-            guard.initialized += 1;
-        }
-        // FIXME: Convert to crate::mem::transmute once it works with generics.
-        // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
-        crate::mem::forget(guard);
-        // SAFETY: At this point we've properly initialized the whole array
-        // and we just need to cast it to the correct type.
-        unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
+        FillError::new().fill(IntoIter::new(self).map(f)).unwrap()
     }
 
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.

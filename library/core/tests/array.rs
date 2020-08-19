@@ -1,4 +1,4 @@
-use core::array::{FixedSizeArray, IntoIter};
+use core::array::{FillError, FixedSizeArray, IntoIter};
 use core::convert::TryFrom;
 
 #[test]
@@ -334,37 +334,37 @@ fn array_map_drop_safety() {
 #[test]
 fn array_collects() {
     let v = vec![1, 2, 3, 4, 5];
-    let a: [i32; 5] = v
-        .clone()
-        .into_iter()
-        .collect::<Result<[i32; 5], core::array::FillError<i32, 5>>>()
-        .unwrap();
+    let a: [i32; 5] = FillError::new().fill(v.clone()).unwrap();
 
     assert_eq!(v[..], a[..]);
 }
 
 #[test]
-fn array_collect_drop_on_panic() {
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Arc;
-
-    #[derive(Clone)]
-    struct Foo(Arc<AtomicUsize>);
-
-    // count the number of eleemts that got dropped
-    impl Drop for Foo {
+#[should_panic(expected = "test succeeded")]
+fn array_collect_drop_safety() {
+    use core::sync::atomic::AtomicUsize;
+    use core::sync::atomic::Ordering;
+    static DROPPED: AtomicUsize = AtomicUsize::new(0);
+    struct DropCounter;
+    impl Drop for DropCounter {
         fn drop(&mut self) {
-            self.0.fetch_add(1, Ordering::SeqCst);
+            DROPPED.fetch_add(1, Ordering::SeqCst);
         }
     }
 
-    let i = Arc::new(AtomicUsize::new(0));
-    let foo = Foo(i.clone());
-
-    std::panic::catch_unwind(move || {
-        let _a: [Foo; 5] = from_iter(vec![foo.clone(), foo.clone(), foo.clone(), foo]);
-    })
-    .unwrap_err();
-
-    assert_eq!(i.load(Ordering::SeqCst), 4);
+    let num_to_create = 5;
+    let success = std::panic::catch_unwind(|| {
+        let items = [0; 10];
+        let mut nth = 0;
+        FillError::<DropCounter, 10>::new()
+            .fill(items.iter().map(|_| {
+                assert!(nth < num_to_create);
+                nth += 1;
+                DropCounter
+            }))
+            .unwrap()
+    });
+    assert!(success.is_err());
+    assert_eq!(DROPPED.load(Ordering::SeqCst), num_to_create);
+    panic!("test succeeded")
 }
