@@ -1,7 +1,7 @@
-use std::collections::BTreeSet;
-use std::cmp;
-use rustc_span::Span;
 use rustc_span::symbol::Symbol;
+use rustc_span::Span;
+use std::cmp;
+use std::collections::BTreeSet;
 
 #[derive(Eq)]
 pub struct BindingError {

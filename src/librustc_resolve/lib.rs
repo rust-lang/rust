@@ -67,6 +67,7 @@ use macros::{MacroRulesBinding, MacroRulesScope};
 
 type Res = def::Res<NodeId>;
 
+mod binding_error;
 mod build_reduced_graph;
 mod check_unused;
 mod def_collector;
@@ -74,7 +75,6 @@ mod diagnostics;
 mod imports;
 mod late;
 mod macros;
-mod binding_error;
 
 use binding_error::BindingError;
 

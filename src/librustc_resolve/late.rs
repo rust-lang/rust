@@ -7,8 +7,8 @@
 
 use RibKind::*;
 
-use crate::{path_names_to_string, CrateLint, LexicalScopeBinding};
 use crate::binding_error::BindingError;
+use crate::{path_names_to_string, CrateLint, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 

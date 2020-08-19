@@ -19,13 +19,11 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span};
 use tracing::debug;
 
+use crate::binding_error::BindingError;
 use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
-use crate::{
-	CrateLint, HasGenericParams, MacroRulesScope, Module, ModuleOrUniformRoot,
-};
-use crate::binding_error::BindingError;
+use crate::{CrateLint, HasGenericParams, MacroRulesScope, Module, ModuleOrUniformRoot};
 use crate::{NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 

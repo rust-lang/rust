@@ -1,10 +1,11 @@
-use core::slice;
 use core::fmt;
 use core::iter::{FusedIterator, TrustedLen};
 use core::mem::{self};
 use core::ptr::{self, NonNull};
+use core::slice;
 
 use crate::vec::Vec;
+
 /// A draining iterator for `Vec<T>`.
 ///
 /// This `struct` is created by [`Vec::drain`].
