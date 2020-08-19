@@ -3,3 +3,6 @@ xtask = "run --package xtask --bin xtask --"
 install-ra = "run --package xtask --bin xtask -- install" # for backwards compat
 tq = "test -- -q"
 qt = "tq"
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"
