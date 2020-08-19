@@ -747,12 +747,6 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
                 if func.is_unsafe(db) {
                     h |= HighlightModifier::Unsafe;
                 }
-                if let Some(self_param) = func.self_param(db) {
-                    match self_param.access(db) {
-                        hir::Access::Exclusive => h |= HighlightModifier::Mutable,
-                        hir::Access::Shared | hir::Access::Owned => (),
-                    }
-                }
                 return h;
             }
             hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,
