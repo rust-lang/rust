@@ -56,7 +56,7 @@ use rustc_span::{Span, DUMMY_SP};
 
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::{cmp, fmt, iter, ptr};
+use std::{fmt, iter, ptr};
 use tracing::debug;
 
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
@@ -74,6 +74,9 @@ mod diagnostics;
 mod imports;
 mod late;
 mod macros;
+mod binding_error;
+
+use binding_error::BindingError;
 
 enum Weak {
     Yes,
@@ -146,32 +149,6 @@ impl<'a> ParentScope<'a> {
             macro_rules: MacroRulesScope::Empty,
             derives: &[],
         }
-    }
-}
-
-#[derive(Eq)]
-struct BindingError {
-    name: Symbol,
-    origin: BTreeSet<Span>,
-    target: BTreeSet<Span>,
-    could_be_path: bool,
-}
-
-impl PartialOrd for BindingError {
-    fn partial_cmp(&self, other: &BindingError) -> Option<cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for BindingError {
-    fn eq(&self, other: &BindingError) -> bool {
-        self.name == other.name
-    }
-}
-
-impl Ord for BindingError {
-    fn cmp(&self, other: &BindingError) -> cmp::Ordering {
-        self.name.cmp(&other.name)
     }
 }
 
