@@ -484,9 +484,9 @@ fn highlight_element(
             match name_kind {
                 Some(NameClass::ExternCrate(_)) => HighlightTag::Module.into(),
                 Some(NameClass::Definition(def)) => {
-                    highlight_def(sema, db, def, None) | HighlightModifier::Definition
+                    highlight_def(db, def) | HighlightModifier::Definition
                 }
-                Some(NameClass::ConstReference(def)) => highlight_def(sema, db, def, None),
+                Some(NameClass::ConstReference(def)) => highlight_def(db, def),
                 Some(NameClass::FieldShorthand { field, .. }) => {
                     let mut h = HighlightTag::Field.into();
                     if let Definition::Field(field) = field {
@@ -520,7 +520,7 @@ fn highlight_element(
                                 }
                             };
 
-                            let mut h = highlight_def(sema, db, def, Some(name_ref.clone()));
+                            let mut h = highlight_def(db, def);
 
                             if let Some(parent) = name_ref.syntax().parent() {
                                 if matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD) {
@@ -736,34 +736,24 @@ fn highlight_method_call(
     Some(h)
 }
 
-fn highlight_def(
-    sema: &Semantics<RootDatabase>,
-    db: &RootDatabase,
-    def: Definition,
-    name_ref: Option<ast::NameRef>,
-) -> Highlight {
+fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
     match def {
         Definition::Macro(_) => HighlightTag::Macro,
         Definition::Field(_) => HighlightTag::Field,
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
             hir::ModuleDef::Function(func) => {
-                return name_ref
-                    .and_then(|name_ref| highlight_func_by_name_ref(sema, &name_ref))
-                    .unwrap_or_else(|| {
-                        let mut h = HighlightTag::Function.into();
-                        if func.is_unsafe(db) {
-                            h |= HighlightModifier::Unsafe;
-                        }
-
-                        match func.self_param(db) {
-                            None => h,
-                            Some(self_param) => match self_param.access(db) {
-                                hir::Access::Exclusive => h | HighlightModifier::Mutable,
-                                hir::Access::Shared | hir::Access::Owned => h,
-                            },
-                        }
-                    });
+                let mut h = HighlightTag::Function.into();
+                if func.is_unsafe(db) {
+                    h |= HighlightModifier::Unsafe;
+                }
+                if let Some(self_param) = func.self_param(db) {
+                    match self_param.access(db) {
+                        hir::Access::Exclusive => h |= HighlightModifier::Mutable,
+                        hir::Access::Shared | hir::Access::Owned => (),
+                    }
+                }
+                return h;
             }
             hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,
             hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Enum,
