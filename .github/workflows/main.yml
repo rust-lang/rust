@@ -17,25 +17,21 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Cache cargo installed crates
-      uses: actions/cache@v1.1.2
+      uses: actions/cache@v2
       with:
         path: ~/.cargo/bin
-        key: cargo-installed-crates2-${{ matrix.os }}
+        key: ${{ runner.os }}-cargo-installed-crates
 
-    - name: Cache cargo registry
-      uses: actions/cache@v1
+    - name: Cache cargo registry and index
+      uses: actions/cache@v2
       with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry2-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo index
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+        path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+        key: ${{ runner.os }}-cargo-registry-and-index-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo target dir
-      uses: actions/cache@v1.1.2
+      uses: actions/cache@v2
       with:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
