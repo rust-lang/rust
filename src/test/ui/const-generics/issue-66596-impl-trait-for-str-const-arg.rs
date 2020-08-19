@@ -7,7 +7,7 @@
 
 
 trait Trait<const NAME: &'static str> {
-//[min]~^ ERROR using `&'static str` as const generic parameters is forbidden
+//[min]~^ ERROR `&'static str` is forbidden
     type Assoc;
 }
 

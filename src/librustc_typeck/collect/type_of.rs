@@ -12,7 +12,6 @@ use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_trait_selection::traits;
 
 use super::ItemCtxt;
 use super::{bad_placeholder_type, is_suggestable_infer_ty};
@@ -323,88 +322,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         }
 
         Node::GenericParam(param) => match &param.kind {
-            GenericParamKind::Type { default: Some(ref ty), .. } => icx.to_ty(ty),
-            GenericParamKind::Const { ty: ref hir_ty, .. } => {
-                let ty = icx.to_ty(hir_ty);
-                let err_ty_str;
-                let err = if tcx.features().min_const_generics {
-                    match ty.kind {
-                        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
-                        ty::FnPtr(_) => Some("function pointers"),
-                        ty::RawPtr(_) => Some("raw pointers"),
-                        _ => {
-                            err_ty_str = format!("`{}`", ty);
-                            Some(err_ty_str.as_str())
-                        }
-                    }
-                } else {
-                    match ty.peel_refs().kind {
-                        ty::FnPtr(_) => Some("function pointers"),
-                        ty::RawPtr(_) => Some("raw pointers"),
-                        _ => None,
-                    }
-                };
-                if let Some(unsupported_type) = err {
-                    let mut err = tcx.sess.struct_span_err(
-                        hir_ty.span,
-                        &format!(
-                            "using {} as const generic parameters is forbidden",
-                            unsupported_type
-                        ),
-                    );
-
-                    if tcx.features().min_const_generics {
-                        err.note("the only supported types are integers, `bool` and `char`")
-                        .note("more complex types are supported with `#[feature(const_generics)]`").emit()
-                    } else {
-                        err.emit();
-                    }
-                };
-                if traits::search_for_structural_match_violation(param.hir_id, param.span, tcx, ty)
-                    .is_some()
-                {
-                    // We use the same error code in both branches, because this is really the same
-                    // issue: we just special-case the message for type parameters to make it
-                    // clearer.
-                    if let ty::Param(_) = ty.peel_refs().kind {
-                        // Const parameters may not have type parameters as their types,
-                        // because we cannot be sure that the type parameter derives `PartialEq`
-                        // and `Eq` (just implementing them is not enough for `structural_match`).
-                        struct_span_err!(
-                            tcx.sess,
-                            hir_ty.span,
-                            E0741,
-                            "`{}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
-                             used as the type of a const parameter",
-                            ty,
-                        )
-                        .span_label(
-                            hir_ty.span,
-                            format!("`{}` may not derive both `PartialEq` and `Eq`", ty),
-                        )
-                        .note(
-                            "it is not currently possible to use a type parameter as the type of a \
-                             const parameter",
-                        )
-                        .emit();
-                    } else {
-                        struct_span_err!(
-                            tcx.sess,
-                            hir_ty.span,
-                            E0741,
-                            "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
-                             the type of a const parameter",
-                            ty,
-                        )
-                        .span_label(
-                            hir_ty.span,
-                            format!("`{}` doesn't derive both `PartialEq` and `Eq`", ty),
-                        )
-                        .emit();
-                    }
-                }
-                ty
-            }
+            GenericParamKind::Type { default: Some(ty), .. }
+            | GenericParamKind::Const { ty, .. } => icx.to_ty(ty),
             x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
 

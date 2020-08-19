@@ -1,4 +1,4 @@
-error: using `A` as const generic parameters is forbidden
+error: `A` is forbidden as the type of a const generic parameter
   --> $DIR/forbid-non-structural_match-types.rs:10:19
    |
 LL | struct B<const X: A>; // ok
@@ -7,7 +7,7 @@ LL | struct B<const X: A>; // ok
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error: using `C` as const generic parameters is forbidden
+error: `C` is forbidden as the type of a const generic parameter
   --> $DIR/forbid-non-structural_match-types.rs:15:19
    |
 LL | struct D<const X: C>;
