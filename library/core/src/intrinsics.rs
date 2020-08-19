@@ -1656,7 +1656,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `count_ones` method. For example,
-    /// [`std::u32::count_ones`](../../std/primitive.u32.html#method.count_ones)
+    /// [`std::u32::count_ones`](u32::count_ones)
     #[rustc_const_stable(feature = "const_ctpop", since = "1.40.0")]
     pub fn ctpop<T: Copy>(x: T) -> T;
 
@@ -1664,7 +1664,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `leading_zeros` method. For example,
-    /// [`std::u32::leading_zeros`](../../std/primitive.u32.html#method.leading_zeros)
+    /// [`std::u32::leading_zeros`](u32::leading_zeros)
     ///
     /// # Examples
     ///
@@ -1715,7 +1715,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `trailing_zeros` method. For example,
-    /// [`std::u32::trailing_zeros`](../../std/primitive.u32.html#method.trailing_zeros)
+    /// [`std::u32::trailing_zeros`](u32::trailing_zeros)
     ///
     /// # Examples
     ///
@@ -1766,7 +1766,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `swap_bytes` method. For example,
-    /// [`std::u32::swap_bytes`](../../std/primitive.u32.html#method.swap_bytes)
+    /// [`std::u32::swap_bytes`](u32::swap_bytes)
     #[rustc_const_stable(feature = "const_bswap", since = "1.40.0")]
     pub fn bswap<T: Copy>(x: T) -> T;
 
@@ -1774,7 +1774,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `reverse_bits` method. For example,
-    /// [`std::u32::reverse_bits`](../../std/primitive.u32.html#method.reverse_bits)
+    /// [`std::u32::reverse_bits`](u32::reverse_bits)
     #[rustc_const_stable(feature = "const_bitreverse", since = "1.40.0")]
     pub fn bitreverse<T: Copy>(x: T) -> T;
 
@@ -1782,7 +1782,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_add` method. For example,
-    /// [`std::u32::overflowing_add`](../../std/primitive.u32.html#method.overflowing_add)
+    /// [`std::u32::overflowing_add`](u32::overflowing_add)
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
     pub fn add_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
@@ -1790,7 +1790,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_sub` method. For example,
-    /// [`std::u32::overflowing_sub`](../../std/primitive.u32.html#method.overflowing_sub)
+    /// [`std::u32::overflowing_sub`](u32::overflowing_sub)
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
     pub fn sub_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
@@ -1798,7 +1798,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_mul` method. For example,
-    /// [`std::u32::overflowing_mul`](../../std/primitive.u32.html#method.overflowing_mul)
+    /// [`std::u32::overflowing_mul`](u32::overflowing_mul)
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
     pub fn mul_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
@@ -1813,7 +1813,7 @@ extern "rust-intrinsic" {
     ///
     /// Safe wrappers for this intrinsic are available on the integer
     /// primitives via the `checked_div` method. For example,
-    /// [`std::u32::checked_div`](../../std/primitive.u32.html#method.checked_div)
+    /// [`std::u32::checked_div`](u32::checked_div)
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
     pub fn unchecked_div<T: Copy>(x: T, y: T) -> T;
     /// Returns the remainder of an unchecked division, resulting in
@@ -1821,7 +1821,7 @@ extern "rust-intrinsic" {
     ///
     /// Safe wrappers for this intrinsic are available on the integer
     /// primitives via the `checked_rem` method. For example,
-    /// [`std::u32::checked_rem`](../../std/primitive.u32.html#method.checked_rem)
+    /// [`std::u32::checked_rem`](u32::checked_rem)
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
     pub fn unchecked_rem<T: Copy>(x: T, y: T) -> T;
 
@@ -1830,7 +1830,7 @@ extern "rust-intrinsic" {
     ///
     /// Safe wrappers for this intrinsic are available on the integer
     /// primitives via the `checked_shl` method. For example,
-    /// [`std::u32::checked_shl`](../../std/primitive.u32.html#method.checked_shl)
+    /// [`std::u32::checked_shl`](u32::checked_shl)
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
     pub fn unchecked_shl<T: Copy>(x: T, y: T) -> T;
     /// Performs an unchecked right shift, resulting in undefined behavior when
@@ -1838,7 +1838,7 @@ extern "rust-intrinsic" {
     ///
     /// Safe wrappers for this intrinsic are available on the integer
     /// primitives via the `checked_shr` method. For example,
-    /// [`std::u32::checked_shr`](../../std/primitive.u32.html#method.checked_shr)
+    /// [`std::u32::checked_shr`](u32::checked_shr)
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
     pub fn unchecked_shr<T: Copy>(x: T, y: T) -> T;
 
@@ -1867,7 +1867,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_left` method. For example,
-    /// [`std::u32::rotate_left`](../../std/primitive.u32.html#method.rotate_left)
+    /// [`std::u32::rotate_left`](u32::rotate_left)
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
     pub fn rotate_left<T: Copy>(x: T, y: T) -> T;
 
@@ -1875,7 +1875,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_right` method. For example,
-    /// [`std::u32::rotate_right`](../../std/primitive.u32.html#method.rotate_right)
+    /// [`std::u32::rotate_right`](u32::rotate_right)
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
     pub fn rotate_right<T: Copy>(x: T, y: T) -> T;
 
@@ -1883,21 +1883,21 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `checked_add` method. For example,
-    /// [`std::u32::checked_add`](../../std/primitive.u32.html#method.checked_add)
+    /// [`std::u32::checked_add`](u32::checked_add)
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_add<T: Copy>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `checked_sub` method. For example,
-    /// [`std::u32::checked_sub`](../../std/primitive.u32.html#method.checked_sub)
+    /// [`std::u32::checked_sub`](u32::checked_sub)
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_sub<T: Copy>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `checked_mul` method. For example,
-    /// [`std::u32::checked_mul`](../../std/primitive.u32.html#method.checked_mul)
+    /// [`std::u32::checked_mul`](u32::checked_mul)
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_mul<T: Copy>(a: T, b: T) -> T;
 
@@ -1905,14 +1905,14 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `saturating_add` method. For example,
-    /// [`std::u32::saturating_add`](../../std/primitive.u32.html#method.saturating_add)
+    /// [`std::u32::saturating_add`](u32::saturating_add)
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
     pub fn saturating_add<T: Copy>(a: T, b: T) -> T;
     /// Computes `a - b`, while saturating at numeric bounds.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `saturating_sub` method. For example,
-    /// [`std::u32::saturating_sub`](../../std/primitive.u32.html#method.saturating_sub)
+    /// [`std::u32::saturating_sub`](u32::saturating_sub)
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
     pub fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 
