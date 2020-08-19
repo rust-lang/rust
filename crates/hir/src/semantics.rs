@@ -613,14 +613,13 @@ impl<'db> SemanticsImpl<'db> {
         InFile::new(file_id, node)
     }
 
-    pub fn is_unsafe_method_call(&self, method_call_expr: &ast::MethodCallExpr) -> bool {
+    fn is_unsafe_method_call(&self, method_call_expr: &ast::MethodCallExpr) -> bool {
         method_call_expr
             .expr()
             .and_then(|expr| {
-                let field_expr = if let ast::Expr::FieldExpr(field_expr) = expr {
-                    field_expr
-                } else {
-                    return None;
+                let field_expr = match expr {
+                    ast::Expr::FieldExpr(field_expr) => field_expr,
+                    _ => return None,
                 };
                 let ty = self.type_of_expr(&field_expr.expr()?)?;
                 if !ty.is_packed(self.db) {
@@ -635,7 +634,7 @@ impl<'db> SemanticsImpl<'db> {
             .unwrap_or(false)
     }
 
-    pub fn is_unsafe_ref_expr(&self, ref_expr: &ast::RefExpr) -> bool {
+    fn is_unsafe_ref_expr(&self, ref_expr: &ast::RefExpr) -> bool {
         ref_expr
             .expr()
             .and_then(|expr| {
@@ -654,7 +653,7 @@ impl<'db> SemanticsImpl<'db> {
         // more than it should with the current implementation.
     }
 
-    pub fn is_unsafe_ident_pat(&self, ident_pat: &ast::IdentPat) -> bool {
+    fn is_unsafe_ident_pat(&self, ident_pat: &ast::IdentPat) -> bool {
         if !ident_pat.ref_token().is_some() {
             return false;
         }
