@@ -62,6 +62,7 @@ pub enum HighlightModifier {
     Documentation,
     Injected,
     Mutable,
+    Consuming,
     Unsafe,
 }
 
@@ -119,6 +120,7 @@ impl HighlightModifier {
         HighlightModifier::Documentation,
         HighlightModifier::Injected,
         HighlightModifier::Mutable,
+        HighlightModifier::Consuming,
         HighlightModifier::Unsafe,
     ];
 
@@ -130,6 +132,7 @@ impl HighlightModifier {
             HighlightModifier::Documentation => "documentation",
             HighlightModifier::Injected => "injected",
             HighlightModifier::Mutable => "mutable",
+            HighlightModifier::Consuming => "consuming",
             HighlightModifier::Unsafe => "unsafe",
         }
     }

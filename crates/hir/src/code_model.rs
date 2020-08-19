@@ -670,6 +670,21 @@ impl Function {
         db.function_data(self.id).has_self_param
     }
 
+    pub fn mutability_of_self_param(self, db: &dyn HirDatabase) -> Option<Mutability> {
+        let func_data = db.function_data(self.id);
+        if !func_data.has_self_param {
+            return None;
+        }
+
+        func_data.params.first().and_then(|param| {
+            if let TypeRef::Reference(_, mutability) = param {
+                Some(*mutability)
+            } else {
+                None
+            }
+        })
+    }
+
     pub fn params(self, db: &dyn HirDatabase) -> Vec<TypeRef> {
         db.function_data(self.id).params.clone()
     }

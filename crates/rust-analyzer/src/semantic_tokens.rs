@@ -75,6 +75,7 @@ define_semantic_token_modifiers![
     (CONTROL_FLOW, "controlFlow"),
     (INJECTED, "injected"),
     (MUTABLE, "mutable"),
+    (CONSUMING, "consuming"),
     (UNSAFE, "unsafe"),
     (ATTRIBUTE_MODIFIER, "attribute"),
 ];

@@ -4,7 +4,7 @@ mod injection;
 #[cfg(test)]
 mod tests;
 
-use hir::{Name, Semantics, VariantDef};
+use hir::{Mutability, Name, SelfKind, Semantics, VariantDef};
 use ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -519,27 +519,29 @@ fn highlight_element(
         }
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
-            let possibly_unsafe = is_possibly_unsafe(&name_ref);
-            match classify_name_ref(sema, &name_ref) {
-                Some(name_kind) => match name_kind {
-                    NameRefClass::ExternCrate(_) => HighlightTag::Module.into(),
-                    NameRefClass::Definition(def) => {
-                        if let Definition::Local(local) = &def {
-                            if let Some(name) = local.name(db) {
-                                let shadow_count =
-                                    bindings_shadow_count.entry(name.clone()).or_default();
-                                binding_hash = Some(calc_binding_hash(&name, *shadow_count))
-                            }
-                        };
-                        highlight_name(sema, db, def, Some(name_ref), possibly_unsafe)
+            highlight_func_by_name_ref(sema, &name_ref).unwrap_or_else(|| {
+                let possibly_unsafe = is_possibly_unsafe(&name_ref);
+                match classify_name_ref(sema, &name_ref) {
+                    Some(name_kind) => match name_kind {
+                        NameRefClass::ExternCrate(_) => HighlightTag::Module.into(),
+                        NameRefClass::Definition(def) => {
+                            if let Definition::Local(local) = &def {
+                                if let Some(name) = local.name(db) {
+                                    let shadow_count =
+                                        bindings_shadow_count.entry(name.clone()).or_default();
+                                    binding_hash = Some(calc_binding_hash(&name, *shadow_count))
+                                }
+                            };
+                            highlight_name(sema, db, def, Some(name_ref), possibly_unsafe)
+                        }
+                        NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
+                    },
+                    None if syntactic_name_ref_highlighting => {
+                        highlight_name_ref_by_syntax(name_ref, sema)
                     }
-                    NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
-                },
-                None if syntactic_name_ref_highlighting => {
-                    highlight_name_ref_by_syntax(name_ref, sema)
+                    None => HighlightTag::UnresolvedReference.into(),
                 }
-                None => HighlightTag::UnresolvedReference.into(),
-            }
+            })
         }
 
         // Simple token-based highlighting
@@ -700,6 +702,35 @@ fn is_child_of_impl(element: &SyntaxElement) -> bool {
     }
 }
 
+fn highlight_func_by_name_ref(
+    sema: &Semantics<RootDatabase>,
+    name_ref: &ast::NameRef,
+) -> Option<Highlight> {
+    let parent = name_ref.syntax().parent()?;
+    let method_call = ast::MethodCallExpr::cast(parent)?;
+    highlight_method_call(sema, &method_call)
+}
+
+fn highlight_method_call(
+    sema: &Semantics<RootDatabase>,
+    method_call: &ast::MethodCallExpr,
+) -> Option<Highlight> {
+    let func = sema.resolve_method_call(&method_call)?;
+    let mut h = HighlightTag::Function.into();
+    if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(&method_call) {
+        h |= HighlightModifier::Unsafe;
+    }
+
+    sema.method_reciever_kind(&method_call)
+        .map(|self_kind| match self_kind {
+            SelfKind::Shared => h,
+            SelfKind::Mutable => h | HighlightModifier::Mutable,
+            SelfKind::Consuming => h | HighlightModifier::Consuming,
+            SelfKind::Copied => h,
+        })
+        .or_else(|| Some(h))
+}
+
 fn highlight_name(
     sema: &Semantics<RootDatabase>,
     db: &RootDatabase,
@@ -722,20 +753,26 @@ fn highlight_name(
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
             hir::ModuleDef::Function(func) => {
-                let mut h = HighlightTag::Function.into();
-                if func.is_unsafe(db) {
-                    h |= HighlightModifier::Unsafe;
-                } else {
-                    let is_unsafe = name_ref
-                        .and_then(|name_ref| name_ref.syntax().parent())
-                        .and_then(ast::MethodCallExpr::cast)
-                        .map(|method_call_expr| sema.is_unsafe_method_call(method_call_expr))
-                        .unwrap_or(false);
-                    if is_unsafe {
-                        h |= HighlightModifier::Unsafe;
-                    }
-                }
-                return h;
+                return name_ref
+                    .and_then(|name_ref| highlight_func_by_name_ref(sema, &name_ref))
+                    .unwrap_or_else(|| {
+                        let mut h = HighlightTag::Function.into();
+                        if func.is_unsafe(db) {
+                            h |= HighlightModifier::Unsafe;
+                        }
+
+                        return if func.has_self_param(db) {
+                            match func.mutability_of_self_param(db) {
+                                Some(mutability) => match mutability {
+                                    Mutability::Mut => h | HighlightModifier::Mutable,
+                                    Mutability::Shared => h,
+                                },
+                                None => h,
+                            }
+                        } else {
+                            h
+                        };
+                    });
             }
             hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,
             hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Enum,
@@ -807,15 +844,9 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
 
     match parent.kind() {
         METHOD_CALL_EXPR => {
-            let mut h = Highlight::new(HighlightTag::Function);
-            let is_unsafe = ast::MethodCallExpr::cast(parent)
-                .map(|method_call_expr| sema.is_unsafe_method_call(method_call_expr))
-                .unwrap_or(false);
-            if is_unsafe {
-                h |= HighlightModifier::Unsafe;
-            }
-
-            h
+            return ast::MethodCallExpr::cast(parent)
+                .and_then(|method_call| highlight_method_call(sema, &method_call))
+                .unwrap_or_else(|| HighlightTag::Function.into());
         }
         FIELD_EXPR => {
             let h = HighlightTag::Field;
