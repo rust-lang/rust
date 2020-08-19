@@ -46,13 +46,6 @@ jobs:
         git config --global user.name "User"
         ./prepare.sh
 
-    # Compile is a separate step, as the actions-rs/cargo action supports error annotations
-    - name: Compile
-      uses: actions-rs/cargo@v1.0.3
-      with:
-        command: rustc
-        args: --release -- -Zrun_dsymutil=no
-
     - name: Test
       run: |
         # Enable backtraces for easier debugging
