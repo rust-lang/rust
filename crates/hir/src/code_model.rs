@@ -12,6 +12,7 @@ use hir_def::{
     docs::Documentation,
     expr::{BindingAnnotation, Pat, PatId},
     import_map,
+    lang_item::LangItemTarget,
     path::ModPath,
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
@@ -36,7 +37,7 @@ use rustc_hash::FxHashSet;
 use stdx::impl_from;
 use syntax::{
     ast::{self, AttrsOwner, NameOwner},
-    AstNode,
+    AstNode, SmolStr,
 };
 
 use crate::{
@@ -1285,6 +1286,15 @@ impl Type {
         };
 
         db.trait_solve(self.krate, goal).is_some()
+    }
+
+    pub fn is_copy(&self, db: &dyn HirDatabase) -> bool {
+        let lang_item = db.lang_item(self.krate, SmolStr::new("copy"));
+        let copy_trait = match lang_item {
+            Some(LangItemTarget::TraitId(it)) => it,
+            _ => return false,
+        };
+        self.impls_trait(db, copy_trait.into(), &[])
     }
 
     pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
