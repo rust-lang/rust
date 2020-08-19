@@ -27,9 +27,6 @@
       bb2: {
           StorageLive(_2);                 // scope 0 at $DIR/simplify_if.rs:7:9: 7:15
           _2 = const noop() -> bb3;        // scope 0 at $DIR/simplify_if.rs:7:9: 7:15
-                                           // ty::Const
-                                           // + ty: fn() {noop}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/simplify_if.rs:7:9: 7:13
                                            // + literal: Const { ty: fn() {noop}, val: Value(Scalar(<ZST>)) }
