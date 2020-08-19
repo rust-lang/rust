@@ -985,7 +985,7 @@ extern "rust-intrinsic" {
     /// Drop glue is not run on the destination.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::ptr::write`](../../std/ptr/fn.write.html).
+    /// [`std::ptr::write`](crate::ptr::write).
     pub fn move_val_init<T>(dst: *mut T, src: T);
 
     /// The minimum alignment of a type.
@@ -1372,12 +1372,12 @@ extern "rust-intrinsic" {
     /// Performs a volatile load from the `src` pointer.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::ptr::read_volatile`](../../std/ptr/fn.read_volatile.html).
+    /// [`std::ptr::read_volatile`](crate::ptr::read_volatile).
     pub fn volatile_load<T>(src: *const T) -> T;
     /// Performs a volatile store to the `dst` pointer.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::ptr::write_volatile`](../../std/ptr/fn.write_volatile.html).
+    /// [`std::ptr::write_volatile`](crate::ptr::write_volatile).
     pub fn volatile_store<T>(dst: *mut T, val: T);
 
     /// Performs a volatile load from the `src` pointer
