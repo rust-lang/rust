@@ -203,11 +203,25 @@ impl<'a> FindUsages<'a> {
     }
 
     pub fn at_least_one(self) -> bool {
-        !self.all().is_empty()
+        let mut found = false;
+        self.search(&mut |_reference| {
+            found = true;
+            true
+        });
+        found
     }
 
     pub fn all(self) -> Vec<Reference> {
-        let _p = profile::span("Definition::find_usages");
+        let mut res = Vec::new();
+        self.search(&mut |reference| {
+            res.push(reference);
+            false
+        });
+        res
+    }
+
+    fn search(self, sink: &mut dyn FnMut(Reference) -> bool) {
+        let _p = profile::span("FindUsages:search");
         let sema = self.sema;
 
         let search_scope = {
@@ -219,13 +233,11 @@ impl<'a> FindUsages<'a> {
         };
 
         let name = match self.def.name(sema.db) {
-            None => return Vec::new(),
             Some(it) => it.to_string(),
+            None => return,
         };
 
         let pat = name.as_str();
-        let mut refs = vec![];
-
         for (file_id, search_range) in search_scope {
             let text = sema.db.file_text(file_id);
             let search_range =
@@ -240,10 +252,9 @@ impl<'a> FindUsages<'a> {
                 }
 
                 let name_ref: ast::NameRef =
-                    if let Some(name_ref) = sema.find_node_at_offset_with_descend(&tree, offset) {
-                        name_ref
-                    } else {
-                        continue;
+                    match sema.find_node_at_offset_with_descend(&tree, offset) {
+                        Some(it) => it,
+                        None => continue,
                     };
 
                 match classify_name_ref(&sema, &name_ref) {
@@ -256,43 +267,45 @@ impl<'a> FindUsages<'a> {
                             ReferenceKind::Other
                         };
 
-                        let file_range = sema.original_range(name_ref.syntax());
-                        refs.push(Reference {
-                            file_range,
+                        let reference = Reference {
+                            file_range: sema.original_range(name_ref.syntax()),
                             kind,
                             access: reference_access(&def, &name_ref),
-                        });
+                        };
+                        if sink(reference) {
+                            return;
+                        }
                     }
                     Some(NameRefClass::FieldShorthand { local, field }) => {
-                        match self.def {
-                            Definition::Field(_) if &field == self.def => refs.push(Reference {
+                        let reference = match self.def {
+                            Definition::Field(_) if &field == self.def => Reference {
                                 file_range: self.sema.original_range(name_ref.syntax()),
                                 kind: ReferenceKind::FieldShorthandForField,
                                 access: reference_access(&field, &name_ref),
-                            }),
-                            Definition::Local(l) if &local == l => refs.push(Reference {
+                            },
+                            Definition::Local(l) if &local == l => Reference {
                                 file_range: self.sema.original_range(name_ref.syntax()),
                                 kind: ReferenceKind::FieldShorthandForLocal,
                                 access: reference_access(&Definition::Local(local), &name_ref),
-                            }),
-
-                            _ => {} // not a usage
+                            },
+                            _ => continue, // not a usage
                         };
+                        if sink(reference) {
+                            return;
+                        }
                     }
                     _ => {} // not a usage
                 }
             }
         }
-        refs
     }
 }
 
 fn reference_access(def: &Definition, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
     // Only Locals and Fields have accesses for now.
-    match def {
-        Definition::Local(_) | Definition::Field(_) => {}
-        _ => return None,
-    };
+    if !matches!(def, Definition::Local(_) | Definition::Field(_)) {
+        return None;
+    }
 
     let mode = name_ref.syntax().ancestors().find_map(|node| {
         match_ast! {
