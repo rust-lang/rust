@@ -2319,8 +2319,15 @@ impl<'a> Resolver<'a> {
                     } else if i == 0 {
                         (format!("use of undeclared type or module `{}`", ident), None)
                     } else {
-                        let mut msg =
-                            format!("could not find `{}` in `{}`", ident, path[i - 1].ident);
+                        // Do not emit `PathRoot`(`{{root}}`) as it's unclear.
+                        let ident_str;
+                        let ident_name = if path[i - 1].ident.name == kw::PathRoot {
+                            "the crate root"
+                        } else {
+                            ident_str = format!("`{}`", path[i - 1].ident);
+                            &ident_str
+                        };
+                        let mut msg = format!("could not find `{}` in {}", ident, ident_name);
                         if ns == TypeNS || ns == ValueNS {
                             let ns_to_try = if ns == TypeNS { ValueNS } else { TypeNS };
                             if let FindBindingResult::Binding(Ok(binding)) =
@@ -2328,11 +2335,11 @@ impl<'a> Resolver<'a> {
                             {
                                 let mut found = |what| {
                                     msg = format!(
-                                        "expected {}, found {} `{}` in `{}`",
+                                        "expected {}, found {} `{}` in {}",
                                         ns.descr(),
                                         what,
                                         ident,
-                                        path[i - 1].ident
+                                        ident_name
                                     )
                                 };
                                 if binding.module().is_some() {
