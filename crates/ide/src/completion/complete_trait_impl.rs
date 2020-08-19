@@ -126,10 +126,10 @@ fn add_function_impl(
 ) {
     let fn_name = func.name(ctx.db).to_string();
 
-    let label = if !func.params(ctx.db).is_empty() {
-        format!("fn {}(..)", fn_name)
-    } else {
+    let label = if func.params(ctx.db).is_empty() {
         format!("fn {}()", fn_name)
+    } else {
+        format!("fn {}(..)", fn_name)
     };
 
     let builder = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label)
