@@ -1,3 +1,43 @@
+/// Errors which can occur when attempting to interpret a sequence of [`u8`]
+/// as a string.
+///
+/// As such, the `from_utf8` family of functions and methods for both [`String`]s
+/// and [`&str`]s make use of this error, for example.
+///
+/// [`String`]: ../../std/string/struct.String.html#method.from_utf8
+/// [`&str`]: from_utf8
+///
+/// # Examples
+///
+/// This error type’s methods can be used to create functionality
+/// similar to `String::from_utf8_lossy` without allocating heap memory:
+///
+/// ```
+/// fn from_utf8_lossy<F>(mut input: &[u8], mut push: F) where F: FnMut(&str) {
+///     loop {
+///         match std::str::from_utf8(input) {
+///             Ok(valid) => {
+///                 push(valid);
+///                 break
+///             }
+///             Err(error) => {
+///                 let (valid, after_valid) = input.split_at(error.valid_up_to());
+///                 unsafe {
+///                     push(std::str::from_utf8_unchecked(valid))
+///                 }
+///                 push("\u{FFFD}");
+///
+///                 if let Some(invalid_sequence_length) = error.error_len() {
+///                     input = &after_valid[invalid_sequence_length..]
+///                 } else {
+///                     break
+///                 }
+///             }
+///         }
+///     }
+/// }
+/// ```
+
 #[derive(Copy, Eq, PartialEq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Utf8Error {
