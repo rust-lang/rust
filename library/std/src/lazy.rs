@@ -386,9 +386,10 @@ impl<T> SyncOnceCell<T> {
     }
 }
 
-impl<T> Drop for SyncOnceCell<T> {
+unsafe impl<#[may_dangle] T> Drop for SyncOnceCell<T> {
     fn drop(&mut self) {
-        // Safety: The cell is being dropped, so it can't be accessed again
+        // Safety: The cell is being dropped, so it can't be accessed again.
+        // We also don't touch the `T`, which validates our usage of #[may_dangle].
         unsafe { self.take_inner() };
     }
 }
@@ -843,6 +844,15 @@ mod tests {
         for _ in 0..n_readers {
             let msg = rx.recv().unwrap();
             assert_eq!(msg, MSG);
+        }
+    }
+
+    #[test]
+    fn dropck() {
+        let cell = SyncOnceCell::new();
+        {
+            let s = String::new();
+            cell.set(&s).unwrap();
         }
     }
 }
