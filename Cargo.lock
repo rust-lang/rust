@@ -4106,6 +4106,7 @@ dependencies = [
  "rustc-rayon",
  "serde",
  "serde_json",
+ "smallvec 1.4.2",
  "tempfile",
 ]
 
