@@ -291,6 +291,7 @@ pub trait StructuralEq {
 ///
 /// ```
 /// # #[allow(dead_code)]
+/// #[derive(Copy, Clone)]
 /// struct Point {
 ///    x: i32,
 ///    y: i32,
@@ -313,6 +314,20 @@ pub trait StructuralEq {
 ///
 /// ```text
 /// the trait `Copy` may not be implemented for this type; field `points` does not implement `Copy`
+/// ```
+///
+/// Shared references (`&T`) are also `Copy`, so a type can be `Copy`, even when it holds
+/// shared references of types `T` that are *not* `Copy`. Consider the following struct,
+/// which can implement `Copy`, because it only holds a *shared reference* to our non-`Copy`
+/// type `PointList` from above:
+///
+/// ```
+/// # #![allow(dead_code)]
+/// # struct PointList;
+/// #[derive(Copy, Clone)]
+/// struct PointListWrapper<'a> {
+///     point_list_ref: &'a PointList,
+/// }
 /// ```
 ///
 /// ## When *can't* my type be `Copy`?
