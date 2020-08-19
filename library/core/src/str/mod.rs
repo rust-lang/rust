@@ -26,7 +26,9 @@ pub mod utf8;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod indices;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use indices::CharIndices;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use utf8::Utf8Error;
 
 pub mod pattern;
