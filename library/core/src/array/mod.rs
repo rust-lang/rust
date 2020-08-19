@@ -12,7 +12,7 @@ use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::marker::Unsize;
-use crate::mem::MaybeUninit;
+use crate::mem::{self, MaybeUninit};
 use crate::slice::{Iter, IterMut};
 
 mod iter;
@@ -259,10 +259,14 @@ impl<T, const N: usize> FillError<T, N> {
         // an array of `T`.
         //
         // With that, this initialization satisfies the invariants.
+        //
         // FIXME: actually use `mem::transmute` here, once it
         // works with const generics:
         //     `mem::transmute::<[MaybeUninit<T>; N], [T; N]>(array)`
-        Ok(unsafe { crate::ptr::read(&self.array as *const [MaybeUninit<T>; N] as *const [T; N]) })
+        let arr = unsafe { crate::mem::transmute_copy::<_, [T; N]>(&self.array) };
+        // We forget `self` to not drop anything here.
+        mem::forget(self);
+        Ok(arr)
     }
 }
 

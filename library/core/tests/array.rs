@@ -341,7 +341,7 @@ fn array_collects() {
 
 #[test]
 #[should_panic(expected = "test succeeded")]
-fn array_collect_drop_safety() {
+fn array_collect_panic_safety() {
     use core::sync::atomic::AtomicUsize;
     use core::sync::atomic::Ordering;
     static DROPPED: AtomicUsize = AtomicUsize::new(0);
@@ -367,4 +367,23 @@ fn array_collect_drop_safety() {
     assert!(success.is_err());
     assert_eq!(DROPPED.load(Ordering::SeqCst), num_to_create);
     panic!("test succeeded")
+}
+
+#[test]
+fn array_collect_no_double_drop() {
+    use core::sync::atomic::AtomicUsize;
+    use core::sync::atomic::Ordering;
+    static DROPPED: AtomicUsize = AtomicUsize::new(0);
+    struct DropCounter;
+    impl Drop for DropCounter {
+        fn drop(&mut self) {
+            DROPPED.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    const LEN: usize = 10;
+    let items = [0; LEN];
+    let _ = FillError::<DropCounter, 10>::new().fill(items.iter().map(|_| DropCounter)).unwrap();
+
+    assert_eq!(DROPPED.load(Ordering::SeqCst), LEN);
 }
