@@ -151,11 +151,18 @@ impl ProjectWorkspace {
                 ProjectWorkspace::Json { project }
             }
             ProjectManifest::CargoToml(cargo_toml) => {
+                let cargo_version = utf8_stdout({
+                    let mut cmd = Command::new(toolchain::cargo());
+                    cmd.arg("--version");
+                    cmd
+                })?;
+
                 let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_config)
                     .with_context(|| {
                         format!(
-                            "Failed to read Cargo metadata from Cargo.toml file {}",
-                            cargo_toml.display()
+                            "Failed to read Cargo metadata from Cargo.toml file {}, {}",
+                            cargo_toml.display(),
+                            cargo_version
                         )
                     })?;
                 let sysroot = if with_sysroot {
