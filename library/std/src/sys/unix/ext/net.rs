@@ -408,8 +408,6 @@ impl UnixStream {
     /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is passed to this
     /// method.
     ///
-    /// [`None`]: crate::option::Option::None
-    /// [`Err`]: crate::result::Result::Err
     /// [`read`]: io::Read::read
     ///
     /// # Examples
@@ -452,8 +450,6 @@ impl UnixStream {
     /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is
     /// passed to this method.
     ///
-    /// [`None`]: crate::option::Option::None
-    /// [`Err`]: crate::result::Result::Err
     /// [`read`]: io::Read::read
     ///
     /// # Examples
@@ -967,8 +963,6 @@ impl UnixListener {
     /// The iterator will never return [`None`] and will also not yield the
     /// peer's [`SocketAddr`] structure.
     ///
-    /// [`None`]: crate::option::Option::None
-    ///
     /// # Examples
     ///
     /// ```no_run
@@ -1035,8 +1029,6 @@ impl<'a> IntoIterator for &'a UnixListener {
 /// An iterator over incoming connections to a [`UnixListener`].
 ///
 /// It will never return [`None`].
-///
-/// [`None`]: crate::option::Option::None
 ///
 /// # Examples
 ///
@@ -1424,8 +1416,6 @@ impl UnixDatagram {
     /// block indefinitely. An [`Err`] is returned if the zero [`Duration`]
     /// is passed to this method.
     ///
-    /// [`None`]: crate::option::Option::None
-    /// [`Err`]: crate::result::Result::Err
     /// [`recv`]: UnixDatagram::recv
     /// [`recv_from`]: UnixDatagram::recv_from
     ///
@@ -1470,7 +1460,6 @@ impl UnixDatagram {
     /// block indefinitely. An [`Err`] is returned if the zero [`Duration`] is passed to this
     /// method.
     ///
-    /// [`None`]: crate::option::Option::None
     /// [`send`]: UnixDatagram::send
     /// [`send_to`]: UnixDatagram::send_to
     ///
