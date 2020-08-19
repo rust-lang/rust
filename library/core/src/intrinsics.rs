@@ -976,7 +976,7 @@ extern "rust-intrinsic" {
     /// items of the same type, including alignment padding.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::mem::size_of`](../../std/mem/fn.size_of.html).
+    /// [`std::mem::size_of`](crate::mem::size_of).
     #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
     pub fn size_of<T>() -> usize;
 
@@ -991,7 +991,7 @@ extern "rust-intrinsic" {
     /// The minimum alignment of a type.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::mem::align_of`](../../std/mem/fn.align_of.html).
+    /// [`std::mem::align_of`](crate::mem::align_of).
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
     pub fn min_align_of<T>() -> usize;
     /// The preferred alignment of a type.
@@ -1003,13 +1003,13 @@ extern "rust-intrinsic" {
     /// The size of the referenced value in bytes.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::mem::size_of_val`](../../std/mem/fn.size_of_val.html).
+    /// [`std::mem::size_of_val`](crate::mem::size_of_val).
     #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
     pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
     /// The required alignment of the referenced value.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::mem::align_of_val`](../../std/mem/fn.align_of_val.html).
+    /// [`std::mem::align_of_val`](crate::mem::align_of_val).
     #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
     pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
 
@@ -1301,7 +1301,7 @@ extern "rust-intrinsic" {
     /// `Copy`, then the return value of this function is unspecified.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::mem::needs_drop`](../../std/mem/fn.needs_drop.html).
+    /// [`std::mem::needs_drop`](crate::mem::needs_drop).
     #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
     pub fn needs_drop<T>() -> bool;
 
@@ -1920,7 +1920,7 @@ extern "rust-intrinsic" {
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::mem::discriminant`](../../std/mem/fn.discriminant.html)
+    /// [`std::mem::discriminant`](crate::mem::discriminant)
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
@@ -1928,7 +1928,7 @@ extern "rust-intrinsic" {
     /// if `T` has no variants, returns 0. Uninhabited variants will be counted.
     ///
     /// The to-be-stabilized version of this intrinsic is
-    /// [`std::mem::variant_count`](../../std/mem/fn.variant_count.html)
+    /// [`std::mem::variant_count`](crate::mem::variant_count)
     #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
     pub fn variant_count<T>() -> usize;
 
