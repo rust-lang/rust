@@ -2079,8 +2079,8 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 ///
 /// [`Copy`]: crate::marker::Copy
 /// [`read`]: crate::ptr::read
-/// [read-ownership]: crate::ptr::read
-/// [valid]: crate::ptr
+/// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
+/// [valid]: crate::ptr#safety
 ///
 /// # Examples
 ///
@@ -2181,8 +2181,8 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 ///
 /// [`Copy`]: crate::marker::Copy
 /// [`read`]: crate::ptr::read
-/// [read-ownership]: crate::ptr::read
-/// [valid]: crate::ptr
+/// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
+/// [valid]: crate::ptr#safety
 ///
 /// # Examples
 ///
@@ -2240,7 +2240,7 @@ pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
 /// `0`, the pointer must be non-NULL and properly aligned.
 ///
-/// [valid]: crate::ptr
+/// [valid]: crate::ptr#safety
 ///
 /// # Examples
 ///
