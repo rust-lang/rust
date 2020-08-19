@@ -9,7 +9,7 @@ use core::convert::TryInto;
 /// [`Seek`] implementation.
 ///
 /// `Cursor`s are used with in-memory buffers, anything implementing
-/// `AsRef<[u8]>`, to allow them to implement [`Read`] and/or [`Write`],
+/// [`AsRef`]`<[u8]>`, to allow them to implement [`Read`] and/or [`Write`],
 /// allowing these buffers to be used anywhere you might use a reader or writer
 /// that does actual I/O.
 ///
@@ -23,12 +23,8 @@ use core::convert::TryInto;
 /// code, but use an in-memory buffer in our tests. We can do this with
 /// `Cursor`:
 ///
-/// [`Seek`]: trait.Seek.html
-/// [`Read`]: ../../std/io/trait.Read.html
-/// [`Write`]: ../../std/io/trait.Write.html
-/// [`Vec`]: ../../std/vec/struct.Vec.html
-/// [bytes]: ../../std/primitive.slice.html
-/// [`File`]: ../fs/struct.File.html
+/// [bytes]: crate::slice
+/// [`File`]: crate::fs::File
 ///
 /// ```no_run
 /// use std::io::prelude::*;
@@ -81,8 +77,8 @@ pub struct Cursor<T> {
 impl<T> Cursor<T> {
     /// Creates a new cursor wrapping the provided underlying in-memory buffer.
     ///
-    /// Cursor initial position is `0` even if underlying buffer (e.g., `Vec`)
-    /// is not empty. So writing to cursor starts with overwriting `Vec`
+    /// Cursor initial position is `0` even if underlying buffer (e.g., [`Vec`])
+    /// is not empty. So writing to cursor starts with overwriting [`Vec`]
     /// content, not with appending to it.
     ///
     /// # Examples
