@@ -455,15 +455,10 @@ fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
 }
 
 fn is_possibly_unsafe(name_ref: &ast::NameRef) -> bool {
-    name_ref
-        .syntax()
-        .parent()
-        .and_then(|parent| {
-            ast::FieldExpr::cast(parent.clone())
-                .map(|_| true)
-                .or_else(|| ast::RecordPatField::cast(parent).map(|_| true))
-        })
-        .unwrap_or(false)
+    match name_ref.syntax().parent() {
+        Some(parent) => matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD),
+        None => false,
+    }
 }
 
 fn highlight_element(
