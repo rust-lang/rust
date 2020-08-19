@@ -1526,22 +1526,22 @@ extern "rust-intrinsic" {
     /// Returns the minimum of two `f32` values.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::min`](../../std/primitive.f32.html#method.min)
+    /// [`std::f32::min`](f32::min)
     pub fn minnumf32(x: f32, y: f32) -> f32;
     /// Returns the minimum of two `f64` values.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::min`](../../std/primitive.f64.html#method.min)
+    /// [`std::f64::min`](f64::min)
     pub fn minnumf64(x: f64, y: f64) -> f64;
     /// Returns the maximum of two `f32` values.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::max`](../../std/primitive.f32.html#method.max)
+    /// [`std::f32::max`](f32::max)
     pub fn maxnumf32(x: f32, y: f32) -> f32;
     /// Returns the maximum of two `f64` values.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::max`](../../std/primitive.f64.html#method.max)
+    /// [`std::f64::max`](f64::max)
     pub fn maxnumf64(x: f64, y: f64) -> f64;
 
     /// Copies the sign from `y` to `x` for `f32` values.
