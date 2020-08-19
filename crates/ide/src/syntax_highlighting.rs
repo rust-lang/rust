@@ -520,7 +520,6 @@ fn highlight_element(
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
             highlight_func_by_name_ref(sema, &name_ref).unwrap_or_else(|| {
-                let possibly_unsafe = is_possibly_unsafe(&name_ref);
                 match classify_name_ref(sema, &name_ref) {
                     Some(name_kind) => match name_kind {
                         NameRefClass::ExternCrate(_) => HighlightTag::Module.into(),
@@ -532,6 +531,7 @@ fn highlight_element(
                                     binding_hash = Some(calc_binding_hash(&name, *shadow_count))
                                 }
                             };
+                            let possibly_unsafe = is_possibly_unsafe(&name_ref);
                             highlight_def(sema, db, def, Some(name_ref), possibly_unsafe)
                         }
                         NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
