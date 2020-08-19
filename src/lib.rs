@@ -187,7 +187,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     .map(|(a, b)| (a.to_string(), b))
                     .collect()
             } else {
-                target_features_whitelist::target_feature_whitelist(tcx.sess)
+                target_features_whitelist::supported_target_features(tcx.sess)
                     .iter()
                     .map(|&(a, b)| (a.to_string(), b))
                     .collect()

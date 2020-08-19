@@ -2,18 +2,20 @@ use rustc_span::symbol::{sym, Symbol};
 
 use rustc_session::Session;
 
-// Copied from https://github.com/rust-lang/rust/blob/f69b07144a151f46aaee1b6230ba4160e9394562/src/librustc_codegen_llvm/llvm_util.rs#L93-L264
+// Copied from https://github.com/rust-lang/rust/blob/e7f6ed14d5de2199d0e8a3c1e41f80e43885cb5c/src/librustc_codegen_llvm/llvm_util.rs#L139-L275
 
 // WARNING: the features after applying `to_llvm_feature` must be known
 // to LLVM or the feature detection code will walk past the end of the feature
 // array, leading to crashes.
 
-const ARM_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("aclass", Some(sym::arm_target_feature)),
     ("mclass", Some(sym::arm_target_feature)),
     ("rclass", Some(sym::arm_target_feature)),
     ("dsp", Some(sym::arm_target_feature)),
     ("neon", Some(sym::arm_target_feature)),
+    ("crc", Some(sym::arm_target_feature)),
+    ("crypto", Some(sym::arm_target_feature)),
     ("v5te", Some(sym::arm_target_feature)),
     ("v6", Some(sym::arm_target_feature)),
     ("v6k", Some(sym::arm_target_feature)),
@@ -23,9 +25,13 @@ const ARM_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("vfp2", Some(sym::arm_target_feature)),
     ("vfp3", Some(sym::arm_target_feature)),
     ("vfp4", Some(sym::arm_target_feature)),
+    // This is needed for inline assembly, but shouldn't be stabilized as-is
+    // since it should be enabled per-function using #[instruction_set], not
+    // #[target_feature].
+    ("thumb-mode", Some(sym::arm_target_feature)),
 ];
 
-const AARCH64_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("fp", Some(sym::aarch64_target_feature)),
     ("neon", Some(sym::aarch64_target_feature)),
     ("sve", Some(sym::aarch64_target_feature)),
@@ -37,12 +43,13 @@ const AARCH64_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("fp16", Some(sym::aarch64_target_feature)),
     ("rcpc", Some(sym::aarch64_target_feature)),
     ("dotprod", Some(sym::aarch64_target_feature)),
+    ("tme", Some(sym::aarch64_target_feature)),
     ("v8.1a", Some(sym::aarch64_target_feature)),
     ("v8.2a", Some(sym::aarch64_target_feature)),
     ("v8.3a", Some(sym::aarch64_target_feature)),
 ];
 
-const X86_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("adx", Some(sym::adx_target_feature)),
     ("aes", None),
     ("avx", None),
@@ -86,12 +93,12 @@ const X86_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("xsaves", None),
 ];
 
-const HEXAGON_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const HEXAGON_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("hvx", Some(sym::hexagon_target_feature)),
-    ("hvx-double", Some(sym::hexagon_target_feature)),
+    ("hvx-length128b", Some(sym::hexagon_target_feature)),
 ];
 
-const POWERPC_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const POWERPC_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("altivec", Some(sym::powerpc_target_feature)),
     ("power8-altivec", Some(sym::powerpc_target_feature)),
     ("power9-altivec", Some(sym::powerpc_target_feature)),
@@ -100,43 +107,51 @@ const POWERPC_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("vsx", Some(sym::powerpc_target_feature)),
 ];
 
-const MIPS_WHITELIST: &[(&str, Option<Symbol>)] = &[
-    ("fp64", Some(sym::mips_target_feature)),
-    ("msa", Some(sym::mips_target_feature)),
+const MIPS_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] =
+    &[("fp64", Some(sym::mips_target_feature)), ("msa", Some(sym::mips_target_feature))];
+
+const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    ("m", Some(sym::riscv_target_feature)),
+    ("a", Some(sym::riscv_target_feature)),
+    ("c", Some(sym::riscv_target_feature)),
+    ("f", Some(sym::riscv_target_feature)),
+    ("d", Some(sym::riscv_target_feature)),
+    ("e", Some(sym::riscv_target_feature)),
 ];
 
-const WASM_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("simd128", Some(sym::wasm_target_feature)),
     ("atomics", Some(sym::wasm_target_feature)),
+    ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
 ];
 
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
-/// IMPORTANT: If you're adding another whitelist to the above lists, make sure to add it to this
-/// iterator!
-pub(crate) fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol>)> {
-    ARM_WHITELIST
-        .iter()
+/// IMPORTANT: If you're adding another feature list above, make sure to add it to this iterator!
+pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol>)> {
+    std::iter::empty()
+        .chain(ARM_ALLOWED_FEATURES.iter())
+        .chain(AARCH64_ALLOWED_FEATURES.iter())
+        .chain(X86_ALLOWED_FEATURES.iter())
+        .chain(HEXAGON_ALLOWED_FEATURES.iter())
+        .chain(POWERPC_ALLOWED_FEATURES.iter())
+        .chain(MIPS_ALLOWED_FEATURES.iter())
+        .chain(RISCV_ALLOWED_FEATURES.iter())
+        .chain(WASM_ALLOWED_FEATURES.iter())
         .cloned()
-        .chain(AARCH64_WHITELIST.iter().cloned())
-        .chain(X86_WHITELIST.iter().cloned())
-        .chain(HEXAGON_WHITELIST.iter().cloned())
-        .chain(POWERPC_WHITELIST.iter().cloned())
-        .chain(MIPS_WHITELIST.iter().cloned())
-        .chain(WASM_WHITELIST.iter().cloned())
 }
 
-pub(crate) fn target_feature_whitelist(sess: &Session) -> &'static [(&'static str, Option<Symbol>)] {
+pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Option<Symbol>)] {
     match &*sess.target.target.arch {
-        "arm" => ARM_WHITELIST,
-        "aarch64" => AARCH64_WHITELIST,
-        "x86" | "x86_64" => X86_WHITELIST,
-        "hexagon" => HEXAGON_WHITELIST,
-        "mips" | "mips64" => MIPS_WHITELIST,
-        "powerpc" | "powerpc64" => POWERPC_WHITELIST,
-        // wasm32 on emscripten does not support these target features
-        "wasm32" if !sess.target.target.options.is_like_emscripten => WASM_WHITELIST,
+        "arm" => ARM_ALLOWED_FEATURES,
+        "aarch64" => AARCH64_ALLOWED_FEATURES,
+        "x86" | "x86_64" => X86_ALLOWED_FEATURES,
+        "hexagon" => HEXAGON_ALLOWED_FEATURES,
+        "mips" | "mips64" => MIPS_ALLOWED_FEATURES,
+        "powerpc" | "powerpc64" => POWERPC_ALLOWED_FEATURES,
+        "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
+        "wasm32" => WASM_ALLOWED_FEATURES,
         _ => &[],
     }
 }
