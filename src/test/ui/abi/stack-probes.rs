@@ -11,7 +11,6 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-sgx no processes
-// ignore-musl FIXME #31506
 
 use std::mem::MaybeUninit;
 use std::process::Command;
