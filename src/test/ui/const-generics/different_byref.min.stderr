@@ -1,4 +1,4 @@
-error: using `[usize; 1]` as const generic parameters is forbidden
+error: `[usize; 1]` is forbidden as the type of a const generic parameter
   --> $DIR/different_byref.rs:8:23
    |
 LL | struct Const<const V: [usize; 1]> {}

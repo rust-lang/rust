@@ -8,11 +8,11 @@
 struct A;
 
 struct B<const X: A>; // ok
-//[min]~^ ERROR using `A` as const generic parameters is forbidden
+//[min]~^ ERROR `A` is forbidden
 
 struct C;
 
 struct D<const X: C>; //~ ERROR `C` must be annotated with `#[derive(PartialEq, Eq)]`
-//[min]~^ ERROR using `C` as const generic parameters is forbidden
+//[min]~^ ERROR `C` is forbidden
 
 fn main() {}
