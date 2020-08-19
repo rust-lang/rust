@@ -18,6 +18,7 @@ const LICENSES: &[&str] = &[
     "Unlicense/MIT",
     "Unlicense OR MIT",
     "0BSD OR MIT OR Apache-2.0", // adler license
+    "Zlib OR Apache-2.0 OR MIT", // tinyvec
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
@@ -25,24 +26,24 @@ const LICENSES: &[&str] = &[
 /// tooling. It is _crucial_ that no exception crates be dependencies
 /// of the Rust runtime (std/test).
 const EXCEPTIONS: &[(&str, &str)] = &[
-    ("mdbook", "MPL-2.0"),                  // mdbook
-    ("openssl", "Apache-2.0"),              // cargo, mdbook
-    ("rdrand", "ISC"),                      // mdbook, rustfmt
-    ("fuchsia-cprng", "BSD-3-Clause"),      // mdbook, rustfmt
-    ("fuchsia-zircon-sys", "BSD-3-Clause"), // rustdoc, rustc, cargo
-    ("fuchsia-zircon", "BSD-3-Clause"),     // rustdoc, rustc, cargo (jobserver & tempdir)
-    ("colored", "MPL-2.0"),                 // rustfmt
-    ("ordslice", "Apache-2.0"),             // rls
-    ("cloudabi", "BSD-2-Clause"),           // (rls -> crossbeam-channel 0.2 -> rand 0.5)
-    ("ryu", "Apache-2.0 OR BSL-1.0"),       // rls/cargo/... (because of serde)
-    ("bytesize", "Apache-2.0"),             // cargo
-    ("im-rc", "MPL-2.0+"),                  // cargo
-    ("constant_time_eq", "CC0-1.0"),        // rustfmt
-    ("sized-chunks", "MPL-2.0+"),           // cargo via im-rc
-    ("bitmaps", "MPL-2.0+"),                // cargo via im-rc
+    ("mdbook", "MPL-2.0"),                                  // mdbook
+    ("openssl", "Apache-2.0"),                              // cargo, mdbook
+    ("fuchsia-zircon-sys", "BSD-3-Clause"),                 // rustdoc, rustc, cargo
+    ("fuchsia-zircon", "BSD-3-Clause"), // rustdoc, rustc, cargo (jobserver & tempdir)
+    ("colored", "MPL-2.0"),             // rustfmt
+    ("ordslice", "Apache-2.0"),         // rls
+    ("cloudabi", "BSD-2-Clause"),       // (rls -> crossbeam-channel 0.2 -> rand 0.5)
+    ("ryu", "Apache-2.0 OR BSL-1.0"),   // rls/cargo/... (because of serde)
+    ("bytesize", "Apache-2.0"),         // cargo
+    ("im-rc", "MPL-2.0+"),              // cargo
+    ("constant_time_eq", "CC0-1.0"),    // rustfmt
+    ("sized-chunks", "MPL-2.0+"),       // cargo via im-rc
+    ("bitmaps", "MPL-2.0+"),            // cargo via im-rc
+    ("crossbeam-queue", "MIT/Apache-2.0 AND BSD-2-Clause"), // rls via rayon
+    ("arrayref", "BSD-2-Clause"),       // cargo-miri/directories/.../rust-argon2 (redox)
+    ("instant", "BSD-3-Clause"),        // rustc_driver/tracing-subscriber/parking_lot
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
-    ("crossbeam-channel", "MIT/Apache-2.0 AND BSD-2-Clause"), // cargo
 ];
 
 /// These are the root crates that are part of the runtime. The licenses for
@@ -69,8 +70,8 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "bitflags",
     "block-buffer",
     "block-padding",
-    "byte-tools",
     "byteorder",
+    "byte-tools",
     "cc",
     "cfg-if",
     "chalk-derive",
@@ -103,6 +104,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "hermit-abi",
     "humantime",
     "indexmap",
+    "instant",
     "itertools",
     "jobserver",
     "kernel32-sys",
@@ -112,13 +114,13 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "lock_api",
     "log",
     "log_settings",
+    "maybe-uninit",
     "md-5",
     "measureme",
     "memchr",
     "memmap",
     "memoffset",
     "miniz_oxide",
-    "nodrop",
     "num_cpus",
     "object",
     "once_cell",
@@ -233,6 +235,14 @@ fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
                 }
                 Some(pkg_license) => {
                     if pkg_license.as_str() != *license {
+                        if *name == "crossbeam-queue"
+                            && *license == "MIT/Apache-2.0 AND BSD-2-Clause"
+                        {
+                            // We have two versions of crossbeam-queue and both
+                            // are fine.
+                            continue;
+                        }
+
                         println!("dependency exception `{}` license has changed", name);
                         println!("    previously `{}` now `{}`", license, pkg_license);
                         println!("    update EXCEPTIONS for the new license");
