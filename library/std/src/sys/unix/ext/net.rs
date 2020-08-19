@@ -408,10 +408,7 @@ impl UnixStream {
     /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is passed to this
     /// method.
     ///
-    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
-    /// [`read`]: ../../../../std/io/trait.Read.html#tymethod.read
-    /// [`Duration`]: ../../../../std/time/struct.Duration.html
+    /// [`read`]: io::Read::read
     ///
     /// # Examples
     ///
@@ -453,10 +450,7 @@ impl UnixStream {
     /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is
     /// passed to this method.
     ///
-    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
-    /// [`write`]: ../../../../std/io/trait.Write.html#tymethod.write
-    /// [`Duration`]: ../../../../std/time/struct.Duration.html
+    /// [`read`]: io::Read::read
     ///
     /// # Examples
     ///
@@ -580,8 +574,6 @@ impl UnixStream {
     /// This function will cause all pending and future I/O calls on the
     /// specified portions to immediately return with an appropriate value
     /// (see the documentation of [`Shutdown`]).
-    ///
-    /// [`Shutdown`]: ../../../../std/net/enum.Shutdown.html
     ///
     /// # Examples
     ///
@@ -852,7 +844,7 @@ impl UnixListener {
     /// is established. When established, the corresponding [`UnixStream`] and
     /// the remote peer's address will be returned.
     ///
-    /// [`UnixStream`]: ../../../../std/os/unix/net/struct.UnixStream.html
+    /// [`UnixStream`]: crate::os::unix::net::UnixStream
     ///
     /// # Examples
     ///
@@ -937,8 +929,6 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
-    ///
-    /// [`io::ErrorKind::WouldBlock`]: ../../../io/enum.ErrorKind.html#variant.WouldBlock
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
@@ -972,9 +962,6 @@ impl UnixListener {
     ///
     /// The iterator will never return [`None`] and will also not yield the
     /// peer's [`SocketAddr`] structure.
-    ///
-    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`SocketAddr`]: struct.SocketAddr.html
     ///
     /// # Examples
     ///
@@ -1042,9 +1029,6 @@ impl<'a> IntoIterator for &'a UnixListener {
 /// An iterator over incoming connections to a [`UnixListener`].
 ///
 /// It will never return [`None`].
-///
-/// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-/// [`UnixListener`]: struct.UnixListener.html
 ///
 /// # Examples
 ///
@@ -1205,9 +1189,9 @@ impl UnixDatagram {
     /// The [`send`] method may be used to send data to the specified address.
     /// [`recv`] and [`recv_from`] will only receive data from that address.
     ///
-    /// [`send`]: #method.send
-    /// [`recv`]: #method.recv
-    /// [`recv_from`]: #method.recv_from
+    /// [`send`]: UnixDatagram::send
+    /// [`recv`]: UnixDatagram::recv
+    /// [`recv_from`]: UnixDatagram::recv_from
     ///
     /// # Examples
     ///
@@ -1284,7 +1268,7 @@ impl UnixDatagram {
     ///
     /// The [`connect`] method will connect the socket to a peer.
     ///
-    /// [`connect`]: #method.connect
+    /// [`connect`]: UnixDatagram::connect
     ///
     /// # Examples
     ///
@@ -1432,11 +1416,8 @@ impl UnixDatagram {
     /// block indefinitely. An [`Err`] is returned if the zero [`Duration`]
     /// is passed to this method.
     ///
-    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
-    /// [`recv`]: #method.recv
-    /// [`recv_from`]: #method.recv_from
-    /// [`Duration`]: ../../../../std/time/struct.Duration.html
+    /// [`recv`]: UnixDatagram::recv
+    /// [`recv_from`]: UnixDatagram::recv_from
     ///
     /// # Examples
     ///
@@ -1479,10 +1460,8 @@ impl UnixDatagram {
     /// block indefinitely. An [`Err`] is returned if the zero [`Duration`] is passed to this
     /// method.
     ///
-    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`send`]: #method.send
-    /// [`send_to`]: #method.send_to
-    /// [`Duration`]: ../../../../std/time/struct.Duration.html
+    /// [`send`]: UnixDatagram::send
+    /// [`send_to`]: UnixDatagram::send_to
     ///
     /// # Examples
     ///
@@ -1604,8 +1583,6 @@ impl UnixDatagram {
     /// This function will cause all pending and future I/O calls on the
     /// specified portions to immediately return with an appropriate value
     /// (see the documentation of [`Shutdown`]).
-    ///
-    /// [`Shutdown`]: ../../../../std/net/enum.Shutdown.html
     ///
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
