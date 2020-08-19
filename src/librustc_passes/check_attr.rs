@@ -70,7 +70,7 @@ impl CheckAttrVisitor<'tcx> {
             } else if self.tcx.sess.check_name(attr, sym::track_caller) {
                 self.check_track_caller(&attr.span, attrs, span, target)
             } else if self.tcx.sess.check_name(attr, sym::doc) {
-                self.check_doc_alias(attr)
+                self.check_doc_alias(attr, hir_id, target)
             } else {
                 true
             };
@@ -217,7 +217,7 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_doc_alias(&self, attr: &Attribute) -> bool {
+    fn check_doc_alias(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
         if let Some(mi) = attr.meta() {
             if let Some(list) = mi.meta_item_list() {
                 for meta in list {
@@ -237,6 +237,28 @@ impl CheckAttrVisitor<'tcx> {
                                 )
                                 .emit();
                             return false;
+                        }
+                        if let Some(err) = match target {
+                            Target::Impl => Some("implementation block"),
+                            Target::ForeignMod => Some("extern block"),
+                            Target::AssocTy => {
+                                let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
+                                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
+                                if Target::from_item(containing_item) == Target::Impl {
+                                    Some("type alias in implementation block")
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
+                        } {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    meta.span(),
+                                    &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", err,),
+                                )
+                                .emit();
                         }
                     }
                 }
