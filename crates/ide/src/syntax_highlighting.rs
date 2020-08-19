@@ -454,13 +454,6 @@ fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
     Some(TextRange::new(range_start, range_end))
 }
 
-fn is_possibly_unsafe(name_ref: &ast::NameRef) -> bool {
-    match name_ref.syntax().parent() {
-        Some(parent) => matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD),
-        None => false,
-    }
-}
-
 fn highlight_element(
     sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
@@ -526,7 +519,12 @@ fn highlight_element(
                                     binding_hash = Some(calc_binding_hash(&name, *shadow_count))
                                 }
                             };
-                            let possibly_unsafe = is_possibly_unsafe(&name_ref);
+                            let possibly_unsafe = match name_ref.syntax().parent() {
+                                Some(parent) => {
+                                    matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD)
+                                }
+                                None => false,
+                            };
                             highlight_def(sema, db, def, Some(name_ref), possibly_unsafe)
                         }
                         NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
