@@ -21,6 +21,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{source_map, FileName, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::Obligation;
+use rustc_trait_selection::traits::SelectionContext;
 
 use std::cmp::Ordering;
 
@@ -392,6 +393,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             actual.prefix_string(),
                             ty_str,
                         );
+                        if let Mode::MethodCall = mode {
+                            if let SelfSource::MethodCall(call) = source {
+                                self.suggest_await_before_method(
+                                    &mut err, item_name, actual, call, span,
+                                );
+                            }
+                        }
                         if let Some(span) =
                             tcx.sess.confused_type_with_std_module.borrow().get(&span)
                         {
@@ -851,6 +859,69 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match ty.kind {
             ty::Adt(def, substs) => format!("{}", ty::Instance::new(def.did, substs)),
             _ => self.ty_to_string(ty),
+        }
+    }
+
+    fn suggest_await_before_method(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        item_name: Ident,
+        ty: Ty<'tcx>,
+        call: &hir::Expr<'_>,
+        span: Span,
+    ) {
+        if let ty::Opaque(def_id, _substs) = ty.kind {
+            let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
+            // Future::Output
+            let item_def_id = self
+                .tcx
+                .associated_items(future_trait)
+                .in_definition_order()
+                .next()
+                .unwrap()
+                .def_id;
+
+            let mut projection_ty = None;
+            for (predicate, _) in self.tcx.predicates_of(def_id).predicates {
+                if let ty::PredicateAtom::Projection(projection_predicate) =
+                    predicate.skip_binders()
+                {
+                    if item_def_id == projection_predicate.projection_ty.item_def_id {
+                        projection_ty = Some(projection_predicate.projection_ty);
+                        break;
+                    }
+                }
+            }
+            let cause = self.misc(span);
+            let mut selcx = SelectionContext::new(&self.infcx);
+            let mut obligations = vec![];
+            if let Some(projection_ty) = projection_ty {
+                let normalized_ty = rustc_trait_selection::traits::normalize_projection_type(
+                    &mut selcx,
+                    self.param_env,
+                    projection_ty,
+                    cause,
+                    0,
+                    &mut obligations,
+                );
+                debug!(
+                    "suggest_await_before_method: normalized_ty={:?}, ty_kind={:?}",
+                    self.resolve_vars_if_possible(&normalized_ty),
+                    normalized_ty.kind,
+                );
+                let method_exists = self.method_exists(item_name, normalized_ty, call.hir_id, true);
+                debug!("suggest_await_before_method: is_method_exist={}", method_exists);
+                if let Ok(sp) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    if method_exists {
+                        err.span_suggestion(
+                            span,
+                            "consider await before this method call",
+                            format!("await.{}", sp),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
         }
     }
 

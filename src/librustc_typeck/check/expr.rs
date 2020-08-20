@@ -31,7 +31,6 @@ use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
-use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{AdtKind, Visibility};
@@ -1517,22 +1516,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &'tcx hir::Expr<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         def_id: DefId,
-        substs: SubstsRef<'tcx>,
     ) {
         let param_env = self.tcx().param_env(def_id);
         let future_trait = self.tcx.require_lang_item(lang_items::FutureTraitLangItem, None);
-        let future_trait_ref = ty::TraitRef { def_id: future_trait, substs };
         // Future::Output
-        let future_projection = ty::ProjectionTy::from_ref_and_name(
-            self.tcx,
-            future_trait_ref,
-            Ident::with_dummy_span(sym::Output),
-        );
+        let item_def_id =
+            self.tcx.associated_items(future_trait).in_definition_order().next().unwrap().def_id;
 
         let mut projection_ty = None;
         for (predicate, _) in self.tcx.predicates_of(def_id).predicates {
             if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
-                if future_projection.item_def_id == projection_predicate.projection_ty.item_def_id {
+                if item_def_id == projection_predicate.projection_ty.item_def_id {
                     projection_ty = Some(projection_predicate.projection_ty);
                     break;
                 }
@@ -1600,8 +1594,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Param(param_ty) => {
                 self.point_at_param_definition(&mut err, param_ty);
             }
-            ty::Opaque(def_id, subts) => {
-                self.suggest_await_on_field_access(&mut err, field, base, expr, def_id, subts);
+            ty::Opaque(def_id, _) => {
+                self.suggest_await_on_field_access(&mut err, field, base, expr, def_id);
             }
             _ => {}
         }

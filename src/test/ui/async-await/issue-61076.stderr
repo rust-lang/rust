@@ -1,5 +1,5 @@
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
-  --> $DIR/issue-61076.rs:38:5
+  --> $DIR/issue-61076.rs:42:5
    |
 LL |     foo()?;
    |     ^^^^^^
@@ -11,7 +11,7 @@ LL |     foo()?;
    = note: required by `std::ops::Try::into_result`
 
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
-  --> $DIR/issue-61076.rs:52:5
+  --> $DIR/issue-61076.rs:56:5
    |
 LL |     t?;
    |     ^^
@@ -23,7 +23,7 @@ LL |     t?;
    = note: required by `std::ops::Try::into_result`
 
 error[E0609]: no field `0` on type `impl std::future::Future`
-  --> $DIR/issue-61076.rs:54:26
+  --> $DIR/issue-61076.rs:58:26
    |
 LL |     let _: i32 = tuple().0;
    |                  --------^
@@ -31,14 +31,23 @@ LL |     let _: i32 = tuple().0;
    |                  help: consider await before field access: `tuple().await.0`
 
 error[E0609]: no field `a` on type `impl std::future::Future`
-  --> $DIR/issue-61076.rs:56:28
+  --> $DIR/issue-61076.rs:60:28
    |
 LL |     let _: i32 = struct_().a;
    |                  ----------^
    |                  |
    |                  help: consider await before field access: `struct_().await.a`
 
-error: aborting due to 4 previous errors
+error[E0599]: no method named `method` found for opaque type `impl std::future::Future` in the current scope
+  --> $DIR/issue-61076.rs:62:15
+   |
+LL |     struct_().method();
+   |               ^^^^^^
+   |               |
+   |               method not found in `impl std::future::Future`
+   |               help: consider await before this method call: `await.method`
 
-Some errors have detailed explanations: E0277, E0609.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0599, E0609.
 For more information about an error, try `rustc --explain E0277`.
