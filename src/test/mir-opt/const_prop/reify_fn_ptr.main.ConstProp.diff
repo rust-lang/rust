@@ -14,9 +14,6 @@
           StorageLive(_2);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:26
           StorageLive(_3);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:17
           _3 = const main as fn() (Pointer(ReifyFnPointer)); // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:17
-                                           // ty::Const
-                                           // + ty: fn() {main}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/reify_fn_ptr.rs:4:13: 4:17
                                            // + literal: Const { ty: fn() {main}, val: Value(Scalar(<ZST>)) }
@@ -26,12 +23,6 @@
           StorageDead(_2);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:40: 4:41
           StorageDead(_1);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:41: 4:42
           _0 = const ();                   // scope 0 at $DIR/reify_fn_ptr.rs:3:11: 5:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/reify_fn_ptr.rs:3:11: 5:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           return;                          // scope 0 at $DIR/reify_fn_ptr.rs:5:2: 5:2
       }
   }

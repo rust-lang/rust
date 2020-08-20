@@ -22,20 +22,11 @@
   
       bb1: {
           _0 = const ();                   // scope 0 at $DIR/simplify_match.rs:8:18: 8:20
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_match.rs:8:18: 8:20
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb3;                     // scope 0 at $DIR/simplify_match.rs:6:5: 9:6
       }
   
       bb2: {
           _0 = const noop() -> bb3;        // scope 0 at $DIR/simplify_match.rs:7:17: 7:23
-                                           // ty::Const
-                                           // + ty: fn() {noop}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/simplify_match.rs:7:17: 7:21
                                            // + literal: Const { ty: fn() {noop}, val: Value(Scalar(<ZST>)) }

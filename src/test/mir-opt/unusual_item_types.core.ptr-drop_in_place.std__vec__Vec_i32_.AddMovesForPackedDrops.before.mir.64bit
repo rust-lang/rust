@@ -36,9 +36,6 @@ fn std::intrinsics::drop_in_place(_1: *mut std::vec::Vec<i32>) -> () {
     bb7: {
         _2 = &mut (*_1);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _3 = const <std::vec::Vec<i32> as std::ops::Drop>::drop(move _2) -> [return: bb6, unwind: bb5]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // ty::Const
-                                         // + ty: for<'r> fn(&'r mut std::vec::Vec<i32>) {<std::vec::Vec<i32> as std::ops::Drop>::drop}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // + literal: Const { ty: for<'r> fn(&'r mut std::vec::Vec<i32>) {<std::vec::Vec<i32> as std::ops::Drop>::drop}, val: Value(Scalar(<ZST>)) }

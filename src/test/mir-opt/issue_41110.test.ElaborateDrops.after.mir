@@ -26,9 +26,6 @@ fn test() -> () {
         StorageLive(_4);                 // scope 2 at $DIR/issue-41110.rs:17:10: 17:11
         _4 = move _2;                    // scope 2 at $DIR/issue-41110.rs:17:10: 17:11
         _3 = const std::mem::drop::<S>(move _4) -> [return: bb2, unwind: bb5]; // scope 2 at $DIR/issue-41110.rs:17:5: 17:12
-                                         // ty::Const
-                                         // + ty: fn(S) {std::mem::drop::<S>}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/issue-41110.rs:17:5: 17:9
                                          // + literal: Const { ty: fn(S) {std::mem::drop::<S>}, val: Value(Scalar(<ZST>)) }
@@ -70,12 +67,6 @@ fn test() -> () {
     bb8: {
         StorageDead(_5);                 // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
         _0 = const ();                   // scope 0 at $DIR/issue-41110.rs:14:15: 19:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-41110.rs:14:15: 19:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         drop(_2) -> [return: bb9, unwind: bb3]; // scope 1 at $DIR/issue-41110.rs:19:1: 19:2
     }
 

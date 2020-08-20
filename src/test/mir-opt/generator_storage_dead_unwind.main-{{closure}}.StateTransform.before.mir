@@ -40,9 +40,6 @@ yields ()
         StorageLive(_8);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:26:14: 26:15
         _8 = move _3;                    // scope 2 at $DIR/generator-storage-dead-unwind.rs:26:14: 26:15
         _7 = const take::<Foo>(move _8) -> [return: bb7, unwind: bb9]; // scope 2 at $DIR/generator-storage-dead-unwind.rs:26:9: 26:16
-                                         // ty::Const
-                                         // + ty: fn(Foo) {take::<Foo>}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/generator-storage-dead-unwind.rs:26:9: 26:13
                                          // + literal: Const { ty: fn(Foo) {take::<Foo>}, val: Value(Scalar(<ZST>)) }
@@ -76,9 +73,6 @@ yields ()
         StorageLive(_10);                // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:14: 27:15
         _10 = move _4;                   // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:14: 27:15
         _9 = const take::<Bar>(move _10) -> [return: bb10, unwind: bb11]; // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:9: 27:16
-                                         // ty::Const
-                                         // + ty: fn(Bar) {take::<Bar>}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/generator-storage-dead-unwind.rs:27:9: 27:13
                                          // + literal: Const { ty: fn(Bar) {take::<Bar>}, val: Value(Scalar(<ZST>)) }
@@ -100,12 +94,6 @@ yields ()
         StorageDead(_10);                // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:15: 27:16
         StorageDead(_9);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:16: 27:17
         _0 = const ();                   // scope 0 at $DIR/generator-storage-dead-unwind.rs:22:19: 28:6
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/generator-storage-dead-unwind.rs:22:19: 28:6
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_4);                 // scope 1 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
         StorageDead(_3);                 // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
         drop(_1) -> [return: bb12, unwind: bb1]; // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6

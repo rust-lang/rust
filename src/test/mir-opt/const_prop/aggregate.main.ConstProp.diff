@@ -24,12 +24,6 @@
           StorageDead(_2);                 // scope 0 at $DIR/aggregate.rs:5:27: 5:28
           StorageDead(_3);                 // scope 0 at $DIR/aggregate.rs:5:28: 5:29
           _0 = const ();                   // scope 0 at $DIR/aggregate.rs:4:11: 6:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/aggregate.rs:4:11: 6:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // scope 0 at $DIR/aggregate.rs:6:1: 6:2
           return;                          // scope 0 at $DIR/aggregate.rs:6:2: 6:2
       }

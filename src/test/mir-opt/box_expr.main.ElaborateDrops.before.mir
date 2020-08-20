@@ -15,9 +15,6 @@ fn main() -> () {
         StorageLive(_2);                 // scope 0 at $DIR/box_expr.rs:7:13: 7:25
         _2 = Box(S);                     // scope 0 at $DIR/box_expr.rs:7:13: 7:25
         (*_2) = const S::new() -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/box_expr.rs:7:17: 7:25
-                                         // ty::Const
-                                         // + ty: fn() -> S {S::new}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/box_expr.rs:7:17: 7:23
                                          // + literal: Const { ty: fn() -> S {S::new}, val: Value(Scalar(<ZST>)) }
@@ -42,9 +39,6 @@ fn main() -> () {
         StorageLive(_4);                 // scope 1 at $DIR/box_expr.rs:8:10: 8:11
         _4 = move _1;                    // scope 1 at $DIR/box_expr.rs:8:10: 8:11
         _3 = const std::mem::drop::<std::boxed::Box<S>>(move _4) -> [return: bb5, unwind: bb7]; // scope 1 at $DIR/box_expr.rs:8:5: 8:12
-                                         // ty::Const
-                                         // + ty: fn(std::boxed::Box<S>) {std::mem::drop::<std::boxed::Box<S>>}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/box_expr.rs:8:5: 8:9
                                          // + literal: Const { ty: fn(std::boxed::Box<S>) {std::mem::drop::<std::boxed::Box<S>>}, val: Value(Scalar(<ZST>)) }
@@ -54,12 +48,6 @@ fn main() -> () {
         StorageDead(_4);                 // scope 1 at $DIR/box_expr.rs:8:11: 8:12
         StorageDead(_3);                 // scope 1 at $DIR/box_expr.rs:8:12: 8:13
         _0 = const ();                   // scope 0 at $DIR/box_expr.rs:6:11: 9:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/box_expr.rs:6:11: 9:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         drop(_1) -> bb8;                 // scope 0 at $DIR/box_expr.rs:9:1: 9:2
     }
 

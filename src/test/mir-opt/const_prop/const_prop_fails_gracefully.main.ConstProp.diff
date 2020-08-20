@@ -31,9 +31,6 @@
           StorageLive(_5);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:10: 8:11
           _5 = _1;                         // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:10: 8:11
           _4 = const read(move _5) -> bb1; // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:5: 8:12
-                                           // ty::Const
-                                           // + ty: fn(usize) {read}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/const_prop_fails_gracefully.rs:8:5: 8:9
                                            // + literal: Const { ty: fn(usize) {read}, val: Value(Scalar(<ZST>)) }
@@ -43,12 +40,6 @@
           StorageDead(_5);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:11: 8:12
           StorageDead(_4);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:12: 8:13
           _0 = const ();                   // scope 0 at $DIR/const_prop_fails_gracefully.rs:5:11: 9:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/const_prop_fails_gracefully.rs:5:11: 9:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/const_prop_fails_gracefully.rs:9:2: 9:2
       }

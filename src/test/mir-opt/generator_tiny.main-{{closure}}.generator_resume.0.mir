@@ -51,9 +51,6 @@ fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:
         StorageDead(_6);                 // scope 1 at $DIR/generator-tiny.rs:22:18: 22:19
         StorageLive(_8);                 // scope 1 at $DIR/generator-tiny.rs:23:13: 23:21
         _8 = const callee() -> bb4;      // scope 1 at $DIR/generator-tiny.rs:23:13: 23:21
-                                         // ty::Const
-                                         // + ty: fn() {callee}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/generator-tiny.rs:23:13: 23:19
                                          // + literal: Const { ty: fn() {callee}, val: Value(Scalar(<ZST>)) }
@@ -62,12 +59,6 @@ fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:
     bb4: {
         StorageDead(_8);                 // scope 1 at $DIR/generator-tiny.rs:23:21: 23:22
         _5 = const ();                   // scope 1 at $DIR/generator-tiny.rs:21:14: 24:10
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/generator-tiny.rs:21:14: 24:10
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         goto -> bb2;                     // scope 1 at $DIR/generator-tiny.rs:21:9: 24:10
     }
 

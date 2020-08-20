@@ -36,9 +36,6 @@
           StorageLive(_6);                 // scope 1 at $DIR/simplify_try_if_let.rs:26:43: 26:53
           _6 = &mut ((*_2).0: std::option::Option<std::ptr::NonNull<Node>>); // scope 1 at $DIR/simplify_try_if_let.rs:26:43: 26:53
           _5 = const std::option::Option::<std::ptr::NonNull<Node>>::take(move _6) -> bb4; // scope 1 at $DIR/simplify_try_if_let.rs:26:43: 26:60
-                                           // ty::Const
-                                           // + ty: for<'r> fn(&'r mut std::option::Option<std::ptr::NonNull<Node>>) -> std::option::Option<std::ptr::NonNull<Node>> {std::option::Option::<std::ptr::NonNull<Node>>::take}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/simplify_try_if_let.rs:26:54: 26:58
                                            // + literal: Const { ty: for<'r> fn(&'r mut std::option::Option<std::ptr::NonNull<Node>>) -> std::option::Option<std::ptr::NonNull<Node>> {std::option::Option::<std::ptr::NonNull<Node>>::take}, val: Value(Scalar(<ZST>)) }
@@ -50,12 +47,6 @@
   
       bb3: {
           _0 = const ();                   // scope 0 at $DIR/simplify_try_if_let.rs:22:21: 22:24
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_try_if_let.rs:22:21: 22:24
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb9;                     // scope 0 at $DIR/simplify_try_if_let.rs:21:9: 32:10
       }
   
@@ -67,12 +58,6 @@
   
       bb5: {
           _0 = const ();                   // scope 1 at $DIR/simplify_try_if_let.rs:26:17: 30:18
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_try_if_let.rs:26:17: 30:18
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb8;                     // scope 1 at $DIR/simplify_try_if_let.rs:26:17: 30:18
       }
   
@@ -89,9 +74,6 @@
           StorageLive(_12);                // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:29
           _12 = &mut _4;                   // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:29
           _11 = const std::ptr::NonNull::<Node>::as_mut(move _12) -> bb7; // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:38
-                                           // ty::Const
-                                           // + ty: for<'r> unsafe fn(&'r mut std::ptr::NonNull<Node>) -> &'r mut Node {std::ptr::NonNull::<Node>::as_mut}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/simplify_try_if_let.rs:28:30: 28:36
                                            // + literal: Const { ty: for<'r> unsafe fn(&'r mut std::ptr::NonNull<Node>) -> &'r mut Node {std::ptr::NonNull::<Node>::as_mut}, val: Value(Scalar(<ZST>)) }
@@ -103,12 +85,6 @@
           StorageDead(_9);                 // scope 3 at $DIR/simplify_try_if_let.rs:28:61: 28:62
           StorageDead(_11);                // scope 3 at $DIR/simplify_try_if_let.rs:28:62: 28:63
           _0 = const ();                   // scope 3 at $DIR/simplify_try_if_let.rs:27:21: 29:22
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_try_if_let.rs:27:21: 29:22
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_8);                 // scope 1 at $DIR/simplify_try_if_let.rs:30:17: 30:18
           goto -> bb8;                     // scope 1 at $DIR/simplify_try_if_let.rs:26:17: 30:18
       }

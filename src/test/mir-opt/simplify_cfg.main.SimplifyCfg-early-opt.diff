@@ -15,9 +15,6 @@
           StorageLive(_2);                 // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
 -         _2 = const bar() -> bb3;         // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
 +         _2 = const bar() -> bb1;         // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
-                                           // ty::Const
-                                           // + ty: fn() -> bool {bar}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/simplify_cfg.rs:7:12: 7:15
                                            // + literal: Const { ty: fn() -> bool {bar}, val: Value(Scalar(<ZST>)) }
@@ -41,12 +38,6 @@
 -     bb5: {
 +     bb2: {
           _1 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_cfg.rs:7:9: 9:10
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
           goto -> bb0;                     // scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
       }
@@ -54,12 +45,6 @@
 -     bb6: {
 +     bb3: {
           _0 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_cfg.rs:8:13: 8:18
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
           return;                          // scope 0 at $DIR/simplify_cfg.rs:11:2: 11:2
       }

@@ -72,12 +72,6 @@ fn move_out_by_subslice() -> () {
         StorageLive(_6);                 // scope 1 at $DIR/uniform_array_move_out.rs:12:10: 12:17
         _6 = move _1[0..2];              // scope 1 at $DIR/uniform_array_move_out.rs:12:10: 12:17
         _0 = const ();                   // scope 0 at $DIR/uniform_array_move_out.rs:10:27: 13:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/uniform_array_move_out.rs:10:27: 13:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         drop(_6) -> [return: bb12, unwind: bb10]; // scope 1 at $DIR/uniform_array_move_out.rs:13:1: 13:2
     }
 

@@ -72,9 +72,6 @@ fn main() -> () {
         _5 = &shallow _2;                // scope 0 at $DIR/match_false_edges.rs:35:19: 35:26
         StorageLive(_8);                 // scope 0 at $DIR/match_false_edges.rs:36:21: 36:28
         _8 = const guard() -> [return: bb7, unwind: bb1]; // scope 0 at $DIR/match_false_edges.rs:36:21: 36:28
-                                         // ty::Const
-                                         // + ty: fn() -> bool {guard}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/match_false_edges.rs:36:21: 36:26
                                          // + literal: Const { ty: fn() -> bool {guard}, val: Value(Scalar(<ZST>)) }
@@ -118,9 +115,6 @@ fn main() -> () {
         StorageLive(_13);                // scope 0 at $DIR/match_false_edges.rs:38:27: 38:28
         _13 = (*_11);                    // scope 0 at $DIR/match_false_edges.rs:38:27: 38:28
         _12 = const guard2(move _13) -> [return: bb12, unwind: bb1]; // scope 0 at $DIR/match_false_edges.rs:38:20: 38:29
-                                         // ty::Const
-                                         // + ty: fn(i32) -> bool {guard2}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/match_false_edges.rs:38:20: 38:26
                                          // + literal: Const { ty: fn(i32) -> bool {guard2}, val: Value(Scalar(<ZST>)) }
@@ -153,12 +147,6 @@ fn main() -> () {
         StorageDead(_2);                 // scope 0 at $DIR/match_false_edges.rs:40:6: 40:7
         StorageDead(_1);                 // scope 0 at $DIR/match_false_edges.rs:40:6: 40:7
         _0 = const ();                   // scope 0 at $DIR/match_false_edges.rs:34:11: 41:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/match_false_edges.rs:34:11: 41:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         return;                          // scope 0 at $DIR/match_false_edges.rs:41:2: 41:2
     }
 }

@@ -37,9 +37,6 @@ fn main() -> () {
         StorageLive(_6);                 // scope 4 at $DIR/array-index-is-temporary.rs:16:25: 16:26
         _6 = _3;                         // scope 4 at $DIR/array-index-is-temporary.rs:16:25: 16:26
         _5 = const foo(move _6) -> bb1;  // scope 4 at $DIR/array-index-is-temporary.rs:16:21: 16:27
-                                         // ty::Const
-                                         // + ty: unsafe fn(*mut usize) -> u32 {foo}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/array-index-is-temporary.rs:16:21: 16:24
                                          // + literal: Const { ty: unsafe fn(*mut usize) -> u32 {foo}, val: Value(Scalar(<ZST>)) }
@@ -59,12 +56,6 @@ fn main() -> () {
         StorageDead(_5);                 // scope 3 at $DIR/array-index-is-temporary.rs:16:28: 16:29
         StorageDead(_7);                 // scope 3 at $DIR/array-index-is-temporary.rs:16:29: 16:30
         _0 = const ();                   // scope 0 at $DIR/array-index-is-temporary.rs:12:11: 17:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/array-index-is-temporary.rs:12:11: 17:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_3);                 // scope 2 at $DIR/array-index-is-temporary.rs:17:1: 17:2
         StorageDead(_2);                 // scope 1 at $DIR/array-index-is-temporary.rs:17:1: 17:2
         StorageDead(_1);                 // scope 0 at $DIR/array-index-is-temporary.rs:17:1: 17:2

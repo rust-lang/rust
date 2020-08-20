@@ -23,9 +23,6 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/issue-72181.rs:24:13: 24:34
         _1 = const std::mem::size_of::<Foo>() -> [return: bb2, unwind: bb1]; // scope 0 at $DIR/issue-72181.rs:24:13: 24:34
-                                         // ty::Const
-                                         // + ty: fn() -> usize {std::mem::size_of::<Foo>}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/issue-72181.rs:24:13: 24:32
                                          // + literal: Const { ty: fn() -> usize {std::mem::size_of::<Foo>}, val: Value(Scalar(<ZST>)) }
@@ -59,12 +56,6 @@ fn main() -> () {
         StorageDead(_6);                 // scope 2 at $DIR/issue-72181.rs:27:30: 27:31
         StorageDead(_5);                 // scope 2 at $DIR/issue-72181.rs:27:30: 27:31
         _0 = const ();                   // scope 0 at $DIR/issue-72181.rs:23:11: 28:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-72181.rs:23:11: 28:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_2);                 // scope 1 at $DIR/issue-72181.rs:28:1: 28:2
         goto -> bb4;                     // scope 0 at $DIR/issue-72181.rs:28:2: 28:2
     }

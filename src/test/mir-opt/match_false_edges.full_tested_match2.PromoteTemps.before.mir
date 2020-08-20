@@ -64,9 +64,6 @@ fn full_tested_match2() -> () {
         _4 = &shallow _2;                // scope 0 at $DIR/match_false_edges.rs:26:19: 26:27
         StorageLive(_7);                 // scope 0 at $DIR/match_false_edges.rs:27:20: 27:27
         _7 = const guard() -> [return: bb7, unwind: bb1]; // scope 0 at $DIR/match_false_edges.rs:27:20: 27:27
-                                         // ty::Const
-                                         // + ty: fn() -> bool {guard}
-                                         // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/match_false_edges.rs:27:20: 27:25
                                          // + literal: Const { ty: fn() -> bool {guard}, val: Value(Scalar(<ZST>)) }
@@ -106,12 +103,6 @@ fn full_tested_match2() -> () {
         StorageDead(_2);                 // scope 0 at $DIR/match_false_edges.rs:30:6: 30:7
         StorageDead(_1);                 // scope 0 at $DIR/match_false_edges.rs:30:6: 30:7
         _0 = const ();                   // scope 0 at $DIR/match_false_edges.rs:25:29: 31:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/match_false_edges.rs:25:29: 31:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         return;                          // scope 0 at $DIR/match_false_edges.rs:31:2: 31:2
     }
 }

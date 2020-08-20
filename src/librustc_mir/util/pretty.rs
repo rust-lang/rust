@@ -389,6 +389,8 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
         let Constant { span, user_ty, literal } = constant;
         match literal.ty.kind {
             ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char => {}
+            // Unit type
+            ty::Tuple(tys) if tys.is_empty() => {}
             _ => {
                 self.push("mir::Constant");
                 self.push(&format!("+ span: {}", self.tcx.sess.source_map().span_to_string(*span)));
@@ -405,6 +407,9 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
         let ty::Const { ty, val, .. } = constant;
         match ty.kind {
             ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char => {}
+            // Unit type
+            ty::Tuple(tys) if tys.is_empty() => {}
+            ty::FnDef(..) => {}
             _ => {
                 self.push("ty::Const");
                 self.push(&format!("+ ty: {:?}", ty));

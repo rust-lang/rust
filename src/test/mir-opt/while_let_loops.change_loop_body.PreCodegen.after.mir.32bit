@@ -14,12 +14,6 @@ fn change_loop_body() -> () {
         StorageLive(_2);                 // scope 1 at $DIR/while_let_loops.rs:7:28: 7:32
         discriminant(_2) = 0;            // scope 1 at $DIR/while_let_loops.rs:7:28: 7:32
         _0 = const ();                   // scope 1 at $DIR/while_let_loops.rs:7:5: 10:6
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/while_let_loops.rs:7:5: 10:6
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_2);                 // scope 1 at $DIR/while_let_loops.rs:10:5: 10:6
         StorageDead(_1);                 // scope 0 at $DIR/while_let_loops.rs:11:1: 11:2
         return;                          // scope 0 at $DIR/while_let_loops.rs:11:2: 11:2

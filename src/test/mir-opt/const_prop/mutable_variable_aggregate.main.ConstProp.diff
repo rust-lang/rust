@@ -21,12 +21,6 @@
 -         _2 = _1;                         // scope 1 at $DIR/mutable_variable_aggregate.rs:7:13: 7:14
 +         _2 = (const 42_i32, const 99_i32); // scope 1 at $DIR/mutable_variable_aggregate.rs:7:13: 7:14
           _0 = const ();                   // scope 0 at $DIR/mutable_variable_aggregate.rs:4:11: 8:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/mutable_variable_aggregate.rs:4:11: 8:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_aggregate.rs:8:1: 8:2
           StorageDead(_1);                 // scope 0 at $DIR/mutable_variable_aggregate.rs:8:1: 8:2
           return;                          // scope 0 at $DIR/mutable_variable_aggregate.rs:8:2: 8:2

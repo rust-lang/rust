@@ -31,12 +31,6 @@
   
       bb4: {
           _0 = const ();                   // scope 0 at $DIR/matches_reduce_branches.rs:6:5: 8:6
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/matches_reduce_branches.rs:6:5: 8:6
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb5;                     // scope 0 at $DIR/matches_reduce_branches.rs:6:5: 8:6
       }
   

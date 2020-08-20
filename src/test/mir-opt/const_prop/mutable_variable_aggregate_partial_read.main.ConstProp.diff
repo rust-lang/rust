@@ -15,9 +15,6 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:5:9: 5:14
           _1 = const foo() -> bb1;         // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:5:29: 5:34
-                                           // ty::Const
-                                           // + ty: fn() -> (i32, i32) {foo}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/mutable_variable_aggregate_partial_read.rs:5:29: 5:32
                                            // + literal: Const { ty: fn() -> (i32, i32) {foo}, val: Value(Scalar(<ZST>)) }
@@ -30,12 +27,6 @@
 -         _2 = (_1.1: i32);                // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:8:13: 8:16
 +         _2 = const 99_i32;               // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:8:13: 8:16
           _0 = const ();                   // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:4:11: 9:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/mutable_variable_aggregate_partial_read.rs:4:11: 9:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:9:1: 9:2
           StorageDead(_1);                 // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:9:2: 9:2

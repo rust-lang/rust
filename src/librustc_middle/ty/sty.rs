@@ -185,7 +185,7 @@ pub enum TyKind<'tcx> {
     /// After typeck, the concrete type can be found in the `types` map.
     Opaque(DefId, SubstsRef<'tcx>),
 
-    /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
+    /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(ParamTy),
 
     /// Bound type variable, used only when preparing a trait query.

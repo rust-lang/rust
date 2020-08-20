@@ -99,12 +99,6 @@ fn main() -> () {
     bb14: {
         StorageDead(_3);                 // scope 2 at $DIR/match_test.rs:17:6: 17:7
         _0 = const ();                   // scope 0 at $DIR/match_test.rs:6:11: 18:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/match_test.rs:6:11: 18:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_2);                 // scope 1 at $DIR/match_test.rs:18:1: 18:2
         StorageDead(_1);                 // scope 0 at $DIR/match_test.rs:18:1: 18:2
         return;                          // scope 0 at $DIR/match_test.rs:18:2: 18:2

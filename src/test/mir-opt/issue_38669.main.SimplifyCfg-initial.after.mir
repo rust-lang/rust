@@ -40,33 +40,15 @@ fn main() -> () {
 
     bb5: {
         _3 = const ();                   // scope 1 at $DIR/issue-38669.rs:7:9: 9:10
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-38669.rs:7:9: 9:10
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_4);                 // scope 1 at $DIR/issue-38669.rs:9:9: 9:10
         StorageDead(_3);                 // scope 1 at $DIR/issue-38669.rs:9:9: 9:10
         _1 = const true;                 // scope 1 at $DIR/issue-38669.rs:10:9: 10:28
         _2 = const ();                   // scope 1 at $DIR/issue-38669.rs:6:10: 11:6
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-38669.rs:6:10: 11:6
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         goto -> bb2;                     // scope 1 at $DIR/issue-38669.rs:6:5: 11:6
     }
 
     bb6: {
         _0 = const ();                   // scope 1 at $DIR/issue-38669.rs:8:13: 8:18
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-38669.rs:8:13: 8:18
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_4);                 // scope 1 at $DIR/issue-38669.rs:9:9: 9:10
         StorageDead(_3);                 // scope 1 at $DIR/issue-38669.rs:9:9: 9:10
         StorageDead(_1);                 // scope 0 at $DIR/issue-38669.rs:12:1: 12:2

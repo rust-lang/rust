@@ -23,9 +23,6 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/unreachable_asm.rs:11:23: 11:30
           _1 = const empty() -> bb1;       // scope 0 at $DIR/unreachable_asm.rs:11:23: 11:30
-                                           // ty::Const
-                                           // + ty: fn() -> std::option::Option<Empty> {empty}
-                                           // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/unreachable_asm.rs:11:23: 11:28
                                            // + literal: Const { ty: fn() -> std::option::Option<Empty> {empty}, val: Value(Scalar(<ZST>)) }
@@ -38,12 +35,6 @@
   
       bb2: {
           _0 = const ();                   // scope 0 at $DIR/unreachable_asm.rs:11:5: 23:6
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/unreachable_asm.rs:11:5: 23:6
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // scope 0 at $DIR/unreachable_asm.rs:24:1: 24:2
           return;                          // scope 0 at $DIR/unreachable_asm.rs:24:2: 24:2
       }
@@ -61,24 +52,12 @@
       bb4: {
           _4 = const 42_i32;               // scope 2 at $DIR/unreachable_asm.rs:17:13: 17:20
           _5 = const ();                   // scope 2 at $DIR/unreachable_asm.rs:16:16: 18:10
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/unreachable_asm.rs:16:16: 18:10
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb6;                     // scope 2 at $DIR/unreachable_asm.rs:14:9: 18:10
       }
   
       bb5: {
           _4 = const 21_i32;               // scope 2 at $DIR/unreachable_asm.rs:15:13: 15:20
           _5 = const ();                   // scope 2 at $DIR/unreachable_asm.rs:14:17: 16:10
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/unreachable_asm.rs:14:17: 16:10
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb6;                     // scope 2 at $DIR/unreachable_asm.rs:14:9: 18:10
       }
   
@@ -88,12 +67,6 @@
           StorageLive(_7);                 // scope 2 at $DIR/unreachable_asm.rs:21:9: 21:37
           llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []); // scope 3 at $DIR/unreachable_asm.rs:21:18: 21:35
           _7 = const ();                   // scope 3 at $DIR/unreachable_asm.rs:21:9: 21:37
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/unreachable_asm.rs:21:9: 21:37
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_7);                 // scope 2 at $DIR/unreachable_asm.rs:21:36: 21:37
           StorageLive(_8);                 // scope 2 at $DIR/unreachable_asm.rs:22:9: 22:21
           unreachable;                     // scope 2 at $DIR/unreachable_asm.rs:22:15: 22:17

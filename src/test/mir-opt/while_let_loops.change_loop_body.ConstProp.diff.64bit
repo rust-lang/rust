@@ -26,12 +26,6 @@
   
       bb1: {
           _0 = const ();                   // scope 1 at $DIR/while_let_loops.rs:7:5: 10:6
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/while_let_loops.rs:7:5: 10:6
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb4;                     // scope 1 at $DIR/while_let_loops.rs:7:5: 10:6
       }
   
@@ -42,12 +36,6 @@
       bb3: {
           _1 = const 1_i32;                // scope 1 at $DIR/while_let_loops.rs:8:9: 8:15
           _0 = const ();                   // scope 1 at $DIR/while_let_loops.rs:9:9: 9:14
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/while_let_loops.rs:9:9: 9:14
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb4;                     // scope 1 at $DIR/while_let_loops.rs:9:9: 9:14
       }
   
