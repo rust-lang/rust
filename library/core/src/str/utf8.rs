@@ -7,7 +7,7 @@
 /// and [`&str`]s make use of this error, for example.
 ///
 /// [`String`]: ../../std/string/struct.String.html#method.from_utf8
-/// [`&str`]: from_utf8
+/// [`&str`]: crate::str::from_utf8
 ///
 /// # Examples
 ///
