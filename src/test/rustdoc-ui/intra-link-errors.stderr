@@ -1,0 +1,68 @@
+error: unresolved link to `path::to::nonexistent::module`
+  --> $DIR/intra-link-errors.rs:8:6
+   |
+LL | /// [path::to::nonexistent::module]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/intra-link-errors.rs:1:9
+   |
+LL | #![deny(broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   = note: no item named `path::to::nonexistent` is in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: unresolved link to `f::A`
+  --> $DIR/intra-link-errors.rs:14:6
+   |
+LL | /// [f::A]
+   |      ^^^^
+   |
+   = note: no item named `f` is in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: unresolved link to `S::A`
+  --> $DIR/intra-link-errors.rs:19:6
+   |
+LL | /// [S::A]
+   |      ^^^^
+   |
+   = note: this link partially resolves to the struct `S`,
+   = note: `S` has no field, variant, or associated item named `A`
+
+error: unresolved link to `S::fmt`
+  --> $DIR/intra-link-errors.rs:24:6
+   |
+LL | /// [S::fmt]
+   |      ^^^^^^
+   |
+   = note: this link partially resolves to the struct `S`,
+   = note: `S` has no field, variant, or associated item named `fmt`
+
+error: unresolved link to `E::D`
+  --> $DIR/intra-link-errors.rs:29:6
+   |
+LL | /// [E::D]
+   |      ^^^^
+   |
+   = note: this link partially resolves to the enum `E`,
+   = note: `E` has no field, variant, or associated item named `D`
+
+error: unresolved link to `u8::not_found`
+  --> $DIR/intra-link-errors.rs:34:6
+   |
+LL | /// [u8::not_found]
+   |      ^^^^^^^^^^^^^
+   |
+   = note: the builtin type `u8` does not have an associated item named `not_found`
+
+error: unresolved link to `S`
+  --> $DIR/intra-link-errors.rs:38:6
+   |
+LL | /// [S!]
+   |      ^^ help: to link to the unit struct, use its disambiguator: `value@S`
+   |
+   = note: this link resolves to the unit struct `S`, which is not in the value namespace
+
+error: aborting due to 7 previous errors
+

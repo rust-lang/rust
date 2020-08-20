@@ -6,6 +6,7 @@ use rustc_ast::NodeId;
 use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
 
+use std::array::IntoIter;
 use std::fmt::Debug;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
@@ -290,6 +291,14 @@ pub struct PerNS<T> {
 impl<T> PerNS<T> {
     pub fn map<U, F: FnMut(T) -> U>(self, mut f: F) -> PerNS<U> {
         PerNS { value_ns: f(self.value_ns), type_ns: f(self.type_ns), macro_ns: f(self.macro_ns) }
+    }
+
+    pub fn into_iter(self) -> IntoIter<T, 3> {
+        IntoIter::new([self.value_ns, self.type_ns, self.macro_ns])
+    }
+
+    pub fn iter(&self) -> IntoIter<&T, 3> {
+        IntoIter::new([&self.value_ns, &self.type_ns, &self.macro_ns])
     }
 }
 
