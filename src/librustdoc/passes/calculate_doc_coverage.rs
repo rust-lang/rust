@@ -48,7 +48,7 @@ impl ItemCount {
             self.with_docs += 1;
         }
         if should_have_doc_examples {
-            self.total_examples += 1;
+            self.with_examples += 1;
             if has_doc_example {
                 self.with_examples += 1;
             }
@@ -132,7 +132,7 @@ impl CoverageCalculator {
         let mut total = ItemCount::default();
 
         fn print_table_line() {
-            println!("+-{0:->35}-+-{0:->10}-+-{0:->10}-+-{0:->10}-+-{0:->10}-+-{0:->10}-+", "");
+            println!("+-{0:->35}-+-{0:->10}-+-{0:->10}-+-{0:->10}-+-{0:->10}-+", "");
         }
 
         fn print_table_record(
@@ -142,10 +142,9 @@ impl CoverageCalculator {
             examples_percentage: f64,
         ) {
             println!(
-                "| {:<35} | {:>10} | {:>10} | {:>9.1}% | {:>10} | {:>9.1}% |",
+                "| {:<35} | {:>10} | {:>9.1}% | {:>10} | {:>9.1}% |",
                 name,
                 count.with_docs,
-                count.total,
                 percentage,
                 count.with_examples,
                 examples_percentage,
@@ -154,8 +153,8 @@ impl CoverageCalculator {
 
         print_table_line();
         println!(
-            "| {:<35} | {:>10} | {:>10} | {:>10} | {:>10} | {:>10} |",
-            "File", "Documented", "Total", "Percentage", "Examples", "Percentage",
+            "| {:<35} | {:>10} | {:>10} | {:>10} | {:>10} |",
+            "File", "Documented", "Percentage", "Examples", "Percentage",
         );
         print_table_line();
 
