@@ -77,14 +77,14 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 /// dialects forbid certain variants or values in certain phases.
 ///
 /// Note: Each phase's validation checks all invariants of the *previous* phases' dialects. A phase
-/// that changes the dialect documents what invariants must be uphelpd *after* that phase finishes.
+/// that changes the dialect documents what invariants must be upheld *after* that phase finishes.
 ///
 /// Warning: ordering of variants is significant.
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(HashStable)]
 pub enum MirPhase {
     Build = 0,
-    // FIXME: it's unclear whether we still need this phase (and its corresponding query).
+    // FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
     // We used to have this for pre-miri MIR based const eval.
     Const = 1,
     /// This phase checks the MIR for promotable elements and takes them out of the main MIR body
