@@ -1518,7 +1518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         def_id: DefId,
     ) {
         let param_env = self.tcx().param_env(def_id);
-        let future_trait = self.tcx.require_lang_item(lang_items::FutureTraitLangItem, None);
+        let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
         // Future::Output
         let item_def_id =
             self.tcx.associated_items(future_trait).in_definition_order().next().unwrap().def_id;
@@ -1554,15 +1554,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             if let ty::Adt(def, _) = normalized_ty.kind {
                 if def.non_enum_variant().fields.iter().any(|field| field.ident == field_ident) {
-                    if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
-                        let suggestion = format!("{}.await.{}", base, field_ident);
-                        err.span_suggestion(
-                            expr.span,
-                            "consider await before field access",
-                            suggestion,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+                    err.span_suggestion_verbose(
+                        base.span.shrink_to_hi(),
+                        "consider awaiting before field access",
+                        ".await".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             }
         }

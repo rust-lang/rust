@@ -911,15 +911,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 let method_exists = self.method_exists(item_name, normalized_ty, call.hir_id, true);
                 debug!("suggest_await_before_method: is_method_exist={}", method_exists);
-                if let Ok(sp) = self.tcx.sess.source_map().span_to_snippet(span) {
-                    if method_exists {
-                        err.span_suggestion(
-                            span,
-                            "consider await before this method call",
-                            format!("await.{}", sp),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+                if method_exists {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_lo(),
+                        "consider awaiting before this method call",
+                        "await.".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             }
         }

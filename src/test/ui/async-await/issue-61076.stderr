@@ -26,28 +26,52 @@ error[E0609]: no field `0` on type `impl std::future::Future`
   --> $DIR/issue-61076.rs:58:26
    |
 LL |     let _: i32 = tuple().0;
-   |                  --------^
-   |                  |
-   |                  help: consider await before field access: `tuple().await.0`
+   |                          ^
+   |
+help: consider awaiting before field access
+   |
+LL |     let _: i32 = tuple().await.0;
+   |                         ^^^^^^
 
 error[E0609]: no field `a` on type `impl std::future::Future`
   --> $DIR/issue-61076.rs:60:28
    |
 LL |     let _: i32 = struct_().a;
-   |                  ----------^
-   |                  |
-   |                  help: consider await before field access: `struct_().await.a`
+   |                            ^
+   |
+help: consider awaiting before field access
+   |
+LL |     let _: i32 = struct_().await.a;
+   |                           ^^^^^^
 
 error[E0599]: no method named `method` found for opaque type `impl std::future::Future` in the current scope
   --> $DIR/issue-61076.rs:62:15
    |
 LL |     struct_().method();
+   |               ^^^^^^ method not found in `impl std::future::Future`
+   |
+help: consider awaiting before this method call
+   |
+LL |     struct_().await.method();
    |               ^^^^^^
-   |               |
-   |               method not found in `impl std::future::Future`
-   |               help: consider await before this method call: `await.method`
 
-error: aborting due to 5 previous errors
+error[E0308]: mismatched types
+  --> $DIR/issue-61076.rs:69:9
+   |
+LL | async fn tuple() -> Tuple {
+   |                     ----- the `Output` of this `async fn`'s expected opaque type
+...
+LL |         Tuple(_) => {}
+   |         ^^^^^^^^ expected opaque type, found struct `Tuple`
+   |
+   = note: expected opaque type `impl std::future::Future`
+                   found struct `Tuple`
+help: consider awaiting on the future
+   |
+LL |     match tuple().await {
+   |                  ^^^^^^
 
-Some errors have detailed explanations: E0277, E0599, E0609.
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0599, E0609.
 For more information about an error, try `rustc --explain E0277`.

@@ -64,5 +64,10 @@ async fn baz() -> Result<(), ()> {
     Ok(())
 }
 
+async fn match_() {
+    match tuple() {
+        Tuple(_) => {} //~ ERROR mismatched types
+    }
+}
 
 fn main() {}
