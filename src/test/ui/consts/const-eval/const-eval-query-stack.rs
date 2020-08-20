@@ -1,6 +1,7 @@
 // compile-flags: -Ztreat-err-as-bug
 // build-fail
 // failure-status: 101
+// rustc-env:RUST_BACKTRACE=1
 // normalize-stderr-test "\nerror: internal compiler error.*\n\n" -> ""
 // normalize-stderr-test "note:.*unexpectedly panicked.*\n\n" -> ""
 // normalize-stderr-test "note: we would appreciate a bug report.*\n\n" -> ""
