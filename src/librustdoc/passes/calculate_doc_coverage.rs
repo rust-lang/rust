@@ -47,11 +47,11 @@ impl ItemCount {
         if has_docs {
             self.with_docs += 1;
         }
-        if should_have_doc_examples {
+        if should_have_doc_examples || has_doc_example {
+            self.total_examples += 1;
+        }
+        if has_doc_example {
             self.with_examples += 1;
-            if has_doc_example {
-                self.with_examples += 1;
-            }
         }
     }
 
@@ -246,20 +246,18 @@ impl fold::DocFolder for CoverageCalculator {
                     | clean::StaticItem(_)
                     | clean::ConstantItem(_)
                 );
-                if should_have_doc_examples {
-                    find_testable_code(
-                        &i.attrs
-                            .doc_strings
-                            .iter()
-                            .map(|d| d.as_str())
-                            .collect::<Vec<_>>()
-                            .join("\n"),
-                        &mut tests,
-                        ErrorCodes::No,
-                        false,
-                        None,
-                    );
-                }
+                find_testable_code(
+                    &i.attrs
+                        .doc_strings
+                        .iter()
+                        .map(|d| d.as_str())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                    &mut tests,
+                    ErrorCodes::No,
+                    false,
+                    None,
+                );
 
                 let has_doc_example = tests.found_tests != 0;
                 debug!("counting {:?} {:?} in {}", i.type_(), i.name, i.source.filename);
