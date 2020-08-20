@@ -98,10 +98,10 @@ mod value;
 use std::convert::TryFrom;
 use std::fmt;
 use std::io;
+use std::io::{Read, Write};
 use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
@@ -561,18 +561,20 @@ pub fn write_target_uint(
     mut target: &mut [u8],
     data: u128,
 ) -> Result<(), io::Error> {
-    let len = target.len();
     match endianness {
-        Endian::Little => target.write_uint128::<LittleEndian>(data, len),
-        Endian::Big => target.write_uint128::<BigEndian>(data, len),
-    }
+        Endian::Little => target.write(&data.to_le_bytes())?,
+        Endian::Big => target.write(&data.to_be_bytes())?,
+    };
+    Ok(())
 }
 
 #[inline]
 pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, io::Error> {
+    let mut buf = [0; 16];
+    source.read(&mut buf)?;
     match endianness {
-        Endian::Little => source.read_uint128::<LittleEndian>(source.len()),
-        Endian::Big => source.read_uint128::<BigEndian>(source.len()),
+        Endian::Little => Ok(u128::from_le_bytes(buf)),
+        Endian::Big => Ok(u128::from_be_bytes(buf)),
     }
 }
 
