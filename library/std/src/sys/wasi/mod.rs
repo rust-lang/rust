@@ -17,6 +17,7 @@
 use crate::io as std_io;
 use crate::mem;
 
+#[path = "../unix/alloc.rs"]
 pub mod alloc;
 pub mod args;
 #[path = "../unsupported/cmath.rs"]
