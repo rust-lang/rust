@@ -70,11 +70,7 @@
 //! * Further methods that return iterators are [`.split`], [`.splitn`],
 //!   [`.chunks`], [`.windows`] and more.
 //!
-//! [`Clone`]: ../../std/clone/trait.Clone.html
-//! [`Eq`]: ../../std/cmp/trait.Eq.html
-//! [`Ord`]: ../../std/cmp/trait.Ord.html
-//! [`Iter`]: struct.Iter.html
-//! [`Hash`]: ../../std/hash/trait.Hash.html
+//! [`Hash`]: core::hash::Hash
 //! [`.iter`]: ../../std/primitive.slice.html#method.iter
 //! [`.iter_mut`]: ../../std/primitive.slice.html#method.iter_mut
 //! [`.split`]: ../../std/primitive.slice.html#method.split
@@ -560,7 +556,7 @@ impl [u8] {
     ///
     /// To uppercase the value in-place, use [`make_ascii_uppercase`].
     ///
-    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
+    /// [`make_ascii_uppercase`]: u8::make_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> Vec<u8> {
@@ -577,7 +573,7 @@ impl [u8] {
     ///
     /// To lowercase the value in-place, use [`make_ascii_lowercase`].
     ///
-    /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
+    /// [`make_ascii_lowercase`]: u8::make_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Vec<u8> {

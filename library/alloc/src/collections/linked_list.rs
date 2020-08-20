@@ -7,8 +7,8 @@
 //! array-based containers are generally faster,
 //! more memory efficient, and make better use of CPU cache.
 //!
-//! [`Vec`]: ../../vec/struct.Vec.html
-//! [`VecDeque`]: ../vec_deque/struct.VecDeque.html
+//! [`Vec`]: crate::vec::Vec
+//! [`VecDeque`]: super::vec_deque::VecDeque
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -53,8 +53,7 @@ struct Node<T> {
 /// This `struct` is created by the [`iter`] method on [`LinkedList`]. See its
 /// documentation for more.
 ///
-/// [`iter`]: struct.LinkedList.html#method.iter
-/// [`LinkedList`]: struct.LinkedList.html
+/// [`iter`]: LinkedList::iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     head: Option<NonNull<Node<T>>>,
@@ -83,8 +82,7 @@ impl<T> Clone for Iter<'_, T> {
 /// This `struct` is created by the [`iter_mut`] method on [`LinkedList`]. See its
 /// documentation for more.
 ///
-/// [`iter_mut`]: struct.LinkedList.html#method.iter_mut
-/// [`LinkedList`]: struct.LinkedList.html
+/// [`iter_mut`]: LinkedList::iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     // We do *not* exclusively own the entire list here, references to node's `element`
@@ -109,7 +107,6 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: struct.LinkedList.html#method.into_iter
-/// [`LinkedList`]: struct.LinkedList.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
