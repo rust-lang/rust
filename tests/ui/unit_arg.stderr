@@ -11,16 +11,12 @@ help: remove the semicolon from the last statement in the block
    |
 LL |         1
    |
-help: or move the expression in front of the call...
+help: or move the expression in front of the call and replace it with the unit literal `()`
    |
 LL |     {
 LL |         1;
-LL |     };
+LL |     }; foo(());
    |
-help: ...and use a unit literal instead
-   |
-LL |     foo(());
-   |         ^^
 
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:26:5
@@ -28,14 +24,10 @@ error: passing a unit value to a function
 LL |     foo(foo(1));
    |     ^^^^^^^^^^^
    |
-help: move the expression in front of the call...
+help: move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     foo(1);
-   |
-help: ...and use a unit literal instead
-   |
-LL |     foo(());
-   |         ^^
+LL |     foo(1); foo(());
+   |     ^^^^^^^^^^^^^^^
 
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:27:5
@@ -50,17 +42,13 @@ help: remove the semicolon from the last statement in the block
    |
 LL |         foo(2)
    |
-help: or move the expression in front of the call...
+help: or move the expression in front of the call and replace it with the unit literal `()`
    |
 LL |     {
 LL |         foo(1);
 LL |         foo(2);
-LL |     };
+LL |     }; foo(());
    |
-help: ...and use a unit literal instead
-   |
-LL |     foo(());
-   |         ^^
 
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:32:5
@@ -74,16 +62,12 @@ help: remove the semicolon from the last statement in the block
    |
 LL |         1
    |
-help: or move the expression in front of the call...
+help: or move the expression in front of the call and replace it with the unit literal `()`
    |
 LL |     {
 LL |         1;
-LL |     };
+LL |     }; b.bar(());
    |
-help: ...and use a unit literal instead
-   |
-LL |     b.bar(());
-   |           ^^
 
 error: passing unit values to a function
   --> $DIR/unit_arg.rs:35:5
@@ -91,15 +75,10 @@ error: passing unit values to a function
 LL |     taking_multiple_units(foo(0), foo(1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: move the expressions in front of the call...
+help: move the expressions in front of the call and replace them with the unit literal `()`
    |
-LL |     foo(0);
-LL |     foo(1);
-   |
-help: ...and use unit literals instead
-   |
-LL |     taking_multiple_units((), ());
-   |                           ^^  ^^
+LL |     foo(0); foo(1); taking_multiple_units((), ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: passing unit values to a function
   --> $DIR/unit_arg.rs:36:5
@@ -114,18 +93,13 @@ help: remove the semicolon from the last statement in the block
    |
 LL |         foo(2)
    |
-help: or move the expressions in front of the call...
+help: or move the expressions in front of the call and replace them with the unit literal `()`
    |
-LL |     foo(0);
-LL |     {
+LL |     foo(0); {
 LL |         foo(1);
 LL |         foo(2);
-LL |     };
+LL |     }; taking_multiple_units((), ());
    |
-help: ...and use unit literals instead
-   |
-LL |     taking_multiple_units((), ());
-   |                           ^^  ^^
 
 error: passing unit values to a function
   --> $DIR/unit_arg.rs:40:5
@@ -147,35 +121,56 @@ help: remove the semicolon from the last statement in the block
    |
 LL |             foo(3)
    |
-help: or move the expressions in front of the call...
+help: or move the expressions in front of the call and replace them with the unit literal `()`
    |
 LL |     {
-LL |         foo(0);
-LL |         foo(1);
-LL |     };
-LL |     {
-LL |         foo(2);
+LL |             foo(0);
+LL |             foo(1);
+LL |         }; {
+LL |             foo(2);
+LL |             foo(3);
  ...
-help: ...and use unit literals instead
+
+error: use of `or` followed by a function call
+  --> $DIR/unit_arg.rs:51:10
    |
-LL |         (),
-LL |         (),
+LL |     None.or(Some(foo(2)));
+   |          ^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some(foo(2)))`
+   |
+   = note: `-D clippy::or-fun-call` implied by `-D warnings`
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:51:13
+   |
+LL |     None.or(Some(foo(2)));
+   |             ^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL |     None.or({ foo(2); Some(()) });
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:54:5
+   |
+LL |     foo(foo(()))
+   |     ^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL |     foo(()); foo(())
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:82:5
+  --> $DIR/unit_arg.rs:87:5
    |
 LL |     Some(foo(1))
    |     ^^^^^^^^^^^^
    |
-help: move the expression in front of the call...
+help: move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     foo(1);
+LL |     foo(1); Some(())
    |
-help: ...and use a unit literal instead
-   |
-LL |     Some(())
-   |          ^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 11 previous errors
 

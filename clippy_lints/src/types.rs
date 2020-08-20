@@ -11,8 +11,8 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
     BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, QPath, Stmt, StmtKind, TraitFn,
-    TraitItem, TraitItemKind, TyKind, UnOp,
+    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, Node, QPath, Stmt, StmtKind,
+    TraitFn, TraitItem, TraitItemKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -29,10 +29,10 @@ use rustc_typeck::hir_ty_to_ty;
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_type_diagnostic_item,
+    clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, is_type_diagnostic_item,
     last_path_segment, match_def_path, match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral,
-    qpath_res, sext, snippet, snippet_block_with_applicability, snippet_opt, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
+    qpath_res, sext, snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
+    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -844,43 +844,54 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                         Applicability::MaybeIncorrect,
                     );
                     or = "or ";
+                    applicability = Applicability::MaybeIncorrect;
                 });
-            let sugg = args_to_recover
+
+            let arg_snippets: Vec<String> = args_to_recover
+                .iter()
+                .filter_map(|arg| snippet_opt(cx, arg.span))
+                .collect();
+            let arg_snippets_without_empty_blocks: Vec<String> = args_to_recover
                 .iter()
                 .filter(|arg| !is_empty_block(arg))
-                .enumerate()
-                .map(|(i, arg)| {
-                    let indent = if i == 0 {
-                        0
-                    } else {
-                        indent_of(cx, expr.span).unwrap_or(0)
-                    };
-                    format!(
-                        "{}{};",
-                        " ".repeat(indent),
-                        snippet_block_with_applicability(cx, arg.span, "..", Some(expr.span), &mut applicability)
-                    )
-                })
-                .collect::<Vec<String>>();
-            let mut and = "";
-            if !sugg.is_empty() {
-                let plural = if sugg.len() > 1 { "s" } else { "" };
-                db.span_suggestion(
-                    expr.span.with_hi(expr.span.lo()),
-                    &format!("{}move the expression{} in front of the call...", or, plural),
-                    format!("{}\n", sugg.join("\n")),
-                    applicability,
-                );
-                and = "...and "
+                .filter_map(|arg| snippet_opt(cx, arg.span))
+                .collect();
+
+            if let Some(mut sugg) = snippet_opt(cx, expr.span) {
+                arg_snippets.iter().for_each(|arg| {
+                    sugg = sugg.replacen(arg, "()", 1);
+                });
+                sugg = format!("{}{}{}", arg_snippets_without_empty_blocks.join("; "), "; ", sugg);
+                let parent_node = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(expr.hir_id));
+                if !matches!(parent_node, Some(Node::Block(_))) && !matches!(parent_node, Some(Node::Stmt(_))) {
+                    // expr is not in a block statement or result expression position, wrap in a block
+                    sugg = format!("{{ {} }}", sugg);
+                }
+
+                if arg_snippets_without_empty_blocks.is_empty() {
+                    db.multipart_suggestion(
+                        &format!("use {}unit literal{} instead", singular, plural),
+                        args_to_recover
+                            .iter()
+                            .map(|arg| (arg.span, "()".to_string()))
+                            .collect::<Vec<_>>(),
+                        applicability,
+                    );
+                } else {
+                    let plural = arg_snippets_without_empty_blocks.len() > 1;
+                    let empty_or_s = if plural { "s" } else { "" };
+                    let it_or_them = if plural { "them" } else { "it" };
+                    db.span_suggestion(
+                        expr.span,
+                        &format!(
+                            "{}move the expression{} in front of the call and replace {} with the unit literal `()`",
+                            or, empty_or_s, it_or_them
+                        ),
+                        sugg,
+                        applicability,
+                    );
+                }
             }
-            db.multipart_suggestion(
-                &format!("{}use {}unit literal{} instead", and, singular, plural),
-                args_to_recover
-                    .iter()
-                    .map(|arg| (arg.span, "()".to_string()))
-                    .collect::<Vec<_>>(),
-                applicability,
-            );
         },
     );
 }
@@ -2055,6 +2066,7 @@ impl PartialOrd for FullInt {
         })
     }
 }
+
 impl Ord for FullInt {
     #[must_use]
     fn cmp(&self, other: &Self) -> Ordering {
