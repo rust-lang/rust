@@ -356,7 +356,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     }
 
     /// Shrinks the allocation down to the specified amount. If the given amount
-    /// is 0, actually completely deallocates.
+    /// is 0, this actually completely deallocates.
     ///
     /// # Panics
     ///
@@ -533,6 +533,8 @@ fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
 // One central function responsible for reporting capacity overflows. This'll
 // ensure that the code generation related to these panics is minimal as there's
 // only one location which panics rather than a bunch throughout the module.
+#[cold]
+#[inline(never)]
 fn capacity_overflow() -> ! {
     panic!("capacity overflow");
 }

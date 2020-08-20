@@ -330,6 +330,8 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
 ///
 /// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
 /// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
+#[cold]
+#[inline(never)]
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[rustc_allocator_nounwind]
 pub fn handle_alloc_error(layout: Layout) -> ! {
