@@ -5,6 +5,7 @@
 extern crate flate2;
 #[cfg(feature = "jit")]
 extern crate libc;
+#[macro_use]
 extern crate rustc_middle;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;

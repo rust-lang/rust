@@ -1,8 +1,9 @@
 use rustc_span::DUMMY_SP;
 
+use rustc_errors::ErrorReported;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer, Scalar,
+    read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Pointer, Scalar,
 };
 use rustc_middle::ty::{Const, ConstKind};
 use rustc_target::abi::Align;
@@ -31,6 +32,29 @@ impl ConstantCx {
         define_all_allocs(tcx, module, &mut self);
         //println!("done {:?}", self.done);
         self.done.clear();
+    }
+}
+
+pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, impl Backend>) {
+    for constant in &fx.mir.required_consts {
+        let const_ = fx.monomorphize(&constant.literal);
+        match const_.val {
+            ConstKind::Value(_) => {}
+            ConstKind::Unevaluated(def, ref substs, promoted) => {
+                if let Err(err) = fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None) {
+                    match err {
+                        ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
+                            fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
+                        }
+                        ErrorHandled::TooGeneric => {
+                            span_bug!(constant.span, "codgen encountered polymorphic constant: {:?}", err);
+                        }
+                    }
+                }
+            }
+            ConstKind::Param(_) | ConstKind::Infer(_) | ConstKind::Bound(_, _)
+            | ConstKind::Placeholder(_) | ConstKind::Error(_) => unreachable!("{:?}", const_),
+        }
     }
 }
 

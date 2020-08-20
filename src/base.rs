@@ -157,6 +157,8 @@ pub(crate) fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentW
 }
 
 fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
+    crate::constant::check_constants(fx);
+
     for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
         let block = fx.get_block(bb);
         fx.bcx.switch_to_block(block);
