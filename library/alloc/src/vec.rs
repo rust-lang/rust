@@ -50,12 +50,9 @@
 //! v[1] = v[1] + 5;
 //! ```
 //!
-//! [`Vec<T>`]: ../../std/vec/struct.Vec.html
-//! [`new`]: ../../std/vec/struct.Vec.html#method.new
-//! [`push`]: ../../std/vec/struct.Vec.html#method.push
-//! [`Index`]: ../../std/ops/trait.Index.html
-//! [`IndexMut`]: ../../std/ops/trait.IndexMut.html
-//! [`vec!`]: ../../std/macro.vec.html
+//! [`Vec<T>`]: Vec
+//! [`new`]: Vec::new
+//! [`push`]: Vec::push
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -278,22 +275,18 @@ use crate::raw_vec::RawVec;
 /// `Vec` does not currently guarantee the order in which elements are dropped.
 /// The order has changed in the past and may change again.
 ///
-/// [`vec!`]: ../../std/macro.vec.html
 /// [`get`]: ../../std/vec/struct.Vec.html#method.get
 /// [`get_mut`]: ../../std/vec/struct.Vec.html#method.get_mut
-/// [`Index`]: ../../std/ops/trait.Index.html
-/// [`String`]: ../../std/string/struct.String.html
-/// [`&str`]: ../../std/primitive.str.html
-/// [`Vec::with_capacity`]: ../../std/vec/struct.Vec.html#method.with_capacity
-/// [`Vec::new`]: ../../std/vec/struct.Vec.html#method.new
-/// [`shrink_to_fit`]: ../../std/vec/struct.Vec.html#method.shrink_to_fit
-/// [`capacity`]: ../../std/vec/struct.Vec.html#method.capacity
-/// [`mem::size_of::<T>`]: ../../std/mem/fn.size_of.html
-/// [`len`]: ../../std/vec/struct.Vec.html#method.len
-/// [`push`]: ../../std/vec/struct.Vec.html#method.push
-/// [`insert`]: ../../std/vec/struct.Vec.html#method.insert
-/// [`reserve`]: ../../std/vec/struct.Vec.html#method.reserve
-/// [owned slice]: ../../std/boxed/struct.Box.html
+/// [`String`]: crate::string::String
+/// [`&str`]: type@str
+/// [`shrink_to_fit`]: Vec::shrink_to_fit
+/// [`capacity`]: Vec::capacity
+/// [`mem::size_of::<T>`]: core::mem::size_of
+/// [`len`]: Vec::len
+/// [`push`]: Vec::push
+/// [`insert`]: Vec::insert
+/// [`reserve`]: Vec::reserve
+/// [owned slice]: Box
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "vec_type")]
 pub struct Vec<T> {
@@ -375,7 +368,7 @@ impl<T> Vec<T> {
     /// into a `Vec` with the [`from_raw_parts`] function, allowing
     /// the destructor to perform the cleanup.
     ///
-    /// [`from_raw_parts`]: #method.from_raw_parts
+    /// [`from_raw_parts`]: Vec::from_raw_parts
     ///
     /// # Examples
     ///
@@ -430,8 +423,8 @@ impl<T> Vec<T> {
     /// that nothing else uses the pointer after calling this
     /// function.
     ///
-    /// [`String`]: ../../std/string/struct.String.html
-    /// [`dealloc`]: ../../alloc/alloc/trait.GlobalAlloc.html#tymethod.dealloc
+    /// [`String`]: crate::string::String
+    /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
     ///
     /// # Examples
     ///
@@ -661,7 +654,7 @@ impl<T> Vec<T> {
     ///
     /// Note that this will drop any excess capacity.
     ///
-    /// [owned slice]: ../../std/boxed/struct.Box.html
+    /// [owned slice]: Box
     ///
     /// # Examples
     ///
@@ -732,8 +725,8 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, []);
     /// ```
     ///
-    /// [`clear`]: #method.clear
-    /// [`drain`]: #method.drain
+    /// [`clear`]: Vec::clear
+    /// [`drain`]: Vec::drain
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: usize) {
         // This is safe because:
@@ -812,7 +805,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     ///
-    /// [`as_mut_ptr`]: #method.as_mut_ptr
+    /// [`as_mut_ptr`]: Vec::as_mut_ptr
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[inline]
     pub fn as_ptr(&self) -> *const T {
@@ -868,17 +861,17 @@ impl<T> Vec<T> {
     /// is done using one of the safe operations instead, such as
     /// [`truncate`], [`resize`], [`extend`], or [`clear`].
     ///
-    /// [`truncate`]: #method.truncate
-    /// [`resize`]: #method.resize
-    /// [`extend`]: ../../std/iter/trait.Extend.html#tymethod.extend
-    /// [`clear`]: #method.clear
+    /// [`truncate`]: Vec::truncate
+    /// [`resize`]: Vec::resize
+    /// [`extend`]: Extend::extend
+    /// [`clear`]: Vec::clear
     ///
     /// # Safety
     ///
     /// - `new_len` must be less than or equal to [`capacity()`].
     /// - The elements at `old_len..new_len` must be initialized.
     ///
-    /// [`capacity()`]: #method.capacity
+    /// [`capacity()`]: Vec::capacity
     ///
     /// # Examples
     ///
@@ -1217,8 +1210,6 @@ impl<T> Vec<T> {
     /// Removes the last element from a vector and returns it, or [`None`] if it
     /// is empty.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    ///
     /// # Examples
     ///
     /// ```
@@ -1482,8 +1473,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, [2, 4, 8, 16]);
     /// ```
     ///
-    /// [`resize`]: #method.resize
-    /// [`Clone`]: ../../std/clone/trait.Clone.html
+    /// [`resize`]: Vec::resize
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
     pub fn resize_with<F>(&mut self, new_len: usize, f: F)
     where
@@ -1534,7 +1524,7 @@ impl<T> Vec<T> {
     /// reading from a file) before marking the data as initialized using the
     /// [`set_len`] method.
     ///
-    /// [`set_len`]: #method.set_len
+    /// [`set_len`]: Vec::set_len
     ///
     /// # Examples
     ///
@@ -1593,9 +1583,7 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     ///
-    /// [`Clone`]: ../../std/clone/trait.Clone.html
-    /// [`Default`]: ../../std/default/trait.Default.html
-    /// [`resize_with`]: #method.resize_with
+    /// [`resize_with`]: Vec::resize_with
     #[stable(feature = "vec_resize", since = "1.5.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
@@ -1657,10 +1645,7 @@ impl<T: Default> Vec<T> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     ///
-    /// [`resize`]: #method.resize
-    /// [`Default::default()`]: ../../std/default/trait.Default.html#tymethod.default
-    /// [`Default`]: ../../std/default/trait.Default.html
-    /// [`Clone`]: ../../std/clone/trait.Clone.html
+    /// [`resize`]: Vec::resize
     #[unstable(feature = "vec_resize_default", issue = "41758")]
     #[rustc_deprecated(
         reason = "This is moving towards being removed in favor \
@@ -2340,7 +2325,6 @@ impl<T> Vec<T> {
     ///
     /// Note that `drain_filter` also lets you mutate every element in the filter closure,
     /// regardless of whether you choose to keep or remove it.
-    ///
     ///
     /// # Examples
     ///

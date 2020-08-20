@@ -684,7 +684,7 @@ rustc_queries! {
             -> ConstEvalRawResult<'tcx> {
             desc { |tcx|
                 "const-evaluating `{}`",
-                tcx.def_path_str(key.value.instance.def.def_id())
+                key.value.display(tcx)
             }
         }
 
@@ -700,7 +700,7 @@ rustc_queries! {
             -> ConstEvalResult<'tcx> {
             desc { |tcx|
                 "const-evaluating + checking `{}`",
-                tcx.def_path_str(key.value.instance.def.def_id())
+                key.value.display(tcx)
             }
             cache_on_disk_if(_, opt_result) {
                 // Only store results without errors

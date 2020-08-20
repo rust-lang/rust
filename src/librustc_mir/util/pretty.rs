@@ -406,7 +406,7 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
         self.super_const(constant);
         let ty::Const { ty, val, .. } = constant;
         match ty.kind {
-            ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char => {}
+            ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => {}
             // Unit type
             ty::Tuple(tys) if tys.is_empty() => {}
             ty::FnDef(..) => {}

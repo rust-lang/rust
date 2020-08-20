@@ -12,9 +12,6 @@
 -         _0 = Baz { x: move _2, y: const 0f32, z: const false }; // scope 0 at $DIR/deaggregator_test.rs:9:5: 9:35
 +         (_0.0: usize) = move _2;         // scope 0 at $DIR/deaggregator_test.rs:9:5: 9:35
 +         (_0.1: f32) = const 0f32;        // scope 0 at $DIR/deaggregator_test.rs:9:5: 9:35
-                                           // ty::Const
-                                           // + ty: f32
-                                           // + val: Value(Scalar(0x00000000))
                                            // mir::Constant
                                            // + span: $DIR/deaggregator_test.rs:9:20: 9:23
                                            // + literal: Const { ty: f32, val: Value(Scalar(0x00000000)) }

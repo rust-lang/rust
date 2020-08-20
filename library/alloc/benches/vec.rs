@@ -213,7 +213,7 @@ fn bench_extend_1000_1000(b: &mut Bencher) {
     do_bench_extend(b, 1000, 1000)
 }
 
-fn do_bench_push_all(b: &mut Bencher, dst_len: usize, src_len: usize) {
+fn do_bench_extend_from_slice(b: &mut Bencher, dst_len: usize, src_len: usize) {
     let dst: Vec<_> = FromIterator::from_iter(0..dst_len);
     let src: Vec<_> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
@@ -228,87 +228,38 @@ fn do_bench_push_all(b: &mut Bencher, dst_len: usize, src_len: usize) {
 }
 
 #[bench]
-fn bench_push_all_0000_0000(b: &mut Bencher) {
-    do_bench_push_all(b, 0, 0)
+fn bench_extend_from_slice_0000_0000(b: &mut Bencher) {
+    do_bench_extend_from_slice(b, 0, 0)
 }
 
 #[bench]
-fn bench_push_all_0000_0010(b: &mut Bencher) {
-    do_bench_push_all(b, 0, 10)
+fn bench_extend_from_slice_0000_0010(b: &mut Bencher) {
+    do_bench_extend_from_slice(b, 0, 10)
 }
 
 #[bench]
-fn bench_push_all_0000_0100(b: &mut Bencher) {
-    do_bench_push_all(b, 0, 100)
+fn bench_extend_from_slice_0000_0100(b: &mut Bencher) {
+    do_bench_extend_from_slice(b, 0, 100)
 }
 
 #[bench]
-fn bench_push_all_0000_1000(b: &mut Bencher) {
-    do_bench_push_all(b, 0, 1000)
+fn bench_extend_from_slice_0000_1000(b: &mut Bencher) {
+    do_bench_extend_from_slice(b, 0, 1000)
 }
 
 #[bench]
-fn bench_push_all_0010_0010(b: &mut Bencher) {
-    do_bench_push_all(b, 10, 10)
+fn bench_extend_from_slice_0010_0010(b: &mut Bencher) {
+    do_bench_extend_from_slice(b, 10, 10)
 }
 
 #[bench]
-fn bench_push_all_0100_0100(b: &mut Bencher) {
-    do_bench_push_all(b, 100, 100)
+fn bench_extend_from_slice_0100_0100(b: &mut Bencher) {
+    do_bench_extend_from_slice(b, 100, 100)
 }
 
 #[bench]
-fn bench_push_all_1000_1000(b: &mut Bencher) {
-    do_bench_push_all(b, 1000, 1000)
-}
-
-fn do_bench_push_all_move(b: &mut Bencher, dst_len: usize, src_len: usize) {
-    let dst: Vec<_> = FromIterator::from_iter(0..dst_len);
-    let src: Vec<_> = FromIterator::from_iter(dst_len..dst_len + src_len);
-
-    b.bytes = src_len as u64;
-
-    b.iter(|| {
-        let mut dst = dst.clone();
-        dst.extend(src.clone());
-        assert_eq!(dst.len(), dst_len + src_len);
-        assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
-    });
-}
-
-#[bench]
-fn bench_push_all_move_0000_0000(b: &mut Bencher) {
-    do_bench_push_all_move(b, 0, 0)
-}
-
-#[bench]
-fn bench_push_all_move_0000_0010(b: &mut Bencher) {
-    do_bench_push_all_move(b, 0, 10)
-}
-
-#[bench]
-fn bench_push_all_move_0000_0100(b: &mut Bencher) {
-    do_bench_push_all_move(b, 0, 100)
-}
-
-#[bench]
-fn bench_push_all_move_0000_1000(b: &mut Bencher) {
-    do_bench_push_all_move(b, 0, 1000)
-}
-
-#[bench]
-fn bench_push_all_move_0010_0010(b: &mut Bencher) {
-    do_bench_push_all_move(b, 10, 10)
-}
-
-#[bench]
-fn bench_push_all_move_0100_0100(b: &mut Bencher) {
-    do_bench_push_all_move(b, 100, 100)
-}
-
-#[bench]
-fn bench_push_all_move_1000_1000(b: &mut Bencher) {
-    do_bench_push_all_move(b, 1000, 1000)
+fn bench_extend_from_slice_1000_1000(b: &mut Bencher) {
+    do_bench_extend_from_slice(b, 1000, 1000)
 }
 
 fn do_bench_clone(b: &mut Bencher, src_len: usize) {

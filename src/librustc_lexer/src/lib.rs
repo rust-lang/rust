@@ -103,7 +103,7 @@ pub enum TokenKind {
     /// "="
     Eq,
     /// "!"
-    Not,
+    Bang,
     /// "<"
     Lt,
     /// ">"
@@ -378,7 +378,7 @@ impl Cursor<'_> {
             ':' => Colon,
             '$' => Dollar,
             '=' => Eq,
-            '!' => Not,
+            '!' => Bang,
             '<' => Lt,
             '>' => Gt,
             '-' => Minus,
