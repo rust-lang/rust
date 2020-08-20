@@ -12,7 +12,7 @@ doctest = false
 
 [dependencies]
 bitflags = "1.0"
-flate2 = "1.0"
+flate2 = { version = "1.0.17", default-features = false, features = ["zlib-ng-compat"] }
 libc = "0.2"
 measureme = "0.7.1"
 tracing = "0.1"

@@ -10,7 +10,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-flate2 = "1.0"
+flate2 = { version = "1.0.17", default-features = false, features = ["zlib-ng-compat"] }
 libc = "0.2"
 tracing = "0.1"
 memmap = "0.7"
