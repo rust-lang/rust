@@ -305,6 +305,103 @@ fn test_zip_nth_side_effects() {
 }
 
 #[test]
+fn test_zip_next_back_side_effects() {
+    let mut a = Vec::new();
+    let mut b = Vec::new();
+    let mut iter = [1, 2, 3, 4, 5, 6]
+        .iter()
+        .cloned()
+        .map(|n| {
+            a.push(n);
+            n * 10
+        })
+        .zip([2, 3, 4, 5, 6, 7, 8].iter().cloned().map(|n| {
+            b.push(n * 100);
+            n * 1000
+        }));
+
+    // The second iterator is one item longer, so `next_back` is called on it
+    // one more time.
+    assert_eq!(iter.next_back(), Some((60, 7000)));
+    assert_eq!(iter.next_back(), Some((50, 6000)));
+    assert_eq!(iter.next_back(), Some((40, 5000)));
+    assert_eq!(iter.next_back(), Some((30, 4000)));
+    assert_eq!(a, vec![6, 5, 4, 3]);
+    assert_eq!(b, vec![800, 700, 600, 500, 400]);
+}
+
+#[test]
+fn test_zip_nth_back_side_effects() {
+    let mut a = Vec::new();
+    let mut b = Vec::new();
+    let value = [1, 2, 3, 4, 5, 6]
+        .iter()
+        .cloned()
+        .map(|n| {
+            a.push(n);
+            n * 10
+        })
+        .zip([2, 3, 4, 5, 6, 7, 8].iter().cloned().map(|n| {
+            b.push(n * 100);
+            n * 1000
+        }))
+        .nth_back(3);
+    assert_eq!(value, Some((30, 4000)));
+    assert_eq!(a, vec![6, 5, 4, 3]);
+    assert_eq!(b, vec![800, 700, 600, 500, 400]);
+}
+
+#[test]
+fn test_zip_next_back_side_effects_exhausted() {
+    let mut a = Vec::new();
+    let mut b = Vec::new();
+    let mut iter = [1, 2, 3, 4, 5, 6]
+        .iter()
+        .cloned()
+        .map(|n| {
+            a.push(n);
+            n * 10
+        })
+        .zip([2, 3, 4].iter().cloned().map(|n| {
+            b.push(n * 100);
+            n * 1000
+        }));
+
+    iter.next();
+    iter.next();
+    iter.next();
+    iter.next();
+    assert_eq!(iter.next_back(), None);
+    assert_eq!(a, vec![1, 2, 3, 4, 6, 5]);
+    assert_eq!(b, vec![200, 300, 400]);
+}
+
+#[test]
+fn test_zip_nth_back_side_effects_exhausted() {
+    let mut a = Vec::new();
+    let mut b = Vec::new();
+    let mut iter = [1, 2, 3, 4, 5, 6]
+        .iter()
+        .cloned()
+        .map(|n| {
+            a.push(n);
+            n * 10
+        })
+        .zip([2, 3, 4].iter().cloned().map(|n| {
+            b.push(n * 100);
+            n * 1000
+        }));
+
+    iter.next();
+    iter.next();
+    iter.next();
+    iter.next();
+    assert_eq!(iter.nth_back(0), None);
+    assert_eq!(a, vec![1, 2, 3, 4, 6, 5]);
+    assert_eq!(b, vec![200, 300, 400]);
+}
+
+#[test]
 fn test_iterator_step_by() {
     // Identity
     let mut it = (0..).step_by(1).take(3);

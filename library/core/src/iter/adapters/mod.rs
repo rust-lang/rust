@@ -15,6 +15,7 @@ pub use self::chain::Chain;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::flatten::{FlatMap, Flatten};
 pub use self::fuse::Fuse;
+use self::zip::try_get_unchecked;
 pub(crate) use self::zip::TrustedRandomAccess;
 pub use self::zip::Zip;
 
@@ -213,6 +214,15 @@ where
     fn count(self) -> usize {
         self.it.count()
     }
+
+    unsafe fn get_unchecked(&mut self, idx: usize) -> T
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::get_unchecked`.
+        *unsafe { try_get_unchecked(&mut self.it, idx) }
+    }
 }
 
 #[stable(feature = "iter_copied", since = "1.36.0")]
@@ -266,16 +276,11 @@ where
 }
 
 #[doc(hidden)]
-unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Copied<I>
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccess for Copied<I>
 where
-    I: TrustedRandomAccess<Item = &'a T>,
-    T: Copy,
+    I: TrustedRandomAccess,
 {
-    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
-        unsafe { *self.it.get_unchecked(i) }
-    }
-
     #[inline]
     fn may_have_side_effect() -> bool {
         I::may_have_side_effect()
@@ -344,6 +349,15 @@ where
     {
         self.it.map(T::clone).fold(init, f)
     }
+
+    unsafe fn get_unchecked(&mut self, idx: usize) -> T
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::get_unchecked`.
+        unsafe { try_get_unchecked(&mut self.it, idx).clone() }
+    }
 }
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
@@ -397,36 +411,14 @@ where
 }
 
 #[doc(hidden)]
-unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccess for Cloned<I>
 where
-    I: TrustedRandomAccess<Item = &'a T>,
-    T: Clone,
+    I: TrustedRandomAccess,
 {
-    default unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
-        unsafe { self.it.get_unchecked(i) }.clone()
-    }
-
-    #[inline]
-    default fn may_have_side_effect() -> bool {
-        true
-    }
-}
-
-#[doc(hidden)]
-unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
-where
-    I: TrustedRandomAccess<Item = &'a T>,
-    T: Copy,
-{
-    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
-        unsafe { *self.it.get_unchecked(i) }
-    }
-
     #[inline]
     fn may_have_side_effect() -> bool {
-        I::may_have_side_effect()
+        true
     }
 }
 
@@ -872,6 +864,15 @@ where
     {
         self.iter.fold(init, map_fold(self.f, g))
     }
+
+    unsafe fn get_unchecked(&mut self, idx: usize) -> B
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::get_unchecked`.
+        unsafe { (self.f)(try_get_unchecked(&mut self.iter, idx)) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -927,15 +928,11 @@ where
 }
 
 #[doc(hidden)]
-unsafe impl<B, I, F> TrustedRandomAccess for Map<I, F>
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I, F> TrustedRandomAccess for Map<I, F>
 where
     I: TrustedRandomAccess,
-    F: FnMut(I::Item) -> B,
 {
-    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
-        (self.f)(unsafe { self.iter.get_unchecked(i) })
-    }
     #[inline]
     fn may_have_side_effect() -> bool {
         true
@@ -1306,6 +1303,16 @@ where
 
         self.iter.fold(init, enumerate(self.count, fold))
     }
+
+    unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::get_unchecked`.
+        let value = unsafe { try_get_unchecked(&mut self.iter, idx) };
+        (Add::add(self.count, idx), value)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1391,15 +1398,11 @@ where
 }
 
 #[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<I> TrustedRandomAccess for Enumerate<I>
 where
     I: TrustedRandomAccess,
 {
-    unsafe fn get_unchecked(&mut self, i: usize) -> (usize, I::Item) {
-        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
-        (self.count + i, unsafe { self.iter.get_unchecked(i) })
-    }
-
     fn may_have_side_effect() -> bool {
         I::may_have_side_effect()
     }

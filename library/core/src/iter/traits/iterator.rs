@@ -6,6 +6,7 @@ use crate::cmp::{self, Ordering};
 use crate::ops::{Add, Try};
 
 use super::super::LoopState;
+use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Product, Sum, Zip};
@@ -3244,6 +3245,17 @@ pub trait Iterator {
         K: PartialOrd,
     {
         self.map(f).is_sorted()
+    }
+
+    /// See [TrustedRandomAccess]
+    #[inline]
+    #[doc(hidden)]
+    #[unstable(feature = "trusted_random_access", issue = "none")]
+    unsafe fn get_unchecked(&mut self, _idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        unreachable!("Always specialized");
     }
 }
 
