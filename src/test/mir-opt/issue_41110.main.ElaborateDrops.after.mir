@@ -56,12 +56,6 @@ fn main() -> () {
         _5 = const false;                // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
         StorageDead(_2);                 // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
         _0 = const ();                   // scope 0 at $DIR/issue-41110.rs:7:11: 9:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-41110.rs:7:11: 9:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_1);                 // scope 0 at $DIR/issue-41110.rs:9:1: 9:2
         return;                          // scope 0 at $DIR/issue-41110.rs:9:2: 9:2
     }

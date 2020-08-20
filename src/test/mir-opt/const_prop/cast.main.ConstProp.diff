@@ -20,12 +20,6 @@
 -         _2 = const 42_u32 as u8 (Misc);  // scope 1 at $DIR/cast.rs:6:13: 6:24
 +         _2 = const 42_u8;                // scope 1 at $DIR/cast.rs:6:13: 6:24
           _0 = const ();                   // scope 0 at $DIR/cast.rs:3:11: 7:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/cast.rs:3:11: 7:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_2);                 // scope 1 at $DIR/cast.rs:7:1: 7:2
           StorageDead(_1);                 // scope 0 at $DIR/cast.rs:7:1: 7:2
           return;                          // scope 0 at $DIR/cast.rs:7:2: 7:2

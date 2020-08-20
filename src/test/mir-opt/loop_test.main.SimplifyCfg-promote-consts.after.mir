@@ -30,12 +30,6 @@ fn main() -> () {
 
     bb3: {
         _1 = const ();                   // scope 0 at $DIR/loop_test.rs:10:5: 12:6
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/loop_test.rs:10:5: 12:6
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageLive(_4);                 // scope 0 at $DIR/loop_test.rs:13:5: 16:6
@@ -44,12 +38,6 @@ fn main() -> () {
 
     bb4: {
         _0 = const ();                   // scope 0 at $DIR/loop_test.rs:11:9: 11:15
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/loop_test.rs:11:9: 11:15
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         return;                          // scope 0 at $DIR/loop_test.rs:17:2: 17:2

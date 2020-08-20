@@ -19,12 +19,6 @@ fn main() -> () {
         StorageDead(_2);                 // scope 0 at $DIR/const_allocation3.rs:5:8: 5:9
         StorageDead(_1);                 // scope 0 at $DIR/const_allocation3.rs:5:8: 5:9
         _0 = const ();                   // scope 0 at $DIR/const_allocation3.rs:4:11: 6:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/const_allocation3.rs:4:11: 6:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         return;                          // scope 0 at $DIR/const_allocation3.rs:6:2: 6:2
     }
 }

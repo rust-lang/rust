@@ -42,12 +42,6 @@ fn main() -> () {
 
     bb6: {
         _0 = const ();                   // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-49232.rs:10:25: 10:30
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         goto -> bb8;                     // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
     }
 
@@ -90,12 +84,6 @@ fn main() -> () {
         StorageDead(_6);                 // scope 1 at $DIR/issue-49232.rs:13:21: 13:22
         StorageDead(_5);                 // scope 1 at $DIR/issue-49232.rs:13:22: 13:23
         _1 = const ();                   // scope 0 at $DIR/issue-49232.rs:6:10: 14:6
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-49232.rs:6:10: 14:6
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_2);                 // scope 0 at $DIR/issue-49232.rs:14:5: 14:6
         goto -> bb1;                     // scope 0 at $DIR/issue-49232.rs:6:5: 14:6
     }

@@ -43,12 +43,6 @@ fn main() -> () {
         StorageDead(_4);                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:35: 9:36
         StorageDead(_1);                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:35: 9:36
         _0 = const ();                   // scope 0 at $DIR/no-spurious-drop-after-call.rs:8:11: 10:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/no-spurious-drop-after-call.rs:8:11: 10:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         return;                          // scope 0 at $DIR/no-spurious-drop-after-call.rs:10:2: 10:2
     }
 

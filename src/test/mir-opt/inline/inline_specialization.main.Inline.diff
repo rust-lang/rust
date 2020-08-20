@@ -21,12 +21,6 @@
 -     bb1: {
 +         _1 = const 123_u32;              // scope 2 at $DIR/inline-specialization.rs:14:31: 14:34
           _0 = const ();                   // scope 0 at $DIR/inline-specialization.rs:4:11: 6:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/inline-specialization.rs:4:11: 6:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // scope 0 at $DIR/inline-specialization.rs:6:1: 6:2
           return;                          // scope 0 at $DIR/inline-specialization.rs:6:2: 6:2
       }

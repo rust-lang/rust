@@ -21,12 +21,6 @@ fn main() -> () {
         (*_3) = const 42_u8;             // scope 2 at $DIR/tls-access.rs:9:9: 9:17
         StorageDead(_3);                 // scope 2 at $DIR/tls-access.rs:9:17: 9:18
         _0 = const ();                   // scope 1 at $DIR/tls-access.rs:7:5: 10:6
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/tls-access.rs:7:5: 10:6
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_2);                 // scope 1 at $DIR/tls-access.rs:10:5: 10:6
         StorageDead(_1);                 // scope 1 at $DIR/tls-access.rs:10:5: 10:6
         return;                          // scope 0 at $DIR/tls-access.rs:11:2: 11:2

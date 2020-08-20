@@ -112,12 +112,6 @@
           StorageDead(_7);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_5);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:1:11: 9:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/issue-73223.rs:1:11: 9:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_3);                 // scope 1 at $DIR/issue-73223.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
       }

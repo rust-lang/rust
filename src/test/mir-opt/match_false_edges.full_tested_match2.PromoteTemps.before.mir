@@ -103,12 +103,6 @@ fn full_tested_match2() -> () {
         StorageDead(_2);                 // scope 0 at $DIR/match_false_edges.rs:30:6: 30:7
         StorageDead(_1);                 // scope 0 at $DIR/match_false_edges.rs:30:6: 30:7
         _0 = const ();                   // scope 0 at $DIR/match_false_edges.rs:25:29: 31:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/match_false_edges.rs:25:29: 31:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         return;                          // scope 0 at $DIR/match_false_edges.rs:31:2: 31:2
     }
 }

@@ -97,24 +97,12 @@ fn main() -> () {
         StorageDead(_9);                 // bb6[0]: scope 3 at $DIR/region-subtyping-basic.rs:21:17: 21:18
         StorageDead(_8);                 // bb6[1]: scope 3 at $DIR/region-subtyping-basic.rs:21:18: 21:19
         _0 = const Const(Value(Scalar(<ZST>)): ()); // bb6[2]: scope 3 at $DIR/region-subtyping-basic.rs:20:13: 22:6
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/region-subtyping-basic.rs:20:13: 22:6
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         goto -> bb8;                     // bb6[3]: scope 3 at $DIR/region-subtyping-basic.rs:20:5: 24:6
     }
 
     bb7: {
         StorageDead(_10);                // bb7[0]: scope 3 at $DIR/region-subtyping-basic.rs:23:18: 23:19
         _0 = const Const(Value(Scalar(<ZST>)): ()); // bb7[1]: scope 3 at $DIR/region-subtyping-basic.rs:22:12: 24:6
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/region-subtyping-basic.rs:22:12: 24:6
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         goto -> bb8;                     // bb7[2]: scope 3 at $DIR/region-subtyping-basic.rs:20:5: 24:6
     }
 

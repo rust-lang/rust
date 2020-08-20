@@ -47,12 +47,6 @@
   
       bb3: {
           _0 = const ();                   // scope 0 at $DIR/simplify_try_if_let.rs:22:21: 22:24
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_try_if_let.rs:22:21: 22:24
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb9;                     // scope 0 at $DIR/simplify_try_if_let.rs:21:9: 32:10
       }
   
@@ -64,12 +58,6 @@
   
       bb5: {
           _0 = const ();                   // scope 1 at $DIR/simplify_try_if_let.rs:26:17: 30:18
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_try_if_let.rs:26:17: 30:18
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb8;                     // scope 1 at $DIR/simplify_try_if_let.rs:26:17: 30:18
       }
   
@@ -97,12 +85,6 @@
           StorageDead(_9);                 // scope 3 at $DIR/simplify_try_if_let.rs:28:61: 28:62
           StorageDead(_11);                // scope 3 at $DIR/simplify_try_if_let.rs:28:62: 28:63
           _0 = const ();                   // scope 3 at $DIR/simplify_try_if_let.rs:27:21: 29:22
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_try_if_let.rs:27:21: 29:22
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_8);                 // scope 1 at $DIR/simplify_try_if_let.rs:30:17: 30:18
           goto -> bb8;                     // scope 1 at $DIR/simplify_try_if_let.rs:26:17: 30:18
       }

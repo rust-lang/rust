@@ -42,12 +42,6 @@
           StorageLive(_5);                 // scope 3 at $DIR/mutable_variable_unprop_assign.rs:9:9: 9:10
           _5 = (_2.0: i32);                // scope 3 at $DIR/mutable_variable_unprop_assign.rs:9:13: 9:16
           _0 = const ();                   // scope 0 at $DIR/mutable_variable_unprop_assign.rs:4:11: 10:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/mutable_variable_unprop_assign.rs:4:11: 10:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_5);                 // scope 3 at $DIR/mutable_variable_unprop_assign.rs:10:1: 10:2
           StorageDead(_4);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:10:1: 10:2
           StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_unprop_assign.rs:10:1: 10:2

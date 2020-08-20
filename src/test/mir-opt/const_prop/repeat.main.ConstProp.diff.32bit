@@ -36,12 +36,6 @@
           StorageDead(_4);                 // scope 0 at $DIR/repeat.rs:6:32: 6:33
           StorageDead(_3);                 // scope 0 at $DIR/repeat.rs:6:32: 6:33
           _0 = const ();                   // scope 0 at $DIR/repeat.rs:5:11: 7:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/repeat.rs:5:11: 7:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // scope 0 at $DIR/repeat.rs:7:1: 7:2
           return;                          // scope 0 at $DIR/repeat.rs:7:2: 7:2
       }

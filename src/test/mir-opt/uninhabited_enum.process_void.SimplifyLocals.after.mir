@@ -14,12 +14,6 @@ fn process_void(_1: *const Void) -> () {
         StorageLive(_2);                 // scope 0 at $DIR/uninhabited-enum.rs:14:8: 14:14
         _2 = &(*_1);                     // scope 2 at $DIR/uninhabited-enum.rs:14:26: 14:33
         _0 = const ();                   // scope 0 at $DIR/uninhabited-enum.rs:13:41: 17:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/uninhabited-enum.rs:13:41: 17:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_2);                 // scope 0 at $DIR/uninhabited-enum.rs:17:1: 17:2
         return;                          // scope 0 at $DIR/uninhabited-enum.rs:17:2: 17:2
     }

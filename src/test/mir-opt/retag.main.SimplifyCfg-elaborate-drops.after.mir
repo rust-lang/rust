@@ -111,12 +111,6 @@ fn main() -> () {
         _11 = _12;                       // scope 4 at $DIR/retag.rs:36:18: 36:29
         StorageDead(_12);                // scope 4 at $DIR/retag.rs:36:29: 36:30
         _2 = const ();                   // scope 1 at $DIR/retag.rs:31:5: 37:6
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/retag.rs:31:5: 37:6
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_11);                // scope 4 at $DIR/retag.rs:37:5: 37:6
         StorageDead(_10);                // scope 3 at $DIR/retag.rs:37:5: 37:6
         StorageDead(_8);                 // scope 2 at $DIR/retag.rs:37:5: 37:6
@@ -200,12 +194,6 @@ fn main() -> () {
         _25 = _26;                       // scope 7 at $DIR/retag.rs:50:14: 50:28
         StorageDead(_26);                // scope 7 at $DIR/retag.rs:50:28: 50:29
         _0 = const ();                   // scope 0 at $DIR/retag.rs:29:11: 51:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/retag.rs:29:11: 51:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_25);                // scope 7 at $DIR/retag.rs:51:1: 51:2
         StorageDead(_15);                // scope 6 at $DIR/retag.rs:51:1: 51:2
         StorageDead(_13);                // scope 1 at $DIR/retag.rs:51:1: 51:2

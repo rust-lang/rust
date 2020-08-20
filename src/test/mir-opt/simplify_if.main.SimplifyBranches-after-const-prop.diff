@@ -15,12 +15,6 @@
   
       bb1: {
           _0 = const ();                   // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_if.rs:6:5: 8:6
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
       }
   
@@ -35,12 +29,6 @@
       bb3: {
           StorageDead(_2);                 // scope 0 at $DIR/simplify_if.rs:7:15: 7:16
           _0 = const ();                   // scope 0 at $DIR/simplify_if.rs:6:14: 8:6
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/simplify_if.rs:6:14: 8:6
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
       }
   

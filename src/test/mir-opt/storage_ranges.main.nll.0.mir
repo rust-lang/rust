@@ -50,12 +50,6 @@ fn main() -> () {
         _3 = &_4;                        // scope 1 at $DIR/storage_ranges.rs:6:17: 6:25
         FakeRead(ForLet, _3);            // scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
         _2 = const ();                   // scope 1 at $DIR/storage_ranges.rs:5:5: 7:6
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/storage_ranges.rs:5:5: 7:6
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_4);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
         StorageDead(_3);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
         StorageDead(_2);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
@@ -63,12 +57,6 @@ fn main() -> () {
         _6 = const 1_i32;                // scope 1 at $DIR/storage_ranges.rs:8:13: 8:14
         FakeRead(ForLet, _6);            // scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
         _0 = const ();                   // scope 0 at $DIR/storage_ranges.rs:3:11: 9:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/storage_ranges.rs:3:11: 9:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_6);                 // scope 1 at $DIR/storage_ranges.rs:9:1: 9:2
         StorageDead(_1);                 // scope 0 at $DIR/storage_ranges.rs:9:1: 9:2
         return;                          // scope 0 at $DIR/storage_ranges.rs:9:2: 9:2

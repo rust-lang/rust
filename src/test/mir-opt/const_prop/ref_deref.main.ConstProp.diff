@@ -24,12 +24,6 @@
           StorageDead(_2);                 // scope 0 at $DIR/ref_deref.rs:5:10: 5:11
           StorageDead(_1);                 // scope 0 at $DIR/ref_deref.rs:5:10: 5:11
           _0 = const ();                   // scope 0 at $DIR/ref_deref.rs:4:11: 6:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/ref_deref.rs:4:11: 6:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           return;                          // scope 0 at $DIR/ref_deref.rs:6:2: 6:2
       }
   }
