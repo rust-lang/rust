@@ -11,7 +11,7 @@ pub(crate) fn get_clif_linkage(mono_item: MonoItem<'_>, linkage: RLinkage, visib
     }
 }
 
-pub(crate) fn get_static_ref_linkage(tcx: TyCtxt<'_>, def_id: DefId) -> Linkage {
+pub(crate) fn get_static_linkage(tcx: TyCtxt<'_>, def_id: DefId) -> Linkage {
     let fn_attrs = tcx.codegen_fn_attrs(def_id);
 
     if let Some(linkage) = fn_attrs.linkage {
@@ -22,6 +22,10 @@ pub(crate) fn get_static_ref_linkage(tcx: TyCtxt<'_>, def_id: DefId) -> Linkage 
             _ => panic!("{:?}", linkage),
         }
     } else {
-        Linkage::Import
+        if tcx.is_reachable_non_generic(def_id) {
+            Linkage::Export
+        } else {
+            Linkage::Export // FIXME use Linkage::Hidden
+        }
     }
 }

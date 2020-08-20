@@ -43,8 +43,7 @@ pub(crate) fn codegen_tls_ref<'tcx>(
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CValue<'tcx> {
-    let linkage = crate::linkage::get_static_ref_linkage(fx.tcx, def_id);
-    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, linkage);
+    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(local_data_id, format!("tls {:?}", def_id));
@@ -57,8 +56,7 @@ fn codegen_static_ref<'tcx>(
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CPlace<'tcx> {
-    let linkage = crate::linkage::get_static_ref_linkage(fx.tcx, def_id);
-    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, linkage);
+    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(local_data_id, format!("{:?}", def_id));
@@ -159,8 +157,7 @@ pub(crate) fn trans_const_value<'tcx>(
                         }
                         Some(GlobalAlloc::Static(def_id)) => {
                             assert!(fx.tcx.is_static(def_id));
-                            let linkage = crate::linkage::get_static_ref_linkage(fx.tcx, def_id);
-                            let data_id = data_id_for_static(fx.tcx, fx.module, def_id, linkage);
+                            let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
                             let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             #[cfg(debug_assertions)]
                             fx.add_comment(local_data_id, format!("{:?}", def_id));
@@ -226,8 +223,20 @@ fn data_id_for_static(
     tcx: TyCtxt<'_>,
     module: &mut Module<impl Backend>,
     def_id: DefId,
-    linkage: Linkage,
+    definition: bool,
 ) -> DataId {
+    let rlinkage = tcx.codegen_fn_attrs(def_id).linkage;
+    let linkage = if definition {
+        crate::linkage::get_static_linkage(tcx, def_id)
+    } else {
+        if rlinkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
+        || rlinkage == Some(rustc_middle::mir::mono::Linkage::WeakAny) {
+            Linkage::Preemptible
+        } else {
+            Linkage::Import
+        }
+    };
+
     let instance = Instance::mono(tcx, def_id).polymorphize(tcx);
     let symbol_name = tcx.symbol_name(instance).name;
     let ty = instance.ty(tcx, ParamEnv::reveal_all());
@@ -255,26 +264,39 @@ fn data_id_for_static(
         )
         .unwrap();
 
-    if linkage == Linkage::Preemptible {
-        if let ty::RawPtr(_) = ty.kind {
-        } else {
-            tcx.sess.span_fatal(
-                tcx.def_span(def_id),
-                "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
-            )
-        }
+    if rlinkage.is_some() {
+        // Comment copied from https://github.com/rust-lang/rust/blob/45060c2a66dfd667f88bd8b94261b28a58d85bd5/src/librustc_codegen_llvm/consts.rs#L141
+        // Declare an internal global `extern_with_linkage_foo` which
+        // is initialized with the address of `foo`.  If `foo` is
+        // discarded during linking (for example, if `foo` has weak
+        // linkage and there are no definitions), then
+        // `extern_with_linkage_foo` will instead be initialized to
+        // zero.
 
+        let ref_name = format!("_rust_extern_with_linkage_{}", symbol_name);
+        let ref_data_id = module
+            .declare_data(
+                &ref_name,
+                Linkage::Local,
+                true,
+                false,
+                Some(align.try_into().unwrap()),
+            )
+            .unwrap();
         let mut data_ctx = DataContext::new();
-        data_ctx.define_zeroinit(pointer_ty(tcx).bytes() as usize);
-        match module.define_data(data_id, &data_ctx) {
-            // Everytime a weak static is referenced, there will be a zero pointer definition,
+        let data = module.declare_data_in_data(data_id, &mut data_ctx);
+        data_ctx.define(std::iter::repeat(0).take(pointer_ty(tcx).bytes() as usize).collect());
+        data_ctx.write_data_addr(0, data, 0);
+        match module.define_data(ref_data_id, &data_ctx) {
+            // Every time the static is referenced there will be another definition of this global,
             // so duplicate definitions are expected and allowed.
             Err(ModuleError::DuplicateDefinition(_)) => {}
             res => res.unwrap(),
         }
+        ref_data_id
+    } else {
+        data_id
     }
-
-    data_id
 }
 
 fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mut ConstantCx) {
@@ -301,16 +323,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                     _ => bug!("static const eval returned {:#?}", const_),
                 };
 
-                let data_id = data_id_for_static(
-                    tcx,
-                    module,
-                    def_id,
-                    if tcx.is_reachable_non_generic(def_id) {
-                        Linkage::Export
-                    } else {
-                        Linkage::Export // FIXME Set hidden visibility
-                    },
-                );
+                let data_id = data_id_for_static(tcx, module, def_id, true);
                 (data_id, alloc, section_name)
             }
         };
@@ -360,12 +373,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                     // Don't push a `TodoItem::Static` here, as it will cause statics used by
                     // multiple crates to be duplicated between them. It isn't necessary anyway,
                     // as it will get pushed by `codegen_static` when necessary.
-                    data_id_for_static(
-                        tcx,
-                        module,
-                        def_id,
-                        crate::linkage::get_static_ref_linkage(tcx, def_id),
-                    )
+                    data_id_for_static(tcx, module, def_id, false)
                 }
             };
 

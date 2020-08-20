@@ -241,19 +241,22 @@ fn main() {
 
     assert_eq!(((|()| 42u8) as fn(()) -> u8)(()), 42);
 
-    extern {
-        #[linkage = "extern_weak"]
-        static ABC: *const u8;
-    }
-
+    #[cfg(not(jit))]
     {
         extern {
             #[linkage = "extern_weak"]
             static ABC: *const u8;
         }
-    }
 
-    unsafe { assert_eq!(ABC as usize, 0); }
+        {
+            extern {
+                #[linkage = "extern_weak"]
+                static ABC: *const u8;
+            }
+        }
+
+        unsafe { assert_eq!(ABC as usize, 0); }
+    }
 
     &mut (|| Some(0 as *const ())) as &mut dyn FnMut() -> Option<*const ()>;
 
