@@ -427,7 +427,7 @@ mod default_impls {
             }
         };
     }
-    
+
     array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
 }
 
