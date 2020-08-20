@@ -1,5 +1,8 @@
 FROM ubuntu:16.04
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  g++-aarch64-linux-gnu
+
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
@@ -24,17 +27,25 @@ USER root
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/musl.sh /scripts/
+RUN env \
+    CC=aarch64-linux-gnu-gcc \
+    CXX=aarch64-linux-gnu-g++ \
+    bash /scripts/musl.sh aarch64
+
 ENV PATH=$PATH:/x-tools/aarch64-unknown-linux-gnueabi/bin
 
 ENV CC_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnueabi-gcc \
     AR_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnueabi-ar \
     CXX_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnueabi-g++
 
-ENV HOSTS=aarch64-unknown-linux-gnu
+ENV HOSTS=aarch64-unknown-linux-gnu,aarch64-unknown-linux-musl
 
 ENV RUST_CONFIGURE_ARGS \
       --enable-full-tools \
       --enable-profiler \
       --enable-sanitizers \
+      --musl-root-aarch64=/musl-aarch64 \
       --disable-docs
+
 ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
