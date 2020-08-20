@@ -214,7 +214,7 @@ fn make_code_region<'tcx>(tcx: TyCtxt<'tcx>, span: &Span) -> CodeRegion {
         );
         end
     };
-    match &start.file.name {
+    match &start.file.name.name() {
         FileName::Real(RealFileName::Named(path)) => CodeRegion {
             file_name: Symbol::intern(&path.to_string_lossy()),
             start_line: start.line as u32,
