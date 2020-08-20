@@ -32,8 +32,7 @@ MAINTAINERS = {
     'reference': {'steveklabnik', 'Havvy', 'matthewjasper', 'ehuss'},
     'rust-by-example': {'steveklabnik', 'marioidival'},
     'embedded-book': {
-        'adamgreig', 'andre-richter', 'jamesmunns', 'korken89',
-        'ryankurte', 'thejpster', 'therealprof',
+        'adamgreig', 'andre-richter', 'jamesmunns', 'therealprof',
     },
     'edition-guide': {'ehuss', 'steveklabnik'},
     'rustc-dev-guide': {'mark-i-m', 'spastorino', 'amanjeev', 'JohnTitor'},
