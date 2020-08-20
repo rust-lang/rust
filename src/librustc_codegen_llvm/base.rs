@@ -45,15 +45,12 @@ pub fn write_compressed_metadata<'tcx>(
     metadata: &EncodedMetadata,
     llvm_module: &mut ModuleLlvm,
 ) {
-    use flate2::write::DeflateEncoder;
-    use flate2::Compression;
+    use snap::write::FrameEncoder;
     use std::io::Write;
 
     let (metadata_llcx, metadata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
     let mut compressed = tcx.metadata_encoding_version();
-    DeflateEncoder::new(&mut compressed, Compression::fast())
-        .write_all(&metadata.raw_data)
-        .unwrap();
+    FrameEncoder::new(&mut compressed).write_all(&metadata.raw_data).unwrap();
 
     let llmeta = common::bytes_in_context(metadata_llcx, &compressed);
     let llconst = common::struct_in_context(metadata_llcx, &[llmeta], false);

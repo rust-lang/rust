@@ -10,8 +10,8 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-flate2 = "1.0"
 libc = "0.2"
+snap = "1"
 tracing = "0.1"
 memmap = "0.7"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
