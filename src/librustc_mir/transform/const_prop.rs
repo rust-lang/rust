@@ -14,9 +14,9 @@ use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::{
-    AggregateKind, AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, Local,
-    LocalDecl, LocalKind, Location, Operand, Place, Rvalue, SourceInfo, SourceScope,
-    SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
+    AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, Local, LocalDecl, LocalKind,
+    Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement,
+    StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -28,9 +28,9 @@ use rustc_trait_selection::traits;
 
 use crate::const_eval::ConstEvalErr;
 use crate::interpret::{
-    self, compile_time_machine, truncate, AllocId, Allocation, Frame, ImmTy, Immediate, InterpCx,
-    LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy,
-    Pointer, ScalarMaybeUninit, StackPopCleanup,
+    self, compile_time_machine, truncate, AllocId, Allocation, ConstValue, Frame, ImmTy, Immediate,
+    InterpCx, LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand as InterpOperand,
+    PlaceTy, Pointer, ScalarMaybeUninit, StackPopCleanup,
 };
 use crate::transform::{MirPass, MirSource};
 
@@ -824,19 +824,18 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     ));
                 }
                 Immediate::ScalarPair(
-                    ScalarMaybeUninit::Scalar(one),
-                    ScalarMaybeUninit::Scalar(two),
+                    ScalarMaybeUninit::Scalar(_),
+                    ScalarMaybeUninit::Scalar(_),
                 ) => {
-                    // Found a value represented as a pair. For now only do cont-prop if type of
-                    // Rvalue is also a pair with two scalars. The more general case is more
-                    // complicated to implement so we'll do it later.
-                    // FIXME: implement the general case stated above ^.
-                    let ty = &value.layout.ty.kind;
+                    // Found a value represented as a pair. For now only do const-prop if the type
+                    // of `rvalue` is also a tuple with two scalars.
+                    // FIXME: enable the general case stated above ^.
+                    let ty = &value.layout.ty;
                     // Only do it for tuples
-                    if let ty::Tuple(substs) = ty {
+                    if let ty::Tuple(substs) = ty.kind {
                         // Only do it if tuple is also a pair with two scalars
                         if substs.len() == 2 {
-                            let opt_ty1_ty2 = self.use_ecx(|this| {
+                            let alloc = self.use_ecx(|this| {
                                 let ty1 = substs[0].expect_ty();
                                 let ty2 = substs[1].expect_ty();
                                 let ty_is_scalar = |ty| {
@@ -844,24 +843,38 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                         == Some(true)
                                 };
                                 if ty_is_scalar(ty1) && ty_is_scalar(ty2) {
-                                    Ok(Some((ty1, ty2)))
+                                    let alloc = this
+                                        .ecx
+                                        .intern_with_temp_alloc(value.layout, |ecx, dest| {
+                                            ecx.write_immediate_to_mplace(*imm, dest)
+                                        })
+                                        .unwrap();
+                                    Ok(Some(alloc))
                                 } else {
                                     Ok(None)
                                 }
                             });
 
-                            if let Some(Some((ty1, ty2))) = opt_ty1_ty2 {
-                                *rval = Rvalue::Aggregate(
-                                    Box::new(AggregateKind::Tuple),
-                                    vec![
-                                        self.operand_from_scalar(one, ty1, source_info.span),
-                                        self.operand_from_scalar(two, ty2, source_info.span),
-                                    ],
-                                );
+                            if let Some(Some(alloc)) = alloc {
+                                // Assign entire constant in a single statement.
+                                // We can't use aggregates, as we run after the aggregate-lowering `MirPhase`.
+                                *rval = Rvalue::Use(Operand::Constant(Box::new(Constant {
+                                    span: source_info.span,
+                                    user_ty: None,
+                                    literal: self.ecx.tcx.mk_const(ty::Const {
+                                        ty,
+                                        val: ty::ConstKind::Value(ConstValue::ByRef {
+                                            alloc,
+                                            offset: Size::ZERO,
+                                        }),
+                                    }),
+                                })));
                             }
                         }
                     }
                 }
+                // Scalars or scalar pairs that contain undef values are assumed to not have
+                // successfully evaluated and are thus not propagated.
                 _ => {}
             }
         }

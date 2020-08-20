@@ -73,15 +73,35 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 
 /// The various "big phases" that MIR goes through.
 ///
+/// These phases all describe dialects of MIR. Since all MIR uses the same datastructures, the
+/// dialects forbid certain variants or values in certain phases.
+///
+/// Note: Each phase's validation checks all invariants of the *previous* phases' dialects. A phase
+/// that changes the dialect documents what invariants must be upheld *after* that phase finishes.
+///
 /// Warning: ordering of variants is significant.
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(HashStable)]
 pub enum MirPhase {
     Build = 0,
+    // FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
+    // We used to have this for pre-miri MIR based const eval.
     Const = 1,
-    Validated = 2,
-    DropElab = 3,
-    Optimized = 4,
+    /// This phase checks the MIR for promotable elements and takes them out of the main MIR body
+    /// by creating a new MIR body per promoted element. After this phase (and thus the termination
+    /// of the `mir_promoted` query), these promoted elements are available in the `promoted_mir`
+    /// query.
+    ConstPromotion = 2,
+    /// After this phase
+    /// * the only `AggregateKind`s allowed are `Array` and `Generator`,
+    /// * `DropAndReplace` is gone for good
+    /// * `Drop` now uses explicit drop flags visible in the MIR and reaching a `Drop` terminator
+    ///   means that the auto-generated drop glue will be invoked.
+    DropLowering = 3,
+    /// After this phase, generators are explicit state machines (no more `Yield`).
+    /// `AggregateKind::Generator` is gone for good.
+    GeneratorLowering = 4,
+    Optimization = 5,
 }
 
 impl MirPhase {

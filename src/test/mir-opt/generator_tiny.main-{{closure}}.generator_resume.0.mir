@@ -41,7 +41,8 @@ fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:
     bb2: {
         StorageLive(_6);                 // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         StorageLive(_7);                 // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
-        _0 = std::ops::GeneratorState::<(), ()>::Yielded(move _7); // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
+        ((_0 as Yielded).0: ()) = move _7; // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
+        discriminant(_0) = 0;            // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         discriminant((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}]))) = 3; // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         return;                          // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
     }

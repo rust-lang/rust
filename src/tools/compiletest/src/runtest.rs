@@ -1942,6 +1942,7 @@ impl<'test> TestCx<'test> {
                 rustc.args(&[
                     "-Zdump-mir=all",
                     "-Zmir-opt-level=3",
+                    "-Zvalidate-mir",
                     "-Zdump-mir-exclude-pass-number",
                 ]);
 

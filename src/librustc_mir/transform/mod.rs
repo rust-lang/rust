@@ -60,7 +60,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         mir_const_qualif_const_arg: |tcx, (did, param_did)| {
             mir_const_qualif(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
         },
-        mir_validated,
+        mir_promoted,
         mir_drops_elaborated_and_const_checked,
         optimized_mir,
         optimized_mir_of_const_arg,
@@ -189,7 +189,7 @@ pub fn run_passes(
     }
 
     if validate {
-        validate::Validator { when: format!("input to phase {:?}", mir_phase) }
+        validate::Validator { when: format!("input to phase {:?}", mir_phase), mir_phase }
             .run_pass(tcx, source, body);
     }
 
@@ -210,8 +210,11 @@ pub fn run_passes(
         run_hooks(body, index, true);
 
         if validate {
-            validate::Validator { when: format!("after {} in phase {:?}", pass.name(), mir_phase) }
-                .run_pass(tcx, source, body);
+            validate::Validator {
+                when: format!("after {} in phase {:?}", pass.name(), mir_phase),
+                mir_phase,
+            }
+            .run_pass(tcx, source, body);
         }
 
         index += 1;
@@ -225,8 +228,8 @@ pub fn run_passes(
 
     body.phase = mir_phase;
 
-    if mir_phase == MirPhase::Optimized {
-        validate::Validator { when: format!("end of phase {:?}", mir_phase) }
+    if mir_phase == MirPhase::Optimization {
+        validate::Validator { when: format!("end of phase {:?}", mir_phase), mir_phase }
             .run_pass(tcx, source, body);
     }
 }
@@ -240,7 +243,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> 
     }
 
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
-    // cannot yet be stolen), because `mir_validated()`, which steals
+    // cannot yet be stolen), because `mir_promoted()`, which steals
     // from `mir_const(), forces this query to execute before
     // performing the steal.
     let body = &tcx.mir_const(def).borrow();
@@ -311,12 +314,12 @@ fn mir_const<'tcx>(
     tcx.alloc_steal_mir(body)
 }
 
-fn mir_validated(
+fn mir_promoted(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
     if let Some(def) = def.try_upgrade(tcx) {
-        return tcx.mir_validated(def);
+        return tcx.mir_promoted(def);
     }
 
     // Ensure that we compute the `mir_const_qualif` for constants at
@@ -351,7 +354,7 @@ fn mir_validated(
         &mut body,
         InstanceDef::Item(def.to_global()),
         None,
-        MirPhase::Validated,
+        MirPhase::ConstPromotion,
         &[promote, opt_coverage],
     );
 
@@ -367,7 +370,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         return tcx.mir_drops_elaborated_and_const_checked(def);
     }
 
-    // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
+    // (Mir-)Borrowck uses `mir_promoted`, so we have to force it to
     // execute before we can steal.
     if let Some(param_did) = def.const_param_did {
         tcx.ensure().mir_borrowck_const_arg((def.did, param_did));
@@ -375,7 +378,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         tcx.ensure().mir_borrowck(def.did);
     }
 
-    let (body, _) = tcx.mir_validated(def);
+    let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
 
     run_post_borrowck_cleanup_passes(tcx, &mut body, def.did, None);
@@ -420,7 +423,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(
         body,
         InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id())),
         promoted,
-        MirPhase::DropElab,
+        MirPhase::DropLowering,
         &[post_borrowck_cleanup],
     );
 }
@@ -431,16 +434,24 @@ fn run_optimization_passes<'tcx>(
     def_id: LocalDefId,
     promoted: Option<Promoted>,
 ) {
-    let optimizations: &[&dyn MirPass<'tcx>] = &[
+    let mir_opt_level = tcx.sess.opts.debugging_opts.mir_opt_level;
+
+    // Lowering generator control-flow and variables has to happen before we do anything else
+    // to them. We run some optimizations before that, because they may be harder to do on the state
+    // machine than on MIR with async primitives.
+    let optimizations_with_generators: &[&dyn MirPass<'tcx>] = &[
         &unreachable_prop::UnreachablePropagation,
         &uninhabited_enum_branching::UninhabitedEnumBranching,
         &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
         &inline::Inline,
-        // Lowering generator control-flow and variables has to happen before we do anything else
-        // to them. We do this inside the "optimizations" block so that it can benefit from
-        // optimizations that run before, that might be harder to do on the state machine than MIR
-        // with async primitives.
         &generator::StateTransform,
+    ];
+
+    // Even if we don't do optimizations, we still have to lower generators for codegen.
+    let no_optimizations_with_generators: &[&dyn MirPass<'tcx>] = &[&generator::StateTransform];
+
+    // The main optimizations that we do on MIR.
+    let optimizations: &[&dyn MirPass<'tcx>] = &[
         &instcombine::InstCombine,
         &match_branches::MatchBranchSimplification,
         &const_prop::ConstProp,
@@ -456,28 +467,45 @@ fn run_optimization_passes<'tcx>(
         &simplify::SimplifyLocals,
     ];
 
+    // Optimizations to run even if mir optimizations have been disabled.
     let no_optimizations: &[&dyn MirPass<'tcx>] = &[
-        // Even if we don't do optimizations, we still have to lower generators for codegen.
-        &generator::StateTransform,
         // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
         &const_prop::ConstProp,
     ];
 
+    // Some cleanup necessary at least for LLVM and potentially other codegen backends.
     let pre_codegen_cleanup: &[&dyn MirPass<'tcx>] = &[
         &add_call_guards::CriticalCallEdges,
         // Dump the end result for testing and debugging purposes.
         &dump_mir::Marker("PreCodegen"),
     ];
 
-    let mir_opt_level = tcx.sess.opts.debugging_opts.mir_opt_level;
-
+    // End of pass declarations, now actually run the passes.
+    // Generator Lowering
     #[rustfmt::skip]
     run_passes(
         tcx,
         body,
         InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id())),
         promoted,
-        MirPhase::Optimized,
+        MirPhase::GeneratorLowering,
+        &[
+            if mir_opt_level > 0 {
+                optimizations_with_generators
+            } else {
+                no_optimizations_with_generators
+            }
+        ],
+    );
+
+    // Main optimization passes
+    #[rustfmt::skip]
+    run_passes(
+        tcx,
+        body,
+        InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id())),
+        promoted,
+        MirPhase::Optimization,
         &[
             if mir_opt_level > 0 { optimizations } else { no_optimizations },
             pre_codegen_cleanup,
@@ -534,7 +562,7 @@ fn promoted_mir<'tcx>(
     } else {
         tcx.ensure().mir_borrowck(def.did);
     }
-    let (_, promoted) = tcx.mir_validated(def);
+    let (_, promoted) = tcx.mir_promoted(def);
     let mut promoted = promoted.steal();
 
     for (p, mut body) in promoted.iter_enumerated_mut() {

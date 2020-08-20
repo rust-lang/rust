@@ -7,7 +7,8 @@ use super::validity::RefTracking;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::InterpResult;
-use rustc_middle::ty::{self, query::TyCtxtAt, Ty};
+use rustc_middle::ty::{self, layout::TyAndLayout, query::TyCtxtAt, Ty};
+use rustc_target::abi::Size;
 
 use rustc_ast::Mutability;
 
@@ -428,5 +429,27 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // marked as dangling by local memory.  That should be impossible.
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
+    }
+}
+
+impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+    /// A helper function that allocates memory for the layout given and gives you access to mutate
+    /// it. Once your own mutation code is done, the backing `Allocation` is removed from the
+    /// current `Memory` and returned.
+    pub(crate) fn intern_with_temp_alloc(
+        &mut self,
+        layout: TyAndLayout<'tcx>,
+        f: impl FnOnce(
+            &mut InterpCx<'mir, 'tcx, M>,
+            MPlaceTy<'tcx, M::PointerTag>,
+        ) -> InterpResult<'tcx, ()>,
+    ) -> InterpResult<'tcx, &'tcx Allocation> {
+        let dest = self.allocate(layout, MemoryKind::Stack);
+        f(self, dest)?;
+        let ptr = dest.ptr.assert_ptr();
+        assert_eq!(ptr.offset, Size::ZERO);
+        let mut alloc = self.memory.alloc_map.remove(&ptr.alloc_id).unwrap().1;
+        alloc.mutability = Mutability::Not;
+        Ok(self.tcx.intern_const_alloc(alloc))
     }
 }
