@@ -400,10 +400,7 @@ mod default_impls {
         [T; N]: ArrayDefault,
     {
         fn default() -> [T; N] {
-            assert_eq!(crate::mem::size_of::<[(); N]>(), 0);
-            // SAFETY: it is always valid to use `zeroed` for zero-sized value.
-            let arr: [(); N] = unsafe { crate::mem::zeroed() };
-            arr.map(|_unit| DefaultHack::default_hack())
+            [(); N].map(|_unit| DefaultHack::default_hack())
         }
     }
 }
