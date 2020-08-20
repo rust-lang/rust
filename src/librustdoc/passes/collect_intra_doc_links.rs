@@ -636,7 +636,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 }
 
                 match disambiguator.map(Disambiguator::ns) {
-                    Some(ns @ ValueNS | ns @ TypeNS) => {
+                    Some(ns @ (ValueNS | TypeNS)) => {
                         match self.resolve(
                             path_str,
                             disambiguator,
