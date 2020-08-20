@@ -1058,7 +1058,7 @@ impl<T: Default, E> Result<T, E> {
     /// ```
     ///
     /// [`parse`]: str::parse
-    /// [`FromStr`]: FromStr
+    /// [`FromStr`]: ../../std/str/trait.FromStr.html
     #[inline]
     #[stable(feature = "result_unwrap_or_default", since = "1.16.0")]
     pub fn unwrap_or_default(self) -> T {
