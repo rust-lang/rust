@@ -5,7 +5,7 @@
 use crate::dep_graph::{DepKind, DepNode};
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use crate::query::caches::QueryCache;
-use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
+use crate::query::config::{QueryActiveStore, QueryDescription, QueryVtable, QueryVtableExt};
 use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
 use crate::query::QueryContext;
 
@@ -19,7 +19,6 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, FatalError};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
-use std::collections::hash_map::Entry;
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
@@ -31,16 +30,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub(super) struct QueryStateShard<CTX: QueryContext, K, C> {
     pub(super) cache: C,
-    active: FxHashMap<K, QueryResult<CTX>>,
+    active: QueryActiveStore<K, QueryResult<CTX>>,
 
     /// Used to generate unique ids for active jobs.
     jobs: u32,
-}
-
-impl<CTX: QueryContext, K, C: Default> Default for QueryStateShard<CTX, K, C> {
-    fn default() -> QueryStateShard<CTX, K, C> {
-        QueryStateShard { cache: Default::default(), active: Default::default(), jobs: 0 }
-    }
 }
 
 pub struct QueryState<CTX: QueryContext, C: QueryCache> {
@@ -100,7 +93,12 @@ impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
     ) -> R {
         self.cache.iter(&self.shards, |shard| &mut shard.cache, f)
     }
+}
 
+impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C>
+where
+    C::Key: Eq + Hash + Clone + Debug,
+{
     #[inline(always)]
     pub fn all_inactive(&self) -> bool {
         let shards = self.shards.lock_shards();
@@ -141,7 +139,11 @@ impl<CTX: QueryContext, C: QueryCache> Default for QueryState<CTX, C> {
     fn default() -> QueryState<CTX, C> {
         QueryState {
             cache: C::default(),
-            shards: Default::default(),
+            shards: Sharded::new(|| QueryStateShard {
+                cache: Default::default(),
+                active: C::make_store(),
+                jobs: 0,
+            }),
             #[cfg(debug_assertions)]
             cache_hits: AtomicUsize::new(0),
         }
@@ -193,9 +195,13 @@ where
     {
         let lock = &mut *lookup.lock;
 
-        let (latch, mut _query_blocked_prof_timer) = match lock.active.entry((*key).clone()) {
-            Entry::Occupied(mut entry) => {
-                match entry.get_mut() {
+        let shard = lookup.shard;
+        let jobs = &mut lock.jobs;
+
+        let res = lock.active.get_or_insert(
+            (*key).clone(),
+            |result| {
+                match result {
                     QueryResult::Started(job) => {
                         // For parallel queries, we'll block and wait until the query running
                         // in another thread has completed. Record how long we wait in the
@@ -207,33 +213,38 @@ where
                         };
 
                         // Create the id of the job we're waiting for
-                        let id = QueryJobId::new(job.id, lookup.shard, query.dep_kind);
+                        let id = QueryJobId::new(job.id, shard, query.dep_kind);
 
-                        (job.latch(id), _query_blocked_prof_timer)
+                        Err((job.latch(id), _query_blocked_prof_timer))
                     }
                     QueryResult::Poisoned => FatalError.raise(),
                 }
-            }
-            Entry::Vacant(entry) => {
+            },
+            || {
                 // No job entry for this query. Return a new one to be started later.
 
                 // Generate an id unique within this shard.
-                let id = lock.jobs.checked_add(1).unwrap();
-                lock.jobs = id;
+                let id = jobs.checked_add(1).unwrap();
+                *jobs = id;
                 let id = QueryShardJobId(NonZeroU32::new(id).unwrap());
 
-                let global_id = QueryJobId::new(id, lookup.shard, query.dep_kind);
+                let global_id = QueryJobId::new(id, shard, query.dep_kind);
 
                 let job = tcx.current_query_job();
                 let job = QueryJob::new(id, span, job);
 
-                entry.insert(QueryResult::Started(job));
+                let result = QueryResult::Started(job);
 
                 let owner = JobOwner { state, id: global_id, key: (*key).clone() };
-                return TryGetJob::NotYetStarted(owner);
-            }
-        };
+                (result, Ok(TryGetJob::NotYetStarted(owner)))
+            },
+        );
         mem::drop(lookup.lock);
+
+        let (latch, mut _query_blocked_prof_timer) = match res {
+            Ok(val) => return val,
+            Err(val) => val,
+        };
 
         // If we are single-threaded we know that we have cycle error,
         // so we just return the error.

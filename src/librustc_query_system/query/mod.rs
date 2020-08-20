@@ -15,9 +15,10 @@ pub use self::caches::{
 mod config;
 pub use self::config::{QueryAccessors, QueryConfig, QueryDescription};
 
+use rustc_data_structures::fx::FxHashMap;
+
 use crate::dep_graph::{DepContext, DepGraph};
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;

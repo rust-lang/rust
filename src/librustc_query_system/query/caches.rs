@@ -1,4 +1,5 @@
 use crate::dep_graph::DepNodeIndex;
+use crate::query::config::QueryActiveStore;
 use crate::query::plumbing::{QueryLookup, QueryState};
 use crate::query::QueryContext;
 use rustc_index::vec::{Idx, IndexVec};
@@ -27,6 +28,10 @@ pub trait QueryStorage: Default {
 pub trait QueryCache: QueryStorage {
     type Key: Hash;
     type Sharded: Default;
+
+    fn make_store<K, V>() -> QueryActiveStore<K, V> {
+        QueryActiveStore::Multi(Default::default())
+    }
 
     /// Checks if the query is already computed and in the cache.
     /// It returns the shard index and a lock guard to the shard,
@@ -248,6 +253,10 @@ impl<K: Eq + Idx, V: Clone> QueryStorage for IndexVecCache<K, V> {
 impl<K: Eq + Idx, V: Clone> QueryCache for IndexVecCache<K, V> {
     type Key = K;
     type Sharded = IndexVec<K, Option<(K, V, DepNodeIndex)>>;
+
+    fn make_store<A, B>() -> QueryActiveStore<A, B> {
+        QueryActiveStore::Single(None)
+    }
 
     #[inline(always)]
     fn lookup<CTX: QueryContext, R, OnHit, OnMiss>(

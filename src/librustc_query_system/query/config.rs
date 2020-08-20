@@ -5,10 +5,12 @@ use crate::dep_graph::SerializedDepNodeIndex;
 use crate::query::caches::QueryCache;
 use crate::query::plumbing::CycleError;
 use crate::query::{QueryContext, QueryState};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::ProfileCategory;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use std::borrow::Cow;
+use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -69,6 +71,115 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
         (self.try_load_from_disk)(tcx, index)
     }
 }
+
+pub enum QueryActiveStore<K, V> {
+    Single(Option<(K, V)>),
+    Multi(FxHashMap<K, V>),
+}
+
+impl<K: Eq + Hash, V> QueryActiveStore<K, V> {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            QueryActiveStore::Single(val) => val.is_none(),
+            QueryActiveStore::Multi(val) => val.is_empty(),
+        }
+    }
+    pub fn iter(&self) -> Box<dyn Iterator<Item = (&K, &V)> + '_> {
+        match self {
+            QueryActiveStore::Single(val) => {
+                Box::new(val.as_ref().map(|entry| (&entry.0, &entry.1)).into_iter())
+            }
+            QueryActiveStore::Multi(val) => Box::new(val.iter()),
+        }
+    }
+    pub fn get_or_insert<R>(
+        &mut self,
+        key: K,
+        present: impl FnOnce(&mut V) -> R,
+        absent: impl FnOnce() -> (V, R),
+    ) -> R {
+        match self {
+            QueryActiveStore::Single(entry) => {
+                if let Some((_key, val)) = entry.as_mut() {
+                    present(val)
+                } else {
+                    let (val, res) = absent();
+                    *entry = Some((key, val));
+                    res
+                }
+            }
+            QueryActiveStore::Multi(map) => match map.entry(key) {
+                Entry::Occupied(mut entry) => present(entry.get_mut()),
+                Entry::Vacant(entry) => {
+                    let (val, res) = absent();
+                    entry.insert(val);
+                    res
+                }
+            },
+        }
+    }
+    pub fn insert(&mut self, key: K, val: V) {
+        match self {
+            QueryActiveStore::Single(entry) => *entry = Some((key, val)),
+            QueryActiveStore::Multi(map) => {
+                map.insert(key, val);
+            }
+        }
+    }
+    pub fn remove(&mut self, key: &K) -> Option<V> {
+        match self {
+            QueryActiveStore::Single(entry) => entry.take().map(|(_k, v)| v),
+            QueryActiveStore::Multi(map) => map.remove(key),
+        }
+    }
+}
+
+/*pub trait QueryActiveStore<K: Eq + Hash, V> {
+    fn is_empty(&self) -> bool;
+    //fn iter(&self) -> Box<dyn Iterator<Item = (&K, &V)> + '_>;
+    fn get_or_insert<R>(&mut self, key: K, present: impl FnOnce(&mut V) -> R, absent: impl FnOnce() -> (V, R)) -> R;
+    fn remove(&mut self, key: &K);
+}
+
+impl<K: Eq + Hash, V> QueryActiveStore<K, V> for FxHashMap<K, V> {
+    fn is_empty(&self) -> bool { FxHashMap::is_empty(self) }
+    //fn iter(&self) -> Box<dyn Iterator<Item = (&K, &V)> + '_> { Box::new(FxHashMap::iter(self)) }
+    fn get_or_insert<R>(&mut self, key: K, present: impl FnOnce(&mut V) -> R, absent: impl FnOnce() -> (V, R)) -> R {
+        match self.entry(key) {
+            Entry::Occupied(mut entry) => {
+                present(entry.get_mut())
+            }
+            Entry::Vacant(entry)  => {
+                let (val, res) = absent();
+                entry.insert(val);
+                res
+            }
+        }
+    }
+    fn remove(&mut self, key: &K) {
+        FxHashMap::remove(self, key);
+    }
+}
+
+impl<K: Eq + Hash, V> QueryActiveStore<K, V> for RefCell<Option<(K, V)>> {
+    fn is_empty(&self) -> bool { self.borrow().is_none() }
+    /*fn iter(&self) -> Box<dyn Iterator<Item = (&K, &V)> + '_> {
+        Box::new(self.borrow().as_ref().map(|val| (&val.0, &val.1)).into_iter())
+    }*/
+    fn get_or_insert<R>(&mut self, key: K, present: impl FnOnce(&mut V) -> R, absent: impl FnOnce() -> (V, R)) -> R {
+        let entry = &mut *self.borrow_mut();
+        if let Some((_key, val)) = entry {
+            present(val)
+        } else {
+            let (val, res) = absent();
+            *entry = Some((key, val));
+            res
+        }
+    }
+    fn remove(&mut self, key: &K) {
+        self.borrow_mut().take();
+    }
+}*/
 
 pub trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     const ANON: bool;
