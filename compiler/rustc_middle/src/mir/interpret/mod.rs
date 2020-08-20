@@ -118,9 +118,9 @@ use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 
 pub use self::error::{
-    struct_error, CheckInAllocMsg, ConstEvalRawResult, ConstEvalResult, ErrorHandled, InterpError,
-    InterpErrorInfo, InterpResult, InvalidProgramInfo, MachineStopType, ResourceExhaustionInfo,
-    UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
+    struct_error, CheckInAllocMsg, ErrorHandled, EvalToAllocationRawResult, EvalToConstValueResult,
+    InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, MachineStopType,
+    ResourceExhaustionInfo, UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
 };
 
 pub use self::value::{get_slice_bytes, ConstValue, RawConst, Scalar, ScalarMaybeUninit};

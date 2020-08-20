@@ -553,7 +553,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Error(_) => throw_inval!(TypeckError(ErrorReported)),
             ty::ConstKind::Unevaluated(def, substs, promoted) => {
                 let instance = self.resolve(def.did, substs)?;
-                return Ok(self.const_eval(GlobalId { instance, promoted })?.into());
+                return Ok(self.eval_to_allocation(GlobalId { instance, promoted })?.into());
             }
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)

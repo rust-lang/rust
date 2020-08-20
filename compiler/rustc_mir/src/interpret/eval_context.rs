@@ -875,7 +875,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn const_eval(
+    pub fn eval_to_allocation(
         &self,
         gid: GlobalId<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
@@ -889,7 +889,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
-        let val = self.tcx.const_eval(param_env.and(gid))?;
+        let val = self.tcx.eval_to_allocation_raw(param_env.and(gid))?;
         self.raw_const_to_mplace(val)
     }
 

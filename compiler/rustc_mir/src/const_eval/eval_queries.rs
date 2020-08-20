@@ -200,21 +200,21 @@ fn turn_into_const<'tcx>(
     );
     assert!(
         !is_static || cid.promoted.is_some(),
-        "the `const_eval_for_ty` query should not be used for statics, use `const_eval` instead"
+        "the `eval_to_const_value` query should not be used for statics, use `eval_to_allocation` instead"
     );
     // Turn this into a proper constant.
     op_to_const(&ecx, mplace.into())
 }
 
-pub fn const_eval_for_ty_provider<'tcx>(
+pub fn eval_to_const_value_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc_middle::mir::interpret::ConstEvalResult<'tcx> {
-    // see comment in const_eval_provider for what we're doing here
+) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
+    // see comment in const_eval_raw_provider for what we're doing here
     if key.param_env.reveal() == Reveal::All {
         let mut key = key;
         key.param_env = key.param_env.with_user_facing();
-        match tcx.const_eval_for_ty(key) {
+        match tcx.eval_to_const_value(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
             // deduplicate calls
@@ -237,13 +237,13 @@ pub fn const_eval_for_ty_provider<'tcx>(
         });
     }
 
-    tcx.const_eval(key).map(|val| turn_into_const(tcx, val, key))
+    tcx.eval_to_allocation_raw(key).map(|val| turn_into_const(tcx, val, key))
 }
 
-pub fn const_eval_provider<'tcx>(
+pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc_middle::mir::interpret::ConstEvalRawResult<'tcx> {
+) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
     // Because the constant is computed twice (once per value of `Reveal`), we are at risk of
     // reporting the same error twice here. To resolve this, we check whether we can evaluate the
     // constant in the more restrictive `Reveal::UserFacing`, which most likely already was
@@ -255,7 +255,7 @@ pub fn const_eval_provider<'tcx>(
     if key.param_env.reveal() == Reveal::All {
         let mut key = key;
         key.param_env = key.param_env.with_user_facing();
-        match tcx.const_eval(key) {
+        match tcx.eval_to_allocation_raw(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
             // deduplicate calls

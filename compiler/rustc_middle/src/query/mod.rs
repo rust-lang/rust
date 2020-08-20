@@ -708,8 +708,10 @@ rustc_queries! {
 
     Other {
         /// Evaluates a constant and returns the computed allocation.
-        query const_eval(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
-            -> ConstEvalRawResult<'tcx> {
+        ///
+        /// **Do not use this** directly, use the `tcx.eval_static_initializer` wrapper.
+        query eval_to_allocation_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+            -> EvalToAllocationRawResult<'tcx> {
             desc { |tcx|
                 "const-evaluating `{}`",
                 key.value.display(tcx)
@@ -722,8 +724,8 @@ rustc_queries! {
         ///
         /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
         /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_global_id`.
-        query const_eval_for_ty(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
-            -> ConstEvalResult<'tcx> {
+        query eval_to_const_value(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+            -> EvalToConstValueResult<'tcx> {
             desc { |tcx|
                 "const-evaluating + checking `{}`",
                 key.value.display(tcx)

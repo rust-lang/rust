@@ -27,8 +27,8 @@ CloneTypeFoldableAndLiftImpls! {
     ErrorHandled,
 }
 
-pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
-pub type ConstEvalResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
+pub type EvalToAllocationRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
+pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 
 pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'tcx> {
     struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
