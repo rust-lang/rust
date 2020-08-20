@@ -857,6 +857,8 @@ impl Build {
         if let Some(linker) = self.config.target_config.get(&target).and_then(|c| c.linker.as_ref())
         {
             Some(linker)
+        } else if target.contains("vxworks"){
+            Some(self.cxx[&target].path())
         } else if target != self.config.build
             && util::use_host_linker(target)
             && !target.contains("msvc")
