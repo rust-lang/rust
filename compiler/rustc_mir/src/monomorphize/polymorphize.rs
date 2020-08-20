@@ -74,9 +74,6 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
     vis.visit_body(body);
     debug!("unused_generic_params: (after visitor) unused_parameters={:?}", unused_parameters);
 
-    mark_used_by_predicates(tcx, def_id, &mut unused_parameters);
-    debug!("unused_generic_params: (end) unused_parameters={:?}", unused_parameters);
-
     // Emit errors for debugging and testing if enabled.
     if !unused_parameters.is_empty() {
         emit_unused_generic_params_error(tcx, def_id, generics, &unused_parameters);
@@ -110,47 +107,6 @@ fn mark_used_by_default_parameters<'tcx>(
 
     if let Some(parent) = generics.parent {
         mark_used_by_default_parameters(tcx, parent, tcx.generics_of(parent), unused_parameters);
-    }
-}
-
-/// Search the predicates on used generic parameters for any unused generic parameters, and mark
-/// those as used.
-fn mark_used_by_predicates<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    unused_parameters: &mut FiniteBitSet<u32>,
-) {
-    let def_id = tcx.closure_base_def_id(def_id);
-    let predicates = tcx.explicit_predicates_of(def_id);
-    debug!("mark_used_by_predicates: predicates_of={:?}", predicates);
-
-    let mut current_unused_parameters = FiniteBitSet::new_empty();
-    // Run to a fixed point to support `where T: Trait<U>, U: Trait<V>`, starting with an empty
-    // bit set so that this is skipped if all parameters are already used.
-    while current_unused_parameters != *unused_parameters {
-        debug!(
-            "mark_used_by_predicates: current_unused_parameters={:?} = unused_parameters={:?}",
-            current_unused_parameters, unused_parameters
-        );
-        current_unused_parameters = *unused_parameters;
-
-        for (predicate, _) in predicates.predicates {
-            // Consider all generic params in a predicate as used if any other parameter in the
-            // predicate is used.
-            let any_param_used = {
-                let mut vis = HasUsedGenericParams { unused_parameters };
-                predicate.visit_with(&mut vis).is_break()
-            };
-
-            if any_param_used {
-                let mut vis = MarkUsedGenericParams { tcx, def_id, unused_parameters };
-                predicate.visit_with(&mut vis);
-            }
-        }
-    }
-
-    if let Some(parent) = predicates.parent {
-        mark_used_by_predicates(tcx, parent, unused_parameters);
     }
 }
 

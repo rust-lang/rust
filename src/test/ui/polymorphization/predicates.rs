@@ -12,6 +12,7 @@ fn bar<I>() {
 
 #[rustc_polymorphize_error]
 fn foo<I, T>(_: I)
+//~^ ERROR item has unused generic parameters
 where
     I: Iterator<Item = T>,
 {
@@ -20,6 +21,7 @@ where
 
 #[rustc_polymorphize_error]
 fn baz<I, T>(_: I)
+//~^ ERROR item has unused generic parameters
 where
     std::iter::Repeat<I>: Iterator<Item = T>,
 {
@@ -40,6 +42,7 @@ where
     #[rustc_polymorphize_error]
     fn next(&mut self) -> Option<Self::Item> {
         self.find(|_| true)
+        //~^ ERROR item has unused generic parameters
     }
 }
 
@@ -53,6 +56,7 @@ impl Baz<u32> for u16 {}
 
 #[rustc_polymorphize_error]
 fn quux<A, B, C: Default>() -> usize
+//~^ ERROR item has unused generic parameters
 where
     A: Baz<B>,
     B: Baz<C>,
@@ -69,6 +73,7 @@ impl Foobar<u32, u32> for () {}
 
 #[rustc_polymorphize_error]
 fn foobar<F, G>() -> usize
+//~^ ERROR item has unused generic parameters
 where
     (): Foobar<F, G>,
 {
