@@ -570,7 +570,7 @@ pub fn write_target_uint(
 
 #[inline]
 pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, io::Error> {
-    let mut buf = [0; 16];
+    let mut buf = [0u8; std::mem::size_of::<u128>()];
     source.read(&mut buf)?;
     match endianness {
         Endian::Little => Ok(u128::from_le_bytes(buf)),
