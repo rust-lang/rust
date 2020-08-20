@@ -1,4 +1,5 @@
 use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
+use if_chain::if_chain;
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind, UnOp};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -102,36 +103,36 @@ impl EarlyLintPass for Precedence {
             }
         }
 
-        if let ExprKind::Unary(UnOp::Neg, ref rhs) = expr.kind {
-            if let ExprKind::MethodCall(ref path_segment, ref args, _) = rhs.kind {
+        if let ExprKind::Unary(UnOp::Neg, operand) = &expr.kind {
+            let mut arg = operand;
+
+            let mut all_odd = true;
+            while let ExprKind::MethodCall(path_segment, args, _) = &arg.kind {
                 let path_segment_str = path_segment.ident.name.as_str();
-                if let Some(slf) = args.first() {
-                    if let ExprKind::Lit(ref lit) = slf.kind {
-                        match lit.kind {
-                            LitKind::Int(..) | LitKind::Float(..) => {
-                                if ALLOWED_ODD_FUNCTIONS
-                                    .iter()
-                                    .any(|odd_function| **odd_function == *path_segment_str)
-                                {
-                                    return;
-                                }
-                                let mut applicability = Applicability::MachineApplicable;
-                                span_lint_and_sugg(
-                                    cx,
-                                    PRECEDENCE,
-                                    expr.span,
-                                    "unary minus has lower precedence than method call",
-                                    "consider adding parentheses to clarify your intent",
-                                    format!(
-                                        "-({})",
-                                        snippet_with_applicability(cx, rhs.span, "..", &mut applicability)
-                                    ),
-                                    applicability,
-                                );
-                            },
-                            _ => (),
-                        }
-                    }
+                all_odd &= ALLOWED_ODD_FUNCTIONS
+                    .iter()
+                    .any(|odd_function| **odd_function == *path_segment_str);
+                arg = args.first().expect("A method always has a receiver.");
+            }
+
+            if_chain! {
+                if !all_odd;
+                if let ExprKind::Lit(lit) = &arg.kind;
+                if let LitKind::Int(..) | LitKind::Float(..) = &lit.kind;
+                then {
+                    let mut applicability = Applicability::MachineApplicable;
+                    span_lint_and_sugg(
+                        cx,
+                        PRECEDENCE,
+                        expr.span,
+                        "unary minus has lower precedence than method call",
+                        "consider adding parentheses to clarify your intent",
+                        format!(
+                            "-({})",
+                            snippet_with_applicability(cx, operand.span, "..", &mut applicability)
+                        ),
+                        applicability,
+                    );
                 }
             }
         }
