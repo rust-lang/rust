@@ -26,12 +26,6 @@
 +         _1 = const 3_u8;                 // scope 0 at $DIR/indirect.rs:5:13: 5:29
           StorageDead(_2);                 // scope 0 at $DIR/indirect.rs:5:28: 5:29
           _0 = const ();                   // scope 0 at $DIR/indirect.rs:4:11: 6:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/indirect.rs:4:11: 6:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // scope 0 at $DIR/indirect.rs:6:1: 6:2
           return;                          // scope 0 at $DIR/indirect.rs:6:2: 6:2
       }

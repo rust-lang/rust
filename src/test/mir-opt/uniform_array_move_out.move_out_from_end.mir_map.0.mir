@@ -72,12 +72,6 @@ fn move_out_from_end() -> () {
         StorageLive(_6);                 // scope 1 at $DIR/uniform_array_move_out.rs:6:14: 6:16
         _6 = move _1[1 of 2];            // scope 1 at $DIR/uniform_array_move_out.rs:6:14: 6:16
         _0 = const ();                   // scope 0 at $DIR/uniform_array_move_out.rs:4:24: 7:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/uniform_array_move_out.rs:4:24: 7:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         drop(_6) -> [return: bb12, unwind: bb10]; // scope 1 at $DIR/uniform_array_move_out.rs:7:1: 7:2
     }
 

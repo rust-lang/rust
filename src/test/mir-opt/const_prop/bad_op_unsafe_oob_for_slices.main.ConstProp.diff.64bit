@@ -51,12 +51,6 @@
           _5 = (*_1)[_6];                  // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
           StorageDead(_6);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:25: 7:26
           _0 = const ();                   // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:6:5: 8:6
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/bad_op_unsafe_oob_for_slices.rs:6:5: 8:6
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_5);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:8:5: 8:6
           StorageDead(_1);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:9:2: 9:2
