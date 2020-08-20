@@ -143,11 +143,7 @@ impl CoverageCalculator {
         ) {
             println!(
                 "| {:<35} | {:>10} | {:>9.1}% | {:>10} | {:>9.1}% |",
-                name,
-                count.with_docs,
-                percentage,
-                count.with_examples,
-                examples_percentage,
+                name, count.with_docs, percentage, count.with_examples, examples_percentage,
             );
         }
 
@@ -247,12 +243,7 @@ impl fold::DocFolder for CoverageCalculator {
                     | clean::ConstantItem(_)
                 );
                 find_testable_code(
-                    &i.attrs
-                        .doc_strings
-                        .iter()
-                        .map(|d| d.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
+                    &i.attrs.doc_strings.iter().map(|d| d.as_str()).collect::<Vec<_>>().join("\n"),
                     &mut tests,
                     ErrorCodes::No,
                     false,
