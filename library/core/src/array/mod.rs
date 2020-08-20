@@ -402,7 +402,7 @@ mod default_impls {
             assert_eq!(std::mem::size_of::<[(); N]>(), 0);
             // SAFETY: it is always valid to use `zeroed` for zero-sized value.
             let arr: [(); N] = unsafe { std::mem::zeroed() };
-            arr.map(DefaultHack::default_hack)
+            arr.map(|_unit| DefaultHack::default_hack())
         }
     }
 }
