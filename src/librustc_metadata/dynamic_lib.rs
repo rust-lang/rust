@@ -51,51 +51,77 @@ mod tests;
 
 #[cfg(unix)]
 mod dl {
-    use std::ffi::{CStr, CString, OsStr};
+    use std::ffi::{CString, OsStr};
     use std::os::unix::prelude::*;
-    use std::ptr;
-    use std::str;
 
-    pub(super) fn open(filename: &OsStr) -> Result<*mut u8, String> {
-        check_for_errors_in(|| unsafe {
-            let s = CString::new(filename.as_bytes()).unwrap();
-            libc::dlopen(s.as_ptr(), libc::RTLD_LAZY) as *mut u8
-        })
-    }
+    // `dlerror` is process global, so we can only allow a single thread at a
+    // time to call `dlsym` and `dlopen` if we want to check the error message.
+    mod error {
+        use std::ffi::CStr;
+        use std::lazy::SyncLazy;
+        use std::sync::{Mutex, MutexGuard};
 
-    fn check_for_errors_in<T, F>(f: F) -> Result<T, String>
-    where
-        F: FnOnce() -> T,
-    {
-        use std::sync::{Mutex, Once};
-        static INIT: Once = Once::new();
-        static mut LOCK: *mut Mutex<()> = ptr::null_mut();
-        unsafe {
-            INIT.call_once(|| {
-                LOCK = Box::into_raw(Box::new(Mutex::new(())));
-            });
-            // dlerror isn't thread safe, so we need to lock around this entire
-            // sequence
-            let _guard = (*LOCK).lock();
-            let _old_error = libc::dlerror();
+        pub fn lock() -> MutexGuard<'static, Guard> {
+            static LOCK: SyncLazy<Mutex<Guard>> = SyncLazy::new(|| Mutex::new(Guard { _priv: () }));
+            LOCK.lock().unwrap()
+        }
 
-            let result = f();
+        pub struct Guard {
+            _priv: (),
+        }
 
-            let last_error = libc::dlerror() as *const _;
-            if ptr::null() == last_error {
-                Ok(result)
-            } else {
-                let s = CStr::from_ptr(last_error).to_bytes();
-                Err(str::from_utf8(s).unwrap().to_owned())
+        impl Guard {
+            pub fn get(&mut self) -> Result<(), String> {
+                let msg = unsafe { libc::dlerror() };
+                if msg.is_null() {
+                    Ok(())
+                } else {
+                    let msg = unsafe { CStr::from_ptr(msg as *const _) };
+                    Err(msg.to_string_lossy().into_owned())
+                }
+            }
+
+            pub fn clear(&mut self) {
+                let _ = unsafe { libc::dlerror() };
             }
         }
+    }
+
+    pub(super) fn open(filename: &OsStr) -> Result<*mut u8, String> {
+        let s = CString::new(filename.as_bytes()).unwrap();
+
+        let mut dlerror = error::lock();
+        let ret = unsafe { libc::dlopen(s.as_ptr(), libc::RTLD_LAZY) } as *mut u8;
+
+        if !ret.is_null() {
+            return Ok(ret);
+        }
+
+        // A NULL return from `dlopen` indicates that an error has
+        // definitely occurred, so if nothing is in `dlerror`, we are
+        // racing with another thread that has stolen our error message.
+        dlerror.get().and_then(|()| Err("Unknown error".to_string()))
     }
 
     pub(super) unsafe fn symbol(
         handle: *mut u8,
         symbol: *const libc::c_char,
     ) -> Result<*mut u8, String> {
-        check_for_errors_in(|| libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8)
+        let mut dlerror = error::lock();
+
+        // Flush `dlerror` since we need to use it to determine whether the subsequent call to
+        // `dlsym` is successful.
+        dlerror.clear();
+
+        let ret = libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8;
+
+        // A non-NULL return value *always* indicates success. There's no need
+        // to check `dlerror`.
+        if !ret.is_null() {
+            return Ok(ret);
+        }
+
+        dlerror.get().map(|()| ret)
     }
 
     pub(super) unsafe fn close(handle: *mut u8) {
