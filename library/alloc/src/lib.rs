@@ -167,6 +167,7 @@ mod boxed {
 pub mod borrow;
 pub mod collections;
 pub mod fmt;
+pub mod iter;
 pub mod prelude;
 pub mod raw_vec;
 pub mod rc;
