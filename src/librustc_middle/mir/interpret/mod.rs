@@ -143,6 +143,17 @@ pub struct GlobalId<'tcx> {
     pub promoted: Option<mir::Promoted>,
 }
 
+impl GlobalId<'tcx> {
+    pub fn display(self, tcx: TyCtxt<'tcx>) -> String {
+        let instance_name = tcx.def_path_str(self.instance.def.def_id());
+        if let Some(promoted) = self.promoted {
+            format!("{}::{:?}", instance_name, promoted)
+        } else {
+            instance_name
+        }
+    }
+}
+
 /// Input argument for `tcx.lit_to_const`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable)]
 pub struct LitToConstInput<'tcx> {
