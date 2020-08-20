@@ -50,7 +50,8 @@ struct StderrRaw(stdio::Stderr);
 /// handles is **not** available to raw handles returned from this function.
 ///
 /// The returned handle has no external synchronization or buffering.
-fn stdin_raw() -> StdinRaw {
+#[unstable(feature = "libstd_sys_internals", issue = "none")]
+const fn stdin_raw() -> StdinRaw {
     StdinRaw(stdio::Stdin::new())
 }
 
@@ -63,7 +64,8 @@ fn stdin_raw() -> StdinRaw {
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stdout_raw() -> StdoutRaw {
+#[unstable(feature = "libstd_sys_internals", issue = "none")]
+const fn stdout_raw() -> StdoutRaw {
     StdoutRaw(stdio::Stdout::new())
 }
 
@@ -74,7 +76,8 @@ fn stdout_raw() -> StdoutRaw {
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stderr_raw() -> StderrRaw {
+#[unstable(feature = "libstd_sys_internals", issue = "none")]
+const fn stderr_raw() -> StderrRaw {
     StderrRaw(stdio::Stderr::new())
 }
 
