@@ -24,7 +24,7 @@ fn bar() -> bool {
 
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/inline-retag.rs:11:9: 11:10
-        _1 = const foo;                  // scope 0 at $DIR/inline-retag.rs:11:13: 11:16
+        _1 = foo;                        // scope 0 at $DIR/inline-retag.rs:11:13: 11:16
                                          // mir::Constant
                                          // + span: $DIR/inline-retag.rs:11:13: 11:16
                                          // + literal: Const { ty: for<'r, 's> fn(&'r i32, &'s i32) -> bool {foo}, val: Value(Scalar(<ZST>)) }

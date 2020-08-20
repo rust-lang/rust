@@ -11,7 +11,7 @@
           StorageLive(_2);                 // scope 0 at $DIR/copy_propagation_arg.rs:16:5: 16:13
           StorageLive(_3);                 // scope 0 at $DIR/copy_propagation_arg.rs:16:11: 16:12
           _3 = _1;                         // scope 0 at $DIR/copy_propagation_arg.rs:16:11: 16:12
-          _2 = const dummy(move _3) -> bb1; // scope 0 at $DIR/copy_propagation_arg.rs:16:5: 16:13
+          _2 = dummy(move _3) -> bb1;      // scope 0 at $DIR/copy_propagation_arg.rs:16:5: 16:13
                                            // mir::Constant
                                            // + span: $DIR/copy_propagation_arg.rs:16:5: 16:10
                                            // + literal: Const { ty: fn(u8) -> u8 {dummy}, val: Value(Scalar(<ZST>)) }

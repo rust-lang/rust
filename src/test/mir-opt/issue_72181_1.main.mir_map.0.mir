@@ -21,7 +21,7 @@ fn main() -> () {
         StorageLive(_2);                 // scope 0 at $DIR/issue-72181-1.rs:16:9: 16:10
         StorageLive(_3);                 // scope 2 at $DIR/issue-72181-1.rs:17:41: 17:43
         _3 = ();                         // scope 2 at $DIR/issue-72181-1.rs:17:41: 17:43
-        _2 = const std::intrinsics::transmute::<(), Void>(move _3) -> [return: bb2, unwind: bb1]; // scope 2 at $DIR/issue-72181-1.rs:17:9: 17:44
+        _2 = std::intrinsics::transmute::<(), Void>(move _3) -> [return: bb2, unwind: bb1]; // scope 2 at $DIR/issue-72181-1.rs:17:9: 17:44
                                          // mir::Constant
                                          // + span: $DIR/issue-72181-1.rs:17:9: 17:40
                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(()) -> Void {std::intrinsics::transmute::<(), Void>}, val: Value(Scalar(<ZST>)) }
@@ -38,7 +38,7 @@ fn main() -> () {
         StorageLive(_4);                 // scope 1 at $DIR/issue-72181-1.rs:20:5: 20:9
         StorageLive(_5);                 // scope 1 at $DIR/issue-72181-1.rs:20:7: 20:8
         _5 = move _2;                    // scope 1 at $DIR/issue-72181-1.rs:20:7: 20:8
-        const f(move _5) -> bb1;         // scope 1 at $DIR/issue-72181-1.rs:20:5: 20:9
+        f(move _5) -> bb1;               // scope 1 at $DIR/issue-72181-1.rs:20:5: 20:9
                                          // mir::Constant
                                          // + span: $DIR/issue-72181-1.rs:20:5: 20:6
                                          // + literal: Const { ty: fn(Void) -> ! {f}, val: Value(Scalar(<ZST>)) }

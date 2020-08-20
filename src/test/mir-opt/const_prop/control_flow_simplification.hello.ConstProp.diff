@@ -22,7 +22,7 @@
   
       bb2: {
           StorageLive(_2);                 // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
-          const std::rt::begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+          std::rt::begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/std/src/macros.rs:LL:COL
                                            // + literal: Const { ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }

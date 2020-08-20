@@ -26,7 +26,7 @@ fn main() -> () {
         _8 = const false;                // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
         StorageLive(_1);                 // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
         StorageLive(_2);                 // scope 1 at $DIR/issue-41888.rs:8:8: 8:14
-        _2 = const cond() -> [return: bb2, unwind: bb3]; // scope 1 at $DIR/issue-41888.rs:8:8: 8:14
+        _2 = cond() -> [return: bb2, unwind: bb3]; // scope 1 at $DIR/issue-41888.rs:8:8: 8:14
                                          // mir::Constant
                                          // + span: $DIR/issue-41888.rs:8:8: 8:12
                                          // + literal: Const { ty: fn() -> bool {cond}, val: Value(Scalar(<ZST>)) }

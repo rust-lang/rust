@@ -8,7 +8,7 @@ fn test(_1: &dyn X) -> u32 {
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/inline-trait-method.rs:9:5: 9:6
         _2 = &(*_1);                     // scope 0 at $DIR/inline-trait-method.rs:9:5: 9:6
-        _0 = const <dyn X as X>::y(move _2) -> bb1; // scope 0 at $DIR/inline-trait-method.rs:9:5: 9:10
+        _0 = <dyn X as X>::y(move _2) -> bb1; // scope 0 at $DIR/inline-trait-method.rs:9:5: 9:10
                                          // mir::Constant
                                          // + span: $DIR/inline-trait-method.rs:9:7: 9:8
                                          // + literal: Const { ty: for<'r> fn(&'r dyn X) -> u32 {<dyn X as X>::y}, val: Value(Scalar(<ZST>)) }

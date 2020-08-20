@@ -14,7 +14,7 @@
   
       bb1: {
           StorageLive(_2);                 // scope 0 at /the/src/instrument_coverage.rs:12:12: 12:17
-          _2 = const bar() -> [return: bb3, unwind: bb2]; // scope 0 at /the/src/instrument_coverage.rs:12:12: 12:17
+          _2 = bar() -> [return: bb3, unwind: bb2]; // scope 0 at /the/src/instrument_coverage.rs:12:12: 12:17
                                            // mir::Constant
                                            // + span: /the/src/instrument_coverage.rs:12:12: 12:15
                                            // + literal: Const { ty: fn() -> bool {bar}, val: Value(Scalar(<ZST>)) }
