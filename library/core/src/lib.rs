@@ -64,7 +64,7 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
 #![feature(allow_internal_unstable)]
-#![feature(array_default_internals)]
+#![cfg_attr(not(bootstrap), feature(array_default_internals))]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
 #![feature(cfg_target_has_atomic)]
