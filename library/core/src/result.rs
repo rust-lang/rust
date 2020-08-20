@@ -220,7 +220,7 @@
 //! [`Write`]: ../../std/io/trait.Write.html
 //! [`write_all`]: ../../std/io/trait.Write.html#method.write_all
 //! [`io::Result`]: ../../std/io/type.Result.html
-//! [`?`]: ../../std/macro.try.html
+//! [`?`]: crate::ops::Try
 //! [`Ok(T)`]: Ok
 //! [`Err(E)`]: Err
 //! [`io::Error`]: ../../std/io/struct.Error.html
@@ -1058,7 +1058,7 @@ impl<T: Default, E> Result<T, E> {
     /// ```
     ///
     /// [`parse`]: str::parse
-    /// [`FromStr`]: ../../std/str/trait.FromStr.html
+    /// [`FromStr`]: crate::str::FromStr
     #[inline]
     #[stable(feature = "result_unwrap_or_default", since = "1.16.0")]
     pub fn unwrap_or_default(self) -> T {
