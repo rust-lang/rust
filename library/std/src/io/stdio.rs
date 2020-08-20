@@ -50,8 +50,8 @@ struct StderrRaw(stdio::Stderr);
 /// handles is **not** available to raw handles returned from this function.
 ///
 /// The returned handle has no external synchronization or buffering.
-fn stdin_raw() -> io::Result<StdinRaw> {
-    stdio::Stdin::new().map(StdinRaw)
+fn stdin_raw() -> StdinRaw {
+    StdinRaw(stdio::Stdin::new())
 }
 
 /// Constructs a new raw handle to the standard output stream of this process.
@@ -63,8 +63,8 @@ fn stdin_raw() -> io::Result<StdinRaw> {
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stdout_raw() -> io::Result<StdoutRaw> {
-    stdio::Stdout::new().map(StdoutRaw)
+fn stdout_raw() -> StdoutRaw {
+    StdoutRaw(stdio::Stdout::new())
 }
 
 /// Constructs a new raw handle to the standard error stream of this process.
@@ -74,8 +74,8 @@ fn stdout_raw() -> io::Result<StdoutRaw> {
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stderr_raw() -> io::Result<StderrRaw> {
-    stdio::Stderr::new().map(StderrRaw)
+fn stderr_raw() -> StderrRaw {
+    StderrRaw(stdio::Stderr::new())
 }
 
 impl Read for StdinRaw {
@@ -356,11 +356,7 @@ pub fn stdin() -> Stdin {
 
     fn stdin_init() -> Arc<Mutex<BufReader<Maybe<StdinRaw>>>> {
         // This must not reentrantly access `INSTANCE`
-        let stdin = match stdin_raw() {
-            Ok(stdin) => Maybe::Real(stdin),
-            _ => Maybe::Fake,
-        };
-
+        let stdin = Maybe::Real(stdin_raw());
         Arc::new(Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin)))
     }
 }
@@ -602,10 +598,7 @@ pub fn stdout() -> Stdout {
 
     fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> {
         // This must not reentrantly access `INSTANCE`
-        let stdout = match stdout_raw() {
-            Ok(stdout) => Maybe::Real(stdout),
-            _ => Maybe::Fake,
-        };
+        let stdout = Maybe::Real(stdout_raw());
         unsafe {
             let ret = Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))));
             ret.init();
@@ -788,9 +781,8 @@ pub fn stderr() -> Stderr {
     static INIT: Once = Once::new();
     INIT.call_once(|| unsafe {
         INSTANCE.init();
-        if let Ok(stderr) = stderr_raw() {
-            *INSTANCE.lock().borrow_mut() = Maybe::Real(stderr);
-        }
+        let stderr = stderr_raw();
+        *INSTANCE.lock().borrow_mut() = Maybe::Real(stderr);
     });
     Stderr { inner: &INSTANCE }
 }
