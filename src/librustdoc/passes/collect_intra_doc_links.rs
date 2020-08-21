@@ -541,7 +541,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })
         } else {
             debug!("attempting to resolve item without parent module: {}", path_str);
-            // TODO: maybe this should just be an ICE?
             Err(ErrorKind::Resolve(ResolutionFailure::NoParentItem))
         }
     }
@@ -1462,7 +1461,8 @@ fn resolution_failure(
                         }
                     }
                     ResolutionFailure::NoParentItem => {
-                        panic!("all intra doc links should have a parent item")
+                        diag.level = rustc_errors::Level::Bug;
+                        diag.note("all intra doc links should have a parent item");
                     }
                     ResolutionFailure::NoPrimitiveImpl(res, _) => {
                         let note = format!(
@@ -1694,7 +1694,6 @@ fn handle_variant(
     let parent = if let Some(parent) = cx.tcx.parent(res.def_id()) {
         parent
     } else {
-        // TODO: this should just be an unwrap, there should never be `Variant`s without a parent
         return Err(ErrorKind::Resolve(ResolutionFailure::NoParentItem));
     };
     let parent_def = Res::Def(DefKind::Enum, parent);
