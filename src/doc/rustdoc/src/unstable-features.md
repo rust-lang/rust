@@ -491,7 +491,7 @@ $ rustdoc src/lib.rs -Z unstable-options --show-coverage --output-format json
 {"lib.rs":{"total":4,"with_docs":4,"total_examples":4,"with_examples":1}}
 ```
 
-To be noted: the computation of code examples follows these rules:
+Calculating code examples follows these rules:
 
 1. These items aren't accounted by default:
   * struct/union field
