@@ -331,7 +331,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     ErrorKind::Resolve(ResolutionFailure::NotInScope(item_name.to_string().into()))
                 })?;
 
-            if let Some((path, prim)) = is_primitive(&path_root, ns) {
+            if let Some((path, prim)) = is_primitive(&path_root, TypeNS) {
                 let impls = primitive_impl(cx, &path).ok_or_else(|| {
                     ErrorKind::Resolve(ResolutionFailure::NoPrimitiveImpl(prim, path_root.into()))
                 })?;
@@ -355,6 +355,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         return Ok(link);
                     }
                 }
+                debug!(
+                    "returning primitive error for {}::{} in {} namespace",
+                    path,
+                    item_name,
+                    ns.descr()
+                );
                 return Err(ErrorKind::Resolve(ResolutionFailure::NoPrimitiveAssocItem {
                     res: prim,
                     prim_name: path,
@@ -1404,7 +1410,6 @@ fn resolution_failure(
         &link_range,
         |diag, sp| {
             let in_scope = kinds.iter().any(|kind| kind.res().is_some());
-            let mut reported_not_in_scope = false;
             let item = |res: Res| {
                 format!("the {} `{}`", res.descr(), cx.tcx.item_name(res.def_id()).to_string())
             };
@@ -1419,14 +1424,19 @@ fn resolution_failure(
                 );
                 diag.note(&note);
             };
+            // ignore duplicates
+            let mut variants_seen = SmallVec::<[_; 3]>::new();
             for failure in kinds {
+                let variant = std::mem::discriminant(&failure);
+                if variants_seen.contains(&variant) {
+                    continue;
+                }
+                variants_seen.push(variant);
                 match failure {
-                    // already handled above
                     ResolutionFailure::NotInScope(base) => {
-                        if in_scope || reported_not_in_scope {
+                        if in_scope {
                             continue;
                         }
-                        reported_not_in_scope = true;
                         diag.note(&format!("no item named `{}` is in scope", base));
                         diag.help(r#"to escape `[` and `]` characters, add '\' before them like `\[` or `\]`"#);
                     }
