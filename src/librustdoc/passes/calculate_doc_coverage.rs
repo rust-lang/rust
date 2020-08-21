@@ -3,7 +3,7 @@ use crate::config::OutputFormat;
 use crate::core::DocContext;
 use crate::fold::{self, DocFolder};
 use crate::html::markdown::{find_testable_code, ErrorCodes};
-use crate::passes::doc_test_lints::Tests;
+use crate::passes::doc_test_lints::{should_have_doc_example, Tests};
 use crate::passes::Pass;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
@@ -231,19 +231,6 @@ impl fold::DocFolder for CoverageCalculator {
                 let has_docs = !i.attrs.doc_strings.is_empty();
                 let mut tests = Tests { found_tests: 0 };
 
-                let should_have_doc_examples = !matches!(i.inner,
-                    clean::StructFieldItem(_)
-                    | clean::VariantItem(_)
-                    | clean::AssocConstItem(_, _)
-                    | clean::AssocTypeItem(_, _)
-                    | clean::TypedefItem(_, _)
-                    | clean::StaticItem(_)
-                    | clean::ConstantItem(_)
-                    | clean::ExternCrateItem(_, _)
-                    | clean::ImportItem(_)
-                    | clean::PrimitiveItem(_)
-                    | clean::KeywordItem(_)
-                );
                 find_testable_code(
                     &i.attrs.doc_strings.iter().map(|d| d.as_str()).collect::<Vec<_>>().join("\n"),
                     &mut tests,
@@ -257,7 +244,7 @@ impl fold::DocFolder for CoverageCalculator {
                 self.items.entry(i.source.filename.clone()).or_default().count_item(
                     has_docs,
                     has_doc_example,
-                    should_have_doc_examples,
+                    should_have_doc_example(&i.inner),
                 );
             }
         }
