@@ -92,7 +92,7 @@ Here is one more example:
 ```rust
 mod a {
     type X = u32;
-    pub fn foo(x: X) -> i32 { 22 }
+    pub fn foo(x: X) -> u32 { 22 }
 }
 mod b {
     type X = i32;
