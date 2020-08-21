@@ -3421,7 +3421,12 @@ fn lint_option_as_ref_deref<'tcx>(
     ];
 
     let is_deref = match map_args[1].kind {
-        hir::ExprKind::Path(ref expr_qpath) => deref_aliases.iter().any(|path| match_qpath(expr_qpath, path)),
+        hir::ExprKind::Path(ref expr_qpath) => cx
+            .qpath_res(expr_qpath, map_args[1].hir_id)
+            .opt_def_id()
+            .map_or(false, |fun_def_id| {
+                deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
+            }),
         hir::ExprKind::Closure(_, _, body_id, _, _) => {
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
