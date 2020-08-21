@@ -25,7 +25,6 @@ export const log = new class {
     debug(...msg: [unknown, ...unknown[]]): void {
         if (!log.enabled) return;
         log.write("DEBUG", ...msg);
-        log.output.toString();
     }
 
     info(...msg: [unknown, ...unknown[]]): void {
