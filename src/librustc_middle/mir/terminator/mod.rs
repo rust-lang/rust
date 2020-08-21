@@ -103,7 +103,7 @@ pub enum TerminatorKind<'tcx> {
         unwind: Option<BasicBlock>,
     },
 
-    /// Block ends with a call of a converging function.
+    /// Block ends with a call of a function.
     Call {
         /// The function that’s being called.
         func: Operand<'tcx>,
