@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for DurationSubsec {
                     cx,
                     DURATION_SUBSEC,
                     expr.span,
-                    &format!("Calling `{}()` is more concise than this calculation", suggested_fn),
+                    &format!("calling `{}()` is more concise than this calculation", suggested_fn),
                     "try",
                     format!(
                         "{}.{}()",

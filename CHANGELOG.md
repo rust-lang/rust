@@ -1690,6 +1690,7 @@ Released 2018-09-13
 [`same_functions_in_if_condition`]: https://rust-lang.github.io/rust-clippy/master/index.html#same_functions_in_if_condition
 [`same_item_push`]: https://rust-lang.github.io/rust-clippy/master/index.html#same_item_push
 [`search_is_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#search_is_some
+[`self_assignment`]: https://rust-lang.github.io/rust-clippy/master/index.html#self_assignment
 [`serde_api_misuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#serde_api_misuse
 [`shadow_reuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_reuse
 [`shadow_same`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_same
@@ -1699,6 +1700,7 @@ Released 2018-09-13
 [`should_implement_trait`]: https://rust-lang.github.io/rust-clippy/master/index.html#should_implement_trait
 [`similar_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#similar_names
 [`single_char_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_pattern
+[`single_char_push_str`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_push_str
 [`single_component_path_imports`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_component_path_imports
 [`single_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_match
 [`single_match_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_match_else
@@ -1723,6 +1725,7 @@ Released 2018-09-13
 [`temporary_assignment`]: https://rust-lang.github.io/rust-clippy/master/index.html#temporary_assignment
 [`temporary_cstring_as_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#temporary_cstring_as_ptr
 [`to_digit_is_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_digit_is_some
+[`to_string_in_display`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_in_display
 [`todo`]: https://rust-lang.github.io/rust-clippy/master/index.html#todo
 [`too_many_arguments`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
 [`too_many_lines`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines
@@ -1752,6 +1755,7 @@ Released 2018-09-13
 [`unnecessary_cast`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_cast
 [`unnecessary_filter_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_filter_map
 [`unnecessary_fold`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_fold
+[`unnecessary_lazy_evaluations`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_lazy_evaluations
 [`unnecessary_mut_passed`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_mut_passed
 [`unnecessary_operation`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_operation
 [`unnecessary_sort_by`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_sort_by

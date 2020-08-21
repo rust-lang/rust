@@ -1,5 +1,5 @@
+use crate::utils::{eq_expr_value, SpanlessEq, SpanlessHash};
 use crate::utils::{get_parent_expr, higher, if_sequence, snippet, span_lint_and_note, span_lint_and_then};
-use crate::utils::{SpanlessEq, SpanlessHash};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Arm, Block, Expr, ExprKind, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -197,8 +197,7 @@ fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
         h.finish()
     };
 
-    let eq: &dyn Fn(&&Expr<'_>, &&Expr<'_>) -> bool =
-        &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) };
+    let eq: &dyn Fn(&&Expr<'_>, &&Expr<'_>) -> bool = &|&lhs, &rhs| -> bool { eq_expr_value(cx, lhs, rhs) };
 
     for (i, j) in search_same(conds, hash, eq) {
         span_lint_and_note(
@@ -222,7 +221,7 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
 
     let eq: &dyn Fn(&&Expr<'_>, &&Expr<'_>) -> bool = &|&lhs, &rhs| -> bool {
         // Do not spawn warning if `IFS_SAME_COND` already produced it.
-        if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) {
+        if eq_expr_value(cx, lhs, rhs) {
             return false;
         }
         SpanlessEq::new(cx).eq_expr(lhs, rhs)

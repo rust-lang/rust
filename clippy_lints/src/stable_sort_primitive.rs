@@ -111,9 +111,9 @@ impl LateLintPass<'_> for StableSortPrimitive {
                 STABLE_SORT_PRIMITIVE,
                 expr.span,
                 format!(
-                    "Use {} instead of {}",
-                    detection.method.unstable_name(),
-                    detection.method.stable_name()
+                    "used {} instead of {}",
+                    detection.method.stable_name(),
+                    detection.method.unstable_name()
                 )
                 .as_str(),
                 "try",

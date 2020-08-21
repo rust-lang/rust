@@ -60,7 +60,7 @@ impl EarlyLintPass for IfNotElse {
                             cx,
                             IF_NOT_ELSE,
                             item.span,
-                            "Unnecessary boolean `not` operation",
+                            "unnecessary boolean `not` operation",
                             None,
                             "remove the `!` and swap the blocks of the `if`/`else`",
                         );
@@ -70,7 +70,7 @@ impl EarlyLintPass for IfNotElse {
                             cx,
                             IF_NOT_ELSE,
                             item.span,
-                            "Unnecessary `!=` operation",
+                            "unnecessary `!=` operation",
                             None,
                             "change to `==` and swap the blocks of the `if`/`else`",
                         );
