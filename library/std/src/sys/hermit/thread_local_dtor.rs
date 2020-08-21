@@ -1,5 +1,6 @@
 #![cfg(target_thread_local)]
 #![unstable(feature = "thread_local_internals", issue = "none")]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 // Simplify dtor registration by using a list of destructors.
 // The this solution works like the implementation of macOS and

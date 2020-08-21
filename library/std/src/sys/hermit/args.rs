@@ -1,3 +1,5 @@
+#![allow(unsafe_op_in_unsafe_fn)]
+
 use crate::ffi::OsString;
 use crate::marker::PhantomData;
 use crate::vec;

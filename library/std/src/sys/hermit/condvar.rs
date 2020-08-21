@@ -1,3 +1,5 @@
+#![allow(unsafe_op_in_unsafe_fn)]
+
 use crate::ffi::c_void;
 use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};

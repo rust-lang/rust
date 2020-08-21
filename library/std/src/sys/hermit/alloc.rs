@@ -1,3 +1,5 @@
+#![allow(unsafe_op_in_unsafe_fn)]
+
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ptr;
 use crate::sys::hermit::abi;

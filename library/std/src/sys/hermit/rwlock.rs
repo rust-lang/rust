@@ -1,3 +1,5 @@
+#![allow(unsafe_op_in_unsafe_fn)]
+
 use crate::cell::UnsafeCell;
 use crate::sys::condvar::Condvar;
 use crate::sys::mutex::Mutex;
