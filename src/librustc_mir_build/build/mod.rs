@@ -19,8 +19,6 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
 
-use super::lints;
-
 crate fn mir_built<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
@@ -199,8 +197,6 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
             build::construct_const(cx, body_id, return_ty, return_ty_span)
         };
-
-        lints::check(tcx, &body, def.did);
 
         // The borrow checker will replace all the regions here with its own
         // inference variables. There's no point having non-erased regions here.

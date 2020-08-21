@@ -38,6 +38,7 @@ mod borrow_check;
 pub mod const_eval;
 pub mod dataflow;
 pub mod interpret;
+mod lints;
 pub mod monomorphize;
 mod shim;
 pub mod transform;
@@ -59,4 +60,5 @@ pub fn provide(providers: &mut Providers) {
         let (param_env, value) = param_env_and_value.into_parts();
         const_eval::destructure_const(tcx, param_env, value)
     };
+    providers.inevitable_calls = lints::inevitable_calls;
 }

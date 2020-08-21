@@ -285,6 +285,10 @@ fn mir_const<'tcx>(
         tcx.ensure().unsafety_check_result(def.did);
     }
 
+    // Ensure that `inevitable_calls` is computed before stealing the MIR as it is used by MIR
+    // lints.
+    tcx.ensure().inevitable_calls(def.did.to_def_id());
+
     let mut body = tcx.mir_built(def).steal();
 
     util::dump_mir(
@@ -296,6 +300,8 @@ fn mir_const<'tcx>(
         &body,
         |_, _| Ok(()),
     );
+
+    crate::lints::check(tcx, def.did);
 
     run_passes(
         tcx,

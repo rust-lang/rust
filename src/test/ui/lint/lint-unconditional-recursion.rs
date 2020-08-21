@@ -1,7 +1,9 @@
-#![deny(unconditional_recursion)]
+#![warn(unconditional_recursion)]
+
+// check-pass
 
 #![allow(dead_code)]
-fn foo() { //~ ERROR function cannot return without recursing
+fn foo() { //~ WARN function cannot return without recursing
     foo();
 }
 
@@ -11,7 +13,7 @@ fn bar() {
     }
 }
 
-fn baz() { //~ ERROR function cannot return without recursing
+fn baz() { //~ WARN function cannot return without recursing
     if true {
         baz()
     } else {
@@ -23,7 +25,7 @@ fn qux() {
     loop {}
 }
 
-fn quz() -> bool { //~ ERROR function cannot return without recursing
+fn quz() -> bool { //~ WARN function cannot return without recursing
     if true {
         while quz() {}
         true
@@ -34,13 +36,13 @@ fn quz() -> bool { //~ ERROR function cannot return without recursing
 
 // Trait method calls.
 trait Foo {
-    fn bar(&self) { //~ ERROR function cannot return without recursing
+    fn bar(&self) { //~ WARN function cannot return without recursing
         self.bar()
     }
 }
 
 impl Foo for Box<dyn Foo + 'static> {
-    fn bar(&self) { //~ ERROR function cannot return without recursing
+    fn bar(&self) { //~ WARN function cannot return without recursing
         loop {
             self.bar()
         }
@@ -49,7 +51,7 @@ impl Foo for Box<dyn Foo + 'static> {
 
 // Trait method call with integer fallback after method resolution.
 impl Foo for i32 {
-    fn bar(&self) { //~ ERROR function cannot return without recursing
+    fn bar(&self) { //~ WARN function cannot return without recursing
         0.bar()
     }
 }
@@ -62,13 +64,13 @@ impl Foo for u32 {
 
 // Trait method calls via paths.
 trait Foo2 {
-    fn bar(&self) { //~ ERROR function cannot return without recursing
+    fn bar(&self) { //~ WARN function cannot return without recursing
         Foo2::bar(self)
     }
 }
 
 impl Foo2 for Box<dyn Foo2 + 'static> {
-    fn bar(&self) { //~ ERROR function cannot return without recursing
+    fn bar(&self) { //~ WARN function cannot return without recursing
         loop {
             Foo2::bar(self)
         }
@@ -78,19 +80,19 @@ impl Foo2 for Box<dyn Foo2 + 'static> {
 struct Baz;
 impl Baz {
     // Inherent method call.
-    fn qux(&self) { //~ ERROR function cannot return without recursing
+    fn qux(&self) { //~ WARN function cannot return without recursing
         self.qux();
     }
 
     // Inherent method call via path.
-    fn as_ref(&self) -> &Self { //~ ERROR function cannot return without recursing
+    fn as_ref(&self) -> &Self { //~ WARN function cannot return without recursing
         Baz::as_ref(self)
     }
 }
 
 // Trait method calls to impls via paths.
 impl Default for Baz {
-    fn default() -> Baz { //~ ERROR function cannot return without recursing
+    fn default() -> Baz { //~ WARN function cannot return without recursing
         let x = Default::default();
         x
     }
@@ -99,14 +101,14 @@ impl Default for Baz {
 // Overloaded operators.
 impl std::ops::Deref for Baz {
     type Target = ();
-    fn deref(&self) -> &() { //~ ERROR function cannot return without recursing
+    fn deref(&self) -> &() { //~ WARN function cannot return without recursing
         &**self
     }
 }
 
 impl std::ops::Index<usize> for Baz {
     type Output = Baz;
-    fn index(&self, x: usize) -> &Baz { //~ ERROR function cannot return without recursing
+    fn index(&self, x: usize) -> &Baz { //~ WARN function cannot return without recursing
         &self[x]
     }
 }
@@ -115,7 +117,7 @@ impl std::ops::Index<usize> for Baz {
 struct Quux;
 impl std::ops::Deref for Quux {
     type Target = Baz;
-    fn deref(&self) -> &Baz { //~ ERROR function cannot return without recursing
+    fn deref(&self) -> &Baz { //~ WARN function cannot return without recursing
         self.as_ref()
     }
 }
@@ -147,6 +149,14 @@ pub fn panics(x: bool) {
     } else {
         panic!("panics");
     }
+}
+
+fn cycle1() { //~ WARN function cannot return without recursing
+    cycle2();
+}
+
+fn cycle2() { //~ WARN function cannot return without recursing
+    cycle1();
 }
 
 fn main() {}

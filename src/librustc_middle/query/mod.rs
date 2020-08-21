@@ -221,6 +221,16 @@ rustc_queries! {
             }
         }
 
+        /// Finds call targets in `key`s MIR body that are guaranteed to be called when the function
+        /// is entered.
+        query inevitable_calls(key: DefId) -> &'tcx [(DefId, SubstsRef<'tcx>, &'tcx [Span])] {
+            desc {
+                |tcx| "computing call targets of `{}`",
+                tcx.def_path_str(key),
+            }
+            no_hash
+        }
+
         /// Fetch the MIR for a given `DefId` right after it's built - this includes
         /// unreachable code.
         query mir_built(key: ty::WithOptConstParam<LocalDefId>) -> &'tcx Steal<mir::Body<'tcx>> {
@@ -233,7 +243,7 @@ rustc_queries! {
         /// See the README for the `mir` module for details.
         query mir_const(key: ty::WithOptConstParam<LocalDefId>) -> &'tcx Steal<mir::Body<'tcx>> {
             desc {
-                |tcx| "processing MIR for {}`{}`",
+                |tcx| "const-processing MIR for {}`{}`",
                 if key.const_param_did.is_some() { "the const argument " } else { "" },
                 tcx.def_path_str(key.did.to_def_id()),
             }
@@ -254,7 +264,7 @@ rustc_queries! {
             ) {
             no_hash
             desc {
-                |tcx| "processing {}`{}`",
+                |tcx| "validating MIR for {}`{}`",
                 if key.const_param_did.is_some() { "the const argument " } else { "" },
                 tcx.def_path_str(key.did.to_def_id()),
             }

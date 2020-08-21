@@ -1,5 +1,7 @@
 // build-fail
 
+#![allow(unconditional_recursion)]
+
 pub const unsafe fn fake_type<T>() -> T {
     hint_unreachable()
 }

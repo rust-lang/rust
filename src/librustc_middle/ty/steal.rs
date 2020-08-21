@@ -39,6 +39,6 @@ impl<T> Steal<T> {
     pub fn steal(&self) -> T {
         let value_ref = &mut *self.value.try_write().expect("stealing value which is locked");
         let value = value_ref.take();
-        value.expect("attempt to read from stolen value")
+        value.expect("attempt to steal stolen value again")
     }
 }

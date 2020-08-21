@@ -17,7 +17,6 @@ extern crate tracing;
 extern crate rustc_middle;
 
 mod build;
-mod lints;
 mod thir;
 
 use rustc_middle::ty::query::Providers;

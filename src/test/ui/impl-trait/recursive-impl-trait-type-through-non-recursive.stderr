@@ -1,5 +1,5 @@
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:7:22
+  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:9:22
    |
 LL | fn id<T>(t: T) -> impl Sized { t }
    |                   ---------- returning this opaque type `impl Sized`
@@ -10,7 +10,7 @@ LL |     id(recursive_id2())
    |     ------------------- returning here with type `impl Sized`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:11:23
+  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:13:23
    |
 LL | fn id<T>(t: T) -> impl Sized { t }
    |                   ---------- returning this opaque type `impl Sized`
@@ -21,7 +21,7 @@ LL |     id(recursive_id())
    |     ------------------ returning here with type `impl Sized`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:17:24
+  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:19:24
    |
 LL | fn wrap<T>(t: T) -> impl Sized { (t,) }
    |                     ---------- returning this opaque type `impl Sized`
@@ -32,7 +32,7 @@ LL |     wrap(recursive_wrap2())
    |     ----------------------- returning here with type `impl Sized`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:21:25
+  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:23:25
    |
 LL | fn wrap<T>(t: T) -> impl Sized { (t,) }
    |                     ---------- returning this opaque type `impl Sized`

@@ -2,6 +2,8 @@
 // otherwise forbidden. Even when there's an opaque type in another crate
 // hiding this.
 
+#![allow(unconditional_recursion)]
+
 fn id<T>(t: T) -> impl Sized { t }
 
 fn recursive_id() -> impl Sized { //~ ERROR cannot resolve opaque type

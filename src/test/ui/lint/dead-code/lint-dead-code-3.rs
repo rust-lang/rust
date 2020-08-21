@@ -1,6 +1,7 @@
 #![allow(unused_variables)]
 #![allow(non_camel_case_types)]
 #![allow(clashing_extern_declarations)]
+#![allow(unconditional_recursion)]
 #![deny(dead_code)]
 
 #![crate_type="lib"]

@@ -3,6 +3,8 @@
 //
 // Regression test for #38064.
 
+#![allow(unconditional_recursion)]
+
 trait Quux {}
 
 fn foo() -> impl Quux { //~ ERROR cannot resolve opaque type
