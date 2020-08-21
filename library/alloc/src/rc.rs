@@ -2133,7 +2133,7 @@ impl<T: ?Sized> AsRef<T> for Rc<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Rc<T> {}
 
-/// Get the offset within an `RcBoRcBox` for
+/// Get the offset within an `RcBox` for
 /// a payload of type described by a pointer.
 ///
 /// # Safety
