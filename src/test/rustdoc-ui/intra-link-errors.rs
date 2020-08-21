@@ -10,7 +10,6 @@
 //~| NOTE no item named `path::to` is in scope
 //~| HELP to escape
 
-// TODO: why does this say `f` and not `f::A`??
 /// [f::A]
 //~^ ERROR unresolved link
 //~| NOTE this link partially resolves

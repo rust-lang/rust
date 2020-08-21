@@ -150,7 +150,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         let variant_name =
             // we're not sure this is a variant at all, so use the full string
             split.next().map(|f| Symbol::intern(f)).ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope(path_str.into())))?;
-        // TODO: this looks very wrong, why are we requiring 3 fields?
         let path = split
             .next()
             .map(|f| {
@@ -161,7 +160,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }
                 f.to_owned()
             })
-            // TODO: is this right?
             .ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope(
                 variant_name.to_string().into(),
             )))?;
