@@ -80,7 +80,7 @@
 ///
 /// If you'd like explicitly call the destructor of a value, [`mem::drop`] can be used instead.
 ///
-/// [`mem::drop`]: crate::mem::drop
+/// [`mem::drop`]: drop
 ///
 /// ## Drop order
 ///
@@ -132,8 +132,6 @@
 /// are `Copy` get implicitly duplicated by the compiler, making it very
 /// hard to predict when, and how often destructors will be executed. As such,
 /// these types cannot have destructors.
-///
-/// [`Copy`]: crate::marker::Copy
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Drop {
@@ -160,7 +158,7 @@ pub trait Drop {
     ///
     /// [E0040]: ../../error-index.html#E0040
     /// [`panic!`]: crate::panic!
-    /// [`mem::drop`]: crate::mem::drop
+    /// [`mem::drop`]: drop
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place
     #[stable(feature = "rust1", since = "1.0.0")]
     fn drop(&mut self);

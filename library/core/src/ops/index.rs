@@ -4,7 +4,6 @@
 /// but only when used as an immutable value. If a mutable value is requested,
 /// [`IndexMut`] is used instead. This allows nice things such as
 /// `let value = v[index]` if the type of `value` implements [`Copy`].
-/// [`Copy`]: crate::marker::Copy
 ///
 /// # Examples
 ///

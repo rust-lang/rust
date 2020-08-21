@@ -35,8 +35,6 @@ use crate::hash::Hash;
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
-/// [`IntoIterator`]: crate::iter::IntoIterator
-/// [`Iterator`]: crate::iter::Iterator
 /// [slicing index]: crate::slice::SliceIndex
 #[cfg_attr(not(bootstrap), lang = "RangeFull")]
 #[doc(alias = "..")]
@@ -178,8 +176,6 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// assert_eq!(arr[1.. 3], [  1,2    ]);
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
-///
-/// [`Iterator`]: crate::iter::IntoIterator
 #[cfg_attr(not(bootstrap), lang = "RangeFrom")]
 #[doc(alias = "..")]
 #[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
@@ -260,8 +256,6 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
-/// [`IntoIterator`]: crate::iter::IntoIterator
-/// [`Iterator`]: crate::iter::Iterator
 /// [slicing index]: crate::slice::SliceIndex
 #[cfg_attr(not(bootstrap), lang = "RangeTo")]
 #[doc(alias = "..")]
@@ -558,8 +552,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
-/// [`IntoIterator`]: crate::iter::IntoIterator
-/// [`Iterator`]: crate::iter::Iterator
 /// [slicing index]: crate::slice::SliceIndex
 #[cfg_attr(not(bootstrap), lang = "RangeToInclusive")]
 #[doc(alias = "..=")]

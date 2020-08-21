@@ -133,7 +133,7 @@
 //! // `consume_and_return_x` can no longer be invoked at this point
 //! ```
 //!
-//! [`clone`]: crate::clone::Clone::clone
+//! [`clone`]: Clone::clone
 //! [operator precedence]: ../../reference/expressions.html#expression-precedence
 
 #![stable(feature = "rust1", since = "1.0.0")]
