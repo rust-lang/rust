@@ -111,7 +111,14 @@ impl<'a> Parser<'a> {
                     return Err(self.struct_span_err(self.token.span, "expected an item keyword"));
                 }
             },
-            NonterminalKind::Block => token::NtBlock(self.parse_block()?),
+            NonterminalKind::Block => {
+                let (mut block, tokens) = self.collect_tokens(|this| this.parse_block())?;
+                // We have have eaten an NtBlock, which could already have tokens
+                if block.tokens.is_none() {
+                    block.tokens = Some(tokens);
+                }
+                token::NtBlock(block)
+            }
             NonterminalKind::Stmt => match self.parse_stmt()? {
                 Some(s) => token::NtStmt(s),
                 None => return Err(self.struct_span_err(self.token.span, "expected a statement")),

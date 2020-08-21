@@ -693,6 +693,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 rules,
                 id: resolver.next_node_id(),
                 span: rustc_span::DUMMY_SP,
+                tokens: None,
             }
         }
 

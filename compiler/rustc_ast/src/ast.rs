@@ -540,6 +540,7 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 /// A match pattern.

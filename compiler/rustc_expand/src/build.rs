@@ -207,7 +207,13 @@ impl<'a> ExtCtxt<'a> {
         )
     }
     pub fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
-        P(ast::Block { stmts, id: ast::DUMMY_NODE_ID, rules: BlockCheckMode::Default, span })
+        P(ast::Block {
+            stmts,
+            id: ast::DUMMY_NODE_ID,
+            rules: BlockCheckMode::Default,
+            span,
+            tokens: None,
+        })
     }
 
     pub fn expr(&self, span: Span, kind: ast::ExprKind) -> P<ast::Expr> {
