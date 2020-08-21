@@ -1406,11 +1406,18 @@ fn resolution_failure(
             let in_scope = kinds.iter().any(|kind| kind.res().is_some());
             let mut reported_not_in_scope = false;
             let item = |res: Res| {
-                if let Some(id) = res.opt_def_id() {
-                    (format!("the {} `{}`", res.descr(), cx.tcx.item_name(id).to_string()), ",")
-                } else {
-                    (format!("{} {}", res.article(), res.descr()), "")
-                }
+                format!("the {} `{}`", res.descr(), cx.tcx.item_name(res.def_id()).to_string())
+            };
+            let assoc_item_not_allowed = |res: Res, diag: &mut DiagnosticBuilder<'_>| {
+                let def_id = res.def_id();
+                let name = cx.tcx.item_name(def_id);
+                let note = format!(
+                    "`{}` is {} {}, not a module or type, and cannot have associated items",
+                    name,
+                    res.article(),
+                    res.descr()
+                );
+                diag.note(&note);
             };
             for failure in kinds {
                 match failure {
@@ -1425,11 +1432,9 @@ fn resolution_failure(
                     }
                     ResolutionFailure::Dummy => continue,
                     ResolutionFailure::WrongNamespace(res, expected_ns) => {
-                        let (item, comma) = item(res);
                         let note = format!(
-                            "this link resolves to {}{} which is not in the {} namespace",
-                            item,
-                            comma,
+                            "this link resolves to {}, which is not in the {} namespace",
+                            item(res),
                             expected_ns.descr()
                         );
                         diag.note(&note);
@@ -1450,10 +1455,9 @@ fn resolution_failure(
                         panic!("all intra doc links should have a parent item")
                     }
                     ResolutionFailure::NoPrimitiveImpl(res, _) => {
-                        let (item, comma) = item(res);
                         let note = format!(
-                            "this link partially resolves to {}{} which does not have any associated items",
-                            item, comma,
+                            "this link partially resolves to {}, which does not have any associated items",
+                            item(res),
                         );
                         diag.note(&note);
                     }
@@ -1465,41 +1469,62 @@ fn resolution_failure(
                         diag.note(&note);
                     }
                     ResolutionFailure::NoAssocItem(res, assoc_item) => {
-                        let (item, _) = item(res);
-                        diag.note(&format!("this link partially resolves to {}", item));
-                        // FIXME: when are items neither a primitive nor a Def?
-                        if let Res::Def(_, def_id) = res {
-                            let name = cx.tcx.item_name(def_id);
-                            let note = format!("no `{}` in `{}`", assoc_item, name,);
-                            diag.note(&note);
-                        }
+                        use DefKind::*;
+
+                        let (kind, def_id) = match res {
+                            Res::Def(kind, def_id) => (kind, def_id),
+                            _ => unreachable!(
+                                "primitives are covered above and other `Res` variants aren't possible at module scope"
+                            ),
+                        };
+                        let name = cx.tcx.item_name(def_id);
+                        let path_description = match kind {
+                            Mod | ForeignMod => "inner item",
+                            Struct => "field or associated item",
+                            Enum | Union => "variant or associated item",
+                            Variant
+                            | Field
+                            | Closure
+                            | Generator
+                            | AssocTy
+                            | AssocConst
+                            | AssocFn
+                            | Fn
+                            | Macro(_)
+                            | Const
+                            | ConstParam
+                            | ExternCrate
+                            | Use
+                            | LifetimeParam
+                            | Ctor(_, _)
+                            | AnonConst => return assoc_item_not_allowed(res, diag),
+                            Trait | TyAlias | ForeignTy | OpaqueTy | TraitAlias | TyParam
+                            | Static => "associated item",
+                            Impl | GlobalAsm => unreachable!("not a path"),
+                        };
+                        let note = format!(
+                            "the {} `{}` has no {} named `{}`",
+                            res.descr(),
+                            name,
+                            path_description,
+                            assoc_item
+                        );
+                        diag.note(&note);
                     }
                     ResolutionFailure::CannotHaveAssociatedItems(res, _) => {
-                        let (item, _) = item(res);
-                        diag.note(&format!("this link partially resolves to {}", item));
-                        if let Res::Def(kind, def_id) = res {
-                            let name = cx.tcx.item_name(def_id);
-                            let note = format!(
-                                "`{}` is {} {}, not a module or type, and cannot have associated items",
-                                name,
-                                kind.article(),
-                                kind.descr(def_id)
-                            );
-                            diag.note(&note);
-                        }
+                        assoc_item_not_allowed(res, diag)
                     }
                     // TODO: is there ever a case where this happens?
                     ResolutionFailure::NotAnEnum(res) => {
-                        let (item, comma) = item(res);
                         let note =
-                            format!("this link resolves to {}{} which is not an enum", item, comma);
+                            format!("this link resolves to {}, which is not an enum", item(res));
                         diag.note(&note);
                         diag.note("if this were an enum, it might have a variant which resolved");
                     }
                     ResolutionFailure::NotAVariant(res, variant) => {
                         let note = format!(
                             "this link partially resolves to {}, but there is no variant named {}",
-                            item(res).0,
+                            item(res),
                             variant
                         );
                         diag.note(&note);

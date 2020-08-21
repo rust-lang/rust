@@ -5,8 +5,7 @@ LL |        //! Test with [Foo::baz], [Bar::foo], ...
    |                       ^^^^^^^^
    |
    = note: `#[warn(broken_intra_doc_links)]` on by default
-   = note: this link partially resolves to the struct `Foo`
-   = note: no `baz` in `Foo`
+   = note: the struct `Foo` has no field or associated item named `baz`
 
 warning: unresolved link to `Bar::foo`
   --> $DIR/intra-links-warning.rs:3:35

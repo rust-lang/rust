@@ -12,23 +12,19 @@
 
 /// [f::A]
 //~^ ERROR unresolved link
-//~| NOTE this link partially resolves
 //~| NOTE `f` is a function, not a module
 
 /// [S::A]
 //~^ ERROR unresolved link
-//~| NOTE this link partially resolves
-//~| NOTE no `A` in `S`
+//~| NOTE struct `S` has no field or associated item
 
 /// [S::fmt]
 //~^ ERROR unresolved link
-//~| NOTE this link partially resolves
-//~| NOTE no `fmt` in `S`
+//~| NOTE struct `S` has no field or associated item
 
 /// [E::D]
 //~^ ERROR unresolved link
-//~| NOTE this link partially resolves
-//~| NOTE no `D` in `E`
+//~| NOTE enum `E` has no variant or associated item
 
 /// [u8::not_found]
 //~^ ERROR unresolved link

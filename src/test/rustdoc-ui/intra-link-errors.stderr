@@ -13,43 +13,39 @@ LL | #![deny(broken_intra_doc_links)]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: unresolved link to `f::A`
-  --> $DIR/intra-link-errors.rs:14:6
+  --> $DIR/intra-link-errors.rs:13:6
    |
 LL | /// [f::A]
    |      ^^^^
    |
-   = note: this link partially resolves to the function `f`
    = note: `f` is a function, not a module or type, and cannot have associated items
 
 error: unresolved link to `S::A`
-  --> $DIR/intra-link-errors.rs:19:6
+  --> $DIR/intra-link-errors.rs:17:6
    |
 LL | /// [S::A]
    |      ^^^^
    |
-   = note: this link partially resolves to the struct `S`
-   = note: no `A` in `S`
+   = note: the struct `S` has no field or associated item named `A`
 
 error: unresolved link to `S::fmt`
-  --> $DIR/intra-link-errors.rs:24:6
+  --> $DIR/intra-link-errors.rs:21:6
    |
 LL | /// [S::fmt]
    |      ^^^^^^
    |
-   = note: this link partially resolves to the struct `S`
-   = note: no `fmt` in `S`
+   = note: the struct `S` has no field or associated item named `fmt`
 
 error: unresolved link to `E::D`
-  --> $DIR/intra-link-errors.rs:29:6
+  --> $DIR/intra-link-errors.rs:25:6
    |
 LL | /// [E::D]
    |      ^^^^
    |
-   = note: this link partially resolves to the enum `E`
-   = note: no `D` in `E`
+   = note: the enum `E` has no variant or associated item named `D`
 
 error: unresolved link to `u8::not_found`
-  --> $DIR/intra-link-errors.rs:34:6
+  --> $DIR/intra-link-errors.rs:29:6
    |
 LL | /// [u8::not_found]
    |      ^^^^^^^^^^^^^
@@ -57,7 +53,7 @@ LL | /// [u8::not_found]
    = note: the builtin type `u8` does not have an associated item named `not_found`
 
 error: unresolved link to `S`
-  --> $DIR/intra-link-errors.rs:38:6
+  --> $DIR/intra-link-errors.rs:33:6
    |
 LL | /// [S!]
    |      ^^ help: to link to the struct, use its disambiguator: `struct@S`
@@ -65,7 +61,7 @@ LL | /// [S!]
    = note: this link resolves to the struct `S`, which is not in the macro namespace
 
 error: unresolved link to `T::g`
-  --> $DIR/intra-link-errors.rs:56:6
+  --> $DIR/intra-link-errors.rs:51:6
    |
 LL | /// [type@T::g]
    |      ^^^^^^^^^ help: to link to the associated function, use its disambiguator: `T::g()`
@@ -73,7 +69,7 @@ LL | /// [type@T::g]
    = note: this link resolves to the associated function `g`, which is not in the type namespace
 
 error: unresolved link to `T::h`
-  --> $DIR/intra-link-errors.rs:61:6
+  --> $DIR/intra-link-errors.rs:56:6
    |
 LL | /// [T::h!]
    |      ^^^^^
@@ -82,7 +78,7 @@ LL | /// [T::h!]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: unresolved link to `S::h`
-  --> $DIR/intra-link-errors.rs:48:6
+  --> $DIR/intra-link-errors.rs:43:6
    |
 LL | /// [type@S::h]
    |      ^^^^^^^^^ help: to link to the associated function, use its disambiguator: `S::h()`

@@ -9,8 +9,7 @@ note: the lint level is defined here
    |
 LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
-   = note: this link partially resolves to the type alias `TypeAlias`
-   = note: no `hoge` in `TypeAlias`
+   = note: the type alias `TypeAlias` has no associated item named `hoge`
 
 error: aborting due to previous error
 
