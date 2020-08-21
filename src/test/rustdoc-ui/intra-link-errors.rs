@@ -54,6 +54,7 @@ impl S {
 }
 
 /// [type@T::g]
+/// [T::h!]
 pub trait T {
     fn g() {}
 }

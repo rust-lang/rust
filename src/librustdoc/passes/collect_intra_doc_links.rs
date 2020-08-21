@@ -81,6 +81,7 @@ enum ResolutionFailure<'a> {
 }
 
 impl ResolutionFailure<'a> {
+    // A partial or full resolution
     fn res(&self) -> Option<Res> {
         use ResolutionFailure::*;
         match self {
@@ -91,6 +92,14 @@ impl ResolutionFailure<'a> {
             | NotAVariant(res, _)
             | WrongNamespace(res, _) => Some(*res),
             NotInScope(_) | NoParentItem | Dummy => None,
+        }
+    }
+
+    // This resolved fully (not just partially) but is erroneous for some other reason
+    fn full_res(&self) -> Option<Res> {
+        match self {
+            Self::WrongNamespace(res, _) => Some(*res),
+            _ => None,
         }
     }
 }
@@ -128,6 +137,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         let cx = self.cx;
 
+        debug!("looking for enum variant {}", path_str);
         let mut split = path_str.rsplitn(3, "::");
         let variant_field_name = split
             .next()
@@ -260,7 +270,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
             let result = match result {
                 Ok((_, Res::Err)) => Err(()),
-                _ => result.map_err(|_| ()),
+                x => x,
             };
 
             if let Ok((_, res)) = result {
@@ -419,6 +429,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             Ok((ty_res, Some(format!("{}.{}", out, item_name))))
                         })
                     } else if ns == Namespace::ValueNS {
+                        debug!("looking for variants or fields named {} for {:?}", item_name, did);
                         match cx.tcx.type_of(did).kind() {
                             ty::Adt(def, _) => {
                                 let field = if def.is_enum() {
@@ -838,12 +849,36 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                 }
 
+                // used for reporting better errors
+                let check_full_res = |this: &mut Self, ns| {
+                    match this.resolve(path_str, ns, &current_item, base_node, &extra_fragment) {
+                        Ok(res) => {
+                            debug!(
+                                "check_full_res: saw res for {} in {:?} ns: {:?}",
+                                path_str, ns, res.0
+                            );
+                            Some(res.0)
+                        }
+                        Err(ErrorKind::Resolve(kind)) => kind.full_res(),
+                        // TODO: add `Res` to AnchorFailure
+                        Err(ErrorKind::AnchorFailure(_)) => None,
+                    }
+                };
+
                 match disambiguator.map(Disambiguator::ns) {
                     Some(ns @ (ValueNS | TypeNS)) => {
                         match self.resolve(path_str, ns, &current_item, base_node, &extra_fragment)
                         {
                             Ok(res) => res,
-                            Err(ErrorKind::Resolve(kind)) => {
+                            Err(ErrorKind::Resolve(mut kind)) => {
+                                // We only looked in one namespace. Try to give a better error if possible.
+                                // TODO: handle MacroNS too
+                                if kind.full_res().is_none() {
+                                    let other_ns = if ns == ValueNS { TypeNS } else { ValueNS };
+                                    if let Some(res) = check_full_res(self, other_ns) {
+                                        kind = ResolutionFailure::WrongNamespace(res, other_ns);
+                                    }
+                                }
                                 resolution_failure(
                                     cx,
                                     &item,
@@ -965,30 +1000,14 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             Ok(res) => (res, extra_fragment),
                             Err(mut kind) => {
                                 // `macro_resolve` only looks in the macro namespace. Try to give a better error if possible.
+                                //if kind.res().is_none() {
                                 for &ns in &[TypeNS, ValueNS] {
-                                    match self.resolve(
-                                        path_str,
-                                        ns,
-                                        &current_item,
-                                        base_node,
-                                        &extra_fragment,
-                                    ) {
-                                        Ok(res) => {
-                                            kind = ResolutionFailure::WrongNamespace(res.0, MacroNS)
-                                        }
-                                        // This will show up in the other namespace, no need to handle it here
-                                        Err(ErrorKind::Resolve(
-                                            ResolutionFailure::WrongNamespace(..),
-                                        )) => {}
-                                        Err(ErrorKind::AnchorFailure(_)) => {}
-                                        Err(ErrorKind::Resolve(inner_kind)) => {
-                                            if let Some(res) = inner_kind.res() {
-                                                kind =
-                                                    ResolutionFailure::WrongNamespace(res, MacroNS);
-                                            }
-                                        }
+                                    if let Some(res) = check_full_res(self, ns) {
+                                        kind = ResolutionFailure::WrongNamespace(res, MacroNS);
+                                        break;
                                     }
                                 }
+                                //}
                                 resolution_failure(
                                     cx,
                                     &item,
