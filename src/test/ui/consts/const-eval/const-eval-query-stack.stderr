@@ -1,5 +1,5 @@
 error: reaching this expression at runtime will panic or abort
-  --> $DIR/const-eval-query-stack.rs:18:28
+  --> $DIR/const-eval-query-stack.rs:19:28
    |
 LL |     let x: &'static i32 = &(1 / 0);
    |                           -^^^^^^^
