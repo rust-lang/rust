@@ -198,13 +198,13 @@ impl<'a> AstValidator<'a> {
     }
 
     fn invalid_visibility(&self, vis: &Visibility, note: Option<&str>) {
-        if let VisibilityKind::Inherited = vis.node {
+        if let VisibilityKind::Inherited = vis.kind {
             return;
         }
 
         let mut err =
             struct_span_err!(self.session, vis.span, E0449, "unnecessary visibility qualifier");
-        if vis.node.is_pub() {
+        if vis.kind.is_pub() {
             err.span_label(vis.span, "`pub` not permitted here because it's implied");
         }
         if let Some(note) = note {

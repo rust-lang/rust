@@ -14,7 +14,7 @@ use crate::tokenstream::*;
 
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::sync::Lrc;
-use rustc_span::source_map::{respan, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -978,11 +978,13 @@ pub fn noop_visit_mod<T: MutVisitor>(module: &mut Mod, vis: &mut T) {
 
 pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
     visit_clobber(krate, |Crate { module, attrs, span, proc_macros }| {
+        let item_vis =
+            Visibility { kind: VisibilityKind::Public, span: span.shrink_to_lo(), tokens: None };
         let item = P(Item {
             ident: Ident::invalid(),
             attrs,
             id: DUMMY_NODE_ID,
-            vis: respan(span.shrink_to_lo(), VisibilityKind::Public),
+            vis: item_vis,
             span,
             kind: ItemKind::Mod(module),
             tokens: None,
@@ -1314,13 +1316,13 @@ pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
     }
 }
 
-pub fn noop_visit_vis<T: MutVisitor>(Spanned { node, span }: &mut Visibility, vis: &mut T) {
-    match node {
+pub fn noop_visit_vis<T: MutVisitor>(visibility: &mut Visibility, vis: &mut T) {
+    match &mut visibility.kind {
         VisibilityKind::Public | VisibilityKind::Crate(_) | VisibilityKind::Inherited => {}
         VisibilityKind::Restricted { path, id } => {
             vis.visit_path(path);
             vis.visit_id(id);
         }
     }
-    vis.visit_span(span);
+    vis.visit_span(&mut visibility.span);
 }

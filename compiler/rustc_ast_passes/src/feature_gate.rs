@@ -594,7 +594,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_vis(&mut self, vis: &'a ast::Visibility) {
-        if let ast::VisibilityKind::Crate(ast::CrateSugar::JustCrate) = vis.node {
+        if let ast::VisibilityKind::Crate(ast::CrateSugar::JustCrate) = vis.kind {
             gate_feature_post!(
                 &self,
                 crate_visibility_modifier,

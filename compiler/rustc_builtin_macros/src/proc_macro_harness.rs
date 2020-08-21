@@ -98,7 +98,7 @@ pub fn inject(
 
 impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
-        if self.is_proc_macro_crate && self.in_root && vis.node.is_pub() {
+        if self.is_proc_macro_crate && self.in_root && vis.kind.is_pub() {
             self.handler.span_err(
                 sp,
                 "`proc-macro` crate types currently cannot export any items other \
@@ -184,7 +184,7 @@ impl<'a> CollectProcMacros<'a> {
             Vec::new()
         };
 
-        if self.in_root && item.vis.node.is_pub() {
+        if self.in_root && item.vis.kind.is_pub() {
             self.macros.push(ProcMacro::Derive(ProcMacroDerive {
                 id: item.id,
                 span: item.span,
@@ -204,7 +204,7 @@ impl<'a> CollectProcMacros<'a> {
     }
 
     fn collect_attr_proc_macro(&mut self, item: &'a ast::Item) {
-        if self.in_root && item.vis.node.is_pub() {
+        if self.in_root && item.vis.kind.is_pub() {
             self.macros.push(ProcMacro::Def(ProcMacroDef {
                 id: item.id,
                 span: item.span,
@@ -223,7 +223,7 @@ impl<'a> CollectProcMacros<'a> {
     }
 
     fn collect_bang_proc_macro(&mut self, item: &'a ast::Item) {
-        if self.in_root && item.vis.node.is_pub() {
+        if self.in_root && item.vis.kind.is_pub() {
             self.macros.push(ProcMacro::Def(ProcMacroDef {
                 id: item.id,
                 span: item.span,

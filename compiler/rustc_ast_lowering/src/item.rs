@@ -930,7 +930,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         v: &Visibility,
         explicit_owner: Option<NodeId>,
     ) -> hir::Visibility<'hir> {
-        let node = match v.node {
+        let node = match v.kind {
             VisibilityKind::Public => hir::VisibilityKind::Public,
             VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
             VisibilityKind::Restricted { ref path, id } => {

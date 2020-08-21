@@ -18,7 +18,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::{CrateDisambiguator, Session};
-use rustc_span::source_map::{self, Span, Spanned};
+use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Symbol;
 
 use rustc_data_structures::sync::Lrc;
@@ -421,7 +421,11 @@ impl CStore {
                 span,
                 attrs: attrs.to_vec(),
                 kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
-                vis: source_map::respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+                vis: ast::Visibility {
+                    span: span.shrink_to_lo(),
+                    kind: ast::VisibilityKind::Inherited,
+                    tokens: None,
+                },
                 tokens: None,
             },
             data.root.edition,

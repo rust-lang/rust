@@ -279,6 +279,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
         }
         Nonterminal::NtMeta(ref attr) => attr.tokens.clone(),
         Nonterminal::NtPath(ref path) => path.tokens.clone(),
+        Nonterminal::NtVis(ref vis) => vis.tokens.clone(),
         Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
         Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
             if expr.tokens.is_none() {
@@ -286,7 +287,6 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
             }
             prepend_attrs(sess, &expr.attrs, expr.tokens.as_ref(), span)
         }
-        _ => None,
     };
 
     // FIXME(#43081): Avoid this pretty-print + reparse hack

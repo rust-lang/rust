@@ -187,7 +187,7 @@ impl<'a> Parser<'a> {
 
     /// Error in-case a non-inherited visibility was parsed but no item followed.
     fn error_on_unmatched_vis(&self, vis: &Visibility) {
-        if let VisibilityKind::Inherited = vis.node {
+        if let VisibilityKind::Inherited = vis.kind {
             return;
         }
         let vs = pprust::vis_to_string(&vis);
@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
         } else if self.is_macro_rules_item() {
             // MACRO_RULES ITEM
             self.parse_item_macro_rules(vis)?
-        } else if vis.node.is_pub() && self.isnt_macro_invocation() {
+        } else if vis.kind.is_pub() && self.isnt_macro_invocation() {
             self.recover_missing_kw_before_item()?;
             return Ok(None);
         } else if macros_allowed && self.check_path() {
@@ -1418,7 +1418,7 @@ impl<'a> Parser<'a> {
     /// Item macro invocations or `macro_rules!` definitions need inherited visibility.
     /// If that's not the case, emit an error.
     fn complain_if_pub_macro(&self, vis: &Visibility, macro_rules: bool) {
-        if let VisibilityKind::Inherited = vis.node {
+        if let VisibilityKind::Inherited = vis.kind {
             return;
         }
 

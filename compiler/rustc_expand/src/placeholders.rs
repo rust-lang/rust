@@ -4,7 +4,7 @@ use crate::expand::{AstFragment, AstFragmentKind};
 use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_span::source_map::{dummy_spanned, DUMMY_SP};
+use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::Ident;
 
 use smallvec::{smallvec, SmallVec};
@@ -26,7 +26,11 @@ pub fn placeholder(
 
     let ident = Ident::invalid();
     let attrs = Vec::new();
-    let vis = vis.unwrap_or_else(|| dummy_spanned(ast::VisibilityKind::Inherited));
+    let vis = vis.unwrap_or(ast::Visibility {
+        span: DUMMY_SP,
+        kind: ast::VisibilityKind::Inherited,
+        tokens: None,
+    });
     let span = DUMMY_SP;
     let expr_placeholder = || {
         P(ast::Expr {

@@ -187,7 +187,6 @@ use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
@@ -532,7 +531,11 @@ impl<'a> TraitDef<'a> {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
                 ident,
-                vis: respan(self.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+                vis: ast::Visibility {
+                    span: self.span.shrink_to_lo(),
+                    kind: ast::VisibilityKind::Inherited,
+                    tokens: None,
+                },
                 attrs: Vec::new(),
                 kind: ast::AssocItemKind::TyAlias(
                     ast::Defaultness::Final,
@@ -933,7 +936,11 @@ impl<'a> MethodDef<'a> {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
             span: trait_.span,
-            vis: respan(trait_lo_sp, ast::VisibilityKind::Inherited),
+            vis: ast::Visibility {
+                span: trait_lo_sp,
+                kind: ast::VisibilityKind::Inherited,
+                tokens: None,
+            },
             ident: method_ident,
             kind: ast::AssocItemKind::Fn(def, sig, fn_generics, Some(body_block)),
             tokens: None,

@@ -186,7 +186,15 @@ impl<'a> Parser<'a> {
                 token::NtMeta(P(attr))
             }
             NonterminalKind::TT => token::NtTT(self.parse_token_tree()),
-            NonterminalKind::Vis => token::NtVis(self.parse_visibility(FollowedByType::Yes)?),
+            NonterminalKind::Vis => {
+                let (mut vis, tokens) =
+                    self.collect_tokens(|this| this.parse_visibility(FollowedByType::Yes))?;
+                // We may have etan an `NtVis`, which could already have tokens
+                if vis.tokens.is_none() {
+                    vis.tokens = Some(tokens);
+                }
+                token::NtVis(vis)
+            }
             NonterminalKind::Lifetime => {
                 if self.check_lifetime() {
                     token::NtLifetime(self.expect_lifetime().ident)

@@ -2490,7 +2490,12 @@ pub enum CrateSugar {
     JustCrate,
 }
 
-pub type Visibility = Spanned<VisibilityKind>;
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Visibility {
+    pub kind: VisibilityKind,
+    pub span: Span,
+    pub tokens: Option<TokenStream>,
+}
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum VisibilityKind {

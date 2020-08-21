@@ -218,7 +218,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         speculative: bool,
     ) -> Result<ty::Visibility, VisResolutionError<'ast>> {
         let parent_scope = &self.parent_scope;
-        match vis.node {
+        match vis.kind {
             ast::VisibilityKind::Public => Ok(ty::Visibility::Public),
             ast::VisibilityKind::Crate(..) => {
                 Ok(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)))

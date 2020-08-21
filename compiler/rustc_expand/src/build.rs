@@ -3,7 +3,7 @@ use crate::base::ExtCtxt;
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Expr, PatKind, UnOp};
-use rustc_span::source_map::{respan, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
 use rustc_span::Span;
@@ -584,7 +584,11 @@ impl<'a> ExtCtxt<'a> {
             attrs,
             id: ast::DUMMY_NODE_ID,
             kind,
-            vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+            vis: ast::Visibility {
+                span: span.shrink_to_lo(),
+                kind: ast::VisibilityKind::Inherited,
+                tokens: None,
+            },
             span,
             tokens: None,
         })
@@ -598,7 +602,11 @@ impl<'a> ExtCtxt<'a> {
                 span: ty.span,
                 ty,
                 ident: None,
-                vis: respan(vis_span, ast::VisibilityKind::Inherited),
+                vis: ast::Visibility {
+                    span: vis_span,
+                    kind: ast::VisibilityKind::Inherited,
+                    tokens: None,
+                },
                 attrs: Vec::new(),
                 id: ast::DUMMY_NODE_ID,
                 is_placeholder: false,
@@ -617,7 +625,11 @@ impl<'a> ExtCtxt<'a> {
             disr_expr: None,
             id: ast::DUMMY_NODE_ID,
             ident,
-            vis: respan(vis_span, ast::VisibilityKind::Inherited),
+            vis: ast::Visibility {
+                span: vis_span,
+                kind: ast::VisibilityKind::Inherited,
+                tokens: None,
+            },
             span,
             is_placeholder: false,
         }
