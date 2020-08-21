@@ -141,7 +141,14 @@ impl<'a> Parser<'a> {
                 token::NtExpr(expr)
             }
             NonterminalKind::Literal => token::NtLiteral(self.parse_literal_maybe_minus()?),
-            NonterminalKind::Ty => token::NtTy(self.parse_ty()?),
+            NonterminalKind::Ty => {
+                let (mut ty, tokens) = self.collect_tokens(|this| this.parse_ty())?;
+                // We have an eaten an NtTy, which could already have tokens
+                if ty.tokens.is_none() {
+                    ty.tokens = Some(tokens);
+                }
+                token::NtTy(ty)
+            }
             // this could be handled like a token, since it is one
             NonterminalKind::Ident => {
                 if let Some((ident, is_raw)) = get_macro_ident(&self.token) {

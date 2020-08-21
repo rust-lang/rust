@@ -451,7 +451,7 @@ pub fn noop_visit_ty_constraint<T: MutVisitor>(
 }
 
 pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
-    let Ty { id, kind, span } = ty.deref_mut();
+    let Ty { id, kind, span, tokens: _ } = ty.deref_mut();
     vis.visit_id(id);
     match kind {
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err | TyKind::Never | TyKind::CVarArgs => {}

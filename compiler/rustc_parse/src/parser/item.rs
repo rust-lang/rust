@@ -510,7 +510,12 @@ impl<'a> Parser<'a> {
         {
             let span = self.prev_token.span.between(self.token.span);
             self.struct_span_err(span, "missing trait in a trait impl").emit();
-            P(Ty { kind: TyKind::Path(None, err_path(span)), span, id: DUMMY_NODE_ID })
+            P(Ty {
+                kind: TyKind::Path(None, err_path(span)),
+                span,
+                id: DUMMY_NODE_ID,
+                tokens: None,
+            })
         } else {
             self.parse_ty()?
         };
@@ -1046,7 +1051,7 @@ impl<'a> Parser<'a> {
 
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
-        P(Ty { kind: TyKind::Infer, span: id.span, id: ast::DUMMY_NODE_ID })
+        P(Ty { kind: TyKind::Infer, span: id.span, id: ast::DUMMY_NODE_ID, tokens: None })
     }
 
     /// Parses an enum declaration.

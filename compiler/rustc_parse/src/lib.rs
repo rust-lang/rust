@@ -270,6 +270,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
         }
         Nonterminal::NtBlock(ref block) => block.tokens.clone(),
         Nonterminal::NtPat(ref pat) => pat.tokens.clone(),
+        Nonterminal::NtTy(ref ty) => ty.tokens.clone(),
         Nonterminal::NtIdent(ident, is_raw) => {
             Some(tokenstream::TokenTree::token(token::Ident(ident.name, is_raw), ident.span).into())
         }

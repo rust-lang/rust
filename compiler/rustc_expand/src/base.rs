@@ -607,6 +607,7 @@ impl DummyResult {
             id: ast::DUMMY_NODE_ID,
             kind: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
             span: sp,
+            tokens: None,
         })
     }
 }

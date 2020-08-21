@@ -587,7 +587,7 @@ impl Pat {
             _ => return None,
         };
 
-        Some(P(Ty { kind, id: self.id, span: self.span }))
+        Some(P(Ty { kind, id: self.id, span: self.span, tokens: None }))
     }
 
     /// Walk top-down and call `it` in each place where a pattern occurs
@@ -1169,7 +1169,7 @@ impl Expr {
             _ => return None,
         };
 
-        Some(P(Ty { kind, id: self.id, span: self.span }))
+        Some(P(Ty { kind, id: self.id, span: self.span, tokens: None }))
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1867,6 +1867,7 @@ pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2145,7 +2146,7 @@ impl Param {
     /// Builds a `Param` object from `ExplicitSelf`.
     pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
-        let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span });
+        let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span, tokens: None });
         let param = |mutbl, ty| Param {
             attrs,
             pat: P(Pat {
@@ -2168,6 +2169,7 @@ impl Param {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::Rptr(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
+                    tokens: None,
                 }),
             ),
         }

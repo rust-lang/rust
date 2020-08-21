@@ -626,6 +626,6 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> P<Ty> {
-        P(Ty { kind, span, id: ast::DUMMY_NODE_ID })
+        P(Ty { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
     }
 }
