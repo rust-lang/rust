@@ -101,9 +101,21 @@ macro_rules! vec {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable(fmt_as_str)]
 macro_rules! format {
     ($($arg:tt)*) => {{
-        let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
-        res
+        // NOTE: `format_args!` borrows from temporaries. This means that
+        // `match` is necessary to extend the lifetime of the temporaries until after
+        // the `Arguments` is no longer used. The same pattern is used
+        // inside `format_args!` itself.
+        let r = match $crate::__export::format_args!($($arg)*) {
+            // HACK: We hope that constant propagation will make LLVM optimize out
+            // this match.
+            args => match args.as_str() {
+                Some(s) => $crate::borrow::ToOwned::to_owned(s),
+                None => $crate::fmt::format(args),
+            }
+        };
+        r
     }}
 }

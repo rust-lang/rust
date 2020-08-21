@@ -97,6 +97,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_range_pattern)]
 #![feature(extend_one)]
+#![feature(fmt_as_str)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(fundamental)]

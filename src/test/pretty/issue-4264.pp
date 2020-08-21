@@ -30,35 +30,48 @@ pub fn bar() ({
 
 
                   ({
-                       let res =
-                           ((::alloc::fmt::format as
-                                for<'r> fn(Arguments<'r>) -> String {format})(((::core::fmt::Arguments::new_v1
-                                                                                   as
-                                                                                   fn(&[&'static str], &[ArgumentV1]) -> Arguments {Arguments::new_v1})((&([("test"
-                                                                                                                                                                as
-                                                                                                                                                                &str)]
-                                                                                                                                                              as
-                                                                                                                                                              [&str; 1])
-                                                                                                                                                            as
-                                                                                                                                                            &[&str; 1]),
-                                                                                                                                                        (&(match (()
-                                                                                                                                                                     as
-                                                                                                                                                                     ())
-                                                                                                                                                               {
-                                                                                                                                                               ()
-                                                                                                                                                               =>
-                                                                                                                                                               ([]
-                                                                                                                                                                   as
-                                                                                                                                                                   [ArgumentV1; 0]),
-                                                                                                                                                           }
-                                                                                                                                                              as
-                                                                                                                                                              [ArgumentV1; 0])
-                                                                                                                                                            as
-                                                                                                                                                            &[ArgumentV1; 0]))
-                                                                                  as
-                                                                                  Arguments))
-                               as String);
-                       (res as String)
+                       let r =
+                           (match ((::core::fmt::Arguments::new_v1 as
+                                       fn(&[&'static str], &[ArgumentV1]) -> Arguments {Arguments::new_v1})((&([("test"
+                                                                                                                    as
+                                                                                                                    &str)]
+                                                                                                                  as
+                                                                                                                  [&str; 1])
+                                                                                                                as
+                                                                                                                &[&str; 1]),
+                                                                                                            (&(match (()
+                                                                                                                         as
+                                                                                                                         ())
+                                                                                                                   {
+                                                                                                                   ()
+                                                                                                                   =>
+                                                                                                                   ([]
+                                                                                                                       as
+                                                                                                                       [ArgumentV1; 0]),
+                                                                                                               }
+                                                                                                                  as
+                                                                                                                  [ArgumentV1; 0])
+                                                                                                                as
+                                                                                                                &[ArgumentV1; 0]))
+                                      as Arguments) {
+                                args =>
+                                (match ((args as Arguments).as_str() as
+                                           Option<&str>) {
+                                     Some(s) =>
+                                     ((::alloc::borrow::ToOwned::to_owned as
+                                          for<'r> fn(&'r str) -> <str as ToOwned>::Owned {<str as ToOwned>::to_owned})((s
+                                                                                                                           as
+                                                                                                                           &str))
+                                         as String),
+                                     None =>
+                                     ((::alloc::fmt::format as
+                                          for<'r> fn(Arguments<'r>) -> String {format})((args
+                                                                                            as
+                                                                                            Arguments))
+                                         as String),
+                                 } as String),
+                            } as String);
+                       (r as String)
                    } as String);
               } as ())
 pub type Foo = [i32; (3 as usize)];
