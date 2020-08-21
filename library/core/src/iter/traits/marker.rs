@@ -53,5 +53,4 @@ unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
 ///
 /// [`SourceIter`]: ../../std/iter/trait.SourceIter.html
 #[unstable(issue = "none", feature = "inplace_iteration")]
-#[rustc_specialization_trait]
 pub unsafe trait InPlaceIterable: Iterator {}

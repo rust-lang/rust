@@ -2243,11 +2243,11 @@ fn write_in_place_with_drop<T>(
 #[rustc_unsafe_specialization_marker]
 trait SourceIterMarker: SourceIter<Source: AsIntoIter> {}
 
-impl<T> SourceIterMarker for T where T: SourceIter<Source: AsIntoIter> {}
+impl<T> SourceIterMarker for T where T: SourceIter<Source: AsIntoIter> + InPlaceIterable {}
 
 impl<T, I> SpecFrom<T, I> for Vec<T>
 where
-    I: Iterator<Item = T> + InPlaceIterable + SourceIterMarker,
+    I: Iterator<Item = T> + SourceIterMarker,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // Additional requirements which cannot expressed via trait bounds. We rely on const eval
@@ -2920,6 +2920,17 @@ impl<T> Iterator for IntoIter<T> {
     fn count(self) -> usize {
         self.len()
     }
+
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::get_unchecked`.
+        unsafe {
+            if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2967,12 +2978,6 @@ unsafe impl<T> TrustedRandomAccess for IntoIter<T>
 where
     T: Copy,
 {
-    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        unsafe {
-            if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
-        }
-    }
-
     fn may_have_side_effect() -> bool {
         false
     }
