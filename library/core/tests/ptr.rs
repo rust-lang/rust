@@ -300,7 +300,6 @@ fn write_unaligned_drop() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // Miri does not compute a maximal `mid` for `align_offset`
 fn align_offset_zst() {
     // For pointers of stride = 0, the pointer is already aligned or it cannot be aligned at
     // all, because no amount of elements will align the pointer.
@@ -315,7 +314,6 @@ fn align_offset_zst() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // Miri does not compute a maximal `mid` for `align_offset`
 fn align_offset_stride1() {
     // For pointers of stride = 1, the pointer can always be aligned. The offset is equal to
     // number of bytes.
@@ -337,7 +335,6 @@ fn align_offset_stride1() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // Miri is too slow
 fn align_offset_weird_strides() {
     #[repr(packed)]
     struct A3(u16, u8);
@@ -384,7 +381,9 @@ fn align_offset_weird_strides() {
     // implementation
     let mut align = 1;
     let mut x = false;
-    while align < 1024 {
+    // Miri is too slow
+    let limit = if cfg!(miri) { 32 } else { 1024 };
+    while align < limit {
         for ptr in 1usize..4 * align {
             unsafe {
                 x |= test_weird_stride::<A3>(ptr as *const A3, align);
