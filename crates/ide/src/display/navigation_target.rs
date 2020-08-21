@@ -421,7 +421,7 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
 
 #[cfg(test)]
 mod tests {
-    use expect::expect;
+    use expect_test::expect;
 
     use crate::{mock_analysis::single_file, Query};
 

@@ -174,7 +174,7 @@ fn complete_return(
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
 
     use crate::completion::{
         test_utils::{check_edit, completion_list},

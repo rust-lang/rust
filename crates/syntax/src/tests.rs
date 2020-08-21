@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use expect::expect_file;
+use expect_test::expect_file;
 use rayon::prelude::*;
 use test_utils::project_dir;
 

@@ -1,6 +1,6 @@
 use std::fs;
 
-use expect::expect;
+use expect_test::expect;
 use test_utils::project_dir;
 
 use super::{check_infer, check_types};

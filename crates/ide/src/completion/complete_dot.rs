@@ -61,7 +61,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &T
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
     use test_utils::mark;
 
     use crate::completion::{test_utils::completion_list, CompletionKind};

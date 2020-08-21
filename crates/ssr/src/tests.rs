@@ -1,6 +1,6 @@
 use crate::{MatchFinder, SsrRule};
 use base_db::{salsa::Durability, FileId, FilePosition, FileRange, SourceDatabaseExt};
-use expect::{expect, Expect};
+use expect_test::{expect, Expect};
 use rustc_hash::FxHashSet;
 use std::sync::Arc;
 use test_utils::{mark, RangeOrOffset};

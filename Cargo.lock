@@ -345,12 +345,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "expect"
-version = "0.0.0"
+name = "expect-test"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3e383741ea1982866572109d1a8c807bd36aad91fca701489fdca56ef92b3b8"
 dependencies = [
  "difference",
  "once_cell",
- "stdx",
 ]
 
 [[package]]
@@ -508,7 +509,7 @@ dependencies = [
  "cfg",
  "drop_bomb",
  "either",
- "expect",
+ "expect-test",
  "fst",
  "hir_expand",
  "indexmap",
@@ -553,7 +554,7 @@ dependencies = [
  "chalk-recursive",
  "chalk-solve",
  "ena",
- "expect",
+ "expect-test",
  "hir_def",
  "hir_expand",
  "itertools",
@@ -587,7 +588,7 @@ dependencies = [
  "base_db",
  "cfg",
  "either",
- "expect",
+ "expect-test",
  "hir",
  "ide_db",
  "indexmap",
@@ -1225,7 +1226,7 @@ dependencies = [
  "cfg",
  "crossbeam-channel",
  "env_logger",
- "expect",
+ "expect-test",
  "flycheck",
  "hir",
  "hir_def",
@@ -1452,7 +1453,7 @@ name = "ssr"
 version = "0.0.0"
 dependencies = [
  "base_db",
- "expect",
+ "expect-test",
  "hir",
  "ide_db",
  "itertools",
@@ -1494,7 +1495,7 @@ name = "syntax"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
- "expect",
+ "expect-test",
  "itertools",
  "once_cell",
  "parser",

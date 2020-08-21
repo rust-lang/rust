@@ -32,4 +32,4 @@ cfg = { path = "../cfg" }
 tt = { path = "../tt" }
 
 [dev-dependencies]
-expect = { path = "../expect" }
+expect-test = "0.1"

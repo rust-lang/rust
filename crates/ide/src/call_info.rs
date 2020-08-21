@@ -229,7 +229,7 @@ impl FnCallNode {
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
     use test_utils::mark;
 
     use crate::mock_analysis::analysis_and_position;

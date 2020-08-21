@@ -353,7 +353,7 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 #[cfg(test)]
 mod tests {
     use base_db::FileLoader;
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
 
     use crate::mock_analysis::analysis_and_position;
 

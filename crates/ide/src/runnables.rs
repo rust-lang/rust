@@ -268,7 +268,7 @@ fn has_test_function_or_multiple_test_submodules(module: &ast::Module) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
 
     use crate::mock_analysis::analysis_and_position;
 

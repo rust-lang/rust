@@ -164,7 +164,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
 
     use super::*;
 
