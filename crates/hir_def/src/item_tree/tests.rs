@@ -1,5 +1,5 @@
 use base_db::fixture::WithFixture;
-use expect::{expect, Expect};
+use expect_test::{expect, Expect};
 use hir_expand::{db::AstDatabase, HirFileId, InFile};
 use rustc_hash::FxHashSet;
 use std::sync::Arc;

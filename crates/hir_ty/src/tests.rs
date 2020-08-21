@@ -11,7 +11,7 @@ mod display_source_code;
 use std::{env, sync::Arc};
 
 use base_db::{fixture::WithFixture, FileRange, SourceDatabase, SourceDatabaseExt};
-use expect::Expect;
+use expect_test::Expect;
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},
     child_by_source::ChildBySource,

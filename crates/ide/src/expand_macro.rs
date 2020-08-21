@@ -120,7 +120,7 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
 
     use crate::mock_analysis::analysis_and_position;
 

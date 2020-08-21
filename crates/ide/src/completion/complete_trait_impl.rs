@@ -225,7 +225,7 @@ fn make_const_compl_syntax(const_: &ast::Const) -> String {
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
 
     use crate::completion::{
         test_utils::{check_edit, completion_list},

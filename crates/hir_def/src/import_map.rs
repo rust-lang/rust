@@ -328,7 +328,7 @@ pub fn search_dependencies<'a>(
 #[cfg(test)]
 mod tests {
     use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
 
     use crate::{test_db::TestDB, AssocContainerId, Lookup};
 

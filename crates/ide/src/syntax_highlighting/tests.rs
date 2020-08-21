@@ -1,6 +1,6 @@
 use std::fs;
 
-use expect::{expect_file, ExpectFile};
+use expect_test::{expect_file, ExpectFile};
 use test_utils::project_dir;
 
 use crate::{mock_analysis::single_file, FileRange, TextRange};

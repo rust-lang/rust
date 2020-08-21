@@ -64,7 +64,7 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
     use test_utils::mark;
 
     use crate::completion::{

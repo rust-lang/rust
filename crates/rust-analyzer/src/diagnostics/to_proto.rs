@@ -256,7 +256,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 mod tests {
     use super::*;
 
-    use expect::{expect_file, ExpectFile};
+    use expect_test::{expect_file, ExpectFile};
 
     fn check(diagnostics_json: &str, expect: ExpectFile) {
         check_with_config(DiagnosticsMapConfig::default(), diagnostics_json, expect)

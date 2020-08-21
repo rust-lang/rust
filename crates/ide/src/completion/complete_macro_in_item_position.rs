@@ -15,7 +15,7 @@ pub(super) fn complete_macro_in_item_position(acc: &mut Completions, ctx: &Compl
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
 
     use crate::completion::{test_utils::completion_list, CompletionKind};
 

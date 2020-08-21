@@ -1,4 +1,4 @@
-use expect::expect;
+use expect_test::expect;
 
 use super::{check_infer_with_mismatches, check_types};
 

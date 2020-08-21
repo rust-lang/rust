@@ -336,7 +336,7 @@ fn get_callable(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<Call
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
     use test_utils::extract_annotations;
 
     use crate::{inlay_hints::InlayHintsConfig, mock_analysis::single_file};

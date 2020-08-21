@@ -57,7 +57,7 @@ proc_macro_srv = { path = "../proc_macro_srv" }
 winapi = "0.3.8"
 
 [dev-dependencies]
-expect = { path = "../expect" }
+expect-test = "0.1"
 test_utils = { path = "../test_utils" }
 mbe = { path = "../mbe" }
 tt = { path = "../tt" }

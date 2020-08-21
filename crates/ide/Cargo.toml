@@ -32,4 +32,4 @@ ssr = { path = "../ssr" }
 hir = { path = "../hir" }
 
 [dev-dependencies]
-expect = { path = "../expect" }
+expect-test = "0.1"

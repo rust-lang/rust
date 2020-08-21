@@ -146,7 +146,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
     use test_utils::mark;
 
     use crate::completion::{

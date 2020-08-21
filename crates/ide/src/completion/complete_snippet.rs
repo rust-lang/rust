@@ -70,7 +70,7 @@ fn ${1:feature}() {
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
 
     use crate::completion::{test_utils::completion_list, CompletionKind};
 

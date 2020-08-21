@@ -464,7 +464,7 @@ fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static s
 mod tests {
     use std::cmp::Reverse;
 
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
     use test_utils::mark;
 
     use crate::{

@@ -270,7 +270,7 @@ fn rename_reference(
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
+    use expect_test::{expect, Expect};
     use stdx::trim_indent;
     use test_utils::{assert_eq_text, mark};
     use text_edit::TextEdit;
