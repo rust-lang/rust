@@ -561,17 +561,23 @@ pub fn write_target_uint(
     mut target: &mut [u8],
     data: u128,
 ) -> Result<(), io::Error> {
+    // This u128 holds an "any-size uint" (since smaller uints can fits in it)
+    // So we do not write all bytes of the u128, just the "payload".
     match endianness {
         Endian::Little => target.write(&data.to_le_bytes())?,
         Endian::Big => target.write(&data.to_be_bytes())?,
     };
+    debug_assert!(target.len() == 0); // We should have filled the target buffer.
     Ok(())
 }
 
 #[inline]
 pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, io::Error> {
+    // This u128 holds an "any-size uint" (since smaller uints can fits in it)
     let mut buf = [0u8; std::mem::size_of::<u128>()];
+    // So we do not read exactly 16 bytes into the u128, just the "payload".
     source.read(&mut buf)?;
+    debug_assert!(source.len() == 0); // We should have consumed the source buffer.
     match endianness {
         Endian::Little => Ok(u128::from_le_bytes(buf)),
         Endian::Big => Ok(u128::from_be_bytes(buf)),
