@@ -1921,7 +1921,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     DirBuilder::new().recursive(true).create(path.as_ref())
 }
 
-/// Removes an existing, empty directory.
+/// Removes an empty directory.
 ///
 /// # Platform-specific behavior
 ///
@@ -1936,6 +1936,8 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
+/// * `path` doesn't exist.
+/// * `path` isn't a directory.
 /// * The user lacks permissions to remove the directory at the provided `path`.
 /// * The directory isn't empty.
 ///
