@@ -426,14 +426,20 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
             ty::PredicateKind::Projection(ref data) => {
                 let project_obligation = obligation.with(*data);
+                let tcx = self.selcx.tcx();
                 match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
-                    Ok(None) => {
-                        let tcx = self.selcx.tcx();
-                        pending_obligation.stalled_on =
-                            trait_ref_infer_vars(self.selcx, data.to_poly_trait_ref(tcx));
+                    Ok(Ok(Some(os))) => ProcessResult::Changed(mk_pending(os)),
+                    Ok(Ok(None)) => {
+                        pending_obligation.stalled_on = trait_ref_infer_vars(
+                            self.selcx,
+                            project_obligation.predicate.to_poly_trait_ref(tcx),
+                        );
                         ProcessResult::Unchanged
                     }
-                    Ok(Some(os)) => ProcessResult::Changed(mk_pending(os)),
+                    // Let the caller handle the recursion
+                    Ok(Err(project::InProgress)) => ProcessResult::Changed(mk_pending(vec![
+                        pending_obligation.obligation.clone(),
+                    ])),
                     Err(e) => ProcessResult::Error(CodeProjectionError(e)),
                 }
             }

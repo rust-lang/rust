@@ -26,16 +26,16 @@ impl Tr for u32 {
 
 // ...but only if this actually breaks the cycle
 impl Tr for bool {
-//~^ ERROR overflow evaluating the requirement
+    //~^ ERROR type mismatch resolving `<bool as Tr>::B == _`
     type A = Box<Self::B>;
-    //~^ ERROR overflow evaluating the requirement
+    //~^ ERROR type mismatch resolving `<bool as Tr>::B == _`
 }
 // (the error is shown twice for some reason)
 
 impl Tr for usize {
-//~^ ERROR overflow evaluating the requirement
+    //~^ ERROR type mismatch resolving `<usize as Tr>::B == _`
     type B = &'static Self::A;
-    //~^ ERROR overflow evaluating the requirement
+    //~^ ERROR type mismatch resolving `<usize as Tr>::A == _`
 }
 
 fn main() {
