@@ -2,7 +2,7 @@ use crate::astconv::{
     AstConv, ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
 };
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{pluralize, struct_span_err, DiagnosticId, ErrorReported};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{GenericArg, GenericArgs};
@@ -448,10 +448,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let emit_correct =
             |correct: Result<(), (_, Option<rustc_errors::DiagnosticBuilder<'_>>)>| match correct {
                 Ok(()) => Ok(()),
-                Err((v, None)) => Err(v == 0),
-                Err((v, Some(mut err))) => {
+                Err((_, None)) => Err(()),
+                Err((_, Some(mut err))) => {
                     err.emit();
-                    Err(v == 0)
+                    Err(())
                 }
             };
 
@@ -500,16 +500,27 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         // Emit a help message if it's possible that a type could be surrounded in braces
-        if let Err((c_mismatch, Some(ref mut _const_err))) = &mut const_count_correct {
-            if let Err((t_mismatch, Some(ref mut type_err))) = &mut type_count_correct {
-                if *c_mismatch == -*t_mismatch && *t_mismatch < 0 {
-                    for i in 0..*c_mismatch as usize {
-                        // let t_span = unexpected_type_spans[i].clone();
-                        let ident = args.args[arg_counts.lifetimes + i].id();
-                        type_err.help(&format!(
-                            "For more complex types, surround with braces: `{{ {} }}`",
-                            ident,
-                        ));
+        if let Err((c_mismatch, Some(ref mut _const_err))) = const_count_correct {
+            if let Err((t_mismatch, Some(ref mut type_err))) = type_count_correct {
+                if c_mismatch == -t_mismatch && t_mismatch < 0 {
+                    for i in 0..c_mismatch as usize {
+                        let arg = &args.args[arg_counts.lifetimes + i];
+                        match arg {
+                            GenericArg::Type(hir::Ty {
+                                kind: hir::TyKind::Path { .. }, ..
+                            }) => {}
+                            _ => continue,
+                        }
+                        let suggestions = vec![
+                            (arg.span().shrink_to_lo(), String::from("{ ")),
+                            (arg.span().shrink_to_hi(), String::from(" }")),
+                        ];
+                        type_err.multipart_suggestion(
+                            "If this generic argument was intended as a const parameter, \
+                            try surrounding it with braces:",
+                            suggestions,
+                            Applicability::MaybeIncorrect,
+                        );
                     }
                 }
             }
@@ -521,8 +532,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         GenericArgCountResult {
             explicit_late_bound,
-            correct: arg_count_correct.map_err(|reported_err| GenericArgCountMismatch {
-                reported: if reported_err { Some(ErrorReported) } else { None },
+            correct: arg_count_correct.map_err(|()| GenericArgCountMismatch {
+                reported: Some(ErrorReported),
                 invalid_args: unexpected_spans,
             }),
         }

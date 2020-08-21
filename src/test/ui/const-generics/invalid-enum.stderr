@@ -19,7 +19,10 @@ error[E0107]: wrong number of type arguments: expected 0, found 1
 LL |   test::<CompileFlag::A>();
    |          ^^^^^^^^^^^^^^ unexpected type argument
    |
-   = help: For more complex types, surround with braces: `{ HirId { owner: DefId(0:5 ~ invalid_enum[317d]::main[0]), local_id: 1 } }`
+help: If this generic argument was intended as a const parameter, try surrounding it with braces:
+   |
+LL |   test::<{ CompileFlag::A }>();
+   |          ^                ^
 
 error: aborting due to 3 previous errors
 
