@@ -416,7 +416,7 @@ ArgList =
   '(' args:(Expr (',' Expr)* ','?)? ')'
 
 MethodCallExpr =
-  Attr* Expr '.' NameRef GenericArgList? ArgList
+  Attr* receiver:Expr '.' NameRef GenericArgList? ArgList
 
 FieldExpr =
   Attr* Expr '.' NameRef
