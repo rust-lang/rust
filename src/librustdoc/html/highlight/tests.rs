@@ -1,25 +1,9 @@
-use rustc_session::parse::ParseSess;
-use rustc_span::edition::Edition;
-use rustc_span::with_session_globals;
-use rustc_span::FileName;
-
-use super::Classifier;
+use super::write_code;
 
 fn highlight(src: &str) -> String {
-    let mut out = vec![];
-
-    with_session_globals(Edition::Edition2018, || {
-        let sess = ParseSess::with_silent_emitter();
-        let source_file = sess.source_map().new_source_file(
-            FileName::Custom(String::from("rustdoc-highlighting")),
-            src.to_owned(),
-        );
-
-        let mut classifier = Classifier::new(&sess, source_file);
-        classifier.write_source(&mut out).unwrap();
-    });
-
-    String::from_utf8(out).unwrap()
+    let mut out = String::new();
+    write_code(&mut out, src);
+    out
 }
 
 #[test]
