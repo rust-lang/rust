@@ -1409,11 +1409,13 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     }
 }
 
-/// Returns true iff the given expression is a slice of primitives (as defined in the
-/// `is_recursively_primitive_type` function).
-pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+/// Returns Option<String> where String is a textual representation of the type encapsulated in the
+/// slice iff the given expression is a slice of primitives (as defined in the
+/// `is_recursively_primitive_type` function) and None otherwise.
+pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
-    match expr_type.kind {
+    let expr_kind = &expr_type.kind;
+    let is_primitive = match expr_kind {
         ty::Slice(ref element_type)
         | ty::Ref(
             _,
@@ -1424,7 +1426,24 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             _,
         ) => is_recursively_primitive_type(element_type),
         _ => false,
+    };
+
+    if is_primitive {
+        // if we have wrappers like Array, Slice or Tuple, print these
+        // and get the type enclosed in the slice ref
+        match expr_type.peel_refs().walk().nth(1).unwrap().expect_ty().kind {
+            ty::Slice(..) => return Some("slice".into()),
+            ty::Array(..) => return Some("array".into()),
+            ty::Tuple(..) => return Some("tuple".into()),
+            _ => {
+                // is_recursively_primitive_type() should have taken care
+                // of the rest and we can rely on the type that is found
+                let refs_peeled = expr_type.peel_refs();
+                return Some(refs_peeled.walk().last().unwrap().to_string());
+            },
+        }
     }
+    None
 }
 
 #[macro_export]
