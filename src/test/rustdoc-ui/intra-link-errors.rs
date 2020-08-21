@@ -7,14 +7,14 @@
 // FIXME: this could say which path was the first to not be found (in this case, `path`)
 /// [path::to::nonexistent::module]
 //~^ ERROR unresolved link
-//~| NOTE no item named `path::to::nonexistent` is in scope
+//~| NOTE no item named `path::to` is in scope
 //~| HELP to escape
 
 // TODO: why does this say `f` and not `f::A`??
 /// [f::A]
 //~^ ERROR unresolved link
-//~| NOTE no item named `f` is in scope
-//~| HELP to escape
+//~| NOTE this link partially resolves
+//~| NOTE `f` is a function, not a module
 
 /// [S::A]
 //~^ ERROR unresolved link

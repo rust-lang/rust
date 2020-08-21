@@ -9,7 +9,7 @@ note: the lint level is defined here
    |
 LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
-   = note: no item named `path::to::nonexistent` is in scope
+   = note: no item named `path::to` is in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: unresolved link to `f::A`
@@ -18,8 +18,8 @@ error: unresolved link to `f::A`
 LL | /// [f::A]
    |      ^^^^
    |
-   = note: no item named `f` is in scope
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = note: this link partially resolves to the function `f`
+   = note: `f` is a function, not a module or type, and cannot have associated items
 
 error: unresolved link to `S::A`
   --> $DIR/intra-link-errors.rs:19:6

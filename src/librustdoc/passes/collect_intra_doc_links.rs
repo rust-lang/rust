@@ -57,6 +57,9 @@ enum ResolutionFailure<'a> {
     /// This resolved, but with the wrong namespace.
     /// `Namespace` is the expected namespace (as opposed to the actual).
     WrongNamespace(Res, Namespace),
+    /// This has a partial resolution, but is not in the TypeNS and so cannot
+    /// have associated items or fields.
+    CannotHaveAssociatedItems(Res, Namespace),
     /// `String` is the base name of the path (not necessarily the whole link)
     NotInScope(Cow<'a, str>),
     /// this is a primitive type without an impls (no associated methods)
@@ -90,7 +93,8 @@ impl ResolutionFailure<'a> {
             | NoPrimitiveImpl(res, _)
             | NotAnEnum(res)
             | NotAVariant(res, _)
-            | WrongNamespace(res, _) => Some(*res),
+            | WrongNamespace(res, _)
+            | CannotHaveAssociatedItems(res, _) => Some(*res),
             NotInScope(_) | NoParentItem | Dummy => None,
         }
     }
@@ -360,21 +364,39 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }));
             }
 
-            let (_, ty_res) = cx
+            let ty_res = cx
                 .enter_resolver(|resolver| {
                     // only types can have associated items
                     resolver.resolve_str_path_error(DUMMY_SP, &path_root, TypeNS, module_id)
                 })
-                .map_err(|_| {
-                    ErrorKind::Resolve(ResolutionFailure::NotInScope(path_root.clone().into()))
-                })?;
-            if let Res::Err = ty_res {
-                return if ns == Namespace::ValueNS {
-                    self.variant_field(path_str, current_item, module_id)
-                } else {
-                    Err(ErrorKind::Resolve(ResolutionFailure::NotInScope(path_root.into())))
-                };
-            }
+                .map(|(_, res)| res);
+            let ty_res = match ty_res {
+                Err(()) | Ok(Res::Err) => {
+                    return if ns == Namespace::ValueNS {
+                        self.variant_field(path_str, current_item, module_id)
+                    } else {
+                        // See if it only broke because of the namespace.
+                        let kind = cx.enter_resolver(|resolver| {
+                            for &ns in &[MacroNS, ValueNS] {
+                                match resolver
+                                    .resolve_str_path_error(DUMMY_SP, &path_root, ns, module_id)
+                                {
+                                    Ok((_, Res::Err)) | Err(()) => {}
+                                    Ok((_, res)) => {
+                                        let res = res.map_id(|_| panic!("unexpected node_id"));
+                                        return ResolutionFailure::CannotHaveAssociatedItems(
+                                            res, ns,
+                                        );
+                                    }
+                                }
+                            }
+                            ResolutionFailure::NotInScope(path_root.into())
+                        });
+                        Err(ErrorKind::Resolve(kind))
+                    };
+                }
+                Ok(res) => res,
+            };
             let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
             let res = match ty_res {
                 Res::Def(
@@ -1006,14 +1028,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             Ok(res) => (res, extra_fragment),
                             Err(mut kind) => {
                                 // `macro_resolve` only looks in the macro namespace. Try to give a better error if possible.
-                                //if kind.res().is_none() {
                                 for &ns in &[TypeNS, ValueNS] {
                                     if let Some(res) = check_full_res(self, ns) {
                                         kind = ResolutionFailure::WrongNamespace(res, MacroNS);
                                         break;
                                     }
                                 }
-                                //}
                                 resolution_failure(
                                     cx,
                                     &item,
@@ -1453,6 +1473,20 @@ fn resolution_failure(
                         if let Res::Def(_, def_id) = res {
                             let name = cx.tcx.item_name(def_id);
                             let note = format!("no `{}` in `{}`", assoc_item, name,);
+                            diag.note(&note);
+                        }
+                    }
+                    ResolutionFailure::CannotHaveAssociatedItems(res, _) => {
+                        let (item, _) = item(res);
+                        diag.note(&format!("this link partially resolves to {}", item));
+                        if let Res::Def(kind, def_id) = res {
+                            let name = cx.tcx.item_name(def_id);
+                            let note = format!(
+                                "`{}` is {} {}, not a module or type, and cannot have associated items",
+                                name,
+                                kind.article(),
+                                kind.descr(def_id)
+                            );
                             diag.note(&note);
                         }
                     }
