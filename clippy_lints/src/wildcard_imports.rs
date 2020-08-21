@@ -198,7 +198,7 @@ impl WildcardImports {
 // Allow "...prelude::..::*" imports.
 // Many crates have a prelude, and it is imported as a glob by design.
 fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
-    segments.iter().filter(|ps| ps.ident.as_str() == "prelude").count() > 0
+    segments.iter().any(|ps| ps.ident.as_str() == "prelude")
 }
 
 // Allow "super::*" imports in tests.
