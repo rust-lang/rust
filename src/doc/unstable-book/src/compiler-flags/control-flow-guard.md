@@ -21,7 +21,7 @@ CFG functionality is completely implemented in the LLVM backend and is supported
 
 The primary motivation for enabling CFG in Rust is to enhance security when linking against non-Rust code, especially C/C++ code. To achieve full CFG protection, all indirect calls (including any from Rust code) must have the appropriate CFG checks, as added by this flag. CFG can also improve security for Rust code that uses the `unsafe` keyword.
 
-Another motivation behind CFG is to harden programs against [return-oriented programming (ROP)](https://en.m.wikipedia.org/wiki/Return-oriented_programming) attacks. CFG disallows an attacker from taking advantage of the programs own instructions while redirecting control flow in unexpected ways.
+Another motivation behind CFG is to harden programs against [return-oriented programming (ROP)](https://en.wikipedia.org/wiki/Return-oriented_programming) attacks. CFG disallows an attacker from taking advantage of the programs own instructions while redirecting control flow in unexpected ways.
 
 ## Overhead of Control Flow Guard
 
