@@ -173,10 +173,8 @@ impl EarlyProps {
                     // Ignore if actual version is smaller the minimum required
                     // version
                     actual_version < min_version
-                } else if line.starts_with("rust-lldb") && !config.lldb_native_rust {
-                    true
                 } else {
-                    false
+                    line.starts_with("rust-lldb") && !config.lldb_native_rust
                 }
             } else {
                 false
@@ -657,7 +655,6 @@ fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn
             it(ln[comment.len()..].trim_start());
         }
     }
-    return;
 }
 
 impl Config {
@@ -819,7 +816,7 @@ impl Config {
         let name = line[prefix.len() + 1..].split(&[':', ' '][..]).next().unwrap();
 
         let is_match = name == "test" ||
-            &self.target == name ||                             // triple
+            self.target == name ||                              // triple
             util::matches_os(&self.target, name) ||             // target
             util::matches_env(&self.target, name) ||            // env
             self.target.ends_with(name) ||                      // target and env
@@ -857,10 +854,7 @@ impl Config {
         // Ensure the directive is a whole word. Do not match "ignore-x86" when
         // the line says "ignore-x86_64".
         line.starts_with(directive)
-            && match line.as_bytes().get(directive.len()) {
-                None | Some(&b' ') | Some(&b':') => true,
-                _ => false,
-            }
+            && matches!(line.as_bytes().get(directive.len()), None | Some(&b' ') | Some(&b':'))
     }
 
     pub fn parse_name_value_directive(&self, line: &str, directive: &str) -> Option<String> {
@@ -901,9 +895,9 @@ impl Config {
 }
 
 fn expand_variables(mut value: String, config: &Config) -> String {
-    const CWD: &'static str = "{{cwd}}";
-    const SRC_BASE: &'static str = "{{src-base}}";
-    const BUILD_BASE: &'static str = "{{build-base}}";
+    const CWD: &str = "{{cwd}}";
+    const SRC_BASE: &str = "{{src-base}}";
+    const BUILD_BASE: &str = "{{build-base}}";
 
     if value.contains(CWD) {
         let cwd = env::current_dir().unwrap();

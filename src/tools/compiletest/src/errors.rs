@@ -148,7 +148,7 @@ fn parse_expected(
 
     // If we find `//~ ERROR foo` or something like that, skip the first word.
     let kind = first_word.parse::<ErrorKind>().ok();
-    if let Some(_) = kind {
+    if kind.is_some() {
         msg = &msg.trim_start().split_at(first_word.len()).1;
     }
 
