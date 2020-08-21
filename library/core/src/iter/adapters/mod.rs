@@ -485,7 +485,6 @@ where
 unsafe impl<I> TrustedRandomAccess for Cloned<I>
 where
     I: TrustedRandomAccess,
-
 {
     #[inline]
     fn may_have_side_effect() -> bool {

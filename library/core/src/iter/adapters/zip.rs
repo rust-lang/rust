@@ -334,10 +334,10 @@ where
 // it would require negative trait bounds to be able to try both
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<S, A, B> SourceIter for Zip<A, B>
-    where
-        A: SourceIter<Source = S>,
-        B: Iterator,
-        S: Iterator,
+where
+    A: SourceIter<Source = S>,
+    B: Iterator,
+    S: Iterator,
 {
     type Source = S;
 

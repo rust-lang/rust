@@ -1,9 +1,9 @@
 use super::InPlaceIterable;
 use crate::intrinsics;
 use crate::iter::adapters::zip::try_get_unchecked;
+use crate::iter::adapters::SourceIter;
 use crate::iter::TrustedRandomAccess;
 use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
-use crate::iter::adapters::SourceIter;
 use crate::ops::Try;
 
 /// An iterator that yields `None` forever after the underlying iterator
