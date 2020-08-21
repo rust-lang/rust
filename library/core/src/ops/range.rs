@@ -35,9 +35,9 @@ use crate::hash::Hash;
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
-/// [`IntoIterator`]: ../iter/trait.Iterator.html
-/// [`Iterator`]: ../iter/trait.IntoIterator.html
-/// [slicing index]: ../slice/trait.SliceIndex.html
+/// [`IntoIterator`]: crate::iter::IntoIterator
+/// [`Iterator`]: crate::iter::Iterator
+/// [slicing index]: crate::slice::SliceIndex
 #[cfg_attr(not(bootstrap), lang = "RangeFull")]
 #[doc(alias = "..")]
 #[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
@@ -179,7 +179,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
-/// [`Iterator`]: ../iter/trait.IntoIterator.html
+/// [`Iterator`]: crate::iter::IntoIterator
 #[cfg_attr(not(bootstrap), lang = "RangeFrom")]
 #[doc(alias = "..")]
 #[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
@@ -260,9 +260,9 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
-/// [`IntoIterator`]: ../iter/trait.Iterator.html
-/// [`Iterator`]: ../iter/trait.IntoIterator.html
-/// [slicing index]: ../slice/trait.SliceIndex.html
+/// [`IntoIterator`]: crate::iter::IntoIterator
+/// [`Iterator`]: crate::iter::Iterator
+/// [slicing index]: crate::slice::SliceIndex
 #[cfg_attr(not(bootstrap), lang = "RangeTo")]
 #[doc(alias = "..")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -315,8 +315,8 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// iteration has finished are **unspecified** other than that [`.is_empty()`]
 /// will return `true` once no more values will be produced.
 ///
-/// [fused]: ../iter/trait.FusedIterator.html
-/// [`.is_empty()`]: #method.is_empty
+/// [fused]: crate::iter::FusedIterator
+/// [`.is_empty()`]: RangeInclusive::is_empty
 ///
 /// # Examples
 ///
@@ -383,8 +383,8 @@ impl<Idx> RangeInclusive<Idx> {
     /// Note: the value returned by this method is unspecified after the range
     /// has been iterated to exhaustion.
     ///
-    /// [`end()`]: #method.end
-    /// [`is_empty()`]: #method.is_empty
+    /// [`end()`]: RangeInclusive::end
+    /// [`is_empty()`]: RangeInclusive::is_empty
     ///
     /// # Examples
     ///
@@ -408,8 +408,8 @@ impl<Idx> RangeInclusive<Idx> {
     /// Note: the value returned by this method is unspecified after the range
     /// has been iterated to exhaustion.
     ///
-    /// [`start()`]: #method.start
-    /// [`is_empty()`]: #method.is_empty
+    /// [`start()`]: RangeInclusive::start
+    /// [`is_empty()`]: RangeInclusive::is_empty
     ///
     /// # Examples
     ///
@@ -558,9 +558,9 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
-/// [`IntoIterator`]: ../iter/trait.Iterator.html
-/// [`Iterator`]: ../iter/trait.IntoIterator.html
-/// [slicing index]: ../slice/trait.SliceIndex.html
+/// [`IntoIterator`]: crate::iter::IntoIterator
+/// [`Iterator`]: crate::iter::Iterator
+/// [slicing index]: crate::slice::SliceIndex
 #[cfg_attr(not(bootstrap), lang = "RangeToInclusive")]
 #[doc(alias = "..=")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
