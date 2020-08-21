@@ -19,6 +19,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
 
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::ops::Range;
 
@@ -46,40 +47,40 @@ pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_>) -> Crate {
     }
 }
 
-enum ErrorKind {
-    Resolve(ResolutionFailure),
+enum ErrorKind<'a> {
+    Resolve(ResolutionFailure<'a>),
     AnchorFailure(AnchorFailure),
 }
 
 #[derive(Debug)]
-enum ResolutionFailure {
+enum ResolutionFailure<'a> {
     /// This resolved, but with the wrong namespace.
     /// `Namespace` is the expected namespace (as opposed to the actual).
     WrongNamespace(Res, Namespace),
     /// `String` is the base name of the path (not necessarily the whole link)
-    NotInScope(String),
+    NotInScope(Cow<'a, str>),
     /// this is a primitive type without an impls (no associated methods)
     /// when will this actually happen?
     /// the `Res` is the primitive it resolved to
     NoPrimitiveImpl(Res, String),
     /// `[u8::not_found]`
     /// the `Res` is the primitive it resolved to
-    NoPrimitiveAssocItem { res: Res, prim_name: String, assoc_item: String },
+    NoPrimitiveAssocItem { res: Res, prim_name: &'a str, assoc_item: Symbol },
     /// `[S::not_found]`
     /// the `String` is the associated item that wasn't found
-    NoAssocItem(Res, String),
+    NoAssocItem(Res, Symbol),
     /// should not ever happen
     NoParentItem,
     /// the root of this path resolved, but it was not an enum.
     NotAnEnum(Res),
     /// this could be an enum variant, but the last path fragment wasn't resolved.
     /// the `String` is the variant that didn't exist
-    NotAVariant(Res, String),
+    NotAVariant(Res, Symbol),
     /// used to communicate that this should be ignored, but shouldn't be reported to the user
     Dummy,
 }
 
-impl ResolutionFailure {
+impl ResolutionFailure<'a> {
     fn res(&self) -> Option<Res> {
         use ResolutionFailure::*;
         match self {
@@ -121,10 +122,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
     fn variant_field(
         &self,
-        path_str: &str,
+        path_str: &'path str,
         current_item: &Option<String>,
         module_id: DefId,
-    ) -> Result<(Res, Option<String>), ErrorKind> {
+    ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         let cx = self.cx;
 
         let mut split = path_str.rsplitn(3, "::");
@@ -134,7 +135,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .expect("fold_item should ensure link is non-empty");
         let variant_name =
             // we're not sure this is a variant at all, so use the full string
-            split.next().map(|f| Symbol::intern(f)).ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope(path_str.to_string())))?;
+            split.next().map(|f| Symbol::intern(f)).ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope(path_str.into())))?;
         // TODO: this looks very wrong, why are we requiring 3 fields?
         let path = split
             .next()
@@ -147,14 +148,18 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 f.to_owned()
             })
             // TODO: is this right?
-            .ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope(variant_name.to_string())))?;
+            .ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope(
+                variant_name.to_string().into(),
+            )))?;
         let (_, ty_res) = cx
             .enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path, TypeNS, module_id)
             })
-            .map_err(|_| ErrorKind::Resolve(ResolutionFailure::NotInScope(path.to_string())))?;
+            .map_err(|_| {
+                ErrorKind::Resolve(ResolutionFailure::NotInScope(path.to_string().into()))
+            })?;
         if let Res::Err = ty_res {
-            return Err(ErrorKind::Resolve(ResolutionFailure::NotInScope(path.to_string())));
+            return Err(ErrorKind::Resolve(ResolutionFailure::NotInScope(path.to_string().into())));
         }
         let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
         match ty_res {
@@ -183,7 +188,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         } else {
                             Err(ErrorKind::Resolve(ResolutionFailure::NotAVariant(
                                 ty_res,
-                                variant_field_name.to_string(),
+                                variant_field_name,
                             )))
                         }
                     }
@@ -197,9 +202,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// Resolves a string as a macro.
     fn macro_resolve(
         &self,
-        path_str: &str,
+        path_str: &'a str,
         parent_id: Option<DefId>,
-    ) -> Result<Res, ResolutionFailure> {
+    ) -> Result<Res, ResolutionFailure<'a>> {
         let cx = self.cx;
         let path = ast::Path::from_ident(Ident::from_str(path_str));
         cx.enter_resolver(|resolver| {
@@ -232,19 +237,19 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 debug!("attempting to resolve item without parent module: {}", path_str);
                 return Err(ResolutionFailure::NoParentItem);
             }
-            return Err(ResolutionFailure::NotInScope(path_str.to_string()));
+            return Err(ResolutionFailure::NotInScope(path_str.into()));
         })
     }
     /// Resolves a string as a path within a particular namespace. Also returns an optional
     /// URL fragment in the case of variants and methods.
-    fn resolve(
+    fn resolve<'path>(
         &self,
-        path_str: &str,
+        path_str: &'path str,
         ns: Namespace,
         current_item: &Option<String>,
         parent_id: Option<DefId>,
         extra_fragment: &Option<String>,
-    ) -> Result<(Res, Option<String>), ErrorKind> {
+    ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         let cx = self.cx;
 
         // In case we're in a module, try to resolve the relative path.
@@ -309,11 +314,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 })
                 // If there's no `::`, it's not an associated item.
                 // So we can be sure that `rustc_resolve` was accurate when it said it wasn't resolved.
-                .ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope(item_name.to_string())))?;
+                .ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope(
+                    item_name.to_string().into(),
+                )))?;
 
             if let Some((path, prim)) = is_primitive(&path_root, ns) {
                 let impls = primitive_impl(cx, &path).ok_or_else(|| {
-                    ErrorKind::Resolve(ResolutionFailure::NoPrimitiveImpl(prim, path_root))
+                    ErrorKind::Resolve(ResolutionFailure::NoPrimitiveImpl(prim, path_root.into()))
                 })?;
                 for &impl_ in impls {
                     let link = cx
@@ -337,8 +344,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }
                 return Err(ErrorKind::Resolve(ResolutionFailure::NoPrimitiveAssocItem {
                     res: prim,
-                    prim_name: path.to_string(),
-                    assoc_item: item_name.to_string(),
+                    prim_name: path,
+                    assoc_item: item_name,
                 }));
             }
 
@@ -347,13 +354,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     resolver.resolve_str_path_error(DUMMY_SP, &path_root, TypeNS, module_id)
                 })
                 .map_err(|_| {
-                    ErrorKind::Resolve(ResolutionFailure::NotInScope(path_root.clone()))
+                    ErrorKind::Resolve(ResolutionFailure::NotInScope(path_root.clone().into()))
                 })?;
             if let Res::Err = ty_res {
                 return if ns == Namespace::ValueNS {
                     self.variant_field(path_str, current_item, module_id)
                 } else {
-                    Err(ErrorKind::Resolve(ResolutionFailure::NotInScope(path_root)))
+                    Err(ErrorKind::Resolve(ResolutionFailure::NotInScope(path_root.into())))
                 };
             }
             let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
@@ -450,8 +457,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     } else {
                         // We already know this isn't in ValueNS, so no need to check variant_field
                         return Err(ErrorKind::Resolve(ResolutionFailure::NoAssocItem(
-                            ty_res,
-                            item_name.to_string(),
+                            ty_res, item_name,
                         )));
                     }
                 }
@@ -491,10 +497,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 if ns == Namespace::ValueNS {
                     self.variant_field(path_str, current_item, module_id)
                 } else {
-                    Err(ErrorKind::Resolve(ResolutionFailure::NoAssocItem(
-                        ty_res,
-                        item_name.to_string(),
-                    )))
+                    Err(ErrorKind::Resolve(ResolutionFailure::NoAssocItem(ty_res, item_name)))
                 }
             })
         } else {
@@ -638,7 +641,7 @@ fn traits_implemented_by(cx: &DocContext<'_>, type_: DefId, module: DefId) -> Fx
 /// Check for resolve collisions between a trait and its derive
 ///
 /// These are common and we should just resolve to the trait in that case
-fn is_derive_trait_collision<T>(ns: &PerNS<Result<(Res, T), ResolutionFailure>>) -> bool {
+fn is_derive_trait_collision<T>(ns: &PerNS<Result<(Res, T), ResolutionFailure<'_>>>) -> bool {
     if let PerNS {
         type_ns: Ok((Res::Def(DefKind::Trait, _), _)),
         macro_ns: Ok((Res::Def(DefKind::Macro(MacroKind::Derive), _), _)),
@@ -941,7 +944,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             drop(candidates_iter);
                             if is_derive_trait_collision(&candidates) {
                                 candidates.macro_ns =
-                                    Err(ResolutionFailure::NotInScope(path_str.to_string()));
+                                    Err(ResolutionFailure::NotInScope(path_str.into()));
                             }
                             // If we're reporting an ambiguity, don't mention the namespaces that failed
                             let candidates =
@@ -1348,7 +1351,7 @@ fn resolution_failure(
     path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
-    kinds: SmallVec<[ResolutionFailure; 3]>,
+    kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
 ) {
     report_diagnostic(
         cx,
@@ -1494,10 +1497,10 @@ fn anchor_failure(
     });
 }
 
-fn ambiguity_error(
+fn ambiguity_error<'a>(
     cx: &DocContext<'_>,
     item: &Item,
-    path_str: &str,
+    path_str: &'a str,
     dox: &str,
     link_range: Option<Range<usize>>,
     candidates: Vec<Res>,
@@ -1593,7 +1596,7 @@ fn handle_variant(
     cx: &DocContext<'_>,
     res: Res,
     extra_fragment: &Option<String>,
-) -> Result<(Res, Option<String>), ErrorKind> {
+) -> Result<(Res, Option<String>), ErrorKind<'static>> {
     use rustc_middle::ty::DefIdTree;
 
     if extra_fragment.is_some() {
