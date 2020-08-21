@@ -241,6 +241,10 @@ impl fold::DocFolder for CoverageCalculator {
                     | clean::TypedefItem(_, _)
                     | clean::StaticItem(_)
                     | clean::ConstantItem(_)
+                    | clean::ExternCrateItem(_, _)
+                    | clean::ImportItem(_)
+                    | clean::PrimitiveItem(_)
+                    | clean::KeywordItem(_)
                 );
                 find_testable_code(
                     &i.attrs.doc_strings.iter().map(|d| d.as_str()).collect::<Vec<_>>().join("\n"),
