@@ -87,3 +87,13 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
         &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
     )
 }
+
+impl<F: Fn() + Send + Sync + 'static> Wake for F {
+    fn wake(self: Arc<Self>) {
+        (self)();
+    }
+
+    fn wake_by_ref(self: &Arc<Self>) {
+        (self)();
+    }
+}
