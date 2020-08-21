@@ -767,7 +767,7 @@ fn supported_sanitizers(
 ) -> Vec<SanitizerRuntime> {
     let darwin_libs = |os: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
         components
-            .into_iter()
+            .iter()
             .map(move |c| SanitizerRuntime {
                 cmake_target: format!("clang_rt.{}_{}_dynamic", c, os),
                 path: out_dir
@@ -779,7 +779,7 @@ fn supported_sanitizers(
 
     let common_libs = |os: &str, arch: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
         components
-            .into_iter()
+            .iter()
             .map(move |c| SanitizerRuntime {
                 cmake_target: format!("clang_rt.{}-{}", c, arch),
                 path: out_dir.join(&format!("build/lib/{}/libclang_rt.{}-{}.a", os, c, arch)),

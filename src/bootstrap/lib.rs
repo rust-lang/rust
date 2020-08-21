@@ -323,10 +323,7 @@ pub enum Mode {
 
 impl Mode {
     pub fn is_tool(&self) -> bool {
-        match self {
-            Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd => true,
-            _ => false,
-        }
+        matches!(self, Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd)
     }
 }
 
