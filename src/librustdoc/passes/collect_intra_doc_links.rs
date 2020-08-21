@@ -110,12 +110,7 @@ impl ResolutionFailure<'a> {
 
 enum AnchorFailure {
     MultipleAnchors,
-    Primitive,
-    Variant,
-    AssocConstant,
-    AssocType,
-    Field,
-    Method,
+    RustdocAnchorConflict(Res),
 }
 
 struct LinkCollector<'a, 'tcx> {
@@ -288,7 +283,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // Not a trait item; just return what we found.
                     Res::PrimTy(..) => {
                         if extra_fragment.is_some() {
-                            return Err(ErrorKind::AnchorFailure(AnchorFailure::Primitive));
+                            return Err(ErrorKind::AnchorFailure(
+                                AnchorFailure::RustdocAnchorConflict(res),
+                            ));
                         }
                         return Ok((res, Some(path_str.to_owned())));
                     }
@@ -305,7 +302,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }
             } else if let Some((path, prim)) = is_primitive(path_str, ns) {
                 if extra_fragment.is_some() {
-                    return Err(ErrorKind::AnchorFailure(AnchorFailure::Primitive));
+                    return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(
+                        prim,
+                    )));
                 }
                 return Ok((prim, Some(path.to_owned())));
             }
@@ -444,11 +443,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             ty::AssocKind::Type => "associatedtype",
                         };
                         Some(if extra_fragment.is_some() {
-                            Err(ErrorKind::AnchorFailure(if kind == ty::AssocKind::Fn {
-                                AnchorFailure::Method
-                            } else {
-                                AnchorFailure::AssocConstant
-                            }))
+                            Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(
+                                ty_res,
+                            )))
                         } else {
                             // HACK(jynelson): `clean` expects the type, not the associated item.
                             // but the disambiguator logic expects the associated item.
@@ -470,11 +467,17 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                 };
                                 field.map(|item| {
                                     if extra_fragment.is_some() {
-                                        Err(ErrorKind::AnchorFailure(if def.is_enum() {
-                                            AnchorFailure::Variant
-                                        } else {
-                                            AnchorFailure::Field
-                                        }))
+                                        let res = Res::Def(
+                                            if def.is_enum() {
+                                                DefKind::Variant
+                                            } else {
+                                                DefKind::Field
+                                            },
+                                            item.did,
+                                        );
+                                        Err(ErrorKind::AnchorFailure(
+                                            AnchorFailure::RustdocAnchorConflict(res),
+                                        ))
                                     } else {
                                         Ok((
                                             ty_res,
@@ -518,13 +521,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         };
 
                         if extra_fragment.is_some() {
-                            Err(ErrorKind::AnchorFailure(if item.kind == ty::AssocKind::Const {
-                                AnchorFailure::AssocConstant
-                            } else if item.kind == ty::AssocKind::Type {
-                                AnchorFailure::AssocType
-                            } else {
-                                AnchorFailure::Method
-                            }))
+                            Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(
+                                ty_res,
+                            )))
                         } else {
                             let res = Res::Def(item.kind.as_def_kind(), item.def_id);
                             Ok((res, Some(format!("{}.{}", kind, item_name))))
@@ -889,8 +888,10 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 Some(res.0)
                             }
                             Err(ErrorKind::Resolve(kind)) => kind.full_res(),
-                            // TODO: add `Res` to AnchorFailure
-                            Err(ErrorKind::AnchorFailure(_)) => None,
+                            Err(ErrorKind::AnchorFailure(
+                                AnchorFailure::RustdocAnchorConflict(res),
+                            )) => Some(res),
+                            Err(ErrorKind::AnchorFailure(AnchorFailure::MultipleAnchors)) => None,
                         };
                     this.kind_side_channel.take().map(|(kind, id)| Res::Def(kind, id)).or(res)
                 };
@@ -1070,7 +1071,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 path_str,
                                 &dox,
                                 link_range,
-                                AnchorFailure::Primitive,
+                                AnchorFailure::RustdocAnchorConflict(prim),
                             );
                             continue;
                         }
@@ -1555,28 +1556,11 @@ fn anchor_failure(
 ) {
     let msg = match failure {
         AnchorFailure::MultipleAnchors => format!("`{}` contains multiple anchors", path_str),
-        AnchorFailure::Primitive
-        | AnchorFailure::Variant
-        | AnchorFailure::AssocConstant
-        | AnchorFailure::AssocType
-        | AnchorFailure::Field
-        | AnchorFailure::Method => {
-            let kind = match failure {
-                AnchorFailure::Primitive => "primitive type",
-                AnchorFailure::Variant => "enum variant",
-                AnchorFailure::AssocConstant => "associated constant",
-                AnchorFailure::AssocType => "associated type",
-                AnchorFailure::Field => "struct field",
-                AnchorFailure::Method => "method",
-                AnchorFailure::MultipleAnchors => unreachable!("should be handled already"),
-            };
-
-            format!(
-                "`{}` contains an anchor, but links to {kind}s are already anchored",
-                path_str,
-                kind = kind
-            )
-        }
+        AnchorFailure::RustdocAnchorConflict(res) => format!(
+            "`{}` contains an anchor, but links to {kind}s are already anchored",
+            path_str,
+            kind = res.descr(),
+        ),
     };
 
     report_diagnostic(cx, &msg, item, dox, &link_range, |diag, sp| {
@@ -1689,7 +1673,7 @@ fn handle_variant(
     use rustc_middle::ty::DefIdTree;
 
     if extra_fragment.is_some() {
-        return Err(ErrorKind::AnchorFailure(AnchorFailure::Variant));
+        return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res)));
     }
     let parent = if let Some(parent) = cx.tcx.parent(res.def_id()) {
         parent
