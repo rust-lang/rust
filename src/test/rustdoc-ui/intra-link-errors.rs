@@ -49,11 +49,18 @@ pub struct S;
 pub enum E { A, B, C }
 
 /// [type@S::h]
+//~^ ERROR unresolved link
+//~| HELP to link to the associated function
+//~| NOTE not in the type namespace
 impl S {
     pub fn h() {}
 }
 
 /// [type@T::g]
+//~^ ERROR unresolved link
+//~| HELP to link to the associated function
+//~| NOTE not in the type namespace
+
 /// [T::h!]
 pub trait T {
     fn g() {}

@@ -80,27 +80,34 @@ error: unresolved link to `S`
   --> $DIR/intra-link-errors.rs:41:6
    |
 LL | /// [S!]
-   |      ^^ help: to link to the unit struct, use its disambiguator: `value@S`
+   |      ^^ help: to link to the struct, use its disambiguator: `struct@S`
    |
-   = note: this link resolves to the unit struct `S`, which is not in the macro namespace
+   = note: this link resolves to the struct `S`, which is not in the macro namespace
 
 error: unresolved link to `T::g`
-  --> $DIR/intra-link-errors.rs:56:6
+  --> $DIR/intra-link-errors.rs:59:6
    |
 LL | /// [type@T::g]
-   |      ^^^^^^^^^
+   |      ^^^^^^^^^ help: to link to the associated function, use its disambiguator: `T::g()`
    |
-   = note: this link partially resolves to the trait `T`
-   = note: `T` has no field, variant, or associated item named `g`
+   = note: this link resolves to the associated function `g`, which is not in the type namespace
+
+error: unresolved link to `T::h`
+  --> $DIR/intra-link-errors.rs:64:6
+   |
+LL | /// [T::h!]
+   |      ^^^^^
+   |
+   = note: no item named `T::h` is in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: unresolved link to `S::h`
   --> $DIR/intra-link-errors.rs:51:6
    |
 LL | /// [type@S::h]
-   |      ^^^^^^^^^
+   |      ^^^^^^^^^ help: to link to the associated function, use its disambiguator: `S::h()`
    |
-   = note: this link partially resolves to the struct `S`
-   = note: `S` has no field, variant, or associated item named `h`
+   = note: this link resolves to the associated function `h`, which is not in the type namespace
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 

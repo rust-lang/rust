@@ -121,7 +121,7 @@ struct LinkCollector<'a, 'tcx> {
     /// This is used to store the kind of associated items,
     /// because `clean` and the disambiguator code expect them to be different.
     /// See the code for associated items on inherent impls for details.
-    kind_side_channel: Cell<Option<DefKind>>,
+    kind_side_channel: Cell<Option<(DefKind, DefId)>>,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -381,7 +381,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 ) => {
                     debug!("looking for associated item named {} for item {:?}", item_name, did);
                     // Checks if item_name belongs to `impl SomeItem`
-                    let kind = cx
+                    let assoc_item = cx
                         .tcx
                         .inherent_impls(did)
                         .iter()
@@ -393,7 +393,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                 imp,
                             )
                         })
-                        .map(|item| item.kind)
+                        .map(|item| (item.kind, item.def_id))
                         // There should only ever be one associated item that matches from any inherent impl
                         .next()
                         // Check if item_name belongs to `impl SomeTrait for SomeItem`
@@ -409,7 +409,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             kind
                         });
 
-                    if let Some(kind) = kind {
+                    if let Some((kind, id)) = assoc_item {
                         let out = match kind {
                             ty::AssocKind::Fn => "method",
                             ty::AssocKind::Const => "associatedconstant",
@@ -425,7 +425,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             // HACK(jynelson): `clean` expects the type, not the associated item.
                             // but the disambiguator logic expects the associated item.
                             // Store the kind in a side channel so that only the disambiguator logic looks at it.
-                            self.kind_side_channel.set(Some(kind.as_def_kind()));
+                            self.kind_side_channel.set(Some((kind.as_def_kind(), id)));
                             Ok((ty_res, Some(format!("{}.{}", out, item_name))))
                         })
                     } else if ns == Namespace::ValueNS {
@@ -525,7 +525,7 @@ fn resolve_associated_trait_item(
     item_name: Symbol,
     ns: Namespace,
     cx: &DocContext<'_>,
-) -> Option<ty::AssocKind> {
+) -> Option<(ty::AssocKind, DefId)> {
     let ty = cx.tcx.type_of(did);
     // First consider automatic impls: `impl From<T> for T`
     let implicit_impls = crate::clean::get_auto_trait_and_blanket_impls(cx, ty, did);
@@ -553,7 +553,7 @@ fn resolve_associated_trait_item(
                             // but provided methods come directly from `tcx`.
                             // Fortunately, we don't need the whole method, we just need to know
                             // what kind of associated item it is.
-                            Some((assoc.def_id, kind))
+                            Some((kind, assoc.def_id))
                         });
                         let assoc = items.next();
                         debug_assert_eq!(items.count(), 0);
@@ -575,7 +575,7 @@ fn resolve_associated_trait_item(
                                 ns,
                                 trait_,
                             )
-                            .map(|assoc| (assoc.def_id, assoc.kind))
+                            .map(|assoc| (assoc.kind, assoc.def_id))
                     }
                 }
                 _ => panic!("get_impls returned something that wasn't an impl"),
@@ -592,12 +592,12 @@ fn resolve_associated_trait_item(
             cx.tcx
                 .associated_items(trait_)
                 .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, trait_)
-                .map(|assoc| (assoc.def_id, assoc.kind))
+                .map(|assoc| (assoc.kind, assoc.def_id))
         }));
     }
     // FIXME: warn about ambiguity
     debug!("the candidates were {:?}", candidates);
-    candidates.pop().map(|(_, kind)| kind)
+    candidates.pop()
 }
 
 /// Given a type, return all traits in scope in `module` implemented by that type.
@@ -851,18 +851,21 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
                 // used for reporting better errors
                 let check_full_res = |this: &mut Self, ns| {
-                    match this.resolve(path_str, ns, &current_item, base_node, &extra_fragment) {
-                        Ok(res) => {
-                            debug!(
-                                "check_full_res: saw res for {} in {:?} ns: {:?}",
-                                path_str, ns, res.0
-                            );
-                            Some(res.0)
-                        }
-                        Err(ErrorKind::Resolve(kind)) => kind.full_res(),
-                        // TODO: add `Res` to AnchorFailure
-                        Err(ErrorKind::AnchorFailure(_)) => None,
-                    }
+                    let res =
+                        match this.resolve(path_str, ns, &current_item, base_node, &extra_fragment)
+                        {
+                            Ok(res) => {
+                                debug!(
+                                    "check_full_res: saw res for {} in {:?} ns: {:?}",
+                                    path_str, ns, res.0
+                                );
+                                Some(res.0)
+                            }
+                            Err(ErrorKind::Resolve(kind)) => kind.full_res(),
+                            // TODO: add `Res` to AnchorFailure
+                            Err(ErrorKind::AnchorFailure(_)) => None,
+                        };
+                    this.kind_side_channel.take().map(|(kind, id)| Res::Def(kind, id)).or(res)
                 };
 
                 match disambiguator.map(Disambiguator::ns) {
@@ -876,7 +879,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 if kind.full_res().is_none() {
                                     let other_ns = if ns == ValueNS { TypeNS } else { ValueNS };
                                     if let Some(res) = check_full_res(self, other_ns) {
-                                        kind = ResolutionFailure::WrongNamespace(res, other_ns);
+                                        // recall that this stores the _expected_ namespace
+                                        kind = ResolutionFailure::WrongNamespace(res, ns);
                                     }
                                 }
                                 resolution_failure(
@@ -1092,7 +1096,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 // Disallow e.g. linking to enums with `struct@`
                 if let Res::Def(kind, _) = res {
                     debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
-                    match (self.kind_side_channel.take().unwrap_or(kind), disambiguator) {
+                    match (self.kind_side_channel.take().map(|(kind, _)| kind).unwrap_or(kind), disambiguator) {
                         | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
                         // NOTE: this allows 'method' to mean both normal functions and associated functions
                         // This can't cause ambiguity because both are in the same namespace.
