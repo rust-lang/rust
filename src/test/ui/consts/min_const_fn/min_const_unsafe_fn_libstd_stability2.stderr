@@ -1,4 +1,4 @@
-error[E0723]: can only call other `const fn` within a `const fn`, but `const foo` is not stable as `const fn`
+error[E0723]: can only call other `const fn` within a `const fn`, but `foo` is not stable as `const fn`
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:16:32
    |
 LL | const unsafe fn bar() -> u32 { foo() }
@@ -7,7 +7,7 @@ LL | const unsafe fn bar() -> u32 { foo() }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: can only call other `const fn` within a `const fn`, but `const foo2` is not stable as `const fn`
+error[E0723]: can only call other `const fn` within a `const fn`, but `foo2` is not stable as `const fn`
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:24:33
    |
 LL | const unsafe fn bar2() -> u32 { foo2() }
@@ -16,7 +16,7 @@ LL | const unsafe fn bar2() -> u32 { foo2() }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: can only call other `const fn` within a `const fn`, but `const foo2_gated` is not stable as `const fn`
+error[E0723]: can only call other `const fn` within a `const fn`, but `foo2_gated` is not stable as `const fn`
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:33:39
    |
 LL | const unsafe fn bar2_gated() -> u32 { foo2_gated() }

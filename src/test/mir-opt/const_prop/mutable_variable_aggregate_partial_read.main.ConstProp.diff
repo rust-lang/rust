@@ -14,7 +14,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:5:9: 5:14
-          _1 = const foo() -> bb1;         // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:5:29: 5:34
+          _1 = foo() -> bb1;               // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:5:29: 5:34
                                            // mir::Constant
                                            // + span: $DIR/mutable_variable_aggregate_partial_read.rs:5:29: 5:32
                                            // + literal: Const { ty: fn() -> (i32, i32) {foo}, val: Value(Scalar(<ZST>)) }

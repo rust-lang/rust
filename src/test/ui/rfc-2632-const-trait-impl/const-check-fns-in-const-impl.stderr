@@ -1,4 +1,4 @@
-error[E0723]: can only call other `const fn` within a `const fn`, but `const non_const` is not stable as `const fn`
+error[E0723]: can only call other `const fn` within a `const fn`, but `non_const` is not stable as `const fn`
   --> $DIR/const-check-fns-in-const-impl.rs:12:16
    |
 LL |     fn foo() { non_const() }

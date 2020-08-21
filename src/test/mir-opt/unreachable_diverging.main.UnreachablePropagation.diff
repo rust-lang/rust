@@ -21,7 +21,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/unreachable_diverging.rs:13:9: 13:10
           _1 = const true;                 // scope 0 at $DIR/unreachable_diverging.rs:13:13: 13:17
           StorageLive(_2);                 // scope 1 at $DIR/unreachable_diverging.rs:14:25: 14:32
-          _2 = const empty() -> bb1;       // scope 1 at $DIR/unreachable_diverging.rs:14:25: 14:32
+          _2 = empty() -> bb1;             // scope 1 at $DIR/unreachable_diverging.rs:14:25: 14:32
                                            // mir::Constant
                                            // + span: $DIR/unreachable_diverging.rs:14:25: 14:30
                                            // + literal: Const { ty: fn() -> std::option::Option<Empty> {empty}, val: Value(Scalar(<ZST>)) }
@@ -55,8 +55,8 @@
 -     }
 - 
 -     bb5: {
--         _5 = const loop_forever() -> bb6; // scope 2 at $DIR/unreachable_diverging.rs:16:13: 16:27
-+         _5 = const loop_forever() -> bb5; // scope 2 at $DIR/unreachable_diverging.rs:16:13: 16:27
+-         _5 = loop_forever() -> bb6;      // scope 2 at $DIR/unreachable_diverging.rs:16:13: 16:27
++         _5 = loop_forever() -> bb5;      // scope 2 at $DIR/unreachable_diverging.rs:16:13: 16:27
                                            // mir::Constant
                                            // + span: $DIR/unreachable_diverging.rs:16:13: 16:25
                                            // + literal: Const { ty: fn() {loop_forever}, val: Value(Scalar(<ZST>)) }

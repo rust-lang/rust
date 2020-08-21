@@ -22,8 +22,8 @@
 - 
 -     bb3: {
           StorageLive(_2);                 // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
--         _2 = const bar() -> [return: bb5, unwind: bb4]; // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
-+         _2 = const bar() -> [return: bb3, unwind: bb2]; // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
+-         _2 = bar() -> [return: bb5, unwind: bb4]; // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
++         _2 = bar() -> [return: bb3, unwind: bb2]; // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
                                            // mir::Constant
                                            // + span: $DIR/simplify_cfg.rs:7:12: 7:15
                                            // + literal: Const { ty: fn() -> bool {bar}, val: Value(Scalar(<ZST>)) }

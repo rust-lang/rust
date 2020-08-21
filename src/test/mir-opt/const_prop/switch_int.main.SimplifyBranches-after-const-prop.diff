@@ -13,14 +13,14 @@
       }
   
       bb1: {
-          _0 = const foo(const -1_i32) -> bb3; // scope 0 at $DIR/switch_int.rs:9:14: 9:21
+          _0 = foo(const -1_i32) -> bb3;   // scope 0 at $DIR/switch_int.rs:9:14: 9:21
                                            // mir::Constant
                                            // + span: $DIR/switch_int.rs:9:14: 9:17
                                            // + literal: Const { ty: fn(i32) {foo}, val: Value(Scalar(<ZST>)) }
       }
   
       bb2: {
-          _0 = const foo(const 0_i32) -> bb3; // scope 0 at $DIR/switch_int.rs:8:14: 8:20
+          _0 = foo(const 0_i32) -> bb3;    // scope 0 at $DIR/switch_int.rs:8:14: 8:20
                                            // mir::Constant
                                            // + span: $DIR/switch_int.rs:8:14: 8:17
                                            // + literal: Const { ty: fn(i32) {foo}, val: Value(Scalar(<ZST>)) }

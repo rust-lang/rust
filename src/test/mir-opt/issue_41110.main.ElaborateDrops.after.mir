@@ -20,7 +20,7 @@ fn main() -> () {
         StorageLive(_3);                 // scope 0 at $DIR/issue-41110.rs:8:21: 8:27
         StorageLive(_4);                 // scope 0 at $DIR/issue-41110.rs:8:21: 8:22
         _4 = S;                          // scope 0 at $DIR/issue-41110.rs:8:21: 8:22
-        _3 = const S::id(move _4) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-41110.rs:8:21: 8:27
+        _3 = S::id(move _4) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-41110.rs:8:21: 8:27
                                          // mir::Constant
                                          // + span: $DIR/issue-41110.rs:8:23: 8:25
                                          // + literal: Const { ty: fn(S) -> S {S::id}, val: Value(Scalar(<ZST>)) }
@@ -33,7 +33,7 @@ fn main() -> () {
     bb2: {
         StorageDead(_4);                 // scope 0 at $DIR/issue-41110.rs:8:26: 8:27
         _5 = const false;                // scope 0 at $DIR/issue-41110.rs:8:13: 8:28
-        _1 = const S::other(move _2, move _3) -> [return: bb6, unwind: bb5]; // scope 0 at $DIR/issue-41110.rs:8:13: 8:28
+        _1 = S::other(move _2, move _3) -> [return: bb6, unwind: bb5]; // scope 0 at $DIR/issue-41110.rs:8:13: 8:28
                                          // mir::Constant
                                          // + span: $DIR/issue-41110.rs:8:15: 8:20
                                          // + literal: Const { ty: fn(S, S) {S::other}, val: Value(Scalar(<ZST>)) }

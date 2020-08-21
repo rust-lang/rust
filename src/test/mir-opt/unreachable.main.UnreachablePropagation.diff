@@ -19,7 +19,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/unreachable.rs:9:23: 9:30
-          _1 = const empty() -> bb1;       // scope 0 at $DIR/unreachable.rs:9:23: 9:30
+          _1 = empty() -> bb1;             // scope 0 at $DIR/unreachable.rs:9:23: 9:30
                                            // mir::Constant
                                            // + span: $DIR/unreachable.rs:9:23: 9:28
                                            // + literal: Const { ty: fn() -> std::option::Option<Empty> {empty}, val: Value(Scalar(<ZST>)) }

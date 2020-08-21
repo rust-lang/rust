@@ -74,7 +74,7 @@ fn main() -> () {
         StorageLive(_5);                 // scope 1 at $DIR/issue-49232.rs:13:9: 13:22
         StorageLive(_6);                 // scope 1 at $DIR/issue-49232.rs:13:14: 13:21
         _6 = &_2;                        // scope 1 at $DIR/issue-49232.rs:13:14: 13:21
-        _5 = const std::mem::drop::<&i32>(move _6) -> [return: bb13, unwind: bb4]; // scope 1 at $DIR/issue-49232.rs:13:9: 13:22
+        _5 = std::mem::drop::<&i32>(move _6) -> [return: bb13, unwind: bb4]; // scope 1 at $DIR/issue-49232.rs:13:9: 13:22
                                          // mir::Constant
                                          // + span: $DIR/issue-49232.rs:13:9: 13:13
                                          // + literal: Const { ty: fn(&i32) {std::mem::drop::<&i32>}, val: Value(Scalar(<ZST>)) }

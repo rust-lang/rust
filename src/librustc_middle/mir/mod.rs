@@ -2452,7 +2452,10 @@ impl<'tcx> Debug for Constant<'tcx> {
 
 impl<'tcx> Display for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "const ")?;
+        match self.literal.ty.kind {
+            ty::FnDef(..) => {}
+            _ => write!(fmt, "const ")?,
+        }
         pretty_print_const(self.literal, fmt, true)
     }
 }

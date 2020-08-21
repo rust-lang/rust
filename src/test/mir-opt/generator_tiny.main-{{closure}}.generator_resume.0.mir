@@ -51,7 +51,7 @@ fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:
         StorageDead(_7);                 // scope 1 at $DIR/generator-tiny.rs:22:17: 22:18
         StorageDead(_6);                 // scope 1 at $DIR/generator-tiny.rs:22:18: 22:19
         StorageLive(_8);                 // scope 1 at $DIR/generator-tiny.rs:23:13: 23:21
-        _8 = const callee() -> bb4;      // scope 1 at $DIR/generator-tiny.rs:23:13: 23:21
+        _8 = callee() -> bb4;            // scope 1 at $DIR/generator-tiny.rs:23:13: 23:21
                                          // mir::Constant
                                          // + span: $DIR/generator-tiny.rs:23:13: 23:19
                                          // + literal: Const { ty: fn() {callee}, val: Value(Scalar(<ZST>)) }

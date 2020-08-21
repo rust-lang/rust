@@ -24,7 +24,7 @@
 +                                          // mir::Constant
 +                                          // + span: $DIR/tuple_literal_propagation.rs:5:13: 5:14
 +                                          // + literal: Const { ty: (u32, u32), val: Value(ByRef { alloc: Allocation { bytes: [1, 0, 0, 0, 2, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [255], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
-          _2 = const consume(move _3) -> bb1; // scope 1 at $DIR/tuple_literal_propagation.rs:5:5: 5:15
+          _2 = consume(move _3) -> bb1;    // scope 1 at $DIR/tuple_literal_propagation.rs:5:5: 5:15
                                            // mir::Constant
                                            // + span: $DIR/tuple_literal_propagation.rs:5:5: 5:12
                                            // + literal: Const { ty: fn((u32, u32)) {consume}, val: Value(Scalar(<ZST>)) }

@@ -36,9 +36,9 @@
 -         (_5.1: ()) = const ();           // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:13: 14:21
 -         StorageDead(_7);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:20: 14:21
 -         StorageDead(_6);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:20: 14:21
--         _4 = const use_zst(const ((), ())) -> bb1; // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:5: 14:22
+-         _4 = use_zst(const ((), ())) -> bb1; // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:5: 14:22
 +         StorageLive(_1);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:5: 14:22
-+         _1 = const use_zst(const ((), ())) -> bb1; // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:5: 14:22
++         _1 = use_zst(const ((), ())) -> bb1; // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:5: 14:22
                                            // mir::Constant
                                            // + span: $DIR/simplify-locals-removes-unused-consts.rs:14:5: 14:12
                                            // + literal: Const { ty: fn(((), ())) {use_zst}, val: Value(Scalar(<ZST>)) }
@@ -61,10 +61,10 @@
 -         _10 = const 40_u8;               // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:12: 16:30
 -         _9 = const 42_u8;                // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:12: 16:34
 -         StorageDead(_10);                // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:33: 16:34
--         _8 = const use_u8(const 42_u8) -> bb2; // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:5: 16:35
+-         _8 = use_u8(const 42_u8) -> bb2; // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:5: 16:35
 +         StorageDead(_1);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:22: 14:23
 +         StorageLive(_2);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:5: 16:35
-+         _2 = const use_u8(const 42_u8) -> bb2; // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:5: 16:35
++         _2 = use_u8(const 42_u8) -> bb2; // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:5: 16:35
                                            // mir::Constant
                                            // + span: $DIR/simplify-locals-removes-unused-consts.rs:16:5: 16:11
                                            // + literal: Const { ty: fn(u8) {use_u8}, val: Value(Scalar(<ZST>)) }
