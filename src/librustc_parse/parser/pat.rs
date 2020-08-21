@@ -1007,6 +1007,6 @@ impl<'a> Parser<'a> {
     }
 
     fn mk_pat(&self, span: Span, kind: PatKind) -> P<Pat> {
-        P(Pat { kind, span, id: ast::DUMMY_NODE_ID })
+        P(Pat { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
     }
 }

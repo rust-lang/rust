@@ -340,6 +340,7 @@ fn take_pat(from: &mut Pat) -> Pat {
         id: DUMMY_NODE_ID,
         kind: Wild,
         span: DUMMY_SP,
+        tokens: None
     };
     mem::replace(from, dummy)
 }

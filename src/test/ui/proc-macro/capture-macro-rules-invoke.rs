@@ -1,12 +1,20 @@
 // aux-build:test-macros.rs
 // check-pass
+// compile-flags: -Z span-debug
+// normalize-stdout-test "#\d+" -> "#CTXT"
 
 extern crate test_macros;
-use test_macros::recollect;
+use test_macros::print_bang;
 
 macro_rules! use_expr {
     ($expr:expr) => {
-        recollect!($expr)
+        print_bang!($expr)
+    }
+}
+
+macro_rules! use_pat {
+    ($pat:pat) => {
+        print_bang!($pat)
     }
 }
 
@@ -16,6 +24,10 @@ impl Foo {
     #[allow(dead_code)]
     fn use_self(self) {
         drop(use_expr!(self));
+    }
+
+    fn with_pat(use_pat!((a, b)): (u32, u32)) {
+        println!("Args: {} {}", a, b);
     }
 }
 
