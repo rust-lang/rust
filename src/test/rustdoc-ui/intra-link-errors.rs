@@ -10,6 +10,18 @@
 //~| NOTE no item named `path::to` is in scope
 //~| HELP to escape
 
+/// [std::io::not::here]
+//~^ ERROR unresolved link
+//~| NOTE the module `io` has no inner item
+
+/// [std::io::Error::x]
+//~^ ERROR unresolved link
+//~| NOTE the struct `Error` has no field
+
+/// [std::io::ErrorKind::x]
+//~^ ERROR unresolved link
+//~| NOTE the enum `ErrorKind` has no variant
+
 /// [f::A]
 //~^ ERROR unresolved link
 //~| NOTE `f` is a function, not a module
@@ -59,4 +71,13 @@ impl S {
 //~| HELP to escape
 pub trait T {
     fn g() {}
+}
+
+/// [m()]
+//~^ ERROR unresolved link
+//~| HELP to link to the macro
+//~| NOTE not in the value namespace
+#[macro_export]
+macro_rules! m {
+    () => {};
 }
