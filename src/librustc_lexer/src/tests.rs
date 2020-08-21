@@ -1,5 +1,7 @@
 use super::*;
 
+use expect_test::{expect, Expect};
+
 fn check_raw_str(s: &str, expected_hashes: u16, expected_err: Option<RawStrError>) {
     let s = &format!("r{}", s);
     let mut cursor = Cursor::new(s);
@@ -119,4 +121,47 @@ fn test_shebang_valid_rust_after() {
 fn test_shebang_followed_by_attrib() {
     let input = "#!/bin/rust-scripts\n#![allow_unused(true)]";
     assert_eq!(strip_shebang(input), Some(19));
+}
+
+fn check_lexing(src: &str, expect: Expect) {
+    let actual: String = tokenize(src).map(|token| format!("{:?}\n", token)).collect();
+    expect.assert_eq(&actual)
+}
+
+#[test]
+fn comment_flavors() {
+    check_lexing(
+        r"
+// line
+//// line as well
+/// outer doc line
+//! inner doc line
+/* block */
+/**/
+/*** also block */
+/** outer doc block */
+/*! inner doc block */
+",
+        expect![[r#"
+                Token { kind: Whitespace, len: 1 }
+                Token { kind: LineComment { doc_style: None }, len: 7 }
+                Token { kind: Whitespace, len: 1 }
+                Token { kind: LineComment { doc_style: None }, len: 17 }
+                Token { kind: Whitespace, len: 1 }
+                Token { kind: LineComment { doc_style: Some(Outer) }, len: 18 }
+                Token { kind: Whitespace, len: 1 }
+                Token { kind: LineComment { doc_style: Some(Inner) }, len: 18 }
+                Token { kind: Whitespace, len: 1 }
+                Token { kind: BlockComment { doc_style: None, terminated: true }, len: 11 }
+                Token { kind: Whitespace, len: 1 }
+                Token { kind: BlockComment { doc_style: None, terminated: true }, len: 4 }
+                Token { kind: Whitespace, len: 1 }
+                Token { kind: BlockComment { doc_style: None, terminated: true }, len: 18 }
+                Token { kind: Whitespace, len: 1 }
+                Token { kind: BlockComment { doc_style: Some(Outer), terminated: true }, len: 22 }
+                Token { kind: Whitespace, len: 1 }
+                Token { kind: BlockComment { doc_style: Some(Inner), terminated: true }, len: 22 }
+                Token { kind: Whitespace, len: 1 }
+            "#]],
+    )
 }
