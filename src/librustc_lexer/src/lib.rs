@@ -51,12 +51,12 @@ impl Token {
 pub enum TokenKind {
     // Multi-char tokens:
     /// "// comment"
-    LineComment,
+    LineComment { doc_style: Option<DocStyle> },
     /// `/* block comment */`
     ///
     /// Block comments can be recursive, so the sequence like `/* /* */`
     /// will not be considered terminated and will result in a parsing error.
-    BlockComment { terminated: bool },
+    BlockComment { doc_style: Option<DocStyle>, terminated: bool },
     /// Any whitespace characters sequence.
     Whitespace,
     /// "ident" or "continue"
@@ -130,6 +130,12 @@ pub enum TokenKind {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DocStyle {
+    Outer,
+    Inner,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LiteralKind {
     /// "12_u8", "0o100", "0b120i99"
     Int { base: Base, empty_int: bool },
@@ -188,7 +194,7 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
         // a doc comment (due to `TokenKind::(Line,Block)Comment` ambiguity at lexer level),
         // then it may be valid Rust code, so consider it Rust code.
         let next_non_whitespace_token = tokenize(input_tail).map(|tok| tok.kind).find(|tok|
-            !matches!(tok, TokenKind::Whitespace | TokenKind::LineComment | TokenKind::BlockComment { .. })
+            !matches!(tok, TokenKind::Whitespace | TokenKind::LineComment { .. } | TokenKind::BlockComment { .. })
         );
         if next_non_whitespace_token != Some(TokenKind::OpenBracket) {
             // No other choice than to consider this a shebang.
@@ -410,13 +416,32 @@ impl Cursor<'_> {
     fn line_comment(&mut self) -> TokenKind {
         debug_assert!(self.prev() == '/' && self.first() == '/');
         self.bump();
+
+        let doc_style = match self.first() {
+            // `//!` is an inner line doc comment.
+            '!' => Some(DocStyle::Inner),
+            // `////` (more than 3 slashes) is not considered a doc comment.
+            '/' if self.second() != '/' => Some(DocStyle::Outer),
+            _ => None,
+        };
+
         self.eat_while(|c| c != '\n');
-        LineComment
+        LineComment { doc_style }
     }
 
     fn block_comment(&mut self) -> TokenKind {
         debug_assert!(self.prev() == '/' && self.first() == '*');
         self.bump();
+
+        let doc_style = match self.first() {
+            // `/*!` is an inner block doc comment.
+            '!' => Some(DocStyle::Inner),
+            // `/***` (more than 2 stars) is not considered a doc comment.
+            // `/**/` is not considered a doc comment.
+            '*' if !matches!(self.second(), '*' | '/') => Some(DocStyle::Outer),
+            _ => None,
+        };
+
         let mut depth = 1usize;
         while let Some(c) = self.bump() {
             match c {
@@ -438,7 +463,7 @@ impl Cursor<'_> {
             }
         }
 
-        BlockComment { terminated: depth == 0 }
+        BlockComment { doc_style, terminated: depth == 0 }
     }
 
     fn whitespace(&mut self) -> TokenKind {

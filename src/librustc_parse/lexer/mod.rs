@@ -1,5 +1,5 @@
+use rustc_ast::ast::AttrStyle;
 use rustc_ast::token::{self, CommentKind, Token, TokenKind};
-use rustc_ast::util::comments;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError};
 use rustc_lexer::Base;
@@ -15,7 +15,7 @@ mod tokentrees;
 mod unescape_error_reporting;
 mod unicode_chars;
 
-use rustc_lexer::unescape::Mode;
+use rustc_lexer::{unescape::Mode, DocStyle};
 use unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
 #[derive(Clone, Debug)]
@@ -168,25 +168,23 @@ impl<'a> StringReader<'a> {
     /// symbols and runs additional validation.
     fn cook_lexer_token(&self, token: rustc_lexer::TokenKind, start: BytePos) -> TokenKind {
         match token {
-            rustc_lexer::TokenKind::LineComment => {
-                let string = self.str_from(start);
-                if let Some(attr_style) = comments::line_doc_comment_style(string) {
-                    self.forbid_bare_cr(start, string, "bare CR not allowed in doc-comment");
-                    // Opening delimiter of the length 3 is not included into the symbol.
-                    token::DocComment(CommentKind::Line, attr_style, Symbol::intern(&string[3..]))
-                } else {
-                    token::Comment
+            rustc_lexer::TokenKind::LineComment { doc_style } => {
+                match doc_style {
+                    Some(doc_style) => {
+                        // Opening delimiter of the length 3 is not included into the symbol.
+                        let content_start = start + BytePos(3);
+                        let content = self.str_from(content_start);
+
+                        self.cook_doc_comment(content_start, content, CommentKind::Line, doc_style)
+                    }
+                    None => token::Comment,
                 }
             }
-            rustc_lexer::TokenKind::BlockComment { terminated } => {
-                let string = self.str_from(start);
-                let attr_style = comments::block_doc_comment_style(string, terminated);
-
+            rustc_lexer::TokenKind::BlockComment { doc_style, terminated } => {
                 if !terminated {
-                    let msg = if attr_style.is_some() {
-                        "unterminated block doc-comment"
-                    } else {
-                        "unterminated block comment"
+                    let msg = match doc_style {
+                        Some(_) => "unterminated block doc-comment",
+                        None => "unterminated block comment",
                     };
                     let last_bpos = self.pos;
                     self.sess
@@ -199,18 +197,17 @@ impl<'a> StringReader<'a> {
                         .emit();
                     FatalError.raise();
                 }
+                match doc_style {
+                    Some(doc_style) => {
+                        // Opening delimiter of the length 3 and closing delimiter of the length 2
+                        // are not included into the symbol.
+                        let content_start = start + BytePos(3);
+                        let content_end = self.pos - BytePos(if terminated { 2 } else { 0 });
+                        let content = self.str_from_to(content_start, content_end);
 
-                if let Some(attr_style) = attr_style {
-                    self.forbid_bare_cr(start, string, "bare CR not allowed in block doc-comment");
-                    // Opening delimiter of the length 3 and closing delimiter of the length 2
-                    // are not included into the symbol.
-                    token::DocComment(
-                        CommentKind::Block,
-                        attr_style,
-                        Symbol::intern(&string[3..string.len() - if terminated { 2 } else { 0 }]),
-                    )
-                } else {
-                    token::Comment
+                        self.cook_doc_comment(content_start, content, CommentKind::Block, doc_style)
+                    }
+                    None => token::Comment,
                 }
             }
             rustc_lexer::TokenKind::Whitespace => token::Whitespace,
@@ -317,6 +314,34 @@ impl<'a> StringReader<'a> {
                 token
             }
         }
+    }
+
+    fn cook_doc_comment(
+        &self,
+        content_start: BytePos,
+        content: &str,
+        comment_kind: CommentKind,
+        doc_style: DocStyle,
+    ) -> TokenKind {
+        if content.contains('\r') {
+            for (idx, _) in content.char_indices().filter(|&(_, c)| c == '\r') {
+                self.err_span_(
+                    content_start + BytePos(idx as u32),
+                    content_start + BytePos(idx as u32 + 1),
+                    match comment_kind {
+                        CommentKind::Line => "bare CR not allowed in doc-comment",
+                        CommentKind::Block => "bare CR not allowed in block doc-comment",
+                    },
+                );
+            }
+        }
+
+        let attr_style = match doc_style {
+            DocStyle::Outer => AttrStyle::Outer,
+            DocStyle::Inner => AttrStyle::Inner,
+        };
+
+        token::DocComment(comment_kind, attr_style, Symbol::intern(content))
     }
 
     fn cook_lexer_literal(
@@ -470,17 +495,6 @@ impl<'a> StringReader<'a> {
     /// Slice of the source text spanning from `start` up to but excluding `end`.
     fn str_from_to(&self, start: BytePos, end: BytePos) -> &str {
         &self.src[self.src_index(start)..self.src_index(end)]
-    }
-
-    fn forbid_bare_cr(&self, start: BytePos, s: &str, errmsg: &str) {
-        let mut idx = 0;
-        loop {
-            idx = match s[idx..].find('\r') {
-                None => break,
-                Some(it) => idx + it + 1,
-            };
-            self.err_span_(start + BytePos(idx as u32 - 1), start + BytePos(idx as u32), errmsg);
-        }
     }
 
     fn report_raw_str_error(&self, start: BytePos, opt_err: Option<RawStrError>) {
