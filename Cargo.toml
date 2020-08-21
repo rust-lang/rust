@@ -25,7 +25,6 @@ required-features = ["rustc_tests"]
 
 [dependencies]
 getrandom = { version = "0.1.8", features = ["std"] }
-byteorder = "1.3"
 env_logger = "0.7.1"
 log = "0.4"
 shell-escape = "0.1.4"
