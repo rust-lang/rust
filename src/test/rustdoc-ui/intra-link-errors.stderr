@@ -1,19 +1,39 @@
-error: unresolved link to `path::to::nonexistent::module`
-  --> $DIR/intra-link-errors.rs:8:6
+error: unresolved link to `std::io::oops`
+  --> $DIR/intra-link-errors.rs:4:6
    |
-LL | /// [path::to::nonexistent::module]
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | //! [std::io::oops]
+   |      ^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/intra-link-errors.rs:1:9
    |
 LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
+   = note: this link resolves to the crate `std`, which is not an enum
+   = note: if this were an enum, it might have a variant which resolved
+   = note: this link partially resolves to the module `io`
+   = note: `io` has no field, variant, or associated item named `oops`
+
+error: unresolved link to `std::io::oops::not::here`
+  --> $DIR/intra-link-errors.rs:5:6
+   |
+LL | //! [std::io::oops::not::here]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: no item named `std::io::oops::not` is in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: unresolved link to `path::to::nonexistent::module`
+  --> $DIR/intra-link-errors.rs:11:6
+   |
+LL | /// [path::to::nonexistent::module]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
    = note: no item named `path::to::nonexistent` is in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: unresolved link to `f::A`
-  --> $DIR/intra-link-errors.rs:14:6
+  --> $DIR/intra-link-errors.rs:17:6
    |
 LL | /// [f::A]
    |      ^^^^
@@ -22,34 +42,34 @@ LL | /// [f::A]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: unresolved link to `S::A`
-  --> $DIR/intra-link-errors.rs:19:6
+  --> $DIR/intra-link-errors.rs:22:6
    |
 LL | /// [S::A]
    |      ^^^^
    |
-   = note: this link partially resolves to the struct `S`,
+   = note: this link partially resolves to the struct `S`
    = note: `S` has no field, variant, or associated item named `A`
 
 error: unresolved link to `S::fmt`
-  --> $DIR/intra-link-errors.rs:24:6
+  --> $DIR/intra-link-errors.rs:27:6
    |
 LL | /// [S::fmt]
    |      ^^^^^^
    |
-   = note: this link partially resolves to the struct `S`,
+   = note: this link partially resolves to the struct `S`
    = note: `S` has no field, variant, or associated item named `fmt`
 
 error: unresolved link to `E::D`
-  --> $DIR/intra-link-errors.rs:29:6
+  --> $DIR/intra-link-errors.rs:32:6
    |
 LL | /// [E::D]
    |      ^^^^
    |
-   = note: this link partially resolves to the enum `E`,
+   = note: this link partially resolves to the enum `E`
    = note: `E` has no field, variant, or associated item named `D`
 
 error: unresolved link to `u8::not_found`
-  --> $DIR/intra-link-errors.rs:34:6
+  --> $DIR/intra-link-errors.rs:37:6
    |
 LL | /// [u8::not_found]
    |      ^^^^^^^^^^^^^
@@ -57,12 +77,30 @@ LL | /// [u8::not_found]
    = note: the builtin type `u8` does not have an associated item named `not_found`
 
 error: unresolved link to `S`
-  --> $DIR/intra-link-errors.rs:38:6
+  --> $DIR/intra-link-errors.rs:41:6
    |
 LL | /// [S!]
    |      ^^ help: to link to the unit struct, use its disambiguator: `value@S`
    |
-   = note: this link resolves to the unit struct `S`, which is not in the value namespace
+   = note: this link resolves to the unit struct `S`, which is not in the macro namespace
 
-error: aborting due to 7 previous errors
+error: unresolved link to `T::g`
+  --> $DIR/intra-link-errors.rs:56:6
+   |
+LL | /// [type@T::g]
+   |      ^^^^^^^^^
+   |
+   = note: this link partially resolves to the trait `T`
+   = note: `T` has no field, variant, or associated item named `g`
+
+error: unresolved link to `S::h`
+  --> $DIR/intra-link-errors.rs:51:6
+   |
+LL | /// [type@S::h]
+   |      ^^^^^^^^^
+   |
+   = note: this link partially resolves to the struct `S`
+   = note: `S` has no field, variant, or associated item named `h`
+
+error: aborting due to 11 previous errors
 
