@@ -724,7 +724,8 @@ fn highlight_method_call(
             hir::Access::Shared => (),
             hir::Access::Exclusive => h |= HighlightModifier::Mutable,
             hir::Access::Owned => {
-                if let Some(receiver_ty) = method_call.expr().and_then(|it| sema.type_of_expr(&it))
+                if let Some(receiver_ty) =
+                    method_call.receiver().and_then(|it| sema.type_of_expr(&it))
                 {
                     if !receiver_ty.is_copy(sema.db) {
                         h |= HighlightModifier::Consuming

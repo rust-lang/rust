@@ -477,6 +477,7 @@ impl Field {
                     "#" => "pound",
                     "?" => "question_mark",
                     "," => "comma",
+                    "|" => "pipe",
                     _ => name,
                 };
                 format_ident!("{}_token", name)

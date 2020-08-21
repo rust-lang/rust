@@ -239,7 +239,7 @@ impl ImportCandidate {
             return None;
         }
         Some(Self::TraitMethod(
-            sema.type_of_expr(&method_call.expr()?)?,
+            sema.type_of_expr(&method_call.receiver()?)?,
             method_call.name_ref()?.syntax().to_string(),
         ))
     }

@@ -3,7 +3,7 @@
 use crate::{resolving::ResolvedRule, Match, SsrMatches};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::ast::{self, AstToken};
+use syntax::ast::{self, AstNode, AstToken};
 use syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize};
 use test_utils::mark;
 use text_edit::TextEdit;
@@ -93,7 +93,6 @@ impl ReplacementRenderer<'_> {
     }
 
     fn render_node(&mut self, node: &SyntaxNode) {
-        use syntax::ast::AstNode;
         if let Some(mod_path) = self.match_info.rendered_template_paths.get(&node) {
             self.out.push_str(&mod_path.to_string());
             // Emit everything except for the segment's name-ref, since we already effectively
@@ -206,11 +205,10 @@ impl ReplacementRenderer<'_> {
 /// method call doesn't count. e.g. if the token is `$a`, then `$a.foo()` will return true, while
 /// `($a + $b).foo()` or `x.foo($a)` will return false.
 fn token_is_method_call_receiver(token: &SyntaxToken) -> bool {
-    use syntax::ast::AstNode;
     // Find the first method call among the ancestors of `token`, then check if the only token
     // within the receiver is `token`.
     if let Some(receiver) =
-        token.ancestors().find_map(ast::MethodCallExpr::cast).and_then(|call| call.expr())
+        token.ancestors().find_map(ast::MethodCallExpr::cast).and_then(|call| call.receiver())
     {
         let tokens = receiver.syntax().descendants_with_tokens().filter_map(|node_or_token| {
             match node_or_token {
@@ -226,7 +224,6 @@ fn token_is_method_call_receiver(token: &SyntaxToken) -> bool {
 }
 
 fn parse_as_kind(code: &str, kind: SyntaxKind) -> Option<SyntaxNode> {
-    use syntax::ast::AstNode;
     if ast::Expr::can_cast(kind) {
         if let Ok(expr) = ast::Expr::parse(code) {
             return Some(expr.syntax().clone());
