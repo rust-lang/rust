@@ -12,7 +12,7 @@
 //! # Examples
 //!
 //! [`Pattern`] is [implemented][pattern-impls] in the stable API for
-//! [`&str`], [`char`], slices of [`char`], and functions and closures
+//! [`&str`][`str`], [`char`], slices of [`char`], and functions and closures
 //! implementing `FnMut(char) -> bool`.
 //!
 //! ```
@@ -28,13 +28,6 @@
 //! assert_eq!(s.find(|c: char| c.is_ascii_punctuation()), Some(35));
 //! ```
 //!
-//! [`&str`]: ../../../std/primitive.str.html
-//! [`char`]: ../../../std/primitive.char.html
-//! [`str`]: ../../../std/primitive.str.html
-//! [`DoubleEndedSearcher`]: trait.DoubleEndedSearcher.html
-//! [`Pattern`]: trait.Pattern.html
-//! [`ReverseSearcher`]: trait.ReverseSearcher.html
-//! [`Searcher`]: trait.Searcher.html
 //! [pattern-impls]: trait.Pattern.html#implementors
 
 #![unstable(
@@ -75,6 +68,7 @@ use crate::slice::memchr;
 /// | `&String`                | is substring                              |
 ///
 /// # Examples
+///
 /// ```
 /// // &str
 /// assert_eq!("abaaa".find("ba"), Some(1));
@@ -94,9 +88,6 @@ use crate::slice::memchr;
 /// assert_eq!("abcdef_z".find(|ch| ch > 'd' && ch < 'y'), Some(4));
 /// assert_eq!("abcddd_z".find(|ch| ch > 'd' && ch < 'y'), None);
 /// ```
-///
-/// [`str::find`]: ../../../std/primitive.str.html#method.find
-/// [`str::contains`]: ../../../std/primitive.str.html#method.contains
 pub trait Pattern<'a>: Sized {
     /// Associated searcher for this pattern
     type Searcher: Searcher<'a>;
