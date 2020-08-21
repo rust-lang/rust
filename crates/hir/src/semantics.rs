@@ -573,7 +573,7 @@ impl<'db> SemanticsImpl<'db> {
 
     fn is_unsafe_method_call(&self, method_call_expr: &ast::MethodCallExpr) -> bool {
         method_call_expr
-            .expr()
+            .receiver()
             .and_then(|expr| {
                 let field_expr = match expr {
                     ast::Expr::FieldExpr(field_expr) => field_expr,

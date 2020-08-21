@@ -329,7 +329,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Call { callee, args }, syntax_ptr)
             }
             ast::Expr::MethodCallExpr(e) => {
-                let receiver = self.collect_expr_opt(e.expr());
+                let receiver = self.collect_expr_opt(e.receiver());
                 let args = if let Some(arg_list) = e.arg_list() {
                     arg_list.args().map(|e| self.collect_expr(e)).collect()
                 } else {

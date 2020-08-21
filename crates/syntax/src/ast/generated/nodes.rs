@@ -66,6 +66,7 @@ impl ParamList {
     pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
     pub fn params(&self) -> AstChildren<Param> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    pub fn pipe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![|]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RetType {
@@ -809,7 +810,7 @@ pub struct MethodCallExpr {
 impl ast::AttrsOwner for MethodCallExpr {}
 impl ast::ArgListOwner for MethodCallExpr {}
 impl MethodCallExpr {
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn receiver(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn generic_arg_list(&self) -> Option<GenericArgList> { support::child(&self.syntax) }

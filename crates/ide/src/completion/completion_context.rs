@@ -457,7 +457,7 @@ impl<'a> CompletionContext<'a> {
         if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent) {
             // As above
             self.dot_receiver = method_call_expr
-                .expr()
+                .receiver()
                 .map(|e| e.syntax().text_range())
                 .and_then(|r| find_node_with_range(original_file, r));
             self.is_call = true;

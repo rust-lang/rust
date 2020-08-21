@@ -42,7 +42,7 @@ pub(crate) fn replace_unwrap_with_match(acc: &mut Assists, ctx: &AssistContext) 
     if name.text() != "unwrap" {
         return None;
     }
-    let caller = method_call.expr()?;
+    let caller = method_call.receiver()?;
     let ty = ctx.sema.type_of_expr(&caller)?;
     let happy_variant = TryEnum::from_ty(&ctx.sema, &ty)?.happy_case();
     let target = method_call.syntax().text_range();

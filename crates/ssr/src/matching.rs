@@ -546,10 +546,12 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         // information on the placeholder match about autoderef and autoref. This allows us to use
         // the placeholder in a context where autoderef and autoref don't apply.
         if code_resolved_function.self_param(self.sema.db).is_some() {
-            if let (Some(pattern_type), Some(expr)) = (&pattern_ufcs.qualifier_type, &code.expr()) {
+            if let (Some(pattern_type), Some(expr)) =
+                (&pattern_ufcs.qualifier_type, &code.receiver())
+            {
                 let deref_count = self.check_expr_type(pattern_type, expr)?;
                 let pattern_receiver = pattern_args.next();
-                self.attempt_match_opt(phase, pattern_receiver.clone(), code.expr())?;
+                self.attempt_match_opt(phase, pattern_receiver.clone(), code.receiver())?;
                 if let Phase::Second(match_out) = phase {
                     if let Some(placeholder_value) = pattern_receiver
                         .and_then(|n| self.get_placeholder_for_node(n.syntax()))
@@ -568,7 +570,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 }
             }
         } else {
-            self.attempt_match_opt(phase, pattern_args.next(), code.expr())?;
+            self.attempt_match_opt(phase, pattern_args.next(), code.receiver())?;
         }
         let mut code_args =
             code.arg_list().ok_or_else(|| match_error!("Code method call has no args"))?.args();
