@@ -137,6 +137,7 @@ ParamList =
     SelfParam
   | (SelfParam ',')? (Param (',' Param)* ','?)?
   )')'
+| '|' (Param (',' Param)* ','?)? '|'
 
 SelfParam =
   Attr* (
