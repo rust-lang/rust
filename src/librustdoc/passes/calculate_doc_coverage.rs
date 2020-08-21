@@ -27,7 +27,7 @@ fn calculate_doc_coverage(krate: clean::Crate, ctx: &DocContext<'_>) -> clean::C
     krate
 }
 
-#[derive(Default, Copy, Clone, Serialize)]
+#[derive(Default, Copy, Clone, Serialize, Debug)]
 struct ItemCount {
     total: u64,
     with_docs: u64,
@@ -155,14 +155,12 @@ impl CoverageCalculator {
         print_table_line();
 
         for (file, &count) in &self.items {
-            if let (Some(percentage), Some(examples_percentage)) =
-                (count.percentage(), count.examples_percentage())
-            {
+            if let Some(percentage) = count.percentage() {
                 print_table_record(
                     &limit_filename_len(file.to_string()),
                     count,
                     percentage,
-                    examples_percentage,
+                    count.examples_percentage().unwrap_or(0.),
                 );
 
                 total += count;
