@@ -594,6 +594,32 @@ impl UnixStream {
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.0.shutdown(how)
     }
+
+    /// Receives data on the socket from the remote address to which it is
+    /// connected, without removing that data from the queue. On success,
+    /// returns the number of bytes peeked.
+    ///
+    /// Successive calls return the same data. This is accomplished by passing
+    /// `MSG_PEEK` as a flag to the underlying `recv` system call.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_peek)]
+    ///
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     let mut buf = [0; 10];
+    ///     let len = socket.peek(&mut buf).expect("peek failed");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_peek", issue = "none")]
+    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.peek(buf)
+    }
 }
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -1291,6 +1317,33 @@ impl UnixDatagram {
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(*self.0.as_inner(), addr, len) })
     }
 
+    fn recv_from_flags(
+        &self,
+        buf: &mut [u8],
+        flags: libc::c_int,
+    ) -> io::Result<(usize, SocketAddr)> {
+        let mut count = 0;
+        let addr = SocketAddr::new(|addr, len| unsafe {
+            count = libc::recvfrom(
+                *self.0.as_inner(),
+                buf.as_mut_ptr() as *mut _,
+                buf.len(),
+                flags,
+                addr,
+                len,
+            );
+            if count > 0 {
+                1
+            } else if count == 0 {
+                0
+            } else {
+                -1
+            }
+        })?;
+
+        Ok((count as usize, addr))
+    }
+
     /// Receives data from the socket.
     ///
     /// On success, returns the number of bytes read and the address from
@@ -1311,26 +1364,7 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        let mut count = 0;
-        let addr = SocketAddr::new(|addr, len| unsafe {
-            count = libc::recvfrom(
-                *self.0.as_inner(),
-                buf.as_mut_ptr() as *mut _,
-                buf.len(),
-                0,
-                addr,
-                len,
-            );
-            if count > 0 {
-                1
-            } else if count == 0 {
-                0
-            } else {
-                -1
-            }
-        })?;
-
-        Ok((count as usize, addr))
+        self.recv_from_flags(buf, 0)
     }
 
     /// Receives data from the socket.
@@ -1600,6 +1634,64 @@ impl UnixDatagram {
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.0.shutdown(how)
+    }
+
+    /// Receives data on the socket from the remote address to which it is
+    /// connected, without removing that data from the queue. On success,
+    /// returns the number of bytes peeked.
+    ///
+    /// Successive calls return the same data. This is accomplished by passing
+    /// `MSG_PEEK` as a flag to the underlying `recv` system call.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_peek)]
+    ///
+    /// use std::os::unix::net::UnixDatagram;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixDatagram::bind("/tmp/sock")?;
+    ///     let mut buf = [0; 10];
+    ///     let len = socket.peek(&mut buf).expect("peek failed");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_peek", issue = "none")]
+    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.peek(buf)
+    }
+
+    /// Receives a single datagram message on the socket, without removing it from the
+    /// queue. On success, returns the number of bytes read and the origin.
+    ///
+    /// The function must be called with valid byte array `buf` of sufficient size to
+    /// hold the message bytes. If a message is too long to fit in the supplied buffer,
+    /// excess bytes may be discarded.
+    ///
+    /// Successive calls return the same data. This is accomplished by passing
+    /// `MSG_PEEK` as a flag to the underlying `recvfrom` system call.
+    ///
+    /// Do not use this function to implement busy waiting, instead use `libc::poll` to
+    /// synchronize IO events on one or more sockets.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_peek)]
+    ///
+    /// use std::os::unix::net::UnixDatagram;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixDatagram::bind("/tmp/sock")?;
+    ///     let mut buf = [0; 10];
+    ///     let (len, addr) = socket.peek_from(&mut buf).expect("peek failed");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_peek", issue = "none")]
+    pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+        self.recv_from_flags(buf, libc::MSG_PEEK)
     }
 }
 
