@@ -50,10 +50,8 @@ struct Node<T> {
 
 /// An iterator over the elements of a `LinkedList`.
 ///
-/// This `struct` is created by the [`iter`] method on [`LinkedList`]. See its
+/// This `struct` is created by [`LinkedList::iter()`]. See its
 /// documentation for more.
-///
-/// [`iter`]: LinkedList::iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     head: Option<NonNull<Node<T>>>,
@@ -79,10 +77,8 @@ impl<T> Clone for Iter<'_, T> {
 
 /// A mutable iterator over the elements of a `LinkedList`.
 ///
-/// This `struct` is created by the [`iter_mut`] method on [`LinkedList`]. See its
+/// This `struct` is created by [`LinkedList::iter_mut()`]. See its
 /// documentation for more.
-///
-/// [`iter_mut`]: LinkedList::iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     // We do *not* exclusively own the entire list here, references to node's `element`

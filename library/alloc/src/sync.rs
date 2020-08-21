@@ -387,7 +387,7 @@ impl<T> Arc<T> {
 
     /// Returns the inner value, if the `Arc` has exactly one strong reference.
     ///
-    /// Otherwise, an [`Err`][Result] is returned with the same `Arc` that was
+    /// Otherwise, an [`Err`] is returned with the same `Arc` that was
     /// passed in.
     ///
     /// This will succeed even if there are outstanding weak references.
@@ -1168,7 +1168,7 @@ impl<T: ?Sized> Arc<T> {
     /// Returns a mutable reference into the given `Arc`, if there are
     /// no other `Arc` or [`Weak`] pointers to the same allocation.
     ///
-    /// Returns [`None`][Option] otherwise, because it is not safe to
+    /// Returns [`None`] otherwise, because it is not safe to
     /// mutate a shared value.
     ///
     /// See also [`make_mut`][make_mut], which will [`clone`][clone]

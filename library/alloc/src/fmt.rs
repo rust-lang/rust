@@ -501,9 +501,6 @@
 //! it would internally pass around this structure until it has been determined
 //! where output should go to.
 //!
-//! [`usize`]: core::usize
-//! [`isize`]: core::isize
-//! [`i8`]: core::i8
 //! [`fmt::Result`]: Result
 //! [`Result`]: core::result::Result
 //! [`std::fmt::Error`]: Error

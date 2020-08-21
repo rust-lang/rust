@@ -393,7 +393,7 @@ impl<T> Rc<T> {
 
     /// Returns the inner value, if the `Rc` has exactly one strong reference.
     ///
-    /// Otherwise, an [`Err`][Result] is returned with the same `Rc` that was
+    /// Otherwise, an [`Err`] is returned with the same `Rc` that was
     /// passed in.
     ///
     /// This will succeed even if there are outstanding weak references.
@@ -1743,7 +1743,6 @@ impl<T> Weak<T> {
     /// [`into_raw`]: Weak::into_raw
     /// [`upgrade`]: Weak::upgrade
     /// [`new`]: Weak::new
-    /// [`forget`]: std::mem::forget
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
         if ptr.is_null() {
