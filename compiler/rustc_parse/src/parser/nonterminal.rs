@@ -140,7 +140,15 @@ impl<'a> Parser<'a> {
                 }
                 token::NtExpr(expr)
             }
-            NonterminalKind::Literal => token::NtLiteral(self.parse_literal_maybe_minus()?),
+            NonterminalKind::Literal => {
+                let (mut lit, tokens) =
+                    self.collect_tokens(|this| this.parse_literal_maybe_minus())?;
+                // We have have eaten a nonterminal, which  could already have tokens
+                if lit.tokens.is_none() {
+                    lit.tokens = Some(tokens);
+                }
+                token::NtLiteral(lit)
+            }
             NonterminalKind::Ty => {
                 let (mut ty, tokens) = self.collect_tokens(|this| this.parse_ty())?;
                 // We have an eaten an NtTy, which could already have tokens

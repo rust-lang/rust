@@ -278,7 +278,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
             Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
         }
         Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
-        Nonterminal::NtExpr(ref expr) => {
+        Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
             if expr.tokens.is_none() {
                 debug!("missing tokens for expr {:?}", expr);
             }
