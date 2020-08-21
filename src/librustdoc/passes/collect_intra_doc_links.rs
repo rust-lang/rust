@@ -324,9 +324,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 })
                 // If there's no `::`, it's not an associated item.
                 // So we can be sure that `rustc_resolve` was accurate when it said it wasn't resolved.
-                .ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope(
-                    item_name.to_string().into(),
-                )))?;
+                .ok_or_else(|| {
+                    debug!("found no `::`, assumming {} was correctly not in scope", item_name);
+                    ErrorKind::Resolve(ResolutionFailure::NotInScope(item_name.to_string().into()))
+                })?;
 
             if let Some((path, prim)) = is_primitive(&path_root, ns) {
                 let impls = primitive_impl(cx, &path).ok_or_else(|| {
@@ -361,6 +362,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
             let (_, ty_res) = cx
                 .enter_resolver(|resolver| {
+                    // only types can have associated items
                     resolver.resolve_str_path_error(DUMMY_SP, &path_root, TypeNS, module_id)
                 })
                 .map_err(|_| {
@@ -1450,10 +1452,7 @@ fn resolution_failure(
                         // FIXME: when are items neither a primitive nor a Def?
                         if let Res::Def(_, def_id) = res {
                             let name = cx.tcx.item_name(def_id);
-                            let note = format!(
-                                "`{}` has no field, variant, or associated item named `{}`",
-                                name, assoc_item
-                            );
+                            let note = format!("no `{}` in `{}`", assoc_item, name,);
                             diag.note(&note);
                         }
                     }

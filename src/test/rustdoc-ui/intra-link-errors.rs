@@ -1,9 +1,6 @@
 #![deny(broken_intra_doc_links)]
 //~^ NOTE lint level is defined
 
-//! [std::io::oops]
-//! [std::io::oops::not::here]
-
 // FIXME: this should say that it was skipped (maybe an allowed by default lint?)
 /// [<invalid syntax>]
 
@@ -22,17 +19,17 @@
 /// [S::A]
 //~^ ERROR unresolved link
 //~| NOTE this link partially resolves
-//~| NOTE `S` has no field
+//~| NOTE no `A` in `S`
 
 /// [S::fmt]
 //~^ ERROR unresolved link
 //~| NOTE this link partially resolves
-//~| NOTE `S` has no field
+//~| NOTE no `fmt` in `S`
 
 /// [E::D]
 //~^ ERROR unresolved link
 //~| NOTE this link partially resolves
-//~| NOTE `E` has no field
+//~| NOTE no `D` in `E`
 
 /// [u8::not_found]
 //~^ ERROR unresolved link
@@ -40,8 +37,8 @@
 
 /// [S!]
 //~^ ERROR unresolved link
-//~| HELP to link to the unit struct, use its disambiguator
-//~| NOTE this link resolves to the unit struct `S`
+//~| HELP to link to the struct, use its disambiguator
+//~| NOTE this link resolves to the struct `S`
 pub fn f() {}
 #[derive(Debug)]
 pub struct S;
@@ -62,6 +59,9 @@ impl S {
 //~| NOTE not in the type namespace
 
 /// [T::h!]
+//~^ ERROR unresolved link
+//~| NOTE no item named `T::h`
+//~| HELP to escape
 pub trait T {
     fn g() {}
 }
