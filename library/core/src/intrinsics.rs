@@ -53,18 +53,13 @@
     issue = "none"
 )]
 #![allow(missing_docs)]
-#![allow(unused_imports)]
 
 use crate::marker::DiscriminantKind;
 use crate::mem;
 
 // These imports are used for simplifying intra-doc links
-use crate::sync::atomic;
-use crate::sync::atomic::AtomicBool;
-use crate::sync::atomic::AtomicI32;
-use crate::sync::atomic::AtomicIsize;
-use crate::sync::atomic::AtomicU32;
-use crate::sync::atomic::Ordering;
+#[cfg(doc)]
+use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[rustc_deprecated(
