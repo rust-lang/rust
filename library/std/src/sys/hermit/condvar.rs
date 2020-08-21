@@ -1,5 +1,3 @@
-#![deny(unsafe_op_in_unsafe_fn)]
-
 use crate::ffi::c_void;
 use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
@@ -25,43 +23,33 @@ impl Condvar {
     }
 
     pub unsafe fn init(&mut self) {
-        unsafe {
-            let _ = abi::sem_init(&mut self.sem1 as *mut *const c_void, 0);
-            let _ = abi::sem_init(&mut self.sem2 as *mut *const c_void, 0);
-        }
+        let _ = abi::sem_init(&mut self.sem1 as *mut *const c_void, 0);
+        let _ = abi::sem_init(&mut self.sem2 as *mut *const c_void, 0);
     }
 
     pub unsafe fn notify_one(&self) {
         if self.counter.load(SeqCst) > 0 {
             self.counter.fetch_sub(1, SeqCst);
-            unsafe {
-                abi::sem_post(self.sem1);
-                abi::sem_timedwait(self.sem2, 0);
-            }
+            abi::sem_post(self.sem1);
+            abi::sem_timedwait(self.sem2, 0);
         }
     }
 
     pub unsafe fn notify_all(&self) {
         let counter = self.counter.swap(0, SeqCst);
         for _ in 0..counter {
-            unsafe {
-                abi::sem_post(self.sem1);
-            }
+            abi::sem_post(self.sem1);
         }
         for _ in 0..counter {
-            unsafe {
-                abi::sem_timedwait(self.sem2, 0);
-            }
+            abi::sem_timedwait(self.sem2, 0);
         }
     }
 
     pub unsafe fn wait(&self, mutex: &Mutex) {
         self.counter.fetch_add(1, SeqCst);
         mutex.unlock();
-        unsafe {
-            abi::sem_timedwait(self.sem1, 0);
-            abi::sem_post(self.sem2);
-        }
+        abi::sem_timedwait(self.sem1, 0);
+        abi::sem_post(self.sem2);
         mutex.lock();
     }
 
@@ -70,9 +58,7 @@ impl Condvar {
     }
 
     pub unsafe fn destroy(&self) {
-        unsafe {
-            let _ = abi::sem_destroy(self.sem1);
-            let _ = abi::sem_destroy(self.sem2);
-        }
+        let _ = abi::sem_destroy(self.sem1);
+        let _ = abi::sem_destroy(self.sem2);
     }
 }

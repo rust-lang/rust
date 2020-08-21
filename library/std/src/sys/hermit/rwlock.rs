@@ -1,5 +1,3 @@
-#![deny(unsafe_op_in_unsafe_fn)]
-
 use crate::cell::UnsafeCell;
 use crate::sys::condvar::Condvar;
 use crate::sys::mutex::Mutex;
@@ -34,76 +32,62 @@ impl RWLock {
 
     #[inline]
     pub unsafe fn read(&self) {
-        unsafe {
-            self.lock.lock();
-            while !(*self.state.get()).inc_readers() {
-                self.cond.wait(&self.lock);
-            }
-            self.lock.unlock();
+        self.lock.lock();
+        while !(*self.state.get()).inc_readers() {
+            self.cond.wait(&self.lock);
         }
+        self.lock.unlock();
     }
 
     #[inline]
     pub unsafe fn try_read(&self) -> bool {
-        unsafe {
-            self.lock.lock();
-            let ok = (*self.state.get()).inc_readers();
-            self.lock.unlock();
-        }
+        self.lock.lock();
+        let ok = (*self.state.get()).inc_readers();
+        self.lock.unlock();
         return ok;
     }
 
     #[inline]
     pub unsafe fn write(&self) {
-        unsafe {
-            self.lock.lock();
-            while !(*self.state.get()).inc_writers() {
-                self.cond.wait(&self.lock);
-            }
+        self.lock.lock();
+        while !(*self.state.get()).inc_writers() {
+            self.cond.wait(&self.lock);
         }
         self.lock.unlock();
     }
 
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
-        unsafe {
-            self.lock.lock();
-            let ok = (*self.state.get()).inc_writers();
-            self.lock.unlock();
-        }
+        self.lock.lock();
+        let ok = (*self.state.get()).inc_writers();
+        self.lock.unlock();
         return ok;
     }
 
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        unsafe {
-            self.lock.lock();
-            let notify = (*self.state.get()).dec_readers();
-            self.lock.unlock();
-            if notify {
-                // FIXME: should only wake up one of these some of the time
-                self.cond.notify_all();
-            }
-        }
-    }
-
-    #[inline]
-    pub unsafe fn write_unlock(&self) {
-        unsafe {
-            self.lock.lock();
-            (*self.state.get()).dec_writers();
-            self.lock.unlock();
+        self.lock.lock();
+        let notify = (*self.state.get()).dec_readers();
+        self.lock.unlock();
+        if notify {
             // FIXME: should only wake up one of these some of the time
             self.cond.notify_all();
         }
     }
 
     #[inline]
+    pub unsafe fn write_unlock(&self) {
+        self.lock.lock();
+        (*self.state.get()).dec_writers();
+        self.lock.unlock();
+        // FIXME: should only wake up one of these some of the time
+        self.cond.notify_all();
+    }
+
+    #[inline]
     pub unsafe fn destroy(&self) {
-        unsafe {
-            self.lock.destroy();
-            self.cond.destroy();
-        }
+        self.lock.destroy();
+        self.cond.destroy();
     }
 }
 

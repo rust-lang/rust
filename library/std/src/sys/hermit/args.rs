@@ -1,17 +1,15 @@
-#![deny(unsafe_op_in_unsafe_fn)]
-
 use crate::ffi::OsString;
 use crate::marker::PhantomData;
 use crate::vec;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
-    unsafe { imp::init(argc, argv) }
+    imp::init(argc, argv)
 }
 
 /// One-time global cleanup.
 pub unsafe fn cleanup() {
-    unsafe { imp::cleanup() }
+    imp::cleanup()
 }
 
 /// Returns the command line arguments
@@ -67,18 +65,14 @@ mod imp {
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
         let _guard = LOCK.lock();
-        unsafe {
-            ARGC = argc;
-            ARGV = argv;
-        }
+        ARGC = argc;
+        ARGV = argv;
     }
 
     pub unsafe fn cleanup() {
         let _guard = LOCK.lock();
         ARGC = 0;
-        unsafe {
-            ARGV = ptr::null();
-        }
+        ARGV = ptr::null();
     }
 
     pub fn args() -> Args {
