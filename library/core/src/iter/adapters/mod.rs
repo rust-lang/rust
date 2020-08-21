@@ -11,12 +11,15 @@ use super::{
 mod chain;
 mod flatten;
 mod fuse;
+mod intersperse;
 mod zip;
 
 pub use self::chain::Chain;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::flatten::{FlatMap, Flatten};
 pub use self::fuse::Fuse;
+#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "none")]
+pub use self::intersperse::Intersperse;
 use self::zip::try_get_unchecked;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::zip::TrustedRandomAccess;

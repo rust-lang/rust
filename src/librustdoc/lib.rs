@@ -12,6 +12,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
 #![feature(once_cell)]
+#![feature(iter_intersperse)]
 #![recursion_limit = "256"]
 
 #[macro_use]
