@@ -1,0 +1,38 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+    - master
+    - staging
+    - trying
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CI: 1
+  RUST_BACKTRACE: short
+  RUSTFLAGS: -D warnings
+  RUSTUP_MAX_RETRIES: 10
+
+jobs:
+  rust:
+    name: Rust
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+
+    - name: Compile
+      run: cargo test --workspace --no-run
+
+    - name: Test
+      run: cargo test --workspace
