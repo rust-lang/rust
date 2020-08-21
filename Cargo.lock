@@ -404,6 +404,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo_metadata"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89fec17b16f1ac67908af82e47d0a90a7afd0e1827b181cd77504323d3263d35"
+dependencies = [
+ "semver 0.10.0",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cargotest2"
 version = "0.1.0"
 
@@ -4680,7 +4691,7 @@ dependencies = [
 name = "tidy"
 version = "0.1.0"
 dependencies = [
- "cargo_metadata 0.9.1",
+ "cargo_metadata 0.11.1",
  "lazy_static",
  "regex",
  "walkdir",
