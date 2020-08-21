@@ -1,8 +1,10 @@
 use crate::cmp;
 use crate::ffi::CStr;
 use crate::io::{self, IoSlice, IoSliceMut};
+use crate::marker::PhantomData;
 use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
+use crate::ptr::null_mut;
 use crate::str;
 use crate::sys::fd::FileDesc;
 use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
@@ -17,6 +19,86 @@ pub use crate::sys::{cvt, cvt_r};
 pub extern crate libc as netc;
 
 pub type wrlen_t = size_t;
+
+pub struct AncillaryDataIter<'a, T> {
+    data: &'a [u8],
+    phantom: crate::marker::PhantomData<T>,
+}
+
+impl<'a, T> AncillaryDataIter<'a, T> {
+    pub fn new(data: &'a [u8]) -> AncillaryDataIter<'a, T> {
+        AncillaryDataIter { data, phantom: PhantomData }
+    }
+}
+
+impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        unsafe {
+            let mut unit = mem::zeroed();
+            if mem::size_of::<T>() <= self.data.len() {
+                let unit_ptr: *mut T = &mut unit;
+                libc::memcpy(unit_ptr.cast(), self.data.as_ptr().cast(), mem::size_of::<T>());
+                self.data = &self.data[mem::size_of::<T>()..];
+                Some(unit)
+            } else {
+                None
+            }
+        }
+    }
+}
+
+pub fn add_to_ancillary_data<T: core::clone::Clone>(
+    buffer: &mut [u8],
+    length: &mut usize,
+    source: &[T],
+    cmsg_level: libc::c_int,
+    cmsg_type: libc::c_int,
+) -> bool {
+    let len = (source.len() * mem::size_of::<T>()) as u32;
+
+    unsafe {
+        let additional_space = libc::CMSG_SPACE(len) as usize;
+        if *length + additional_space > buffer.len() {
+            return false;
+        }
+
+        libc::memset(buffer[*length..].as_mut_ptr().cast(), 0, additional_space);
+
+        *length += additional_space;
+
+        let msg = libc::msghdr {
+            msg_name: null_mut(),
+            msg_namelen: 0,
+            msg_iov: null_mut(),
+            msg_iovlen: 0,
+            msg_control: buffer.as_mut_ptr().cast(),
+            msg_controllen: *length,
+            msg_flags: 0,
+        };
+
+        let mut cmsg = libc::CMSG_FIRSTHDR(&msg);
+        let mut previous_cmsg = cmsg;
+        while !cmsg.is_null() {
+            previous_cmsg = cmsg;
+            cmsg = libc::CMSG_NXTHDR(&msg, cmsg);
+        }
+
+        if previous_cmsg.is_null() {
+            return false;
+        }
+
+        (*previous_cmsg).cmsg_level = cmsg_level;
+        (*previous_cmsg).cmsg_type = cmsg_type;
+        (*previous_cmsg).cmsg_len = libc::CMSG_LEN(len) as usize;
+
+        let data = libc::CMSG_DATA(previous_cmsg).cast();
+
+        libc::memcpy(data, source.as_ptr().cast(), len as usize);
+    }
+    true
+}
 
 pub struct Socket(FileDesc);
 
@@ -237,6 +319,11 @@ impl Socket {
         self.recv_from_with_flags(buf, 0)
     }
 
+    pub fn recv_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+        let n = cvt(unsafe { libc::recvmsg(self.0.raw(), msg, libc::MSG_CMSG_CLOEXEC) })?;
+        Ok(n as usize)
+    }
+
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.recv_from_with_flags(buf, MSG_PEEK)
     }
@@ -252,6 +339,11 @@ impl Socket {
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
         self.0.is_write_vectored()
+    }
+
+    pub fn send_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+        let n = cvt(unsafe { libc::sendmsg(self.0.raw(), msg, 0) })?;
+        Ok(n as usize)
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {

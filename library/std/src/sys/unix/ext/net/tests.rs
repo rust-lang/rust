@@ -452,3 +452,155 @@ fn test_unix_datagram_peek_from() {
     assert_eq!(size, 11);
     assert_eq!(msg, &buf[..]);
 }
+
+#[test]
+fn test_send_vectored_fds_unix_stream() {
+    let (s1, s2) = or_panic!(UnixStream::pair());
+
+    let mut buf1 = [1; 8];
+    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+
+    let mut ancillary1_buffer = [0; 128];
+    let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
+    assert!(ancillary1.add_fds(&[s1.as_raw_fd()][..]));
+
+    let usize = or_panic!(s1.send_vectored_with_ancillary(&mut bufs_send, &mut ancillary1));
+    assert_eq!(usize, 8);
+
+    let mut buf2 = [0; 8];
+    let mut bufs_recv = &mut [IoSliceMut::new(&mut buf2[..])][..];
+
+    let mut ancillary2_buffer = [0; 128];
+    let mut ancillary2 = SocketAncillary::new(&mut ancillary2_buffer[..]);
+
+    let usize = or_panic!(s2.recv_vectored_with_ancillary(&mut bufs_recv, &mut ancillary2));
+    assert_eq!(usize, 8);
+    assert_eq!(buf1, buf2);
+
+    let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
+    assert_eq!(ancillary_data_vec.len(), 1);
+    if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap() {
+        let fd_vec = Vec::from_iter(scm_rights);
+        assert_eq!(fd_vec.len(), 1);
+        unsafe {
+            libc::close(fd_vec[0]);
+        }
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_send_vectored_with_ancillary_to_unix_datagram() {
+    fn getpid() -> libc::pid_t {
+        unsafe { libc::getpid() }
+    }
+
+    fn getuid() -> libc::uid_t {
+        unsafe { libc::getuid() }
+    }
+
+    fn getgid() -> libc::gid_t {
+        unsafe { libc::getgid() }
+    }
+
+    let dir = tmpdir();
+    let path1 = dir.path().join("sock1");
+    let path2 = dir.path().join("sock2");
+
+    let bsock1 = or_panic!(UnixDatagram::bind(&path1));
+    let bsock2 = or_panic!(UnixDatagram::bind(&path2));
+
+    unsafe {
+        let optval: libc::c_int = 1;
+        libc::setsockopt(
+            bsock2.as_raw_fd(),
+            libc::SOL_SOCKET,
+            libc::SO_PASSCRED,
+            &optval as *const _ as *const _,
+            mem::size_of::<libc::c_int>() as u32,
+        );
+    }
+
+    let mut buf1 = [1; 8];
+    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+
+    let mut ancillary1_buffer = [0; 128];
+    let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
+    let cred1 = libc::ucred { pid: getpid(), uid: getuid(), gid: getgid() };
+    assert!(ancillary1.add_creds(&[cred1][..]));
+
+    let usize =
+        or_panic!(bsock1.send_vectored_with_ancillary_to(&mut bufs_send, &mut ancillary1, &path2));
+    assert_eq!(usize, 8);
+
+    let mut buf2 = [0; 8];
+    let mut bufs_recv = &mut [IoSliceMut::new(&mut buf2[..])][..];
+
+    let mut ancillary2_buffer = [0; 128];
+    let mut ancillary2 = SocketAncillary::new(&mut ancillary2_buffer[..]);
+
+    let (usize, truncated, _addr) =
+        or_panic!(bsock2.recv_vectored_with_ancillary_from(&mut bufs_recv, &mut ancillary2));
+    assert_eq!(ancillary2.truncated(), false);
+    assert_eq!(usize, 8);
+    assert_eq!(truncated, false);
+    assert_eq!(buf1, buf2);
+
+    let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
+    assert_eq!(ancillary_data_vec.len(), 1);
+    if let AncillaryData::ScmCredentials(scm_credentials) = ancillary_data_vec.pop().unwrap() {
+        let cred_vec = Vec::from_iter(scm_credentials);
+        assert_eq!(cred_vec.len(), 1);
+        assert_eq!(cred1.pid, cred_vec[0].pid);
+        assert_eq!(cred1.uid, cred_vec[0].uid);
+        assert_eq!(cred1.gid, cred_vec[0].gid);
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_send_vectored_with_ancillary_unix_datagram() {
+    let dir = tmpdir();
+    let path1 = dir.path().join("sock1");
+    let path2 = dir.path().join("sock2");
+
+    let bsock1 = or_panic!(UnixDatagram::bind(&path1));
+    let bsock2 = or_panic!(UnixDatagram::bind(&path2));
+
+    let mut buf1 = [1; 8];
+    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+
+    let mut ancillary1_buffer = [0; 128];
+    let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
+    assert!(ancillary1.add_fds(&[bsock1.as_raw_fd()][..]));
+
+    or_panic!(bsock1.connect(&path2));
+    let usize = or_panic!(bsock1.send_vectored_with_ancillary(&mut bufs_send, &mut ancillary1));
+    assert_eq!(usize, 8);
+
+    let mut buf2 = [0; 8];
+    let mut bufs_recv = &mut [IoSliceMut::new(&mut buf2[..])][..];
+
+    let mut ancillary2_buffer = [0; 128];
+    let mut ancillary2 = SocketAncillary::new(&mut ancillary2_buffer[..]);
+
+    let (usize, truncated) =
+        or_panic!(bsock2.recv_vectored_with_ancillary(&mut bufs_recv, &mut ancillary2));
+    assert_eq!(usize, 8);
+    assert_eq!(truncated, false);
+    assert_eq!(buf1, buf2);
+
+    let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
+    assert_eq!(ancillary_data_vec.len(), 1);
+    if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap() {
+        let fd_vec = Vec::from_iter(scm_rights);
+        assert_eq!(fd_vec.len(), 1);
+        unsafe {
+            libc::close(fd_vec[0]);
+        }
+    } else {
+        assert!(false);
+    }
+}
