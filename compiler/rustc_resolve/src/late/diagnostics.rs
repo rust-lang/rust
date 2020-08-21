@@ -83,6 +83,7 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
     let enum_path = ast::Path {
         span: suggestion.path.span,
         segments: suggestion.path.segments[0..path_len - 1].to_vec(),
+        tokens: None,
     };
     let enum_path_string = path_names_to_string(&enum_path);
 
@@ -1065,7 +1066,8 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     path_segments.push(ast::PathSegment::from_ident(ident));
                     let module_def_id = module.def_id().unwrap();
                     if module_def_id == def_id {
-                        let path = Path { span: name_binding.span, segments: path_segments };
+                        let path =
+                            Path { span: name_binding.span, segments: path_segments, tokens: None };
                         result = Some((
                             module,
                             ImportSuggestion {
@@ -1095,7 +1097,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 if let Res::Def(DefKind::Variant, _) = name_binding.res() {
                     let mut segms = enum_import_suggestion.path.segments.clone();
                     segms.push(ast::PathSegment::from_ident(ident));
-                    variants.push(Path { span: name_binding.span, segments: segms });
+                    variants.push(Path { span: name_binding.span, segments: segms, tokens: None });
                 }
             });
             variants

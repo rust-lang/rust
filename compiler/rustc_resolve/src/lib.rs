@@ -3189,6 +3189,7 @@ impl<'a> Resolver<'a> {
                     .chain(path_str.split("::").skip(1).map(Ident::from_str))
                     .map(|i| self.new_ast_path_segment(i))
                     .collect(),
+                tokens: None,
             }
         } else {
             ast::Path {
@@ -3198,6 +3199,7 @@ impl<'a> Resolver<'a> {
                     .map(Ident::from_str)
                     .map(|i| self.new_ast_path_segment(i))
                     .collect(),
+                tokens: None,
             }
         };
         let module = self.get_module(module_id);

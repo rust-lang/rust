@@ -168,7 +168,15 @@ impl<'a> Parser<'a> {
                     return Err(self.struct_span_err(self.token.span, msg));
                 }
             }
-            NonterminalKind::Path => token::NtPath(self.parse_path(PathStyle::Type)?),
+            NonterminalKind::Path => {
+                let (mut path, tokens) =
+                    self.collect_tokens(|this| this.parse_path(PathStyle::Type))?;
+                // We have have eaten an NtPath, which could already have tokens
+                if path.tokens.is_none() {
+                    path.tokens = Some(tokens);
+                }
+                token::NtPath(path)
+            }
             NonterminalKind::Meta => {
                 let (mut attr, tokens) = self.collect_tokens(|this| this.parse_attr_item())?;
                 // We may have eaten a nonterminal, which could already have tokens

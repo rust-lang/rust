@@ -787,7 +787,7 @@ impl<'a> Parser<'a> {
     fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
         let lo = self.token.span;
 
-        let mut prefix = ast::Path { segments: Vec::new(), span: lo.shrink_to_lo() };
+        let mut prefix = ast::Path { segments: Vec::new(), span: lo.shrink_to_lo(), tokens: None };
         let kind = if self.check(&token::OpenDelim(token::Brace))
             || self.check(&token::BinOp(token::Star))
             || self.is_import_coupler()

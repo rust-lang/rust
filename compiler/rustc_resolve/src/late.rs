@@ -1967,7 +1967,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         if qself.is_none() {
             let path_seg = |seg: &Segment| PathSegment::from_ident(seg.ident);
-            let path = Path { segments: path.iter().map(path_seg).collect(), span };
+            let path = Path { segments: path.iter().map(path_seg).collect(), span, tokens: None };
             if let Ok((_, res)) =
                 self.r.resolve_macro_path(&path, None, &self.parent_scope, false, false)
             {

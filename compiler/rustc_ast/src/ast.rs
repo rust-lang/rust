@@ -96,6 +96,7 @@ pub struct Path {
     /// The segments in the path: the things separated by `::`.
     /// Global paths begin with `kw::PathRoot`.
     pub segments: Vec<PathSegment>,
+    pub tokens: Option<TokenStream>,
 }
 
 impl PartialEq<Symbol> for Path {
@@ -117,7 +118,7 @@ impl Path {
     // Convert a span and an identifier to the corresponding
     // one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
-        Path { segments: vec![PathSegment::from_ident(ident)], span: ident.span }
+        Path { segments: vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
     }
 
     pub fn is_global(&self) -> bool {
@@ -1069,7 +1070,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr, 104);
+rustc_data_structures::static_assert_size!(Expr, 112);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;

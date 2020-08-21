@@ -46,7 +46,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             args,
         });
-        ast::Path { span, segments }
+        ast::Path { span, segments, tokens: None }
     }
 
     pub fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy {
