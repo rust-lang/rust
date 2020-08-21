@@ -58,11 +58,7 @@ use crate::sys_common::rwlock as sys;
 /// } // write lock is dropped here
 /// ```
 ///
-/// [`Deref`]: ../../std/ops/trait.Deref.html
-/// [`DerefMut`]: ../../std/ops/trait.DerefMut.html
-/// [`Send`]: ../../std/marker/trait.Send.html
-/// [`Sync`]: ../../std/marker/trait.Sync.html
-/// [`Mutex`]: struct.Mutex.html
+/// [`Mutex`]: super::Mutex
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLock<T: ?Sized> {
     inner: Box<sys::RWLock>,
@@ -81,9 +77,8 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 /// This structure is created by the [`read`] and [`try_read`] methods on
 /// [`RwLock`].
 ///
-/// [`read`]: struct.RwLock.html#method.read
-/// [`try_read`]: struct.RwLock.html#method.try_read
-/// [`RwLock`]: struct.RwLock.html
+/// [`read`]: RwLock::read
+/// [`try_read`]: RwLock::try_read
 #[must_use = "if unused the RwLock will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
@@ -102,9 +97,8 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
 /// This structure is created by the [`write`] and [`try_write`] methods
 /// on [`RwLock`].
 ///
-/// [`write`]: struct.RwLock.html#method.write
-/// [`try_write`]: struct.RwLock.html#method.try_write
-/// [`RwLock`]: struct.RwLock.html
+/// [`write`]: RwLock::write
+/// [`try_write`]: RwLock::try_write
 #[must_use = "if unused the RwLock will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
@@ -456,8 +450,6 @@ impl<T: Default> Default for RwLock<T> {
 impl<T> From<T> for RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
     /// This is equivalent to [`RwLock::new`].
-    ///
-    /// [`RwLock::new`]: ../../std/sync/struct.RwLock.html#method.new
     fn from(t: T) -> Self {
         RwLock::new(t)
     }

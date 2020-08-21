@@ -11,7 +11,7 @@ use crate::time::{Duration, Instant};
 ///
 /// It is returned by the [`wait_timeout`] method.
 ///
-/// [`wait_timeout`]: struct.Condvar.html#method.wait_timeout
+/// [`wait_timeout`]: Condvar::wait_timeout
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 #[stable(feature = "wait_timeout", since = "1.5.0")]
 pub struct WaitTimeoutResult(bool);
@@ -161,11 +161,10 @@ impl Condvar {
     /// mutex to ensure defined behavior across platforms. If this functionality
     /// is not desired, then unsafe primitives in `sys` are provided.
     ///
-    /// [`notify_one`]: #method.notify_one
-    /// [`notify_all`]: #method.notify_all
-    /// [poisoning]: ../sync/struct.Mutex.html#poisoning
-    /// [`Mutex`]: ../sync/struct.Mutex.html
-    /// [`panic!`]: ../../std/macro.panic.html
+    /// [`notify_one`]: Self::notify_one
+    /// [`notify_all`]: Self::notify_all
+    /// [poisoning]: super::Mutex#poisoning
+    /// [`Mutex`]: super::Mutex
     ///
     /// # Examples
     ///
@@ -218,10 +217,10 @@ impl Condvar {
     /// poisoned when this thread re-acquires the lock. For more information,
     /// see information about [poisoning] on the [`Mutex`] type.
     ///
-    /// [`notify_one`]: #method.notify_one
-    /// [`notify_all`]: #method.notify_all
-    /// [poisoning]: ../sync/struct.Mutex.html#poisoning
-    /// [`Mutex`]: ../sync/struct.Mutex.html
+    /// [`notify_one`]: Self::notify_one
+    /// [`notify_all`]: Self::notify_all
+    /// [poisoning]: super::Mutex#poisoning
+    /// [`Mutex`]: super::Mutex
     ///
     /// # Examples
     ///
@@ -280,7 +279,7 @@ impl Condvar {
     /// Like [`wait`], the lock specified will be re-acquired when this function
     /// returns, regardless of whether the timeout elapsed or not.
     ///
-    /// [`wait`]: #method.wait
+    /// [`wait`]: Self::wait
     ///
     /// # Examples
     ///
@@ -350,9 +349,8 @@ impl Condvar {
     /// Like [`wait`], the lock specified will be re-acquired when this function
     /// returns, regardless of whether the timeout elapsed or not.
     ///
-    /// [`wait`]: #method.wait
-    /// [`wait_timeout_while`]: #method.wait_timeout_while
-    /// [`WaitTimeoutResult`]: struct.WaitTimeoutResult.html
+    /// [`wait`]: Self::wait
+    /// [`wait_timeout_while`]: Self::wait_timeout_while
     ///
     /// # Examples
     ///
@@ -420,9 +418,8 @@ impl Condvar {
     /// Like [`wait_while`], the lock specified will be re-acquired when this
     /// function returns, regardless of whether the timeout elapsed or not.
     ///
-    /// [`wait_while`]: #method.wait_while
-    /// [`wait_timeout`]: #method.wait_timeout
-    /// [`WaitTimeoutResult`]: struct.WaitTimeoutResult.html
+    /// [`wait_while`]: Self::wait_while
+    /// [`wait_timeout`]: Self::wait_timeout
     ///
     /// # Examples
     ///
@@ -485,9 +482,9 @@ impl Condvar {
     ///
     /// To wake up all threads, see [`notify_all`].
     ///
-    /// [`wait`]: #method.wait
-    /// [`wait_timeout`]: #method.wait_timeout
-    /// [`notify_all`]: #method.notify_all
+    /// [`wait`]: Self::wait
+    /// [`wait_timeout`]: Self::wait_timeout
+    /// [`notify_all`]: Self::notify_all
     ///
     /// # Examples
     ///
@@ -527,7 +524,7 @@ impl Condvar {
     ///
     /// To wake up only one thread, see [`notify_one`].
     ///
-    /// [`notify_one`]: #method.notify_one
+    /// [`notify_one`]: Self::notify_one
     ///
     /// # Examples
     ///

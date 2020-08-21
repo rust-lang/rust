@@ -33,13 +33,12 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 /// the guard that would have otherwise been returned on a successful lock. This
 /// allows access to the data, despite the lock being poisoned.
 ///
-/// [`new`]: #method.new
-/// [`lock`]: #method.lock
-/// [`try_lock`]: #method.try_lock
-/// [`Result`]: ../../std/result/enum.Result.html
-/// [`unwrap()`]: ../../std/result/enum.Result.html#method.unwrap
-/// [`PoisonError`]: ../../std/sync/struct.PoisonError.html
-/// [`into_inner`]: ../../std/sync/struct.PoisonError.html#method.into_inner
+/// [`new`]: Self::new
+/// [`lock`]: Self::lock
+/// [`try_lock`]: Self::try_lock
+/// [`unwrap()`]: Result::unwrap
+/// [`PoisonError`]: super::PoisonError
+/// [`into_inner`]: super::PoisonError::into_inner
 ///
 /// # Examples
 ///
@@ -190,11 +189,8 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 /// This structure is created by the [`lock`] and [`try_lock`] methods on
 /// [`Mutex`].
 ///
-/// [`Deref`]: ../../std/ops/trait.Deref.html
-/// [`DerefMut`]: ../../std/ops/trait.DerefMut.html
-/// [`lock`]: struct.Mutex.html#method.lock
-/// [`try_lock`]: struct.Mutex.html#method.try_lock
-/// [`Mutex`]: struct.Mutex.html
+/// [`lock`]: Mutex::lock
+/// [`try_lock`]: Mutex::try_lock
 #[must_use = "if unused the Mutex will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
@@ -288,8 +284,6 @@ impl<T: ?Sized> Mutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    ///
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -432,8 +426,6 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Mutex<T> {
 impl<T> From<T> for Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
     /// This is equivalent to [`Mutex::new`].
-    ///
-    /// [`Mutex::new`]: ../../std/sync/struct.Mutex.html#method.new
     fn from(t: T) -> Self {
         Mutex::new(t)
     }
