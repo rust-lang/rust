@@ -2419,6 +2419,7 @@ impl<D: Decoder> rustc_serialize::Decodable<D> for AttrId {
 pub struct AttrItem {
     pub path: Path,
     pub args: MacArgs,
+    pub tokens: Option<TokenStream>,
 }
 
 /// A list of attributes.

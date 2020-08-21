@@ -967,6 +967,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AttrKind::Normal(ref item) => AttrKind::Normal(AttrItem {
                 path: item.path.clone(),
                 args: self.lower_mac_args(&item.args),
+                tokens: None,
             }),
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };

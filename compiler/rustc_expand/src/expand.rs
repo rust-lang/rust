@@ -1777,6 +1777,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 kind: ast::AttrKind::Normal(AttrItem {
                     path: meta.path,
                     args: meta.kind.mac_args(meta.span),
+                    tokens: None,
                 }),
                 span: at.span,
                 id: at.id,

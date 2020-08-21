@@ -169,7 +169,14 @@ impl<'a> Parser<'a> {
                 }
             }
             NonterminalKind::Path => token::NtPath(self.parse_path(PathStyle::Type)?),
-            NonterminalKind::Meta => token::NtMeta(P(self.parse_attr_item()?)),
+            NonterminalKind::Meta => {
+                let (mut attr, tokens) = self.collect_tokens(|this| this.parse_attr_item())?;
+                // We may have eaten a nonterminal, which could already have tokens
+                if attr.tokens.is_none() {
+                    attr.tokens = Some(tokens);
+                }
+                token::NtMeta(P(attr))
+            }
             NonterminalKind::TT => token::NtTT(self.parse_token_tree()),
             NonterminalKind::Vis => token::NtVis(self.parse_visibility(FollowedByType::Yes)?),
             NonterminalKind::Lifetime => {

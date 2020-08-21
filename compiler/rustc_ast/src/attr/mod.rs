@@ -330,7 +330,7 @@ crate fn mk_attr_id() -> AttrId {
 }
 
 pub fn mk_attr(style: AttrStyle, path: Path, args: MacArgs, span: Span) -> Attribute {
-    mk_attr_from_item(style, AttrItem { path, args }, span)
+    mk_attr_from_item(style, AttrItem { path, args, tokens: None }, span)
 }
 
 pub fn mk_attr_from_item(style: AttrStyle, item: AttrItem, span: Span) -> Attribute {
