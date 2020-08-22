@@ -16,10 +16,10 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let (name, sig) = get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
     let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
 
-    // Make the FunctionBuilder
-    let mut func_ctx = FunctionBuilderContext::new();
     cx.cached_context.clear();
 
+    // Make the FunctionBuilder
+    let mut func_ctx = FunctionBuilderContext::new();
     let mut func = std::mem::replace(&mut cx.cached_context.func, Function::new());
     func.name = ExternalName::user(0, func_id.as_u32());
     func.signature = sig;
