@@ -32,11 +32,11 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        if self.peek.is_some() {
-            self.peek.take()
+        if let Some(item) = self.peek.take() {
+            Some(item)
         } else {
-            self.peek = self.iter.next();
-            if self.peek.is_some() { Some(self.element.clone()) } else { None }
+            self.peek = Some(self.iter.next()?);
+            Some(self.element.clone())
         }
     }
 
