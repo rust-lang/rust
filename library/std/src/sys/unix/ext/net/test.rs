@@ -481,7 +481,7 @@ fn test_send_vectored_fds_unix_stream() {
 
     let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
     assert_eq!(ancillary_data_vec.len(), 1);
-    if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap() {
+    if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap().unwrap() {
         let fd_vec = Vec::from_iter(scm_rights);
         assert_eq!(fd_vec.len(), 1);
         unsafe {
@@ -551,7 +551,9 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
 
     let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
     assert_eq!(ancillary_data_vec.len(), 1);
-    if let AncillaryData::ScmCredentials(scm_credentials) = ancillary_data_vec.pop().unwrap() {
+    if let AncillaryData::ScmCredentials(scm_credentials) =
+        ancillary_data_vec.pop().unwrap().unwrap()
+    {
         let cred_vec = Vec::from_iter(scm_credentials);
         assert_eq!(cred_vec.len(), 1);
         assert_eq!(cred1.pid, cred_vec[0].pid);
@@ -596,7 +598,7 @@ fn test_send_vectored_with_ancillary_unix_datagram() {
 
     let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
     assert_eq!(ancillary_data_vec.len(), 1);
-    if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap() {
+    if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap().unwrap() {
         let fd_vec = Vec::from_iter(scm_rights);
         assert_eq!(fd_vec.len(), 1);
         unsafe {

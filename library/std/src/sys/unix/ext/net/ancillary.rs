@@ -1,3 +1,4 @@
+use crate::convert::TryFrom;
 use crate::io::{self, IoSliceMut};
 use crate::mem;
 use crate::os::unix::io::RawFd;
@@ -145,6 +146,13 @@ impl<'a> Iterator for ScmCredentials<'a> {
     }
 }
 
+#[non_exhaustive]
+#[derive(Debug)]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+pub enum AncillaryError {
+    Unknown { cmsg_level: i32, cmsg_type: i32 },
+}
+
 #[cfg(any(
     target_os = "haiku",
     target_os = "solaris",
@@ -240,17 +248,19 @@ impl<'a> AncillaryData<'a> {
     target_env = "uclibc",
 ))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-impl<'a> AncillaryData<'a> {
-    fn from(cmsg: &'a libc::cmsghdr) -> Self {
+impl<'a> TryFrom<&'a libc::cmsghdr> for AncillaryData<'a> {
+    type Error = AncillaryError;
+
+    fn try_from(cmsg: &'a libc::cmsghdr) -> Result<Self, Self::Error> {
         unsafe {
             let cmsg_len_zero = libc::CMSG_LEN(0) as usize;
             let data_len = (*cmsg).cmsg_len - cmsg_len_zero;
             let data = libc::CMSG_DATA(cmsg).cast();
             let data = from_raw_parts(data, data_len);
 
-            if (*cmsg).cmsg_level == libc::SOL_SOCKET {
-                match (*cmsg).cmsg_type {
-                    libc::SCM_RIGHTS => AncillaryData::as_rights(data),
+            match (*cmsg).cmsg_level {
+                libc::SOL_SOCKET => match (*cmsg).cmsg_type {
+                    libc::SCM_RIGHTS => Ok(AncillaryData::as_rights(data)),
                     #[cfg(any(
                         target_os = "linux",
                         target_os = "android",
@@ -258,7 +268,7 @@ impl<'a> AncillaryData<'a> {
                         target_os = "fuchsia",
                         target_env = "uclibc",
                     ))]
-                    libc::SCM_CREDENTIALS => AncillaryData::as_credentials(data),
+                    libc::SCM_CREDENTIALS => Ok(AncillaryData::as_credentials(data)),
                     #[cfg(any(
                         target_os = "netbsd",
                         target_os = "openbsd",
@@ -267,11 +277,14 @@ impl<'a> AncillaryData<'a> {
                         target_os = "macos",
                         target_os = "ios",
                     ))]
-                    libc::SCM_CREDS => AncillaryData::as_credentials(data),
-                    _ => panic!("Unknown cmsg type"),
+                    libc::SCM_CREDS => Ok(AncillaryData::as_credentials(data)),
+                    cmsg_type => {
+                        Err(AncillaryError::Unknown { cmsg_level: libc::SOL_SOCKET, cmsg_type })
+                    }
+                },
+                cmsg_level => {
+                    Err(AncillaryError::Unknown { cmsg_level, cmsg_type: (*cmsg).cmsg_type })
                 }
-            } else {
-                panic!("Unknown cmsg level");
             }
         }
     }
@@ -317,9 +330,9 @@ pub struct Messages<'a> {
 ))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 impl<'a> Iterator for Messages<'a> {
-    type Item = AncillaryData<'a>;
+    type Item = Result<AncillaryData<'a>, AncillaryError>;
 
-    fn next(&mut self) -> Option<AncillaryData<'a>> {
+    fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             let msg = libc::msghdr {
                 msg_name: null_mut(),
@@ -339,8 +352,8 @@ impl<'a> Iterator for Messages<'a> {
 
             let cmsg = cmsg.as_ref()?;
             self.current = Some(cmsg);
-            let ancillary_data = AncillaryData::from(cmsg);
-            Some(ancillary_data)
+            let ancillary_result = AncillaryData::try_from(cmsg);
+            Some(ancillary_result)
         }
     }
 }
@@ -364,8 +377,8 @@ impl<'a> Iterator for Messages<'a> {
 ///     let mut bufs = &mut [IoSliceMut::new(&mut buf[..])][..];
 ///     sock.recv_vectored_with_ancillary(bufs, &mut ancillary)?;
 ///
-///     for ancillary_data in ancillary.messages() {
-///         if let AncillaryData::ScmRights(scm_rights) = ancillary_data {
+///     for ancillary_result in ancillary.messages() {
+///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
 ///             for fd in scm_rights {
 ///                 println!("receive file descriptor: {}", fd);
 ///             }
@@ -585,8 +598,8 @@ impl<'a> SocketAncillary<'a> {
     ///     let mut bufs = &mut [IoSliceMut::new(&mut buf[..])][..];
     ///
     ///     sock.recv_vectored_with_ancillary(bufs, &mut ancillary)?;
-    ///     for ancillary_data in ancillary.messages() {
-    ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_data {
+    ///     for ancillary_result in ancillary.messages() {
+    ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
     ///                 println!("receive file descriptor: {}", fd);
     ///             }
@@ -596,8 +609,8 @@ impl<'a> SocketAncillary<'a> {
     ///     ancillary.clear();
     ///
     ///     sock.recv_vectored_with_ancillary(bufs, &mut ancillary)?;
-    ///     for ancillary_data in ancillary.messages() {
-    ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_data {
+    ///     for ancillary_result in ancillary.messages() {
+    ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
     ///                 println!("receive file descriptor: {}", fd);
     ///             }
