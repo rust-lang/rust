@@ -284,6 +284,9 @@ jobs:
               CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
             <<: *job-linux-xl
 
+          - name: dist-i586-gnu-i586-i686-musl
+            <<: *job-linux-xl
+
   try:
     <<: *base-ci-job
     name: try
@@ -489,7 +492,7 @@ jobs:
           #
           # We are using MinGW with POSIX threads since LLVM requires
           # C++'s std::thread which is disabled in libstdc++ with win32 threads.
-          # FIXME: Libc++ doesn't have this limitation so we can avoid 
+          # FIXME: Libc++ doesn't have this limitation so we can avoid
           # winpthreads if we switch to it.
           #
           # Instead of relying on the MinGW version installed on CI we download
