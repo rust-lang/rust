@@ -2,6 +2,7 @@
 
 - [What is rustdoc?](what-is-rustdoc.md)
 - [How to write documentation](how-to-write-documentation.md)
+- [What to include (and exclude)](what-to-include.md)
 - [Command-line arguments](command-line-arguments.md)
 - [The `#[doc]` attribute](the-doc-attribute.md)
 - [Documentation tests](documentation-tests.md)
@@ -10,3 +11,4 @@
 - [Passes](passes.md)
 - [Advanced features](advanced-features.md)
 - [Unstable features](unstable-features.md)
+- [References](references.md)
