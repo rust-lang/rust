@@ -71,10 +71,6 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_track_caller(&attr.span, attrs, span, target)
             } else if self.tcx.sess.check_name(attr, sym::doc) {
                 self.check_doc_alias(attr, hir_id, target)
-            } else if self.tcx.sess.check_name(attr, sym::cold) {
-                self.check_cold(&attr, span, target)
-            } else if self.tcx.sess.check_name(attr, sym::link_name) {
-                self.check_link_name(&attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::no_link) {
                 self.check_no_link(&attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::export_name) {
