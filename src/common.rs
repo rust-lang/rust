@@ -265,7 +265,7 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
 }
 
 pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
-    pub(crate) codegen_cx: &'clif mut crate::CodegenCx<'tcx, B>,
+    pub(crate) cx: &'clif mut crate::CodegenCx<'tcx, B>,
     pub(crate) pointer_type: Type, // Cached from module
 
     pub(crate) instance: Instance<'tcx>,
@@ -296,11 +296,11 @@ impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
 
     fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
         assert!(!ty.still_further_specializable());
-        self.codegen_cx.tcx
+        self.cx.tcx
             .layout_of(ParamEnv::reveal_all().and(&ty))
             .unwrap_or_else(|e| {
                 if let layout::LayoutError::SizeOverflow(_) = e {
-                    self.codegen_cx.tcx.sess.fatal(&e.to_string())
+                    self.cx.tcx.sess.fatal(&e.to_string())
                 } else {
                     bug!("failed to get layout for `{}`: {}", ty, e)
                 }
@@ -310,13 +310,13 @@ impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
 
 impl<'tcx, B: Backend + 'static> layout::HasTyCtxt<'tcx> for FunctionCx<'_, 'tcx, B> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
-        self.codegen_cx.tcx
+        self.cx.tcx
     }
 }
 
 impl<'tcx, B: Backend + 'static> rustc_target::abi::HasDataLayout for FunctionCx<'_, 'tcx, B> {
     fn data_layout(&self) -> &rustc_target::abi::TargetDataLayout {
-        &self.codegen_cx.tcx.data_layout
+        &self.cx.tcx.data_layout
     }
 }
 
@@ -328,7 +328,7 @@ impl<'tcx, B: Backend + 'static> layout::HasParamEnv<'tcx> for FunctionCx<'_, 't
 
 impl<'tcx, B: Backend + 'static> HasTargetSpec for FunctionCx<'_, 'tcx, B> {
     fn target_spec(&self) -> &Target {
-        &self.codegen_cx.tcx.sess.target.target
+        &self.cx.tcx.sess.target.target
     }
 }
 
@@ -338,22 +338,22 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         T: TypeFoldable<'tcx> + Copy,
     {
         if let Some(substs) = self.instance.substs_for_mir_body() {
-            self.codegen_cx.tcx.subst_and_normalize_erasing_regions(
+            self.cx.tcx.subst_and_normalize_erasing_regions(
                 substs,
                 ty::ParamEnv::reveal_all(),
                 value,
             )
         } else {
-            self.codegen_cx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), *value)
+            self.cx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), *value)
         }
     }
 
     pub(crate) fn clif_type(&self, ty: Ty<'tcx>) -> Option<Type> {
-        clif_type_from_ty(self.codegen_cx.tcx, ty)
+        clif_type_from_ty(self.cx.tcx, ty)
     }
 
     pub(crate) fn clif_pair_type(&self, ty: Ty<'tcx>) -> Option<(Type, Type)> {
-        clif_pair_type_from_ty(self.codegen_cx.tcx, ty)
+        clif_pair_type_from_ty(self.cx.tcx, ty)
     }
 
     pub(crate) fn get_block(&self, bb: BasicBlock) -> Block {
@@ -378,8 +378,8 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         }
 
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
-        let caller = self.codegen_cx.tcx.sess.source_map().lookup_char_pos(topmost.lo());
-        let const_loc = self.codegen_cx.tcx.const_caller_location((
+        let caller = self.cx.tcx.sess.source_map().lookup_char_pos(topmost.lo());
+        let const_loc = self.cx.tcx.const_caller_location((
             rustc_span::symbol::Symbol::intern(&caller.file.name.to_string()),
             caller.line as u32,
             caller.col_display as u32 + 1,
@@ -387,12 +387,12 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         crate::constant::trans_const_value(
             self,
             const_loc,
-            self.codegen_cx.tcx.caller_location_ty(),
+            self.cx.tcx.caller_location_ty(),
         )
     }
 
     pub(crate) fn triple(&self) -> &target_lexicon::Triple {
-        self.codegen_cx.module.isa().triple()
+        self.cx.module.isa().triple()
     }
 
     pub(crate) fn anonymous_str(&mut self, prefix: &str, msg: &str) -> Value {
@@ -405,7 +405,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         let mut data_ctx = DataContext::new();
         data_ctx.define(msg.as_bytes().to_vec().into_boxed_slice());
         let msg_id = self
-            .codegen_cx.module
+            .cx.module
             .declare_data(
                 &format!("__{}_{:08x}", prefix, msg_hash),
                 Linkage::Local,
@@ -416,9 +416,9 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             .unwrap();
 
         // Ignore DuplicateDefinition error, as the data will be the same
-        let _ = self.codegen_cx.module.define_data(msg_id, &data_ctx);
+        let _ = self.cx.module.define_data(msg_id, &data_ctx);
 
-        let local_msg_id = self.codegen_cx.module.declare_data_in_func(msg_id, self.bcx.func);
+        let local_msg_id = self.cx.module.declare_data_in_func(msg_id, self.bcx.func);
         #[cfg(debug_assertions)]
         {
             self.add_comment(local_msg_id, msg);

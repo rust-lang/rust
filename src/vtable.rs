@@ -13,9 +13,9 @@ fn vtable_memflags() -> MemFlags {
 }
 
 pub(crate) fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
-    let usize_size = fx.layout_of(fx.codegen_cx.tcx.types.usize).size.bytes() as usize;
+    let usize_size = fx.layout_of(fx.cx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
-        pointer_ty(fx.codegen_cx.tcx),
+        pointer_ty(fx.cx.tcx),
         vtable_memflags(),
         vtable,
         (DROP_FN_INDEX * usize_size) as i32,
@@ -23,9 +23,9 @@ pub(crate) fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: 
 }
 
 pub(crate) fn size_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
-    let usize_size = fx.layout_of(fx.codegen_cx.tcx.types.usize).size.bytes() as usize;
+    let usize_size = fx.layout_of(fx.cx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
-        pointer_ty(fx.codegen_cx.tcx),
+        pointer_ty(fx.cx.tcx),
         vtable_memflags(),
         vtable,
         (SIZE_INDEX * usize_size) as i32,
@@ -33,9 +33,9 @@ pub(crate) fn size_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Val
 }
 
 pub(crate) fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
-    let usize_size = fx.layout_of(fx.codegen_cx.tcx.types.usize).size.bytes() as usize;
+    let usize_size = fx.layout_of(fx.cx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
-        pointer_ty(fx.codegen_cx.tcx),
+        pointer_ty(fx.cx.tcx),
         vtable_memflags(),
         vtable,
         (ALIGN_INDEX * usize_size) as i32,
@@ -57,9 +57,9 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
         )
     };
 
-    let usize_size = fx.layout_of(fx.codegen_cx.tcx.types.usize).size.bytes();
+    let usize_size = fx.layout_of(fx.cx.tcx.types.usize).size.bytes();
     let func_ref = fx.bcx.ins().load(
-        pointer_ty(fx.codegen_cx.tcx),
+        pointer_ty(fx.cx.tcx),
         vtable_memflags(),
         vtable,
         ((idx + 3) * usize_size as usize) as i32,
@@ -72,15 +72,15 @@ pub(crate) fn get_vtable<'tcx>(
     layout: TyAndLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let data_id = if let Some(data_id) = fx.codegen_cx.vtables.get(&(layout.ty, trait_ref)) {
+    let data_id = if let Some(data_id) = fx.cx.vtables.get(&(layout.ty, trait_ref)) {
         *data_id
     } else {
         let data_id = build_vtable(fx, layout, trait_ref);
-        fx.codegen_cx.vtables.insert((layout.ty, trait_ref), data_id);
+        fx.cx.vtables.insert((layout.ty, trait_ref), data_id);
         data_id
     };
 
-    let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
 }
 
@@ -89,11 +89,11 @@ fn build_vtable<'tcx>(
     layout: TyAndLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> DataId {
-    let tcx = fx.codegen_cx.tcx;
-    let usize_size = fx.layout_of(fx.codegen_cx.tcx.types.usize).size.bytes() as usize;
+    let tcx = fx.cx.tcx;
+    let usize_size = fx.layout_of(fx.cx.tcx.types.usize).size.bytes() as usize;
 
     let drop_in_place_fn =
-        import_function(tcx, &mut fx.codegen_cx.module, Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.codegen_cx.tcx));
+        import_function(tcx, &mut fx.cx.module, Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.cx.tcx));
 
     let mut components: Vec<_> = vec![Some(drop_in_place_fn), None, None];
 
@@ -108,8 +108,8 @@ fn build_vtable<'tcx>(
         opt_mth.map_or(None, |(def_id, substs)| {
             Some(import_function(
                 tcx,
-                &mut fx.codegen_cx.module,
-                Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap().polymorphize(fx.codegen_cx.tcx),
+                &mut fx.cx.module,
+                Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap().polymorphize(fx.cx.tcx),
             ))
         })
     });
@@ -121,19 +121,19 @@ fn build_vtable<'tcx>(
         .collect::<Vec<u8>>()
         .into_boxed_slice();
 
-    write_usize(fx.codegen_cx.tcx, &mut data, SIZE_INDEX, layout.size.bytes());
-    write_usize(fx.codegen_cx.tcx, &mut data, ALIGN_INDEX, layout.align.abi.bytes());
+    write_usize(fx.cx.tcx, &mut data, SIZE_INDEX, layout.size.bytes());
+    write_usize(fx.cx.tcx, &mut data, ALIGN_INDEX, layout.align.abi.bytes());
     data_ctx.define(data);
 
     for (i, component) in components.into_iter().enumerate() {
         if let Some(func_id) = component {
-            let func_ref = fx.codegen_cx.module.declare_func_in_data(func_id, &mut data_ctx);
+            let func_ref = fx.cx.module.declare_func_in_data(func_id, &mut data_ctx);
             data_ctx.write_function_addr((i * usize_size) as u32, func_ref);
         }
     }
 
     let data_id = fx
-        .codegen_cx.module
+        .cx.module
         .declare_data(
             &format!(
                 "__vtable.{}.for.{:?}.{}",
@@ -142,13 +142,13 @@ fn build_vtable<'tcx>(
                     .map(|trait_ref| format!("{:?}", trait_ref.skip_binder()).into())
                     .unwrap_or(std::borrow::Cow::Borrowed("???")),
                 layout.ty,
-                fx.codegen_cx.vtables.len(),
+                fx.cx.vtables.len(),
             ),
             Linkage::Local,
             false,
             false,
             Some(
-                fx.codegen_cx.tcx
+                fx.cx.tcx
                     .data_layout
                     .pointer_align
                     .pref
@@ -159,7 +159,7 @@ fn build_vtable<'tcx>(
         )
         .unwrap();
 
-    fx.codegen_cx.module.define_data(data_id, &data_ctx).unwrap();
+    fx.cx.module.define_data(data_id, &data_ctx).unwrap();
 
     data_id
 }

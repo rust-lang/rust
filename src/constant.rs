@@ -41,10 +41,10 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, impl Backend>) {
         match const_.val {
             ConstKind::Value(_) => {}
             ConstKind::Unevaluated(def, ref substs, promoted) => {
-                if let Err(err) = fx.codegen_cx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None) {
+                if let Err(err) = fx.cx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None) {
                     match err {
                         ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
-                            fx.codegen_cx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
+                            fx.cx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
                         }
                         ErrorHandled::TooGeneric => {
                             span_bug!(constant.span, "codgen encountered polymorphic constant: {:?}", err);
@@ -67,8 +67,8 @@ pub(crate) fn codegen_tls_ref<'tcx>(
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CValue<'tcx> {
-    let data_id = data_id_for_static(fx.codegen_cx.tcx, &mut fx.codegen_cx.module, def_id, false);
-    let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let data_id = data_id_for_static(fx.cx.tcx, &mut fx.cx.module, def_id, false);
+    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(local_data_id, format!("tls {:?}", def_id));
     let tls_ptr = fx.bcx.ins().tls_value(fx.pointer_type, local_data_id);
@@ -80,8 +80,8 @@ fn codegen_static_ref<'tcx>(
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CPlace<'tcx> {
-    let data_id = data_id_for_static(fx.codegen_cx.tcx, &mut fx.codegen_cx.module, def_id, false);
-    let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let data_id = data_id_for_static(fx.cx.tcx, &mut fx.cx.module, def_id, false);
+    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(local_data_id, format!("{:?}", def_id));
     let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
@@ -97,7 +97,7 @@ pub(crate) fn trans_constant<'tcx>(
     let const_ = fx.monomorphize(&constant.literal);
     let const_val = match const_.val {
         ConstKind::Value(const_val) => const_val,
-        ConstKind::Unevaluated(def, ref substs, promoted) if fx.codegen_cx.tcx.is_static(def.did) => {
+        ConstKind::Unevaluated(def, ref substs, promoted) if fx.cx.tcx.is_static(def.did) => {
             assert!(substs.is_empty());
             assert!(promoted.is_none());
 
@@ -108,11 +108,11 @@ pub(crate) fn trans_constant<'tcx>(
             ).to_cvalue(fx);
         }
         ConstKind::Unevaluated(def, ref substs, promoted) => {
-            match fx.codegen_cx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None) {
+            match fx.cx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None) {
                 Ok(const_val) => const_val,
                 Err(_) => {
                     if promoted.is_none() {
-                        fx.codegen_cx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
+                        fx.cx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
                     }
                     return crate::trap::trap_unreachable_ret_value(
                         fx,
@@ -154,7 +154,7 @@ pub(crate) fn trans_const_value<'tcx>(
                 );
                 let ptr = Pointer::new(AllocId(!0), Size::ZERO); // The alloc id is never used
                 alloc.write_scalar(fx, ptr, x.into(), size).unwrap();
-                let alloc = fx.codegen_cx.tcx.intern_const_alloc(alloc);
+                let alloc = fx.cx.tcx.intern_const_alloc(alloc);
                 return CValue::by_ref(pointer_for_allocation(fx, alloc), layout);
             }
 
@@ -164,25 +164,25 @@ pub(crate) fn trans_const_value<'tcx>(
                     return CValue::const_val(fx, layout, data);
                 }
                 Scalar::Ptr(ptr) => {
-                    let alloc_kind = fx.codegen_cx.tcx.get_global_alloc(ptr.alloc_id);
+                    let alloc_kind = fx.cx.tcx.get_global_alloc(ptr.alloc_id);
                     let base_addr = match alloc_kind {
                         Some(GlobalAlloc::Memory(alloc)) => {
-                            fx.codegen_cx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
-                            let data_id = data_id_for_alloc_id(&mut fx.codegen_cx.module, ptr.alloc_id, alloc.align, alloc.mutability);
-                            let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                            fx.cx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
+                            let data_id = data_id_for_alloc_id(&mut fx.cx.module, ptr.alloc_id, alloc.align, alloc.mutability);
+                            let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             #[cfg(debug_assertions)]
                             fx.add_comment(local_data_id, format!("{:?}", ptr.alloc_id));
                             fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                         }
                         Some(GlobalAlloc::Function(instance)) => {
-                            let func_id = crate::abi::import_function(fx.codegen_cx.tcx, &mut fx.codegen_cx.module, instance);
-                            let local_func_id = fx.codegen_cx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
+                            let func_id = crate::abi::import_function(fx.cx.tcx, &mut fx.cx.module, instance);
+                            let local_func_id = fx.cx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
                             fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
                         }
                         Some(GlobalAlloc::Static(def_id)) => {
-                            assert!(fx.codegen_cx.tcx.is_static(def_id));
-                            let data_id = data_id_for_static(fx.codegen_cx.tcx, &mut fx.codegen_cx.module, def_id, false);
-                            let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                            assert!(fx.cx.tcx.is_static(def_id));
+                            let data_id = data_id_for_static(fx.cx.tcx, &mut fx.cx.module, def_id, false);
+                            let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             #[cfg(debug_assertions)]
                             fx.add_comment(local_data_id, format!("{:?}", def_id));
                             fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
@@ -215,11 +215,11 @@ fn pointer_for_allocation<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     alloc: &'tcx Allocation,
 ) -> crate::pointer::Pointer {
-    let alloc_id = fx.codegen_cx.tcx.create_memory_alloc(alloc);
-    fx.codegen_cx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
-    let data_id = data_id_for_alloc_id(&mut fx.codegen_cx.module, alloc_id, alloc.align, alloc.mutability);
+    let alloc_id = fx.cx.tcx.create_memory_alloc(alloc);
+    fx.cx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
+    let data_id = data_id_for_alloc_id(&mut fx.cx.module, alloc_id, alloc.align, alloc.mutability);
 
-    let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(local_data_id, format!("{:?}", alloc_id));
     let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
@@ -419,7 +419,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
     match operand {
         Operand::Copy(_) | Operand::Move(_) => None,
         Operand::Constant(const_) => {
-            Some(fx.monomorphize(&const_.literal).eval(fx.codegen_cx.tcx, ParamEnv::reveal_all()))
+            Some(fx.monomorphize(&const_.literal).eval(fx.cx.tcx, ParamEnv::reveal_all()))
         }
     }
 }

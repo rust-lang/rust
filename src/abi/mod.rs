@@ -226,9 +226,9 @@ pub(crate) fn import_function<'tcx>(
 impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     /// Instance must be monomorphized
     pub(crate) fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
-        let func_id = import_function(self.codegen_cx.tcx, &mut self.codegen_cx.module, inst);
+        let func_id = import_function(self.cx.tcx, &mut self.cx.module, inst);
         let func_ref = self
-            .codegen_cx.module
+            .cx.module
             .declare_func_in_func(func_id, &mut self.bcx.func);
 
         #[cfg(debug_assertions)]
@@ -250,11 +250,11 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             call_conv: CallConv::triple_default(self.triple()),
         };
         let func_id = self
-            .codegen_cx.module
+            .cx.module
             .declare_function(&name, Linkage::Import, &sig)
             .unwrap();
         let func_ref = self
-            .codegen_cx.module
+            .cx.module
             .declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
         #[cfg(debug_assertions)]
@@ -374,9 +374,9 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
         .collect::<Vec<(Local, ArgKind<'tcx>, Ty<'tcx>)>>();
 
     assert!(fx.caller_location.is_none());
-    if fx.instance.def.requires_caller_location(fx.codegen_cx.tcx) {
+    if fx.instance.def.requires_caller_location(fx.cx.tcx) {
         // Store caller location for `#[track_caller]`.
-        fx.caller_location = Some(cvalue_for_param(fx, start_block, None, None, fx.codegen_cx.tcx.caller_location_ty()).unwrap());
+        fx.caller_location = Some(cvalue_for_param(fx, start_block, None, None, fx.cx.tcx.caller_location_ty()).unwrap());
     }
 
     fx.bcx.switch_to_block(start_block);
@@ -398,7 +398,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
                     let local_decl = &fx.mir.local_decls[local];
                     //                       v this ! is important
                     let internally_mutable = !val.layout().ty.is_freeze(
-                        fx.codegen_cx.tcx.at(local_decl.source_info.span),
+                        fx.cx.tcx.at(local_decl.source_info.span),
                         ParamEnv::reveal_all(),
                     );
                     if local_decl.mutability == mir::Mutability::Not && !internally_mutable {
@@ -465,24 +465,24 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     args: &[Operand<'tcx>],
     destination: Option<(Place<'tcx>, BasicBlock)>,
 ) {
-    let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.codegen_cx.tcx));
+    let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.cx.tcx));
     let fn_sig = fx
-        .codegen_cx.tcx
-        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.codegen_cx.tcx));
+        .cx.tcx
+        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.cx.tcx));
 
     let destination = destination.map(|(place, bb)| (trans_place(fx, place), bb));
 
     // Handle special calls like instrinsics and empty drop glue.
     let instance = if let ty::FnDef(def_id, substs) = fn_ty.kind {
-        let instance = ty::Instance::resolve(fx.codegen_cx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
+        let instance = ty::Instance::resolve(fx.cx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
             .unwrap()
             .unwrap()
-            .polymorphize(fx.codegen_cx.tcx);
+            .polymorphize(fx.cx.tcx);
 
-        if fx.codegen_cx.tcx.symbol_name(instance).name.starts_with("llvm.") {
+        if fx.cx.tcx.symbol_name(instance).name.starts_with("llvm.") {
             crate::intrinsics::codegen_llvm_intrinsic_call(
                 fx,
-                &fx.codegen_cx.tcx.symbol_name(instance).name,
+                &fx.cx.tcx.symbol_name(instance).name,
                 substs,
                 args,
                 destination,
@@ -510,7 +510,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     let is_cold =
         instance.map(|inst|
-            fx.codegen_cx.tcx.codegen_fn_attrs(inst.def_id())
+            fx.cx.tcx.codegen_fn_attrs(inst.def_id())
                 .flags.contains(CodegenFnAttrFlags::COLD))
                 .unwrap_or(false);
     if is_cold {
@@ -558,7 +558,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     nop_inst,
                     format!(
                         "virtual call; self arg pass mode: {:?}",
-                        get_pass_mode(fx.codegen_cx.tcx, args[0].layout())
+                        get_pass_mode(fx.cx.tcx, args[0].layout())
                     ),
                 );
             }
@@ -608,7 +608,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 )
                 .collect::<Vec<_>>();
 
-            if instance.map(|inst| inst.def.requires_caller_location(fx.codegen_cx.tcx)).unwrap_or(false) {
+            if instance.map(|inst| inst.def.requires_caller_location(fx.cx.tcx)).unwrap_or(false) {
                 // Pass the caller location for `#[track_caller]`.
                 let caller_location = fx.get_caller_location(span);
                 call_args.extend(adjust_arg_for_abi(fx, caller_location).into_iter());
@@ -616,7 +616,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
             let call_inst = if let Some(func_ref) = func_ref {
                 let sig = clif_sig_from_fn_sig(
-                    fx.codegen_cx.tcx,
+                    fx.cx.tcx,
                     fx.triple(),
                     fn_sig,
                     span,
@@ -637,7 +637,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     // FIXME find a cleaner way to support varargs
     if fn_sig.c_variadic {
         if fn_sig.abi != Abi::C {
-            fx.codegen_cx.tcx.sess.span_fatal(span, &format!("Variadic call for non-C abi {:?}", fn_sig.abi));
+            fx.cx.tcx.sess.span_fatal(span, &format!("Variadic call for non-C abi {:?}", fn_sig.abi));
         }
         let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
         let abi_params = call_args
@@ -646,7 +646,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 let ty = fx.bcx.func.dfg.value_type(arg);
                 if !ty.is_int() {
                     // FIXME set %al to upperbound on float args once floats are supported
-                    fx.codegen_cx.tcx.sess.span_fatal(span, &format!("Non int ty {:?} for variadic call", ty));
+                    fx.cx.tcx.sess.span_fatal(span, &format!("Non int ty {:?} for variadic call", ty));
                 }
                 AbiParam::new(ty)
             })
@@ -668,17 +668,17 @@ pub(crate) fn codegen_drop<'tcx>(
     drop_place: CPlace<'tcx>,
 ) {
     let ty = drop_place.layout().ty;
-    let drop_fn = Instance::resolve_drop_in_place(fx.codegen_cx.tcx, ty).polymorphize(fx.codegen_cx.tcx);
+    let drop_fn = Instance::resolve_drop_in_place(fx.cx.tcx, ty).polymorphize(fx.cx.tcx);
 
     if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
         // we don't actually need to drop anything
     } else {
-        let drop_fn_ty = drop_fn.ty(fx.codegen_cx.tcx, ParamEnv::reveal_all());
-        let fn_sig = fx.codegen_cx.tcx.normalize_erasing_late_bound_regions(
+        let drop_fn_ty = drop_fn.ty(fx.cx.tcx, ParamEnv::reveal_all());
+        let fn_sig = fx.cx.tcx.normalize_erasing_late_bound_regions(
             ParamEnv::reveal_all(),
-            &drop_fn_ty.fn_sig(fx.codegen_cx.tcx),
+            &drop_fn_ty.fn_sig(fx.cx.tcx),
         );
-        assert_eq!(fn_sig.output(), fx.codegen_cx.tcx.mk_unit());
+        assert_eq!(fn_sig.output(), fx.cx.tcx.mk_unit());
 
         match ty.kind {
             ty::Dynamic(..) => {
@@ -687,7 +687,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
 
                 let sig = clif_sig_from_fn_sig(
-                    fx.codegen_cx.tcx,
+                    fx.cx.tcx,
                     fx.triple(),
                     fn_sig,
                     span,
@@ -702,7 +702,7 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 let arg_place = CPlace::new_stack_slot(
                     fx,
-                    fx.layout_of(fx.codegen_cx.tcx.mk_ref(
+                    fx.layout_of(fx.cx.tcx.mk_ref(
                         &ty::RegionKind::ReErased,
                         TypeAndMut {
                             ty,
@@ -716,7 +716,7 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 let mut call_args: Vec<Value> = arg_value.into_iter().collect::<Vec<_>>();
 
-                if drop_fn.def.requires_caller_location(fx.codegen_cx.tcx) {
+                if drop_fn.def.requires_caller_location(fx.cx.tcx) {
                     // Pass the caller location for `#[track_caller]`.
                     let caller_location = fx.get_caller_location(span);
                     call_args.extend(adjust_arg_for_abi(fx, caller_location).into_iter());
