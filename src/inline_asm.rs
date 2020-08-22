@@ -73,7 +73,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     let asm_name = format!("{}__inline_asm_{}", fx.codegen_cx.tcx.symbol_name(fx.instance).name, inline_asm_index);
 
     let generated_asm = generate_asm_wrapper(&asm_name, InlineAsmArch::X86_64, options, template, clobbered_regs, &inputs, &outputs);
-    fx.global_asm.push_str(&generated_asm);
+    fx.codegen_cx.global_asm.push_str(&generated_asm);
 
     call_inline_asm(fx, &asm_name, slot_size, inputs, outputs);
 }

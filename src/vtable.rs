@@ -72,11 +72,11 @@ pub(crate) fn get_vtable<'tcx>(
     layout: TyAndLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let data_id = if let Some(data_id) = fx.vtables.get(&(layout.ty, trait_ref)) {
+    let data_id = if let Some(data_id) = fx.codegen_cx.vtables.get(&(layout.ty, trait_ref)) {
         *data_id
     } else {
         let data_id = build_vtable(fx, layout, trait_ref);
-        fx.vtables.insert((layout.ty, trait_ref), data_id);
+        fx.codegen_cx.vtables.insert((layout.ty, trait_ref), data_id);
         data_id
     };
 
@@ -142,7 +142,7 @@ fn build_vtable<'tcx>(
                     .map(|trait_ref| format!("{:?}", trait_ref.skip_binder()).into())
                     .unwrap_or(std::borrow::Cow::Borrowed("???")),
                 layout.ty,
-                fx.vtables.len(),
+                fx.codegen_cx.vtables.len(),
             ),
             Linkage::Local,
             false,
