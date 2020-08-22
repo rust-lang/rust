@@ -160,7 +160,7 @@ fn runnable_fn(
             RunnableKind::Test { test_id, attr }
         } else if fn_def.has_atom_attr("bench") {
             RunnableKind::Bench { test_id }
-        } else if has_doc_test(&fn_def) {
+        } else if has_runnable_doc_test(&fn_def) {
             RunnableKind::DocTest { test_id }
         } else {
             return None;
@@ -211,8 +211,13 @@ fn has_test_related_attribute(fn_def: &ast::Fn) -> bool {
         .any(|attribute_text| attribute_text.contains("test"))
 }
 
-fn has_doc_test(fn_def: &ast::Fn) -> bool {
-    fn_def.doc_comment_text().map_or(false, |comment| comment.contains("```"))
+fn has_runnable_doc_test(fn_def: &ast::Fn) -> bool {
+    fn_def.doc_comment_text().map_or(false, |comments_text| {
+        comments_text.contains("```")
+            && !comments_text.contains("```ignore")
+            && !comments_text.contains("```no_run")
+            && !comments_text.contains("```compile_fail")
+    })
 }
 
 fn runnable_mod(
@@ -417,6 +422,21 @@ fn main() {}
 /// let x = 5;
 /// ```
 fn foo() {}
+
+/// ```no_run
+/// let z = 55;
+/// ```
+fn should_have_no_runnable() {}
+
+/// ```ignore
+/// let z = 55;
+/// ```
+fn should_have_no_runnable_2() {}
+
+/// ```compile_fail
+/// let z = 55;
+/// ```
+fn should_have_no_runnable_3() {}
 "#,
             &[&BIN, &DOCTEST],
             expect![[r#"
