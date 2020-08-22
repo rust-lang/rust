@@ -71,9 +71,9 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
             let param_env = tcx.param_env(item.def_id);
 
             debug!("processing callees of {} - {:?}", tcx.def_path_str(item.def_id), item);
-            for (callee_def_id, callee_substs, spans) in tcx.inevitable_calls(item.def_id) {
+            for &(callee_def_id, callee_substs, spans) in tcx.inevitable_calls(item.def_id) {
                 let (call_fn_id, call_substs) =
-                    match Instance::resolve(tcx, param_env, *callee_def_id, callee_substs) {
+                    match Instance::resolve(tcx, param_env, callee_def_id, callee_substs) {
                         Ok(Some(instance)) => {
                             // The precise callee is statically known. We only handle callees for
                             // which there's MIR available (those are the only ones that can cause
@@ -89,12 +89,12 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
                                 continue;
                             }
                         }
-                        _ if *callee_def_id == def_id.to_def_id() => {
+                        _ if callee_def_id == def_id.to_def_id() => {
                             // If the instance fails to resolve, we might be a specializable or
                             // defaulted function. However, if we know we're calling *ourselves*
                             // only, we still lint, since any use without overriding the impl will
                             // result in self-recursion.
-                            (*callee_def_id, *callee_substs)
+                            (callee_def_id, callee_substs)
                         }
                         _ => {
                             // Otherwise, this call does not have a statically known target, so we
@@ -123,7 +123,7 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
                     def_id: call_fn_id,
                     substs: call_substs,
                     caller: Some(item.clone()),
-                    caller_spans: *spans,
+                    caller_spans: spans,
                 }));
             }
         }
