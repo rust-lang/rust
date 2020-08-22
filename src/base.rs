@@ -13,8 +13,8 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let mir = tcx.instance_mir(instance.def);
 
     // Declare function
-    let (name, sig) = get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
-    let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
+    let (name, sig) = get_function_name_and_sig(tcx, cxcodegen_cx.module.isa().triple(), instance, false);
+    let func_id = cxcodegen_cx.module.declare_function(&name, linkage, &sig).unwrap();
 
     // Make FunctionBuilder
     let context = &mut cx.cached_context;
@@ -30,12 +30,12 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let block_map: IndexVec<BasicBlock, Block> = (0..mir.basic_blocks().len()).map(|_| bcx.create_block()).collect();
 
     // Make FunctionCx
-    let pointer_type = cx.module.target_config().pointer_type();
+    let pointer_type = cxcodegen_cx.module.target_config().pointer_type();
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
     let mut fx = FunctionCx {
         tcx,
-        module: &mut cx.module,
+        module: &mut cxcodegen_cx.module,
         global_asm: &mut cx.global_asm,
         pointer_type,
 
@@ -98,10 +98,10 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     // instruction, which doesn't have an encoding.
     context.compute_cfg();
     context.compute_domtree();
-    context.eliminate_unreachable_code(cx.module.isa()).unwrap();
+    context.eliminate_unreachable_code(cxcodegen_cx.module.isa()).unwrap();
 
     // Define function
-    let module = &mut cx.module;
+    let module = &mut cxcodegen_cx.module;
     tcx.sess.time(
         "define function",
         || module.define_function(
@@ -115,14 +115,14 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     crate::pretty_clif::write_clif_file(
         cxcodegen_cx.tcx,
         "opt",
-        Some(cx.module.isa()),
+        Some(cxcodegen_cx.module.isa()),
         instance,
         &context,
         &clif_comments,
     );
 
     // Define debuginfo for function
-    let isa = cx.module.isa();
+    let isa = cxcodegen_cx.module.isa();
     let debug_context = &mut cx.debug_context;
     let unwind_context = &mut cx.unwind_context;
     tcx.sess.time("generate debug info", || {

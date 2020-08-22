@@ -395,7 +395,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 
     pub(crate) fn triple(&self) -> &target_lexicon::Triple {
-        self.module.isa().triple()
+        selfcodegen_cx.module.isa().triple()
     }
 
     pub(crate) fn anonymous_str(&mut self, prefix: &str, msg: &str) -> Value {
@@ -408,7 +408,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         let mut data_ctx = DataContext::new();
         data_ctx.define(msg.as_bytes().to_vec().into_boxed_slice());
         let msg_id = self
-            .module
+            codegen_cx.module
             .declare_data(
                 &format!("__{}_{:08x}", prefix, msg_hash),
                 Linkage::Local,
@@ -419,9 +419,9 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             .unwrap();
 
         // Ignore DuplicateDefinition error, as the data will be the same
-        let _ = self.module.define_data(msg_id, &data_ctx);
+        let _ = selfcodegen_cx.module.define_data(msg_id, &data_ctx);
 
-        let local_msg_id = self.module.declare_data_in_func(msg_id, self.bcx.func);
+        let local_msg_id = selfcodegen_cx.module.declare_data_in_func(msg_id, self.bcx.func);
         #[cfg(debug_assertions)]
         {
             self.add_comment(local_msg_id, msg);

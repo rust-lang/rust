@@ -169,12 +169,12 @@ fn call_inline_asm<'tcx>(
     #[cfg(debug_assertions)]
     fx.add_comment(stack_slot, "inline asm scratch slot");
 
-    let inline_asm_func = fx.module.declare_function(asm_name, Linkage::Import, &Signature {
+    let inline_asm_func = fxcodegen_cx.module.declare_function(asm_name, Linkage::Import, &Signature {
         call_conv: CallConv::SystemV,
         params: vec![AbiParam::new(fx.pointer_type)],
         returns: vec![],
     }).unwrap();
-    let inline_asm_func = fx.module.declare_func_in_func(inline_asm_func, &mut fx.bcx.func);
+    let inline_asm_func = fxcodegen_cx.module.declare_func_in_func(inline_asm_func, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(inline_asm_func, asm_name);
 

@@ -226,9 +226,9 @@ pub(crate) fn import_function<'tcx>(
 impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     /// Instance must be monomorphized
     pub(crate) fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
-        let func_id = import_function(selfcodegen_cx.tcx, self.module, inst);
+        let func_id = import_function(selfcodegen_cx.tcx, selfcodegen_cx.module, inst);
         let func_ref = self
-            .module
+            codegen_cx.module
             .declare_func_in_func(func_id, &mut self.bcx.func);
 
         #[cfg(debug_assertions)]
@@ -250,11 +250,11 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             call_conv: CallConv::triple_default(self.triple()),
         };
         let func_id = self
-            .module
+            codegen_cx.module
             .declare_function(&name, Linkage::Import, &sig)
             .unwrap();
         let func_ref = self
-            .module
+            codegen_cx.module
             .declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
         #[cfg(debug_assertions)]

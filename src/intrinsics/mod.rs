@@ -494,10 +494,10 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
             if intrinsic.contains("nonoverlapping") {
                 // FIXME emit_small_memcpy
-                fx.bcx.call_memcpy(fx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memcpy(fxcodegen_cx.module.target_config(), dst, src, byte_amount);
             } else {
                 // FIXME emit_small_memmove
-                fx.bcx.call_memmove(fx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memmove(fxcodegen_cx.module.target_config(), dst, src, byte_amount);
             }
         };
         // NOTE: the volatile variants have src and dst swapped
@@ -513,10 +513,10 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             // FIXME make the copy actually volatile when using emit_small_mem{cpy,move}
             if intrinsic.contains("nonoverlapping") {
                 // FIXME emit_small_memcpy
-                fx.bcx.call_memcpy(fx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memcpy(fxcodegen_cx.module.target_config(), dst, src, byte_amount);
             } else {
                 // FIXME emit_small_memmove
-                fx.bcx.call_memmove(fx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memmove(fxcodegen_cx.module.target_config(), dst, src, byte_amount);
             }
         };
         discriminant_value, (c ptr) {
@@ -680,7 +680,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let dst_ptr = dst.load_scalar(fx);
             // FIXME make the memset actually volatile when switching to emit_small_memset
             // FIXME use emit_small_memset
-            fx.bcx.call_memset(fx.module.target_config(), dst_ptr, val, count);
+            fx.bcx.call_memset(fxcodegen_cx.module.target_config(), dst_ptr, val, count);
         };
         ctlz | ctlz_nonzero, <T> (v arg) {
             // FIXME trap on `ctlz_nonzero` with zero arg.
