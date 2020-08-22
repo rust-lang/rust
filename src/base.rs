@@ -49,7 +49,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
         cold_blocks: EntitySet::new(),
 
         clif_comments,
-        constants_cx: &mut cx.constants_cx,
+        constants_cx: &mut cxcodegen_cx.constants_cx,
         vtables: &mut cx.vtables,
         source_info_set: indexmap::IndexSet::new(),
         next_ssa_var: 0,

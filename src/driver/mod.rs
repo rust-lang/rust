@@ -88,7 +88,7 @@ fn trans_mono_item<'tcx, B: Backend + 'static>(
             cxcodegen_cx.tcx.sess.time("codegen fn", || crate::base::trans_fn(cx, inst, linkage));
         }
         MonoItem::Static(def_id) => {
-            crate::constant::codegen_static(&mut cx.constants_cx, def_id);
+            crate::constant::codegen_static(&mut cxcodegen_cx.constants_cx, def_id);
         }
         MonoItem::GlobalAsm(hir_id) => {
             let item = tcx.hir().expect_item(hir_id);
