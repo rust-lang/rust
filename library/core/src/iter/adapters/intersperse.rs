@@ -59,4 +59,14 @@ where
             accum
         })
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // We'll yield the whole `self.iter`, and just as many separators, as well as (if present)
+        // `self.peek`.
+        let (lo, hi) = self.iter.size_hint();
+        let has_peek = self.peek.is_some() as usize;
+        let lo = lo.saturating_add(lo).saturating_add(has_peek);
+        let hi = hi.map(|hi| hi.saturating_add(hi).saturating_add(has_peek));
+        (lo, hi)
+    }
 }
