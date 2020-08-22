@@ -30,13 +30,13 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     intrinsic_match! {
         fx, intrinsic, substs, args,
         _ => {
-            fx.tcx.sess.warn(&format!("unsupported llvm intrinsic {}; replacing with trap", intrinsic));
+            fxcodegen_cx.tcx.sess.warn(&format!("unsupported llvm intrinsic {}; replacing with trap", intrinsic));
             crate::trap::trap_unimplemented(fx, intrinsic);
         };
 
         // Used by `_mm_movemask_epi8` and `_mm256_movemask_epi8`
         llvm.x86.sse2.pmovmskb.128 | llvm.x86.avx2.pmovmskb | llvm.x86.sse2.movmsk.pd, (c a) {
-            let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, a.layout());
+            let (lane_layout, lane_count) = lane_type_and_count(fxcodegen_cx.tcx, a.layout());
             let lane_ty = fx.clif_type(lane_layout.ty).unwrap();
             assert!(lane_count <= 32);
 
@@ -61,7 +61,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
                 res = fx.bcx.ins().bor(res, a_lane_sign);
             }
 
-            let res = CValue::by_val(res, fx.layout_of(fx.tcx.types.i32));
+            let res = CValue::by_val(res, fx.layout_of(fxcodegen_cx.tcx.types.i32));
             ret.write_cvalue(fx, res);
         };
         llvm.x86.sse2.cmp.ps | llvm.x86.sse2.cmp.pd, (c x, c y, o kind) {

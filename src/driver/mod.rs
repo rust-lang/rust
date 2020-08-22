@@ -33,12 +33,12 @@ fn codegen_mono_items<'tcx>(
     cx: &mut crate::CodegenCx<'tcx, impl Backend + 'static>,
     mono_items: Vec<(MonoItem<'tcx>, (RLinkage, Visibility))>,
 ) {
-    cx.tcx.sess.time("predefine functions", || {
+    cxcodegen_cx.tcx.sess.time("predefine functions", || {
         for &(mono_item, (linkage, visibility)) in &mono_items {
             match mono_item {
                 MonoItem::Fn(instance) => {
                     let (name, sig) =
-                        get_function_name_and_sig(cx.tcx, cx.module.isa().triple(), instance, false);
+                        get_function_name_and_sig(cxcodegen_cx.tcx, cx.module.isa().triple(), instance, false);
                     let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
                     cx.module.declare_function(&name, linkage, &sig).unwrap();
                 }
@@ -58,7 +58,7 @@ fn trans_mono_item<'tcx, B: Backend + 'static>(
     mono_item: MonoItem<'tcx>,
     linkage: Linkage,
 ) {
-    let tcx = cx.tcx;
+    let tcx = cxcodegen_cx.tcx;
     match mono_item {
         MonoItem::Fn(inst) => {
             let _inst_guard =
@@ -85,7 +85,7 @@ fn trans_mono_item<'tcx, B: Backend + 'static>(
                 }
             });
 
-            cx.tcx.sess.time("codegen fn", || crate::base::trans_fn(cx, inst, linkage));
+            cxcodegen_cx.tcx.sess.time("codegen fn", || crate::base::trans_fn(cx, inst, linkage));
         }
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(&mut cx.constants_cx, def_id);

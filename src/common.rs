@@ -299,11 +299,11 @@ impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
 
     fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
         assert!(!ty.still_further_specializable());
-        self.tcx
+        selfcodegen_cx.tcx
             .layout_of(ParamEnv::reveal_all().and(&ty))
             .unwrap_or_else(|e| {
                 if let layout::LayoutError::SizeOverflow(_) = e {
-                    self.tcx.sess.fatal(&e.to_string())
+                    selfcodegen_cx.tcx.sess.fatal(&e.to_string())
                 } else {
                     bug!("failed to get layout for `{}`: {}", ty, e)
                 }
@@ -313,13 +313,13 @@ impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
 
 impl<'tcx, B: Backend + 'static> layout::HasTyCtxt<'tcx> for FunctionCx<'_, 'tcx, B> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
-        self.tcx
+        selfcodegen_cx.tcx
     }
 }
 
 impl<'tcx, B: Backend + 'static> rustc_target::abi::HasDataLayout for FunctionCx<'_, 'tcx, B> {
     fn data_layout(&self) -> &rustc_target::abi::TargetDataLayout {
-        &self.tcx.data_layout
+        &selfcodegen_cx.tcx.data_layout
     }
 }
 
@@ -331,7 +331,7 @@ impl<'tcx, B: Backend + 'static> layout::HasParamEnv<'tcx> for FunctionCx<'_, 't
 
 impl<'tcx, B: Backend + 'static> HasTargetSpec for FunctionCx<'_, 'tcx, B> {
     fn target_spec(&self) -> &Target {
-        &self.tcx.sess.target.target
+        &selfcodegen_cx.tcx.sess.target.target
     }
 }
 
@@ -341,22 +341,22 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         T: TypeFoldable<'tcx> + Copy,
     {
         if let Some(substs) = self.instance.substs_for_mir_body() {
-            self.tcx.subst_and_normalize_erasing_regions(
+            selfcodegen_cx.tcx.subst_and_normalize_erasing_regions(
                 substs,
                 ty::ParamEnv::reveal_all(),
                 value,
             )
         } else {
-            self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), *value)
+            selfcodegen_cx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), *value)
         }
     }
 
     pub(crate) fn clif_type(&self, ty: Ty<'tcx>) -> Option<Type> {
-        clif_type_from_ty(self.tcx, ty)
+        clif_type_from_ty(selfcodegen_cx.tcx, ty)
     }
 
     pub(crate) fn clif_pair_type(&self, ty: Ty<'tcx>) -> Option<(Type, Type)> {
-        clif_pair_type_from_ty(self.tcx, ty)
+        clif_pair_type_from_ty(selfcodegen_cx.tcx, ty)
     }
 
     pub(crate) fn get_block(&self, bb: BasicBlock) -> Block {
@@ -381,8 +381,8 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         }
 
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
-        let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
-        let const_loc = self.tcx.const_caller_location((
+        let caller = selfcodegen_cx.tcx.sess.source_map().lookup_char_pos(topmost.lo());
+        let const_loc = selfcodegen_cx.tcx.const_caller_location((
             rustc_span::symbol::Symbol::intern(&caller.file.name.to_string()),
             caller.line as u32,
             caller.col_display as u32 + 1,
@@ -390,7 +390,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         crate::constant::trans_const_value(
             self,
             const_loc,
-            self.tcx.caller_location_ty(),
+            selfcodegen_cx.tcx.caller_location_ty(),
         )
     }
 

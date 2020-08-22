@@ -54,7 +54,7 @@ impl<'tcx> UnwindContext<'tcx> {
     }
 
     pub(crate) fn emit<P: WriteDebugInfo>(self, product: &mut P) {
-        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(self.tcx)));
+        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(selfcodegen_cx.tcx)));
         self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
 
         if !eh_frame.0.writer.slice().is_empty() {
@@ -74,7 +74,7 @@ impl<'tcx> UnwindContext<'tcx> {
         self,
         jit_module: &mut Module<cranelift_simplejit::SimpleJITBackend>,
     ) -> Option<UnwindRegistry> {
-        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(self.tcx)));
+        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(selfcodegen_cx.tcx)));
         self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
 
         if eh_frame.0.writer.slice().is_empty() {

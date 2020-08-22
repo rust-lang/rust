@@ -8,7 +8,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
             Linkage::Import,
             &Signature {
                 call_conv: CallConv::triple_default(fx.triple()),
-                params: vec![AbiParam::new(pointer_ty(fx.tcx))],
+                params: vec![AbiParam::new(pointer_ty(fxcodegen_cx.tcx))],
                 returns: vec![AbiParam::new(types::I32)],
             },
         )
@@ -19,7 +19,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
         fx.add_comment(puts, "puts");
     }
 
-    let symbol_name = fx.tcx.symbol_name(fx.instance);
+    let symbol_name = fxcodegen_cx.tcx.symbol_name(fx.instance);
     let real_msg = format!("trap at {:?} ({}): {}\0", fx.instance, symbol_name, msg);
     let msg_ptr = fx.anonymous_str("trap", &real_msg);
     fx.bcx.ins().call(puts, &[msg_ptr]);

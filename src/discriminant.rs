@@ -26,7 +26,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             let ptr = place.place_field(fx, mir::Field::new(tag_field));
             let to = layout
                 .ty
-                .discriminant_for_variant(fx.tcx, variant_index)
+                .discriminant_for_variant(fxcodegen_cx.tcx, variant_index)
                 .unwrap()
                 .val;
             let discr = CValue::const_val(fx, ptr.layout(), to);
@@ -73,7 +73,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
         Variants::Single { index } => {
             let discr_val = layout
                 .ty
-                .discriminant_for_variant(fx.tcx, *index)
+                .discriminant_for_variant(fxcodegen_cx.tcx, *index)
                 .map_or(u128::from(index.as_u32()), |discr| discr.val);
             return CValue::const_val(fx, dest_layout, discr_val);
         }

@@ -35,8 +35,8 @@ pub(crate) fn analyze(fx: &FunctionCx<'_, '_, impl Backend>) -> IndexVec<Local, 
         match &bb.terminator().kind {
             TerminatorKind::Call { destination, .. } => {
                 if let Some((dest_place, _dest_bb)) = destination {
-                    let dest_layout = fx.layout_of(fx.monomorphize(&dest_place.ty(&fx.mir.local_decls, fx.tcx).ty));
-                    if !crate::abi::can_return_to_ssa_var(fx.tcx, dest_layout) {
+                    let dest_layout = fx.layout_of(fx.monomorphize(&dest_place.ty(&fx.mir.local_decls, fxcodegen_cx.tcx).ty));
+                    if !crate::abi::can_return_to_ssa_var(fxcodegen_cx.tcx, dest_layout) {
                         not_ssa(&mut flag_map, dest_place.local)
                     }
                 }

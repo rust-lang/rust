@@ -8,7 +8,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     instance: Instance<'tcx>,
     linkage: Linkage,
 ) {
-    let tcx = cx.tcx;
+    let tcx = cxcodegen_cx.tcx;
 
     let mir = tcx.instance_mir(instance.def);
 
@@ -78,7 +78,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let cold_blocks = fx.cold_blocks;
 
     crate::pretty_clif::write_clif_file(
-        cx.tcx,
+        cxcodegen_cx.tcx,
         "unopt",
         None,
         instance,
@@ -113,7 +113,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
 
     // Write optimized function to file for debugging
     crate::pretty_clif::write_clif_file(
-        cx.tcx,
+        cxcodegen_cx.tcx,
         "opt",
         Some(cx.module.isa()),
         instance,
@@ -224,7 +224,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 target,
                 cleanup: _,
             } => {
-                if !fx.tcx.sess.overflow_checks() {
+                if !fxcodegen_cx.tcx.sess.overflow_checks() {
                     if let mir::AssertKind::OverflowNeg(_) = *msg {
                         let target = fx.get_block(*target);
                         fx.bcx.ins().jump(target, &[]);
@@ -265,12 +265,12 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                     }
                 };
 
-                let def_id = fx.tcx.lang_items().require(lang_item).unwrap_or_else(|s| {
-                    fx.tcx.sess.span_fatal(bb_data.terminator().source_info.span, &s)
+                let def_id = fxcodegen_cx.tcx.lang_items().require(lang_item).unwrap_or_else(|s| {
+                    fxcodegen_cx.tcx.sess.span_fatal(bb_data.terminator().source_info.span, &s)
                 });
 
-                let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
-                let symbol_name = fx.tcx.symbol_name(instance).name;
+                let instance = Instance::mono(fxcodegen_cx.tcx, def_id).polymorphize(fxcodegen_cx.tcx);
+                let symbol_name = fxcodegen_cx.tcx.symbol_name(instance).name;
 
                 fx.lib_call(&*symbol_name, vec![fx.pointer_type, fx.pointer_type, fx.pointer_type], vec![], &args);
 
@@ -300,7 +300,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 cleanup: _,
                 from_hir_call: _,
             } => {
-                fx.tcx.sess.time("codegen call", || crate::abi::codegen_terminator_call(
+                fxcodegen_cx.tcx.sess.time("codegen call", || crate::abi::codegen_terminator_call(
                     fx,
                     *fn_span,
                     block,
@@ -419,7 +419,7 @@ fn trans_stmt<'tcx>(
                     let lhs = trans_operand(fx, lhs);
                     let rhs = trans_operand(fx, rhs);
 
-                    let res = if !fx.tcx.sess.overflow_checks() {
+                    let res = if !fxcodegen_cx.tcx.sess.overflow_checks() {
                         let val =
                             crate::num::trans_int_binop(fx, *bin_op, lhs, rhs).load_scalar(fx);
                         let is_overflow = fx.bcx.ins().iconst(types::I8, 0);
@@ -465,14 +465,14 @@ fn trans_stmt<'tcx>(
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), operand, to_ty) => {
-                    let from_ty = fx.monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx));
+                    let from_ty = fx.monomorphize(&operand.ty(&fx.mir.local_decls, fxcodegen_cx.tcx));
                     let to_layout = fx.layout_of(fx.monomorphize(to_ty));
                     match from_ty.kind {
                         ty::FnDef(def_id, substs) => {
                             let func_ref = fx.get_function_ref(
-                                Instance::resolve_for_fn_ptr(fx.tcx, ParamEnv::reveal_all(), def_id, substs)
+                                Instance::resolve_for_fn_ptr(fxcodegen_cx.tcx, ParamEnv::reveal_all(), def_id, substs)
                                     .unwrap()
-                                    .polymorphize(fx.tcx),
+                                    .polymorphize(fxcodegen_cx.tcx),
                             );
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::by_val(func_addr, to_layout));
@@ -501,7 +501,7 @@ fn trans_stmt<'tcx>(
                                 |ty::TypeAndMut {
                                      ty: pointee_ty,
                                      mutbl: _,
-                                 }| has_ptr_meta(fx.tcx, pointee_ty),
+                                 }| has_ptr_meta(fxcodegen_cx.tcx, pointee_ty),
                             )
                             .unwrap_or(false)
                     }
@@ -527,7 +527,7 @@ fn trans_stmt<'tcx>(
 
                         match &operand.layout().variants {
                             Variants::Single { index } => {
-                                let discr = operand.layout().ty.discriminant_for_variant(fx.tcx, *index).unwrap();
+                                let discr = operand.layout().ty.discriminant_for_variant(fxcodegen_cx.tcx, *index).unwrap();
                                 let discr = if discr.ty.is_signed() {
                                     rustc_middle::mir::interpret::sign_extend(discr.val, fx.layout_of(discr.ty).size)
                                 } else {
@@ -579,11 +579,11 @@ fn trans_stmt<'tcx>(
                     match operand.layout().ty.kind {
                         ty::Closure(def_id, substs) => {
                             let instance = Instance::resolve_closure(
-                                fx.tcx,
+                                fxcodegen_cx.tcx,
                                 def_id,
                                 substs,
                                 ty::ClosureKind::FnOnce,
-                            ).polymorphize(fx.tcx);
+                            ).polymorphize(fxcodegen_cx.tcx);
                             let func_ref = fx.get_function_ref(instance);
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::by_val(func_addr, lval.layout()));
@@ -606,9 +606,9 @@ fn trans_stmt<'tcx>(
                     let operand = trans_operand(fx, operand);
                     let times = fx
                         .monomorphize(times)
-                        .eval(fx.tcx, ParamEnv::reveal_all())
+                        .eval(fxcodegen_cx.tcx, ParamEnv::reveal_all())
                         .val
-                        .try_to_bits(fx.tcx.data_layout.pointer_size)
+                        .try_to_bits(fxcodegen_cx.tcx.data_layout.pointer_size)
                         .unwrap();
                     for i in 0..times {
                         let index = fx.bcx.ins().iconst(fx.pointer_type, i as i64);
@@ -618,14 +618,14 @@ fn trans_stmt<'tcx>(
                 }
                 Rvalue::Len(place) => {
                     let place = trans_place(fx, *place);
-                    let usize_layout = fx.layout_of(fx.tcx.types.usize);
+                    let usize_layout = fx.layout_of(fxcodegen_cx.tcx.types.usize);
                     let len = codegen_array_len(fx, place);
                     lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
                 }
                 Rvalue::NullaryOp(NullOp::Box, content_ty) => {
                     use rustc_hir::lang_items::ExchangeMallocFnLangItem;
 
-                    let usize_type = fx.clif_type(fx.tcx.types.usize).unwrap();
+                    let usize_type = fx.clif_type(fxcodegen_cx.tcx.types.usize).unwrap();
                     let content_ty = fx.monomorphize(content_ty);
                     let layout = fx.layout_of(content_ty);
                     let llsize = fx.bcx.ins().iconst(usize_type, layout.size.bytes() as i64);
@@ -633,18 +633,18 @@ fn trans_stmt<'tcx>(
                         .bcx
                         .ins()
                         .iconst(usize_type, layout.align.abi.bytes() as i64);
-                    let box_layout = fx.layout_of(fx.tcx.mk_box(content_ty));
+                    let box_layout = fx.layout_of(fxcodegen_cx.tcx.mk_box(content_ty));
 
                     // Allocate space:
-                    let def_id = match fx.tcx.lang_items().require(ExchangeMallocFnLangItem) {
+                    let def_id = match fxcodegen_cx.tcx.lang_items().require(ExchangeMallocFnLangItem) {
                         Ok(id) => id,
                         Err(s) => {
-                            fx.tcx
+                            fxcodegen_cx.tcx
                                 .sess
                                 .fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
                         }
                     };
-                    let instance = ty::Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
+                    let instance = ty::Instance::mono(fxcodegen_cx.tcx, def_id).polymorphize(fxcodegen_cx.tcx);
                     let func_ref = fx.get_function_ref(instance);
                     let call = fx.bcx.ins().call(func_ref, &[llsize, llalign]);
                     let ptr = fx.bcx.inst_results(call)[0];
@@ -654,9 +654,9 @@ fn trans_stmt<'tcx>(
                     assert!(lval
                         .layout()
                         .ty
-                        .is_sized(fx.tcx.at(stmt.source_info.span), ParamEnv::reveal_all()));
+                        .is_sized(fxcodegen_cx.tcx.at(stmt.source_info.span), ParamEnv::reveal_all()));
                     let ty_size = fx.layout_of(fx.monomorphize(ty)).size.bytes();
-                    let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), ty_size.into());
+                    let val = CValue::const_val(fx, fx.layout_of(fxcodegen_cx.tcx.types.usize), ty_size.into());
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::Aggregate(kind, operands) => match **kind {
@@ -721,10 +721,10 @@ fn trans_stmt<'tcx>(
                     let (eax, ebx, ecx, edx) = crate::intrinsics::codegen_cpuid_call(fx, leaf, subleaf);
 
                     assert_eq!(outputs.len(), 4);
-                    trans_place(fx, outputs[0]).write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
-                    trans_place(fx, outputs[1]).write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
-                    trans_place(fx, outputs[2]).write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
-                    trans_place(fx, outputs[3]).write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
+                    trans_place(fx, outputs[0]).write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fxcodegen_cx.tcx.types.u32)));
+                    trans_place(fx, outputs[1]).write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fxcodegen_cx.tcx.types.u32)));
+                    trans_place(fx, outputs[2]).write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fxcodegen_cx.tcx.types.u32)));
+                    trans_place(fx, outputs[3]).write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fxcodegen_cx.tcx.types.u32)));
                 }
                 "xgetbv" => {
                     assert_eq!(input_names, &[Symbol::intern("{ecx}")]);
@@ -744,17 +744,17 @@ fn trans_stmt<'tcx>(
                     crate::trap::trap_unimplemented(fx, "_xgetbv arch intrinsic is not supported");
                 }
                 // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
-                _ if fx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") => {
+                _ if fxcodegen_cx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") => {
                     crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
                 }
-                _ if fx.tcx.symbol_name(fx.instance).name == "__alloca" => {
+                _ if fxcodegen_cx.tcx.symbol_name(fx.instance).name == "__alloca" => {
                     crate::trap::trap_unimplemented(fx, "Alloca is not supported");
                 }
                 // Used in sys::windows::abort_internal
                 "int $$0x29" => {
                     crate::trap::trap_unimplemented(fx, "Windows abort");
                 }
-                _ => fx.tcx.sess.span_fatal(stmt.source_info.span, "Inline assembly is not supported"),
+                _ => fxcodegen_cx.tcx.sess.span_fatal(stmt.source_info.span, "Inline assembly is not supported"),
             }
         }
     }
@@ -767,8 +767,8 @@ fn codegen_array_len<'tcx>(
     match place.layout().ty.kind {
         ty::Array(_elem_ty, len) => {
             let len = fx.monomorphize(&len)
-                .eval(fx.tcx, ParamEnv::reveal_all())
-                .eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64;
+                .eval(fxcodegen_cx.tcx, ParamEnv::reveal_all())
+                .eval_usize(fxcodegen_cx.tcx, ParamEnv::reveal_all()) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }
         ty::Slice(_elem_ty) => place
@@ -821,7 +821,7 @@ pub(crate) fn trans_place<'tcx>(
                         let ptr = cplace.to_ptr();
                         cplace = CPlace::for_ptr(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * i64::from(from)),
-                            fx.layout_of(fx.tcx.mk_array(elem_ty, u64::from(to) - u64::from(from))),
+                            fx.layout_of(fxcodegen_cx.tcx.mk_array(elem_ty, u64::from(to) - u64::from(from))),
                         );
                     }
                     ty::Slice(elem_ty) => {
