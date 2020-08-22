@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, msg: &str) {
     let puts = fx
-        .module
+        .cx.module
         .declare_function(
             "puts",
             Linkage::Import,
@@ -13,7 +13,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
             },
         )
         .unwrap();
-    let puts = fx.module.declare_func_in_func(puts, &mut fx.bcx.func);
+    let puts = fx.cx.module.declare_func_in_func(puts, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     {
         fx.add_comment(puts, "puts");

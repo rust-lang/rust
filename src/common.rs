@@ -265,10 +265,8 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
 }
 
 pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
-    // FIXME use a reference to `CodegenCx` instead of `tcx`, `module` and `constants` and `caches`
+    pub(crate) cx: &'clif mut crate::CodegenCx<'tcx, B>,
     pub(crate) tcx: TyCtxt<'tcx>,
-    pub(crate) module: &'clif mut Module<B>,
-    pub(crate) global_asm: &'clif mut String,
     pub(crate) pointer_type: Type, // Cached from module
 
     pub(crate) instance: Instance<'tcx>,
@@ -285,9 +283,6 @@ pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     pub(crate) cold_blocks: EntitySet<Block>,
 
     pub(crate) clif_comments: crate::pretty_clif::CommentWriter,
-    pub(crate) constants_cx: &'clif mut crate::constant::ConstantCx,
-    pub(crate) vtables: &'clif mut FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
-
     pub(crate) source_info_set: indexmap::IndexSet<SourceInfo>,
 
     /// This should only be accessed by `CPlace::new_var`.
@@ -398,7 +393,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 
     pub(crate) fn triple(&self) -> &target_lexicon::Triple {
-        self.module.isa().triple()
+        self.cx.module.isa().triple()
     }
 
     pub(crate) fn anonymous_str(&mut self, prefix: &str, msg: &str) -> Value {
@@ -411,7 +406,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         let mut data_ctx = DataContext::new();
         data_ctx.define(msg.as_bytes().to_vec().into_boxed_slice());
         let msg_id = self
-            .module
+            .cx.module
             .declare_data(
                 &format!("__{}_{:08x}", prefix, msg_hash),
                 Linkage::Local,
@@ -422,9 +417,9 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             .unwrap();
 
         // Ignore DuplicateDefinition error, as the data will be the same
-        let _ = self.module.define_data(msg_id, &data_ctx);
+        let _ = self.cx.module.define_data(msg_id, &data_ctx);
 
-        let local_msg_id = self.module.declare_data_in_func(msg_id, self.bcx.func);
+        let local_msg_id = self.cx.module.declare_data_in_func(msg_id, self.bcx.func);
         #[cfg(debug_assertions)]
         {
             self.add_comment(local_msg_id, msg);

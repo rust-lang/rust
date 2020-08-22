@@ -72,15 +72,15 @@ pub(crate) fn get_vtable<'tcx>(
     layout: TyAndLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let data_id = if let Some(data_id) = fx.vtables.get(&(layout.ty, trait_ref)) {
+    let data_id = if let Some(data_id) = fx.cx.vtables.get(&(layout.ty, trait_ref)) {
         *data_id
     } else {
         let data_id = build_vtable(fx, layout, trait_ref);
-        fx.vtables.insert((layout.ty, trait_ref), data_id);
+        fx.cx.vtables.insert((layout.ty, trait_ref), data_id);
         data_id
     };
 
-    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
 }
 
@@ -93,7 +93,7 @@ fn build_vtable<'tcx>(
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
 
     let drop_in_place_fn =
-        import_function(tcx, fx.module, Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.tcx));
+        import_function(tcx, &mut fx.cx.module, Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.tcx));
 
     let mut components: Vec<_> = vec![Some(drop_in_place_fn), None, None];
 
@@ -108,7 +108,7 @@ fn build_vtable<'tcx>(
         opt_mth.map_or(None, |(def_id, substs)| {
             Some(import_function(
                 tcx,
-                fx.module,
+                &mut fx.cx.module,
                 Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap().polymorphize(fx.tcx),
             ))
         })
@@ -127,13 +127,13 @@ fn build_vtable<'tcx>(
 
     for (i, component) in components.into_iter().enumerate() {
         if let Some(func_id) = component {
-            let func_ref = fx.module.declare_func_in_data(func_id, &mut data_ctx);
+            let func_ref = fx.cx.module.declare_func_in_data(func_id, &mut data_ctx);
             data_ctx.write_function_addr((i * usize_size) as u32, func_ref);
         }
     }
 
     let data_id = fx
-        .module
+        .cx.module
         .declare_data(
             &format!(
                 "__vtable.{}.for.{:?}.{}",
@@ -142,7 +142,7 @@ fn build_vtable<'tcx>(
                     .map(|trait_ref| format!("{:?}", trait_ref.skip_binder()).into())
                     .unwrap_or(std::borrow::Cow::Borrowed("???")),
                 layout.ty,
-                fx.vtables.len(),
+                fx.cx.vtables.len(),
             ),
             Linkage::Local,
             false,
@@ -159,7 +159,7 @@ fn build_vtable<'tcx>(
         )
         .unwrap();
 
-    fx.module.define_data(data_id, &data_ctx).unwrap();
+    fx.cx.module.define_data(data_id, &data_ctx).unwrap();
 
     data_id
 }

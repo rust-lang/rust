@@ -73,7 +73,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     let asm_name = format!("{}__inline_asm_{}", fx.tcx.symbol_name(fx.instance).name, inline_asm_index);
 
     let generated_asm = generate_asm_wrapper(&asm_name, InlineAsmArch::X86_64, options, template, clobbered_regs, &inputs, &outputs);
-    fx.global_asm.push_str(&generated_asm);
+    fx.cx.global_asm.push_str(&generated_asm);
 
     call_inline_asm(fx, &asm_name, slot_size, inputs, outputs);
 }
@@ -169,12 +169,12 @@ fn call_inline_asm<'tcx>(
     #[cfg(debug_assertions)]
     fx.add_comment(stack_slot, "inline asm scratch slot");
 
-    let inline_asm_func = fx.module.declare_function(asm_name, Linkage::Import, &Signature {
+    let inline_asm_func = fx.cx.module.declare_function(asm_name, Linkage::Import, &Signature {
         call_conv: CallConv::SystemV,
         params: vec![AbiParam::new(fx.pointer_type)],
         returns: vec![],
     }).unwrap();
-    let inline_asm_func = fx.module.declare_func_in_func(inline_asm_func, &mut fx.bcx.func);
+    let inline_asm_func = fx.cx.module.declare_func_in_func(inline_asm_func, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(inline_asm_func, asm_name);
 

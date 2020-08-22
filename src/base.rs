@@ -16,14 +16,16 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let (name, sig) = get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
     let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
 
-    // Make FunctionBuilder
-    let context = &mut cx.cached_context;
-    context.clear();
-    context.func.name = ExternalName::user(0, func_id.as_u32());
-    context.func.signature = sig;
-    context.func.collect_debug_info();
+    cx.cached_context.clear();
+
+    // Make the FunctionBuilder
     let mut func_ctx = FunctionBuilderContext::new();
-    let mut bcx = FunctionBuilder::new(&mut context.func, &mut func_ctx);
+    let mut func = std::mem::replace(&mut cx.cached_context.func, Function::new());
+    func.name = ExternalName::user(0, func_id.as_u32());
+    func.signature = sig;
+    func.collect_debug_info();
+
+    let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
 
     // Predefine blocks
     let start_block = bcx.create_block();
@@ -34,9 +36,8 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
     let mut fx = FunctionCx {
+        cx,
         tcx,
-        module: &mut cx.module,
-        global_asm: &mut cx.global_asm,
         pointer_type,
 
         instance,
@@ -49,8 +50,6 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
         cold_blocks: EntitySet::new(),
 
         clif_comments,
-        constants_cx: &mut cx.constants_cx,
-        vtables: &mut cx.vtables,
         source_info_set: indexmap::IndexSet::new(),
         next_ssa_var: 0,
 
@@ -77,8 +76,12 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let local_map = fx.local_map;
     let cold_blocks = fx.cold_blocks;
 
+    // Store function in context
+    let context = &mut cx.cached_context;
+    context.func = func;
+
     crate::pretty_clif::write_clif_file(
-        cx.tcx,
+        tcx,
         "unopt",
         None,
         instance,
@@ -113,7 +116,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
 
     // Write optimized function to file for debugging
     crate::pretty_clif::write_clif_file(
-        cx.tcx,
+        tcx,
         "opt",
         Some(cx.module.isa()),
         instance,
