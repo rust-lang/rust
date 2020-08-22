@@ -30,6 +30,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
 
     let mut fx = FunctionCx {
         cx,
+        tcx,
         pointer_type,
 
         instance,
