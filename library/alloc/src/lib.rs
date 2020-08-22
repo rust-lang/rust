@@ -50,11 +50,11 @@
 //! The [`alloc`](alloc/index.html) module defines the low-level interface to the
 //! default global allocator. It is not compatible with the libc allocator API.
 //!
-//! [`Arc`]: sync/index.html
-//! [`Box`]: boxed/index.html
-//! [`Cell`]: ../core/cell/index.html
-//! [`Rc`]: rc/index.html
-//! [`RefCell`]: ../core/cell/index.html
+//! [`Arc`]: sync
+//! [`Box`]: boxed
+//! [`Cell`]: core::cell
+//! [`Rc`]: rc
+//! [`RefCell`]: core::cell
 
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]

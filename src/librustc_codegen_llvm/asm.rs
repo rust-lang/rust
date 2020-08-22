@@ -479,10 +479,13 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) 
                         _ => unreachable!(),
                     }
                 } else {
-                    // We use i32 as the type for discarded outputs
-                    's'
+                    // We use i64x2 as the type for discarded outputs
+                    'q'
                 };
                 format!("{{{}{}}}", class, idx)
+            } else if reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
+                // LLVM doesn't recognize x30
+                "lr".to_string()
             } else {
                 format!("{{{}}}", reg.name())
             }

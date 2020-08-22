@@ -78,9 +78,9 @@
 ///
 /// In other words, if you tried to explicitly call `Drop::drop` in the above example, you'd get a compiler error.
 ///
-/// If you'd like explicitly call the destructor of a value, [`std::mem::drop`] can be used instead.
+/// If you'd like explicitly call the destructor of a value, [`mem::drop`] can be used instead.
 ///
-/// [`std::mem::drop`]: ../../std/mem/fn.drop.html
+/// [`mem::drop`]: drop
 ///
 /// ## Drop order
 ///
@@ -132,8 +132,6 @@
 /// are `Copy` get implicitly duplicated by the compiler, making it very
 /// hard to predict when, and how often destructors will be executed. As such,
 /// these types cannot have destructors.
-///
-/// [`Copy`]: ../../std/marker/trait.Copy.html
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Drop {
@@ -141,7 +139,7 @@ pub trait Drop {
     ///
     /// This method is called implicitly when the value goes out of scope,
     /// and cannot be called explicitly (this is compiler error [E0040]).
-    /// However, the [`std::mem::drop`] function in the prelude can be
+    /// However, the [`mem::drop`] function in the prelude can be
     /// used to call the argument's `Drop` implementation.
     ///
     /// When this method has been called, `self` has not yet been deallocated.
@@ -156,12 +154,12 @@ pub trait Drop {
     /// Note that even if this panics, the value is considered to be dropped;
     /// you must not cause `drop` to be called again. This is normally automatically
     /// handled by the compiler, but when using unsafe code, can sometimes occur
-    /// unintentionally, particularly when using [`std::ptr::drop_in_place`].
+    /// unintentionally, particularly when using [`ptr::drop_in_place`].
     ///
     /// [E0040]: ../../error-index.html#E0040
-    /// [`panic!`]: ../macro.panic.html
-    /// [`std::mem::drop`]: ../../std/mem/fn.drop.html
-    /// [`std::ptr::drop_in_place`]: ../../std/ptr/fn.drop_in_place.html
+    /// [`panic!`]: crate::panic!
+    /// [`mem::drop`]: drop
+    /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place
     #[stable(feature = "rust1", since = "1.0.0")]
     fn drop(&mut self);
 }

@@ -553,3 +553,8 @@ check_reg!(v0_f32x4 f32x4 "s0" "fmov");
 // CHECK: fmov s0, s0
 // CHECK: //NO_APP
 check_reg!(v0_f64x2 f64x2 "s0" "fmov");
+
+// Regression test for #75761
+pub unsafe fn issue_75761() {
+    asm!("", out("v0") _, out("x30") _);
+}

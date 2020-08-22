@@ -29,7 +29,7 @@ use crate::marker::Unsize;
 /// pointers. It is implemented automatically by the compiler.
 ///
 /// [dst-coerce]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
-/// [unsize]: ../marker/trait.Unsize.html
+/// [unsize]: crate::marker::Unsize
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 #[lang = "coerce_unsized"]

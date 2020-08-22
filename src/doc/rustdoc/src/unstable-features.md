@@ -467,3 +467,36 @@ $ rustdoc src/lib.rs -Z unstable-options --runtool valgrind
 ```
 
 Another use case would be to run a test inside an emulator, or through a Virtual Machine.
+
+### `--show-coverage`: get statistics about code documentation coverage
+
+This option allows you to get a nice overview over your code documentation coverage, including both
+doc-comments and code examples in the doc-comments. Example:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --show-coverage
++-------------------------------------+------------+------------+------------+------------+
+| File                                | Documented | Percentage |   Examples | Percentage |
++-------------------------------------+------------+------------+------------+------------+
+| lib.rs                              |          4 |     100.0% |          1 |      25.0% |
++-------------------------------------+------------+------------+------------+------------+
+| Total                               |          4 |     100.0% |          1 |      25.0% |
++-------------------------------------+------------+------------+------------+------------+
+```
+
+You can also use this option with the `--output-format` one:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --show-coverage --output-format json
+{"lib.rs":{"total":4,"with_docs":4,"total_examples":4,"with_examples":1}}
+```
+
+Calculating code examples follows these rules:
+
+1. These items aren't accounted by default:
+  * struct/union field
+  * enum variant
+  * constant
+  * static
+  * typedef
+2. If one of the previously listed items has a code example, then it'll be counted.

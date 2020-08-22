@@ -2,9 +2,7 @@
 
 //! Thread-safe reference-counting pointers.
 //!
-//! See the [`Arc<T>`][arc] documentation for more details.
-//!
-//! [arc]: struct.Arc.html
+//! See the [`Arc<T>`][Arc] documentation for more details.
 
 use core::any::Any;
 use core::borrow;
@@ -100,21 +98,21 @@ macro_rules! acquire {
 /// ## Breaking cycles with `Weak`
 ///
 /// The [`downgrade`][downgrade] method can be used to create a non-owning
-/// [`Weak`][weak] pointer. A [`Weak`][weak] pointer can be [`upgrade`][upgrade]d
+/// [`Weak`] pointer. A [`Weak`] pointer can be [`upgrade`][upgrade]d
 /// to an `Arc`, but this will return [`None`] if the value stored in the allocation has
 /// already been dropped. In other words, `Weak` pointers do not keep the value
 /// inside the allocation alive; however, they *do* keep the allocation
 /// (the backing store for the value) alive.
 ///
 /// A cycle between `Arc` pointers will never be deallocated. For this reason,
-/// [`Weak`][weak] is used to break cycles. For example, a tree could have
-/// strong `Arc` pointers from parent nodes to children, and [`Weak`][weak]
+/// [`Weak`] is used to break cycles. For example, a tree could have
+/// strong `Arc` pointers from parent nodes to children, and [`Weak`]
 /// pointers from children back to their parents.
 ///
 /// # Cloning references
 ///
 /// Creating a new reference from an existing reference counted pointer is done using the
-/// `Clone` trait implemented for [`Arc<T>`][arc] and [`Weak<T>`][weak].
+/// `Clone` trait implemented for [`Arc<T>`][Arc] and [`Weak<T>`][Weak].
 ///
 /// ```
 /// use std::sync::Arc;
@@ -139,23 +137,20 @@ macro_rules! acquire {
 /// Arc::downgrade(&my_arc);
 /// ```
 ///
-/// [`Weak<T>`][weak] does not auto-dereference to `T`, because the inner value may have
+/// [`Weak<T>`][Weak] does not auto-dereference to `T`, because the inner value may have
 /// already been dropped.
 ///
-/// [arc]: struct.Arc.html
-/// [weak]: struct.Weak.html
-/// [`Rc<T>`]: ../../std/rc/struct.Rc.html
-/// [clone]: ../../std/clone/trait.Clone.html#tymethod.clone
+/// [`Rc<T>`]: crate::rc::Rc
+/// [clone]: Clone::clone
 /// [mutex]: ../../std/sync/struct.Mutex.html
 /// [rwlock]: ../../std/sync/struct.RwLock.html
-/// [atomic]: ../../std/sync/atomic/index.html
-/// [`Send`]: ../../std/marker/trait.Send.html
-/// [`Sync`]: ../../std/marker/trait.Sync.html
-/// [deref]: ../../std/ops/trait.Deref.html
-/// [downgrade]: struct.Arc.html#method.downgrade
-/// [upgrade]: struct.Weak.html#method.upgrade
-/// [`None`]: ../../std/option/enum.Option.html#variant.None
-/// [`RefCell<T>`]: ../../std/cell/struct.RefCell.html
+/// [atomic]: core::sync::atomic
+/// [`Send`]: core::marker::Send
+/// [`Sync`]: core::marker::Sync
+/// [deref]: core::ops::Deref
+/// [downgrade]: Arc::downgrade
+/// [upgrade]: Weak::upgrade
+/// [`RefCell<T>`]: core::cell::RefCell
 /// [`std::sync`]: ../../std/sync/index.html
 /// [`Arc::clone(&from)`]: #method.clone
 ///
@@ -184,7 +179,7 @@ macro_rules! acquire {
 ///
 /// Sharing a mutable [`AtomicUsize`]:
 ///
-/// [`AtomicUsize`]: ../../std/sync/atomic/struct.AtomicUsize.html
+/// [`AtomicUsize`]: core::sync::atomic::AtomicUsize
 ///
 /// ```no_run
 /// use std::sync::Arc;
@@ -254,11 +249,7 @@ impl<T: ?Sized> Arc<T> {
 ///
 /// The typical way to obtain a `Weak` pointer is to call [`Arc::downgrade`].
 ///
-/// [`Arc`]: struct.Arc.html
-/// [`Arc::downgrade`]: struct.Arc.html#method.downgrade
-/// [`upgrade`]: struct.Weak.html#method.upgrade
-/// [`Option`]: ../../std/option/enum.Option.html
-/// [`None`]: ../../std/option/enum.Option.html#variant.None
+/// [`upgrade`]: Weak::upgrade
 #[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     // This is a `NonNull` to allow optimizing the size of this type in enums,
@@ -396,12 +387,10 @@ impl<T> Arc<T> {
 
     /// Returns the inner value, if the `Arc` has exactly one strong reference.
     ///
-    /// Otherwise, an [`Err`][result] is returned with the same `Arc` that was
+    /// Otherwise, an [`Err`] is returned with the same `Arc` that was
     /// passed in.
     ///
     /// This will succeed even if there are outstanding weak references.
-    ///
-    /// [result]: ../../std/result/enum.Result.html
     ///
     /// # Examples
     ///
@@ -550,9 +539,7 @@ impl<T: ?Sized> Arc<T> {
     /// Consumes the `Arc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Arc` using
-    /// [`Arc::from_raw`][from_raw].
-    ///
-    /// [from_raw]: struct.Arc.html#method.from_raw
+    /// [`Arc::from_raw`].
     ///
     /// # Examples
     ///
@@ -612,8 +599,8 @@ impl<T: ?Sized> Arc<T> {
     /// This function is unsafe because improper use may lead to memory unsafety,
     /// even if the returned `Arc<T>` is never accessed.
     ///
-    /// [into_raw]: struct.Arc.html#method.into_raw
-    /// [transmute]: ../../std/mem/fn.transmute.html
+    /// [into_raw]: Arc::into_raw
+    /// [transmute]: core::mem::transmute
     ///
     /// # Examples
     ///
@@ -646,9 +633,7 @@ impl<T: ?Sized> Arc<T> {
         }
     }
 
-    /// Creates a new [`Weak`][weak] pointer to this allocation.
-    ///
-    /// [weak]: struct.Weak.html
+    /// Creates a new [`Weak`] pointer to this allocation.
     ///
     /// # Examples
     ///
@@ -690,9 +675,7 @@ impl<T: ?Sized> Arc<T> {
         }
     }
 
-    /// Gets the number of [`Weak`][weak] pointers to this allocation.
-    ///
-    /// [weak]: struct.Weak.html
+    /// Gets the number of [`Weak`] pointers to this allocation.
     ///
     /// # Safety
     ///
@@ -861,7 +844,7 @@ impl<T: ?Sized> Arc<T> {
     /// assert!(!Arc::ptr_eq(&five, &other_five));
     /// ```
     ///
-    /// [`ptr::eq`]: ../../std/ptr/fn.eq.html
+    /// [`ptr::eq`]: core::ptr::eq
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         this.ptr.as_ptr() == other.ptr.as_ptr()
     }
@@ -1098,7 +1081,7 @@ impl<T: ?Sized> Receiver for Arc<T> {}
 impl<T: Clone> Arc<T> {
     /// Makes a mutable reference into the given `Arc`.
     ///
-    /// If there are other `Arc` or [`Weak`][weak] pointers to the same allocation,
+    /// If there are other `Arc` or [`Weak`] pointers to the same allocation,
     /// then `make_mut` will create a new allocation and invoke [`clone`][clone] on the inner value
     /// to ensure unique ownership. This is also referred to as clone-on-write.
     ///
@@ -1107,10 +1090,9 @@ impl<T: Clone> Arc<T> {
     ///
     /// See also [`get_mut`][get_mut], which will fail rather than cloning.
     ///
-    /// [weak]: struct.Weak.html
-    /// [clone]: ../../std/clone/trait.Clone.html#tymethod.clone
-    /// [get_mut]: struct.Arc.html#method.get_mut
-    /// [`Rc::make_mut`]: ../rc/struct.Rc.html#method.make_mut
+    /// [clone]: Clone::clone
+    /// [get_mut]: Arc::get_mut
+    /// [`Rc::make_mut`]: super::rc::Rc::make_mut
     ///
     /// # Examples
     ///
@@ -1184,18 +1166,16 @@ impl<T: Clone> Arc<T> {
 
 impl<T: ?Sized> Arc<T> {
     /// Returns a mutable reference into the given `Arc`, if there are
-    /// no other `Arc` or [`Weak`][weak] pointers to the same allocation.
+    /// no other `Arc` or [`Weak`] pointers to the same allocation.
     ///
-    /// Returns [`None`][option] otherwise, because it is not safe to
+    /// Returns [`None`] otherwise, because it is not safe to
     /// mutate a shared value.
     ///
     /// See also [`make_mut`][make_mut], which will [`clone`][clone]
     /// the inner value when there are other pointers.
     ///
-    /// [weak]: struct.Weak.html
-    /// [option]: ../../std/option/enum.Option.html
-    /// [make_mut]: struct.Arc.html#method.make_mut
-    /// [clone]: ../../std/clone/trait.Clone.html#tymethod.clone
+    /// [make_mut]: Arc::make_mut
+    /// [clone]: Clone::clone
     ///
     /// # Examples
     ///
@@ -1229,7 +1209,7 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// See also [`get_mut`], which is safe and does appropriate checks.
     ///
-    /// [`get_mut`]: struct.Arc.html#method.get_mut
+    /// [`get_mut`]: Arc::get_mut
     ///
     /// # Safety
     ///
@@ -1315,8 +1295,6 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
-    ///
-    /// [`Weak`]: ../../std/sync/struct.Weak.html
     #[inline]
     fn drop(&mut self) {
         // Because `fetch_sub` is already atomic, we do not need to synchronize
@@ -1401,8 +1379,7 @@ impl<T> Weak<T> {
     /// Constructs a new `Weak<T>`, without allocating any memory.
     /// Calling [`upgrade`] on the return value always gives [`None`].
     ///
-    /// [`upgrade`]: struct.Weak.html#method.upgrade
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`upgrade`]: Weak::upgrade
     ///
     /// # Examples
     ///
@@ -1441,7 +1418,7 @@ impl<T> Weak<T> {
     /// // assert_eq!("hello", unsafe { &*weak.as_ptr() });
     /// ```
     ///
-    /// [`null`]: ../../std/ptr/fn.null.html
+    /// [`null`]: core::ptr::null
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(self.ptr);
@@ -1483,8 +1460,8 @@ impl<T> Weak<T> {
     /// assert_eq!(0, Arc::weak_count(&strong));
     /// ```
     ///
-    /// [`from_raw`]: struct.Weak.html#method.from_raw
-    /// [`as_ptr`]: struct.Weak.html#method.as_ptr
+    /// [`from_raw`]: Weak::from_raw
+    /// [`as_ptr`]: Weak::as_ptr
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn into_raw(self) -> *const T {
         let result = self.as_ptr();
@@ -1530,12 +1507,10 @@ impl<T> Weak<T> {
     /// assert!(unsafe { Weak::from_raw(raw_2) }.upgrade().is_none());
     /// ```
     ///
-    /// [`new`]: struct.Weak.html#method.new
-    /// [`into_raw`]: struct.Weak.html#method.into_raw
-    /// [`upgrade`]: struct.Weak.html#method.upgrade
-    /// [`Weak`]: struct.Weak.html
-    /// [`Arc`]: struct.Arc.html
-    /// [`forget`]: ../../std/mem/fn.forget.html
+    /// [`new`]: Weak::new
+    /// [`into_raw`]: Weak::into_raw
+    /// [`upgrade`]: Weak::upgrade
+    /// [`forget`]: std::mem::forget
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
         if ptr.is_null() {
@@ -1564,9 +1539,6 @@ impl<T: ?Sized> Weak<T> {
     /// dropping of the inner value if successful.
     ///
     /// Returns [`None`] if the inner value has since been dropped.
-    ///
-    /// [`Arc`]: struct.Arc.html
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1619,8 +1591,6 @@ impl<T: ?Sized> Weak<T> {
     /// Gets the number of strong (`Arc`) pointers pointing to this allocation.
     ///
     /// If `self` was created using [`Weak::new`], this will return 0.
-    ///
-    /// [`Weak::new`]: #method.new
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
         if let Some(inner) = self.inner() { inner.strong.load(SeqCst) } else { 0 }
@@ -1637,8 +1607,6 @@ impl<T: ?Sized> Weak<T> {
     /// Due to implementation details, the returned value can be off by 1 in
     /// either direction when other threads are manipulating any `Arc`s or
     /// `Weak`s pointing to the same allocation.
-    ///
-    /// [`Weak::new`]: #method.new
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn weak_count(&self) -> usize {
         self.inner()
@@ -1716,7 +1684,7 @@ impl<T: ?Sized> Weak<T> {
     /// assert!(!first.ptr_eq(&third));
     /// ```
     ///
-    /// [`ptr::eq`]: ../../std/ptr/fn.eq.html
+    /// [`ptr::eq`]: core::ptr::eq
     #[inline]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
     pub fn ptr_eq(&self, other: &Self) -> bool {
@@ -1765,8 +1733,7 @@ impl<T> Default for Weak<T> {
     /// Calling [`upgrade`] on the return value always
     /// gives [`None`].
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`upgrade`]: ../../std/sync/struct.Weak.html#method.upgrade
+    /// [`upgrade`]: Weak::upgrade
     ///
     /// # Examples
     ///

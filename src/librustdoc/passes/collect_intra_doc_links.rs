@@ -636,7 +636,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 }
 
                 match disambiguator.map(Disambiguator::ns) {
-                    Some(ns @ ValueNS) => {
+                    Some(ns @ (ValueNS | TypeNS)) => {
                         match self.resolve(
                             path_str,
                             disambiguator,
@@ -652,28 +652,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 // This could just be a normal link or a broken link
                                 // we could potentially check if something is
                                 // "intra-doc-link-like" and warn in that case.
-                                continue;
-                            }
-                            Err(ErrorKind::AnchorFailure(msg)) => {
-                                anchor_failure(cx, &item, &ori_link, &dox, link_range, msg);
-                                continue;
-                            }
-                        }
-                    }
-                    Some(ns @ TypeNS) => {
-                        match self.resolve(
-                            path_str,
-                            disambiguator,
-                            ns,
-                            &current_item,
-                            base_node,
-                            &extra_fragment,
-                            Some(&item),
-                        ) {
-                            Ok(res) => res,
-                            Err(ErrorKind::ResolutionFailure) => {
-                                resolution_failure(cx, &item, path_str, &dox, link_range);
-                                // This could just be a normal link.
                                 continue;
                             }
                             Err(ErrorKind::AnchorFailure(msg)) => {
