@@ -582,6 +582,9 @@ declare_features! (
     /// The smallest useful subset of `const_generics`.
     (active, min_const_generics, "1.47.0", Some(74878), None),
 
+    /// Allows `if let` guard in match arms.
+    (active, if_let_guard, "1.47.0", Some(51114), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -591,6 +594,7 @@ declare_features! (
 /// unanticipated results, such as compiler crashes. We warn the user about these
 /// to alert them.
 pub const INCOMPLETE_FEATURES: &[Symbol] = &[
+    sym::if_let_guard,
     sym::impl_trait_in_bindings,
     sym::generic_associated_types,
     sym::const_generics,

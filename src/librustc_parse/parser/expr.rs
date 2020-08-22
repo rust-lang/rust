@@ -1858,7 +1858,19 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
         let pat = self.parse_top_pat(GateOr::No)?;
-        let guard = if self.eat_keyword(kw::If) { Some(self.parse_expr()?) } else { None };
+        let guard = if self.eat_keyword(kw::If) {
+            let if_span = self.prev_token.span;
+            let cond = self.parse_expr()?;
+            if let ExprKind::Let(..) = cond.kind {
+                // Remove the last feature gating of a `let` expression since it's stable.
+                self.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
+                let span = if_span.to(cond.span);
+                self.sess.gated_spans.gate(sym::if_let_guard, span);
+            }
+            Some(cond)
+        } else {
+            None
+        };
         let arrow_span = self.token.span;
         self.expect(&token::FatArrow)?;
         let arm_start_span = self.token.span;

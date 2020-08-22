@@ -613,11 +613,14 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     let spans = sess.parse_sess.gated_spans.spans.borrow();
     macro_rules! gate_all {
         ($gate:ident, $msg:literal) => {
-            for span in spans.get(&sym::$gate).unwrap_or(&vec![]) {
-                gate_feature_post!(&visitor, $gate, *span, $msg);
+            if let Some(spans) = spans.get(&sym::$gate) {
+                for span in spans {
+                    gate_feature_post!(&visitor, $gate, *span, $msg);
+                }
             }
         };
     }
+    gate_all!(if_let_guard, "`if let` guard is not implemented");
     gate_all!(let_chains, "`let` expressions in this position are experimental");
     gate_all!(async_closure, "async closures are unstable");
     gate_all!(generators, "yield syntax is experimental");
