@@ -86,14 +86,14 @@ pub(crate) fn clif_int_or_float_cast(
             );
 
             let from_rust_ty = if from_signed {
-                fx.cx.tcx.types.i128
+                fx.tcx.types.i128
             } else {
-                fx.cx.tcx.types.u128
+                fx.tcx.types.u128
             };
 
             let to_rust_ty = match to_ty {
-                types::F32 => fx.cx.tcx.types.f32,
-                types::F64 => fx.cx.tcx.types.f64,
+                types::F32 => fx.tcx.types.f32,
+                types::F64 => fx.tcx.types.f64,
                 _ => unreachable!(),
             };
 
@@ -131,15 +131,15 @@ pub(crate) fn clif_int_or_float_cast(
             );
 
             let from_rust_ty = match from_ty {
-                types::F32 => fx.cx.tcx.types.f32,
-                types::F64 => fx.cx.tcx.types.f64,
+                types::F32 => fx.tcx.types.f32,
+                types::F64 => fx.tcx.types.f64,
                 _ => unreachable!(),
             };
 
             let to_rust_ty = if to_signed {
-                fx.cx.tcx.types.i128
+                fx.tcx.types.i128
             } else {
-                fx.cx.tcx.types.u128
+                fx.tcx.types.u128
             };
 
             return fx

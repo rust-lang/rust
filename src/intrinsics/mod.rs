@@ -88,7 +88,7 @@ macro call_intrinsic_match {
                         let ($($arg,)*) = (
                             $(trans_operand($fx, $arg),)*
                         );
-                        let res = $fx.easy_call(stringify!($func), &[$($arg),*], $fx.cx.tcx.types.$ty);
+                        let res = $fx.easy_call(stringify!($func), &[$($arg),*], $fx.tcx.types.$ty);
                         $ret.write_cvalue($fx, res);
 
                         if let Some((_, dest)) = $destination {
@@ -144,7 +144,7 @@ macro validate_atomic_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
     match $ty.kind {
         ty::Uint(_) | ty::Int(_) => {}
         _ => {
-            $fx.cx.tcx.sess.span_err($span, &format!("`{}` intrinsic: expected basic integer type, found `{:?}`", $intrinsic, $ty));
+            $fx.tcx.sess.span_err($span, &format!("`{}` intrinsic: expected basic integer type, found `{:?}`", $intrinsic, $ty));
             // Prevent verifier error
             crate::trap::trap_unreachable($fx, "compilation should not have succeeded");
             return;
@@ -154,7 +154,7 @@ macro validate_atomic_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
 
 macro validate_simd_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
     if !$ty.is_simd() {
-        $fx.cx.tcx.sess.span_err($span, &format!("invalid monomorphization of `{}` intrinsic: expected SIMD input type, found non-SIMD `{}`", $intrinsic, $ty));
+        $fx.tcx.sess.span_err($span, &format!("invalid monomorphization of `{}` intrinsic: expected SIMD input type, found non-SIMD `{}`", $intrinsic, $ty));
         // Prevent verifier error
         crate::trap::trap_unreachable($fx, "compilation should not have succeeded");
         return;
@@ -203,8 +203,8 @@ fn simd_for_each_lane<'tcx, B: Backend>(
 ) {
     let layout = val.layout();
 
-    let (lane_layout, lane_count) = lane_type_and_count(fx.cx.tcx, layout);
-    let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.cx.tcx, ret.layout());
+    let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, layout);
+    let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
     assert_eq!(lane_count, ret_lane_count);
 
     for lane_idx in 0..lane_count {
@@ -233,8 +233,8 @@ fn simd_pair_for_each_lane<'tcx, B: Backend>(
     assert_eq!(x.layout(), y.layout());
     let layout = x.layout();
 
-    let (lane_layout, lane_count) = lane_type_and_count(fx.cx.tcx, layout);
-    let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.cx.tcx, ret.layout());
+    let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, layout);
+    let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
     assert_eq!(lane_count, ret_lane_count);
 
     for lane in 0..lane_count {
@@ -273,7 +273,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
 
 macro simd_cmp {
     ($fx:expr, $cc:ident($x:ident, $y:ident) -> $ret:ident) => {
-        let vector_ty = clif_vector_type($fx.cx.tcx, $x.layout());
+        let vector_ty = clif_vector_type($fx.tcx, $x.layout());
 
         if let Some(vector_ty) = vector_ty {
             let x = $x.load_scalar($fx);
@@ -390,7 +390,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     let def_id = instance.def_id();
     let substs = instance.substs;
 
-    let intrinsic = fx.cx.tcx.item_name(def_id).as_str();
+    let intrinsic = fx.tcx.item_name(def_id).as_str();
     let intrinsic = &intrinsic[..];
 
     let ret = match destination {
@@ -423,7 +423,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         return;
     }
 
-    let usize_layout = fx.layout_of(fx.cx.tcx.types.usize);
+    let usize_layout = fx.layout_of(fx.tcx.types.usize);
 
     call_intrinsic_match! {
         fx, intrinsic, substs, ret, destination, args,
@@ -473,7 +473,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     intrinsic_match! {
         fx, intrinsic, substs, args,
         _ => {
-            fx.cx.tcx.sess.span_fatal(span, &format!("unsupported intrinsic {}", intrinsic));
+            fx.tcx.sess.span_fatal(span, &format!("unsupported intrinsic {}", intrinsic));
         };
 
         assume, (c _a) {};
@@ -684,7 +684,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
         ctlz | ctlz_nonzero, <T> (v arg) {
             // FIXME trap on `ctlz_nonzero` with zero arg.
-            let res = if T == fx.cx.tcx.types.u128 || T == fx.cx.tcx.types.i128 {
+            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
                 // FIXME verify this algorithm is correct
                 let (lsb, msb) = fx.bcx.ins().isplit(arg);
                 let lsb_lz = fx.bcx.ins().clz(lsb);
@@ -701,7 +701,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
         cttz | cttz_nonzero, <T> (v arg) {
             // FIXME trap on `cttz_nonzero` with zero arg.
-            let res = if T == fx.cx.tcx.types.u128 || T == fx.cx.tcx.types.i128 {
+            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
                 // FIXME verify this algorithm is correct
                 let (lsb, msb) = fx.bcx.ins().isplit(arg);
                 let lsb_tz = fx.bcx.ins().ctz(lsb);
@@ -842,7 +842,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
         size_of | pref_align_of | min_align_of | needs_drop | type_id | type_name | variant_count, () {
             let const_val =
-                fx.cx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
+                fx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
             let val = crate::constant::trans_const_value(
                 fx,
                 const_val,
@@ -852,7 +852,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
 
         ptr_offset_from, <T> (v ptr, v base) {
-            let isize_layout = fx.layout_of(fx.cx.tcx.types.isize);
+            let isize_layout = fx.layout_of(fx.tcx.types.isize);
 
             let pointee_size: u64 = fx.layout_of(T).size.bytes();
             let diff = fx.bcx.ins().isub(ptr, base);
@@ -1011,22 +1011,22 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
         minnumf32, (v a, v b) {
             let val = fx.bcx.ins().fmin(a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.cx.tcx.types.f32));
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
             ret.write_cvalue(fx, val);
         };
         minnumf64, (v a, v b) {
             let val = fx.bcx.ins().fmin(a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.cx.tcx.types.f64));
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
             ret.write_cvalue(fx, val);
         };
         maxnumf32, (v a, v b) {
             let val = fx.bcx.ins().fmax(a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.cx.tcx.types.f32));
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
             ret.write_cvalue(fx, val);
         };
         maxnumf64, (v a, v b) {
             let val = fx.bcx.ins().fmax(a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.cx.tcx.types.f64));
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
             ret.write_cvalue(fx, val);
         };
 

@@ -85,7 +85,7 @@ fn trans_mono_item<'tcx, B: Backend + 'static>(
                 }
             });
 
-            cx.tcx.sess.time("codegen fn", || crate::base::trans_fn(cx, inst, linkage));
+            tcx.sess.time("codegen fn", || crate::base::trans_fn(cx, inst, linkage));
         }
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(&mut cx.constants_cx, def_id);

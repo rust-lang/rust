@@ -118,7 +118,7 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     arg: CValue<'tcx>,
 ) -> EmptySinglePair<Value> {
-    match get_pass_mode(fx.cx.tcx, arg.layout()) {
+    match get_pass_mode(fx.tcx, arg.layout()) {
         PassMode::NoPass => Empty,
         PassMode::ByVal(_) => Single(arg.load_scalar(fx)),
         PassMode::ByValPair(_, _) => {
@@ -144,13 +144,13 @@ pub(super) fn cvalue_for_param<'tcx>(
     arg_ty: Ty<'tcx>,
 ) -> Option<CValue<'tcx>> {
     let layout = fx.layout_of(arg_ty);
-    let pass_mode = get_pass_mode(fx.cx.tcx, layout);
+    let pass_mode = get_pass_mode(fx.tcx, layout);
 
     if let PassMode::NoPass = pass_mode {
         return None;
     }
 
-    let clif_types = pass_mode.get_param_ty(fx.cx.tcx);
+    let clif_types = pass_mode.get_param_ty(fx.tcx);
     let block_params = clif_types.map(|t| fx.bcx.append_block_param(start_block, t));
 
     #[cfg(debug_assertions)]

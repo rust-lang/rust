@@ -9,7 +9,7 @@ pub(crate) fn maybe_codegen<'tcx>(
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
 ) -> Option<CValue<'tcx>> {
-    if lhs.layout().ty != fx.cx.tcx.types.u128 && lhs.layout().ty != fx.cx.tcx.types.i128 {
+    if lhs.layout().ty != fx.tcx.types.u128 && lhs.layout().ty != fx.tcx.types.i128 {
         return None;
     }
 
@@ -25,7 +25,7 @@ pub(crate) fn maybe_codegen<'tcx>(
         }
         BinOp::Add | BinOp::Sub if !checked => return None,
         BinOp::Add => {
-            let out_ty = fx.cx.tcx.mk_tup([lhs.layout().ty, fx.cx.tcx.types.bool].iter());
+            let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
             return Some(if is_signed {
                 fx.easy_call("__rust_i128_addo", &[lhs, rhs], out_ty)
             } else {
@@ -33,7 +33,7 @@ pub(crate) fn maybe_codegen<'tcx>(
             });
         }
         BinOp::Sub => {
-            let out_ty = fx.cx.tcx.mk_tup([lhs.layout().ty, fx.cx.tcx.types.bool].iter());
+            let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
             return Some(if is_signed {
                 fx.easy_call("__rust_i128_subo", &[lhs, rhs], out_ty)
             } else {
@@ -43,7 +43,7 @@ pub(crate) fn maybe_codegen<'tcx>(
         BinOp::Offset => unreachable!("offset should only be used on pointers, not 128bit ints"),
         BinOp::Mul => {
             let res = if checked {
-                let out_ty = fx.cx.tcx.mk_tup([lhs.layout().ty, fx.cx.tcx.types.bool].iter());
+                let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
                 if is_signed {
                     fx.easy_call("__rust_i128_mulo", &[lhs, rhs], out_ty)
                 } else {
@@ -51,9 +51,9 @@ pub(crate) fn maybe_codegen<'tcx>(
                 }
             } else {
                 let val_ty = if is_signed {
-                    fx.cx.tcx.types.i128
+                    fx.tcx.types.i128
                 } else {
-                    fx.cx.tcx.types.u128
+                    fx.tcx.types.u128
                 };
                 fx.easy_call("__multi3", &[lhs, rhs], val_ty)
             };
@@ -62,17 +62,17 @@ pub(crate) fn maybe_codegen<'tcx>(
         BinOp::Div => {
             assert!(!checked);
             if is_signed {
-                Some(fx.easy_call("__divti3", &[lhs, rhs], fx.cx.tcx.types.i128))
+                Some(fx.easy_call("__divti3", &[lhs, rhs], fx.tcx.types.i128))
             } else {
-                Some(fx.easy_call("__udivti3", &[lhs, rhs], fx.cx.tcx.types.u128))
+                Some(fx.easy_call("__udivti3", &[lhs, rhs], fx.tcx.types.u128))
             }
         }
         BinOp::Rem => {
             assert!(!checked);
             if is_signed {
-                Some(fx.easy_call("__modti3", &[lhs, rhs], fx.cx.tcx.types.i128))
+                Some(fx.easy_call("__modti3", &[lhs, rhs], fx.tcx.types.i128))
             } else {
-                Some(fx.easy_call("__umodti3", &[lhs, rhs], fx.cx.tcx.types.u128))
+                Some(fx.easy_call("__umodti3", &[lhs, rhs], fx.tcx.types.u128))
             }
         }
         BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => {
@@ -104,7 +104,7 @@ pub(crate) fn maybe_codegen<'tcx>(
                 let val = match (bin_op, is_signed) {
                     (BinOp::Shr, false) => {
                         let val = fx.bcx.ins().iconcat(lhs_msb, all_zeros);
-                        Some(CValue::by_val(val, fx.layout_of(fx.cx.tcx.types.u128)))
+                        Some(CValue::by_val(val, fx.layout_of(fx.tcx.types.u128)))
                     }
                     (BinOp::Shr, true) => {
                         let sign = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, lhs_msb, 0);
@@ -112,13 +112,13 @@ pub(crate) fn maybe_codegen<'tcx>(
                         let all_sign_bits = fx.bcx.ins().select(sign, all_zeros, all_ones);
 
                         let val = fx.bcx.ins().iconcat(lhs_msb, all_sign_bits);
-                        Some(CValue::by_val(val, fx.layout_of(fx.cx.tcx.types.i128)))
+                        Some(CValue::by_val(val, fx.layout_of(fx.tcx.types.i128)))
                     }
                     (BinOp::Shl, _) => {
                         let val_ty = if is_signed {
-                            fx.cx.tcx.types.i128
+                            fx.tcx.types.i128
                         } else {
-                            fx.cx.tcx.types.u128
+                            fx.tcx.types.u128
                         };
                         let val = fx.bcx.ins().iconcat(all_zeros, lhs_lsb);
                         Some(CValue::by_val(val, fx.layout_of(val_ty)))
@@ -127,7 +127,7 @@ pub(crate) fn maybe_codegen<'tcx>(
                 };
                 if let Some(val) = val {
                     if let Some(is_overflow) = is_overflow {
-                        let out_ty = fx.cx.tcx.mk_tup([lhs.layout().ty, fx.cx.tcx.types.bool].iter());
+                        let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
                         let val = val.load_scalar(fx);
                         return Some(CValue::by_val_pair(val, is_overflow, fx.layout_of(out_ty)));
                     } else {
@@ -137,24 +137,24 @@ pub(crate) fn maybe_codegen<'tcx>(
             }
 
             let truncated_rhs = clif_intcast(fx, rhs_val, types::I32, false);
-            let truncated_rhs = CValue::by_val(truncated_rhs, fx.layout_of(fx.cx.tcx.types.u32));
+            let truncated_rhs = CValue::by_val(truncated_rhs, fx.layout_of(fx.tcx.types.u32));
             let val = match (bin_op, is_signed) {
                 (BinOp::Shl, false) => {
-                    fx.easy_call("__ashlti3", &[lhs, truncated_rhs], fx.cx.tcx.types.u128)
+                    fx.easy_call("__ashlti3", &[lhs, truncated_rhs], fx.tcx.types.u128)
                 }
                 (BinOp::Shl, true) => {
-                    fx.easy_call("__ashlti3", &[lhs, truncated_rhs], fx.cx.tcx.types.i128)
+                    fx.easy_call("__ashlti3", &[lhs, truncated_rhs], fx.tcx.types.i128)
                 }
                 (BinOp::Shr, false) => {
-                    fx.easy_call("__lshrti3", &[lhs, truncated_rhs], fx.cx.tcx.types.u128)
+                    fx.easy_call("__lshrti3", &[lhs, truncated_rhs], fx.tcx.types.u128)
                 }
                 (BinOp::Shr, true) => {
-                    fx.easy_call("__ashrti3", &[lhs, truncated_rhs], fx.cx.tcx.types.i128)
+                    fx.easy_call("__ashrti3", &[lhs, truncated_rhs], fx.tcx.types.i128)
                 }
                 (_, _) => unreachable!(),
             };
             if let Some(is_overflow) = is_overflow {
-                let out_ty = fx.cx.tcx.mk_tup([lhs.layout().ty, fx.cx.tcx.types.bool].iter());
+                let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
                 let val = val.load_scalar(fx);
                 Some(CValue::by_val_pair(val, is_overflow, fx.layout_of(out_ty)))
             } else {

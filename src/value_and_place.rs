@@ -35,10 +35,10 @@ fn codegen_field<'tcx>(
                 let unaligned_offset = field_offset.bytes();
                 let (_, unsized_align) = crate::unsize::size_and_align_of_dst(fx, field_layout, extra);
 
-                let one = fx.bcx.ins().iconst(pointer_ty(fx.cx.tcx), 1);
+                let one = fx.bcx.ins().iconst(pointer_ty(fx.tcx), 1);
                 let align_sub_1 = fx.bcx.ins().isub(unsized_align, one);
                 let and_lhs = fx.bcx.ins().iadd_imm(align_sub_1, unaligned_offset as i64);
-                let zero = fx.bcx.ins().iconst(pointer_ty(fx.cx.tcx), 0);
+                let zero = fx.bcx.ins().iconst(pointer_ty(fx.tcx), 0);
                 let and_rhs = fx.bcx.ins().isub(zero, unsized_align);
                 let offset = fx.bcx.ins().band(and_lhs, and_rhs);
 
@@ -119,9 +119,9 @@ impl<'tcx> CValue<'tcx> {
         match self.0 {
             CValueInner::ByRef(ptr, None) => {
                 let clif_ty = match layout.abi {
-                    Abi::Scalar(ref scalar) => scalar_to_clif_type(fx.cx.tcx, scalar.clone()),
+                    Abi::Scalar(ref scalar) => scalar_to_clif_type(fx.tcx, scalar.clone()),
                     Abi::Vector { ref element, count } => {
-                        scalar_to_clif_type(fx.cx.tcx, element.clone())
+                        scalar_to_clif_type(fx.tcx, element.clone())
                             .by(u16::try_from(count).unwrap()).unwrap()
                     }
                     _ => unreachable!("{:?}", layout.ty),
@@ -146,9 +146,9 @@ impl<'tcx> CValue<'tcx> {
                     Abi::ScalarPair(a, b) => (a, b),
                     _ => unreachable!("load_scalar_pair({:?})", self),
                 };
-                let b_offset = scalar_pair_calculate_b_offset(fx.cx.tcx, a_scalar, b_scalar);
-                let clif_ty1 = scalar_to_clif_type(fx.cx.tcx, a_scalar.clone());
-                let clif_ty2 = scalar_to_clif_type(fx.cx.tcx, b_scalar.clone());
+                let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
+                let clif_ty1 = scalar_to_clif_type(fx.tcx, a_scalar.clone());
+                let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar.clone());
                 let val1 = ptr.load(fx, clif_ty1, MemFlags::new());
                 let val2 = ptr.offset(fx, b_offset).load(fx, clif_ty2, MemFlags::new());
                 (val1, val2)
@@ -419,13 +419,13 @@ impl<'tcx> CPlace<'tcx> {
                     assert_assignable(fx, a, b);
                 }
                 (ty::FnPtr(_), ty::FnPtr(_)) => {
-                    let from_sig = fx.cx.tcx.normalize_erasing_late_bound_regions(
+                    let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
                         ParamEnv::reveal_all(),
-                        &from_ty.fn_sig(fx.cx.tcx),
+                        &from_ty.fn_sig(fx.tcx),
                     );
-                    let to_sig = fx.cx.tcx.normalize_erasing_late_bound_regions(
+                    let to_sig = fx.tcx.normalize_erasing_late_bound_regions(
                         ParamEnv::reveal_all(),
-                        &to_ty.fn_sig(fx.cx.tcx),
+                        &to_ty.fn_sig(fx.tcx),
                     );
                     assert_eq!(
                         from_sig, to_sig,
@@ -436,10 +436,10 @@ impl<'tcx> CPlace<'tcx> {
                 }
                 (ty::Dynamic(from_traits, _), ty::Dynamic(to_traits, _)) => {
                     let from_traits = fx
-                        .cx.tcx
+                        .tcx
                         .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), from_traits);
                     let to_traits = fx
-                        .cx.tcx
+                        .tcx
                         .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to_traits);
                     assert_eq!(
                         from_traits, to_traits,
@@ -569,7 +569,7 @@ impl<'tcx> CPlace<'tcx> {
             }
             Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
                 let (value, extra) = from.load_scalar_pair(fx);
-                let b_offset = scalar_pair_calculate_b_offset(fx.cx.tcx, a_scalar, b_scalar);
+                let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
                 to_ptr.store(fx, value, MemFlags::new());
                 to_ptr.offset(fx, b_offset).store(fx, extra, MemFlags::new());
                 return;
@@ -673,7 +673,7 @@ impl<'tcx> CPlace<'tcx> {
 
     pub(crate) fn place_deref(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> CPlace<'tcx> {
         let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap().ty);
-        if has_ptr_meta(fx.cx.tcx, inner_layout.ty) {
+        if has_ptr_meta(fx.tcx, inner_layout.ty) {
             let (addr, extra) = self.to_cvalue(fx).load_scalar_pair(fx);
             CPlace::for_ptr_with_extra(Pointer::new(addr), extra, inner_layout)
         } else {
@@ -682,7 +682,7 @@ impl<'tcx> CPlace<'tcx> {
     }
 
     pub(crate) fn write_place_ref(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
-        if has_ptr_meta(fx.cx.tcx, self.layout().ty) {
+        if has_ptr_meta(fx.tcx, self.layout().ty) {
             let (ptr, extra) = self.to_ptr_maybe_unsized();
             let ptr = CValue::by_val_pair(
                 ptr.get_addr(fx),

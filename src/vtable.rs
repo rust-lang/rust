@@ -13,9 +13,9 @@ fn vtable_memflags() -> MemFlags {
 }
 
 pub(crate) fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
-    let usize_size = fx.layout_of(fx.cx.tcx.types.usize).size.bytes() as usize;
+    let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
-        pointer_ty(fx.cx.tcx),
+        pointer_ty(fx.tcx),
         vtable_memflags(),
         vtable,
         (DROP_FN_INDEX * usize_size) as i32,
@@ -23,9 +23,9 @@ pub(crate) fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: 
 }
 
 pub(crate) fn size_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
-    let usize_size = fx.layout_of(fx.cx.tcx.types.usize).size.bytes() as usize;
+    let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
-        pointer_ty(fx.cx.tcx),
+        pointer_ty(fx.tcx),
         vtable_memflags(),
         vtable,
         (SIZE_INDEX * usize_size) as i32,
@@ -33,9 +33,9 @@ pub(crate) fn size_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Val
 }
 
 pub(crate) fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
-    let usize_size = fx.layout_of(fx.cx.tcx.types.usize).size.bytes() as usize;
+    let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
-        pointer_ty(fx.cx.tcx),
+        pointer_ty(fx.tcx),
         vtable_memflags(),
         vtable,
         (ALIGN_INDEX * usize_size) as i32,
@@ -57,9 +57,9 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
         )
     };
 
-    let usize_size = fx.layout_of(fx.cx.tcx.types.usize).size.bytes();
+    let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes();
     let func_ref = fx.bcx.ins().load(
-        pointer_ty(fx.cx.tcx),
+        pointer_ty(fx.tcx),
         vtable_memflags(),
         vtable,
         ((idx + 3) * usize_size as usize) as i32,
@@ -89,11 +89,11 @@ fn build_vtable<'tcx>(
     layout: TyAndLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> DataId {
-    let tcx = fx.cx.tcx;
-    let usize_size = fx.layout_of(fx.cx.tcx.types.usize).size.bytes() as usize;
+    let tcx = fx.tcx;
+    let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
 
     let drop_in_place_fn =
-        import_function(tcx, &mut fx.cx.module, Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.cx.tcx));
+        import_function(tcx, &mut fx.cx.module, Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.tcx));
 
     let mut components: Vec<_> = vec![Some(drop_in_place_fn), None, None];
 
@@ -109,7 +109,7 @@ fn build_vtable<'tcx>(
             Some(import_function(
                 tcx,
                 &mut fx.cx.module,
-                Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap().polymorphize(fx.cx.tcx),
+                Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap().polymorphize(fx.tcx),
             ))
         })
     });
@@ -121,8 +121,8 @@ fn build_vtable<'tcx>(
         .collect::<Vec<u8>>()
         .into_boxed_slice();
 
-    write_usize(fx.cx.tcx, &mut data, SIZE_INDEX, layout.size.bytes());
-    write_usize(fx.cx.tcx, &mut data, ALIGN_INDEX, layout.align.abi.bytes());
+    write_usize(fx.tcx, &mut data, SIZE_INDEX, layout.size.bytes());
+    write_usize(fx.tcx, &mut data, ALIGN_INDEX, layout.align.abi.bytes());
     data_ctx.define(data);
 
     for (i, component) in components.into_iter().enumerate() {
@@ -148,7 +148,7 @@ fn build_vtable<'tcx>(
             false,
             false,
             Some(
-                fx.cx.tcx
+                fx.tcx
                     .data_layout
                     .pointer_align
                     .pref

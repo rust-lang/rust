@@ -19,7 +19,7 @@ pub(super) fn codegen_return_param(
     start_block: Block,
 ) {
     let ret_layout = return_layout(fx);
-    let ret_pass_mode = get_pass_mode(fx.cx.tcx, ret_layout);
+    let ret_pass_mode = get_pass_mode(fx.tcx, ret_layout);
     let ret_param = match ret_pass_mode {
         PassMode::NoPass => {
             fx.local_map
@@ -66,7 +66,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
 ) -> (Inst, T) {
     let ret_layout = fx.layout_of(fn_sig.output());
 
-    let output_pass_mode = get_pass_mode(fx.cx.tcx, ret_layout);
+    let output_pass_mode = get_pass_mode(fx.tcx, ret_layout);
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByRef { size: Some(_)} => match ret_place {
@@ -102,7 +102,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
 }
 
 pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, impl Backend>) {
-    match get_pass_mode(fx.cx.tcx, return_layout(fx)) {
+    match get_pass_mode(fx.tcx, return_layout(fx)) {
         PassMode::NoPass | PassMode::ByRef { size: Some(_) } => {
             fx.bcx.ins().return_(&[]);
         }
