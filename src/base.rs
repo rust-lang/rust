@@ -16,8 +16,16 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let (name, sig) = get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
     let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
 
+    // Make the FunctionBuilder
     let mut func_ctx = FunctionBuilderContext::new();
+    cx.cached_context.clear();
+
     let mut func = Function::new();
+    std::mem::swap(&mut cx.cached_context.func, &mut func);
+    func.name = ExternalName::user(0, func_id.as_u32());
+    func.signature = sig;
+    func.collect_debug_info();
+
     let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
 
     // Predefine blocks
@@ -62,13 +70,6 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
         });
     }
 
-    // Make FunctionBuilder
-    let context = &mut fx.cx.cached_context;
-    context.clear();
-    context.func.name = ExternalName::user(0, func_id.as_u32());
-    context.func.signature = sig;
-    context.func.collect_debug_info();
-
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
     let instance = fx.instance;
     let mut clif_comments = fx.clif_comments;
@@ -76,8 +77,12 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let local_map = fx.local_map;
     let cold_blocks = fx.cold_blocks;
 
+    // Store function in context
+    let context = &mut cx.cached_context;
+    context.func = func;
+
     crate::pretty_clif::write_clif_file(
-        fx.tcx,
+        tcx,
         "unopt",
         None,
         instance,
@@ -97,10 +102,10 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     // instruction, which doesn't have an encoding.
     context.compute_cfg();
     context.compute_domtree();
-    context.eliminate_unreachable_code(fx.cx.module.isa()).unwrap();
+    context.eliminate_unreachable_code(cx.module.isa()).unwrap();
 
     // Define function
-    let module = &mut fx.cx.module;
+    let module = &mut cx.module;
     tcx.sess.time(
         "define function",
         || module.define_function(
@@ -112,18 +117,18 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
 
     // Write optimized function to file for debugging
     crate::pretty_clif::write_clif_file(
-        fx.tcx,
+        tcx,
         "opt",
-        Some(fx.cx.module.isa()),
+        Some(cx.module.isa()),
         instance,
         &context,
         &clif_comments,
     );
 
     // Define debuginfo for function
-    let isa = fx.cx.module.isa();
-    let debug_context = &mut fx.cx.debug_context;
-    let unwind_context = &mut fx.cx.unwind_context;
+    let isa = cx.module.isa();
+    let debug_context = &mut cx.debug_context;
+    let unwind_context = &mut cx.unwind_context;
     tcx.sess.time("generate debug info", || {
         if let Some(debug_context) = debug_context {
             debug_context.define_function(instance, func_id, &name, isa, context, &source_info_set, local_map);
