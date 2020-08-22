@@ -16,8 +16,8 @@ extern crate libc;
 use libc::c_int;
 
 #[link(name = "check_static_recursion_foreign_helper")]
-extern "C" {
-    #[allow(dead_code)]
+extern {
+    #[no_mangle]
     static test_static: c_int;
 }
 
