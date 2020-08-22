@@ -20,8 +20,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let mut func_ctx = FunctionBuilderContext::new();
     cx.cached_context.clear();
 
-    let mut func = Function::new();
-    std::mem::swap(&mut cx.cached_context.func, &mut func);
+    let mut func = std::mem::replace(&mut cx.cached_context.func, Function::new());
     func.name = ExternalName::user(0, func_id.as_u32());
     func.signature = sig;
     func.collect_debug_info();
