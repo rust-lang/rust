@@ -166,14 +166,17 @@ up the sysroot.  If you are using `miri` (the Miri driver) directly, see the
 Miri adds its own set of `-Z` flags:
 
 * `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you
-  can focus on other failures.
+  can focus on other failures, but it means Miri can miss bugs in your program.
+  Using this flag is **unsound**.
 * `-Zmiri-disable-stacked-borrows` disables checking the experimental
   [Stacked Borrows] aliasing rules.  This can make Miri run faster, but it also
-  means no aliasing violations will be detected.
+  means no aliasing violations will be detected.  Using this flag is **unsound**
+  (but the affected soundness rules are experimental).
 * `-Zmiri-disable-validation` disables enforcing validity invariants, which are
   enforced by default.  This is mostly useful to focus on other failures (such
-  as out-of-bounds accesses) first.  Setting this flag means Miri will miss bugs
-  in your program.  However, this can also help to make Miri run faster.
+  as out-of-bounds accesses) first.  Setting this flag means Miri can miss bugs
+  in your program.  However, this can also help to make Miri run faster.  Using
+  this flag is **unsound**.
 * `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
