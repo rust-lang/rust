@@ -266,7 +266,6 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
 
 pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     pub(crate) codegen_cx: &'clif mut crate::CodegenCx<'tcx, B>,
-    pub(crate) global_asm: &'clif mut String,
     pub(crate) pointer_type: Type, // Cached from module
 
     pub(crate) instance: Instance<'tcx>,
@@ -283,8 +282,6 @@ pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     pub(crate) cold_blocks: EntitySet<Block>,
 
     pub(crate) clif_comments: crate::pretty_clif::CommentWriter,
-    pub(crate) vtables: &'clif mut FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
-
     pub(crate) source_info_set: indexmap::IndexSet<SourceInfo>,
 
     /// This should only be accessed by `CPlace::new_var`.

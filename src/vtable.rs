@@ -93,7 +93,7 @@ fn build_vtable<'tcx>(
     let usize_size = fx.layout_of(fx.codegen_cx.tcx.types.usize).size.bytes() as usize;
 
     let drop_in_place_fn =
-        import_function(tcx, fx.codegen_cx.module, Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.codegen_cx.tcx));
+        import_function(tcx, &mut fx.codegen_cx.module, Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.codegen_cx.tcx));
 
     let mut components: Vec<_> = vec![Some(drop_in_place_fn), None, None];
 
@@ -108,7 +108,7 @@ fn build_vtable<'tcx>(
         opt_mth.map_or(None, |(def_id, substs)| {
             Some(import_function(
                 tcx,
-                fx.codegen_cx.module,
+                &mut fx.codegen_cx.module,
                 Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap().polymorphize(fx.codegen_cx.tcx),
             ))
         })

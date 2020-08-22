@@ -67,7 +67,7 @@ pub(crate) fn codegen_tls_ref<'tcx>(
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CValue<'tcx> {
-    let data_id = data_id_for_static(fx.codegen_cx.tcx, fx.codegen_cx.module, def_id, false);
+    let data_id = data_id_for_static(fx.codegen_cx.tcx, &mut fx.codegen_cx.module, def_id, false);
     let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(local_data_id, format!("tls {:?}", def_id));
@@ -80,7 +80,7 @@ fn codegen_static_ref<'tcx>(
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CPlace<'tcx> {
-    let data_id = data_id_for_static(fx.codegen_cx.tcx, fx.codegen_cx.module, def_id, false);
+    let data_id = data_id_for_static(fx.codegen_cx.tcx, &mut fx.codegen_cx.module, def_id, false);
     let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(local_data_id, format!("{:?}", def_id));
@@ -167,21 +167,21 @@ pub(crate) fn trans_const_value<'tcx>(
                     let alloc_kind = fx.codegen_cx.tcx.get_global_alloc(ptr.alloc_id);
                     let base_addr = match alloc_kind {
                         Some(GlobalAlloc::Memory(alloc)) => {
-                            fx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
-                            let data_id = data_id_for_alloc_id(fx.codegen_cx.module, ptr.alloc_id, alloc.align, alloc.mutability);
+                            fx.codegen_cx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
+                            let data_id = data_id_for_alloc_id(&mut fx.codegen_cx.module, ptr.alloc_id, alloc.align, alloc.mutability);
                             let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             #[cfg(debug_assertions)]
                             fx.add_comment(local_data_id, format!("{:?}", ptr.alloc_id));
                             fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                         }
                         Some(GlobalAlloc::Function(instance)) => {
-                            let func_id = crate::abi::import_function(fx.codegen_cx.tcx, fx.codegen_cx.module, instance);
+                            let func_id = crate::abi::import_function(fx.codegen_cx.tcx, &mut fx.codegen_cx.module, instance);
                             let local_func_id = fx.codegen_cx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
                             fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
                         }
                         Some(GlobalAlloc::Static(def_id)) => {
                             assert!(fx.codegen_cx.tcx.is_static(def_id));
-                            let data_id = data_id_for_static(fx.codegen_cx.tcx, fx.codegen_cx.module, def_id, false);
+                            let data_id = data_id_for_static(fx.codegen_cx.tcx, &mut fx.codegen_cx.module, def_id, false);
                             let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             #[cfg(debug_assertions)]
                             fx.add_comment(local_data_id, format!("{:?}", def_id));
@@ -216,8 +216,8 @@ fn pointer_for_allocation<'tcx>(
     alloc: &'tcx Allocation,
 ) -> crate::pointer::Pointer {
     let alloc_id = fx.codegen_cx.tcx.create_memory_alloc(alloc);
-    fx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
-    let data_id = data_id_for_alloc_id(fx.codegen_cx.module, alloc_id, alloc.align, alloc.mutability);
+    fx.codegen_cx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
+    let data_id = data_id_for_alloc_id(&mut fx.codegen_cx.module, alloc_id, alloc.align, alloc.mutability);
 
     let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]

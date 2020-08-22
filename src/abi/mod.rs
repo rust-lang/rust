@@ -226,7 +226,7 @@ pub(crate) fn import_function<'tcx>(
 impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     /// Instance must be monomorphized
     pub(crate) fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
-        let func_id = import_function(self.codegen_cx.tcx, self.codegen_cx.module, inst);
+        let func_id = import_function(self.codegen_cx.tcx, &mut self.codegen_cx.module, inst);
         let func_ref = self
             .codegen_cx.module
             .declare_func_in_func(func_id, &mut self.bcx.func);

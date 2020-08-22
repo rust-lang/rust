@@ -8,13 +8,13 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     instance: Instance<'tcx>,
     linkage: Linkage,
 ) {
-    let tcx = cx.codegen_cx.tcx;
+    let tcx = cx.tcx;
 
     let mir = tcx.instance_mir(instance.def);
 
     // Declare function
-    let (name, sig) = get_function_name_and_sig(tcx, cx.codegen_cx.module.isa().triple(), instance, false);
-    let func_id = cx.codegen_cx.module.declare_function(&name, linkage, &sig).unwrap();
+    let (name, sig) = get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
+    let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
 
     // Make FunctionBuilder
     let context = &mut cx.cached_context;
@@ -30,13 +30,11 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let block_map: IndexVec<BasicBlock, Block> = (0..mir.basic_blocks().len()).map(|_| bcx.create_block()).collect();
 
     // Make FunctionCx
-    let pointer_type = cx.codegen_cx.module.target_config().pointer_type();
+    let pointer_type = cx.module.target_config().pointer_type();
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
     let mut fx = FunctionCx {
-        tcx,
-        module: &mut cx.codegen_cx.module,
-        global_asm: &mut cx.global_asm,
+        codegen_cx: cx,
         pointer_type,
 
         instance,
@@ -49,8 +47,6 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
         cold_blocks: EntitySet::new(),
 
         clif_comments,
-        constants_cx: &mut cx.constants_cx,
-        vtables: &mut cx.vtables,
         source_info_set: indexmap::IndexSet::new(),
         next_ssa_var: 0,
 
@@ -78,7 +74,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let cold_blocks = fx.cold_blocks;
 
     crate::pretty_clif::write_clif_file(
-        cx.codegen_cx.tcx,
+        cx.tcx,
         "unopt",
         None,
         instance,
@@ -98,10 +94,10 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     // instruction, which doesn't have an encoding.
     context.compute_cfg();
     context.compute_domtree();
-    context.eliminate_unreachable_code(cx.codegen_cx.module.isa()).unwrap();
+    context.eliminate_unreachable_code(cx.module.isa()).unwrap();
 
     // Define function
-    let module = &mut cx.codegen_cx.module;
+    let module = &mut cx.module;
     tcx.sess.time(
         "define function",
         || module.define_function(
@@ -113,16 +109,16 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
 
     // Write optimized function to file for debugging
     crate::pretty_clif::write_clif_file(
-        cx.codegen_cx.tcx,
+        cx.tcx,
         "opt",
-        Some(cx.codegen_cx.module.isa()),
+        Some(cx.module.isa()),
         instance,
         &context,
         &clif_comments,
     );
 
     // Define debuginfo for function
-    let isa = cx.codegen_cx.module.isa();
+    let isa = cx.module.isa();
     let debug_context = &mut cx.debug_context;
     let unwind_context = &mut cx.unwind_context;
     tcx.sess.time("generate debug info", || {
