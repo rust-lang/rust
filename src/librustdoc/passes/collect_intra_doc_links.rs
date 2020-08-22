@@ -938,9 +938,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 // We only looked in one namespace. Try to give a better error if possible.
                                 if kind.full_res().is_none() {
                                     let other_ns = if ns == ValueNS { TypeNS } else { ValueNS };
-                                    for &ns in &[other_ns, MacroNS] {
+                                    for &new_ns in &[other_ns, MacroNS] {
                                         if let Some(res) = self.check_full_res(
-                                            ns,
+                                            new_ns,
                                             path_str,
                                             base_node,
                                             &current_item,
