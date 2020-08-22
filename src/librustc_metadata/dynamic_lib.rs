@@ -107,11 +107,26 @@ mod dl {
         handle: *mut u8,
         symbol: *const libc::c_char,
     ) -> Result<*mut u8, String> {
+        // HACK(#74469): On some platforms, users observed foreign code
+        // (specifically libc) invoking `dlopen`/`dlsym` in parallel with the
+        // functions in this module. This is problematic because, according to
+        // the POSIX API documentation, `dlerror` must be called to determine
+        // whether `dlsym` succeeded. Unlike `dlopen`, a NULL return value may
+        // indicate a successfully resolved symbol with an address of zero.
+        //
+        // Because symbols with address zero shouldn't occur in practice, we
+        // treat them as errors on platforms with misbehaving libc
+        // implementations.
+        const DLSYM_NULL_IS_ERROR: bool = cfg!(target_os = "illumos");
+
         let mut dlerror = error::lock();
 
-        // Flush `dlerror` since we need to use it to determine whether the subsequent call to
-        // `dlsym` is successful.
-        dlerror.clear();
+        // No need to flush `dlerror` if we aren't using it to determine whether
+        // the subsequent call to `dlsym` succeeded. If an error occurs, any
+        // stale value will be overwritten.
+        if !DLSYM_NULL_IS_ERROR {
+            dlerror.clear();
+        }
 
         let ret = libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8;
 
@@ -121,7 +136,12 @@ mod dl {
             return Ok(ret);
         }
 
-        dlerror.get().map(|()| ret)
+        match dlerror.get() {
+            Ok(()) if DLSYM_NULL_IS_ERROR => Err("Unknown error".to_string()),
+            Ok(()) => Ok(ret),
+
+            Err(msg) => Err(msg),
+        }
     }
 
     pub(super) unsafe fn close(handle: *mut u8) {
