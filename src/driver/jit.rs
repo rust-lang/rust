@@ -82,8 +82,11 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
         .chain(args.split(" "))
         .map(|arg| CString::new(arg).unwrap())
         .collect::<Vec<_>>();
-    let argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
-    // TODO: Rust doesn't care, but POSIX argv has a NULL sentinel at the end
+    let mut argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
+
+    // Push a null pointer as a terminating argument. This is required by POSIX and
+    // useful as some dynamic linkers use it as a marker to jump over.
+    argv.push(std::ptr::null());
 
     let ret = f(args.len() as c_int, argv.as_ptr());
 
