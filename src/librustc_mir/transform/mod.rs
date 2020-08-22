@@ -287,7 +287,7 @@ fn mir_const<'tcx>(
 
     // Ensure that `inevitable_calls` is computed before stealing the MIR as it is used by MIR
     // lints.
-    tcx.ensure().inevitable_calls(def.did.to_def_id());
+    let _ = tcx.inevitable_calls(def.did.to_def_id());
 
     let mut body = tcx.mir_built(def).steal();
 
