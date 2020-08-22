@@ -165,7 +165,7 @@ impl<'tcx> DebugContext<'tcx> {
         };
 
         let name = format!("{}", ty);
-        let layout = selfcodegen_cx.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
+        let layout = self.codegen_cx.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
 
         let type_id = match ty.kind {
             ty::Bool => primitive(&mut self.dwarf, gimli::DW_ATE_boolean),
@@ -203,7 +203,7 @@ impl<'tcx> DebugContext<'tcx> {
                 for (field_idx, field_def) in variant.fields.iter().enumerate() {
                     let field_offset = layout.fields.offset(field_idx);
                     let field_layout = layout.field(&layout::LayoutCx {
-                        tcx: selfcodegen_cx.tcx,
+                        tcx: self.codegen_cx.tcx,
                         param_env: ParamEnv::reveal_all(),
                     }, field_idx).unwrap();
 
@@ -261,7 +261,7 @@ impl<'tcx> DebugContext<'tcx> {
         local_map: FxHashMap<mir::Local, CPlace<'tcx>>,
     ) {
         let symbol = func_id.as_u32() as usize;
-        let mir = selfcodegen_cx.tcx.instance_mir(instance.def);
+        let mir = self.codegen_cx.tcx.instance_mir(instance.def);
 
         // FIXME: add to appropriate scope instead of root
         let scope = self.dwarf.unit.root();
@@ -336,7 +336,7 @@ impl<'tcx> DebugContext<'tcx> {
             let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
 
             for (local, _local_decl) in mir.local_decls.iter_enumerated() {
-                let ty = selfcodegen_cx.tcx.subst_and_normalize_erasing_regions(
+                let ty = self.codegen_cx.tcx.subst_and_normalize_erasing_regions(
                     instance.substs,
                     ty::ParamEnv::reveal_all(),
                     &mir.local_decls[local].ty,

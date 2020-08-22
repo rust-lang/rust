@@ -48,7 +48,7 @@ fn codegen_compare_bin_op<'tcx>(
     let intcc = crate::num::bin_op_to_intcc(bin_op, signed).unwrap();
     let val = fx.bcx.ins().icmp(intcc, lhs, rhs);
     let val = fx.bcx.ins().bint(types::I8, val);
-    CValue::by_val(val, fx.layout_of(fxcodegen_cx.tcx.types.bool))
+    CValue::by_val(val, fx.layout_of(fx.codegen_cx.tcx.types.bool))
 }
 
 pub(crate) fn codegen_binop<'tcx>(
@@ -66,8 +66,8 @@ pub(crate) fn codegen_binop<'tcx>(
                     let rhs = in_rhs.load_scalar(fx);
 
                     let (lhs, rhs) = if (bin_op == BinOp::Eq || bin_op == BinOp::Ne)
-                        && (in_lhs.layout().ty.kind == fxcodegen_cx.tcx.types.i8.kind
-                            || in_lhs.layout().ty.kind == fxcodegen_cx.tcx.types.i16.kind)
+                        && (in_lhs.layout().ty.kind == fx.codegen_cx.tcx.types.i8.kind
+                            || in_lhs.layout().ty.kind == fx.codegen_cx.tcx.types.i16.kind)
                     {
                         // FIXME(CraneStation/cranelift#896) icmp_imm.i8/i16 with eq/ne for signed ints is implemented wrong.
                         (
@@ -118,7 +118,7 @@ pub(crate) fn trans_bool_binop<'tcx>(
         _ => unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs, in_rhs),
     };
 
-    CValue::by_val(res, fx.layout_of(fxcodegen_cx.tcx.types.bool))
+    CValue::by_val(res, fx.layout_of(fx.codegen_cx.tcx.types.bool))
 }
 
 pub(crate) fn trans_int_binop<'tcx>(
@@ -323,7 +323,7 @@ pub(crate) fn trans_checked_int_binop<'tcx>(
     // FIXME directly write to result place instead
     let out_place = CPlace::new_stack_slot(
         fx,
-        fx.layout_of(fxcodegen_cx.tcx.mk_tup([in_lhs.layout().ty, fxcodegen_cx.tcx.types.bool].iter())),
+        fx.layout_of(fx.codegen_cx.tcx.mk_tup([in_lhs.layout().ty, fx.codegen_cx.tcx.types.bool].iter())),
     );
     let out_layout = out_place.layout();
     out_place.write_cvalue(fx, CValue::by_val_pair(res, has_overflow, out_layout));
@@ -368,7 +368,7 @@ pub(crate) fn trans_float_binop<'tcx>(
             };
             let val = fx.bcx.ins().fcmp(fltcc, lhs, rhs);
             let val = fx.bcx.ins().bint(types::I8, val);
-            return CValue::by_val(val, fx.layout_of(fxcodegen_cx.tcx.types.bool));
+            return CValue::by_val(val, fx.layout_of(fx.codegen_cx.tcx.types.bool));
         }
         _ => unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs, in_rhs),
     };
@@ -383,7 +383,7 @@ pub(crate) fn trans_ptr_binop<'tcx>(
     in_rhs: CValue<'tcx>,
 ) -> CValue<'tcx> {
     let is_thin_ptr = in_lhs.layout().ty.builtin_deref(true).map(|TypeAndMut { ty, mutbl: _}| {
-        !has_ptr_meta(fxcodegen_cx.tcx, ty)
+        !has_ptr_meta(fx.codegen_cx.tcx, ty)
     }).unwrap_or(true);
 
     if is_thin_ptr {
@@ -440,7 +440,7 @@ pub(crate) fn trans_ptr_binop<'tcx>(
 
         CValue::by_val(
             fx.bcx.ins().bint(types::I8, res),
-            fx.layout_of(fxcodegen_cx.tcx.types.bool),
+            fx.layout_of(fx.codegen_cx.tcx.types.bool),
         )
     }
 }

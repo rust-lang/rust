@@ -95,7 +95,7 @@ fn line_program_add_file(
 
 impl<'tcx> DebugContext<'tcx> {
     pub(super) fn emit_location(&mut self, entry_id: UnitEntryId, span: Span) {
-        let loc = selfcodegen_cx.tcx.sess.source_map().lookup_char_pos(span.lo());
+        let loc = self.codegen_cx.tcx.sess.source_map().lookup_char_pos(span.lo());
 
         let file_id = line_program_add_file(
             &mut self.dwarf.unit.line_program,
@@ -129,7 +129,7 @@ impl<'tcx> DebugContext<'tcx> {
         function_span: Span,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) -> CodeOffset {
-        let tcx = selfcodegen_cx.tcx;
+        let tcx = self.codegen_cx.tcx;
         let line_program = &mut self.dwarf.unit.line_program;
         let func = &context.func;
 

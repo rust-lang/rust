@@ -11,13 +11,13 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     let def_id = instance.def_id();
     let substs = instance.substs;
 
-    let intrinsic = fxcodegen_cx.tcx.item_name(def_id).as_str();
+    let intrinsic = fx.codegen_cx.tcx.item_name(def_id).as_str();
     let intrinsic = &intrinsic[..];
 
     intrinsic_match! {
         fx, intrinsic, substs, args,
         _ => {
-            fxcodegen_cx.tcx.sess.span_fatal(span, &format!("Unknown SIMD intrinsic {}", intrinsic));
+            fx.codegen_cx.tcx.sess.span_fatal(span, &format!("Unknown SIMD intrinsic {}", intrinsic));
         };
 
         simd_cast, (c a) {
@@ -68,8 +68,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             assert_eq!(x.layout(), y.layout());
             let layout = x.layout();
 
-            let (lane_type, lane_count) = lane_type_and_count(fxcodegen_cx.tcx, layout);
-            let (ret_lane_type, ret_lane_count) = lane_type_and_count(fxcodegen_cx.tcx, ret.layout());
+            let (lane_type, lane_count) = lane_type_and_count(fx.codegen_cx.tcx, layout);
+            let (ret_lane_type, ret_lane_count) = lane_type_and_count(fx.codegen_cx.tcx, ret.layout());
 
             assert_eq!(lane_type, ret_lane_type);
             assert_eq!(n, ret_lane_count);
@@ -92,7 +92,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 (0..ret_lane_count).map(|i| {
                     let i = usize::try_from(i).unwrap();
                     let idx = rustc_middle::mir::interpret::read_target_uint(
-                        fxcodegen_cx.tcx.data_layout.endian,
+                        fx.codegen_cx.tcx.data_layout.endian,
                         &idx_bytes[4*i.. 4*i + 4],
                     ).expect("read_target_uint");
                     u16::try_from(idx).expect("try_from u32")
@@ -119,7 +119,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
                 idx_const
             } else {
-                fxcodegen_cx.tcx.sess.span_warn(
+                fx.codegen_cx.tcx.sess.span_warn(
                     fx.mir.span,
                     "`#[rustc_arg_required_const(..)]` is not yet supported. Calling this function will panic.",
                 );
@@ -128,9 +128,9 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             };
 
             let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).expect(&format!("kind not scalar: {:?}", idx_const));
-            let (_lane_type, lane_count) = lane_type_and_count(fxcodegen_cx.tcx, base.layout());
+            let (_lane_type, lane_count) = lane_type_and_count(fx.codegen_cx.tcx, base.layout());
             if idx >= lane_count.into() {
-                fxcodegen_cx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_insert] idx {} >= lane_count {}", idx, lane_count));
+                fx.codegen_cx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_insert] idx {} >= lane_count {}", idx, lane_count));
             }
 
             ret.write_cvalue(fx, base);
@@ -143,7 +143,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
                 idx_const
             } else {
-                fxcodegen_cx.tcx.sess.span_warn(
+                fx.codegen_cx.tcx.sess.span_warn(
                     fx.mir.span,
                     "`#[rustc_arg_required_const(..)]` is not yet supported. Calling this function will panic.",
                 );
@@ -153,9 +153,9 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             };
 
             let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).expect(&format!("kind not scalar: {:?}", idx_const));
-            let (_lane_type, lane_count) = lane_type_and_count(fxcodegen_cx.tcx, v.layout());
+            let (_lane_type, lane_count) = lane_type_and_count(fx.codegen_cx.tcx, v.layout());
             if idx >= lane_count.into() {
-                fxcodegen_cx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_extract] idx {} >= lane_count {}", idx, lane_count));
+                fx.codegen_cx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_extract] idx {} >= lane_count {}", idx, lane_count));
             }
 
             let ret_lane = v.value_field(fx, mir::Field::new(idx.try_into().unwrap()));
@@ -205,8 +205,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             assert_eq!(a.layout(), c.layout());
             let layout = a.layout();
 
-            let (_lane_layout, lane_count) = lane_type_and_count(fxcodegen_cx.tcx, layout);
-            let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fxcodegen_cx.tcx, ret.layout());
+            let (_lane_layout, lane_count) = lane_type_and_count(fx.codegen_cx.tcx, layout);
+            let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.codegen_cx.tcx, ret.layout());
             assert_eq!(lane_count, ret_lane_count);
 
             for lane in 0..lane_count {

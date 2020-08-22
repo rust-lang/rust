@@ -2,24 +2,24 @@ use crate::prelude::*;
 
 fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, msg: &str) {
     let puts = fx
-        codegen_cx.module
+        .codegen_cx.module
         .declare_function(
             "puts",
             Linkage::Import,
             &Signature {
                 call_conv: CallConv::triple_default(fx.triple()),
-                params: vec![AbiParam::new(pointer_ty(fxcodegen_cx.tcx))],
+                params: vec![AbiParam::new(pointer_ty(fx.codegen_cx.tcx))],
                 returns: vec![AbiParam::new(types::I32)],
             },
         )
         .unwrap();
-    let puts = fxcodegen_cx.module.declare_func_in_func(puts, &mut fx.bcx.func);
+    let puts = fx.codegen_cx.module.declare_func_in_func(puts, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     {
         fx.add_comment(puts, "puts");
     }
 
-    let symbol_name = fxcodegen_cx.tcx.symbol_name(fx.instance);
+    let symbol_name = fx.codegen_cx.tcx.symbol_name(fx.instance);
     let real_msg = format!("trap at {:?} ({}): {}\0", fx.instance, symbol_name, msg);
     let msg_ptr = fx.anonymous_str("trap", &real_msg);
     fx.bcx.ins().call(puts, &[msg_ptr]);

@@ -160,8 +160,8 @@ impl<'tcx, B: Backend + 'static> CodegenCx<'tcx, B> {
     }
 
     fn finalize(mut self) -> (Module<B>, String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
-        selfcodegen_cx.constants_cx.finalize(selfcodegen_cx.tcx, &mut selfcodegen_cx.module);
-        (selfcodegen_cx.module, self.global_asm, self.debug_context, self.unwind_context)
+        self.codegen_cx.constants_cx.finalize(self.codegen_cx.tcx, &mut self.codegen_cx.module);
+        (self.codegen_cx.module, self.global_asm, self.debug_context, self.unwind_context)
     }
 }
 
