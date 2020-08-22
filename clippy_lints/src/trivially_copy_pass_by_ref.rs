@@ -2,6 +2,7 @@ use std::cmp;
 
 use crate::utils::{is_copy, is_self_ty, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
+use rustc_ast::attr;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
@@ -155,8 +156,12 @@ impl<'tcx> LateLintPass<'tcx> for TriviallyCopyPassByRef {
                     return;
                 }
                 for a in attrs {
-                    if a.meta_item_list().is_some() && a.has_name(sym!(proc_macro_derive)) {
-                        return;
+                    if let Some(meta_items) = a.meta_item_list() {
+                        if a.has_name(sym!(proc_macro_derive))
+                            || (a.has_name(sym!(inline)) && attr::list_contains_name(&meta_items, sym!(always)))
+                        {
+                            return;
+                        }
                     }
                 }
             },
