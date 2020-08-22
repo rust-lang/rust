@@ -551,7 +551,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
         polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
-        self.propagate_constraints(body);
+        self.propagate_constraints(body, infcx.tcx);
 
         let mut errors_buffer = RegionErrors::new();
 
@@ -599,7 +599,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
-    fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
+    fn propagate_constraints(&mut self, _body: &Body<'tcx>, tcx: TyCtxt<'tcx>) {
         debug!("propagate_constraints()");
 
         debug!("propagate_constraints: constraints={:#?}", {
@@ -617,7 +617,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // own.
         let constraint_sccs = self.constraint_sccs.clone();
         for scc in constraint_sccs.all_sccs() {
-            self.compute_value_for_scc(scc);
+            self.compute_value_for_scc(scc, tcx);
         }
 
         // Sort the applied member constraints so we can binary search
@@ -629,7 +629,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// computed, by unioning the values of its successors.
     /// Assumes that all successors have been computed already
     /// (which is assured by iterating over SCCs in dependency order).
-    fn compute_value_for_scc(&mut self, scc_a: ConstraintSccIndex) {
+    fn compute_value_for_scc(&mut self, scc_a: ConstraintSccIndex, tcx: TyCtxt<'tcx>) {
         let constraint_sccs = self.constraint_sccs.clone();
 
         // Walk each SCC `B` such that `A: B`...
@@ -652,7 +652,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Now take member constraints into account.
         let member_constraints = self.member_constraints.clone();
         for m_c_i in member_constraints.indices(scc_a) {
-            self.apply_member_constraint(scc_a, m_c_i, member_constraints.choice_regions(m_c_i));
+            self.apply_member_constraint(
+                tcx,
+                scc_a,
+                m_c_i,
+                member_constraints.choice_regions(m_c_i),
+            );
         }
 
         debug!(
@@ -675,6 +680,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// If we make any changes, returns true, else false.
     fn apply_member_constraint(
         &mut self,
+        tcx: TyCtxt<'tcx>,
         scc: ConstraintSccIndex,
         member_constraint_index: NllMemberConstraintIndex,
         choice_regions: &[ty::RegionVid],
@@ -688,12 +694,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // `impl_trait_in_bindings`, I believe, and we are just
             // opting not to handle it for now. See #61773 for
             // details.
-            bug!(
-                "member constraint for `{:?}` has an option region `{:?}` \
-                 that is not a universal region",
-                self.member_constraints[member_constraint_index].opaque_type_def_id,
-                uh_oh,
+            tcx.sess.delay_span_bug(
+                self.member_constraints[member_constraint_index].definition_span,
+                &format!(
+                    "member constraint for `{:?}` has an option region `{:?}` \
+                     that is not a universal region",
+                    self.member_constraints[member_constraint_index].opaque_type_def_id, uh_oh,
+                ),
             );
+            return false;
         }
 
         // Create a mutable vector of the options. We'll try to winnow
