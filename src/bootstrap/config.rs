@@ -527,7 +527,7 @@ impl Config {
 
         let build = toml.build.clone().unwrap_or_default();
         // set by bootstrap.py
-        config.hosts.push(config.build.clone());
+        config.hosts.push(config.build);
         for host in build.host.iter().map(|h| TargetSelection::from_user(h)) {
             if !config.hosts.contains(&host) {
                 config.hosts.push(host);

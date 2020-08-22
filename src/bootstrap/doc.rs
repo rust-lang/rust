@@ -96,7 +96,7 @@ fn is_explicit_request(builder: &Builder<'_>, path: &str) -> bool {
         .paths
         .iter()
         .map(components_simplified)
-        .any(|requested| requested.iter().copied().eq(path.split("/")))
+        .any(|requested| requested.iter().copied().eq(path.split('/')))
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
