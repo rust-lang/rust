@@ -1863,14 +1863,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn all_def_path_hashes_and_def_ids(&self) -> Vec<(DefPathHash, DefId)> {
-        let mut result = Vec::new();
         let mut def_path_hashes = self.def_path_hash_cache.lock();
-        for index in 0..self.num_def_ids() {
-            let index = DefIndex::from_usize(index);
-            let def_path_hash = self.def_path_hash_unlocked(index, &mut def_path_hashes);
-            result.push((def_path_hash, self.local_def_id(index)));
-        }
-        result
+        (0..self.num_def_ids())
+            .map(|index| {
+                let index = DefIndex::from_usize(index);
+                (self.def_path_hash_unlocked(index, &mut def_path_hashes), self.local_def_id(index))
+            })
+            .collect()
     }
 
     /// Get the `DepNodeIndex` corresponding this crate. The result of this
