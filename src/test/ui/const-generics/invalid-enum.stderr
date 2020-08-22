@@ -1,0 +1,27 @@
+error[E0573]: expected type, found variant `CompileFlag::A`
+  --> $DIR/invalid-enum.rs:13:10
+   |
+LL |   test::<CompileFlag::A>();
+   |          ^^^^^^^^^^^^^^
+   |          |
+   |          not a type
+   |          help: try using the variant's enum: `CompileFlag`
+
+error[E0107]: wrong number of const arguments: expected 1, found 0
+  --> $DIR/invalid-enum.rs:13:3
+   |
+LL |   test::<CompileFlag::A>();
+   |   ^^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
+
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/invalid-enum.rs:13:10
+   |
+LL |   test::<CompileFlag::A>();
+   |          ^^^^^^^^^^^^^^ unexpected type argument
+   |
+   = help: For more complex types, surround with braces: `{ HirId { owner: DefId(0:5 ~ invalid_enum[317d]::main[0]), local_id: 1 } }`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0573.
+For more information about an error, try `rustc --explain E0107`.
