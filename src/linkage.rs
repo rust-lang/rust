@@ -25,7 +25,7 @@ pub(crate) fn get_static_linkage(tcx: TyCtxt<'_>, def_id: DefId) -> Linkage {
         if tcx.is_reachable_non_generic(def_id) {
             Linkage::Export
         } else {
-            Linkage::Export // FIXME use Linkage::Hidden
+            Linkage::Hidden
         }
     }
 }
