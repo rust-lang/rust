@@ -79,6 +79,7 @@ pub mod check;
 pub mod expr_use_visitor;
 
 mod astconv;
+mod bounds;
 mod check_unused;
 mod coherence;
 mod collect;
@@ -109,7 +110,8 @@ use rustc_trait_selection::traits::{
 
 use std::iter;
 
-use astconv::{AstConv, Bounds};
+use astconv::AstConv;
+use bounds::Bounds;
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     if decl.c_variadic && !(abi == Abi::C || abi == Abi::Cdecl) {
