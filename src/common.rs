@@ -265,7 +265,7 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
 }
 
 pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
-    pub(crate) .codegen_cx: &'clif CodegenCx<'tcx, B>,
+    pub(crate) codegen_cx: &'clif mut crate::CodegenCx<'tcx, B>,
     pub(crate) global_asm: &'clif mut String,
     pub(crate) pointer_type: Type, // Cached from module
 

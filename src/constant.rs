@@ -167,7 +167,7 @@ pub(crate) fn trans_const_value<'tcx>(
                     let alloc_kind = fx.codegen_cx.tcx.get_global_alloc(ptr.alloc_id);
                     let base_addr = match alloc_kind {
                         Some(GlobalAlloc::Memory(alloc)) => {
-                            fx.codegen_cx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
+                            fx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
                             let data_id = data_id_for_alloc_id(fx.codegen_cx.module, ptr.alloc_id, alloc.align, alloc.mutability);
                             let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             #[cfg(debug_assertions)]
@@ -216,7 +216,7 @@ fn pointer_for_allocation<'tcx>(
     alloc: &'tcx Allocation,
 ) -> crate::pointer::Pointer {
     let alloc_id = fx.codegen_cx.tcx.create_memory_alloc(alloc);
-    fx.codegen_cx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
+    fx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
     let data_id = data_id_for_alloc_id(fx.codegen_cx.module, alloc_id, alloc.align, alloc.mutability);
 
     let local_data_id = fx.codegen_cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
