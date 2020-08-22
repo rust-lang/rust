@@ -4,6 +4,7 @@
 //! - PRIVATE_DOC_TESTS: this looks for private items with doc-tests.
 
 use super::{span_of_attrs, Pass};
+use crate::clean;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
@@ -59,6 +60,22 @@ impl crate::test::Tester for Tests {
     }
 }
 
+pub fn should_have_doc_example(item_kind: &clean::ItemEnum) -> bool {
+    !matches!(item_kind,
+        clean::StructFieldItem(_)
+        | clean::VariantItem(_)
+        | clean::AssocConstItem(_, _)
+        | clean::AssocTypeItem(_, _)
+        | clean::TypedefItem(_, _)
+        | clean::StaticItem(_)
+        | clean::ConstantItem(_)
+        | clean::ExternCrateItem(_, _)
+        | clean::ImportItem(_)
+        | clean::PrimitiveItem(_)
+        | clean::KeywordItem(_)
+    )
+}
+
 pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
     let hir_id = match cx.as_local_hir_id(item.def_id) {
         Some(hir_id) => hir_id,
@@ -73,13 +90,7 @@ pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
     find_testable_code(&dox, &mut tests, ErrorCodes::No, false, None);
 
     if tests.found_tests == 0 {
-        use ItemEnum::*;
-
-        let should_report = match item.inner {
-            ExternCrateItem(_, _) | ImportItem(_) | PrimitiveItem(_) | KeywordItem(_) => false,
-            _ => true,
-        };
-        if should_report {
+        if should_have_doc_example(&item.inner) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
             let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
             cx.tcx.struct_span_lint_hir(
