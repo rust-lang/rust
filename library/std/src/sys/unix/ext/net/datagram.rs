@@ -343,8 +343,8 @@ impl UnixDatagram {
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     ///     let (size, _truncated, sender) = sock.recv_vectored_with_ancillary_from(bufs, &mut ancillary)?;
     ///     println!("received {}", size);
-    ///     for ancillary_data in ancillary.messages() {
-    ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_data {
+    ///     for ancillary_result in ancillary.messages() {
+    ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
     ///                 println!("receive file descriptor: {}", fd);
     ///             }
@@ -391,8 +391,8 @@ impl UnixDatagram {
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     ///     let (size, _truncated) = sock.recv_vectored_with_ancillary(bufs, &mut ancillary)?;
     ///     println!("received {}", size);
-    ///     for ancillary_data in ancillary.messages() {
-    ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_data {
+    ///     for ancillary_result in ancillary.messages() {
+    ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
     ///                 println!("receive file descriptor: {}", fd);
     ///             }
