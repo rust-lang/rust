@@ -545,7 +545,7 @@ pub trait Iterator {
     /// ```
     /// #![feature(iter_intersperse)]
     ///
-    /// let hello = ["Hello", "World"].iter().map(|s| *s).intersperse(" ").collect::<String>();
+    /// let hello = ["Hello", "World"].iter().copied().intersperse(" ").collect::<String>();
     /// assert_eq!(hello, "Hello World");
     /// ```
     #[inline]

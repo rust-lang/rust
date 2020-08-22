@@ -16,7 +16,7 @@ impl<I: Iterator> Intersperse<I>
 where
     I::Item: Clone,
 {
-    pub(in super::super) fn new(iter: I, separator: I::Item) -> Self {
+    pub(in crate::iter) fn new(iter: I, separator: I::Item) -> Self {
         let mut iter = iter.fuse();
         Self { peek: iter.next(), iter, element: separator }
     }
