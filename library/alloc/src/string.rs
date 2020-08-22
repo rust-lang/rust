@@ -268,8 +268,8 @@ use crate::vec::Vec;
 ///
 /// Here, there's no need to allocate more memory inside the loop.
 ///
-/// [`str`]: type@str
-/// [`&str`]: type@str
+/// [`str`]: prim@str
+/// [`&str`]: prim@str
 /// [`Deref`]: core::ops::Deref
 /// [`as_str()`]: String::as_str
 #[derive(PartialOrd, Eq, Ord)]
@@ -296,7 +296,7 @@ pub struct String {
 ///
 /// [`Utf8Error`]: core::str::Utf8Error
 /// [`std::str`]: core::str
-/// [`&str`]: str
+/// [`&str`]: prim@str
 /// [`utf8_error`]: Self::utf8_error
 ///
 /// # Examples
@@ -472,7 +472,7 @@ impl String {
     ///
     /// [`from_utf8_unchecked`]: String::from_utf8_unchecked
     /// [`Vec<u8>`]: crate::vec::Vec
-    /// [`&str`]: str
+    /// [`&str`]: prim@str
     /// [`into_bytes`]: String::into_bytes
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1576,6 +1576,8 @@ impl String {
     ///
     /// This will drop any excess capacity.
     ///
+    /// [`str`]: prim@str
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1644,7 +1646,7 @@ impl FromUtf8Error {
     /// on using it.
     ///
     /// [`std::str`]: core::str
-    /// [`&str`]: str
+    /// [`&str`]: prim@str
     ///
     /// # Examples
     ///
