@@ -21,7 +21,7 @@ use core::slice::from_raw_parts_mut;
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
-use crate::alloc::{box_free, handle_alloc_error, AllocRef, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocErr, AllocRef, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::rc::is_dangling;
@@ -343,9 +343,11 @@ impl<T> Arc<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
-            Arc::from_ptr(Arc::allocate_for_layout(Layout::new::<T>(), |mem| {
-                mem as *mut ArcInner<mem::MaybeUninit<T>>
-            }))
+            Arc::from_ptr(Arc::allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.alloc(layout),
+                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
+            ))
         }
     }
 
@@ -372,9 +374,11 @@ impl<T> Arc<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
-            let mut uninit = Self::new_uninit();
-            ptr::write_bytes::<T>(Arc::get_mut_unchecked(&mut uninit).as_mut_ptr(), 0, 1);
-            uninit
+            Arc::from_ptr(Arc::allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.alloc_zeroed(layout),
+                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
+            ))
         }
     }
 
@@ -426,7 +430,7 @@ impl<T> Arc<T> {
 }
 
 impl<T> Arc<[T]> {
-    /// Constructs a new reference-counted slice with uninitialized contents.
+    /// Constructs a new atomically reference-counted slice with uninitialized contents.
     ///
     /// # Examples
     ///
@@ -452,6 +456,40 @@ impl<T> Arc<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         unsafe { Arc::from_ptr(Arc::allocate_for_slice(len)) }
+    }
+
+    /// Constructs a new atomically reference-counted slice with uninitialized contents, with the memory being
+    /// filled with `0` bytes.
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let values = Arc::<[u32]>::new_zeroed_slice(3);
+    /// let values = unsafe { values.assume_init() };
+    ///
+    /// assert_eq!(*values, [0, 0, 0])
+    /// ```
+    ///
+    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
+        unsafe {
+            Arc::from_ptr(Arc::allocate_for_layout(
+                Layout::array::<T>(len).unwrap(),
+                |layout| Global.alloc_zeroed(layout),
+                |mem| {
+                    ptr::slice_from_raw_parts_mut(mem as *mut T, len)
+                        as *mut ArcInner<[mem::MaybeUninit<T>]>
+                },
+            ))
+        }
     }
 }
 
@@ -858,6 +896,7 @@ impl<T: ?Sized> Arc<T> {
     /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
     unsafe fn allocate_for_layout(
         value_layout: Layout,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocErr>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
     ) -> *mut ArcInner<T> {
         // Calculate layout using the given value layout.
@@ -866,7 +905,7 @@ impl<T: ?Sized> Arc<T> {
         // reference (see #54908).
         let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
 
-        let ptr = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+        let ptr = allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the ArcInner
         let inner = mem_to_arcinner(ptr.as_non_null_ptr().as_ptr());
@@ -884,9 +923,11 @@ impl<T: ?Sized> Arc<T> {
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
         // Allocate for the `ArcInner<T>` using the given value.
         unsafe {
-            Self::allocate_for_layout(Layout::for_value(&*ptr), |mem| {
-                set_data_ptr(ptr as *mut T, mem) as *mut ArcInner<T>
-            })
+            Self::allocate_for_layout(
+                Layout::for_value(&*ptr),
+                |layout| Global.alloc(layout),
+                |mem| set_data_ptr(ptr as *mut T, mem) as *mut ArcInner<T>,
+            )
         }
     }
 
@@ -917,9 +958,11 @@ impl<T> Arc<[T]> {
     /// Allocates an `ArcInner<[T]>` with the given length.
     unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
         unsafe {
-            Self::allocate_for_layout(Layout::array::<T>(len).unwrap(), |mem| {
-                ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>
-            })
+            Self::allocate_for_layout(
+                Layout::array::<T>(len).unwrap(),
+                |layout| Global.alloc(layout),
+                |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
+            )
         }
     }
 }

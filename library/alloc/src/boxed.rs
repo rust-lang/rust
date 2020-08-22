@@ -271,6 +271,29 @@ impl<T> Box<[T]> {
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         unsafe { RawVec::with_capacity(len).into_box(len) }
     }
+
+    /// Constructs a new boxed slice with uninitialized contents, with the memory
+    /// being filled with `0` bytes.
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
+    /// of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let values = Box::<[u32]>::new_zeroed_slice(3);
+    /// let values = unsafe { values.assume_init() };
+    ///
+    /// assert_eq!(*values, [0, 0, 0])
+    /// ```
+    ///
+    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
+        unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
+    }
 }
 
 impl<T> Box<mem::MaybeUninit<T>> {
