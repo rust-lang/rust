@@ -265,9 +265,7 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
 }
 
 pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
-    // FIXME use a reference to `CodegenCx` instead of `tcx`, `module` and `constants` and `caches`
-    pub(crate) tcx: TyCtxt<'tcx>,
-    pub(crate) module: &'clif mut Module<B>,
+    pub(crate) codegen_cx: &'clif CodegenCx<'tcx, B>,
     pub(crate) global_asm: &'clif mut String,
     pub(crate) pointer_type: Type, // Cached from module
 
@@ -285,7 +283,6 @@ pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     pub(crate) cold_blocks: EntitySet<Block>,
 
     pub(crate) clif_comments: crate::pretty_clif::CommentWriter,
-    pub(crate) constants_cx: &'clif mut crate::constant::ConstantCx,
     pub(crate) vtables: &'clif mut FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
 
     pub(crate) source_info_set: indexmap::IndexSet<SourceInfo>,
