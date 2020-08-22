@@ -381,8 +381,9 @@ impl f32 {
     /// assert!(!f.is_nan());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_nan(self) -> bool {
+    pub const fn is_nan(self) -> bool {
         self != self
     }
 
@@ -390,7 +391,8 @@ impl f32 {
     // concerns about portability, so this implementation is for
     // private use internally.
     #[inline]
-    fn abs_private(self) -> f32 {
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    const fn abs_private(self) -> f32 {
         f32::from_bits(self.to_bits() & 0x7fff_ffff)
     }
 
@@ -410,8 +412,9 @@ impl f32 {
     /// assert!(neg_inf.is_infinite());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_infinite(self) -> bool {
+    pub const fn is_infinite(self) -> bool {
         self.abs_private() == Self::INFINITY
     }
 
@@ -430,8 +433,9 @@ impl f32 {
     /// assert!(!neg_inf.is_finite());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_finite(self) -> bool {
+    pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
         self.abs_private() < Self::INFINITY
@@ -457,9 +461,10 @@ impl f32 {
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_normal(self) -> bool {
-        self.classify() == FpCategory::Normal
+    pub const fn is_normal(self) -> bool {
+        matches!(self.classify(), FpCategory::Normal)
     }
 
     /// Returns the floating point category of the number. If only one property
@@ -476,7 +481,8 @@ impl f32 {
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn classify(self) -> FpCategory {
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    pub const fn classify(self) -> FpCategory {
         const EXP_MASK: u32 = 0x7f800000;
         const MAN_MASK: u32 = 0x007fffff;
 
@@ -501,8 +507,9 @@ impl f32 {
     /// assert!(!g.is_sign_positive());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_sign_positive(self) -> bool {
+    pub const fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
     }
 
@@ -517,8 +524,9 @@ impl f32 {
     /// assert!(g.is_sign_negative());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_sign_negative(self) -> bool {
+    pub const fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
         self.to_bits() & 0x8000_0000 != 0
