@@ -191,6 +191,22 @@ impl Completions {
         func: hir::Function,
         local_name: Option<String>,
     ) {
+        fn add_arg(arg: &str, ty: &Type, ctx: &CompletionContext) -> String {
+            let mut prefix = "";
+            if let Some(derefed_ty) = ty.remove_ref() {
+                ctx.scope.process_all_names(&mut |name, scope| {
+                    if prefix != "" {
+                        return;
+                    }
+                    if let ScopeDef::Local(local) = scope {
+                        if name.to_string() == arg && local.can_unify(derefed_ty.clone(), ctx.db) {
+                            prefix = if ty.is_mutable_reference() { "&mut " } else { "&" };
+                        }
+                    }
+                });
+            }
+            prefix.to_string() + arg
+        };
         let name = local_name.unwrap_or_else(|| func.name(ctx.db).to_string());
         let ast_node = func.source(ctx.db).value;
 
@@ -205,12 +221,20 @@ impl Completions {
                 .set_deprecated(is_deprecated(func, ctx.db))
                 .detail(function_declaration(&ast_node));
 
+        let params_ty = func.params(ctx.db);
         let params = ast_node
             .param_list()
             .into_iter()
             .flat_map(|it| it.params())
-            .flat_map(|it| it.pat())
-            .map(|pat| pat.to_string().trim_start_matches('_').into())
+            .zip(params_ty)
+            .flat_map(|(it, param_ty)| {
+                if let Some(pat) = it.pat() {
+                    let name = pat.to_string();
+                    let arg = name.trim_start_matches('_');
+                    return Some(add_arg(arg, &param_ty, ctx));
+                }
+                None
+            })
             .collect();
 
         builder = builder.add_call_parens(ctx, name, Params::Named(params));
@@ -859,6 +883,85 @@ fn main() { f<|> }
             r#"
 fn foo(_foo: i32, ___bar: bool, ho_ge_: String) {}
 fn main() { foo(${1:foo}, ${2:bar}, ${3:ho_ge_})$0 }
+"#,
+        );
+    }
+
+    #[test]
+    fn insert_ref_when_matching_local_in_scope() {
+        check_edit(
+            "ref_arg",
+            r#"
+struct Foo {}
+fn ref_arg(x: &Foo) {}
+fn main() {
+    let x = Foo {};
+    ref_ar<|>
+}
+"#,
+            r#"
+struct Foo {}
+fn ref_arg(x: &Foo) {}
+fn main() {
+    let x = Foo {};
+    ref_arg(${1:&x})$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn insert_mut_ref_when_matching_local_in_scope() {
+        check_edit(
+            "ref_arg",
+            r#"
+struct Foo {}
+fn ref_arg(x: &mut Foo) {}
+fn main() {
+    let x = Foo {};
+    ref_ar<|>
+}
+"#,
+            r#"
+struct Foo {}
+fn ref_arg(x: &mut Foo) {}
+fn main() {
+    let x = Foo {};
+    ref_arg(${1:&mut x})$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn insert_ref_when_matching_local_in_scope_for_method() {
+        check_edit(
+            "apply_foo",
+            r#"
+struct Foo {}
+struct Bar {}
+impl Bar {
+    fn apply_foo(&self, x: &Foo) {}
+}
+
+fn main() {
+    let x = Foo {};
+    let y = Bar {};
+    y.<|>
+}
+"#,
+            r#"
+struct Foo {}
+struct Bar {}
+impl Bar {
+    fn apply_foo(&self, x: &Foo) {}
+}
+
+fn main() {
+    let x = Foo {};
+    let y = Bar {};
+    y.apply_foo(${1:&x})$0
+}
 "#,
         );
     }

@@ -708,12 +708,24 @@ impl Function {
         Some(SelfParam { func: self.id })
     }
 
-    pub fn params(self, db: &dyn HirDatabase) -> Vec<Param> {
+    pub fn params(self, db: &dyn HirDatabase) -> Vec<Type> {
+        let resolver = self.id.resolver(db.upcast());
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let environment = TraitEnvironment::lower(db, &resolver);
         db.function_data(self.id)
             .params
             .iter()
             .skip(if self.self_param(db).is_some() { 1 } else { 0 })
-            .map(|_| Param { _ty: () })
+            .map(|type_ref| {
+                let ty = Type {
+                    krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate,
+                    ty: InEnvironment {
+                        value: Ty::from_hir_ext(&ctx, type_ref).0,
+                        environment: environment.clone(),
+                    },
+                };
+                ty
+            })
             .collect()
     }
 
@@ -745,10 +757,6 @@ impl From<Mutability> for Access {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SelfParam {
     func: FunctionId,
-}
-
-pub struct Param {
-    _ty: (),
 }
 
 impl SelfParam {
@@ -1100,6 +1108,12 @@ impl Local {
             ast.map_left(|it| it.cast().unwrap().to_node(&root)).map_right(|it| it.to_node(&root))
         })
     }
+
+    pub fn can_unify(self, other: Type, db: &dyn HirDatabase) -> bool {
+        let def = DefWithBodyId::from(self.parent);
+        let infer = db.infer(def);
+        db.can_unify(def, infer[self.pat_id].clone(), other.ty.value)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1274,6 +1288,14 @@ impl Type {
             self.ty.value,
             Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(Mutability::Mut), .. })
         )
+    }
+
+    pub fn remove_ref(&self) -> Option<Type> {
+        if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(_), .. }) = self.ty.value {
+            self.ty.value.substs().map(|substs| self.derived(substs[0].clone()))
+        } else {
+            None
+        }
     }
 
     pub fn is_unknown(&self) -> bool {
