@@ -13,11 +13,14 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::ops::Not;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxHasher};
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
 use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
 use cranelift_codegen::ir::immediates::Offset32;
+
+use hashbrown::HashSet;
+use std::hash::BuildHasherDefault;
 
 use crate::prelude::*;
 
@@ -45,9 +48,9 @@ impl Ord for OrdStackSlot {
 
 #[derive(Debug, Default)]
 struct StackSlotUsage {
-    stack_addr: FxHashSet<Inst>,
-    stack_load: FxHashSet<Inst>,
-    stack_store: FxHashSet<Inst>,
+    stack_addr: HashSet<Inst, BuildHasherDefault<FxHasher>>,
+    stack_load: HashSet<Inst, BuildHasherDefault<FxHasher>>,
+    stack_store: HashSet<Inst, BuildHasherDefault<FxHasher>>,
 }
 
 impl StackSlotUsage {
@@ -313,17 +316,19 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
 
     // Replace all unused stack_addr and stack_load instructions with nop.
     let mut func = &mut opt_ctx.ctx.func;
+
+    // drain_filter() on hashbrown::HashSet drains the items that do *not* match the
+    // predicate. Once hashbrown gets updated to match the behaviour of std::drain_filter
+    // (0.8.2), the predicate will have to be reversed
     for stack_slot_users in opt_ctx.stack_slot_usage_map.values_mut() {
         stack_slot_users
             .stack_addr
-            .drain()
-            .filter(|inst| stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true))
+            .drain_filter(|inst| !(stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true)))
             .for_each(|inst| StackSlotUsage::remove_unused_stack_addr(&mut func, inst));
 
         stack_slot_users
             .stack_load
-            .drain()
-            .filter(|inst| stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true))
+            .drain_filter(|inst| !(stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true)))
             .for_each(|inst| StackSlotUsage::remove_unused_load(&mut func, inst));
     }
 }
