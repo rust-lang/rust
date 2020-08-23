@@ -347,19 +347,41 @@ fn find_inevitable_calls_in_body<'tcx>(
 
         // All callees that are guaranteed to be reached by every successor will also be reached by
         // `bb`. Compute the intersection.
-        let mut callee_sets = relevant_successors.map(|bb| &inevitable_calls[*bb]);
-        let callee_intersection = match callee_sets.next() {
-            Some(accum) => callee_sets.fold(accum.clone(), |mut accum, succ| {
-                accum = &accum & succ;
-                accum
-            }),
-            None => FxHashSet::default(),
+        let successors = relevant_successors.copied();
+
+        // For efficiency, we initially only consider the smallest set.
+        let (smallest_successor_set_index, smallest_successor_set_bb) = match successors
+            .clone()
+            .enumerate()
+            .min_by_key(|(_, bb)| inevitable_calls[*bb].len())
+        {
+            Some((i, bb)) => (i, bb),
+            None => continue, // No callees will be added
         };
 
-        let bb_map = &mut inevitable_calls[bb];
-        let len = bb_map.len();
-        bb_map.extend(callee_intersection);
-        if bb_map.len() != len {
+        let mut dest_set = mem::take(&mut inevitable_calls[bb]);
+        let len = dest_set.len();
+        for callee in &inevitable_calls[smallest_successor_set_bb] {
+            if dest_set.contains(callee) {
+                continue;
+            }
+
+            // `callee` must be contained in *every* successor's set.
+            let add = successors.clone().enumerate().all(|(i, bb)| {
+                if i == smallest_successor_set_index {
+                    return true;
+                }
+                let callee_set = &inevitable_calls[bb];
+                callee_set.contains(callee)
+            });
+
+            if add {
+                dest_set.insert(callee.clone());
+            }
+        }
+
+        inevitable_calls[bb] = dest_set;
+        if inevitable_calls[bb].len() != len {
             // `bb`s inevitable callees were modified, so propagate that backwards.
             worklist.extend(&predecessors[bb]);
         }
