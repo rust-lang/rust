@@ -240,7 +240,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
         cflags: matches.opt_str("cflags").unwrap(),
-        ar: matches.opt_str("ar").unwrap_or("ar".into()),
+        ar: matches.opt_str("ar").unwrap_or_else(|| String::from("ar")),
         linker: matches.opt_str("linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         nodejs: matches.opt_str("nodejs"),
@@ -361,17 +361,13 @@ pub fn run_tests(config: Config) {
 }
 
 fn configure_cdb(config: &Config) -> Option<Config> {
-    if config.cdb.is_none() {
-        return None;
-    }
+    config.cdb.as_ref()?;
 
     Some(Config { debugger: Some(Debugger::Cdb), ..config.clone() })
 }
 
 fn configure_gdb(config: &Config) -> Option<Config> {
-    if config.gdb_version.is_none() {
-        return None;
-    }
+    config.gdb_version?;
 
     if util::matches_env(&config.target, "msvc") {
         return None;
@@ -405,9 +401,7 @@ fn configure_gdb(config: &Config) -> Option<Config> {
 }
 
 fn configure_lldb(config: &Config) -> Option<Config> {
-    if config.lldb_python_dir.is_none() {
-        return None;
-    }
+    config.lldb_python_dir.as_ref()?;
 
     if let Some(350) = config.lldb_version {
         println!(
@@ -455,7 +449,7 @@ pub fn make_tests(config: &Config, tests: &mut Vec<test::TestDescAndFn>) {
     debug!("making tests from {:?}", config.src_base.display());
     let inputs = common_inputs_stamp(config);
     collect_tests_from_dir(config, &config.src_base, &PathBuf::new(), &inputs, tests)
-        .expect(&format!("Could not read tests from {}", config.src_base.display()));
+        .unwrap_or_else(|_| panic!("Could not read tests from {}", config.src_base.display()));
 }
 
 /// Returns a stamp constructed from input files common to all test cases.
@@ -588,7 +582,7 @@ fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test
     let revisions = if early_props.revisions.is_empty() || config.mode == Mode::Incremental {
         vec![None]
     } else {
-        early_props.revisions.iter().map(|r| Some(r)).collect()
+        early_props.revisions.iter().map(Some).collect()
     };
     revisions
         .into_iter()
@@ -735,24 +729,24 @@ fn make_test_closure(
 
 /// Returns `true` if the given target is an Android target for the
 /// purposes of GDB testing.
-fn is_android_gdb_target(target: &String) -> bool {
-    match &target[..] {
-        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => true,
-        _ => false,
-    }
+fn is_android_gdb_target(target: &str) -> bool {
+    matches!(
+        &target[..],
+        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android"
+    )
 }
 
 /// Returns `true` if the given target is a MSVC target for the purpouses of CDB testing.
-fn is_pc_windows_msvc_target(target: &String) -> bool {
+fn is_pc_windows_msvc_target(target: &str) -> bool {
     target.ends_with("-pc-windows-msvc")
 }
 
-fn find_cdb(target: &String) -> Option<OsString> {
+fn find_cdb(target: &str) -> Option<OsString> {
     if !(cfg!(windows) && is_pc_windows_msvc_target(target)) {
         return None;
     }
 
-    let pf86 = env::var_os("ProgramFiles(x86)").or(env::var_os("ProgramFiles"))?;
+    let pf86 = env::var_os("ProgramFiles(x86)").or_else(|| env::var_os("ProgramFiles"))?;
     let cdb_arch = if cfg!(target_arch = "x86") {
         "x86"
     } else if cfg!(target_arch = "x86_64") {
@@ -779,14 +773,14 @@ fn find_cdb(target: &String) -> Option<OsString> {
 }
 
 /// Returns Path to CDB
-fn analyze_cdb(cdb: Option<String>, target: &String) -> Option<OsString> {
-    cdb.map(|s| OsString::from(s)).or(find_cdb(target))
+fn analyze_cdb(cdb: Option<String>, target: &str) -> Option<OsString> {
+    cdb.map(OsString::from).or_else(|| find_cdb(target))
 }
 
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)
 fn analyze_gdb(
     gdb: Option<String>,
-    target: &String,
+    target: &str,
     android_cross_path: &PathBuf,
 ) -> (Option<String>, Option<u32>, bool) {
     #[cfg(not(windows))]

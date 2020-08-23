@@ -9,7 +9,7 @@ use tracing::*;
 mod tests;
 
 /// Conversion table from triple OS name to Rust SYSNAME
-const OS_TABLE: &'static [(&'static str, &'static str)] = &[
+const OS_TABLE: &[(&str, &str)] = &[
     ("android", "android"),
     ("androideabi", "android"),
     ("cloudabi", "cloudabi"),
@@ -37,7 +37,7 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("vxworks", "vxworks"),
 ];
 
-const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
+const ARCH_TABLE: &[(&str, &str)] = &[
     ("aarch64", "aarch64"),
     ("amd64", "x86_64"),
     ("arm", "arm"),
@@ -82,7 +82,7 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("xcore", "xcore"),
 ];
 
-pub const ASAN_SUPPORTED_TARGETS: &'static [&'static str] = &[
+pub const ASAN_SUPPORTED_TARGETS: &[&str] = &[
     "aarch64-fuchsia",
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
@@ -91,20 +91,20 @@ pub const ASAN_SUPPORTED_TARGETS: &'static [&'static str] = &[
     "x86_64-unknown-linux-gnu",
 ];
 
-pub const LSAN_SUPPORTED_TARGETS: &'static [&'static str] =
+pub const LSAN_SUPPORTED_TARGETS: &[&str] =
     &["aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
 
-pub const MSAN_SUPPORTED_TARGETS: &'static [&'static str] =
+pub const MSAN_SUPPORTED_TARGETS: &[&str] =
     &["aarch64-unknown-linux-gnu", "x86_64-unknown-freebsd", "x86_64-unknown-linux-gnu"];
 
-pub const TSAN_SUPPORTED_TARGETS: &'static [&'static str] = &[
+pub const TSAN_SUPPORTED_TARGETS: &[&str] = &[
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
     "x86_64-unknown-freebsd",
     "x86_64-unknown-linux-gnu",
 ];
 
-const BIG_ENDIAN: &'static [&'static str] = &[
+const BIG_ENDIAN: &[&str] = &[
     "armebv7r",
     "mips",
     "mips64",
@@ -195,11 +195,11 @@ pub trait PathBufExt {
 
 impl PathBufExt for PathBuf {
     fn with_extra_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
-        if extension.as_ref().len() == 0 {
+        if extension.as_ref().is_empty() {
             self.clone()
         } else {
             let mut fname = self.file_name().unwrap().to_os_string();
-            if !extension.as_ref().to_str().unwrap().starts_with(".") {
+            if !extension.as_ref().to_str().unwrap().starts_with('.') {
                 fname.push(".");
             }
             fname.push(extension);
