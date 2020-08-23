@@ -529,8 +529,11 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
 
     let mut ancillary1_buffer = [0; 128];
     let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
-    let cred1 = libc::ucred { pid: getpid(), uid: getuid(), gid: getgid() };
-    assert!(ancillary1.add_creds(&[cred1][..]));
+    let mut cred1 = UCred::new();
+    cred1.set_pid(getpid());
+    cred1.set_uid(getuid());
+    cred1.set_gid(getgid());
+    assert!(ancillary1.add_creds(&[cred1.clone()][..]));
 
     let usize =
         or_panic!(bsock1.send_vectored_with_ancillary_to(&mut bufs_send, &mut ancillary1, &path2));
@@ -556,9 +559,9 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
     {
         let cred_vec = Vec::from_iter(scm_credentials);
         assert_eq!(cred_vec.len(), 1);
-        assert_eq!(cred1.pid, cred_vec[0].pid);
-        assert_eq!(cred1.uid, cred_vec[0].uid);
-        assert_eq!(cred1.gid, cred_vec[0].gid);
+        assert_eq!(cred1.get_pid(), cred_vec[0].get_pid());
+        assert_eq!(cred1.get_uid(), cred_vec[0].get_uid());
+        assert_eq!(cred1.get_gid(), cred_vec[0].get_gid());
     } else {
         assert!(false);
     }
