@@ -396,15 +396,7 @@
 //! assert_eq!(map.keys().next().unwrap().b, "baz");
 //! ```
 //!
-//! [`Vec`]: ../../std/vec/struct.Vec.html
-//! [`HashMap`]: ../../std/collections/struct.HashMap.html
-//! [`VecDeque`]: ../../std/collections/struct.VecDeque.html
-//! [`LinkedList`]: ../../std/collections/struct.LinkedList.html
-//! [`BTreeMap`]: ../../std/collections/struct.BTreeMap.html
-//! [`HashSet`]: ../../std/collections/struct.HashSet.html
-//! [`BTreeSet`]: ../../std/collections/struct.BTreeSet.html
-//! [`BinaryHeap`]: ../../std/collections/struct.BinaryHeap.html
-//! [`IntoIterator`]: ../../std/iter/trait.IntoIterator.html
+//! [`IntoIterator`]: crate::iter::IntoIterator
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
