@@ -1,4 +1,5 @@
 // ignore-tidy-linelength
+#![deny(temporary_cstring_as_ptr)]
 
 use std::ffi::CString;
 

@@ -10,7 +10,7 @@ use rustc_span::{
 
 declare_lint! {
     pub TEMPORARY_CSTRING_AS_PTR,
-    Deny,
+    Warn,
     "detects getting the inner pointer of a temporary `CString`"
 }
 
