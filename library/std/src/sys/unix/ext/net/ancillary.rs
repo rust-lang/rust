@@ -64,6 +64,47 @@ pub(super) fn send_vectored_with_ancillary_to(
     }
 }
 
+#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+#[derive(Clone)]
+pub struct UCred(libc::ucred);
+
+impl UCred {
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    pub fn new() -> UCred {
+        UCred(libc::ucred { pid: 0, uid: 0, gid: 0 })
+    }
+
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    pub fn set_pid(&mut self, pid: i32) {
+        self.0.pid = pid;
+    }
+
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    pub fn get_pid(&self) -> i32 {
+        self.0.pid
+    }
+
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    pub fn set_uid(&mut self, uid: u32) {
+        self.0.uid = uid;
+    }
+
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    pub fn get_uid(&self) -> u32 {
+        self.0.uid
+    }
+
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    pub fn set_gid(&mut self, gid: u32) {
+        self.0.gid = gid;
+    }
+
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    pub fn get_gid(&self) -> u32 {
+        self.0.gid
+    }
+}
+
 #[cfg(any(
     target_os = "haiku",
     target_os = "solaris",
@@ -139,10 +180,10 @@ pub struct ScmCredentials<'a>(AncillaryDataIter<'a, libc::ucred>);
 ))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 impl<'a> Iterator for ScmCredentials<'a> {
-    type Item = libc::ucred;
+    type Item = UCred;
 
-    fn next(&mut self) -> Option<libc::ucred> {
-        self.0.next()
+    fn next(&mut self) -> Option<UCred> {
+        Some(UCred(self.0.next()?))
     }
 }
 
@@ -550,7 +591,7 @@ impl<'a> SocketAncillary<'a> {
         target_env = "uclibc",
     ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-    pub fn add_creds(&mut self, creds: &[libc::ucred]) -> bool {
+    pub fn add_creds(&mut self, creds: &[UCred]) -> bool {
         self.truncated = false;
         add_to_ancillary_data(
             &mut self.buffer,
