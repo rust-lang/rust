@@ -1734,6 +1734,49 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
             RawEntryMut::Vacant(entry) => RawEntryMut::Vacant(entry),
         }
     }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// an occupied entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// map.raw_entry_mut()
+    ///    .from_key("poneyland")
+    ///    .and_replace_entry_with(|_k, _v| unreachable!());
+    ///
+    /// map.insert("poneyland", 42);
+    ///
+    /// map.raw_entry_mut()
+    ///    .from_key("poneyland")
+    ///    .and_replace_entry_with(|k, v| {
+    ///         assert_eq!(k, &"poneyland");
+    ///         assert_eq!(v, 42);
+    ///         Some(v + 1)
+    ///     });
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// map.raw_entry_mut()
+    ///    .from_key("poneyland")
+    ///    .and_replace_entry_with(|_k, _v| None);
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn and_replace_entry_with<F>(self, f: F)
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        match self {
+            RawEntryMut::Occupied(entry) => entry.replace_entry_with(f),
+            RawEntryMut::Vacant(_) => {}
+        }
+    }
 }
 
 impl<'a, K, V> RawOccupiedEntryMut<'a, K, V> {
@@ -1825,6 +1868,21 @@ impl<'a, K, V> RawOccupiedEntryMut<'a, K, V> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
         unsafe { self.table.remove(self.elem) }
+    }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// the entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace_entry_with<F>(self, f: F)
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        unsafe {
+            self.table.replace_bucket_with(self.elem, |(key, value)| {
+                f(&key, value).map(|new_value| (key, new_value))
+            })
+        };
     }
 }
 
@@ -2419,6 +2477,47 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
             Entry::Vacant(entry) => Entry::Vacant(entry),
         }
     }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// an occupied entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// map.entry("poneyland")
+    ///    .and_replace_entry_with(|_k, _v| panic!());
+    ///
+    /// map.insert("poneyland", 42);
+    ///
+    /// map.entry("poneyland")
+    ///    .and_replace_entry_with(|k, v| {
+    ///         assert_eq!(k, &"poneyland");
+    ///         assert_eq!(v, 42);
+    ///         Some(v + 1)
+    ///     });
+    ///
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// map.entry("poneyland")
+    ///    .and_replace_entry_with(|_k, _v| None);
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn and_replace_entry_with<F>(self, f: F)
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        match self {
+            Entry::Occupied(entry) => entry.replace_entry_with(f),
+            Entry::Vacant(_) => {}
+        }
+    }
 }
 
 impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
@@ -2672,6 +2771,53 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     pub fn replace_key(self) -> K {
         let entry = unsafe { self.elem.as_mut() };
         mem::replace(&mut entry.0, self.key.unwrap())
+    }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// the entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// map.insert("poneyland", 42);
+    ///
+    /// match map.entry("poneyland") {
+    ///     Entry::Occupied(e) => {
+    ///         e.replace_entry_with(|k, v| {
+    ///             assert_eq!(k, &"poneyland");
+    ///             assert_eq!(v, 42);
+    ///             Some(v + 1)
+    ///         });
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// match map.entry("poneyland") {
+    ///     Entry::Occupied(e) => e.replace_entry_with(|_k, _v| None),
+    ///     Entry::Vacant(_) => panic!(),
+    /// }
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace_entry_with<F>(self, f: F)
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        unsafe {
+            self.table
+                .table
+                .replace_bucket_with(self.elem, |(key, value)| {
+                    f(&key, value).map(|new_value| (key, new_value))
+                })
+        };
     }
 }
 
@@ -3756,6 +3902,111 @@ mod test_map {
         }
         assert_eq!(a.len(), 1);
         assert_eq!(a[key], value);
+    }
+
+    #[test]
+    fn test_occupied_entry_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        a.insert(key, value);
+
+        match a.entry(key) {
+            Vacant(_) => panic!(),
+            Occupied(e) => {
+                e.replace_entry_with(|k, v| {
+                    assert_eq!(k, &key);
+                    assert_eq!(v, value);
+                    Some(new_value)
+                });
+            }
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        match a.entry(key) {
+            Vacant(_) => panic!(),
+            Occupied(e) => {
+                e.replace_entry_with(|k, v| {
+                    assert_eq!(k, &key);
+                    assert_eq!(v, new_value);
+                    None
+                });
+            }
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_entry_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        match a.entry(key) {
+            e @ Vacant(_) => {
+                e.and_replace_entry_with(|_, _| panic!("Can't replace a VacantEntry"));
+            }
+            Occupied(_) => panic!(),
+        }
+
+        a.insert(key, value);
+
+        a.entry(key).and_replace_entry_with(|k, v| {
+            assert_eq!(k, &key);
+            assert_eq!(v, value);
+            Some(new_value)
+        });
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        a.entry(key).and_replace_entry_with(|k, v| {
+            assert_eq!(k, &key);
+            assert_eq!(v, new_value);
+            None
+        });
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_replace_entry_with_doesnt_corrupt() {
+        #![allow(deprecated)] //rand
+                              // Test for #19292
+        fn check(m: &HashMap<i32, ()>) {
+            for k in m.keys() {
+                assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
+            }
+        }
+
+        let mut m = HashMap::new();
+
+        let mut rng = {
+            let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+            SmallRng::from_seed(seed)
+        };
+
+        // Populate the map with some items.
+        for _ in 0..50 {
+            let x = rng.gen_range(-10, 10);
+            m.insert(x, ());
+        }
+
+        for _ in 0..1000 {
+            let x = rng.gen_range(-10, 10);
+            m.entry(x).and_replace_entry_with(|_, _| None);
+            check(&m);
+        }
     }
 
     #[test]
