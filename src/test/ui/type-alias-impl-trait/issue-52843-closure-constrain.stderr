@@ -8,7 +8,7 @@ note: previous use here
   --> $DIR/issue-52843-closure-constrain.rs:9:5
    |
 LL |     fn _unused() -> Opaque { String::new() }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

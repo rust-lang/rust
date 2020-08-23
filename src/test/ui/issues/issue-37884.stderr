@@ -14,13 +14,8 @@ LL | |     }
 note: the anonymous lifetime #1 defined on the method body at 6:5...
   --> $DIR/issue-37884.rs:6:5
    |
-LL | /     fn next(&'a mut self) -> Option<Self::Item>
-LL | |
-LL | |
-LL | |     {
-LL | |         Some(&mut self.0)
-LL | |     }
-   | |_____^
+LL |     fn next(&'a mut self) -> Option<Self::Item>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 3:6
   --> $DIR/issue-37884.rs:3:6
    |

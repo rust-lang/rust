@@ -67,7 +67,7 @@ impl AllocFnFactory<'_, '_> {
         let (output_ty, output_expr) = self.ret_ty(&method.output, result);
         let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(output_ty));
         let header = FnHeader { unsafety: Unsafe::Yes(self.span), ..FnHeader::default() };
-        let sig = FnSig { decl, header };
+        let sig = FnSig { decl, header, span: self.span };
         let block = Some(self.cx.block_expr(output_expr));
         let kind = ItemKind::Fn(ast::Defaultness::Final, sig, Generics::default(), block);
         let item = self.cx.item(

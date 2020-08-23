@@ -377,7 +377,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 
                 Ok(extend_sig(ty, text, defs, vec![]))
             }
-            hir::ItemKind::Fn(hir::FnSig { ref decl, header }, ref generics, _) => {
+            hir::ItemKind::Fn(hir::FnSig { ref decl, header, span: _ }, ref generics, _) => {
                 let mut text = String::new();
                 if let hir::Constness::Const = header.constness {
                     text.push_str("const ");

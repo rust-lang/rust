@@ -263,7 +263,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
                 hir::ItemKind::Const(ty, body_id)
             }
-            ItemKind::Fn(_, FnSig { ref decl, header }, ref generics, ref body) => {
+            ItemKind::Fn(
+                _,
+                FnSig { ref decl, header, span: fn_sig_span },
+                ref generics,
+                ref body,
+            ) => {
                 let fn_def_id = self.resolver.local_def_id(id);
                 self.with_new_scopes(|this| {
                     this.current_item = Some(ident.span);
@@ -290,7 +295,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             )
                         },
                     );
-                    let sig = hir::FnSig { decl, header: this.lower_fn_header(header) };
+                    let sig = hir::FnSig {
+                        decl,
+                        header: this.lower_fn_header(header),
+                        span: fn_sig_span,
+                    };
                     hir::ItemKind::Fn(sig, generics, body_id)
                 })
             }
@@ -1243,7 +1252,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 )
             },
         );
-        (generics, hir::FnSig { header, decl })
+        (generics, hir::FnSig { header, decl, span: sig.span })
     }
 
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {

@@ -257,7 +257,7 @@ impl OutlivesSuggestionBuilder {
         };
 
         // We want this message to appear after other messages on the mir def.
-        let mir_span = mbcx.infcx.tcx.def_span(mbcx.mir_def_id);
+        let mir_span = mbcx.body.span;
         diag.sort_span = mir_span.shrink_to_hi();
 
         // Buffer the diagnostic

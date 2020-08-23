@@ -1543,7 +1543,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         }
 
         TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Fn(FnSig { header, decl }, _),
+            kind: TraitItemKind::Fn(FnSig { header, decl, span: _ }, _),
             ident,
             generics,
             ..

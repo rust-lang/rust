@@ -924,6 +924,7 @@ impl<'a> MethodDef<'a> {
         let sig = ast::FnSig {
             header: ast::FnHeader { unsafety, ext: ast::Extern::None, ..ast::FnHeader::default() },
             decl: fn_decl,
+            span: trait_.span,
         };
         let def = ast::Defaultness::Final;
 

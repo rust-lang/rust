@@ -38,7 +38,7 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: LocalDefId) {
         vis.reachable_recursive_calls.sort();
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        let sp = tcx.sess.source_map().guess_head_span(tcx.hir().span(hir_id));
+        let sp = tcx.sess.source_map().guess_head_span(tcx.hir().span_with_body(hir_id));
         tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp, |lint| {
             let mut db = lint.build("function cannot return without recursing");
             db.span_label(sp, "cannot return without recursing");

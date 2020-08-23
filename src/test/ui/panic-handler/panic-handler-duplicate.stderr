@@ -1,18 +1,14 @@
 error[E0152]: found duplicate lang item `panic_impl`
   --> $DIR/panic-handler-duplicate.rs:15:1
    |
-LL | / fn panic2(info: &PanicInfo) -> ! {
-LL | |     loop {}
-LL | | }
-   | |_^
+LL | fn panic2(info: &PanicInfo) -> ! {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lang item is first defined here
   --> $DIR/panic-handler-duplicate.rs:10:1
    |
-LL | / fn panic(info: &PanicInfo) -> ! {
-LL | |     loop {}
-LL | | }
-   | |_^
+LL | fn panic(info: &PanicInfo) -> ! {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

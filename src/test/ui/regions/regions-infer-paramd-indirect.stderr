@@ -9,14 +9,8 @@ LL |         self.f = b;
 note: the anonymous lifetime #2 defined on the method body at 21:5...
   --> $DIR/regions-infer-paramd-indirect.rs:21:5
    |
-LL | /     fn set_f_bad(&mut self, b: Box<B>) {
-LL | |         self.f = b;
-LL | |
-LL | |
-LL | |
-LL | |
-LL | |     }
-   | |_____^
+LL |     fn set_f_bad(&mut self, b: Box<B>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 16:6
   --> $DIR/regions-infer-paramd-indirect.rs:16:6
    |

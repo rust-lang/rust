@@ -5,7 +5,7 @@ LL |     struct Priv;
    |     - `foo::Priv` declared as private
 ...
 LL |         pub(crate) fn g(_: Priv) {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `foo::Priv` in public interface
   --> $DIR/private-in-public.rs:9:9
@@ -14,7 +14,7 @@ LL |     struct Priv;
    |     - `foo::Priv` declared as private
 ...
 LL |         crate fn h(_: Priv) {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
+   |         ^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: aborting due to 2 previous errors
 

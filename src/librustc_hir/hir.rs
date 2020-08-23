@@ -1851,6 +1851,7 @@ pub struct MutTy<'hir> {
 pub struct FnSig<'hir> {
     pub header: FnHeader,
     pub decl: &'hir FnDecl<'hir>,
+    pub span: Span,
 }
 
 // The bodies for items are stored "out of line", in a separate
