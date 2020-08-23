@@ -8,7 +8,7 @@
 use RibKind::*;
 
 use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
-use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResult};
+use crate::{Module, ModuleOrUniformRoot, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use rustc_ast::ptr::P;
@@ -24,7 +24,6 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::TraitCandidate;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
@@ -2342,94 +2341,30 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ident.span = ident.span.normalize_to_macros_2_0();
         let mut search_module = self.parent_scope.module;
         loop {
-            self.get_traits_in_module_containing_item(ident, ns, search_module, &mut found_traits);
+            self.r.get_traits_in_module_containing_item(
+                ident,
+                ns,
+                search_module,
+                &mut found_traits,
+                &self.parent_scope,
+            );
             search_module =
                 unwrap_or!(self.r.hygienic_lexical_parent(search_module, &mut ident.span), break);
         }
 
         if let Some(prelude) = self.r.prelude {
             if !search_module.no_implicit_prelude {
-                self.get_traits_in_module_containing_item(ident, ns, prelude, &mut found_traits);
+                self.r.get_traits_in_module_containing_item(
+                    ident,
+                    ns,
+                    prelude,
+                    &mut found_traits,
+                    &self.parent_scope,
+                );
             }
         }
 
         found_traits
-    }
-
-    fn get_traits_in_module_containing_item(
-        &mut self,
-        ident: Ident,
-        ns: Namespace,
-        module: Module<'a>,
-        found_traits: &mut Vec<TraitCandidate>,
-    ) {
-        assert!(ns == TypeNS || ns == ValueNS);
-        let mut traits = module.traits.borrow_mut();
-        if traits.is_none() {
-            let mut collected_traits = Vec::new();
-            module.for_each_child(self.r, |_, name, ns, binding| {
-                if ns != TypeNS {
-                    return;
-                }
-                match binding.res() {
-                    Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
-                        collected_traits.push((name, binding))
-                    }
-                    _ => (),
-                }
-            });
-            *traits = Some(collected_traits.into_boxed_slice());
-        }
-
-        for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
-            // Traits have pseudo-modules that can be used to search for the given ident.
-            if let Some(module) = binding.module() {
-                let mut ident = ident;
-                if ident.span.glob_adjust(module.expansion, binding.span).is_none() {
-                    continue;
-                }
-                if self
-                    .r
-                    .resolve_ident_in_module_unadjusted(
-                        ModuleOrUniformRoot::Module(module),
-                        ident,
-                        ns,
-                        &self.parent_scope,
-                        false,
-                        module.span,
-                    )
-                    .is_ok()
-                {
-                    let import_ids = self.find_transitive_imports(&binding.kind, trait_name);
-                    let trait_def_id = module.def_id().unwrap();
-                    found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
-                }
-            } else if let Res::Def(DefKind::TraitAlias, _) = binding.res() {
-                // For now, just treat all trait aliases as possible candidates, since we don't
-                // know if the ident is somewhere in the transitive bounds.
-                let import_ids = self.find_transitive_imports(&binding.kind, trait_name);
-                let trait_def_id = binding.res().def_id();
-                found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
-            } else {
-                bug!("candidate is not trait or trait alias?")
-            }
-        }
-    }
-
-    fn find_transitive_imports(
-        &mut self,
-        mut kind: &NameBindingKind<'_>,
-        trait_name: Ident,
-    ) -> SmallVec<[LocalDefId; 1]> {
-        let mut import_ids = smallvec![];
-        while let NameBindingKind::Import { import, binding, .. } = kind {
-            let id = self.r.local_def_id(import.id);
-            self.r.maybe_unused_trait_imports.insert(id);
-            self.r.add_to_glob_map(&import, trait_name);
-            import_ids.push(id);
-            kind = &binding.kind;
-        }
-        import_ids
     }
 }
 
