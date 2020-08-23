@@ -1,12 +1,13 @@
 use crate::convert::TryFrom;
 use crate::io::{self, IoSliceMut};
-use crate::mem;
+use crate::marker::PhantomData;
+use crate::mem::{size_of, zeroed};
 use crate::os::unix::io::RawFd;
 use crate::path::Path;
 use crate::ptr::null_mut;
 use crate::slice::from_raw_parts;
 use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
-use crate::sys::unix::net::{add_to_ancillary_data, AncillaryDataIter, Socket};
+use crate::sys::unix::net::Socket;
 
 pub(super) fn recv_vectored_with_ancillary_from(
     socket: &Socket,
@@ -14,11 +15,11 @@ pub(super) fn recv_vectored_with_ancillary_from(
     ancillary: &mut SocketAncillary<'_>,
 ) -> io::Result<(usize, bool, io::Result<SocketAddr>)> {
     unsafe {
-        let mut msg_name: libc::sockaddr_un = mem::zeroed();
+        let mut msg_name: libc::sockaddr_un = zeroed();
 
         let mut msg = libc::msghdr {
             msg_name: &mut msg_name as *mut _ as *mut _,
-            msg_namelen: mem::size_of::<libc::sockaddr_un>() as libc::socklen_t,
+            msg_namelen: size_of::<libc::sockaddr_un>() as libc::socklen_t,
             msg_iov: bufs.as_mut_ptr().cast(),
             msg_iovlen: bufs.len(),
             msg_control: ancillary.buffer.as_mut_ptr().cast(),
@@ -46,7 +47,7 @@ pub(super) fn send_vectored_with_ancillary_to(
 ) -> io::Result<usize> {
     unsafe {
         let (mut msg_name, msg_namelen) =
-            if let Some(path) = path { sockaddr_un(path)? } else { (mem::zeroed(), 0) };
+            if let Some(path) = path { sockaddr_un(path)? } else { (zeroed(), 0) };
 
         let mut msg = libc::msghdr {
             msg_name: &mut msg_name as *mut _ as *mut _,
@@ -61,6 +62,86 @@ pub(super) fn send_vectored_with_ancillary_to(
         ancillary.truncated = false;
 
         socket.send_msg(&mut msg)
+    }
+}
+
+fn add_to_ancillary_data<T: Clone>(
+    buffer: &mut [u8],
+    length: &mut usize,
+    source: &[T],
+    cmsg_level: libc::c_int,
+    cmsg_type: libc::c_int,
+) -> bool {
+    let len = (source.len() * size_of::<T>()) as u32;
+
+    unsafe {
+        let additional_space = libc::CMSG_SPACE(len) as usize;
+        if *length + additional_space > buffer.len() {
+            return false;
+        }
+
+        libc::memset(buffer[*length..].as_mut_ptr().cast(), 0, additional_space);
+
+        *length += additional_space;
+
+        let msg = libc::msghdr {
+            msg_name: null_mut(),
+            msg_namelen: 0,
+            msg_iov: null_mut(),
+            msg_iovlen: 0,
+            msg_control: buffer.as_mut_ptr().cast(),
+            msg_controllen: *length,
+            msg_flags: 0,
+        };
+
+        let mut cmsg = libc::CMSG_FIRSTHDR(&msg);
+        let mut previous_cmsg = cmsg;
+        while !cmsg.is_null() {
+            previous_cmsg = cmsg;
+            cmsg = libc::CMSG_NXTHDR(&msg, cmsg);
+        }
+
+        if previous_cmsg.is_null() {
+            return false;
+        }
+
+        (*previous_cmsg).cmsg_level = cmsg_level;
+        (*previous_cmsg).cmsg_type = cmsg_type;
+        (*previous_cmsg).cmsg_len = libc::CMSG_LEN(len) as usize;
+
+        let data = libc::CMSG_DATA(previous_cmsg).cast();
+
+        libc::memcpy(data, source.as_ptr().cast(), len as usize);
+    }
+    true
+}
+
+struct AncillaryDataIter<'a, T> {
+    data: &'a [u8],
+    phantom: crate::marker::PhantomData<T>,
+}
+
+impl<'a, T> AncillaryDataIter<'a, T> {
+    pub fn new(data: &'a [u8]) -> AncillaryDataIter<'a, T> {
+        AncillaryDataIter { data, phantom: PhantomData }
+    }
+}
+
+impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        unsafe {
+            let mut unit = zeroed();
+            if size_of::<T>() <= self.data.len() {
+                let unit_ptr: *mut T = &mut unit;
+                libc::memcpy(unit_ptr.cast(), self.data.as_ptr().cast(), size_of::<T>());
+                self.data = &self.data[size_of::<T>()..];
+                Some(unit)
+            } else {
+                None
+            }
+        }
     }
 }
 
