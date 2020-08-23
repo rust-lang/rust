@@ -78,8 +78,8 @@ pub struct Guard {
 /// };
 /// ```
 ///
-/// [`Mutex`]: ../../std/sync/struct.Mutex.html
-/// [`RwLock`]: ../../std/sync/struct.RwLock.html
+/// [`Mutex`]: crate::sync::Mutex
+/// [`RwLock`]: crate::sync::RwLock
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PoisonError<T> {
     guard: T,
@@ -89,12 +89,11 @@ pub struct PoisonError<T> {
 /// can occur while trying to acquire a lock, from the [`try_lock`] method on a
 /// [`Mutex`] or the [`try_read`] and [`try_write`] methods on an [`RwLock`].
 ///
-/// [`Mutex`]: struct.Mutex.html
-/// [`RwLock`]: struct.RwLock.html
-/// [`TryLockResult`]: type.TryLockResult.html
-/// [`try_lock`]: struct.Mutex.html#method.try_lock
-/// [`try_read`]: struct.RwLock.html#method.try_read
-/// [`try_write`]: struct.RwLock.html#method.try_write
+/// [`Mutex`]: crate::sync::Mutex
+/// [`RwLock`]: crate::sync::RwLock
+/// [`try_lock`]: crate::sync::Mutex::try_lock
+/// [`try_read`]: crate::sync::RwLock::try_read
+/// [`try_write`]: crate::sync::RwLock::try_write
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryLockError<T> {
     /// The lock could not be acquired because another thread failed while holding
@@ -115,9 +114,7 @@ pub enum TryLockError<T> {
 /// the associated guard, and it can be acquired through the [`into_inner`]
 /// method.
 ///
-/// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
-/// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-/// [`into_inner`]: ../../std/sync/struct.PoisonError.html#method.into_inner
+/// [`into_inner`]: PoisonError::into_inner
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type LockResult<Guard> = Result<Guard, PoisonError<Guard>>;
 
@@ -126,9 +123,6 @@ pub type LockResult<Guard> = Result<Guard, PoisonError<Guard>>;
 /// For more information, see [`LockResult`]. A `TryLockResult` doesn't
 /// necessarily hold the associated guard in the [`Err`] type as the lock may not
 /// have been acquired for other reasons.
-///
-/// [`LockResult`]: ../../std/sync/type.LockResult.html
-/// [`Err`]: ../../std/result/enum.Result.html#variant.Err
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
 
@@ -159,8 +153,8 @@ impl<T> PoisonError<T> {
     ///
     /// This is generally created by methods like [`Mutex::lock`] or [`RwLock::read`].
     ///
-    /// [`Mutex::lock`]: ../../std/sync/struct.Mutex.html#method.lock
-    /// [`RwLock::read`]: ../../std/sync/struct.RwLock.html#method.read
+    /// [`Mutex::lock`]:  crate::sync::Mutex::lock
+    /// [`RwLock::read`]: crate::sync::RwLock::read
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn new(guard: T) -> PoisonError<T> {
         PoisonError { guard }
