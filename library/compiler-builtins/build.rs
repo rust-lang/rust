@@ -421,6 +421,25 @@ mod c {
             }
         }
 
+        if target_arch == "mips" {
+            sources.extend(&[("__bswapsi2", "bswapsi2.c")]);
+        }
+
+        if target_arch == "mips64" {
+            sources.extend(&[
+                ("__extenddftf2", "extenddftf2.c"),
+                ("__netf2", "comparetf2.c"),
+                ("__addtf3", "addtf3.c"),
+                ("__multf3", "multf3.c"),
+                ("__subtf3", "subtf3.c"),
+                ("__fixtfsi", "fixtfsi.c"),
+                ("__floatsitf", "floatsitf.c"),
+                ("__fixunstfsi", "fixunstfsi.c"),
+                ("__floatunsitf", "floatunsitf.c"),
+                ("__fe_getround", "fp_mode.c"),
+            ]);
+        }
+
         // Remove the assembly implementations that won't compile for the target
         if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" {
             let mut to_remove = Vec::new();
