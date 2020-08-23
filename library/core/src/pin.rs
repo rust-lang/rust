@@ -349,37 +349,28 @@
 //! mutable reference even when you just have [`Pin`]`<&mut Self>` (such as in your own
 //! [`poll`] implementation).
 //!
-//! [`Pin<P>`]: struct.Pin.html
-//! [`Unpin`]: ../marker/trait.Unpin.html
-//! [`Deref`]: ../ops/trait.Deref.html
-//! [`DerefMut`]: ../ops/trait.DerefMut.html
-//! [`mem::swap`]: ../mem/fn.swap.html
-//! [`mem::forget`]: ../mem/fn.forget.html
+//! [`Pin<P>`]: Pin
+//! [`Deref`]: crate::ops::Deref
+//! [`DerefMut`]: crate::ops::DerefMut
+//! [`mem::swap`]: crate::mem::swap
+//! [`mem::forget`]: crate::mem::forget
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
 //! [`Vec<T>`]: ../../std/vec/struct.Vec.html
 //! [`Vec::set_len`]: ../../std/vec/struct.Vec.html#method.set_len
-//! [`Pin`]: struct.Pin.html
 //! [`Box`]: ../../std/boxed/struct.Box.html
 //! [Vec::pop]: ../../std/vec/struct.Vec.html#method.pop
 //! [Vec::push]: ../../std/vec/struct.Vec.html#method.push
 //! [`Rc`]: ../../std/rc/struct.Rc.html
-//! [`RefCell<T>`]: ../../std/cell/struct.RefCell.html
-//! [`Drop`]: ../../std/ops/trait.Drop.html
-//! [`drop`]: ../../std/ops/trait.Drop.html#tymethod.drop
+//! [`RefCell<T>`]: crate::cell::RefCell
+//! [`drop`]: Drop::drop
 //! [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
-//! [`Option<T>`]: ../../std/option/enum.Option.html
-//! [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
-//! [`RefCell<T>`]: ../cell/struct.RefCell.html
-//! [`None`]: ../option/enum.Option.html#variant.None
-//! [`Some(v)`]: ../option/enum.Option.html#variant.Some
-//! [`ptr::write`]: ../ptr/fn.write.html
-//! [`Future`]: ../future/trait.Future.html
+//! [`Option<T>`]: Option
+//! [`Some(v)`]: Some
+//! [`ptr::write`]: crate::ptr::write
+//! [`Future`]: crate::future::Future
 //! [drop-impl]: #drop-implementation
 //! [drop-guarantee]: #drop-guarantee
-//! [`poll`]: ../../std/future/trait.Future.html#tymethod.poll
-//! [`Pin::get_unchecked_mut`]: struct.Pin.html#method.get_unchecked_mut
-//! [`bool`]: ../../std/primitive.bool.html
-//! [`i32`]: ../../std/primitive.i32.html
+//! [`poll`]: crate::future::Future::poll
 
 #![stable(feature = "pin", since = "1.33.0")]
 
@@ -397,8 +388,7 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 ///
 /// *See the [`pin` module] documentation for an explanation of pinning.*
 ///
-/// [`Unpin`]: ../../std/marker/trait.Unpin.html
-/// [`pin` module]: ../../std/pin/index.html
+/// [`pin` module]: self
 //
 // Note: the `Clone` derive below causes unsoundness as it's possible to implement
 // `Clone` for mutable references.
@@ -481,8 +471,6 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     ///
     /// Unlike `Pin::new_unchecked`, this method is safe because the pointer
     /// `P` dereferences to an [`Unpin`] type, which cancels the pinning guarantees.
-    ///
-    /// [`Unpin`]: ../../std/marker/trait.Unpin.html
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn new(pointer: P) -> Pin<P> {
@@ -495,8 +483,6 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     ///
     /// This requires that the data inside this `Pin` is [`Unpin`] so that we
     /// can ignore the pinning invariants when unwrapping it.
-    ///
-    /// [`Unpin`]: ../../std/marker/trait.Unpin.html
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     #[inline(always)]
     pub fn into_inner(pin: Pin<P>) -> P {
@@ -568,7 +554,7 @@ impl<P: Deref> Pin<P> {
     ///  }
     ///  ```
     ///
-    /// [`mem::swap`]: ../../std/mem/fn.swap.html
+    /// [`mem::swap`]: crate::mem::swap
     #[cfg_attr(not(bootstrap), lang = "new_unchecked")]
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
@@ -603,9 +589,6 @@ impl<P: Deref> Pin<P> {
     ///
     /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
     /// instead.
-    ///
-    /// [`Unpin`]: ../../std/marker/trait.Unpin.html
-    /// [`Pin::into_inner`]: #method.into_inner
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     #[inline(always)]
     pub unsafe fn into_inner_unchecked(pin: Pin<P>) -> P {
