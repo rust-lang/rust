@@ -3,7 +3,7 @@ use crate::fmt;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::thread;
 
-#[cfg(doc)]
+#[allow(unused_imports)] // for intra-doc links
 use crate::sync::{Mutex, RwLock};
 
 pub struct Flag {
