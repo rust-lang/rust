@@ -76,7 +76,7 @@ macro_rules! print {
 ///
 /// # Panics
 ///
-/// Panics if writing to `io::stdout` fails.
+/// Panics if writing to [`io::stdout`] fails.
 ///
 /// [`io::stdout`]: crate::io::stdout
 ///
@@ -100,7 +100,7 @@ macro_rules! println {
 /// Prints to the standard error.
 ///
 /// Equivalent to the [`print!`] macro, except that output goes to
-/// [`io::stderr`] instead of `io::stdout`. See [`print!`] for
+/// [`io::stderr`] instead of [`io::stdout`]. See [`print!`] for
 /// example usage.
 ///
 /// Use `eprint!` only for error and progress messages. Use `print!`
@@ -128,7 +128,7 @@ macro_rules! eprint {
 /// Prints to the standard error, with a newline.
 ///
 /// Equivalent to the [`println!`] macro, except that output goes to
-/// [`io::stderr`] instead of `io::stdout`. See [`println!`] for
+/// [`io::stderr`] instead of [`io::stdout`]. See [`println!`] for
 /// example usage.
 ///
 /// Use `eprintln!` only for error and progress messages. Use `println!`
