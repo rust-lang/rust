@@ -609,6 +609,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.span_label(span, "expected due to this");
             }
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                semi_span,
                 source,
                 ref prior_arms,
                 last_ty,
@@ -661,6 +662,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         err.span_label(
                             *sp,
                             format!("this and all prior arms are found to be of type `{}`", t),
+                        );
+                    }
+                    if let Some(sp) = semi_span {
+                        err.span_suggestion_short(
+                            sp,
+                            "consider removing this semicolon",
+                            String::new(),
+                            Applicability::MachineApplicable,
                         );
                     }
                 }
