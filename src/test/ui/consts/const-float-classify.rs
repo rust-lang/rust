@@ -1,4 +1,4 @@
-// -Zmir-opt-level=0
+// compile-flags: -Zmir-opt-level=0
 // run-pass
 
 #![feature(const_panic)]
