@@ -22,6 +22,12 @@ fn custom_future_type_ctor() -> CustomFutureType {
     CustomFutureType
 }
 
+async fn f() -> CustomFutureType {
+    // Don't warn for functions since you have to explicitly declare their
+    // return types.
+    CustomFutureType
+}
+
 #[rustfmt::skip]
 fn main() {
     let _f = {
@@ -58,4 +64,5 @@ fn main() {
         CustomFutureType
     };
     let _n = async || custom_future_type_ctor();
+    let _o = async || f();
 }
