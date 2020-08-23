@@ -760,6 +760,7 @@ fn trans_stmt<'tcx>(
                 _ => fx.tcx.sess.span_fatal(stmt.source_info.span, "Inline assembly is not supported"),
             }
         }
+        StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),
     }
 }
 
