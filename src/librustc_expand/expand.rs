@@ -904,7 +904,7 @@ pub fn parse_ast_fragment<'a>(
         AstFragmentKind::Stmts => {
             let mut stmts = SmallVec::new();
             // Won't make progress on a `}`.
-            while this.token != token::Eof && this.token != token::CloseDelim(token::Brace) {
+            while !this.reached_eof() && this.token != token::CloseDelim(token::Brace) {
                 if let Some(stmt) = this.parse_full_stmt()? {
                     stmts.push(stmt);
                 }
@@ -913,7 +913,7 @@ pub fn parse_ast_fragment<'a>(
         }
         AstFragmentKind::Expr => AstFragment::Expr(this.parse_expr()?),
         AstFragmentKind::OptExpr => {
-            if this.token != token::Eof {
+            if !this.reached_eof() {
                 AstFragment::OptExpr(Some(this.parse_expr()?))
             } else {
                 AstFragment::OptExpr(None)
@@ -937,7 +937,7 @@ pub fn ensure_complete_parse<'a>(
     kind_name: &str,
     span: Span,
 ) {
-    if this.token != token::Eof {
+    if !this.reached_eof() {
         let token = pprust::token_to_string(&this.token);
         let msg = format!("macro expansion ignores token `{}` and any following", token);
         // Avoid emitting backtrace info twice.

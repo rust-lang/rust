@@ -89,7 +89,7 @@ fn emit_frag_parse_err(
     arm_span: Span,
     kind: AstFragmentKind,
 ) {
-    if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
+    if parser.reached_eof() && e.message().ends_with(", found `<eof>`") {
         if !e.span.is_dummy() {
             // early end of macro arm (#52866)
             e.replace_span_with(parser.sess.source_map().next_point(parser.token.span));

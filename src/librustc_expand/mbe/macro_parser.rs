@@ -648,7 +648,7 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
 
         // If we reached the EOF, check that there is EXACTLY ONE possible matcher. Otherwise,
         // either the parse is ambiguous (which should never happen) or there is a syntax error.
-        if parser.token == token::Eof {
+        if parser.reached_eof() {
             if eof_items.len() == 1 {
                 let matches =
                     eof_items[0].matches.iter_mut().map(|dv| Lrc::make_mut(dv).pop().unwrap());

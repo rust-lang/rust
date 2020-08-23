@@ -1170,7 +1170,7 @@ pub fn parse_expr(p: &mut parser::Parser<'_>) -> Option<P<ast::Expr>> {
         Ok(e) => return Some(e),
         Err(mut err) => err.emit(),
     }
-    while p.token != token::Eof {
+    while !p.reached_eof() {
         p.bump();
     }
     None
@@ -1185,14 +1185,14 @@ pub fn get_single_str_from_tts(
     name: &str,
 ) -> Option<String> {
     let mut p = cx.new_parser_from_tts(tts);
-    if p.token == token::Eof {
+    if p.reached_eof() {
         cx.span_err(sp, &format!("{} takes 1 argument", name));
         return None;
     }
     let ret = parse_expr(&mut p)?;
     let _ = p.eat(&token::Comma);
 
-    if p.token != token::Eof {
+    if !p.reached_eof() {
         cx.span_err(sp, &format!("{} takes 1 argument", name));
     }
     expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s.to_string())
@@ -1207,7 +1207,7 @@ pub fn get_exprs_from_tts(
 ) -> Option<Vec<P<ast::Expr>>> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
-    while p.token != token::Eof {
+    while !p.reached_eof() {
         let expr = parse_expr(&mut p)?;
 
         // Perform eager expansion on the expression.
@@ -1218,7 +1218,7 @@ pub fn get_exprs_from_tts(
         if p.eat(&token::Comma) {
             continue;
         }
-        if p.token != token::Eof {
+        if !p.reached_eof() {
             cx.span_err(sp, "expected token: `,`");
             return None;
         }

@@ -1233,6 +1233,11 @@ impl<'a> Parser<'a> {
                 *t == token::OpenDelim(token::Brace) || *t == token::BinOp(token::Star)
             })
     }
+
+    #[inline]
+    pub fn reached_eof(&self) -> bool {
+        self.token == token::Eof
+    }
 }
 
 crate fn make_unclosed_delims_error(

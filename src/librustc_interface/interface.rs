@@ -1,7 +1,6 @@
 pub use crate::passes::BoxedResolver;
 use crate::util;
 
-use rustc_ast::token;
 use rustc_ast::{self as ast, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -91,7 +90,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                 }
 
                 match &mut parser.parse_meta_item() {
-                    Ok(meta_item) if parser.token == token::Eof => {
+                    Ok(meta_item) if parser.reached_eof() => {
                         if meta_item.path.segments.len() != 1 {
                             error!("argument key must be an identifier");
                         }
