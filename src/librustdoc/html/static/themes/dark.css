@@ -389,6 +389,7 @@ kbd {
 #theme-picker, #settings-menu, .help-button {
 	border-color: #e0e0e0;
 	background: #f0f0f0;
+	color: #000;
 }
 
 #theme-picker:hover, #theme-picker:focus,
