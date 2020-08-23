@@ -65,7 +65,7 @@ fn main() {
     // This should be a pretty good heuristic for when to set
     // COMPILER_RT_HAS_ATOMICS
     if env::var_os("CARGO_CFG_TARGET_HAS_ATOMIC")
-        .map(|features| features.to_string_lossy().to_lowercase().contains("cas"))
+        .map(|features| features.to_string_lossy().to_lowercase().contains("ptr"))
         .unwrap_or(false)
     {
         cfg.define("COMPILER_RT_HAS_ATOMICS", Some("1"));
