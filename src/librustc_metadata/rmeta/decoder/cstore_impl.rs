@@ -9,7 +9,6 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::DefPathTable;
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::middle::cstore::{CrateSource, CrateStore, EncodedMetadata};
@@ -486,8 +485,12 @@ impl CrateStore for CStore {
         self.get_crate_data(def.krate).def_path_hash(def.index)
     }
 
-    fn def_path_table(&self, cnum: CrateNum) -> &DefPathTable {
-        &self.get_crate_data(cnum).cdata.def_path_table
+    fn all_def_path_hashes_and_def_ids(&self, cnum: CrateNum) -> Vec<(DefPathHash, DefId)> {
+        self.get_crate_data(cnum).all_def_path_hashes_and_def_ids()
+    }
+
+    fn num_def_ids(&self, cnum: CrateNum) -> usize {
+        self.get_crate_data(cnum).num_def_ids()
     }
 
     fn crates_untracked(&self) -> Vec<CrateNum> {

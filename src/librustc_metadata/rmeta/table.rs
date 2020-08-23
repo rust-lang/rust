@@ -201,4 +201,9 @@ where
         let bytes = &metadata.raw_bytes()[start..start + self.meta];
         <Option<T>>::maybe_read_from_bytes_at(bytes, i.index())?
     }
+
+    /// Size of the table in entries, including possible gaps.
+    pub(super) fn size(&self) -> usize {
+        self.meta / <Option<T>>::BYTE_LEN
+    }
 }

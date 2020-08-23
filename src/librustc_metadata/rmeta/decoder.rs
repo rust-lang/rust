@@ -16,7 +16,6 @@ use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::DefPathTable;
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::lang_items;
 use rustc_index::vec::{Idx, IndexVec};
@@ -29,7 +28,6 @@ use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::util::common::record_time;
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnDataDecodeMode;
@@ -69,12 +67,6 @@ crate struct CrateMetadata {
     /// universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
     /// is being used to decode those values.
     root: CrateRoot<'static>,
-    /// For each definition in this crate, we encode a key. When the
-    /// crate is loaded, we read all the keys and put them in this
-    /// hashmap, which gives the reverse mapping. This allows us to
-    /// quickly retrace a `DefPath`, which is needed for incremental
-    /// compilation support.
-    def_path_table: DefPathTable,
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
@@ -91,6 +83,10 @@ crate struct CrateMetadata {
     /// Do not access the value directly, as it might not have been initialized yet.
     /// The field must always be initialized to `DepNodeIndex::INVALID`.
     dep_node_index: AtomicCell<DepNodeIndex>,
+    /// Caches decoded `DefKey`s.
+    def_key_cache: Lock<FxHashMap<DefIndex, DefKey>>,
+    /// Caches decoded `DefPathHash`es.
+    def_path_hash_cache: Lock<FxHashMap<DefIndex, DefPathHash>>,
 
     // --- Other significant crate properties ---
     /// ID of this crate, from the current compilation session's point of view.
@@ -807,7 +803,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     data.has_auto_impl,
                     data.is_marker,
                     data.specialization_kind,
-                    self.def_path_table.def_path_hash(item_id),
+                    self.def_path_hash(item_id),
                 )
             }
             EntryKind::TraitAlias => ty::TraitDef::new(
@@ -817,7 +813,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 false,
                 false,
                 ty::trait_def::TraitSpecializationKind::None,
-                self.def_path_table.def_path_hash(item_id),
+                self.def_path_hash(item_id),
             ),
             _ => bug!("def-index does not refer to trait or trait alias"),
         }
@@ -1509,18 +1505,71 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     #[inline]
     fn def_key(&self, index: DefIndex) -> DefKey {
-        let mut key = self.def_path_table.def_key(index);
-        if self.is_proc_macro(index) {
-            let name = self.raw_proc_macro(index).name();
-            key.disambiguated_data.data = DefPathData::MacroNs(Symbol::intern(name));
-        }
-        key
+        *self.def_key_cache.lock().entry(index).or_insert_with(|| {
+            let mut key = self.root.tables.def_keys.get(self, index).unwrap().decode(self);
+            if self.is_proc_macro(index) {
+                let name = self.raw_proc_macro(index).name();
+                key.disambiguated_data.data = DefPathData::MacroNs(Symbol::intern(name));
+            }
+            key
+        })
     }
 
     // Returns the path leading to the thing with this `id`.
     fn def_path(&self, id: DefIndex) -> DefPath {
         debug!("def_path(cnum={:?}, id={:?})", self.cnum, id);
         DefPath::make(self.cnum, id, |parent| self.def_key(parent))
+    }
+
+    fn def_path_hash_unlocked(
+        &self,
+        index: DefIndex,
+        def_path_hashes: &mut FxHashMap<DefIndex, DefPathHash>,
+    ) -> DefPathHash {
+        *def_path_hashes.entry(index).or_insert_with(|| {
+            self.root.tables.def_path_hashes.get(self, index).unwrap().decode(self)
+        })
+    }
+
+    #[inline]
+    fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
+        let mut def_path_hashes = self.def_path_hash_cache.lock();
+        self.def_path_hash_unlocked(index, &mut def_path_hashes)
+    }
+
+    fn all_def_path_hashes_and_def_ids(&self) -> Vec<(DefPathHash, DefId)> {
+        let mut def_path_hashes = self.def_path_hash_cache.lock();
+        (0..self.num_def_ids())
+            .map(|index| {
+                let index = DefIndex::from_usize(index);
+                (self.def_path_hash_unlocked(index, &mut def_path_hashes), self.local_def_id(index))
+            })
+            .collect()
+    }
+
+    /// Get the `DepNodeIndex` corresponding this crate. The result of this
+    /// method is cached in the `dep_node_index` field.
+    fn get_crate_dep_node_index(&self, tcx: TyCtxt<'tcx>) -> DepNodeIndex {
+        let mut dep_node_index = self.dep_node_index.load();
+
+        if unlikely!(dep_node_index == DepNodeIndex::INVALID) {
+            // We have not cached the DepNodeIndex for this upstream crate yet,
+            // so use the dep-graph to find it out and cache it.
+            // Note that multiple threads can enter this block concurrently.
+            // That is fine because the DepNodeIndex remains constant
+            // throughout the whole compilation session, and multiple stores
+            // would always write the same value.
+
+            let def_path_hash = self.def_path_hash(CRATE_DEF_INDEX);
+            let dep_node =
+                DepNode::from_def_path_hash(def_path_hash, dep_graph::DepKind::CrateMetadata);
+
+            dep_node_index = tcx.dep_graph.dep_node_index_of(&dep_node);
+            assert!(dep_node_index != DepNodeIndex::INVALID);
+            self.dep_node_index.store(dep_node_index);
+        }
+
+        dep_node_index
     }
 
     /// Imports the source_map from an external crate into the source_map of the crate
@@ -1723,9 +1772,6 @@ impl CrateMetadata {
         private_dep: bool,
         host_hash: Option<Svh>,
     ) -> CrateMetadata {
-        let def_path_table = record_time(&sess.perf_stats.decode_def_path_tables_time, || {
-            root.def_path_table.decode((&blob, sess))
-        });
         let trait_impls = root
             .impls
             .decode((&blob, sess))
@@ -1737,7 +1783,6 @@ impl CrateMetadata {
         CrateMetadata {
             blob,
             root,
-            def_path_table,
             trait_impls,
             raw_proc_macros,
             source_map_import_info: OnceCell::new(),
@@ -1752,6 +1797,8 @@ impl CrateMetadata {
             host_hash,
             extern_crate: Lock::new(None),
             hygiene_context: Default::default(),
+            def_key_cache: Default::default(),
+            def_path_hash_cache: Default::default(),
         }
     }
 
@@ -1828,6 +1875,10 @@ impl CrateMetadata {
         self.root.hash
     }
 
+    fn num_def_ids(&self) -> usize {
+        self.root.tables.def_keys.size()
+    }
+
     fn local_def_id(&self, index: DefIndex) -> DefId {
         DefId { krate: self.cnum, index }
     }
@@ -1842,36 +1893,6 @@ impl CrateMetadata {
         }
 
         None
-    }
-
-    #[inline]
-    fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
-        self.def_path_table.def_path_hash(index)
-    }
-
-    /// Get the `DepNodeIndex` corresponding this crate. The result of this
-    /// method is cached in the `dep_node_index` field.
-    fn get_crate_dep_node_index(&self, tcx: TyCtxt<'tcx>) -> DepNodeIndex {
-        let mut dep_node_index = self.dep_node_index.load();
-
-        if unlikely!(dep_node_index == DepNodeIndex::INVALID) {
-            // We have not cached the DepNodeIndex for this upstream crate yet,
-            // so use the dep-graph to find it out and cache it.
-            // Note that multiple threads can enter this block concurrently.
-            // That is fine because the DepNodeIndex remains constant
-            // throughout the whole compilation session, and multiple stores
-            // would always write the same value.
-
-            let def_path_hash = self.def_path_hash(CRATE_DEF_INDEX);
-            let dep_node =
-                DepNode::from_def_path_hash(def_path_hash, dep_graph::DepKind::CrateMetadata);
-
-            dep_node_index = tcx.dep_graph.dep_node_index_of(&dep_node);
-            assert!(dep_node_index != DepNodeIndex::INVALID);
-            self.dep_node_index.store(dep_node_index);
-        }
-
-        dep_node_index
     }
 }
 

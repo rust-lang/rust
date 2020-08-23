@@ -9,7 +9,6 @@ use rustc_data_structures::sync::{join, Lrc};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::DefPathTable;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_hir::lang_items;
@@ -418,9 +417,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_def_path_table(&mut self) -> Lazy<DefPathTable> {
-        let definitions = self.tcx.hir().definitions();
-        self.lazy(definitions.def_path_table())
+    fn encode_def_path_table(&mut self) {
+        let table = self.tcx.hir().definitions().def_path_table();
+        for (def_index, def_key, def_path_hash) in table.enumerated_keys_and_path_hashes() {
+            let def_key = self.lazy(def_key);
+            let def_path_hash = self.lazy(def_path_hash);
+            self.tables.def_keys.set(def_index, def_key);
+            self.tables.def_path_hashes.set(def_index, def_path_hash);
+        }
     }
 
     fn encode_source_map(&mut self) -> Lazy<[rustc_span::SourceFile]> {
@@ -525,7 +529,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode DefPathTable
         i = self.position();
-        let def_path_table = self.encode_def_path_table();
+        self.encode_def_path_table();
         let def_path_table_bytes = self.position() - i;
 
         // Encode the def IDs of impls, for coherence checking.
@@ -642,7 +646,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             native_libraries,
             foreign_modules,
             source_map,
-            def_path_table,
             impls,
             exported_symbols,
             interpret_alloc_index,

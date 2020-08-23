@@ -9,7 +9,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, DefPathTable};
+use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_macros::HashStable;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
@@ -187,7 +187,8 @@ pub trait CrateStore {
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> DefPath;
     fn def_path_hash(&self, def: DefId) -> DefPathHash;
-    fn def_path_table(&self, cnum: CrateNum) -> &DefPathTable;
+    fn all_def_path_hashes_and_def_ids(&self, cnum: CrateNum) -> Vec<(DefPathHash, DefId)>;
+    fn num_def_ids(&self, cnum: CrateNum) -> usize;
 
     // "queries" used in resolve that aren't tracked for incremental compilation
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;

@@ -23,7 +23,7 @@ use tracing::debug;
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`
 /// stores the `DefIndex` of its parent.
 /// There is one `DefPathTable` for each crate.
-#[derive(Clone, Default, Decodable, Encodable)]
+#[derive(Clone, Default)]
 pub struct DefPathTable {
     index_to_key: IndexVec<DefIndex, DefKey>,
     def_path_hashes: IndexVec<DefIndex, DefPathHash>,
@@ -42,10 +42,6 @@ impl DefPathTable {
         index
     }
 
-    pub fn next_id(&self) -> DefIndex {
-        DefIndex::from(self.index_to_key.len())
-    }
-
     #[inline(always)]
     pub fn def_key(&self, index: DefIndex) -> DefKey {
         self.index_to_key[index]
@@ -58,15 +54,25 @@ impl DefPathTable {
         hash
     }
 
-    pub fn add_def_path_hashes_to(&self, cnum: CrateNum, out: &mut FxHashMap<DefPathHash, DefId>) {
-        out.extend(self.def_path_hashes.iter().enumerate().map(|(index, &hash)| {
-            let def_id = DefId { krate: cnum, index: DefIndex::from(index) };
-            (hash, def_id)
-        }));
+    pub fn num_def_ids(&self) -> usize {
+        self.index_to_key.len()
     }
 
-    pub fn size(&self) -> usize {
-        self.index_to_key.len()
+    pub fn enumerated_keys_and_path_hashes(
+        &self,
+    ) -> impl Iterator<Item = (DefIndex, &DefKey, &DefPathHash)> + '_ {
+        self.index_to_key
+            .iter_enumerated()
+            .map(move |(index, key)| (index, key, &self.def_path_hashes[index]))
+    }
+
+    pub fn all_def_path_hashes_and_def_ids(
+        &self,
+        krate: CrateNum,
+    ) -> impl Iterator<Item = (DefPathHash, DefId)> + '_ {
+        self.def_path_hashes
+            .iter_enumerated()
+            .map(move |(index, hash)| (*hash, DefId { krate, index }))
     }
 }
 
