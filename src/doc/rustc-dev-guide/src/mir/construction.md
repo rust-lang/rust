@@ -3,10 +3,10 @@
 The lowering of [HIR] to [MIR] occurs for the following (probably incomplete)
 list of items:
 
-* Function and Closure bodies
+* Function and closure bodies
 * Initializers of `static` and `const` items
 * Initializers of enum discriminants
-* Glue and Shims of any kind
+* Glue and shims of any kind
     * Tuple struct initializer functions
     * Drop code (the `Drop::drop` function is not called directly)
     * Drop implementations of types without an explicit `Drop` implementation
@@ -20,9 +20,10 @@ without explicit syntax) like coercions, autoderef, autoref and overloaded metho
 calls have become explicit casts, deref operations, reference expressions or
 concrete function calls.
 
-The [THIR] has datatypes that mirror the [HIR] datatypes, but instead of e.g. `-x`
-being a `thir::ExprKind::Neg(thir::Expr)` it is a `thir::ExprKind::Neg(hir::Expr)`.
-This shallowness enables the `THIR` to represent all datatypes that [HIR] has, but
+The [THIR] has datatypes that mirror the [HIR] datatypes, but the [THIR] is a shallow
+wrapper around [HIR]. For example, instead of `-x` being a `thir::ExprKind::Neg(thir::Expr)`
+(a deep copy), it is a `thir::ExprKind::Neg(hir::Expr)` (a shallow copy).
+This shallowness enables the [THIR] to represent all datatypes that [HIR] has, but
 without having to create an in-memory copy of the entire [HIR].
 [MIR] lowering will first convert the topmost expression from
 [HIR] to [THIR] (in [`rustc_mir_build::thir::cx::expr`]) and then process
