@@ -642,8 +642,8 @@ mod prim_slice {}
 /// assert_eq!(s, Ok(story));
 /// ```
 ///
-/// [`as_ptr`]: #method.as_ptr
-/// [`len`]: #method.len
+/// [`as_ptr`]: str::as_ptr
+/// [`len`]: str::len
 ///
 /// Note: This example shows the internals of `&str`. `unsafe` should not be
 /// used to get a string slice under normal circumstances. Use `as_str`
