@@ -172,7 +172,7 @@ impl<'tcx> Item<'tcx> {
         // First item is the original function we're linting.
         let target_def_id = stack[0].def_id;
         let hir_id = tcx.hir().local_def_id_to_hir_id(target_def_id.expect_local());
-        let sp = tcx.sess.source_map().guess_head_span(tcx.hir().span(hir_id));
+        let sp = tcx.sess.source_map().guess_head_span(tcx.hir().span_with_body(hir_id));
         tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp, |lint| {
             let mut db = lint.build("function cannot return without recursing");
 
