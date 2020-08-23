@@ -28,7 +28,7 @@ impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
     pub fn parse_crate_mod(&mut self) -> PResult<'a, ast::Crate> {
         let lo = self.token.span;
-        let (module, attrs) = self.parse_mod(&token::Eof)?;
+        let (module, attrs) = self.parse_mod(&token::Eof, Unsafe::No)?;
         let span = lo.to(self.token.span);
         let proc_macros = Vec::new(); // Filled in by `proc_macro_harness::inject()`.
         Ok(ast::Crate { attrs, module, span, proc_macros })
@@ -36,27 +36,38 @@ impl<'a> Parser<'a> {
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
     fn parse_item_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
+        let unsafety = self.parse_unsafety();
+        self.expect_keyword(kw::Mod)?;
         let id = self.parse_ident()?;
         let (module, mut inner_attrs) = if self.eat(&token::Semi) {
-            Default::default()
+            (Mod { inner: Span::default(), unsafety, items: Vec::new(), inline: false }, Vec::new())
         } else {
             self.expect(&token::OpenDelim(token::Brace))?;
-            self.parse_mod(&token::CloseDelim(token::Brace))?
+            self.parse_mod(&token::CloseDelim(token::Brace), unsafety)?
         };
         attrs.append(&mut inner_attrs);
         Ok((id, ItemKind::Mod(module)))
     }
 
     /// Parses the contents of a module (inner attributes followed by module items).
-    pub fn parse_mod(&mut self, term: &TokenKind) -> PResult<'a, (Mod, Vec<Attribute>)> {
+    pub fn parse_mod(
+        &mut self,
+        term: &TokenKind,
+        unsafety: Unsafe,
+    ) -> PResult<'a, (Mod, Vec<Attribute>)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
-        let module = self.parse_mod_items(term, lo)?;
+        let module = self.parse_mod_items(term, lo, unsafety)?;
         Ok((module, attrs))
     }
 
     /// Given a termination token, parses all of the items in a module.
-    fn parse_mod_items(&mut self, term: &TokenKind, inner_lo: Span) -> PResult<'a, Mod> {
+    fn parse_mod_items(
+        &mut self,
+        term: &TokenKind,
+        inner_lo: Span,
+        unsafety: Unsafe,
+    ) -> PResult<'a, Mod> {
         let mut items = vec![];
         while let Some(item) = self.parse_item()? {
             items.push(item);
@@ -75,7 +86,7 @@ impl<'a> Parser<'a> {
 
         let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_token.span };
 
-        Ok(Mod { inner: inner_lo.to(hi), items, inline: true })
+        Ok(Mod { inner: inner_lo.to(hi), unsafety, items, inline: true })
     }
 }
 
@@ -235,8 +246,13 @@ impl<'a> Parser<'a> {
                 self.parse_item_extern_crate()?
             } else {
                 // EXTERN BLOCK
-                self.parse_item_foreign_mod(attrs)?
+                self.parse_item_foreign_mod(attrs, Unsafe::No)?
             }
+        } else if self.is_unsafe_foreign_mod() {
+            // EXTERN BLOCK
+            let unsafety = self.parse_unsafety();
+            self.expect_keyword(kw::Extern)?;
+            self.parse_item_foreign_mod(attrs, unsafety)?
         } else if self.is_static_global() {
             // STATIC ITEM
             self.bump(); // `static`
@@ -256,7 +272,9 @@ impl<'a> Parser<'a> {
         {
             // IMPL ITEM
             self.parse_item_impl(attrs, def())?
-        } else if self.eat_keyword(kw::Mod) {
+        } else if self.check_keyword(kw::Mod)
+            || self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Mod])
+        {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
         } else if self.eat_keyword(kw::Type) {
@@ -893,10 +911,14 @@ impl<'a> Parser<'a> {
     /// extern "C" {}
     /// extern {}
     /// ```
-    fn parse_item_foreign_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
+    fn parse_item_foreign_mod(
+        &mut self,
+        attrs: &mut Vec<Attribute>,
+        unsafety: Unsafe,
+    ) -> PResult<'a, ItemInfo> {
         let abi = self.parse_abi(); // ABI?
         let items = self.parse_item_list(attrs, |p| p.parse_foreign_item())?;
-        let module = ast::ForeignMod { abi, items };
+        let module = ast::ForeignMod { unsafety, abi, items };
         Ok((Ident::invalid(), ItemKind::ForeignMod(module)))
     }
 
@@ -936,6 +958,15 @@ impl<'a> Parser<'a> {
             )
             .note("for more information, visit https://doc.rust-lang.org/std/keyword.extern.html")
             .emit();
+    }
+
+    fn is_unsafe_foreign_mod(&self) -> bool {
+        self.token.is_keyword(kw::Unsafe)
+            && self.is_keyword_ahead(1, &[kw::Extern])
+            && self.look_ahead(
+                2 + self.look_ahead(2, |t| t.can_begin_literal_maybe_minus() as usize),
+                |t| t.kind == token::OpenDelim(token::Brace),
+            )
     }
 
     fn is_static_global(&mut self) -> bool {
@@ -1552,10 +1583,14 @@ impl<'a> Parser<'a> {
             // `$qual fn` or `$qual $qual`:
             || QUALS.iter().any(|&kw| self.check_keyword(kw))
                 && self.look_ahead(1, |t| {
-                    // ...qualified and then `fn`, e.g. `const fn`.
+                    // `$qual fn`, e.g. `const fn` or `async fn`.
                     t.is_keyword(kw::Fn)
-                    // Two qualifiers. This is enough. Due `async` we need to check that it's reserved.
-                    || t.is_non_raw_ident_where(|i| QUALS.contains(&i.name) && i.is_reserved())
+                    // Two qualifiers `$qual $qual` is enough, e.g. `async unsafe`.
+                    || t.is_non_raw_ident_where(|i| QUALS.contains(&i.name)
+                        // Rule out 2015 `const async: T = val`.
+                        && i.is_reserved()
+                        // Rule out unsafe extern block.
+                        && !self.is_unsafe_foreign_mod())
                 })
             // `extern ABI fn`
             || self.check_keyword(kw::Extern)
@@ -1567,9 +1602,9 @@ impl<'a> Parser<'a> {
     /// up to and including the `fn` keyword. The formal grammar is:
     ///
     /// ```
-    /// Extern = "extern" StringLit ;
+    /// Extern = "extern" StringLit? ;
     /// FnQual = "const"? "async"? "unsafe"? Extern? ;
-    /// FnFrontMatter = FnQual? "fn" ;
+    /// FnFrontMatter = FnQual "fn" ;
     /// ```
     pub(super) fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
         let constness = self.parse_constness();

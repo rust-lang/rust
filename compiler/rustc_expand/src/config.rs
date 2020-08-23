@@ -399,7 +399,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_foreign_mod(&mut self, foreign_mod: &mut ast::ForeignMod) {
-        let ast::ForeignMod { abi: _, items } = foreign_mod;
+        let ast::ForeignMod { unsafety: _, abi: _, items } = foreign_mod;
         items.flat_map_in_place(|item| self.configure(item));
     }
 

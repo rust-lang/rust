@@ -13,7 +13,7 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrItem, Block, LitKind, NodeId, PatKind, Path};
-use rustc_ast::{ItemKind, MacArgs, MacCallStmt, MacStmtStyle, StmtKind};
+use rustc_ast::{ItemKind, MacArgs, MacCallStmt, MacStmtStyle, StmtKind, Unsafe};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -370,11 +370,21 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             None => {
                 // Resolution failed so we return an empty expansion
                 krate.attrs = vec![];
-                krate.module = ast::Mod { inner: orig_mod_span, items: vec![], inline: true };
+                krate.module = ast::Mod {
+                    inner: orig_mod_span,
+                    unsafety: Unsafe::No,
+                    items: vec![],
+                    inline: true,
+                };
             }
             Some(ast::Item { span, kind, .. }) => {
                 krate.attrs = vec![];
-                krate.module = ast::Mod { inner: orig_mod_span, items: vec![], inline: true };
+                krate.module = ast::Mod {
+                    inner: orig_mod_span,
+                    unsafety: Unsafe::No,
+                    items: vec![],
+                    inline: true,
+                };
                 self.cx.span_err(
                     span,
                     &format!(
@@ -1441,8 +1451,15 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     push_directory(&self.cx.sess, ident, &item.attrs, dir)
                 } else {
                     // We have an outline `mod foo;` so we need to parse the file.
-                    let (new_mod, dir) =
-                        parse_external_mod(&self.cx.sess, ident, span, dir, &mut attrs, pushed);
+                    let (new_mod, dir) = parse_external_mod(
+                        &self.cx.sess,
+                        ident,
+                        span,
+                        old_mod.unsafety,
+                        dir,
+                        &mut attrs,
+                        pushed,
+                    );
 
                     let krate = ast::Crate {
                         span: new_mod.inner,
