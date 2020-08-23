@@ -316,15 +316,15 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
     for stack_slot_users in opt_ctx.stack_slot_usage_map.values_mut() {
         stack_slot_users
             .stack_addr
-            .iter()
+            .drain()
             .filter(|inst| stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true))
-            .for_each(|inst| StackSlotUsage::remove_unused_stack_addr(&mut func, *inst));
+            .for_each(|inst| StackSlotUsage::remove_unused_stack_addr(&mut func, inst));
 
         stack_slot_users
             .stack_load
-            .iter()
+            .drain()
             .filter(|inst| stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true))
-            .for_each(|inst| StackSlotUsage::remove_unused_load(&mut func, *inst));
+            .for_each(|inst| StackSlotUsage::remove_unused_load(&mut func, inst));
     }
 }
 
