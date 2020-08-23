@@ -317,6 +317,8 @@ fn find_inevitable_calls_in_body<'tcx>(
     let mut worklist: VecDeque<_> =
         inevitable_calls.indices().flat_map(|bb| &predecessors[bb]).collect();
 
+    let mut successors = Vec::with_capacity(2);
+
     while let Some(&bb) = worklist.pop_front() {
         // Determine all "relevant" successors. We ignore successors only reached via unwinding.
         let terminator = body[bb].terminator();
@@ -347,43 +349,15 @@ fn find_inevitable_calls_in_body<'tcx>(
             }
         };
 
-        // All callees that are guaranteed to be reached by every successor will also be reached by
-        // `bb`. Compute the intersection.
-        let successors = relevant_successors.copied();
-
-        // For efficiency, we initially only consider the smallest set.
-        let (smallest_successor_set_index, smallest_successor_set_bb) = match successors
-            .clone()
-            .enumerate()
-            .min_by_key(|(_, bb)| inevitable_calls[*bb].len())
-        {
-            Some((i, bb)) => (i, bb),
-            None => continue, // No callees will be added
-        };
+        successors.clear();
+        successors.extend(relevant_successors.copied());
 
         let mut dest_set = mem::take(&mut inevitable_calls[bb]);
-        let len = dest_set.len();
-        for callee in &inevitable_calls[smallest_successor_set_bb] {
-            if dest_set.contains(callee) {
-                continue;
-            }
 
-            // `callee` must be contained in *every* successor's set.
-            let add = successors.clone().enumerate().all(|(i, bb)| {
-                if i == smallest_successor_set_index {
-                    return true;
-                }
-                let callee_set = &inevitable_calls[bb];
-                callee_set.contains(callee)
-            });
-
-            if add {
-                dest_set.insert(callee.clone());
-            }
-        }
+        let changed = propagate_successors(&mut dest_set, &inevitable_calls, &successors);
 
         inevitable_calls[bb] = dest_set;
-        if inevitable_calls[bb].len() != len {
+        if changed {
             // `bb`s inevitable callees were modified, so propagate that backwards.
             worklist.extend(&predecessors[bb]);
         }
@@ -393,6 +367,58 @@ fn find_inevitable_calls_in_body<'tcx>(
         let spans = &span_map[&callee];
         (callee, spans.clone())
     })
+}
+
+/// Propagates inevitable calls from `successors` into their predecessor's `dest_set`.
+///
+/// Returns `true` if `dest_set` was changed.
+fn propagate_successors<'tcx>(
+    dest_set: &mut FxHashSet<Callee<'tcx>>,
+    inevitable_calls: &IndexVec<BasicBlock, FxHashSet<Callee<'tcx>>>,
+    successors: &[BasicBlock],
+) -> bool {
+    let len = dest_set.len();
+
+    match successors {
+        [successor] => {
+            // If there's only one successor, just add all of its calls to `dest_set`.
+            dest_set.extend(inevitable_calls[*successor].iter().copied());
+        }
+        _ => {
+            // All callees that are guaranteed to be reached by every successor will also be reached by
+            // `bb`. Compute the intersection.
+            // For efficiency, we initially only consider the smallest set.
+            let (smallest_successor_set_index, smallest_successor_set_bb) = match successors
+                .iter()
+                .enumerate()
+                .min_by_key(|(_, &bb)| inevitable_calls[bb].len())
+            {
+                Some((i, bb)) => (i, *bb),
+                None => return false, // No callees will be added
+            };
+
+            for callee in &inevitable_calls[smallest_successor_set_bb] {
+                if dest_set.contains(callee) {
+                    continue;
+                }
+
+                // `callee` must be contained in *every* successor's set.
+                let add = successors.iter().enumerate().all(|(i, bb)| {
+                    if i == smallest_successor_set_index {
+                        return true;
+                    }
+                    let callee_set = &inevitable_calls[*bb];
+                    callee_set.contains(callee)
+                });
+
+                if add {
+                    dest_set.insert(callee.clone());
+                }
+            }
+        }
+    }
+
+    dest_set.len() != len
 }
 
 /// Information about a callee tracked by this algorithm.
