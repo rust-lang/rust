@@ -79,16 +79,14 @@ impl StackSlotUsage {
         }).collect::<Vec<Inst>>()
     }
 
-    fn remove_unused_stack_addr(&mut self, func: &mut Function, inst: Inst) {
+    fn remove_unused_stack_addr(func: &mut Function, inst: Inst) {
         func.dfg.detach_results(inst);
         func.dfg.replace(inst).nop();
-        self.stack_addr.remove(&inst);
     }
 
-    fn remove_unused_load(&mut self, func: &mut Function, load: Inst) {
+    fn remove_unused_load(func: &mut Function, load: Inst) {
         func.dfg.detach_results(load);
         func.dfg.replace(load).nop();
-        self.stack_load.remove(&load);
     }
 
     fn remove_dead_store(&mut self, func: &mut Function, store: Inst) {
@@ -315,18 +313,21 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
 
     // Replace all unused stack_addr and stack_load instructions with nop.
     for stack_slot_users in opt_ctx.stack_slot_usage_map.values_mut() {
-        // FIXME: Remove clone
         for &inst in stack_slot_users.stack_addr.clone().iter() {
             if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                stack_slot_users.remove_unused_stack_addr(&mut opt_ctx.ctx.func, inst);
+                StackSlotUsage::remove_unused_stack_addr(&mut opt_ctx.ctx.func, inst);
+                stack_slot_users.stack_addr.remove(&inst);
             }
         }
 
+        /*
         for &inst in stack_slot_users.stack_load.clone().iter() {
             if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                stack_slot_users.remove_unused_load(&mut opt_ctx.ctx.func, inst);
+                StackSlotUsage::remove_unused_load(&mut opt_ctx.ctx.func, inst);
+                stack_slot_users.stack_load.remove(&inst);
             }
         }
+        */
     }
 }
 
