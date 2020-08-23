@@ -3,6 +3,9 @@ use crate::fmt;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::thread;
 
+#[cfg(doc)]
+use crate::sync::{Mutex, RwLock};
+
 pub struct Flag {
     failed: AtomicBool,
 }
@@ -77,9 +80,6 @@ pub struct Guard {
 ///     }
 /// };
 /// ```
-///
-/// [`Mutex`]: crate::sync::Mutex
-/// [`RwLock`]: crate::sync::RwLock
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PoisonError<T> {
     guard: T,
@@ -89,11 +89,9 @@ pub struct PoisonError<T> {
 /// can occur while trying to acquire a lock, from the [`try_lock`] method on a
 /// [`Mutex`] or the [`try_read`] and [`try_write`] methods on an [`RwLock`].
 ///
-/// [`Mutex`]: crate::sync::Mutex
-/// [`RwLock`]: crate::sync::RwLock
-/// [`try_lock`]: crate::sync::Mutex::try_lock
-/// [`try_read`]: crate::sync::RwLock::try_read
-/// [`try_write`]: crate::sync::RwLock::try_write
+/// [`try_lock`]: Mutex::try_lock
+/// [`try_read`]: RwLock::try_read
+/// [`try_write`]: RwLock::try_write
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryLockError<T> {
     /// The lock could not be acquired because another thread failed while holding
@@ -152,9 +150,6 @@ impl<T> PoisonError<T> {
     /// Creates a `PoisonError`.
     ///
     /// This is generally created by methods like [`Mutex::lock`] or [`RwLock::read`].
-    ///
-    /// [`Mutex::lock`]:  crate::sync::Mutex::lock
-    /// [`RwLock::read`]: crate::sync::RwLock::read
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn new(guard: T) -> PoisonError<T> {
         PoisonError { guard }
