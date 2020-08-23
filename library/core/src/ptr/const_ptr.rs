@@ -361,7 +361,7 @@ impl<T: ?Sized> *const T {
     ///     let zero = ptr2_other.offset_from(ptr2); // Undefined Behavior
     /// }
     /// ```
-    #[stable(feature = "ptr_offset_from", since = "1.46.0")]
+    #[stable(feature = "ptr_offset_from", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079")]
     #[inline]
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
