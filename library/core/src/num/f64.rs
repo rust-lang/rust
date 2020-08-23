@@ -380,8 +380,9 @@ impl f64 {
     /// assert!(!f.is_nan());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_nan(self) -> bool {
+    pub const fn is_nan(self) -> bool {
         self != self
     }
 
@@ -389,7 +390,8 @@ impl f64 {
     // concerns about portability, so this implementation is for
     // private use internally.
     #[inline]
-    fn abs_private(self) -> f64 {
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    const fn abs_private(self) -> f64 {
         f64::from_bits(self.to_bits() & 0x7fff_ffff_ffff_ffff)
     }
 
@@ -409,8 +411,9 @@ impl f64 {
     /// assert!(neg_inf.is_infinite());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_infinite(self) -> bool {
+    pub const fn is_infinite(self) -> bool {
         self.abs_private() == Self::INFINITY
     }
 
@@ -429,8 +432,9 @@ impl f64 {
     /// assert!(!neg_inf.is_finite());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_finite(self) -> bool {
+    pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
         self.abs_private() < Self::INFINITY
@@ -456,9 +460,10 @@ impl f64 {
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_normal(self) -> bool {
-        self.classify() == FpCategory::Normal
+    pub const fn is_normal(self) -> bool {
+        matches!(self.classify(), FpCategory::Normal)
     }
 
     /// Returns the floating point category of the number. If only one property
@@ -475,7 +480,8 @@ impl f64 {
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn classify(self) -> FpCategory {
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    pub const fn classify(self) -> FpCategory {
         const EXP_MASK: u64 = 0x7ff0000000000000;
         const MAN_MASK: u64 = 0x000fffffffffffff;
 
@@ -500,8 +506,9 @@ impl f64 {
     /// assert!(!g.is_sign_positive());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_sign_positive(self) -> bool {
+    pub const fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
     }
 
@@ -524,8 +531,9 @@ impl f64 {
     /// assert!(g.is_sign_negative());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
-    pub fn is_sign_negative(self) -> bool {
+    pub const fn is_sign_negative(self) -> bool {
         self.to_bits() & 0x8000_0000_0000_0000 != 0
     }
 
@@ -666,8 +674,9 @@ impl f64 {
     ///
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn to_bits(self) -> u64 {
+    pub const fn to_bits(self) -> u64 {
         // SAFETY: `u64` is a plain old datatype so we can always transmute to it
         unsafe { mem::transmute(self) }
     }
@@ -709,8 +718,9 @@ impl f64 {
     /// assert_eq!(v, 12.5);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn from_bits(v: u64) -> Self {
+    pub const fn from_bits(v: u64) -> Self {
         // SAFETY: `u64` is a plain old datatype so we can always transmute from it
         // It turns out the safety issues with sNaN were overblown! Hooray!
         unsafe { mem::transmute(v) }
@@ -726,8 +736,9 @@ impl f64 {
     /// assert_eq!(bytes, [0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn to_be_bytes(self) -> [u8; 8] {
+    pub const fn to_be_bytes(self) -> [u8; 8] {
         self.to_bits().to_be_bytes()
     }
 
@@ -741,8 +752,9 @@ impl f64 {
     /// assert_eq!(bytes, [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn to_le_bytes(self) -> [u8; 8] {
+    pub const fn to_le_bytes(self) -> [u8; 8] {
         self.to_bits().to_le_bytes()
     }
 
@@ -769,8 +781,9 @@ impl f64 {
     /// );
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn to_ne_bytes(self) -> [u8; 8] {
+    pub const fn to_ne_bytes(self) -> [u8; 8] {
         self.to_bits().to_ne_bytes()
     }
 
@@ -783,8 +796,9 @@ impl f64 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn from_be_bytes(bytes: [u8; 8]) -> Self {
+    pub const fn from_be_bytes(bytes: [u8; 8]) -> Self {
         Self::from_bits(u64::from_be_bytes(bytes))
     }
 
@@ -797,8 +811,9 @@ impl f64 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn from_le_bytes(bytes: [u8; 8]) -> Self {
+    pub const fn from_le_bytes(bytes: [u8; 8]) -> Self {
         Self::from_bits(u64::from_le_bytes(bytes))
     }
 
@@ -822,8 +837,9 @@ impl f64 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
-    pub fn from_ne_bytes(bytes: [u8; 8]) -> Self {
+    pub const fn from_ne_bytes(bytes: [u8; 8]) -> Self {
         Self::from_bits(u64::from_ne_bytes(bytes))
     }
 
