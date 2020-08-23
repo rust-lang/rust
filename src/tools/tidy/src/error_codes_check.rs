@@ -56,7 +56,7 @@ fn check_if_error_code_is_test_in_explanation(f: &str, err_code: &str) -> bool {
         if s.starts_with("```") {
             if s.contains("compile_fail") && s.contains(err_code) {
                 return true;
-            } else if s.contains("(") {
+            } else if s.contains('(') {
                 // It's very likely that we can't actually make it fail compilation...
                 return true;
             }
