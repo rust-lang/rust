@@ -3,7 +3,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind;
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::map::blocks::FnLikeNode;
-use rustc_middle::mir::{BasicBlock, Body, TerminatorKind, START_BLOCK};
+use rustc_middle::mir::{self, BasicBlock, Body, TerminatorKind, START_BLOCK};
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
@@ -433,7 +433,11 @@ fn collect_outgoing_calls<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
 ) -> impl Iterator<Item = (BasicBlock, Callee<'tcx>, Span)> + 'a {
-    body.basic_blocks().iter_enumerated().filter_map(move |(bb, data)| {
+    mir::traversal::preorder(body).filter_map(move |(bb, data)| {
+        if data.is_cleanup {
+            return None;
+        }
+
         if let TerminatorKind::Call { func, .. } = &data.terminator().kind {
             let func_ty = func.ty(body, tcx);
             if let ty::FnDef(def_id, substs) = func_ty.kind {
