@@ -587,6 +587,20 @@ mod prim_array {}
 /// x[1] = 7;
 /// assert_eq!(x, &[1, 7, 3]);
 /// ```
+///
+/// As slices store the length of the sequence they refer to, they have twice
+/// the size of pointers to [`Sized`](marker/trait.Sized.html) types.
+/// Also see the reference on
+/// [dynamically sized types](../reference/dynamically-sized-types.html).
+///
+/// ```
+/// # use std::rc::Rc;
+/// let pointer_size = std::mem::size_of::<&u8>();
+/// assert_eq!(2 * pointer_size, std::mem::size_of::<&[u8]>());
+/// assert_eq!(2 * pointer_size, std::mem::size_of::<*const [u8]>());
+/// assert_eq!(2 * pointer_size, std::mem::size_of::<Box<[u8]>>());
+/// assert_eq!(2 * pointer_size, std::mem::size_of::<Rc<[u8]>>());
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_slice {}
 
