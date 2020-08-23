@@ -63,4 +63,39 @@ fn dog() -> impl std::fmt::Display {
     }
 }
 
+fn hat() -> dyn std::fmt::Display { //~ ERROR return type cannot have an unboxed trait object
+    match 13 {
+        0 => {
+            return 0i32;
+        }
+        _ => {
+            1u32
+        }
+    }
+}
+
+fn pug() -> dyn std::fmt::Display { //~ ERROR return type cannot have an unboxed trait object
+    match 13 {
+        0 => 0i32,
+        1 => 1u32, //~ ERROR `match` arms have incompatible types
+        _ => 2u32,
+    }
+}
+
+fn man() -> dyn std::fmt::Display { //~ ERROR return type cannot have an unboxed trait object
+    if false {
+        0i32
+    } else {
+        1u32 //~ ERROR `if` and `else` have incompatible types
+    }
+}
+
+fn apt() -> impl std::fmt::Display {
+    if let Some(42) = Some(42) {
+        0i32
+    } else {
+        1u32 //~ ERROR `if` and `else` have incompatible types
+    }
+}
+
 fn main() {}

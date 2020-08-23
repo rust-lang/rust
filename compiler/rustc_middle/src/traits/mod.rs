@@ -350,7 +350,7 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub prior_arms: Vec<Span>,
     pub last_ty: Ty<'tcx>,
     pub scrut_hir_id: hir::HirId,
-    pub suggest_box: Option<Span>,
+    pub opt_suggest_box_span: Option<Span>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -359,7 +359,7 @@ pub struct IfExpressionCause {
     pub else_sp: Span,
     pub outer: Option<Span>,
     pub semicolon: Option<Span>,
-    pub suggest_box: Option<Span>,
+    pub opt_suggest_box_span: Option<Span>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]

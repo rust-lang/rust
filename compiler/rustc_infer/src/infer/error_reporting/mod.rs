@@ -617,14 +617,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 ref prior_arms,
                 last_ty,
                 scrut_hir_id,
-                suggest_box,
+                opt_suggest_box_span,
                 arm_span,
                 ..
             }) => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
                     let msg = "`if let` arms have incompatible types";
                     err.span_label(cause.span, msg);
-                    if let Some(ret_sp) = suggest_box {
+                    if let Some(ret_sp) = opt_suggest_box_span {
                         self.suggest_boxing_for_return_impl_trait(
                             err,
                             ret_sp,
@@ -684,7 +684,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                     }
-                    if let Some(ret_sp) = suggest_box {
+                    if let Some(ret_sp) = opt_suggest_box_span {
                         // Get return type span and point to it.
                         self.suggest_boxing_for_return_impl_trait(
                             err,
@@ -699,7 +699,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 else_sp,
                 outer,
                 semicolon,
-                suggest_box,
+                opt_suggest_box_span,
             }) => {
                 err.span_label(then, "expected because of this");
                 if let Some(sp) = outer {
@@ -713,7 +713,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 }
-                if let Some(ret_sp) = suggest_box {
+                if let Some(ret_sp) = opt_suggest_box_span {
                     self.suggest_boxing_for_return_impl_trait(
                         err,
                         ret_sp,

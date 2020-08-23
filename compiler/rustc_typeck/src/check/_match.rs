@@ -119,13 +119,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // When we have a `match` as a tail expression in a `fn` with a returned `impl Trait`
             // we check if the different arms would work with boxed trait objects instead and
             // provide a structured suggestion in that case.
-            let suggest_box = match (
+            let opt_suggest_box_span = match (
                 orig_expected,
-                self.body_id
-                    .owner
-                    .to_def_id()
-                    .as_local()
-                    .and_then(|id| self.ret_coercion_impl_trait.map(|ty| (id, ty))),
+                self.ret_coercion_impl_trait.map(|ty| (self.body_id.owner, ty)),
             ) {
                 (Expectation::ExpectHasType(expected), Some((id, ty)))
                     if self.in_tail_expr && self.can_coerce(arm_ty, expected) =>
@@ -181,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             &arm.body,
                             then_ty,
                             arm_ty,
-                            suggest_box,
+                            opt_suggest_box_span,
                         );
                         coercion.coerce(self, &cause, &arm.body, arm_ty);
                     }
@@ -205,7 +201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             prior_arms: other_arms.clone(),
                             last_ty: prior_arm_ty.unwrap(),
                             scrut_hir_id: scrut.hir_id,
-                            suggest_box,
+                            opt_suggest_box_span,
                         }),
                     ),
                 };
@@ -330,7 +326,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         else_expr: &'tcx hir::Expr<'tcx>,
         then_ty: Ty<'tcx>,
         else_ty: Ty<'tcx>,
-        suggest_box: Option<Span>,
+        opt_suggest_box_span: Option<Span>,
     ) -> ObligationCause<'tcx> {
         let mut outer_sp = if self.tcx.sess.source_map().is_multiline(span) {
             // The `if`/`else` isn't in one line in the output, include some context to make it
@@ -421,7 +417,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 else_sp: error_sp,
                 outer: outer_sp,
                 semicolon: remove_semicolon,
-                suggest_box,
+                opt_suggest_box_span,
             }),
         )
     }
