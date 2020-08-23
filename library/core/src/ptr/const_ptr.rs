@@ -240,8 +240,8 @@ impl<T: ?Sized> *const T {
     /// different allocated object. Note that in Rust,
     /// every (stack-allocated) variable is considered a separate allocated object.
     ///
-    /// In other words, `x.wrapping_offset(y.wrapping_offset_from(x))` is
-    /// *not* the same as `y`, and dereferencing it is undefined behavior
+    /// In other words, `x.wrapping_offset((y as usize).wrapping_sub(x as usize) / size_of::<T>())`
+    /// is *not* the same as `y`, and dereferencing it is undefined behavior
     /// unless `x` and `y` point into the same allocated object.
     ///
     /// Compared to [`offset`], this method basically delays the requirement of staying
@@ -292,7 +292,6 @@ impl<T: ?Sized> *const T {
     /// This function is the inverse of [`offset`].
     ///
     /// [`offset`]: #method.offset
-    /// [`wrapping_offset_from`]: #method.wrapping_offset_from
     ///
     /// # Safety
     ///
@@ -302,6 +301,9 @@ impl<T: ?Sized> *const T {
     /// * Both the starting and other pointer must be either in bounds or one
     ///   byte past the end of the same allocated object. Note that in Rust,
     ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///
+    /// * Both pointers must be *derived from* a pointer to the same object.
+    ///   (See below for an example.)
     ///
     /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
     ///
@@ -323,10 +325,6 @@ impl<T: ?Sized> *const T {
     /// Extension. As such, memory acquired directly from allocators or memory
     /// mapped files *may* be too large to handle with this function.
     ///
-    /// Consider using [`wrapping_offset_from`] instead if these constraints are
-    /// difficult to satisfy. The only advantage of this method is that it
-    /// enables more aggressive compiler optimizations.
-    ///
     /// # Panics
     ///
     /// This function panics if `T` is a Zero-Sized Type ("ZST").
@@ -336,8 +334,6 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(ptr_offset_from)]
-    ///
     /// let a = [0; 5];
     /// let ptr1: *const i32 = &a[1];
     /// let ptr2: *const i32 = &a[3];
@@ -348,7 +344,24 @@ impl<T: ?Sized> *const T {
     ///     assert_eq!(ptr2.offset(-2), ptr1);
     /// }
     /// ```
-    #[unstable(feature = "ptr_offset_from", issue = "41079")]
+    ///
+    /// *Incorrect* usage:
+    ///
+    /// ```rust,no_run
+    /// let ptr1 = Box::into_raw(Box::new(0u8)) as *const u8;
+    /// let ptr2 = Box::into_raw(Box::new(1u8)) as *const u8;
+    /// let diff = (ptr2 as isize).wrapping_sub(ptr1 as isize);
+    /// // Make ptr2_other an "alias" of ptr2, but derived from ptr1.
+    /// let ptr2_other = (ptr1 as *const u8).wrapping_offset(diff);
+    /// assert_eq!(ptr2 as usize, ptr2_other as usize);
+    /// // Since ptr2_other and ptr2 are derived from pointers to different objects,
+    /// // computing their offset is undefined behavior, even though
+    /// // they point to the same address!
+    /// unsafe {
+    ///     let zero = ptr2_other.offset_from(ptr2); // Undefined Behavior
+    /// }
+    /// ```
+    #[stable(feature = "ptr_offset_from", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079")]
     #[inline]
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
@@ -421,59 +434,6 @@ impl<T: ?Sized> *const T {
         T: Sized,
     {
         intrinsics::ptr_guaranteed_ne(self, other)
-    }
-
-    /// Calculates the distance between two pointers. The returned value is in
-    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
-    ///
-    /// If the address different between the two pointers is not a multiple of
-    /// `mem::size_of::<T>()` then the result of the division is rounded towards
-    /// zero.
-    ///
-    /// Though this method is safe for any two pointers, note that its result
-    /// will be mostly useless if the two pointers aren't into the same allocated
-    /// object, for example if they point to two different local variables.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `T` is a zero-sized type.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(ptr_wrapping_offset_from)]
-    ///
-    /// let a = [0; 5];
-    /// let ptr1: *const i32 = &a[1];
-    /// let ptr2: *const i32 = &a[3];
-    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
-    /// assert_eq!(ptr1.wrapping_offset_from(ptr2), -2);
-    /// assert_eq!(ptr1.wrapping_offset(2), ptr2);
-    /// assert_eq!(ptr2.wrapping_offset(-2), ptr1);
-    ///
-    /// let ptr1: *const i32 = 3 as _;
-    /// let ptr2: *const i32 = 13 as _;
-    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
-    /// ```
-    #[unstable(feature = "ptr_wrapping_offset_from", issue = "41079")]
-    #[rustc_deprecated(
-        since = "1.46.0",
-        reason = "Pointer distances across allocation \
-        boundaries are not typically meaningful. \
-        Use integer subtraction if you really need this."
-    )]
-    #[inline]
-    pub fn wrapping_offset_from(self, origin: *const T) -> isize
-    where
-        T: Sized,
-    {
-        let pointee_size = mem::size_of::<T>();
-        assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
-
-        let d = isize::wrapping_sub(self as _, origin as _);
-        d.wrapping_div(pointee_size as _)
     }
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).

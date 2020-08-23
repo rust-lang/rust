@@ -208,7 +208,7 @@
 #![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
-    feature(slice_index_methods, coerce_unsized, sgx_platform, ptr_wrapping_offset_from)
+    feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
 #![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"), feature(fixed_size_array))]
 // std is implemented with unstable features, many of which are internal
