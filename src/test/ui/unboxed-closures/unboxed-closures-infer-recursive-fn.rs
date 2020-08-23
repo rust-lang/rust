@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 // closure.  As far as I can tell, coding up a recursive closure
 // requires the good ol' [Y Combinator].
 //
-// [Y Combinator]: http://en.wikipedia.org/wiki/Fixed-point_combinator#Y_combinator
+// [Y Combinator]: https://en.wikipedia.org/wiki/Fixed-point_combinator#Y_combinator
 
 struct YCombinator<F,A,R> {
     func: F,

@@ -84,7 +84,7 @@ pub trait Stats {
     /// by the constant `1.4826` to allow its use as a consistent estimator for the standard
     /// deviation.
     ///
-    /// See: <http://en.wikipedia.org/wiki/Median_absolute_deviation>
+    /// See: <https://en.wikipedia.org/wiki/Median_absolute_deviation>
     fn median_abs_dev(&self) -> f64;
 
     /// Median absolute deviation as a percent of the median. See `median_abs_dev` and `median`.
@@ -96,7 +96,7 @@ pub trait Stats {
     ///
     /// Calculated by linear interpolation between closest ranks.
     ///
-    /// See: <http://en.wikipedia.org/wiki/Percentile>
+    /// See: <https://en.wikipedia.org/wiki/Percentile>
     fn percentile(&self, pct: f64) -> f64;
 
     /// Quartiles of the sample: three values that divide the sample into four equal groups, each
@@ -302,7 +302,7 @@ fn percentile_of_sorted(sorted_samples: &[f64], pct: f64) -> f64 {
 /// It differs from trimming in that it does not change the number of samples,
 /// just changes the values of those that are outliers.
 ///
-/// See: <http://en.wikipedia.org/wiki/Winsorising>
+/// See: <https://en.wikipedia.org/wiki/Winsorising>
 pub fn winsorize(samples: &mut [f64], pct: f64) {
     let mut tmp = samples.to_vec();
     local_sort(&mut tmp);
