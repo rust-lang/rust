@@ -315,14 +315,13 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
 
     // Replace all unused stack_addr and stack_load instructions with nop.
     for stack_slot_users in opt_ctx.stack_slot_usage_map.values_mut() {
-        // FIXME remove clone
-        for &inst in stack_slot_users.stack_addr.clone().iter() {
+        while let Some(&inst) = stack_slot_users.stack_addr.iter().next() {
             if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
                 stack_slot_users.remove_unused_stack_addr(&mut opt_ctx.ctx.func, inst);
             }
         }
 
-        for &inst in stack_slot_users.stack_load.clone().iter() {
+        while let Some(&inst) = stack_slot_users.stack_load.iter().next() {
             if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
                 stack_slot_users.remove_unused_load(&mut opt_ctx.ctx.func, inst);
             }
