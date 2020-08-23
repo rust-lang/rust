@@ -192,3 +192,19 @@ runtime. These tests don't have as thorough of a writeup, but a broad example
 that features results in all tabs can be found in `basic.js`. The basic idea is
 that you match a given `QUERY` with a set of `EXPECTED` results, complete with
 the full item path of each item.
+
+## Testing locally
+
+Some features of the generated HTML documentation might require local
+storage to be used across pages, which doesn't work well without an HTTP
+server. To test these features locally, you can run a local HTTP server, like
+this:
+
+```bash
+$ ./x.py doc library/std --stage 1
+# The documentation has been generated into `build/[YOUR ARCH]/doc`.
+$ python3 -m http.server -d build/[YOUR ARCH]/doc
+```
+
+Now you can browse your documentation just like you would if it was hosted
+on the internet. For example, the url for `std` will be `/std/".
