@@ -244,6 +244,8 @@ crate fn inevitable_calls<'tcx>(
 ) -> &'tcx [(DefId, SubstsRef<'tcx>, &'tcx [Span])] {
     tcx.arena.alloc_from_iter(
         find_inevitable_calls(tcx, key)
+            .into_iter()
+            .flatten()
             .map(|(callee, spans)| (callee.def_id, callee.substs, &*tcx.arena.alloc_slice(&spans))),
     )
 }
@@ -252,7 +254,7 @@ crate fn inevitable_calls<'tcx>(
 fn find_inevitable_calls<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> impl Iterator<Item = (Callee<'tcx>, Vec<Span>)> {
+) -> Option<impl Iterator<Item = (Callee<'tcx>, Vec<Span>)>> {
     debug!("find_inevitable_calls({})", tcx.def_path_str(def_id));
 
     assert!(tcx.is_mir_available(def_id), "MIR unavailable for {:?}", def_id);
@@ -276,7 +278,7 @@ fn find_inevitable_calls<'tcx>(
                 }
                 None => {
                     debug!("{:?} not an `FnLikeNode`, not linting", local);
-                    return None.into_iter().flatten();
+                    return None;
                 }
             }
         }
@@ -286,11 +288,11 @@ fn find_inevitable_calls<'tcx>(
             // sufficient to determine whether `optimized_mir` will succeed (we hit "unwrap on a
             // None value" in the metadata decoder).
             debug!("external function {:?}, not linting", def_id);
-            return None.into_iter().flatten();
+            return None;
         }
     };
 
-    Some(find_inevitable_calls_in_body(tcx, body)).into_iter().flatten()
+    Some(find_inevitable_calls_in_body(tcx, body))
 }
 
 fn find_inevitable_calls_in_body<'tcx>(
