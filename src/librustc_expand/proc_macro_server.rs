@@ -173,13 +173,19 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             }
 
             Interpolated(nt) => {
-                let stream = nt_to_tokenstream(&nt, sess, span);
-                TokenTree::Group(Group {
-                    delimiter: Delimiter::None,
-                    stream,
-                    span: DelimSpan::from_single(span),
-                    flatten: nt.pretty_printing_compatibility_hack(),
-                })
+                if let Some((name, is_raw)) =
+                    nt.ident_name_compatibility_hack(span, sess.source_map())
+                {
+                    TokenTree::Ident(Ident::new(sess, name.name, is_raw, name.span))
+                } else {
+                    let stream = nt_to_tokenstream(&nt, sess, span);
+                    TokenTree::Group(Group {
+                        delimiter: Delimiter::None,
+                        stream,
+                        span: DelimSpan::from_single(span),
+                        flatten: nt.pretty_printing_compatibility_hack(),
+                    })
+                }
             }
 
             OpenDelim(..) | CloseDelim(..) => unreachable!(),

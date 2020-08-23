@@ -7,8 +7,8 @@
 #![feature(or_patterns)]
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
-use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
+use rustc_ast::token::{self, DelimToken, Nonterminal, Token, TokenKind};
+use rustc_ast::tokenstream::{self, IsJoint, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
@@ -309,7 +309,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // modifications, including adding/removing typically non-semantic
     // tokens such as extra braces and commas, don't happen.
     if let Some(tokens) = tokens {
-        if tokenstream_probably_equal_for_proc_macro(&tokens, &tokens_for_real) {
+        if tokenstream_probably_equal_for_proc_macro(&tokens, &tokens_for_real, sess) {
             return tokens;
         }
         info!(
@@ -327,7 +327,11 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
 //
 // This is otherwise the same as `eq_unspanned`, only recursing with a
 // different method.
-pub fn tokenstream_probably_equal_for_proc_macro(first: &TokenStream, other: &TokenStream) -> bool {
+pub fn tokenstream_probably_equal_for_proc_macro(
+    first: &TokenStream,
+    other: &TokenStream,
+    sess: &ParseSess,
+) -> bool {
     // When checking for `probably_eq`, we ignore certain tokens that aren't
     // preserved in the AST. Because they are not preserved, the pretty
     // printer arbitrarily adds or removes them when printing as token
@@ -408,9 +412,6 @@ pub fn tokenstream_probably_equal_for_proc_macro(first: &TokenStream, other: &To
                 }
             }
             token_trees = out.into_iter().map(TokenTree::Token).collect();
-            if token_trees.len() != 1 {
-                debug!("break_tokens: broke {:?} to {:?}", tree, token_trees);
-            }
         } else {
             token_trees = SmallVec::new();
             token_trees.push(tree);
@@ -418,10 +419,32 @@ pub fn tokenstream_probably_equal_for_proc_macro(first: &TokenStream, other: &To
         token_trees.into_iter()
     }
 
-    let mut t1 = first.trees().filter(semantic_tree).flat_map(break_tokens);
-    let mut t2 = other.trees().filter(semantic_tree).flat_map(break_tokens);
+    let expand_nt = |tree: TokenTree| {
+        if let TokenTree::Token(Token { kind: TokenKind::Interpolated(nt), span }) = &tree {
+            // When checking tokenstreams for 'probable equality', we are comparing
+            // a captured (from parsing) `TokenStream` to a reparsed tokenstream.
+            // The reparsed Tokenstream will never have `None`-delimited groups,
+            // since they are only ever inserted as a result of macro expansion.
+            // Therefore, inserting a `None`-delimtied group here (when we
+            // convert a nested `Nonterminal` to a tokenstream) would cause
+            // a mismatch with the reparsed tokenstream.
+            //
+            // Note that we currently do not handle the case where the
+            // reparsed stream has a `Parenthesis`-delimited group
+            // inserted. This will cause a spurious mismatch:
+            // issue #75734 tracks resolving this.
+            nt_to_tokenstream(nt, sess, *span).into_trees()
+        } else {
+            TokenStream::new(vec![(tree, IsJoint::NonJoint)]).into_trees()
+        }
+    };
+
+    // Break tokens after we expand any nonterminals, so that we break tokens
+    // that are produced as a result of nonterminal expansion.
+    let mut t1 = first.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
+    let mut t2 = other.trees().filter(semantic_tree).flat_map(expand_nt).flat_map(break_tokens);
     for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
-        if !tokentree_probably_equal_for_proc_macro(&t1, &t2) {
+        if !tokentree_probably_equal_for_proc_macro(&t1, &t2, sess) {
             return false;
         }
     }
@@ -433,13 +456,17 @@ pub fn tokenstream_probably_equal_for_proc_macro(first: &TokenStream, other: &To
 //
 // This is otherwise the same as `eq_unspanned`, only recursing with a
 // different method.
-fn tokentree_probably_equal_for_proc_macro(first: &TokenTree, other: &TokenTree) -> bool {
+pub fn tokentree_probably_equal_for_proc_macro(
+    first: &TokenTree,
+    other: &TokenTree,
+    sess: &ParseSess,
+) -> bool {
     match (first, other) {
         (TokenTree::Token(token), TokenTree::Token(token2)) => {
             token_probably_equal_for_proc_macro(token, token2)
         }
         (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
-            delim == delim2 && tokenstream_probably_equal_for_proc_macro(&tts, &tts2)
+            delim == delim2 && tokenstream_probably_equal_for_proc_macro(&tts, &tts2, sess)
         }
         _ => false,
     }
@@ -498,7 +525,7 @@ fn token_probably_equal_for_proc_macro(first: &Token, other: &Token) -> bool {
             b == d && (a == c || a == kw::DollarCrate || c == kw::DollarCrate)
         }
 
-        (&Interpolated(..), &Interpolated(..)) => false,
+        (&Interpolated(..), &Interpolated(..)) => panic!("Unexpanded Interpolated!"),
 
         _ => panic!("forgot to add a token?"),
     }
