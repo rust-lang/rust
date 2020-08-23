@@ -796,7 +796,7 @@ mod prim_f32 {}
 ///
 /// This type is very similar to [`f32`], but has increased
 /// precision by using twice as many bits. Please see [the documentation for
-/// `f32`] or [Wikipedia on double precision
+/// `f32`][`f32`] or [Wikipedia on double precision
 /// values][wikipedia] for more information.
 ///
 /// *[See also the `std::f64::consts` module][`crate::f64::consts`].*
