@@ -315,7 +315,7 @@ fn version() -> String {
 fn fmt_list<V: std::fmt::Debug>(values: impl IntoIterator<Item = V>) -> String {
     let pieces = values.into_iter().map(|b| format!("{:?}, ", b)).collect::<Vec<_>>();
     let mut out = String::new();
-    let mut line = format!("\n    ");
+    let mut line = String::from("\n    ");
     for piece in pieces {
         if line.len() + piece.len() < 98 {
             line.push_str(&piece);
