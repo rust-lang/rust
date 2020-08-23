@@ -192,7 +192,7 @@ For general information about `subtree`s in the Rust repository see [Rust's
 ### Patching git-subtree to work with big repos
 
 Currently there's a bug in `git-subtree` that prevents it from working properly
-with the [`rust-lang/rust`] repo. There's an open PR to fix that, but it's stall.
+with the [`rust-lang/rust`] repo. There's an open PR to fix that, but it's stale.
 Before continuing with the following steps, we need to manually apply that fix to
 our local copy of `git-subtree`.
 
@@ -203,7 +203,7 @@ and make sure it has the proper permissions:
 ```bash
 sudo cp --backup /path/to/patched/git-subtree.sh /usr/lib/git-core/git-subtree
 sudo chmod --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subtree
-sudo chown root:root /usr/lib/git-core/git-subtree
+sudo chown --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subtree
 ```
 
 _Note:_ The first time running `git subtree push` a cache has to be built. This
@@ -248,9 +248,11 @@ to be run inside the `rust` directory):
 
 To avoid flooding the [`rust-lang/rust`] PR queue, changes in Clippy's repo are synced back
 in a bi-weekly basis if there's no urgent changes. This is done starting on the day of
-the Rust stable release and then every two other weeks. That way we guarantee that
+the Rust stable release and then every other week. That way we guarantee that
 every feature in Clippy is available for 2 weeks in nightly, before it can get to beta.
-For reference, the first sync following this cadence was performed the 2020-08-27. 
+For reference, the first sync following this cadence was performed the 2020-08-27.
+
+All of the following commands have to be run inside the `rust` directory.
 
 1. Make sure Clippy itself is up-to-date by following the steps outlined in the previous
 section if necessary.
