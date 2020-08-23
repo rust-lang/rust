@@ -3,6 +3,7 @@
 #include "llvm/ProfileData/Coverage/CoverageMappingWriter.h"
 #include "llvm/ProfileData/InstrProf.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/Support/LEB128.h"
 
 #include <iostream>
 
@@ -12,14 +13,15 @@ extern "C" void LLVMRustCoverageWriteFilenamesSectionToBuffer(
     const char* const Filenames[],
     size_t FilenamesLen,
     RustStringRef BufferOut) {
-  SmallVector<StringRef,32> FilenameRefs;
-  for (size_t i = 0; i < FilenamesLen; i++) {
-    FilenameRefs.push_back(StringRef(Filenames[i]));
-  }
-  auto FilenamesWriter = coverage::CoverageFilenamesSectionWriter(
-    makeArrayRef(FilenameRefs));
+  // LLVM 11's CoverageFilenamesSectionWriter uses its new `Version4` format,
+  // so we're manually writing the `Version3` format ourselves.
   RawRustStringOstream OS(BufferOut);
-  FilenamesWriter.write(OS);
+  encodeULEB128(FilenamesLen, OS);
+  for (size_t i = 0; i < FilenamesLen; i++) {
+    StringRef Filename(Filenames[i]);
+    encodeULEB128(Filename.size(), OS);
+    OS << Filename;
+  }
 }
 
 extern "C" void LLVMRustCoverageWriteMappingToBuffer(
@@ -64,5 +66,5 @@ extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
 }
 
 extern "C" uint32_t LLVMRustCoverageMappingVersion() {
-  return coverage::CovMapVersion::CurrentVersion;
+  return coverage::CovMapVersion::Version3;
 }
