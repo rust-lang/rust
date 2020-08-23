@@ -7,7 +7,7 @@
 use itertools::Itertools;
 use stdx::format_to;
 
-use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, SyntaxToken};
+use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, SyntaxText, SyntaxToken};
 
 pub fn name(text: &str) -> ast::Name {
     ast_from_text(&format!("mod {};", text))
@@ -136,6 +136,12 @@ pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
 }
 pub fn expr_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::Expr {
     expr_from_text(&format!("{}{}", f, arg_list))
+}
+pub fn expr_method_call<F>(text: &str, caller: F) -> Option<ast::Expr>
+where
+    F: FnOnce() -> Option<SyntaxText>,
+{
+    try_expr_from_text(&format!("{}.{}()", caller()?, text))
 }
 fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))

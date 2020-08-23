@@ -11,7 +11,7 @@ use syntax::{
     ast::{self, make, NameOwner},
     AstNode, Direction,
     SyntaxKind::*,
-    SyntaxNode, TextSize, T,
+    SyntaxNode, SyntaxText, TextSize, T,
 };
 
 use crate::assist_config::SnippetCap;
@@ -179,6 +179,25 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
             ast::BinOp::EqualityTest => bin.replace_op(T![!=]).map(|it| it.into()),
             _ => None,
         },
+        ast::Expr::MethodCallExpr(mce) => {
+            const IS_SOME_TEXT: &str = "is_some";
+            const IS_NONE_TEXT: &str = "is_none";
+            const IS_OK_TEXT: &str = "is_ok";
+            const IS_ERR_TEXT: &str = "is_err";
+
+            let name = mce.name_ref()?;
+            let name_text = name.text();
+
+            let caller = || -> Option<SyntaxText> { Some(mce.receiver()?.syntax().text()) };
+
+            match name_text {
+                x if x == IS_SOME_TEXT => make::expr_method_call(IS_NONE_TEXT, caller),
+                x if x == IS_NONE_TEXT => make::expr_method_call(IS_SOME_TEXT, caller),
+                x if x == IS_OK_TEXT => make::expr_method_call(IS_ERR_TEXT, caller),
+                x if x == IS_ERR_TEXT => make::expr_method_call(IS_OK_TEXT, caller),
+                _ => None,
+            }
+        }
         ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::PrefixOp::Not => pe.expr(),
         // FIXME:
         // ast::Expr::Literal(true | false )
