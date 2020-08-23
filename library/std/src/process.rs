@@ -126,7 +126,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 ///
 /// # Warning
 ///
-/// On some system, calling [`wait`] or similar is necessary for the OS to
+/// On some systems, calling [`wait`] or similar is necessary for the OS to
 /// release resources. A process that terminated but has not been waited on is
 /// still around as a "zombie". Leaving too many zombies around may exhaust
 /// global resources (for example process IDs).
