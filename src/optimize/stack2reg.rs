@@ -312,22 +312,19 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
     }
 
     // Replace all unused stack_addr and stack_load instructions with nop.
+    let mut func = &mut opt_ctx.ctx.func;
     for stack_slot_users in opt_ctx.stack_slot_usage_map.values_mut() {
-        for &inst in stack_slot_users.stack_addr.clone().iter() {
-            if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                StackSlotUsage::remove_unused_stack_addr(&mut opt_ctx.ctx.func, inst);
-                stack_slot_users.stack_addr.remove(&inst);
-            }
-        }
+        stack_slot_users
+            .stack_addr
+            .iter()
+            .filter(|inst| stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true))
+            .for_each(|inst| StackSlotUsage::remove_unused_stack_addr(&mut func, *inst));
 
-        /*
-        for &inst in stack_slot_users.stack_load.clone().iter() {
-            if stack_addr_load_insts_users.get(&inst).map(|users| users.is_empty()).unwrap_or(true) {
-                StackSlotUsage::remove_unused_load(&mut opt_ctx.ctx.func, inst);
-                stack_slot_users.stack_load.remove(&inst);
-            }
-        }
-        */
+        stack_slot_users
+            .stack_load
+            .iter()
+            .filter(|inst| stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true))
+            .for_each(|inst| StackSlotUsage::remove_unused_load(&mut func, *inst));
     }
 }
 
