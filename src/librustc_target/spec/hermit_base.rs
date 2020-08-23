@@ -16,7 +16,8 @@ pub fn opts() -> TargetOptions {
         pre_link_args,
         panic_strategy: PanicStrategy::Abort,
         position_independent_executables: true,
-        relocation_model: RelocModel::Static,
+        static_position_independent_executables: true,
+        relocation_model: RelocModel::Pic,
         target_family: None,
         tls_model: TlsModel::InitialExec,
         ..Default::default()
