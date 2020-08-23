@@ -72,6 +72,8 @@ macro_rules! print {
 /// Use `println!` only for the primary output of your program. Use
 /// [`eprintln!`] instead to print error and progress messages.
 ///
+/// [`std::fmt`]: crate::fmt
+///
 /// # Panics
 ///
 /// Panics if writing to `io::stdout` fails.
