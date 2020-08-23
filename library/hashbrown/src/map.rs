@@ -2490,7 +2490,7 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
     /// map.entry("poneyland")
-    ///    .and_replace_entry_with(|_k, _v| panic!());
+    ///    .and_replace_entry_with(|_k, _v| unreachable!());
     ///
     /// map.insert("poneyland", 42);
     ///
