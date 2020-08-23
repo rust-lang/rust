@@ -20,8 +20,8 @@ without explicit syntax) like coercions, autoderef, autoref and overloaded metho
 calls have become explicit casts, deref operations, reference expressions or
 concrete function calls.
 
-The [THIR] has datatypes that mirror the [HIR] datatypes, but the [THIR] is a shallow
-wrapper around [HIR]. For example, instead of `-x` being a `thir::ExprKind::Neg(thir::Expr)`
+The [THIR] is a shallow wrapper around [HIR], with datatypes that mirror the [HIR] datatypes.
+For example, instead of `-x` being a `thir::ExprKind::Neg(thir::Expr)`
 (a deep copy), it is a `thir::ExprKind::Neg(hir::Expr)` (a shallow copy).
 This shallowness enables the [THIR] to represent all datatypes that [HIR] has, but
 without having to create an in-memory copy of the entire [HIR].
