@@ -150,7 +150,7 @@ pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
     /// If this returns `None`, elements of `path` will not get a dedicated drop flag.
     ///
     /// This is only relevant for array patterns, which can move out of individual array elements.
-    fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path>;
+    fn array_subpath(&self, path: Self::Path, index: u64, size: u64) -> Option<Self::Path>;
 }
 
 #[derive(Debug)]
@@ -744,8 +744,8 @@ where
         let tcx = self.tcx();
 
         if let Some(size) = opt_size {
-            let size: u32 = size.try_into().unwrap_or_else(|_| {
-                bug!("move out check isn't implemented for array sizes bigger than u32::MAX");
+            let size: u64 = size.try_into().unwrap_or_else(|_| {
+                bug!("move out check isn't implemented for array sizes bigger than u64::MAX");
             });
             let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size)
                 .map(|i| {

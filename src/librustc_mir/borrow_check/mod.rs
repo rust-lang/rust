@@ -1694,8 +1694,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         desired_action: InitializationRequiringAction,
         place_span: (PlaceRef<'tcx>, Span),
         maybe_uninits: &BitSet<MovePathIndex>,
-        from: u32,
-        to: u32,
+        from: u64,
+        to: u64,
     ) {
         if let Some(mpi) = self.move_path_for_place(place_span.0) {
             let move_paths = &self.move_data.move_paths;

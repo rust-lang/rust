@@ -52,14 +52,12 @@ pub fn expand_aggregate<'tcx>(
         .enumerate()
         .map(move |(i, (op, ty))| {
             let lhs_field = if let AggregateKind::Array(_) = kind {
-                // FIXME(eddyb) `offset` should be u64.
-                let offset = i as u32;
+                let offset = i as u64;
                 assert_eq!(offset as usize, i);
                 tcx.mk_place_elem(
                     lhs,
                     ProjectionElem::ConstantIndex {
                         offset,
-                        // FIXME(eddyb) `min_length` doesn't appear to be used.
                         min_length: offset + 1,
                         from_end: false,
                     },

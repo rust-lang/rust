@@ -40,17 +40,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
             let elem =
-                ProjectionElem::ConstantIndex { offset: idx as u32, min_length, from_end: false };
+                ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
             let place = tcx.mk_place_elem(*place, elem);
             MatchPair::new(place, subpattern)
         }));
 
         if let Some(subslice_pat) = opt_slice {
-            let suffix_len = suffix.len() as u32;
+            let suffix_len = suffix.len() as u64;
             let subslice = tcx.mk_place_elem(
                 *place,
                 ProjectionElem::Subslice {
-                    from: prefix.len() as u32,
+                    from: prefix.len() as u64,
                     to: if exact_size { min_length - suffix_len } else { suffix_len },
                     from_end: !exact_size,
                 },
@@ -59,7 +59,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, subpattern)| {
-            let end_offset = (idx + 1) as u32;
+            let end_offset = (idx + 1) as u64;
             let elem = ProjectionElem::ConstantIndex {
                 offset: if exact_size { min_length - end_offset } else { end_offset },
                 min_length,
