@@ -565,8 +565,8 @@ mod prim_array {}
 ///
 /// *[See also the `std::slice` module](slice/index.html).*
 ///
-/// A slice is any pointer/reference to a block of memory. They are represented
-/// as a regular pointer and a length.
+/// Slices are a view into a block of memory represented as a pointer and a
+/// length.
 ///
 /// ```
 /// // slicing a Vec
