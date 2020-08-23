@@ -3125,6 +3125,9 @@ impl<'a> Resolver<'a> {
         })
     }
 
+    /// This is equivalent to `get_traits_in_module_containing_item`, but without filtering by the associated item.
+    ///
+    /// This is used by rustdoc for intra-doc links.
     pub fn traits_in_scope(&mut self, module_id: DefId) -> Vec<TraitCandidate> {
         let module = self.get_module(module_id);
         module.ensure_traits(self);
