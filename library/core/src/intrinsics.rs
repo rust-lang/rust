@@ -59,6 +59,7 @@ use crate::mem;
 
 // These imports are used for simplifying intra-doc links
 #[allow(unused_imports)]
+#[cfg(all(target_has_atomic = "8", target_has_atomic = "32", target_has_atomic = "ptr"))]
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
