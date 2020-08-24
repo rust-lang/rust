@@ -319,6 +319,79 @@ impl<T> Arc<T> {
         Self::from_inner(Box::leak(x).into())
     }
 
+    /// Constructs a new `Arc<T>` using a weak reference to itself. Attempting
+    /// to upgrade the weak reference before this function returns will result
+    /// in a `None` value. However, the weak reference may be cloned freely and
+    /// stored for use at a later time.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(arc_new_cyclic)]
+    /// #![allow(dead_code)]
+    ///
+    /// use std::sync::{Arc, Weak};
+    ///
+    /// struct Foo {
+    ///     me: Weak<Foo>,
+    /// }
+    ///
+    /// let foo = Arc::new_cyclic(|me| Foo {
+    ///     me: me.clone(),
+    /// });
+    /// ```
+    #[inline]
+    #[unstable(feature = "arc_new_cyclic", issue = "75861")]
+    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Arc<T> {
+        // Construct the inner in the "uninitialized" state with a single
+        // weak reference.
+        let uninit_ptr: NonNull<_> = Box::leak(box ArcInner {
+            strong: atomic::AtomicUsize::new(0),
+            weak: atomic::AtomicUsize::new(1),
+            data: mem::MaybeUninit::<T>::uninit(),
+        })
+        .into();
+        let init_ptr: NonNull<ArcInner<T>> = uninit_ptr.cast();
+
+        let weak = Weak { ptr: init_ptr };
+
+        // It's important we don't give up ownership of the weak pointer, or
+        // else the memory might be freed by the time `data_fn` returns. If
+        // we really wanted to pass ownership, we could create an additional
+        // weak pointer for ourselves, but this would result in additional
+        // updates to the weak reference count which might not be necessary
+        // otherwise.
+        let data = data_fn(&weak);
+
+        // Now we can properly initialize the inner value and turn our weak
+        // reference into a strong reference.
+        unsafe {
+            let inner = init_ptr.as_ptr();
+            ptr::write(&raw mut (*inner).data, data);
+
+            // The above write to the data field must be visible to any threads which
+            // observe a non-zero strong count. Therefore we need at least "Release" ordering
+            // in order to synchronize with the `compare_exchange_weak` in `Weak::upgrade`.
+            //
+            // "Acquire" ordering is not required. When considering the possible behaviours
+            // of `data_fn` we only need to look at what it could do with a reference to a
+            // non-upgradeable `Weak`:
+            // - It can *clone* the `Weak`, increasing the weak reference count.
+            // - It can drop those clones, decreasing the weak reference count (but never to zero).
+            //
+            // These side effects do not impact us in any way, and no other side effects are
+            // possible with safe code alone.
+            let prev_value = (*inner).strong.fetch_add(1, Release);
+            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
+        }
+
+        let strong = Arc::from_inner(init_ptr);
+
+        // Strong references should collectively own a shared weak reference,
+        // so don't run the destructor for our old weak reference.
+        mem::forget(weak);
+        strong
+    }
+
     /// Constructs a new `Arc` with uninitialized contents.
     ///
     /// # Examples
@@ -1604,7 +1677,8 @@ impl<T: ?Sized> Weak<T> {
     #[stable(feature = "arc_weak", since = "1.4.0")]
     pub fn upgrade(&self) -> Option<Arc<T>> {
         // We use a CAS loop to increment the strong count instead of a
-        // fetch_add because once the count hits 0 it must never be above 0.
+        // fetch_add as this function should never take the reference count
+        // from zero to one.
         let inner = self.inner()?;
 
         // Relaxed load because any write of 0 that we can observe
@@ -1623,8 +1697,11 @@ impl<T: ?Sized> Weak<T> {
                 abort();
             }
 
-            // Relaxed is valid for the same reason it is on Arc's Clone impl
-            match inner.strong.compare_exchange_weak(n, n + 1, Relaxed, Relaxed) {
+            // Relaxed is fine for the failure case because we don't have any expectations about the new state.
+            // Acquire is necessary for the success case to synchronise with `Arc::new_cyclic`, when the inner
+            // value can be initialized after `Weak` references have already been created. In that case, we
+            // expect to observe the fully initialized value.
+            match inner.strong.compare_exchange_weak(n, n + 1, Acquire, Relaxed) {
                 Ok(_) => return Some(Arc::from_inner(self.ptr)), // null checked above
                 Err(old) => n = old,
             }

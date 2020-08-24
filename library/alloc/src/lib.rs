@@ -135,7 +135,6 @@
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
 #![feature(associated_type_bounds)]
-
 // Allow testing this library
 
 #[cfg(test)]
