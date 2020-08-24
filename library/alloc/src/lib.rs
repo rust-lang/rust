@@ -107,7 +107,6 @@
 #![feature(map_first_last)]
 #![feature(map_into_keys_values)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 #![feature(new_uninit)]
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
