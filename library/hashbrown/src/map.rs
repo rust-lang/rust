@@ -3980,6 +3980,85 @@ mod test_map {
     }
 
     #[test]
+    fn test_raw_occupied_entry_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        a.insert(key, value);
+
+        match a.raw_entry_mut().from_key(&key) {
+            RawEntryMut::Vacant(_) => panic!(),
+            RawEntryMut::Occupied(e) => {
+                e.replace_entry_with(|k, v| {
+                    assert_eq!(k, &key);
+                    assert_eq!(v, value);
+                    Some(new_value)
+                });
+            }
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        match a.raw_entry_mut().from_key(&key) {
+            RawEntryMut::Vacant(_) => panic!(),
+            RawEntryMut::Occupied(e) => {
+                e.replace_entry_with(|k, v| {
+                    assert_eq!(k, &key);
+                    assert_eq!(v, new_value);
+                    None
+                });
+            }
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_raw_entry_and_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        match a.raw_entry_mut().from_key(&key) {
+            e @ RawEntryMut::Vacant(_) => {
+                e.and_replace_entry_with(|_, _| panic!("Can't replace a VacantEntry"));
+            }
+            RawEntryMut::Occupied(_) => panic!(),
+        }
+
+        a.insert(key, value);
+
+        a.raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, value);
+                Some(new_value)
+            });
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        a.raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, new_value);
+                None
+            });
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
     fn test_replace_entry_with_doesnt_corrupt() {
         #![allow(deprecated)] //rand
                               // Test for #19292
