@@ -1,6 +1,7 @@
 [package]
 name = "flycheck"
 version = "0.0.0"
+description = "TBD"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer developers"]
 edition = "2018"
@@ -15,4 +16,4 @@ cargo_metadata = "0.11.1"
 serde_json = "1.0.48"
 jod-thread = "0.1.1"
 
-toolchain = { path = "../toolchain" }
+toolchain = { path = "../toolchain", version = "0.0.0" }

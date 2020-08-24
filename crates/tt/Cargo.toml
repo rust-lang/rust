@@ -1,6 +1,7 @@
 [package]
 name = "tt"
 version = "0.0.0"
+description = "TBD"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer developers"]
 edition = "2018"
@@ -13,4 +14,4 @@ doctest = false
 # to reduce number of compilations
 smol_str = { version = "0.1.15", features = ["serde"] }
 
-stdx = { path = "../stdx" }
+stdx = { path = "../stdx", version = "0.0.0" }
