@@ -1457,7 +1457,7 @@ pub struct RawEntryBuilderMut<'a, K, V, S> {
 /// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
 pub enum RawEntryMut<'a, K, V, S> {
     /// An occupied entry.
-    Occupied(RawOccupiedEntryMut<'a, K, V>),
+    Occupied(RawOccupiedEntryMut<'a, K, V, S>),
     /// A vacant entry.
     Vacant(RawVacantEntryMut<'a, K, V, S>),
 }
@@ -1466,21 +1466,24 @@ pub enum RawEntryMut<'a, K, V, S> {
 /// It is part of the [`RawEntryMut`] enum.
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
-pub struct RawOccupiedEntryMut<'a, K, V> {
+pub struct RawOccupiedEntryMut<'a, K, V, S> {
     elem: Bucket<(K, V)>,
     table: &'a mut RawTable<(K, V)>,
+    hash_builder: &'a S,
 }
 
-unsafe impl<K, V> Send for RawOccupiedEntryMut<'_, K, V>
+unsafe impl<K, V, S> Send for RawOccupiedEntryMut<'_, K, V, S>
 where
     K: Send,
     V: Send,
+    S: Sync,
 {
 }
-unsafe impl<K, V> Sync for RawOccupiedEntryMut<'_, K, V>
+unsafe impl<K, V, S> Sync for RawOccupiedEntryMut<'_, K, V, S>
 where
     K: Sync,
     V: Sync,
+    S: Sync,
 {
 }
 
@@ -1549,6 +1552,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
             Some(elem) => RawEntryMut::Occupied(RawOccupiedEntryMut {
                 elem,
                 table: &mut self.map.table,
+                hash_builder: &self.map.hash_builder,
             }),
             None => RawEntryMut::Vacant(RawVacantEntryMut {
                 table: &mut self.map.table,
@@ -1623,7 +1627,7 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     /// assert_eq!(entry.remove_entry(), ("horseyland", 37));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn insert(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V>
+    pub fn insert(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, S>
     where
         K: Hash,
         S: BuildHasher,
@@ -1780,7 +1784,7 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V> RawOccupiedEntryMut<'a, K, V> {
+impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
     /// Gets a reference to the key in the entry.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn key(&self) -> &K {
@@ -1934,7 +1938,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
-    fn insert_entry(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V>
+    fn insert_entry(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, S>
     where
         K: Hash,
         S: BuildHasher,
@@ -1949,6 +1953,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         RawOccupiedEntryMut {
             elem,
             table: self.table,
+            hash_builder: self.hash_builder,
         }
     }
 }
@@ -1968,7 +1973,7 @@ impl<K: Debug, V: Debug, S> Debug for RawEntryMut<'_, K, V, S> {
     }
 }
 
-impl<K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'_, K, V> {
+impl<K: Debug, V: Debug, S> Debug for RawOccupiedEntryMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawOccupiedEntryMut")
             .field("key", self.key())
