@@ -193,6 +193,7 @@ mod excessive_bools;
 mod exit;
 mod explicit_write;
 mod fallible_impl_from;
+mod float_equality_without_abs;
 mod float_literal;
 mod floating_point_arithmetic;
 mod format;
@@ -549,6 +550,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &exit::EXIT,
         &explicit_write::EXPLICIT_WRITE,
         &fallible_impl_from::FALLIBLE_IMPL_FROM,
+        &float_equality_without_abs::FLOAT_EQUALITY_WITHOUT_ABS,
         &float_literal::EXCESSIVE_PRECISION,
         &float_literal::LOSSY_FLOAT_LITERAL,
         &floating_point_arithmetic::IMPRECISE_FLOPS,
@@ -1093,6 +1095,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box stable_sort_primitive::StableSortPrimitive);
     store.register_late_pass(|| box repeat_once::RepeatOnce);
     store.register_late_pass(|| box self_assignment::SelfAssignment);
+    store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1268,6 +1271,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&eval_order_dependence::DIVERGING_SUB_EXPRESSION),
         LintId::of(&eval_order_dependence::EVAL_ORDER_DEPENDENCE),
         LintId::of(&explicit_write::EXPLICIT_WRITE),
+        LintId::of(&float_equality_without_abs::FLOAT_EQUALITY_WITHOUT_ABS),
         LintId::of(&float_literal::EXCESSIVE_PRECISION),
         LintId::of(&format::USELESS_FORMAT),
         LintId::of(&formatting::POSSIBLE_MISSING_COMMA),
@@ -1686,6 +1690,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT),
         LintId::of(&eq_op::EQ_OP),
         LintId::of(&erasing_op::ERASING_OP),
+        LintId::of(&float_equality_without_abs::FLOAT_EQUALITY_WITHOUT_ABS),
         LintId::of(&formatting::POSSIBLE_MISSING_COMMA),
         LintId::of(&functions::NOT_UNSAFE_PTR_ARG_DEREF),
         LintId::of(&if_let_mutex::IF_LET_MUTEX),
