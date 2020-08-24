@@ -77,7 +77,7 @@ impl EarlyLintPass for RedundantClosureCall {
                         cx,
                         REDUNDANT_CLOSURE_CALL,
                         expr.span,
-                        "try not to call a closure in the expression where it is declared.",
+                        "try not to call a closure in the expression where it is declared",
                         |diag| {
                             if decl.inputs.is_empty() {
                                 let mut app = Applicability::MachineApplicable;
