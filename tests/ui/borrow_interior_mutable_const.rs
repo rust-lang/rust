@@ -32,7 +32,7 @@ impl Trait<u32> for u64 {
 
 // This is just a pointer that can be safely dereferended,
 // it's semantically the same as `&'static T`;
-// but it isn't allowed make a static reference from an arbitrary integer value at the moment.
+// but it isn't allowed to make a static reference from an arbitrary integer value at the moment.
 // For more information, please see the issue #5918.
 pub struct StaticRef<T> {
     ptr: *const T,
