@@ -43,8 +43,8 @@ use tt::{Ident, Leaf, Literal, TokenTree};
 
 use crate::{
     db::{DefDatabase, HirDatabase},
+    doc_links::Resolvable,
     has_source::HasSource,
-    link_rewrite::Resolvable,
     HirDisplay, InFile, Name,
 };
 
@@ -233,23 +233,6 @@ impl ModuleDef {
 
             ModuleDef::BuiltinType(it) => Some(it.as_name()),
         }
-    }
-
-    pub fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
-        Some(match self {
-            ModuleDef::Module(m) => ModuleId::from(m.clone()).resolver(db),
-            ModuleDef::Function(f) => FunctionId::from(f.clone()).resolver(db),
-            ModuleDef::Adt(adt) => AdtId::from(adt.clone()).resolver(db),
-            ModuleDef::EnumVariant(ev) => {
-                GenericDefId::from(GenericDef::from(ev.clone())).resolver(db)
-            }
-            ModuleDef::Const(c) => GenericDefId::from(GenericDef::from(c.clone())).resolver(db),
-            ModuleDef::Static(s) => StaticId::from(s.clone()).resolver(db),
-            ModuleDef::Trait(t) => TraitId::from(t.clone()).resolver(db),
-            ModuleDef::TypeAlias(t) => ModuleId::from(t.module(db)).resolver(db),
-            // FIXME: This should be a resolver relative to `std/core`
-            ModuleDef::BuiltinType(_t) => None?,
-        })
     }
 }
 

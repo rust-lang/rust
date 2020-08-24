@@ -1,4 +1,4 @@
-//! Resolves and rewrites links in markdown documentation for hovers/completion windows.
+//! Resolves links in markdown documentation.
 
 use std::iter::once;
 
@@ -113,7 +113,7 @@ fn try_resolve_path(db: &dyn HirDatabase, moddef: &ModuleDef, link_target: &str)
         .map(|url| url.into_string())
 }
 
-// Strip prefixes, suffixes, and inline code marks from the given string.
+/// Strip prefixes, suffixes, and inline code marks from the given string.
 fn strip_prefixes_suffixes(mut s: &str) -> &str {
     s = s.trim_matches('`');
 

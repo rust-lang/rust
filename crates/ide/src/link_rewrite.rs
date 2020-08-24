@@ -1,4 +1,6 @@
-//! This is a wrapper around [`hir::link_rewrite`] connecting it to the markdown parser.
+//! Resolves and rewrites links in markdown documentation.
+//!
+//! Most of the implementation can be found in [`hir::doc_links`].
 
 use pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};

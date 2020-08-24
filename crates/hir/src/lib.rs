@@ -27,7 +27,7 @@ pub mod diagnostics;
 
 mod from_id;
 mod code_model;
-mod link_rewrite;
+mod doc_links;
 
 mod has_source;
 
@@ -38,8 +38,8 @@ pub use crate::{
         Function, GenericDef, HasAttrs, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef,
         ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, VariantDef, Visibility,
     },
+    doc_links::resolve_doc_link,
     has_source::HasSource,
-    link_rewrite::resolve_doc_link,
     semantics::{original_range, PathResolution, Semantics, SemanticsScope},
 };
 
