@@ -131,7 +131,7 @@ impl Barrier {
         lock.count += 1;
         if lock.count < self.num_threads {
             // We need a while loop to guard against spurious wakeups.
-            // http://en.wikipedia.org/wiki/Spurious_wakeup
+            // https://en.wikipedia.org/wiki/Spurious_wakeup
             while local_gen == lock.generation_id && lock.count < self.num_threads {
                 lock = self.cvar.wait(lock).unwrap();
             }

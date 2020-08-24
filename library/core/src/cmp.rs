@@ -25,7 +25,7 @@
 use self::Ordering::*;
 
 /// Trait for equality comparisons which are [partial equivalence
-/// relations](http://en.wikipedia.org/wiki/Partial_equivalence_relation).
+/// relations](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
 ///
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,

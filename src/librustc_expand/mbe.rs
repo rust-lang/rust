@@ -61,7 +61,7 @@ impl KleeneToken {
     }
 }
 
-/// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
+/// A Kleene-style [repetition operator](https://en.wikipedia.org/wiki/Kleene_star)
 /// for token sequences.
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy)]
 enum KleeneOp {
