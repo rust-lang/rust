@@ -30,7 +30,7 @@ fn try_main() -> Result<()> {
 
     {
         let _s = Section::new("TEST");
-        shell("cargo test")?;
+        shell("cargo test --workspace")?;
     }
 
     let current_branch = shell_output("git branch --show-current")?;
