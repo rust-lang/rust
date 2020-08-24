@@ -2488,36 +2488,60 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     ///
     /// ```
     /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
-    /// map.entry("poneyland")
-    ///    .and_replace_entry_with(|_k, _v| unreachable!());
+    /// let entry = map
+    ///     .entry("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| panic!());
+    ///
+    /// match entry {
+    ///     Entry::Vacant(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///     }
+    ///     Entry::Occupied(_) => panic!(),
+    /// }
     ///
     /// map.insert("poneyland", 42);
     ///
-    /// map.entry("poneyland")
-    ///    .and_replace_entry_with(|k, v| {
+    /// let entry = map
+    ///     .entry("poneyland")
+    ///     .and_replace_entry_with(|k, v| {
     ///         assert_eq!(k, &"poneyland");
     ///         assert_eq!(v, 42);
     ///         Some(v + 1)
     ///     });
     ///
+    /// match entry {
+    ///     Entry::Occupied(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///         assert_eq!(e.get(), &43);
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// }
+    ///
     /// assert_eq!(map["poneyland"], 43);
     ///
-    /// map.entry("poneyland")
-    ///    .and_replace_entry_with(|_k, _v| None);
+    /// let entry = map
+    ///     .entry("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| None);
+    ///
+    /// match entry {
+    ///     Entry::Vacant(e) => assert_eq!(e.key(), &"poneyland"),
+    ///     Entry::Occupied(_) => panic!(),
+    /// }
     ///
     /// assert!(!map.contains_key("poneyland"));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn and_replace_entry_with<F>(self, f: F)
+    pub fn and_replace_entry_with<F>(self, f: F) -> Self
     where
         F: FnOnce(&K, V) -> Option<V>,
     {
         match self {
             Entry::Occupied(entry) => entry.replace_entry_with(f),
-            Entry::Vacant(_) => {}
+            Entry::Vacant(_) => self,
         }
     }
 }
@@ -2788,38 +2812,70 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.insert("poneyland", 42);
     ///
-    /// match map.entry("poneyland") {
+    /// let entry = match map.entry("poneyland") {
     ///     Entry::Occupied(e) => {
     ///         e.replace_entry_with(|k, v| {
     ///             assert_eq!(k, &"poneyland");
     ///             assert_eq!(v, 42);
     ///             Some(v + 1)
-    ///         });
+    ///         })
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     Entry::Occupied(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///         assert_eq!(e.get(), &43);
     ///     }
     ///     Entry::Vacant(_) => panic!(),
     /// }
     ///
     /// assert_eq!(map["poneyland"], 43);
     ///
-    /// match map.entry("poneyland") {
+    /// let entry = match map.entry("poneyland") {
     ///     Entry::Occupied(e) => e.replace_entry_with(|_k, _v| None),
     ///     Entry::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     Entry::Vacant(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///     }
+    ///     Entry::Occupied(_) => panic!(),
     /// }
     ///
     /// assert!(!map.contains_key("poneyland"));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn replace_entry_with<F>(self, f: F)
+    pub fn replace_entry_with<F>(self, f: F) -> Entry<'a, K, V, S>
     where
         F: FnOnce(&K, V) -> Option<V>,
     {
         unsafe {
+            let mut spare_key = None;
+
             self.table
                 .table
-                .replace_bucket_with(self.elem, |(key, value)| {
-                    f(&key, value).map(|new_value| (key, new_value))
+                .replace_bucket_with(self.elem.clone(), |(key, value)| {
+                    if let Some(new_value) = f(&key, value) {
+                        Some((key, new_value))
+                    } else {
+                        spare_key = Some(key);
+                        None
+                    }
+                });
+
+            if let Some(key) = spare_key {
+                Entry::Vacant(VacantEntry {
+                    hash: self.hash,
+                    key,
+                    table: self.table,
                 })
-        };
+            } else {
+                Entry::Occupied(self)
+            }
+        }
     }
 }
 
