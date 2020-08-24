@@ -741,13 +741,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
                 match disambiguator.map(Disambiguator::ns) {
                     Some(ns @ (ValueNS | TypeNS)) => {
-                        match self.resolve(
-                            path_str,
-                            ns,
-                            &current_item,
-                            base_node,
-                            &extra_fragment,
-                        ) {
+                        match self.resolve(path_str, ns, &current_item, base_node, &extra_fragment)
+                        {
                             Ok(res) => res,
                             Err(ErrorKind::ResolutionFailure) => {
                                 resolution_failure(cx, &item, path_str, &dox, link_range);
