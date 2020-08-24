@@ -3971,31 +3971,35 @@ mod test_map {
         let value = "an initial value";
         let new_value = "a new value";
 
-        a.insert(key, value);
+        let entry = a.entry(key).insert(value).replace_entry_with(|k, v| {
+            assert_eq!(k, &key);
+            assert_eq!(v, value);
+            Some(new_value)
+        });
 
-        match a.entry(key) {
+        match entry {
             Vacant(_) => panic!(),
             Occupied(e) => {
-                e.replace_entry_with(|k, v| {
-                    assert_eq!(k, &key);
-                    assert_eq!(v, value);
-                    Some(new_value)
-                });
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
             }
         }
 
         assert_eq!(a[key], new_value);
         assert_eq!(a.len(), 1);
 
-        match a.entry(key) {
-            Vacant(_) => panic!(),
-            Occupied(e) => {
-                e.replace_entry_with(|k, v| {
-                    assert_eq!(k, &key);
-                    assert_eq!(v, new_value);
-                    None
-                });
-            }
+        let entry = match a.entry(key) {
+            Vacant(_) => unreachable!(),
+            Occupied(e) => e.replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, new_value);
+                None
+            }),
+        };
+
+        match entry {
+            Vacant(e) => assert_eq!(e.key(), &key),
+            Occupied(_) => panic!(),
         }
 
         assert!(!a.contains_key(key));
@@ -4010,29 +4014,45 @@ mod test_map {
         let value = "an initial value";
         let new_value = "a new value";
 
-        match a.entry(key) {
-            e @ Vacant(_) => {
-                e.and_replace_entry_with(|_, _| panic!("Can't replace a VacantEntry"));
-            }
+        let entry = match a.entry(key) {
+            e @ Vacant(_) => e.and_replace_entry_with(|_, _| panic!()),
+            Occupied(_) => unreachable!(),
+        };
+
+        match entry {
+            Vacant(e) => assert_eq!(e.key(), &key),
             Occupied(_) => panic!(),
         }
 
         a.insert(key, value);
 
-        a.entry(key).and_replace_entry_with(|k, v| {
+        let entry = a.entry(key).and_replace_entry_with(|k, v| {
             assert_eq!(k, &key);
             assert_eq!(v, value);
             Some(new_value)
         });
 
+        match entry {
+            Vacant(_) => panic!(),
+            Occupied(e) => {
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
+            }
+        }
+
         assert_eq!(a[key], new_value);
         assert_eq!(a.len(), 1);
 
-        a.entry(key).and_replace_entry_with(|k, v| {
+        let entry = a.entry(key).and_replace_entry_with(|k, v| {
             assert_eq!(k, &key);
             assert_eq!(v, new_value);
             None
         });
+
+        match entry {
+            Vacant(e) => assert_eq!(e.key(), &key),
+            Occupied(_) => panic!(),
+        }
 
         assert!(!a.contains_key(key));
         assert_eq!(a.len(), 0);
