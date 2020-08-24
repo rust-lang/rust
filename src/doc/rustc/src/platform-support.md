@@ -165,7 +165,7 @@ target | std | host | notes
 `armv7-wrs-vxworks-eabihf` | ? |  |
 `armv7a-none-eabihf` | * | | ARM Cortex-A, hardfloat
 `armv7s-apple-ios` | ✓[^apple] |  |
-`avr-unknown-unknown` | ? |  | AVR
+`avr-unknown-gnu-atmega328` | ✗ |  | AVR. Requires `-Z build-std=core`
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓[^apple] |  | 32-bit x86 iOS
 `i686-apple-darwin` | ✓ | ✓ | 32-bit OSX (10.7+, Lion+)
