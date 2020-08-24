@@ -3915,7 +3915,6 @@ mod test_map {
         a.insert(key, value);
 
         match a.entry(key) {
-            Vacant(_) => panic!(),
             Occupied(e) => {
                 e.replace_entry_with(|k, v| {
                     assert_eq!(k, &key);
@@ -3923,13 +3922,13 @@ mod test_map {
                     Some(new_value)
                 });
             }
+            Vacant(_) => unreachable!(),
         }
 
         assert_eq!(a[key], new_value);
         assert_eq!(a.len(), 1);
 
         match a.entry(key) {
-            Vacant(_) => panic!(),
             Occupied(e) => {
                 e.replace_entry_with(|k, v| {
                     assert_eq!(k, &key);
@@ -3937,6 +3936,7 @@ mod test_map {
                     None
                 });
             }
+            Vacant(_) => panic!(),
         }
 
         assert!(!a.contains_key(key));
@@ -3955,7 +3955,7 @@ mod test_map {
             e @ Vacant(_) => {
                 e.and_replace_entry_with(|_, _| panic!("Can't replace a VacantEntry"));
             }
-            Occupied(_) => panic!(),
+            Occupied(_) => unreachable!(),
         }
 
         a.insert(key, value);
@@ -3990,7 +3990,6 @@ mod test_map {
         a.insert(key, value);
 
         match a.raw_entry_mut().from_key(&key) {
-            RawEntryMut::Vacant(_) => panic!(),
             RawEntryMut::Occupied(e) => {
                 e.replace_entry_with(|k, v| {
                     assert_eq!(k, &key);
@@ -3998,13 +3997,13 @@ mod test_map {
                     Some(new_value)
                 });
             }
+            RawEntryMut::Vacant(_) => unreachable!(),
         }
 
         assert_eq!(a[key], new_value);
         assert_eq!(a.len(), 1);
 
         match a.raw_entry_mut().from_key(&key) {
-            RawEntryMut::Vacant(_) => panic!(),
             RawEntryMut::Occupied(e) => {
                 e.replace_entry_with(|k, v| {
                     assert_eq!(k, &key);
@@ -4012,6 +4011,7 @@ mod test_map {
                     None
                 });
             }
+            RawEntryMut::Vacant(_) => panic!(),
         }
 
         assert!(!a.contains_key(key));
@@ -4030,7 +4030,7 @@ mod test_map {
             e @ RawEntryMut::Vacant(_) => {
                 e.and_replace_entry_with(|_, _| panic!("Can't replace a VacantEntry"));
             }
-            RawEntryMut::Occupied(_) => panic!(),
+            RawEntryMut::Occupied(_) => unreachable!(),
         }
 
         a.insert(key, value);
