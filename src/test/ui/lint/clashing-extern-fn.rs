@@ -258,6 +258,62 @@ mod non_zero_and_non_null {
     }
 }
 
+// See #75739
+mod non_zero_transparent {
+    mod a1 {
+        use std::num::NonZeroUsize;
+        extern "C" {
+            fn f1() -> NonZeroUsize;
+        }
+    }
+
+    mod b1 {
+        #[repr(transparent)]
+        struct X(NonZeroUsize);
+        use std::num::NonZeroUsize;
+        extern "C" {
+            fn f1() -> X;
+        }
+    }
+
+    mod a2 {
+        use std::num::NonZeroUsize;
+        extern "C" {
+            fn f2() -> NonZeroUsize;
+        }
+    }
+
+    mod b2 {
+        #[repr(transparent)]
+        struct X1(NonZeroUsize);
+
+        #[repr(transparent)]
+        struct X(X1);
+
+        use std::num::NonZeroUsize;
+        extern "C" {
+            // Same case as above, but with two layers of newtyping.
+            fn f2() -> X;
+        }
+    }
+
+    mod a3 {
+        #[repr(transparent)]
+        struct X(core::ptr::NonNull<i32>);
+
+        use std::num::NonZeroUsize;
+        extern "C" {
+            fn f3() -> X;
+        }
+    }
+
+    mod b3 {
+        extern "C" {
+            fn f3() -> core::ptr::NonNull<i32>;
+        }
+    }
+}
+
 mod null_optimised_enums {
     mod a {
         extern "C" {

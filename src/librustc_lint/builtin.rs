@@ -2162,6 +2162,38 @@ impl ClashingExternDeclarations {
             ckind: CItemKind,
         ) -> bool {
             debug!("structurally_same_type_impl(cx, a = {:?}, b = {:?})", a, b);
+            let tcx = cx.tcx;
+
+            // Given a transparent newtype, reach through and grab the inner
+            // type unless the newtype makes the type non-null.
+            let non_transparent_ty = |ty: Ty<'tcx>| -> Ty<'tcx> {
+                let mut ty = ty;
+                loop {
+                    if let ty::Adt(def, substs) = ty.kind {
+                        let is_transparent = def.subst(tcx, substs).repr.transparent();
+                        let is_enum = def.is_enum();
+                        let is_non_null = crate::types::guaranteed_nonnull_optimization(tcx, &def);
+                        debug!(
+                            "non_transparent_ty({:?}) -- type is transparent? {}, type is enum? {}, type is non-null? {}",
+                            ty, is_transparent, is_enum, is_non_null
+                        );
+                        if is_transparent && !is_enum && !is_non_null {
+                            ty = def
+                                .non_enum_variant()
+                                .transparent_newtype_field(tcx)
+                                .unwrap()
+                                .ty(tcx, substs);
+                            continue;
+                        }
+                    }
+                    debug!("non_transparent_ty -> {:?}", ty);
+                    return ty;
+                }
+            };
+
+            let a = non_transparent_ty(a);
+            let b = non_transparent_ty(b);
+
             if !seen_types.insert((a, b)) {
                 // We've encountered a cycle. There's no point going any further -- the types are
                 // structurally the same.

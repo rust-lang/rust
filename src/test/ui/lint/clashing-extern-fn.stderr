@@ -166,7 +166,7 @@ LL |             fn non_null_ptr() -> *const usize;
               found `unsafe extern "C" fn() -> *const usize`
 
 warning: `option_non_zero_usize_incorrect` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:281:13
+  --> $DIR/clashing-extern-fn.rs:337:13
    |
 LL |             fn option_non_zero_usize_incorrect() -> usize;
    |             ---------------------------------------------- `option_non_zero_usize_incorrect` previously declared here
@@ -178,7 +178,7 @@ LL |             fn option_non_zero_usize_incorrect() -> isize;
               found `unsafe extern "C" fn() -> isize`
 
 warning: `option_non_null_ptr_incorrect` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:283:13
+  --> $DIR/clashing-extern-fn.rs:339:13
    |
 LL |             fn option_non_null_ptr_incorrect() -> *const usize;
    |             --------------------------------------------------- `option_non_null_ptr_incorrect` previously declared here
