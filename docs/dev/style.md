@@ -181,6 +181,30 @@ fn frobnicate(walrus: Option<Walrus>) {
 }
 ```
 
+# Early Returns
+
+Do use early returns
+
+```rust
+// Good
+fn foo() -> Option<Bar> {
+    if !condition() {
+        return None;
+    }
+
+    Some(...)
+}
+
+// Not as good
+fn foo() -> Option<Bar> {
+    if condition() {
+        Some(...)
+    } else {
+        None
+    }
+}
+```
+
 # Getters & Setters
 
 If a field can have any value without breaking invariants, make the field public.
@@ -189,7 +213,7 @@ Never provide setters.
 
 Getters should return borrowed data:
 
-```
+```rust
 struct Person {
     // Invariant: never empty
     first_name: String,
