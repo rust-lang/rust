@@ -4017,23 +4017,23 @@ mod test_map {
         });
 
         match entry {
-            Vacant(_) => panic!(),
             Occupied(e) => {
                 assert_eq!(e.key(), &key);
                 assert_eq!(e.get(), &new_value);
             }
+            Vacant(_) => panic!(),
         }
 
         assert_eq!(a[key], new_value);
         assert_eq!(a.len(), 1);
 
         let entry = match a.entry(key) {
-            Vacant(_) => unreachable!(),
             Occupied(e) => e.replace_entry_with(|k, v| {
                 assert_eq!(k, &key);
                 assert_eq!(v, new_value);
                 None
             }),
+            Vacant(_) => panic!(),
         };
 
         match entry {
@@ -4046,17 +4046,14 @@ mod test_map {
     }
 
     #[test]
-    fn test_entry_replace_entry_with() {
+    fn test_entry_and_replace_entry_with() {
         let mut a = HashMap::new();
 
         let key = "a key";
         let value = "an initial value";
         let new_value = "a new value";
 
-        let entry = match a.entry(key) {
-            e @ Vacant(_) => e.and_replace_entry_with(|_, _| panic!()),
-            Occupied(_) => unreachable!(),
-        };
+        let entry = a.entry(key).and_replace_entry_with(|_, _| panic!());
 
         match entry {
             Vacant(e) => assert_eq!(e.key(), &key),
@@ -4092,6 +4089,78 @@ mod test_map {
             Vacant(e) => assert_eq!(e.key(), &key),
             Occupied(_) => panic!(),
         }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_raw_occupied_entry_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        a.raw_entry_mut()
+            .from_key(&key)
+            .insert(key, value)
+            .replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, value);
+                Some(new_value)
+            });
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        match a.raw_entry_mut().from_key(&key) {
+            RawEntryMut::Occupied(e) => {
+                e.replace_entry_with(|k, v| {
+                    assert_eq!(k, &key);
+                    assert_eq!(v, new_value);
+                    None
+                });
+            }
+            RawEntryMut::Vacant(_) => panic!(),
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_raw_entry_and_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        a.raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|_, _| panic!("Can't replace a VacantEntry"));
+
+        a.insert(key, value);
+
+        a.raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, value);
+                Some(new_value)
+            });
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        a.raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, new_value);
+                None
+            });
 
         assert!(!a.contains_key(key));
         assert_eq!(a.len(), 0);
