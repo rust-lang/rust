@@ -136,7 +136,7 @@ fn get_symbol_hash<'tcx>(
 }
 
 // Follow C++ namespace-mangling style, see
-// http://en.wikipedia.org/wiki/Name_mangling for more info.
+// https://en.wikipedia.org/wiki/Name_mangling for more info.
 //
 // It turns out that on macOS you can actually have arbitrary symbols in
 // function names (at least when given to LLVM), but this is not possible

@@ -48,8 +48,8 @@ impl App {
         // Parse CLI arguments
         let args = std::env::args().skip(1).collect::<Vec<_>>();
         let (mode, base) = match args.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice() {
-            &["generate", ref base] => (Mode::Generate, PathBuf::from(base)),
-            &["check", ref base] => (Mode::Check, PathBuf::from(base)),
+            ["generate", ref base] => (Mode::Generate, PathBuf::from(base)),
+            ["check", ref base] => (Mode::Check, PathBuf::from(base)),
             _ => {
                 eprintln!("usage: expand-yaml-anchors <source-dir> <dest-dir>");
                 std::process::exit(1);
@@ -138,9 +138,7 @@ fn filter_document(document: Yaml) -> Yaml {
                 .map(|(key, value)| (filter_document(key), filter_document(value)))
                 .collect(),
         ),
-        Yaml::Array(vec) => {
-            Yaml::Array(vec.into_iter().map(|item| filter_document(item)).collect())
-        }
+        Yaml::Array(vec) => Yaml::Array(vec.into_iter().map(filter_document).collect()),
         other => other,
     }
 }

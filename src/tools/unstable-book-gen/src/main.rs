@@ -94,9 +94,9 @@ fn copy_recursive(from: &Path, to: &Path) {
 }
 
 fn main() {
-    let library_path_str = env::args_os().skip(1).next().expect("library path required");
-    let src_path_str = env::args_os().skip(2).next().expect("source path required");
-    let dest_path_str = env::args_os().skip(3).next().expect("destination path required");
+    let library_path_str = env::args_os().nth(1).expect("library path required");
+    let src_path_str = env::args_os().nth(2).expect("source path required");
+    let dest_path_str = env::args_os().nth(3).expect("destination path required");
     let library_path = Path::new(&library_path_str);
     let src_path = Path::new(&src_path_str);
     let dest_path = Path::new(&dest_path_str);

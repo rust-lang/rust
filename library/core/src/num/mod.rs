@@ -1573,7 +1573,7 @@ $EndFeature, "
 the boundary of the type.
 
 The only case where such wrapping can occur is when one takes the absolute value of the negative
-minimal value for the type this is a positive value that is too large to represent in the type. In
+minimal value for the type; this is a positive value that is too large to represent in the type. In
 such a case, this function returns `MIN` itself.
 
 # Examples
