@@ -52,8 +52,7 @@ pub fn expand_aggregate<'tcx>(
         .enumerate()
         .map(move |(i, (op, ty))| {
             let lhs_field = if let AggregateKind::Array(_) = kind {
-                let offset = i as u64;
-                assert_eq!(offset as usize, i);
+                let offset = u64::try_from(i).unwrap();
                 tcx.mk_place_elem(
                     lhs,
                     ProjectionElem::ConstantIndex {
