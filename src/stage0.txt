@@ -12,9 +12,9 @@
 # source tarball for a stable release you'll likely see `1.x.0` for rustc and
 # `0.(x+1).0` for Cargo where they were released on `date`.
 
-date: 2020-07-13
-rustc: 1.45.0
-cargo: 0.46.0
+date: 2020-08-03
+rustc: 1.45.2
+cargo: 0.46.1
 
 # We use a nightly rustfmt to format the source because it solves some
 # bootstrapping issues with use of new syntax in this repo. If you're looking at
@@ -40,4 +40,4 @@ cargo: 0.46.0
 # looking at a beta source tarball and it's uncommented we'll shortly comment it
 # out.
 
-dev: 1
+#dev: 1
