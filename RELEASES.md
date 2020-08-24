@@ -68,7 +68,19 @@ Compatibility Notes
 - [Rustc now correctly relates the lifetime of an existential associated
   type.][71896] This fixes some edge cases where `rustc` would erroneously allow
   you to pass a shorter lifetime than expected.
+- [Rustc now dynamically links to `libz` (also called `zlib`) on Linux.][74420]
+  The library will need to be installed for `rustc` to work, even though we
+  expect it to be already available on most systems.
+- [Tests annotated with `#[should_panic]` are broken on ARMv7 while running
+  under QEMU.][74820]
+- [Pretty printing of some tokens in procedural macros changed.][75453] The
+  exact output returned by rustc's pretty printing is an unstable
+  implementation detail: we recommend any macro relying on it to switch to a
+  more robust parsing system.
 
+[75453]: https://github.com/rust-lang/rust/issues/75453/
+[74820]: https://github.com/rust-lang/rust/issues/74820/
+[74420]: https://github.com/rust-lang/rust/issues/74420/
 [74109]: https://github.com/rust-lang/rust/pull/74109/
 [74150]: https://github.com/rust-lang/rust/pull/74150/
 [73862]: https://github.com/rust-lang/rust/pull/73862/
