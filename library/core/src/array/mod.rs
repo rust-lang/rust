@@ -479,7 +479,7 @@ impl<T, const N: usize> [T; N] {
                 // ManuallyDrop::new(..), and implicitly know that it will be a `dst` variant
                 // from where
                 unsafe {
-                    let v = f(src_dst[i].src.read());
+                    let v = f(src_dst[i].src.assume_init_read());
                     src_dst[i].dst = ManuallyDrop::new(v);
                 }
                 guard.initialized += 1;
