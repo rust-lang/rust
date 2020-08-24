@@ -32,8 +32,8 @@ use std::rc::Rc;
 
 use crate::clean;
 use crate::clean::{AttributesExt, MAX_DEF_ID};
-use crate::config::RenderInfo;
 use crate::config::{Options as RustdocOptions, RenderOptions};
+use crate::config::{OutputFormat, RenderInfo};
 use crate::passes::{self, Condition::*, ConditionalPass};
 
 pub use rustc_session::config::{CodegenOptions, DebuggingOptions, Input, Options};
@@ -280,7 +280,9 @@ where
     (lint_opts, lint_caps)
 }
 
-pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions) {
+pub fn run_core(
+    options: RustdocOptions,
+) -> (clean::Crate, RenderInfo, RenderOptions, Lrc<Session>) {
     // Parse, resolve, and typecheck the given crate.
 
     let RustdocOptions {
@@ -299,8 +301,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         lint_opts,
         describe_lints,
         lint_cap,
-        mut default_passes,
-        mut manual_passes,
+        default_passes,
+        manual_passes,
         display_warnings,
         render_options,
         output_format,
@@ -407,7 +409,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
-                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
+                tcx.sess.time("emit_ignored_resolution_errors", || {
+                    EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
+                });
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
@@ -429,18 +433,20 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 // actually be loaded, just in case they're only referred to inside
                 // intra-doc-links
                 resolver.borrow_mut().access(|resolver| {
-                    for extern_name in &extern_names {
-                        resolver
-                            .resolve_str_path_error(
-                                DUMMY_SP,
-                                extern_name,
-                                TypeNS,
-                                LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
-                            )
-                            .unwrap_or_else(|()| {
-                                panic!("Unable to resolve external crate {}", extern_name)
-                            });
-                    }
+                    sess.time("load_extern_crates", || {
+                        for extern_name in &extern_names {
+                            resolver
+                                .resolve_str_path_error(
+                                    DUMMY_SP,
+                                    extern_name,
+                                    TypeNS,
+                                    LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
+                                )
+                                .unwrap_or_else(|()| {
+                                    panic!("Unable to resolve external crate {}", extern_name)
+                                });
+                        }
+                    });
                 });
 
                 // Now we're good to clone the resolver because everything should be loaded
@@ -453,181 +459,201 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
-            global_ctxt.enter(|tcx| {
-                // Certain queries assume that some checks were run elsewhere
-                // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
-                // so type-check everything other than function bodies in this crate before running lints.
-
-                // NOTE: this does not call `tcx.analysis()` so that we won't
-                // typeck function bodies or run the default rustc lints.
-                // (see `override_queries` in the `config`)
-
-                // HACK(jynelson) this calls an _extremely_ limited subset of `typeck`
-                // and might break if queries change their assumptions in the future.
-
-                // NOTE: This is copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
-                tcx.sess.time("item_types_checking", || {
-                    for &module in tcx.hir().krate().modules.keys() {
-                        tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
-                    }
-                });
-                tcx.sess.abort_if_errors();
-                sess.time("missing_docs", || {
-                    rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);
-                });
-                for &module in tcx.hir().krate().modules.keys() {
-                    let local_def_id = tcx.hir().local_def_id(module);
-                    tcx.ensure().check_mod_attrs(local_def_id);
-                }
-
-                let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
-                // Convert from a HirId set to a DefId set since we don't always have easy access
-                // to the map from defid -> hirid
-                let access_levels = AccessLevels {
-                    map: access_levels
-                        .map
-                        .iter()
-                        .map(|(&k, &v)| (tcx.hir().local_def_id(k).to_def_id(), v))
-                        .collect(),
-                };
-
-                let mut renderinfo = RenderInfo::default();
-                renderinfo.access_levels = access_levels;
-                renderinfo.output_format = output_format;
-
-                let mut ctxt = DocContext {
-                    tcx,
-                    resolver,
-                    external_traits: Default::default(),
-                    active_extern_traits: Default::default(),
-                    renderinfo: RefCell::new(renderinfo),
-                    ty_substs: Default::default(),
-                    lt_substs: Default::default(),
-                    ct_substs: Default::default(),
-                    impl_trait_bounds: Default::default(),
-                    fake_def_ids: Default::default(),
-                    all_fake_def_ids: Default::default(),
-                    generated_synthetics: Default::default(),
-                    auto_traits: tcx
-                        .all_traits(LOCAL_CRATE)
-                        .iter()
-                        .cloned()
-                        .filter(|trait_def_id| tcx.trait_is_auto(*trait_def_id))
-                        .collect(),
-                    render_options,
-                    module_trait_cache: RefCell::new(FxHashMap::default()),
-                };
-                debug!("crate: {:?}", tcx.hir().krate());
-
-                let mut krate = clean::krate(&mut ctxt);
-
-                if let Some(ref m) = krate.module {
-                    if let None | Some("") = m.doc_value() {
-                        let help = "The following guide may be of use:\n\
-                             https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation\
-                             .html";
-                        tcx.struct_lint_node(
-                            rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS,
-                            ctxt.as_local_hir_id(m.def_id).unwrap(),
-                            |lint| {
-                                let mut diag = lint.build(
-                                    "no documentation found for this crate's top-level module",
-                                );
-                                diag.help(help);
-                                diag.emit();
-                            },
-                        );
-                    }
-                }
-
-                fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler) {
-                    let mut msg = diag.struct_warn(&format!(
-                        "the `#![doc({})]` attribute is considered deprecated",
-                        name
-                    ));
-                    msg.warn(
-                        "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-                         for more information",
-                    );
-
-                    if name == "no_default_passes" {
-                        msg.help("you may want to use `#![doc(document_private_items)]`");
-                    }
-
-                    msg.emit();
-                }
-
-                // Process all of the crate attributes, extracting plugin metadata along
-                // with the passes which we are supposed to run.
-                for attr in krate.module.as_ref().unwrap().attrs.lists(sym::doc) {
-                    let diag = ctxt.sess().diagnostic();
-
-                    let name = attr.name_or_empty();
-                    if attr.is_word() {
-                        if name == sym::no_default_passes {
-                            report_deprecated_attr("no_default_passes", diag);
-                            if default_passes == passes::DefaultPassOption::Default {
-                                default_passes = passes::DefaultPassOption::None;
-                            }
-                        }
-                    } else if let Some(value) = attr.value_str() {
-                        let sink = match name {
-                            sym::passes => {
-                                report_deprecated_attr("passes = \"...\"", diag);
-                                &mut manual_passes
-                            }
-                            sym::plugins => {
-                                report_deprecated_attr("plugins = \"...\"", diag);
-                                eprintln!(
-                                    "WARNING: `#![doc(plugins = \"...\")]` \
-                                      no longer functions; see CVE-2018-1000622"
-                                );
-                                continue;
-                            }
-                            _ => continue,
-                        };
-                        for name in value.as_str().split_whitespace() {
-                            sink.push(name.to_string());
-                        }
-                    }
-
-                    if attr.is_word() && name == sym::document_private_items {
-                        ctxt.render_options.document_private = true;
-                    }
-                }
-
-                let passes = passes::defaults(default_passes).iter().copied().chain(
-                    manual_passes.into_iter().flat_map(|name| {
-                        if let Some(pass) = passes::find_pass(&name) {
-                            Some(ConditionalPass::always(pass))
-                        } else {
-                            error!("unknown pass {}, skipping", name);
-                            None
-                        }
-                    }),
-                );
-
-                info!("Executing passes");
-
-                for p in passes {
-                    let run = match p.condition {
-                        Always => true,
-                        WhenDocumentPrivate => ctxt.render_options.document_private,
-                        WhenNotDocumentPrivate => !ctxt.render_options.document_private,
-                        WhenNotDocumentHidden => !ctxt.render_options.document_hidden,
-                    };
-                    if run {
-                        debug!("running pass {}", p.pass.name);
-                        krate = (p.pass.run)(krate, &ctxt);
-                    }
-                }
-
-                ctxt.sess().abort_if_errors();
-
-                (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
-            })
+            let (krate, render_info, opts) = sess.time("run_global_ctxt", || {
+                global_ctxt.enter(|tcx| {
+                    run_global_ctxt(
+                        tcx,
+                        resolver,
+                        default_passes,
+                        manual_passes,
+                        render_options,
+                        output_format,
+                    )
+                })
+            });
+            (krate, render_info, opts, Lrc::clone(sess))
         })
     })
+}
+
+fn run_global_ctxt(
+    tcx: TyCtxt<'_>,
+    resolver: Rc<RefCell<interface::BoxedResolver>>,
+    mut default_passes: passes::DefaultPassOption,
+    mut manual_passes: Vec<String>,
+    render_options: RenderOptions,
+    output_format: Option<OutputFormat>,
+) -> (clean::Crate, RenderInfo, RenderOptions) {
+    // Certain queries assume that some checks were run elsewhere
+    // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
+    // so type-check everything other than function bodies in this crate before running lints.
+
+    // NOTE: this does not call `tcx.analysis()` so that we won't
+    // typeck function bodies or run the default rustc lints.
+    // (see `override_queries` in the `config`)
+
+    // HACK(jynelson) this calls an _extremely_ limited subset of `typeck`
+    // and might break if queries change their assumptions in the future.
+
+    // NOTE: This is copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
+    tcx.sess.time("item_types_checking", || {
+        for &module in tcx.hir().krate().modules.keys() {
+            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
+        }
+    });
+    tcx.sess.abort_if_errors();
+    tcx.sess.time("missing_docs", || {
+        rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);
+    });
+    tcx.sess.time("check_mod_attrs", || {
+        for &module in tcx.hir().krate().modules.keys() {
+            let local_def_id = tcx.hir().local_def_id(module);
+            tcx.ensure().check_mod_attrs(local_def_id);
+        }
+    });
+
+    let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
+    // Convert from a HirId set to a DefId set since we don't always have easy access
+    // to the map from defid -> hirid
+    let access_levels = AccessLevels {
+        map: access_levels
+            .map
+            .iter()
+            .map(|(&k, &v)| (tcx.hir().local_def_id(k).to_def_id(), v))
+            .collect(),
+    };
+
+    let mut renderinfo = RenderInfo::default();
+    renderinfo.access_levels = access_levels;
+    renderinfo.output_format = output_format;
+
+    let mut ctxt = DocContext {
+        tcx,
+        resolver,
+        external_traits: Default::default(),
+        active_extern_traits: Default::default(),
+        renderinfo: RefCell::new(renderinfo),
+        ty_substs: Default::default(),
+        lt_substs: Default::default(),
+        ct_substs: Default::default(),
+        impl_trait_bounds: Default::default(),
+        fake_def_ids: Default::default(),
+        all_fake_def_ids: Default::default(),
+        generated_synthetics: Default::default(),
+        auto_traits: tcx
+            .all_traits(LOCAL_CRATE)
+            .iter()
+            .cloned()
+            .filter(|trait_def_id| tcx.trait_is_auto(*trait_def_id))
+            .collect(),
+        render_options,
+        module_trait_cache: RefCell::new(FxHashMap::default()),
+    };
+    debug!("crate: {:?}", tcx.hir().krate());
+
+    let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
+
+    if let Some(ref m) = krate.module {
+        if let None | Some("") = m.doc_value() {
+            let help = "The following guide may be of use:\n\
+                    https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation\
+                    .html";
+            tcx.struct_lint_node(
+                rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS,
+                ctxt.as_local_hir_id(m.def_id).unwrap(),
+                |lint| {
+                    let mut diag =
+                        lint.build("no documentation found for this crate's top-level module");
+                    diag.help(help);
+                    diag.emit();
+                },
+            );
+        }
+    }
+
+    fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler) {
+        let mut msg = diag
+            .struct_warn(&format!("the `#![doc({})]` attribute is considered deprecated", name));
+        msg.warn(
+            "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
+                for more information",
+        );
+
+        if name == "no_default_passes" {
+            msg.help("you may want to use `#![doc(document_private_items)]`");
+        }
+
+        msg.emit();
+    }
+
+    // Process all of the crate attributes, extracting plugin metadata along
+    // with the passes which we are supposed to run.
+    for attr in krate.module.as_ref().unwrap().attrs.lists(sym::doc) {
+        let diag = ctxt.sess().diagnostic();
+
+        let name = attr.name_or_empty();
+        if attr.is_word() {
+            if name == sym::no_default_passes {
+                report_deprecated_attr("no_default_passes", diag);
+                if default_passes == passes::DefaultPassOption::Default {
+                    default_passes = passes::DefaultPassOption::None;
+                }
+            }
+        } else if let Some(value) = attr.value_str() {
+            let sink = match name {
+                sym::passes => {
+                    report_deprecated_attr("passes = \"...\"", diag);
+                    &mut manual_passes
+                }
+                sym::plugins => {
+                    report_deprecated_attr("plugins = \"...\"", diag);
+                    eprintln!(
+                        "WARNING: `#![doc(plugins = \"...\")]` \
+                            no longer functions; see CVE-2018-1000622"
+                    );
+                    continue;
+                }
+                _ => continue,
+            };
+            for name in value.as_str().split_whitespace() {
+                sink.push(name.to_string());
+            }
+        }
+
+        if attr.is_word() && name == sym::document_private_items {
+            ctxt.render_options.document_private = true;
+        }
+    }
+
+    let passes = passes::defaults(default_passes).iter().copied().chain(
+        manual_passes.into_iter().flat_map(|name| {
+            if let Some(pass) = passes::find_pass(&name) {
+                Some(ConditionalPass::always(pass))
+            } else {
+                error!("unknown pass {}, skipping", name);
+                None
+            }
+        }),
+    );
+
+    info!("Executing passes");
+
+    for p in passes {
+        let run = match p.condition {
+            Always => true,
+            WhenDocumentPrivate => ctxt.render_options.document_private,
+            WhenNotDocumentPrivate => !ctxt.render_options.document_private,
+            WhenNotDocumentHidden => !ctxt.render_options.document_hidden,
+        };
+        if run {
+            debug!("running pass {}", p.pass.name);
+            krate = ctxt.tcx.sess.time(p.pass.name, || (p.pass.run)(krate, &ctxt));
+        }
+    }
+
+    ctxt.sess().abort_if_errors();
+
+    (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
 }
 
 /// Due to https://github.com/rust-lang/rust/pull/73566,

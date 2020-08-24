@@ -29,7 +29,9 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
 
     for &cnum in cx.tcx.crates().iter() {
         for &(did, _) in cx.tcx.all_trait_implementations(cnum).iter() {
-            inline::build_impl(cx, did, None, &mut new_items);
+            cx.tcx.sess.time("build_extern_trait_impl", || {
+                inline::build_impl(cx, did, None, &mut new_items);
+            });
         }
     }
 
@@ -87,7 +89,9 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     for &trait_did in cx.tcx.all_traits(LOCAL_CRATE).iter() {
         for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
             let impl_did = cx.tcx.hir().local_def_id(impl_node);
-            inline::build_impl(cx, impl_did.to_def_id(), None, &mut new_items);
+            cx.tcx.sess.time("build_local_trait_impl", || {
+                inline::build_impl(cx, impl_did.to_def_id(), None, &mut new_items);
+            });
         }
     }
 
