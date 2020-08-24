@@ -988,8 +988,10 @@ dependencies = [
  "ra_hir_ty",
  "ra_prof",
  "ra_syntax",
+ "ra_tt",
  "rustc-hash",
  "stdx",
+ "url",
 ]
 
 [[package]]
@@ -1081,18 +1083,14 @@ dependencies = [
  "ra_db",
  "ra_fmt",
  "ra_hir",
- "ra_hir_def",
  "ra_ide_db",
- "ra_parser",
  "ra_prof",
  "ra_ssr",
  "ra_syntax",
  "ra_text_edit",
- "ra_tt",
  "rustc-hash",
  "stdx",
  "test_utils",
- "url",
 ]
 
 [[package]]
@@ -1105,7 +1103,6 @@ dependencies = [
  "once_cell",
  "ra_db",
  "ra_hir",
- "ra_hir_def",
  "ra_prof",
  "ra_syntax",
  "ra_text_edit",

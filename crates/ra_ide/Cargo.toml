@@ -17,10 +17,9 @@ indexmap = "1.3.2"
 itertools = "0.9.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
-url = "2.1.1"
+oorandom = "11.1.2"
 pulldown-cmark-to-cmark = "5.0.0"
 pulldown-cmark = {version = "0.7.2", default-features = false}
-oorandom = "11.1.2"
 
 stdx = { path = "../stdx" }
 
@@ -34,9 +33,6 @@ ra_prof = { path = "../ra_prof" }
 test_utils = { path = "../test_utils" }
 ra_assists = { path = "../ra_assists" }
 ra_ssr = { path = "../ra_ssr" }
-ra_hir_def = { path = "../ra_hir_def" }
-ra_tt = { path = "../ra_tt" }
-ra_parser = { path = "../ra_parser" }
 
 # ra_ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.
