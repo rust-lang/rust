@@ -1748,38 +1748,61 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     ///
     /// ```
     /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::RawEntryMut;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
-    /// map.raw_entry_mut()
-    ///    .from_key("poneyland")
-    ///    .and_replace_entry_with(|_k, _v| unreachable!());
+    /// let entry = map
+    ///     .raw_entry_mut()
+    ///     .from_key("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| panic!());
+    ///
+    /// match entry {
+    ///     RawEntryMut::Vacant(_) => {},
+    ///     RawEntryMut::Occupied(_) => panic!(),
+    /// }
     ///
     /// map.insert("poneyland", 42);
     ///
-    /// map.raw_entry_mut()
-    ///    .from_key("poneyland")
-    ///    .and_replace_entry_with(|k, v| {
+    /// let entry = map
+    ///     .raw_entry_mut()
+    ///     .from_key("poneyland")
+    ///     .and_replace_entry_with(|k, v| {
     ///         assert_eq!(k, &"poneyland");
     ///         assert_eq!(v, 42);
     ///         Some(v + 1)
     ///     });
+    ///
+    /// match entry {
+    ///     RawEntryMut::Occupied(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///         assert_eq!(e.get(), &43);
+    ///     },
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    /// }
+    ///
     /// assert_eq!(map["poneyland"], 43);
     ///
-    /// map.raw_entry_mut()
-    ///    .from_key("poneyland")
-    ///    .and_replace_entry_with(|_k, _v| None);
+    /// let entry = map
+    ///     .raw_entry_mut()
+    ///     .from_key("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| None);
+    ///
+    /// match entry {
+    ///     RawEntryMut::Vacant(_) => {},
+    ///     RawEntryMut::Occupied(_) => panic!(),
+    /// }
     ///
     /// assert!(!map.contains_key("poneyland"));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn and_replace_entry_with<F>(self, f: F)
+    pub fn and_replace_entry_with<F>(self, f: F) -> Self
     where
         F: FnOnce(&K, V) -> Option<V>,
     {
         match self {
             RawEntryMut::Occupied(entry) => entry.replace_entry_with(f),
-            RawEntryMut::Vacant(_) => {}
+            RawEntryMut::Vacant(_) => self,
         }
     }
 }
@@ -1879,15 +1902,26 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
     /// the entry and allows to replace or remove it based on the
     /// value of the returned option.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn replace_entry_with<F>(self, f: F)
+    pub fn replace_entry_with<F>(self, f: F) -> RawEntryMut<'a, K, V, S>
     where
         F: FnOnce(&K, V) -> Option<V>,
     {
         unsafe {
-            self.table.replace_bucket_with(self.elem, |(key, value)| {
-                f(&key, value).map(|new_value| (key, new_value))
-            })
-        };
+            let still_occupied = self
+                .table
+                .replace_bucket_with(self.elem.clone(), |(key, value)| {
+                    f(&key, value).map(|new_value| (key, new_value))
+                });
+
+            if still_occupied {
+                RawEntryMut::Occupied(self)
+            } else {
+                RawEntryMut::Vacant(RawVacantEntryMut {
+                    table: self.table,
+                    hash_builder: self.hash_builder,
+                })
+            }
+        }
     }
 }
 
