@@ -1,5 +1,9 @@
 # needs-profiler-support
 # ignore-msvc
+# ignore-windows-gnu
+
+# FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with Clang it works
+# properly. Since we only have GCC on the CI ignore the test for now.
 
 # LINK_DEAD_CODE requires ignore-msvc due to Issue #76038
 LINK_DEAD_CODE=yes
