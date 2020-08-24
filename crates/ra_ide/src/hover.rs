@@ -1357,6 +1357,36 @@ fn foo() { let bar = Ba<|>r; }
         );
     }
 
+    #[ignore = "path based links currently only support documentation on ModuleDef items"]
+    #[test]
+    fn test_hover_path_link_field() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            pub struct Bar {
+                /// [Foo](struct.Foo.html)
+                fie<|>ld: ()
+            }
+            ",
+            expect![[r#"
+                *field*
+
+                ```rust
+                test::Bar
+                ```
+
+                ```rust
+                field: ()
+                ```
+
+                ---
+
+                [Foo](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
     #[test]
     fn test_hover_intra_link() {
         check(
@@ -1382,6 +1412,38 @@ fn foo() { let bar = Ba<|>r; }
                 ---
 
                 [Foo](https://docs.rs/test/*/test/foo/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_html_root_url() {
+        check(
+            r#"
+            //- /lib.rs
+
+            #![doc(arbitrary_attribute = "test", html_root_url = "https:/example.com", arbitrary_attribute2)]
+
+            pub mod foo {
+                pub struct Foo;
+            }
+            /// [Foo](foo::Foo)
+            pub struct B<|>ar
+            "#,
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [Foo](https://example.com/test/foo/struct.Foo.html)
             "#]],
         );
     }
