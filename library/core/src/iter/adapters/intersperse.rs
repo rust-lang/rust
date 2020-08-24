@@ -66,7 +66,7 @@ where
         let (lo, hi) = self.iter.size_hint();
         let has_peek = self.peek.is_some() as usize;
         let lo = lo.saturating_add(lo).saturating_add(has_peek);
-        let hi = hi.map(|hi| hi.saturating_add(hi).saturating_add(has_peek));
+        let hi = hi.and_then(|hi| hi.checked_add(hi)).and_then(|hi| hi.checked_add(has_peek));
         (lo, hi)
     }
 }
