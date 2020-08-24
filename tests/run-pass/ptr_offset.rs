@@ -1,4 +1,3 @@
-#![feature(ptr_offset_from)]
 use std::{mem, ptr};
 
 fn main() {
