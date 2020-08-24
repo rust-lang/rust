@@ -1086,7 +1086,9 @@ impl<T> VecDeque<T> {
     where
         R: RangeBounds<usize>,
     {
-        // SAFETY: This buffer is only used to check the range.
+        // SAFETY: This buffer is only used to check the range. It might be partially
+        // uninitialized, but `check_range` needs a contiguous slice.
+        // https://github.com/rust-lang/rust/pull/75207#discussion_r471193682
         let buffer = unsafe { slice::from_raw_parts(self.ptr(), self.len()) };
         let Range { start, end } = buffer.check_range(range);
         let tail = self.wrap_add(self.tail, start);
