@@ -226,7 +226,7 @@ fn make_win_dist(
         let idx = line.find(':').unwrap();
         let key = &line[..idx];
         let trim_chars: &[_] = &[' ', '='];
-        let value = line[(idx + 1)..].trim_start_matches(trim_chars).split(';').map(PathBuf::from);
+        let value = env::split_paths(line[(idx + 1)..].trim_start_matches(trim_chars));
 
         if key == "programs" {
             bin_path.extend(value);

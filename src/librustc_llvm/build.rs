@@ -151,6 +151,12 @@ fn main() {
             continue;
         }
 
+        // Include path contains host directory, replace it with target
+        if is_crossed && flag.starts_with("-I") {
+            cfg.flag(&flag.replace(&host, &target));
+            continue;
+        }
+
         cfg.flag(flag);
     }
 
@@ -189,6 +195,9 @@ fn main() {
 
     if !is_crossed {
         cmd.arg("--system-libs");
+    } else if target.contains("windows-gnu") {
+        println!("cargo:rustc-link-lib=shell32");
+        println!("cargo:rustc-link-lib=uuid");
     }
     cmd.args(&components);
 
