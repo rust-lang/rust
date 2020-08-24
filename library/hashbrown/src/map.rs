@@ -4069,11 +4069,11 @@ mod test_map {
         });
 
         match entry {
-            Vacant(_) => panic!(),
             Occupied(e) => {
                 assert_eq!(e.key(), &key);
                 assert_eq!(e.get(), &new_value);
             }
+            Vacant(_) => panic!(),
         }
 
         assert_eq!(a[key], new_value);
