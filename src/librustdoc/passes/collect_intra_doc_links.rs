@@ -181,7 +181,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     fn resolve(
         &self,
         path_str: &str,
-        disambiguator: Option<Disambiguator>,
         ns: Namespace,
         current_item: &Option<String>,
         parent_id: Option<DefId>,
@@ -218,18 +217,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         return Ok((res, Some(path_str.to_owned())));
                     }
                     Res::Def(DefKind::Mod, _) => {
-                        // This resolved to a module, but we want primitive types to take precedence instead.
-                        if matches!(
-                            disambiguator,
-                            None | Some(Disambiguator::Namespace(Namespace::TypeNS))
-                        ) {
-                            if let Some((path, prim)) = is_primitive(path_str, ns) {
-                                if extra_fragment.is_some() {
-                                    return Err(ErrorKind::AnchorFailure(AnchorFailure::Primitive));
-                                }
-                                return Ok((prim, Some(path.to_owned())));
-                            }
-                        }
                         return Ok((res, extra_fragment.clone()));
                     }
                     _ => {
@@ -713,7 +700,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             let resolved_self;
             let mut path_str;
             let disambiguator;
-            let (res, fragment) = {
+            let (mut res, mut fragment) = {
                 path_str = if let Ok((d, path)) = Disambiguator::from_str(&link) {
                     disambiguator = Some(d);
                     path
@@ -754,14 +741,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
                 match disambiguator.map(Disambiguator::ns) {
                     Some(ns @ (ValueNS | TypeNS)) => {
-                        match self.resolve(
-                            path_str,
-                            disambiguator,
-                            ns,
-                            &current_item,
-                            base_node,
-                            &extra_fragment,
-                        ) {
+                        match self.resolve(path_str, ns, &current_item, base_node, &extra_fragment)
+                        {
                             Ok(res) => res,
                             Err(ErrorKind::ResolutionFailure) => {
                                 resolution_failure(cx, &item, path_str, &dox, link_range);
@@ -784,7 +765,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 .map(|res| (res, extra_fragment.clone())),
                             type_ns: match self.resolve(
                                 path_str,
-                                disambiguator,
                                 TypeNS,
                                 &current_item,
                                 base_node,
@@ -802,7 +782,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             },
                             value_ns: match self.resolve(
                                 path_str,
-                                disambiguator,
                                 ValueNS,
                                 &current_item,
                                 base_node,
@@ -848,13 +827,18 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             if is_derive_trait_collision(&candidates) {
                                 candidates.macro_ns = None;
                             }
+                            let candidates =
+                                candidates.map(|candidate| candidate.map(|(res, _)| res));
+                            let candidates = [TypeNS, ValueNS, MacroNS]
+                                .iter()
+                                .filter_map(|&ns| candidates[ns].map(|res| (res, ns)));
                             ambiguity_error(
                                 cx,
                                 &item,
                                 path_str,
                                 &dox,
                                 link_range,
-                                candidates.map(|candidate| candidate.map(|(res, _)| res)),
+                                candidates.collect(),
                             );
                             continue;
                         }
@@ -870,13 +854,81 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 }
             };
 
+            // Check for a primitive which might conflict with a module
+            // Report the ambiguity and require that the user specify which one they meant.
+            // FIXME: could there ever be a primitive not in the type namespace?
+            if matches!(
+                disambiguator,
+                None | Some(Disambiguator::Namespace(Namespace::TypeNS) | Disambiguator::Primitive)
+            ) && !matches!(res, Res::PrimTy(_))
+            {
+                if let Some((path, prim)) = is_primitive(path_str, TypeNS) {
+                    // `prim@char`
+                    if matches!(disambiguator, Some(Disambiguator::Primitive)) {
+                        if fragment.is_some() {
+                            anchor_failure(
+                                cx,
+                                &item,
+                                path_str,
+                                &dox,
+                                link_range,
+                                AnchorFailure::Primitive,
+                            );
+                            continue;
+                        }
+                        res = prim;
+                        fragment = Some(path.to_owned());
+                    } else {
+                        // `[char]` when a `char` module is in scope
+                        let candidates = vec![(res, TypeNS), (prim, TypeNS)];
+                        ambiguity_error(cx, &item, path_str, &dox, link_range, candidates);
+                        continue;
+                    }
+                }
+            }
+
+            let report_mismatch = |specified: Disambiguator, resolved: Disambiguator| {
+                // The resolved item did not match the disambiguator; give a better error than 'not found'
+                let msg = format!("incompatible link kind for `{}`", path_str);
+                report_diagnostic(cx, &msg, &item, &dox, link_range.clone(), |diag, sp| {
+                    let note = format!(
+                        "this link resolved to {} {}, which is not {} {}",
+                        resolved.article(),
+                        resolved.descr(),
+                        specified.article(),
+                        specified.descr()
+                    );
+                    let suggestion = resolved.display_for(path_str);
+                    let help_msg =
+                        format!("to link to the {}, use its disambiguator", resolved.descr());
+                    diag.note(&note);
+                    if let Some(sp) = sp {
+                        diag.span_suggestion(
+                            sp,
+                            &help_msg,
+                            suggestion,
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        diag.help(&format!("{}: {}", help_msg, suggestion));
+                    }
+                });
+            };
             if let Res::PrimTy(_) = res {
-                item.attrs.links.push((ori_link, None, fragment));
+                match disambiguator {
+                    Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {
+                        item.attrs.links.push((ori_link, None, fragment))
+                    }
+                    Some(other) => {
+                        report_mismatch(other, Disambiguator::Primitive);
+                        continue;
+                    }
+                }
             } else {
                 debug!("intra-doc link to {} resolved to {:?}", path_str, res);
 
                 // Disallow e.g. linking to enums with `struct@`
-                if let Res::Def(kind, id) = res {
+                if let Res::Def(kind, _) = res {
                     debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
                     match (self.kind_side_channel.take().unwrap_or(kind), disambiguator) {
                         | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
@@ -890,22 +942,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         // All of these are valid, so do nothing
                         => {}
                         (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
-                        (_, Some(Disambiguator::Kind(expected))) => {
-                            // The resolved item did not match the disambiguator; give a better error than 'not found'
-                            let msg = format!("incompatible link kind for `{}`", path_str);
-                            report_diagnostic(cx, &msg, &item, &dox, link_range, |diag, sp| {
-                                // HACK(jynelson): by looking at the source I saw the DefId we pass
-                                // for `expected.descr()` doesn't matter, since it's not a crate
-                                let note = format!("this link resolved to {} {}, which is not {} {}", kind.article(), kind.descr(id), expected.article(), expected.descr(id));
-                                let suggestion = Disambiguator::display_for(kind, path_str);
-                                let help_msg = format!("to link to the {}, use its disambiguator", kind.descr(id));
-                                diag.note(&note);
-                                if let Some(sp) = sp {
-                                    diag.span_suggestion(sp, &help_msg, suggestion, Applicability::MaybeIncorrect);
-                                } else {
-                                    diag.help(&format!("{}: {}", help_msg, suggestion));
-                                }
-                            });
+                        (_, Some(specified @ Disambiguator::Kind(_) | specified @ Disambiguator::Primitive)) => {
+                            report_mismatch(specified, Disambiguator::Kind(kind));
                             continue;
                         }
                     }
@@ -961,6 +999,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Disambiguator {
+    Primitive,
     Kind(DefKind),
     Namespace(Namespace),
 }
@@ -968,7 +1007,7 @@ enum Disambiguator {
 impl Disambiguator {
     /// (disambiguator, path_str)
     fn from_str(link: &str) -> Result<(Self, &str), ()> {
-        use Disambiguator::{Kind, Namespace as NS};
+        use Disambiguator::{Kind, Namespace as NS, Primitive};
 
         let find_suffix = || {
             let suffixes = [
@@ -999,6 +1038,7 @@ impl Disambiguator {
                 "type" => NS(Namespace::TypeNS),
                 "value" => NS(Namespace::ValueNS),
                 "macro" => NS(Namespace::MacroNS),
+                "prim" | "primitive" => Primitive,
                 _ => return find_suffix(),
             };
             Ok((d, &rest[1..]))
@@ -1007,7 +1047,12 @@ impl Disambiguator {
         }
     }
 
-    fn display_for(kind: DefKind, path_str: &str) -> String {
+    fn display_for(self, path_str: &str) -> String {
+        let kind = match self {
+            Disambiguator::Primitive => return format!("prim@{}", path_str),
+            Disambiguator::Kind(kind) => kind,
+            Disambiguator::Namespace(_) => panic!("display_for cannot be used on namespaces"),
+        };
         if kind == DefKind::Macro(MacroKind::Bang) {
             return format!("{}!", path_str);
         } else if kind == DefKind::Fn || kind == DefKind::AssocFn {
@@ -1043,6 +1088,25 @@ impl Disambiguator {
             Self::Kind(k) => {
                 k.ns().expect("only DefKinds with a valid namespace can be disambiguators")
             }
+            Self::Primitive => TypeNS,
+        }
+    }
+
+    fn article(self) -> &'static str {
+        match self {
+            Self::Namespace(_) => panic!("article() doesn't make sense for namespaces"),
+            Self::Kind(k) => k.article(),
+            Self::Primitive => "a",
+        }
+    }
+
+    fn descr(self) -> &'static str {
+        match self {
+            Self::Namespace(n) => n.descr(),
+            // HACK(jynelson): by looking at the source I saw the DefId we pass
+            // for `expected.descr()` doesn't matter, since it's not a crate
+            Self::Kind(k) => k.descr(DefId::local(hir::def_id::DefIndex::from_usize(0))),
+            Self::Primitive => "builtin type",
         }
     }
 }
@@ -1183,14 +1247,10 @@ fn ambiguity_error(
     path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
-    candidates: PerNS<Option<Res>>,
+    candidates: Vec<(Res, Namespace)>,
 ) {
     let mut msg = format!("`{}` is ", path_str);
 
-    let candidates = [TypeNS, ValueNS, MacroNS]
-        .iter()
-        .filter_map(|&ns| candidates[ns].map(|res| (res, ns)))
-        .collect::<Vec<_>>();
     match candidates.as_slice() {
         [(first_def, _), (second_def, _)] => {
             msg += &format!(
@@ -1229,6 +1289,7 @@ fn ambiguity_error(
                     }
                     _ => {
                         let type_ = match (res, ns) {
+                            (Res::PrimTy(_), _) => "prim",
                             (Res::Def(DefKind::Const, _), _) => "const",
                             (Res::Def(DefKind::Static, _), _) => "static",
                             (Res::Def(DefKind::Struct, _), _) => "struct",

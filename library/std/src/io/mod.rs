@@ -480,7 +480,7 @@ where
 /// ```
 ///
 /// [`read()`]: Read::read
-/// [`&str`]: str
+/// [`&str`]: prim@str
 /// [`std::io`]: self
 /// [`File`]: crate::fs::File
 /// [slice]: ../../std/primitive.slice.html
