@@ -250,6 +250,7 @@ ExternItem =
   Fn
 | MacroCall
 | Static
+| TypeAlias
 
 GenericParamList =
   '<' (GenericParam (',' GenericParam)* ','?)? '>'
