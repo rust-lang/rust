@@ -15,7 +15,6 @@
     feature(
         alloc_layout_extra,
         allocator_api,
-        ptr_offset_from,
         test,
         core_intrinsics,
         dropck_eyepatch,
