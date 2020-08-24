@@ -15,4 +15,4 @@ log = "0.4.8"
 crossbeam-channel = "0.4.0"
 jod-thread = "0.1.1"
 
-tt = { path = "../tt" }
+tt = { path = "../tt", version = "0.0.0" }

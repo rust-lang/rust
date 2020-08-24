@@ -16,5 +16,5 @@ walkdir = "2.3.1"
 crossbeam-channel = "0.4.0"
 notify = "5.0.0-pre.3"
 
-vfs = { path = "../vfs" }
-paths = { path = "../paths" }
+vfs = { path = "../vfs", version = "0.0.0" }
+paths = { path = "../paths", version = "0.0.0" }

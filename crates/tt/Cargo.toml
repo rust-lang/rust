@@ -13,4 +13,4 @@ doctest = false
 # to reduce number of compilations
 smol_str = { version = "0.1.15", features = ["serde"] }
 
-stdx = { path = "../stdx" }
+stdx = { path = "../stdx", version = "0.0.0" }

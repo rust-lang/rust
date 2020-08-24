@@ -14,7 +14,7 @@ cfg-if = "0.1.10"
 libc = "0.2.73"
 backtrace = { version = "0.3.44", optional = true }
 
-arena = { path = "../arena" }
+arena = { path = "../arena", version = "0.0.0" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 perf-event = "0.4"

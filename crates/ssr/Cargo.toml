@@ -14,12 +14,12 @@ doctest = false
 rustc-hash = "1.1.0"
 itertools = "0.9.0"
 
-text_edit = { path = "../text_edit" }
-syntax = { path = "../syntax" }
-base_db = { path = "../base_db" }
-ide_db = { path = "../ide_db" }
-hir = { path = "../hir" }
-test_utils = { path = "../test_utils" }
+text_edit = { path = "../text_edit", version = "0.0.0" }
+syntax = { path = "../syntax", version = "0.0.0" }
+base_db = { path = "../base_db", version = "0.0.0" }
+ide_db = { path = "../ide_db", version = "0.0.0" }
+hir = { path = "../hir", version = "0.0.0" }
+test_utils = { path = "../test_utils", version = "0.0.0" }
 
 [dev-dependencies]
 expect-test = "0.1"

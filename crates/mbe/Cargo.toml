@@ -13,9 +13,9 @@ rustc-hash = "1.1.0"
 smallvec = "1.2.0"
 log = "0.4.8"
 
-syntax = { path = "../syntax" }
-parser = { path = "../parser" }
-tt = { path = "../tt" }
+syntax = { path = "../syntax", version = "0.0.0" }
+parser = { path = "../parser", version = "0.0.0" }
+tt = { path = "../tt", version = "0.0.0" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
