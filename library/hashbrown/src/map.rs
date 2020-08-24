@@ -3912,18 +3912,11 @@ mod test_map {
         let value = "an initial value";
         let new_value = "a new value";
 
-        a.insert(key, value);
-
-        match a.entry(key) {
-            Occupied(e) => {
-                e.replace_entry_with(|k, v| {
-                    assert_eq!(k, &key);
-                    assert_eq!(v, value);
-                    Some(new_value)
-                });
-            }
-            Vacant(_) => unreachable!(),
-        }
+        a.entry(key).insert(value).replace_entry_with(|k, v| {
+            assert_eq!(k, &key);
+            assert_eq!(v, value);
+            Some(new_value)
+        });
 
         assert_eq!(a[key], new_value);
         assert_eq!(a.len(), 1);
@@ -3951,12 +3944,8 @@ mod test_map {
         let value = "an initial value";
         let new_value = "a new value";
 
-        match a.entry(key) {
-            e @ Vacant(_) => {
-                e.and_replace_entry_with(|_, _| panic!("Can't replace a VacantEntry"));
-            }
-            Occupied(_) => unreachable!(),
-        }
+        a.entry(key)
+            .and_replace_entry_with(|_, _| panic!("Can't replace a VacantEntry"));
 
         a.insert(key, value);
 
@@ -3987,18 +3976,14 @@ mod test_map {
         let value = "an initial value";
         let new_value = "a new value";
 
-        a.insert(key, value);
-
-        match a.raw_entry_mut().from_key(&key) {
-            RawEntryMut::Occupied(e) => {
-                e.replace_entry_with(|k, v| {
-                    assert_eq!(k, &key);
-                    assert_eq!(v, value);
-                    Some(new_value)
-                });
-            }
-            RawEntryMut::Vacant(_) => unreachable!(),
-        }
+        a.raw_entry_mut()
+            .from_key(&key)
+            .insert(key, value)
+            .replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, value);
+                Some(new_value)
+            });
 
         assert_eq!(a[key], new_value);
         assert_eq!(a.len(), 1);
@@ -4026,12 +4011,9 @@ mod test_map {
         let value = "an initial value";
         let new_value = "a new value";
 
-        match a.raw_entry_mut().from_key(&key) {
-            e @ RawEntryMut::Vacant(_) => {
-                e.and_replace_entry_with(|_, _| panic!("Can't replace a VacantEntry"));
-            }
-            RawEntryMut::Occupied(_) => unreachable!(),
-        }
+        a.raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|_, _| panic!("Can't replace a VacantEntry"));
 
         a.insert(key, value);
 
