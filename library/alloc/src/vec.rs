@@ -1456,9 +1456,9 @@ impl<T> Vec<T> {
     /// If `new_len` is less than `len`, the `Vec` is simply truncated.
     ///
     /// This method uses a closure to create new values on every push. If
-    /// you'd rather [`Clone`] a given value, use [`resize`]. If you want
-    /// to use the [`Default`] trait to generate values, you can pass
-    /// [`Default::default()`] as the second argument.
+    /// you'd rather [`Clone`] a given value, use [`Vec::resize`]. If you
+    /// want to use the [`Default`] trait to generate values, you can
+    /// pass [`Default::default`] as the second argument.
     ///
     /// # Examples
     ///
@@ -1472,8 +1472,6 @@ impl<T> Vec<T> {
     /// vec.resize_with(4, || { p *= 2; p });
     /// assert_eq!(vec, [2, 4, 8, 16]);
     /// ```
-    ///
-    /// [`resize`]: Vec::resize
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
     pub fn resize_with<F>(&mut self, new_len: usize, f: F)
     where
