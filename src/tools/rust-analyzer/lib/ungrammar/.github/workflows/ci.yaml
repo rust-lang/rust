@@ -31,8 +31,6 @@ jobs:
         profile: minimal
         override: true
 
-    - name: Compile
-      run: cargo test --workspace --no-run
-
-    - name: Test
-      run: cargo test --workspace
+    - run: rustc ./.github/ci.rs && ./ci
+      env:
+        CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
