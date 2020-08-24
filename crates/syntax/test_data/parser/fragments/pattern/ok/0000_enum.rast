@@ -1,0 +1,10 @@
+TUPLE_STRUCT_PAT@0..7
+  PATH@0..4
+    PATH_SEGMENT@0..4
+      NAME_REF@0..4
+        IDENT@0..4 "Some"
+  L_PAREN@4..5 "("
+  IDENT_PAT@5..6
+    NAME@5..6
+      IDENT@5..6 "x"
+  R_PAREN@6..7 ")"

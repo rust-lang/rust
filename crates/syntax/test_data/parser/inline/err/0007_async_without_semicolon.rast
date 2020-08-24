@@ -1,0 +1,31 @@
+SOURCE_FILE@0..30
+  FN@0..29
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..29
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..11 " "
+      LET_STMT@11..27
+        LET_KW@11..14 "let"
+        WHITESPACE@14..15 " "
+        WILDCARD_PAT@15..16
+          UNDERSCORE@15..16 "_"
+        WHITESPACE@16..17 " "
+        EQ@17..18 "="
+        WHITESPACE@18..19 " "
+        EFFECT_EXPR@19..27
+          ASYNC_KW@19..24 "async"
+          WHITESPACE@24..25 " "
+          BLOCK_EXPR@25..27
+            L_CURLY@25..26 "{"
+            R_CURLY@26..27 "}"
+      WHITESPACE@27..28 " "
+      R_CURLY@28..29 "}"
+  WHITESPACE@29..30 "\n"
+error 27..27: expected SEMICOLON

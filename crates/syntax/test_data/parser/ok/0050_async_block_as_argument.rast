@@ -1,0 +1,90 @@
+SOURCE_FILE@0..95
+  FN@0..52
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..49
+      L_PAREN@6..7 "("
+      PARAM@7..48
+        IDENT_PAT@7..8
+          NAME@7..8
+            IDENT@7..8 "x"
+        COLON@8..9 ":"
+        WHITESPACE@9..10 " "
+        IMPL_TRAIT_TYPE@10..48
+          IMPL_KW@10..14 "impl"
+          WHITESPACE@14..15 " "
+          TYPE_BOUND_LIST@15..48
+            TYPE_BOUND@15..48
+              PATH_TYPE@15..48
+                PATH@15..48
+                  PATH@15..26
+                    PATH@15..18
+                      PATH_SEGMENT@15..18
+                        NAME_REF@15..18
+                          IDENT@15..18 "std"
+                    COLON2@18..20 "::"
+                    PATH_SEGMENT@20..26
+                      NAME_REF@20..26
+                        IDENT@20..26 "future"
+                  COLON2@26..28 "::"
+                  PATH_SEGMENT@28..48
+                    NAME_REF@28..34
+                      IDENT@28..34 "Future"
+                    GENERIC_ARG_LIST@34..48
+                      L_ANGLE@34..35 "<"
+                      ASSOC_TYPE_ARG@35..47
+                        NAME_REF@35..41
+                          IDENT@35..41 "Output"
+                        WHITESPACE@41..42 " "
+                        EQ@42..43 "="
+                        WHITESPACE@43..44 " "
+                        PATH_TYPE@44..47
+                          PATH@44..47
+                            PATH_SEGMENT@44..47
+                              NAME_REF@44..47
+                                IDENT@44..47 "i32"
+                      R_ANGLE@47..48 ">"
+      R_PAREN@48..49 ")"
+    WHITESPACE@49..50 " "
+    BLOCK_EXPR@50..52
+      L_CURLY@50..51 "{"
+      R_CURLY@51..52 "}"
+  WHITESPACE@52..54 "\n\n"
+  FN@54..94
+    FN_KW@54..56 "fn"
+    WHITESPACE@56..57 " "
+    NAME@57..61
+      IDENT@57..61 "main"
+    PARAM_LIST@61..63
+      L_PAREN@61..62 "("
+      R_PAREN@62..63 ")"
+    WHITESPACE@63..64 " "
+    BLOCK_EXPR@64..94
+      L_CURLY@64..65 "{"
+      WHITESPACE@65..70 "\n    "
+      CALL_EXPR@70..92
+        PATH_EXPR@70..73
+          PATH@70..73
+            PATH_SEGMENT@70..73
+              NAME_REF@70..73
+                IDENT@70..73 "foo"
+        ARG_LIST@73..92
+          L_PAREN@73..74 "("
+          EFFECT_EXPR@74..91
+            ASYNC_KW@74..79 "async"
+            WHITESPACE@79..80 " "
+            MOVE_KW@80..84 "move"
+            WHITESPACE@84..85 " "
+            BLOCK_EXPR@85..91
+              L_CURLY@85..86 "{"
+              WHITESPACE@86..87 " "
+              LITERAL@87..89
+                INT_NUMBER@87..89 "12"
+              WHITESPACE@89..90 " "
+              R_CURLY@90..91 "}"
+          R_PAREN@91..92 ")"
+      WHITESPACE@92..93 "\n"
+      R_CURLY@93..94 "}"
+  WHITESPACE@94..95 "\n"

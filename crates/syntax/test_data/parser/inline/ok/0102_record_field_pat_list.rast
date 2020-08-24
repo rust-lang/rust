@@ -1,0 +1,132 @@
+SOURCE_FILE@0..119
+  FN@0..118
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..118
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      LET_STMT@15..29
+        LET_KW@15..18 "let"
+        WHITESPACE@18..19 " "
+        RECORD_PAT@19..23
+          PATH@19..20
+            PATH_SEGMENT@19..20
+              NAME_REF@19..20
+                IDENT@19..20 "S"
+          WHITESPACE@20..21 " "
+          RECORD_PAT_FIELD_LIST@21..23
+            L_CURLY@21..22 "{"
+            R_CURLY@22..23 "}"
+        WHITESPACE@23..24 " "
+        EQ@24..25 "="
+        WHITESPACE@25..26 " "
+        TUPLE_EXPR@26..28
+          L_PAREN@26..27 "("
+          R_PAREN@27..28 ")"
+        SEMICOLON@28..29 ";"
+      WHITESPACE@29..34 "\n    "
+      LET_STMT@34..62
+        LET_KW@34..37 "let"
+        WHITESPACE@37..38 " "
+        RECORD_PAT@38..56
+          PATH@38..39
+            PATH_SEGMENT@38..39
+              NAME_REF@38..39
+                IDENT@38..39 "S"
+          WHITESPACE@39..40 " "
+          RECORD_PAT_FIELD_LIST@40..56
+            L_CURLY@40..41 "{"
+            WHITESPACE@41..42 " "
+            RECORD_PAT_FIELD@42..43
+              IDENT_PAT@42..43
+                NAME@42..43
+                  IDENT@42..43 "f"
+            COMMA@43..44 ","
+            WHITESPACE@44..45 " "
+            RECORD_PAT_FIELD@45..54
+              IDENT_PAT@45..54
+                REF_KW@45..48 "ref"
+                WHITESPACE@48..49 " "
+                MUT_KW@49..52 "mut"
+                WHITESPACE@52..53 " "
+                NAME@53..54
+                  IDENT@53..54 "g"
+            WHITESPACE@54..55 " "
+            R_CURLY@55..56 "}"
+        WHITESPACE@56..57 " "
+        EQ@57..58 "="
+        WHITESPACE@58..59 " "
+        TUPLE_EXPR@59..61
+          L_PAREN@59..60 "("
+          R_PAREN@60..61 ")"
+        SEMICOLON@61..62 ";"
+      WHITESPACE@62..67 "\n    "
+      LET_STMT@67..90
+        LET_KW@67..70 "let"
+        WHITESPACE@70..71 " "
+        RECORD_PAT@71..84
+          PATH@71..72
+            PATH_SEGMENT@71..72
+              NAME_REF@71..72
+                IDENT@71..72 "S"
+          WHITESPACE@72..73 " "
+          RECORD_PAT_FIELD_LIST@73..84
+            L_CURLY@73..74 "{"
+            WHITESPACE@74..75 " "
+            RECORD_PAT_FIELD@75..79
+              NAME_REF@75..76
+                IDENT@75..76 "h"
+              COLON@76..77 ":"
+              WHITESPACE@77..78 " "
+              WILDCARD_PAT@78..79
+                UNDERSCORE@78..79 "_"
+            COMMA@79..80 ","
+            WHITESPACE@80..81 " "
+            DOT2@81..83 ".."
+            R_CURLY@83..84 "}"
+        WHITESPACE@84..85 " "
+        EQ@85..86 "="
+        WHITESPACE@86..87 " "
+        TUPLE_EXPR@87..89
+          L_PAREN@87..88 "("
+          R_PAREN@88..89 ")"
+        SEMICOLON@89..90 ";"
+      WHITESPACE@90..95 "\n    "
+      LET_STMT@95..116
+        LET_KW@95..98 "let"
+        WHITESPACE@98..99 " "
+        RECORD_PAT@99..110
+          PATH@99..100
+            PATH_SEGMENT@99..100
+              NAME_REF@99..100
+                IDENT@99..100 "S"
+          WHITESPACE@100..101 " "
+          RECORD_PAT_FIELD_LIST@101..110
+            L_CURLY@101..102 "{"
+            WHITESPACE@102..103 " "
+            RECORD_PAT_FIELD@103..107
+              NAME_REF@103..104
+                IDENT@103..104 "h"
+              COLON@104..105 ":"
+              WHITESPACE@105..106 " "
+              WILDCARD_PAT@106..107
+                UNDERSCORE@106..107 "_"
+            COMMA@107..108 ","
+            WHITESPACE@108..109 " "
+            R_CURLY@109..110 "}"
+        WHITESPACE@110..111 " "
+        EQ@111..112 "="
+        WHITESPACE@112..113 " "
+        TUPLE_EXPR@113..115
+          L_PAREN@113..114 "("
+          R_PAREN@114..115 ")"
+        SEMICOLON@115..116 ";"
+      WHITESPACE@116..117 "\n"
+      R_CURLY@117..118 "}"
+  WHITESPACE@118..119 "\n"

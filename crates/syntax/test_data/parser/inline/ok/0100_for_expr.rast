@@ -1,0 +1,34 @@
+SOURCE_FILE@0..33
+  FN@0..32
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..32
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      EXPR_STMT@15..30
+        FOR_EXPR@15..29
+          FOR_KW@15..18 "for"
+          WHITESPACE@18..19 " "
+          IDENT_PAT@19..20
+            NAME@19..20
+              IDENT@19..20 "x"
+          WHITESPACE@20..21 " "
+          IN_KW@21..23 "in"
+          WHITESPACE@23..24 " "
+          ARRAY_EXPR@24..26
+            L_BRACK@24..25 "["
+            R_BRACK@25..26 "]"
+          WHITESPACE@26..27 " "
+          BLOCK_EXPR@27..29
+            L_CURLY@27..28 "{"
+            R_CURLY@28..29 "}"
+        SEMICOLON@29..30 ";"
+      WHITESPACE@30..31 "\n"
+      R_CURLY@31..32 "}"
+  WHITESPACE@32..33 "\n"

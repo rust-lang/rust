@@ -1,0 +1,202 @@
+SOURCE_FILE@0..575
+  FN@0..574
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..7
+      IDENT@3..7 "main"
+    PARAM_LIST@7..9
+      L_PAREN@7..8 "("
+      R_PAREN@8..9 ")"
+    WHITESPACE@9..10 " "
+    BLOCK_EXPR@10..574
+      L_CURLY@10..11 "{"
+      WHITESPACE@11..16 "\n    "
+      ENUM@16..152
+        ENUM_KW@16..20 "enum"
+        WHITESPACE@20..21 " "
+        NAME@21..25
+          IDENT@21..25 "Test"
+        WHITESPACE@25..26 " "
+        VARIANT_LIST@26..152
+          L_CURLY@26..27 "{"
+          WHITESPACE@27..36 "\n        "
+          VARIANT@36..40
+            NAME@36..40
+              IDENT@36..40 "Var1"
+          COMMA@40..41 ","
+          WHITESPACE@41..50 "\n        "
+          VARIANT@50..62
+            NAME@50..54
+              IDENT@50..54 "Var2"
+            TUPLE_FIELD_LIST@54..62
+              L_PAREN@54..55 "("
+              TUPLE_FIELD@55..61
+                PATH_TYPE@55..61
+                  PATH@55..61
+                    PATH_SEGMENT@55..61
+                      NAME_REF@55..61
+                        IDENT@55..61 "String"
+              R_PAREN@61..62 ")"
+          COMMA@62..63 ","
+          WHITESPACE@63..72 "\n        "
+          VARIANT@72..145
+            NAME@72..76
+              IDENT@72..76 "Var3"
+            WHITESPACE@76..77 " "
+            RECORD_FIELD_LIST@77..145
+              L_CURLY@77..78 "{"
+              WHITESPACE@78..91 "\n            "
+              RECORD_FIELD@91..95
+                NAME@91..94
+                  IDENT@91..94 "abc"
+                COLON@94..95 ":"
+              WHITESPACE@95..96 " "
+              ERROR@96..98
+                L_CURLY@96..97 "{"
+                R_CURLY@97..98 "}"
+              ERROR@98..99
+                COMMA@98..99 ","
+              WHITESPACE@99..100 " "
+              COMMENT@100..135 "//~ ERROR: expected t ..."
+              WHITESPACE@135..144 "\n        "
+              R_CURLY@144..145 "}"
+          COMMA@145..146 ","
+          WHITESPACE@146..151 "\n    "
+          R_CURLY@151..152 "}"
+      WHITESPACE@152..158 "\n\n    "
+      COMMENT@158..171 "// recover..."
+      WHITESPACE@171..176 "\n    "
+      LET_STMT@176..186
+        LET_KW@176..179 "let"
+        WHITESPACE@179..180 " "
+        IDENT_PAT@180..181
+          NAME@180..181
+            IDENT@180..181 "a"
+        WHITESPACE@181..182 " "
+        EQ@182..183 "="
+        WHITESPACE@183..184 " "
+        LITERAL@184..185
+          INT_NUMBER@184..185 "1"
+        SEMICOLON@185..186 ";"
+      WHITESPACE@186..191 "\n    "
+      ENUM@191..223
+        ENUM_KW@191..195 "enum"
+        WHITESPACE@195..196 " "
+        NAME@196..201
+          IDENT@196..201 "Test2"
+        WHITESPACE@201..202 " "
+        VARIANT_LIST@202..223
+          L_CURLY@202..203 "{"
+          WHITESPACE@203..212 "\n        "
+          VARIANT@212..216
+            NAME@212..216
+              IDENT@212..216 "Fine"
+          COMMA@216..217 ","
+          WHITESPACE@217..222 "\n    "
+          R_CURLY@222..223 "}"
+      WHITESPACE@223..229 "\n\n    "
+      ENUM@229..300
+        ENUM_KW@229..233 "enum"
+        WHITESPACE@233..234 " "
+        NAME@234..239
+          IDENT@234..239 "Test3"
+        WHITESPACE@239..240 " "
+        VARIANT_LIST@240..300
+          L_CURLY@240..241 "{"
+          WHITESPACE@241..250 "\n        "
+          VARIANT@250..293
+            NAME@250..259
+              IDENT@250..259 "StillFine"
+            WHITESPACE@259..260 " "
+            RECORD_FIELD_LIST@260..293
+              L_CURLY@260..261 "{"
+              WHITESPACE@261..274 "\n            "
+              RECORD_FIELD@274..282
+                NAME@274..277
+                  IDENT@274..277 "def"
+                COLON@277..278 ":"
+                WHITESPACE@278..279 " "
+                PATH_TYPE@279..282
+                  PATH@279..282
+                    PATH_SEGMENT@279..282
+                      NAME_REF@279..282
+                        IDENT@279..282 "i32"
+              COMMA@282..283 ","
+              WHITESPACE@283..292 "\n        "
+              R_CURLY@292..293 "}"
+          COMMA@293..294 ","
+          WHITESPACE@294..299 "\n    "
+          R_CURLY@299..300 "}"
+      WHITESPACE@300..306 "\n\n    "
+      EXPR_STMT@306..459
+        BLOCK_EXPR@306..459
+          L_CURLY@306..307 "{"
+          WHITESPACE@307..316 "\n        "
+          ENUM@316..453
+            COMMENT@316..329 "// fail again"
+            WHITESPACE@329..338 "\n        "
+            ENUM_KW@338..342 "enum"
+            WHITESPACE@342..343 " "
+            NAME@343..348
+              IDENT@343..348 "Test4"
+            WHITESPACE@348..349 " "
+            VARIANT_LIST@349..453
+              L_CURLY@349..350 "{"
+              WHITESPACE@350..363 "\n            "
+              VARIANT@363..372
+                NAME@363..367
+                  IDENT@363..367 "Nope"
+                TUPLE_FIELD_LIST@367..372
+                  L_PAREN@367..368 "("
+                  TUPLE_FIELD@368..371
+                    PATH_TYPE@368..371
+                      PATH@368..371
+                        PATH_SEGMENT@368..371
+                          NAME_REF@368..371
+                            IDENT@368..371 "i32"
+                  WHITESPACE@371..372 " "
+                  ERROR@372..372
+              ERROR@372..374
+                L_CURLY@372..373 "{"
+                R_CURLY@373..374 "}"
+              ERROR@374..375
+                R_PAREN@374..375 ")"
+              WHITESPACE@375..376 " "
+              COMMENT@376..396 "//~ ERROR: found `{`"
+              WHITESPACE@396..422 "\n                     ..."
+              COMMENT@422..443 "//~^ ERROR: found `{`"
+              WHITESPACE@443..452 "\n        "
+              R_CURLY@452..453 "}"
+          WHITESPACE@453..458 "\n    "
+          R_CURLY@458..459 "}"
+      WHITESPACE@459..464 "\n    "
+      COMMENT@464..486 "// still recover later"
+      WHITESPACE@486..491 "\n    "
+      LET_STMT@491..510
+        LET_KW@491..494 "let"
+        WHITESPACE@494..495 " "
+        IDENT_PAT@495..505
+          NAME@495..505
+            IDENT@495..505 "bad_syntax"
+        WHITESPACE@505..506 " "
+        EQ@506..507 "="
+        WHITESPACE@507..508 " "
+        ERROR@508..509
+          UNDERSCORE@508..509 "_"
+        SEMICOLON@509..510 ";"
+      WHITESPACE@510..511 " "
+      COMMENT@511..572 "//~ ERROR: expected e ..."
+      WHITESPACE@572..573 "\n"
+      R_CURLY@573..574 "}"
+  WHITESPACE@574..575 "\n"
+error 95..95: expected type
+error 95..95: expected COMMA
+error 96..96: expected field
+error 98..98: expected field declaration
+error 371..371: expected COMMA
+error 372..372: expected a type
+error 372..372: expected R_PAREN
+error 372..372: expected COMMA
+error 372..372: expected enum variant
+error 374..374: expected enum variant
+error 508..508: expected expression

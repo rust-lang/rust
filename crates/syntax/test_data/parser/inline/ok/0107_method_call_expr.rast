@@ -1,0 +1,62 @@
+SOURCE_FILE@0..49
+  FN@0..48
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..48
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      EXPR_STMT@15..23
+        METHOD_CALL_EXPR@15..22
+          PATH_EXPR@15..16
+            PATH@15..16
+              PATH_SEGMENT@15..16
+                NAME_REF@15..16
+                  IDENT@15..16 "x"
+          DOT@16..17 "."
+          NAME_REF@17..20
+            IDENT@17..20 "foo"
+          ARG_LIST@20..22
+            L_PAREN@20..21 "("
+            R_PAREN@21..22 ")"
+        SEMICOLON@22..23 ";"
+      WHITESPACE@23..28 "\n    "
+      EXPR_STMT@28..46
+        METHOD_CALL_EXPR@28..45
+          PATH_EXPR@28..29
+            PATH@28..29
+              PATH_SEGMENT@28..29
+                NAME_REF@28..29
+                  IDENT@28..29 "y"
+          DOT@29..30 "."
+          NAME_REF@30..33
+            IDENT@30..33 "bar"
+          GENERIC_ARG_LIST@33..38
+            COLON2@33..35 "::"
+            L_ANGLE@35..36 "<"
+            TYPE_ARG@36..37
+              PATH_TYPE@36..37
+                PATH@36..37
+                  PATH_SEGMENT@36..37
+                    NAME_REF@36..37
+                      IDENT@36..37 "T"
+            R_ANGLE@37..38 ">"
+          ARG_LIST@38..45
+            L_PAREN@38..39 "("
+            LITERAL@39..40
+              INT_NUMBER@39..40 "1"
+            COMMA@40..41 ","
+            WHITESPACE@41..42 " "
+            LITERAL@42..43
+              INT_NUMBER@42..43 "2"
+            COMMA@43..44 ","
+            R_PAREN@44..45 ")"
+        SEMICOLON@45..46 ";"
+      WHITESPACE@46..47 "\n"
+      R_CURLY@47..48 "}"
+  WHITESPACE@48..49 "\n"

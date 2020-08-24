@@ -10,21 +10,22 @@
 use std::{ffi::OsString, path::PathBuf};
 
 use flycheck::FlycheckConfig;
+use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
 use lsp_types::ClientCapabilities;
-use ra_ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
-use ra_project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
+use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
+use rustc_hash::FxHashSet;
 use serde::Deserialize;
 use vfs::AbsPathBuf;
 
-use crate::diagnostics::DiagnosticsConfig;
+use crate::diagnostics::DiagnosticsMapConfig;
 
 #[derive(Debug, Clone)]
 pub struct Config {
     pub client_caps: ClientCapsConfig,
 
     pub publish_diagnostics: bool,
-    pub experimental_diagnostics: bool,
     pub diagnostics: DiagnosticsConfig,
+    pub diagnostics_map: DiagnosticsMapConfig,
     pub lru_capacity: Option<usize>,
     pub proc_macro_srv: Option<(PathBuf, Vec<OsString>)>,
     pub files: FilesConfig,
@@ -138,8 +139,8 @@ impl Config {
 
             with_sysroot: true,
             publish_diagnostics: true,
-            experimental_diagnostics: true,
             diagnostics: DiagnosticsConfig::default(),
+            diagnostics_map: DiagnosticsMapConfig::default(),
             lru_capacity: None,
             proc_macro_srv: None,
             files: FilesConfig { watcher: FilesWatcher::Notify, exclude: Vec::new() },
@@ -190,8 +191,11 @@ impl Config {
 
         self.with_sysroot = data.withSysroot;
         self.publish_diagnostics = data.diagnostics_enable;
-        self.experimental_diagnostics = data.diagnostics_enableExperimental;
         self.diagnostics = DiagnosticsConfig {
+            disable_experimental: !data.diagnostics_enableExperimental,
+            disabled: data.diagnostics_disabled,
+        };
+        self.diagnostics_map = DiagnosticsMapConfig {
             warnings_as_info: data.diagnostics_warningsAsInfo,
             warnings_as_hint: data.diagnostics_warningsAsHint,
         };
@@ -414,6 +418,7 @@ config_data! {
 
         diagnostics_enable: bool                = true,
         diagnostics_enableExperimental: bool    = true,
+        diagnostics_disabled: FxHashSet<String> = FxHashSet::default(),
         diagnostics_warningsAsHint: Vec<String> = Vec::new(),
         diagnostics_warningsAsInfo: Vec<String> = Vec::new(),
 

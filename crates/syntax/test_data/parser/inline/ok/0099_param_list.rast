@@ -1,0 +1,99 @@
+SOURCE_FILE@0..67
+  FN@0..9
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "a"
+    PARAM_LIST@4..6
+      L_PAREN@4..5 "("
+      R_PAREN@5..6 ")"
+    WHITESPACE@6..7 " "
+    BLOCK_EXPR@7..9
+      L_CURLY@7..8 "{"
+      R_CURLY@8..9 "}"
+  WHITESPACE@9..10 "\n"
+  FN@10..25
+    FN_KW@10..12 "fn"
+    WHITESPACE@12..13 " "
+    NAME@13..14
+      IDENT@13..14 "b"
+    PARAM_LIST@14..22
+      L_PAREN@14..15 "("
+      PARAM@15..21
+        IDENT_PAT@15..16
+          NAME@15..16
+            IDENT@15..16 "x"
+        COLON@16..17 ":"
+        WHITESPACE@17..18 " "
+        PATH_TYPE@18..21
+          PATH@18..21
+            PATH_SEGMENT@18..21
+              NAME_REF@18..21
+                IDENT@18..21 "i32"
+      R_PAREN@21..22 ")"
+    WHITESPACE@22..23 " "
+    BLOCK_EXPR@23..25
+      L_CURLY@23..24 "{"
+      R_CURLY@24..25 "}"
+  WHITESPACE@25..26 "\n"
+  FN@26..43
+    FN_KW@26..28 "fn"
+    WHITESPACE@28..29 " "
+    NAME@29..30
+      IDENT@29..30 "c"
+    PARAM_LIST@30..40
+      L_PAREN@30..31 "("
+      PARAM@31..37
+        IDENT_PAT@31..32
+          NAME@31..32
+            IDENT@31..32 "x"
+        COLON@32..33 ":"
+        WHITESPACE@33..34 " "
+        PATH_TYPE@34..37
+          PATH@34..37
+            PATH_SEGMENT@34..37
+              NAME_REF@34..37
+                IDENT@34..37 "i32"
+      COMMA@37..38 ","
+      WHITESPACE@38..39 " "
+      R_PAREN@39..40 ")"
+    WHITESPACE@40..41 " "
+    BLOCK_EXPR@41..43
+      L_CURLY@41..42 "{"
+      R_CURLY@42..43 "}"
+  WHITESPACE@43..44 "\n"
+  FN@44..66
+    FN_KW@44..46 "fn"
+    WHITESPACE@46..47 " "
+    NAME@47..48
+      IDENT@47..48 "d"
+    PARAM_LIST@48..63
+      L_PAREN@48..49 "("
+      PARAM@49..55
+        IDENT_PAT@49..50
+          NAME@49..50
+            IDENT@49..50 "x"
+        COLON@50..51 ":"
+        WHITESPACE@51..52 " "
+        PATH_TYPE@52..55
+          PATH@52..55
+            PATH_SEGMENT@52..55
+              NAME_REF@52..55
+                IDENT@52..55 "i32"
+      COMMA@55..56 ","
+      WHITESPACE@56..57 " "
+      PARAM@57..62
+        IDENT_PAT@57..58
+          NAME@57..58
+            IDENT@57..58 "y"
+        COLON@58..59 ":"
+        WHITESPACE@59..60 " "
+        TUPLE_TYPE@60..62
+          L_PAREN@60..61 "("
+          R_PAREN@61..62 ")"
+      R_PAREN@62..63 ")"
+    WHITESPACE@63..64 " "
+    BLOCK_EXPR@64..66
+      L_CURLY@64..65 "{"
+      R_CURLY@65..66 "}"
+  WHITESPACE@66..67 "\n"

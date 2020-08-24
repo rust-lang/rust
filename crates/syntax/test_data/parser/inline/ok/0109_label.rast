@@ -1,0 +1,64 @@
+SOURCE_FILE@0..74
+  FN@0..73
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..73
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      EXPR_STMT@15..26
+        LOOP_EXPR@15..26
+          LABEL@15..18
+            LIFETIME@15..17 "\'a"
+            COLON@17..18 ":"
+          WHITESPACE@18..19 " "
+          LOOP_KW@19..23 "loop"
+          WHITESPACE@23..24 " "
+          BLOCK_EXPR@24..26
+            L_CURLY@24..25 "{"
+            R_CURLY@25..26 "}"
+      WHITESPACE@26..31 "\n    "
+      EXPR_STMT@31..48
+        WHILE_EXPR@31..48
+          LABEL@31..34
+            LIFETIME@31..33 "\'b"
+            COLON@33..34 ":"
+          WHITESPACE@34..35 " "
+          WHILE_KW@35..40 "while"
+          WHITESPACE@40..41 " "
+          CONDITION@41..45
+            LITERAL@41..45
+              TRUE_KW@41..45 "true"
+          WHITESPACE@45..46 " "
+          BLOCK_EXPR@46..48
+            L_CURLY@46..47 "{"
+            R_CURLY@47..48 "}"
+      WHITESPACE@48..53 "\n    "
+      FOR_EXPR@53..71
+        LABEL@53..56
+          LIFETIME@53..55 "\'c"
+          COLON@55..56 ":"
+        WHITESPACE@56..57 " "
+        FOR_KW@57..60 "for"
+        WHITESPACE@60..61 " "
+        IDENT_PAT@61..62
+          NAME@61..62
+            IDENT@61..62 "x"
+        WHITESPACE@62..63 " "
+        IN_KW@63..65 "in"
+        WHITESPACE@65..66 " "
+        TUPLE_EXPR@66..68
+          L_PAREN@66..67 "("
+          R_PAREN@67..68 ")"
+        WHITESPACE@68..69 " "
+        BLOCK_EXPR@69..71
+          L_CURLY@69..70 "{"
+          R_CURLY@70..71 "}"
+      WHITESPACE@71..72 "\n"
+      R_CURLY@72..73 "}"
+  WHITESPACE@73..74 "\n"

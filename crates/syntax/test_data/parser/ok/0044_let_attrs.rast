@@ -1,0 +1,75 @@
+SOURCE_FILE@0..166
+  FN@0..165
+    COMMENT@0..60 "// https://github.com ..."
+    WHITESPACE@60..61 "\n"
+    FN_KW@61..63 "fn"
+    WHITESPACE@63..64 " "
+    NAME@64..68
+      IDENT@64..68 "main"
+    PARAM_LIST@68..70
+      L_PAREN@68..69 "("
+      R_PAREN@69..70 ")"
+    WHITESPACE@70..71 " "
+    BLOCK_EXPR@71..165
+      L_CURLY@71..72 "{"
+      WHITESPACE@72..77 "\n    "
+      LET_STMT@77..163
+        ATTR@77..106
+          POUND@77..78 "#"
+          L_BRACK@78..79 "["
+          PATH@79..82
+            PATH_SEGMENT@79..82
+              NAME_REF@79..82
+                IDENT@79..82 "cfg"
+          TOKEN_TREE@82..105
+            L_PAREN@82..83 "("
+            IDENT@83..90 "feature"
+            WHITESPACE@90..91 " "
+            EQ@91..92 "="
+            WHITESPACE@92..93 " "
+            STRING@93..104 "\"backtrace\""
+            R_PAREN@104..105 ")"
+          R_BRACK@105..106 "]"
+        WHITESPACE@106..111 "\n    "
+        LET_KW@111..114 "let"
+        WHITESPACE@114..115 " "
+        IDENT_PAT@115..124
+          NAME@115..124
+            IDENT@115..124 "exit_code"
+        WHITESPACE@124..125 " "
+        EQ@125..126 "="
+        WHITESPACE@126..127 " "
+        CALL_EXPR@127..162
+          PATH_EXPR@127..146
+            PATH@127..146
+              PATH@127..132
+                PATH_SEGMENT@127..132
+                  NAME_REF@127..132
+                    IDENT@127..132 "panic"
+              COLON2@132..134 "::"
+              PATH_SEGMENT@134..146
+                NAME_REF@134..146
+                  IDENT@134..146 "catch_unwind"
+          ARG_LIST@146..162
+            L_PAREN@146..147 "("
+            CLOSURE_EXPR@147..161
+              MOVE_KW@147..151 "move"
+              WHITESPACE@151..152 " "
+              PARAM_LIST@152..154
+                PIPE@152..153 "|"
+                PIPE@153..154 "|"
+              WHITESPACE@154..155 " "
+              CALL_EXPR@155..161
+                PATH_EXPR@155..159
+                  PATH@155..159
+                    PATH_SEGMENT@155..159
+                      NAME_REF@155..159
+                        IDENT@155..159 "main"
+                ARG_LIST@159..161
+                  L_PAREN@159..160 "("
+                  R_PAREN@160..161 ")"
+            R_PAREN@161..162 ")"
+        SEMICOLON@162..163 ";"
+      WHITESPACE@163..164 "\n"
+      R_CURLY@164..165 "}"
+  WHITESPACE@165..166 "\n"

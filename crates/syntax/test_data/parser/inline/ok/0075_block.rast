@@ -1,0 +1,86 @@
+SOURCE_FILE@0..65
+  FN@0..9
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "a"
+    PARAM_LIST@4..6
+      L_PAREN@4..5 "("
+      R_PAREN@5..6 ")"
+    WHITESPACE@6..7 " "
+    BLOCK_EXPR@7..9
+      L_CURLY@7..8 "{"
+      R_CURLY@8..9 "}"
+  WHITESPACE@9..10 "\n"
+  FN@10..31
+    FN_KW@10..12 "fn"
+    WHITESPACE@12..13 " "
+    NAME@13..14
+      IDENT@13..14 "b"
+    PARAM_LIST@14..16
+      L_PAREN@14..15 "("
+      R_PAREN@15..16 ")"
+    WHITESPACE@16..17 " "
+    BLOCK_EXPR@17..31
+      L_CURLY@17..18 "{"
+      WHITESPACE@18..19 " "
+      LET_STMT@19..29
+        LET_KW@19..22 "let"
+        WHITESPACE@22..23 " "
+        WILDCARD_PAT@23..24
+          UNDERSCORE@23..24 "_"
+        WHITESPACE@24..25 " "
+        EQ@25..26 "="
+        WHITESPACE@26..27 " "
+        LITERAL@27..28
+          INT_NUMBER@27..28 "1"
+        SEMICOLON@28..29 ";"
+      WHITESPACE@29..30 " "
+      R_CURLY@30..31 "}"
+  WHITESPACE@31..32 "\n"
+  FN@32..48
+    FN_KW@32..34 "fn"
+    WHITESPACE@34..35 " "
+    NAME@35..36
+      IDENT@35..36 "c"
+    PARAM_LIST@36..38
+      L_PAREN@36..37 "("
+      R_PAREN@37..38 ")"
+    WHITESPACE@38..39 " "
+    BLOCK_EXPR@39..48
+      L_CURLY@39..40 "{"
+      WHITESPACE@40..41 " "
+      EXPR_STMT@41..43
+        LITERAL@41..42
+          INT_NUMBER@41..42 "1"
+        SEMICOLON@42..43 ";"
+      WHITESPACE@43..44 " "
+      EXPR_STMT@44..46
+        LITERAL@44..45
+          INT_NUMBER@44..45 "2"
+        SEMICOLON@45..46 ";"
+      WHITESPACE@46..47 " "
+      R_CURLY@47..48 "}"
+  WHITESPACE@48..49 "\n"
+  FN@49..64
+    FN_KW@49..51 "fn"
+    WHITESPACE@51..52 " "
+    NAME@52..53
+      IDENT@52..53 "d"
+    PARAM_LIST@53..55
+      L_PAREN@53..54 "("
+      R_PAREN@54..55 ")"
+    WHITESPACE@55..56 " "
+    BLOCK_EXPR@56..64
+      L_CURLY@56..57 "{"
+      WHITESPACE@57..58 " "
+      EXPR_STMT@58..60
+        LITERAL@58..59
+          INT_NUMBER@58..59 "1"
+        SEMICOLON@59..60 ";"
+      WHITESPACE@60..61 " "
+      LITERAL@61..62
+        INT_NUMBER@61..62 "2"
+      WHITESPACE@62..63 " "
+      R_CURLY@63..64 "}"
+  WHITESPACE@64..65 "\n"

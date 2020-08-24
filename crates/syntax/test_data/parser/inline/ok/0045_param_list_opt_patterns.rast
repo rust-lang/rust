@@ -1,0 +1,46 @@
+SOURCE_FILE@0..35
+  FN@0..34
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    GENERIC_PARAM_LIST@6..30
+      L_ANGLE@6..7 "<"
+      TYPE_PARAM@7..29
+        NAME@7..8
+          IDENT@7..8 "F"
+        COLON@8..9 ":"
+        WHITESPACE@9..10 " "
+        TYPE_BOUND_LIST@10..29
+          TYPE_BOUND@10..29
+            PATH_TYPE@10..29
+              PATH@10..29
+                PATH_SEGMENT@10..29
+                  NAME_REF@10..15
+                    IDENT@10..15 "FnMut"
+                  PARAM_LIST@15..29
+                    L_PAREN@15..16 "("
+                    PARAM@16..28
+                      REF_TYPE@16..28
+                        AMP@16..17 "&"
+                        MUT_KW@17..20 "mut"
+                        WHITESPACE@20..21 " "
+                        PATH_TYPE@21..28
+                          PATH@21..28
+                            PATH_SEGMENT@21..28
+                              NAME_REF@21..24
+                                IDENT@21..24 "Foo"
+                              GENERIC_ARG_LIST@24..28
+                                L_ANGLE@24..25 "<"
+                                LIFETIME_ARG@25..27
+                                  LIFETIME@25..27 "\'a"
+                                R_ANGLE@27..28 ">"
+                    R_PAREN@28..29 ")"
+      R_ANGLE@29..30 ">"
+    PARAM_LIST@30..32
+      L_PAREN@30..31 "("
+      R_PAREN@31..32 ")"
+    BLOCK_EXPR@32..34
+      L_CURLY@32..33 "{"
+      R_CURLY@33..34 "}"
+  WHITESPACE@34..35 "\n"

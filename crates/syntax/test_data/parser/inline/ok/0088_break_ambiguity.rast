@@ -1,0 +1,65 @@
+SOURCE_FILE@0..88
+  FN@0..87
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    BLOCK_EXPR@8..87
+      L_CURLY@8..9 "{"
+      WHITESPACE@9..14 "\n    "
+      EXPR_STMT@14..25
+        IF_EXPR@14..25
+          IF_KW@14..16 "if"
+          WHITESPACE@16..17 " "
+          CONDITION@17..22
+            BREAK_EXPR@17..22
+              BREAK_KW@17..22 "break"
+          WHITESPACE@22..23 " "
+          BLOCK_EXPR@23..25
+            L_CURLY@23..24 "{"
+            R_CURLY@24..25 "}"
+      WHITESPACE@25..30 "\n    "
+      EXPR_STMT@30..44
+        WHILE_EXPR@30..44
+          WHILE_KW@30..35 "while"
+          WHITESPACE@35..36 " "
+          CONDITION@36..41
+            BREAK_EXPR@36..41
+              BREAK_KW@36..41 "break"
+          WHITESPACE@41..42 " "
+          BLOCK_EXPR@42..44
+            L_CURLY@42..43 "{"
+            R_CURLY@43..44 "}"
+      WHITESPACE@44..49 "\n    "
+      EXPR_STMT@49..66
+        FOR_EXPR@49..66
+          FOR_KW@49..52 "for"
+          WHITESPACE@52..53 " "
+          IDENT_PAT@53..54
+            NAME@53..54
+              IDENT@53..54 "i"
+          WHITESPACE@54..55 " "
+          IN_KW@55..57 "in"
+          WHITESPACE@57..58 " "
+          BREAK_EXPR@58..63
+            BREAK_KW@58..63 "break"
+          WHITESPACE@63..64 " "
+          BLOCK_EXPR@64..66
+            L_CURLY@64..65 "{"
+            R_CURLY@65..66 "}"
+      WHITESPACE@66..71 "\n    "
+      MATCH_EXPR@71..85
+        MATCH_KW@71..76 "match"
+        WHITESPACE@76..77 " "
+        BREAK_EXPR@77..82
+          BREAK_KW@77..82 "break"
+        WHITESPACE@82..83 " "
+        MATCH_ARM_LIST@83..85
+          L_CURLY@83..84 "{"
+          R_CURLY@84..85 "}"
+      WHITESPACE@85..86 "\n"
+      R_CURLY@86..87 "}"
+  WHITESPACE@87..88 "\n"

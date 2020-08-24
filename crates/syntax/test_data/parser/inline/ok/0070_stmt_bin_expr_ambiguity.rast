@@ -1,0 +1,50 @@
+SOURCE_FILE@0..46
+  FN@0..45
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..45
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      LET_STMT@15..31
+        LET_KW@15..18 "let"
+        WHITESPACE@18..19 " "
+        WILDCARD_PAT@19..20
+          UNDERSCORE@19..20 "_"
+        WHITESPACE@20..21 " "
+        EQ@21..22 "="
+        WHITESPACE@22..23 " "
+        BIN_EXPR@23..30
+          BLOCK_EXPR@23..26
+            L_CURLY@23..24 "{"
+            LITERAL@24..25
+              INT_NUMBER@24..25 "1"
+            R_CURLY@25..26 "}"
+          WHITESPACE@26..27 " "
+          AMP@27..28 "&"
+          WHITESPACE@28..29 " "
+          LITERAL@29..30
+            INT_NUMBER@29..30 "2"
+        SEMICOLON@30..31 ";"
+      WHITESPACE@31..36 "\n    "
+      EXPR_STMT@36..39
+        BLOCK_EXPR@36..39
+          L_CURLY@36..37 "{"
+          LITERAL@37..38
+            INT_NUMBER@37..38 "1"
+          R_CURLY@38..39 "}"
+      WHITESPACE@39..40 " "
+      EXPR_STMT@40..43
+        REF_EXPR@40..42
+          AMP@40..41 "&"
+          LITERAL@41..42
+            INT_NUMBER@41..42 "2"
+        SEMICOLON@42..43 ";"
+      WHITESPACE@43..44 "\n"
+      R_CURLY@44..45 "}"
+  WHITESPACE@45..46 "\n"

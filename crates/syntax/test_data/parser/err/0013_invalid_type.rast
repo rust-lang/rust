@@ -1,0 +1,89 @@
+SOURCE_FILE@0..86
+  STRUCT@0..72
+    VISIBILITY@0..3
+      PUB_KW@0..3 "pub"
+    WHITESPACE@3..4 " "
+    STRUCT_KW@4..10 "struct"
+    WHITESPACE@10..11 " "
+    NAME@11..16
+      IDENT@11..16 "Cache"
+    TUPLE_FIELD_LIST@16..72
+      L_PAREN@16..17 "("
+      WHITESPACE@17..22 "\n    "
+      TUPLE_FIELD@22..68
+        PATH_TYPE@22..68
+          PATH@22..68
+            PATH_SEGMENT@22..68
+              NAME_REF@22..29
+                IDENT@22..29 "RefCell"
+              GENERIC_ARG_LIST@29..68
+                L_ANGLE@29..30 "<"
+                TYPE_ARG@30..68
+                  PATH_TYPE@30..68
+                    PATH@30..68
+                      PATH_SEGMENT@30..68
+                        NAME_REF@30..37
+                          IDENT@30..37 "HashMap"
+                        GENERIC_ARG_LIST@37..68
+                          L_ANGLE@37..38 "<"
+                          WHITESPACE@38..47 "\n        "
+                          TYPE_ARG@47..53
+                            PATH_TYPE@47..53
+                              PATH@47..53
+                                PATH_SEGMENT@47..53
+                                  NAME_REF@47..53
+                                    IDENT@47..53 "TypeId"
+                          COMMA@53..54 ","
+                          WHITESPACE@54..63 "\n        "
+                          TYPE_ARG@63..68
+                            PATH_TYPE@63..68
+                              PATH@63..68
+                                PATH_SEGMENT@63..68
+                                  NAME_REF@63..66
+                                    IDENT@63..66 "Box"
+                                  GENERIC_ARG_LIST@66..68
+                                    L_ANGLE@66..67 "<"
+                                    TYPE_ARG@67..68
+                                      ERROR@67..68
+                                        AT@67..68 "@"
+      WHITESPACE@68..69 " "
+      TUPLE_FIELD@69..72
+        PATH_TYPE@69..72
+          PATH@69..72
+            PATH_SEGMENT@69..72
+              NAME_REF@69..72
+                IDENT@69..72 "Any"
+      ERROR@72..72
+  ERROR@72..73
+    R_ANGLE@72..73 ">"
+  ERROR@73..74
+    COMMA@73..74 ","
+  WHITESPACE@74..79 "\n    "
+  ERROR@79..80
+    R_ANGLE@79..80 ">"
+  ERROR@80..81
+    R_ANGLE@80..81 ">"
+  WHITESPACE@81..82 "\n"
+  ERROR@82..83
+    R_PAREN@82..83 ")"
+  ERROR@83..84
+    SEMICOLON@83..84 ";"
+  WHITESPACE@84..86 "\n\n"
+error 67..67: expected type
+error 68..68: expected COMMA
+error 68..68: expected R_ANGLE
+error 68..68: expected COMMA
+error 68..68: expected R_ANGLE
+error 68..68: expected COMMA
+error 68..68: expected R_ANGLE
+error 68..68: expected COMMA
+error 72..72: expected COMMA
+error 72..72: expected a type
+error 72..72: expected R_PAREN
+error 72..72: expected SEMICOLON
+error 72..72: expected an item
+error 73..73: expected an item
+error 79..79: expected an item
+error 80..80: expected an item
+error 82..82: expected an item
+error 83..83: expected an item

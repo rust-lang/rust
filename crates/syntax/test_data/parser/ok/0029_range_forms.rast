@@ -1,0 +1,151 @@
+SOURCE_FILE@0..153
+  FN@0..152
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..152
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      EXPR_STMT@15..23
+        RANGE_EXPR@15..22
+          DOT2@15..17 ".."
+          BIN_EXPR@17..22
+            LITERAL@17..18
+              INT_NUMBER@17..18 "1"
+            WHITESPACE@18..19 " "
+            PLUS@19..20 "+"
+            WHITESPACE@20..21 " "
+            LITERAL@21..22
+              INT_NUMBER@21..22 "1"
+        SEMICOLON@22..23 ";"
+      WHITESPACE@23..28 "\n    "
+      EXPR_STMT@28..36
+        BIN_EXPR@28..35
+          RANGE_EXPR@28..31
+            DOT2@28..30 ".."
+            PATH_EXPR@30..31
+              PATH@30..31
+                PATH_SEGMENT@30..31
+                  NAME_REF@30..31
+                    IDENT@30..31 "z"
+          WHITESPACE@31..32 " "
+          EQ@32..33 "="
+          WHITESPACE@33..34 " "
+          LITERAL@34..35
+            INT_NUMBER@34..35 "2"
+        SEMICOLON@35..36 ";"
+      WHITESPACE@36..41 "\n    "
+      EXPR_STMT@41..59
+        BIN_EXPR@41..58
+          PATH_EXPR@41..42
+            PATH@41..42
+              PATH_SEGMENT@41..42
+                NAME_REF@41..42
+                  IDENT@41..42 "x"
+          WHITESPACE@42..43 " "
+          EQ@43..44 "="
+          WHITESPACE@44..45 " "
+          RANGE_EXPR@45..58
+            LITERAL@45..50
+              FALSE_KW@45..50 "false"
+            DOT2@50..52 ".."
+            BIN_EXPR@52..58
+              LITERAL@52..53
+                INT_NUMBER@52..53 "1"
+              WHITESPACE@53..54 " "
+              EQ2@54..56 "=="
+              WHITESPACE@56..57 " "
+              LITERAL@57..58
+                INT_NUMBER@57..58 "1"
+        SEMICOLON@58..59 ";"
+      WHITESPACE@59..64 "\n    "
+      LET_STMT@64..76
+        LET_KW@64..67 "let"
+        WHITESPACE@67..68 " "
+        IDENT_PAT@68..69
+          NAME@68..69
+            IDENT@68..69 "x"
+        WHITESPACE@69..70 " "
+        EQ@70..71 "="
+        WHITESPACE@71..72 " "
+        RANGE_EXPR@72..75
+          LITERAL@72..73
+            INT_NUMBER@72..73 "1"
+          DOT2@73..75 ".."
+        SEMICOLON@75..76 ";"
+      WHITESPACE@76..86 "\n    \n    "
+      EXPR_STMT@86..95
+        RANGE_EXPR@86..94
+          DOT2EQ@86..89 "..="
+          BIN_EXPR@89..94
+            LITERAL@89..90
+              INT_NUMBER@89..90 "1"
+            WHITESPACE@90..91 " "
+            PLUS@91..92 "+"
+            WHITESPACE@92..93 " "
+            LITERAL@93..94
+              INT_NUMBER@93..94 "1"
+        SEMICOLON@94..95 ";"
+      WHITESPACE@95..100 "\n    "
+      EXPR_STMT@100..109
+        BIN_EXPR@100..108
+          RANGE_EXPR@100..104
+            DOT2EQ@100..103 "..="
+            PATH_EXPR@103..104
+              PATH@103..104
+                PATH_SEGMENT@103..104
+                  NAME_REF@103..104
+                    IDENT@103..104 "z"
+          WHITESPACE@104..105 " "
+          EQ@105..106 "="
+          WHITESPACE@106..107 " "
+          LITERAL@107..108
+            INT_NUMBER@107..108 "2"
+        SEMICOLON@108..109 ";"
+      WHITESPACE@109..114 "\n    "
+      EXPR_STMT@114..133
+        BIN_EXPR@114..132
+          PATH_EXPR@114..115
+            PATH@114..115
+              PATH_SEGMENT@114..115
+                NAME_REF@114..115
+                  IDENT@114..115 "x"
+          WHITESPACE@115..116 " "
+          EQ@116..117 "="
+          WHITESPACE@117..118 " "
+          RANGE_EXPR@118..132
+            LITERAL@118..123
+              FALSE_KW@118..123 "false"
+            DOT2EQ@123..126 "..="
+            BIN_EXPR@126..132
+              LITERAL@126..127
+                INT_NUMBER@126..127 "1"
+              WHITESPACE@127..128 " "
+              EQ2@128..130 "=="
+              WHITESPACE@130..131 " "
+              LITERAL@131..132
+                INT_NUMBER@131..132 "1"
+        SEMICOLON@132..133 ";"
+      WHITESPACE@133..138 "\n    "
+      LET_STMT@138..150
+        LET_KW@138..141 "let"
+        WHITESPACE@141..142 " "
+        IDENT_PAT@142..143
+          NAME@142..143
+            IDENT@142..143 "x"
+        WHITESPACE@143..144 " "
+        EQ@144..145 "="
+        WHITESPACE@145..146 " "
+        RANGE_EXPR@146..149
+          LITERAL@146..147
+            INT_NUMBER@146..147 "1"
+          DOT2@147..149 ".."
+        SEMICOLON@149..150 ";"
+      WHITESPACE@150..151 "\n"
+      R_CURLY@151..152 "}"
+  WHITESPACE@152..153 "\n"

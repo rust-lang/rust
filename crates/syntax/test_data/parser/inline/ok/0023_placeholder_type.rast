@@ -1,0 +1,13 @@
+SOURCE_FILE@0..22
+  TYPE_ALIAS@0..21
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..16
+      IDENT@5..16 "Placeholder"
+    WHITESPACE@16..17 " "
+    EQ@17..18 "="
+    WHITESPACE@18..19 " "
+    INFER_TYPE@19..20
+      UNDERSCORE@19..20 "_"
+    SEMICOLON@20..21 ";"
+  WHITESPACE@21..22 "\n"

@@ -1,0 +1,49 @@
+SOURCE_FILE@0..38
+  IMPL@0..14
+    IMPL_KW@0..4 "impl"
+    GENERIC_PARAM_LIST@4..14
+      L_ANGLE@4..5 "<"
+      TYPE_PARAM@5..13
+        NAME@5..6
+          IDENT@5..6 "T"
+        COLON@6..7 ":"
+        WHITESPACE@7..8 " "
+        TYPE_BOUND_LIST@8..13
+          TYPE_BOUND@8..13
+            PATH_TYPE@8..13
+              PATH@8..13
+                PATH_SEGMENT@8..13
+                  NAME_REF@8..13
+                    IDENT@8..13 "Clone"
+      R_ANGLE@13..14 ">"
+  WHITESPACE@14..15 "\n"
+  IMPL@15..37
+    IMPL_KW@15..19 "impl"
+    GENERIC_PARAM_LIST@19..22
+      L_ANGLE@19..20 "<"
+      TYPE_PARAM@20..21
+        NAME@20..21
+          IDENT@20..21 "T"
+      R_ANGLE@21..22 ">"
+    WHITESPACE@22..23 " "
+    PATH_TYPE@23..34
+      PATH@23..34
+        PATH_SEGMENT@23..34
+          NAME_REF@23..31
+            IDENT@23..31 "OnceCell"
+          GENERIC_ARG_LIST@31..34
+            L_ANGLE@31..32 "<"
+            TYPE_ARG@32..33
+              PATH_TYPE@32..33
+                PATH@32..33
+                  PATH_SEGMENT@32..33
+                    NAME_REF@32..33
+                      IDENT@32..33 "T"
+            R_ANGLE@33..34 ">"
+    WHITESPACE@34..35 " "
+    ASSOC_ITEM_LIST@35..37
+      L_CURLY@35..36 "{"
+      R_CURLY@36..37 "}"
+  WHITESPACE@37..38 "\n"
+error 14..14: expected trait or type
+error 14..14: expected `{`

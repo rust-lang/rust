@@ -1,0 +1,47 @@
+SOURCE_FILE@0..40
+  CONST@0..39
+    CONST_KW@0..5 "const"
+    WHITESPACE@5..6 " "
+    NAME@6..7
+      IDENT@6..7 "A"
+    COLON@7..8 ":"
+    WHITESPACE@8..9 " "
+    REF_TYPE@9..15
+      AMP@9..10 "&"
+      SLICE_TYPE@10..15
+        L_BRACK@10..11 "["
+        PATH_TYPE@11..14
+          PATH@11..14
+            PATH_SEGMENT@11..14
+              NAME_REF@11..14
+                IDENT@11..14 "i64"
+        R_BRACK@14..15 "]"
+    WHITESPACE@15..16 " "
+    EQ@16..17 "="
+    WHITESPACE@17..18 " "
+    REF_EXPR@18..38
+      AMP@18..19 "&"
+      ARRAY_EXPR@19..38
+        L_BRACK@19..20 "["
+        LITERAL@20..21
+          INT_NUMBER@20..21 "1"
+        COMMA@21..22 ","
+        WHITESPACE@22..23 " "
+        LITERAL@23..37
+          ATTR@23..35
+            POUND@23..24 "#"
+            L_BRACK@24..25 "["
+            PATH@25..28
+              PATH_SEGMENT@25..28
+                NAME_REF@25..28
+                  IDENT@25..28 "cfg"
+            TOKEN_TREE@28..34
+              L_PAREN@28..29 "("
+              IDENT@29..33 "test"
+              R_PAREN@33..34 ")"
+            R_BRACK@34..35 "]"
+          WHITESPACE@35..36 " "
+          INT_NUMBER@36..37 "2"
+        R_BRACK@37..38 "]"
+    SEMICOLON@38..39 ";"
+  WHITESPACE@39..40 "\n"

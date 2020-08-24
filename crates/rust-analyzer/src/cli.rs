@@ -10,15 +10,16 @@ mod ssr;
 use std::io::Read;
 
 use anyhow::Result;
-use ra_ide::Analysis;
-use ra_prof::profile;
-use ra_syntax::{AstNode, SourceFile};
+use ide::Analysis;
+use syntax::{AstNode, SourceFile};
 
-pub use analysis_bench::{BenchCmd, BenchWhat, Position};
-pub use analysis_stats::AnalysisStatsCmd;
-pub use diagnostics::diagnostics;
-pub use load_cargo::load_cargo;
-pub use ssr::{apply_ssr_rules, search_for_patterns};
+pub use self::{
+    analysis_bench::{BenchCmd, BenchWhat, Position},
+    analysis_stats::AnalysisStatsCmd,
+    diagnostics::diagnostics,
+    load_cargo::load_cargo,
+    ssr::{apply_ssr_rules, search_for_patterns},
+};
 
 #[derive(Clone, Copy)]
 pub enum Verbosity {
@@ -38,7 +39,7 @@ impl Verbosity {
 }
 
 pub fn parse(no_dump: bool) -> Result<()> {
-    let _p = profile("parsing");
+    let _p = profile::span("parsing");
     let file = file()?;
     if !no_dump {
         println!("{:#?}", file.syntax());

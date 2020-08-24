@@ -3,7 +3,7 @@
 use std::{fmt, fs, path::Path};
 
 use crate::{
-    codegen::{self, extract_comment_blocks_with_empty_lines, Location, Mode},
+    codegen::{self, extract_comment_blocks_with_empty_lines, reformat, Location, Mode, PREAMBLE},
     project_root, rust_files, Result,
 };
 
@@ -15,7 +15,7 @@ pub fn generate_assists_tests(mode: Mode) -> Result<()> {
 pub fn generate_assists_docs(mode: Mode) -> Result<()> {
     let assists = Assist::collect()?;
     let contents = assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
-    let contents = contents.trim().to_string() + "\n";
+    let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());
     let dst = project_root().join("docs/user/generated_assists.adoc");
     codegen::update(&dst, &contents, mode)
 }
@@ -32,7 +32,7 @@ struct Assist {
 impl Assist {
     fn collect() -> Result<Vec<Assist>> {
         let mut res = Vec::new();
-        for path in rust_files(&project_root().join(codegen::ASSISTS_DIR)) {
+        for path in rust_files(&project_root().join("crates/assists/src/handlers")) {
             collect_file(&mut res, path.as_path())?;
         }
         res.sort_by(|lhs, rhs| lhs.id.cmp(&rhs.id));
@@ -134,8 +134,8 @@ r#####"
 
         buf.push_str(&test)
     }
-    let buf = crate::reformat(buf)?;
-    codegen::update(&project_root().join(codegen::ASSISTS_TESTS), &buf, mode)
+    let buf = reformat(buf)?;
+    codegen::update(&project_root().join("crates/assists/src/tests/generated.rs"), &buf, mode)
 }
 
 fn hide_hash_comments(text: &str) -> String {

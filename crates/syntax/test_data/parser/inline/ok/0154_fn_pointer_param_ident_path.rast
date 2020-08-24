@@ -1,0 +1,58 @@
+SOURCE_FILE@0..55
+  TYPE_ALIAS@0..24
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..8
+      IDENT@5..8 "Foo"
+    WHITESPACE@8..9 " "
+    EQ@9..10 "="
+    WHITESPACE@10..11 " "
+    FN_PTR_TYPE@11..23
+      FN_KW@11..13 "fn"
+      PARAM_LIST@13..23
+        L_PAREN@13..14 "("
+        PARAM@14..22
+          PATH_TYPE@14..22
+            PATH@14..22
+              PATH@14..17
+                PATH_SEGMENT@14..17
+                  NAME_REF@14..17
+                    IDENT@14..17 "Bar"
+              COLON2@17..19 "::"
+              PATH_SEGMENT@19..22
+                NAME_REF@19..22
+                  IDENT@19..22 "Baz"
+        R_PAREN@22..23 ")"
+    SEMICOLON@23..24 ";"
+  WHITESPACE@24..25 "\n"
+  TYPE_ALIAS@25..54
+    TYPE_KW@25..29 "type"
+    WHITESPACE@29..30 " "
+    NAME@30..33
+      IDENT@30..33 "Qux"
+    WHITESPACE@33..34 " "
+    EQ@34..35 "="
+    WHITESPACE@35..36 " "
+    FN_PTR_TYPE@36..53
+      FN_KW@36..38 "fn"
+      PARAM_LIST@38..53
+        L_PAREN@38..39 "("
+        PARAM@39..52
+          IDENT_PAT@39..42
+            NAME@39..42
+              IDENT@39..42 "baz"
+          COLON@42..43 ":"
+          WHITESPACE@43..44 " "
+          PATH_TYPE@44..52
+            PATH@44..52
+              PATH@44..47
+                PATH_SEGMENT@44..47
+                  NAME_REF@44..47
+                    IDENT@44..47 "Bar"
+              COLON2@47..49 "::"
+              PATH_SEGMENT@49..52
+                NAME_REF@49..52
+                  IDENT@49..52 "Baz"
+        R_PAREN@52..53 ")"
+    SEMICOLON@53..54 ";"
+  WHITESPACE@54..55 "\n"

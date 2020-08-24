@@ -1,9 +1,9 @@
 //! Utilities for LSP-related boilerplate code.
-use std::{borrow::Cow, error::Error, ops::Range};
+use std::{error::Error, ops::Range};
 
+use base_db::Canceled;
+use ide::LineIndex;
 use lsp_server::Notification;
-use ra_db::Canceled;
-use ra_ide::LineIndex;
 
 use crate::{from_proto, global_state::GlobalState};
 
@@ -84,8 +84,8 @@ impl GlobalState {
 pub(crate) fn apply_document_changes(
     old_text: &mut String,
     content_changes: Vec<lsp_types::TextDocumentContentChangeEvent>,
-    mut line_index: Cow<'_, LineIndex>,
 ) {
+    let mut line_index = LineIndex::new(old_text);
     // The changes we got must be applied sequentially, but can cross lines so we
     // have to keep our line index updated.
     // Some clients (e.g. Code) sort the ranges in reverse. As an optimization, we
@@ -110,7 +110,7 @@ pub(crate) fn apply_document_changes(
         match change.range {
             Some(range) => {
                 if !index_valid.covers(range.end.line) {
-                    line_index = Cow::Owned(LineIndex::new(old_text));
+                    line_index = LineIndex::new(&old_text);
                 }
                 index_valid = IndexValid::UpToLineExclusive(range.start.line);
                 let range = from_proto::text_range(&line_index, range);
@@ -145,15 +145,10 @@ mod tests {
             };
         }
 
-        fn run(text: &mut String, changes: Vec<TextDocumentContentChangeEvent>) {
-            let line_index = Cow::Owned(LineIndex::new(&text));
-            super::apply_document_changes(text, changes, line_index);
-        }
-
         let mut text = String::new();
-        run(&mut text, vec![]);
+        apply_document_changes(&mut text, vec![]);
         assert_eq!(text, "");
-        run(
+        apply_document_changes(
             &mut text,
             vec![TextDocumentContentChangeEvent {
                 range: None,
@@ -162,36 +157,39 @@ mod tests {
             }],
         );
         assert_eq!(text, "the");
-        run(&mut text, c![0, 3; 0, 3 => " quick"]);
+        apply_document_changes(&mut text, c![0, 3; 0, 3 => " quick"]);
         assert_eq!(text, "the quick");
-        run(&mut text, c![0, 0; 0, 4 => "", 0, 5; 0, 5 => " foxes"]);
+        apply_document_changes(&mut text, c![0, 0; 0, 4 => "", 0, 5; 0, 5 => " foxes"]);
         assert_eq!(text, "quick foxes");
-        run(&mut text, c![0, 11; 0, 11 => "\ndream"]);
+        apply_document_changes(&mut text, c![0, 11; 0, 11 => "\ndream"]);
         assert_eq!(text, "quick foxes\ndream");
-        run(&mut text, c![1, 0; 1, 0 => "have "]);
+        apply_document_changes(&mut text, c![1, 0; 1, 0 => "have "]);
         assert_eq!(text, "quick foxes\nhave dream");
-        run(&mut text, c![0, 0; 0, 0 => "the ", 1, 4; 1, 4 => " quiet", 1, 16; 1, 16 => "s\n"]);
+        apply_document_changes(
+            &mut text,
+            c![0, 0; 0, 0 => "the ", 1, 4; 1, 4 => " quiet", 1, 16; 1, 16 => "s\n"],
+        );
         assert_eq!(text, "the quick foxes\nhave quiet dreams\n");
-        run(&mut text, c![0, 15; 0, 15 => "\n", 2, 17; 2, 17 => "\n"]);
+        apply_document_changes(&mut text, c![0, 15; 0, 15 => "\n", 2, 17; 2, 17 => "\n"]);
         assert_eq!(text, "the quick foxes\n\nhave quiet dreams\n\n");
-        run(
+        apply_document_changes(
             &mut text,
             c![1, 0; 1, 0 => "DREAM", 2, 0; 2, 0 => "they ", 3, 0; 3, 0 => "DON'T THEY?"],
         );
         assert_eq!(text, "the quick foxes\nDREAM\nthey have quiet dreams\nDON'T THEY?\n");
-        run(&mut text, c![0, 10; 1, 5 => "", 2, 0; 2, 12 => ""]);
+        apply_document_changes(&mut text, c![0, 10; 1, 5 => "", 2, 0; 2, 12 => ""]);
         assert_eq!(text, "the quick \nthey have quiet dreams\n");
 
         text = String::from("❤️");
-        run(&mut text, c![0, 0; 0, 0 => "a"]);
+        apply_document_changes(&mut text, c![0, 0; 0, 0 => "a"]);
         assert_eq!(text, "a❤️");
 
         text = String::from("a\nb");
-        run(&mut text, c![0, 1; 1, 0 => "\nțc", 0, 1; 1, 1 => "d"]);
+        apply_document_changes(&mut text, c![0, 1; 1, 0 => "\nțc", 0, 1; 1, 1 => "d"]);
         assert_eq!(text, "adcb");
 
         text = String::from("a\nb");
-        run(&mut text, c![0, 1; 1, 0 => "ț\nc", 0, 2; 0, 2 => "c"]);
+        apply_document_changes(&mut text, c![0, 1; 1, 0 => "ț\nc", 0, 2; 0, 2 => "c"]);
         assert_eq!(text, "ațc\ncb");
     }
 }

@@ -1,0 +1,50 @@
+SOURCE_FILE@0..57
+  EXTERN_BLOCK@0..56
+    ABI@0..10
+      EXTERN_KW@0..6 "extern"
+      WHITESPACE@6..7 " "
+      STRING@7..10 "\"C\""
+    WHITESPACE@10..11 " "
+    EXTERN_ITEM_LIST@11..56
+      L_CURLY@11..12 "{"
+      WHITESPACE@12..13 " "
+      FN@13..54
+        FN_KW@13..15 "fn"
+        WHITESPACE@15..16 " "
+        NAME@16..22
+          IDENT@16..22 "printf"
+        PARAM_LIST@22..46
+          L_PAREN@22..23 "("
+          PARAM@23..40
+            IDENT_PAT@23..29
+              NAME@23..29
+                IDENT@23..29 "format"
+            COLON@29..30 ":"
+            WHITESPACE@30..31 " "
+            PTR_TYPE@31..40
+              STAR@31..32 "*"
+              CONST_KW@32..37 "const"
+              WHITESPACE@37..38 " "
+              PATH_TYPE@38..40
+                PATH@38..40
+                  PATH_SEGMENT@38..40
+                    NAME_REF@38..40
+                      IDENT@38..40 "i8"
+          COMMA@40..41 ","
+          WHITESPACE@41..42 " "
+          PARAM@42..45
+            DOT3@42..45 "..."
+          R_PAREN@45..46 ")"
+        WHITESPACE@46..47 " "
+        RET_TYPE@47..53
+          THIN_ARROW@47..49 "->"
+          WHITESPACE@49..50 " "
+          PATH_TYPE@50..53
+            PATH@50..53
+              PATH_SEGMENT@50..53
+                NAME_REF@50..53
+                  IDENT@50..53 "i32"
+        SEMICOLON@53..54 ";"
+      WHITESPACE@54..55 " "
+      R_CURLY@55..56 "}"
+  WHITESPACE@56..57 "\n"

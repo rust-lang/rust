@@ -1,0 +1,24 @@
+SOURCE_FILE@0..26
+  IMPL@0..25
+    DEFAULT_KW@0..7 "default"
+    WHITESPACE@7..8 " "
+    IMPL_KW@8..12 "impl"
+    WHITESPACE@12..13 " "
+    PATH_TYPE@13..14
+      PATH@13..14
+        PATH_SEGMENT@13..14
+          NAME_REF@13..14
+            IDENT@13..14 "T"
+    WHITESPACE@14..15 " "
+    FOR_KW@15..18 "for"
+    WHITESPACE@18..19 " "
+    PATH_TYPE@19..22
+      PATH@19..22
+        PATH_SEGMENT@19..22
+          NAME_REF@19..22
+            IDENT@19..22 "Foo"
+    WHITESPACE@22..23 " "
+    ASSOC_ITEM_LIST@23..25
+      L_CURLY@23..24 "{"
+      R_CURLY@24..25 "}"
+  WHITESPACE@25..26 "\n"

@@ -1,0 +1,973 @@
+SOURCE_FILE@0..1598
+  EXTERN_BLOCK@0..1597
+    ABI@0..6
+      EXTERN_KW@0..6 "extern"
+    WHITESPACE@6..7 " "
+    EXTERN_ITEM_LIST@7..1597
+      L_CURLY@7..8 "{"
+      WHITESPACE@8..13 "\n    "
+      FN@13..87
+        VISIBILITY@13..16
+          PUB_KW@13..16 "pub"
+        WHITESPACE@16..17 " "
+        FN_KW@17..19 "fn"
+        WHITESPACE@19..20 " "
+        NAME@20..26
+          IDENT@20..26 "socket"
+        PARAM_LIST@26..75
+          L_PAREN@26..27 "("
+          PARAM@27..42
+            IDENT_PAT@27..33
+              NAME@27..33
+                IDENT@27..33 "domain"
+            COLON@33..34 ":"
+            WHITESPACE@34..35 " "
+            PATH_TYPE@35..42
+              PATH@35..42
+                PATH_SEGMENT@35..42
+                  COLON2@35..37 "::"
+                  NAME_REF@37..42
+                    IDENT@37..42 "c_int"
+          COMMA@42..43 ","
+          WHITESPACE@43..44 " "
+          PARAM@44..55
+            IDENT_PAT@44..46
+              NAME@44..46
+                IDENT@44..46 "ty"
+            COLON@46..47 ":"
+            WHITESPACE@47..48 " "
+            PATH_TYPE@48..55
+              PATH@48..55
+                PATH_SEGMENT@48..55
+                  COLON2@48..50 "::"
+                  NAME_REF@50..55
+                    IDENT@50..55 "c_int"
+          COMMA@55..56 ","
+          WHITESPACE@56..57 " "
+          PARAM@57..74
+            IDENT_PAT@57..65
+              NAME@57..65
+                IDENT@57..65 "protocol"
+            COLON@65..66 ":"
+            WHITESPACE@66..67 " "
+            PATH_TYPE@67..74
+              PATH@67..74
+                PATH_SEGMENT@67..74
+                  COLON2@67..69 "::"
+                  NAME_REF@69..74
+                    IDENT@69..74 "c_int"
+          R_PAREN@74..75 ")"
+        WHITESPACE@75..76 " "
+        RET_TYPE@76..86
+          THIN_ARROW@76..78 "->"
+          WHITESPACE@78..79 " "
+          PATH_TYPE@79..86
+            PATH@79..86
+              PATH_SEGMENT@79..86
+                COLON2@79..81 "::"
+                NAME_REF@81..86
+                  IDENT@81..86 "c_int"
+        SEMICOLON@86..87 ";"
+      WHITESPACE@87..92 "\n    "
+      FN@92..167
+        VISIBILITY@92..95
+          PUB_KW@92..95 "pub"
+        WHITESPACE@95..96 " "
+        FN_KW@96..98 "fn"
+        WHITESPACE@98..99 " "
+        NAME@99..103
+          IDENT@99..103 "bind"
+        PARAM_LIST@103..155
+          L_PAREN@103..104 "("
+          PARAM@104..115
+            IDENT_PAT@104..106
+              NAME@104..106
+                IDENT@104..106 "fd"
+            COLON@106..107 ":"
+            WHITESPACE@107..108 " "
+            PATH_TYPE@108..115
+              PATH@108..115
+                PATH_SEGMENT@108..115
+                  COLON2@108..110 "::"
+                  NAME_REF@110..115
+                    IDENT@110..115 "c_int"
+          COMMA@115..116 ","
+          WHITESPACE@116..117 " "
+          PARAM@117..138
+            IDENT_PAT@117..121
+              NAME@117..121
+                IDENT@117..121 "addr"
+            COLON@121..122 ":"
+            WHITESPACE@122..123 " "
+            PTR_TYPE@123..138
+              STAR@123..124 "*"
+              CONST_KW@124..129 "const"
+              WHITESPACE@129..130 " "
+              PATH_TYPE@130..138
+                PATH@130..138
+                  PATH_SEGMENT@130..138
+                    NAME_REF@130..138
+                      IDENT@130..138 "sockaddr"
+          COMMA@138..139 ","
+          WHITESPACE@139..140 " "
+          PARAM@140..154
+            IDENT_PAT@140..143
+              NAME@140..143
+                IDENT@140..143 "len"
+            COLON@143..144 ":"
+            WHITESPACE@144..145 " "
+            PATH_TYPE@145..154
+              PATH@145..154
+                PATH_SEGMENT@145..154
+                  NAME_REF@145..154
+                    IDENT@145..154 "socklen_t"
+          R_PAREN@154..155 ")"
+        WHITESPACE@155..156 " "
+        RET_TYPE@156..166
+          THIN_ARROW@156..158 "->"
+          WHITESPACE@158..159 " "
+          PATH_TYPE@159..166
+            PATH@159..166
+              PATH_SEGMENT@159..166
+                COLON2@159..161 "::"
+                NAME_REF@161..166
+                  IDENT@161..166 "c_int"
+        SEMICOLON@166..167 ";"
+      WHITESPACE@167..172 "\n    "
+      FN@172..276
+        VISIBILITY@172..175
+          PUB_KW@172..175 "pub"
+        WHITESPACE@175..176 " "
+        FN_KW@176..178 "fn"
+        WHITESPACE@178..179 " "
+        NAME@179..186
+          IDENT@179..186 "connect"
+        PARAM_LIST@186..264
+          L_PAREN@186..187 "("
+          PARAM@187..202
+            IDENT_PAT@187..193
+              NAME@187..193
+                IDENT@187..193 "socket"
+            COLON@193..194 ":"
+            WHITESPACE@194..195 " "
+            PATH_TYPE@195..202
+              PATH@195..202
+                PATH_SEGMENT@195..202
+                  COLON2@195..197 "::"
+                  NAME_REF@197..202
+                    IDENT@197..202 "c_int"
+          COMMA@202..203 ","
+          WHITESPACE@203..204 " "
+          PARAM@204..228
+            IDENT_PAT@204..211
+              NAME@204..211
+                IDENT@204..211 "address"
+            COLON@211..212 ":"
+            WHITESPACE@212..213 " "
+            PTR_TYPE@213..228
+              STAR@213..214 "*"
+              CONST_KW@214..219 "const"
+              WHITESPACE@219..220 " "
+              PATH_TYPE@220..228
+                PATH@220..228
+                  PATH_SEGMENT@220..228
+                    NAME_REF@220..228
+                      IDENT@220..228 "sockaddr"
+          COMMA@228..229 ","
+          WHITESPACE@229..249 "\n                   "
+          PARAM@249..263
+            IDENT_PAT@249..252
+              NAME@249..252
+                IDENT@249..252 "len"
+            COLON@252..253 ":"
+            WHITESPACE@253..254 " "
+            PATH_TYPE@254..263
+              PATH@254..263
+                PATH_SEGMENT@254..263
+                  NAME_REF@254..263
+                    IDENT@254..263 "socklen_t"
+          R_PAREN@263..264 ")"
+        WHITESPACE@264..265 " "
+        RET_TYPE@265..275
+          THIN_ARROW@265..267 "->"
+          WHITESPACE@267..268 " "
+          PATH_TYPE@268..275
+            PATH@268..275
+              PATH_SEGMENT@268..275
+                COLON2@268..270 "::"
+                NAME_REF@270..275
+                  IDENT@270..275 "c_int"
+        SEMICOLON@275..276 ";"
+      WHITESPACE@276..281 "\n    "
+      FN@281..341
+        VISIBILITY@281..284
+          PUB_KW@281..284 "pub"
+        WHITESPACE@284..285 " "
+        FN_KW@285..287 "fn"
+        WHITESPACE@287..288 " "
+        NAME@288..294
+          IDENT@288..294 "listen"
+        PARAM_LIST@294..329
+          L_PAREN@294..295 "("
+          PARAM@295..310
+            IDENT_PAT@295..301
+              NAME@295..301
+                IDENT@295..301 "socket"
+            COLON@301..302 ":"
+            WHITESPACE@302..303 " "
+            PATH_TYPE@303..310
+              PATH@303..310
+                PATH_SEGMENT@303..310
+                  COLON2@303..305 "::"
+                  NAME_REF@305..310
+                    IDENT@305..310 "c_int"
+          COMMA@310..311 ","
+          WHITESPACE@311..312 " "
+          PARAM@312..328
+            IDENT_PAT@312..319
+              NAME@312..319
+                IDENT@312..319 "backlog"
+            COLON@319..320 ":"
+            WHITESPACE@320..321 " "
+            PATH_TYPE@321..328
+              PATH@321..328
+                PATH_SEGMENT@321..328
+                  COLON2@321..323 "::"
+                  NAME_REF@323..328
+                    IDENT@323..328 "c_int"
+          R_PAREN@328..329 ")"
+        WHITESPACE@329..330 " "
+        RET_TYPE@330..340
+          THIN_ARROW@330..332 "->"
+          WHITESPACE@332..333 " "
+          PATH_TYPE@333..340
+            PATH@333..340
+              PATH_SEGMENT@333..340
+                COLON2@333..335 "::"
+                NAME_REF@335..340
+                  IDENT@335..340 "c_int"
+        SEMICOLON@340..341 ";"
+      WHITESPACE@341..346 "\n    "
+      FN@346..469
+        VISIBILITY@346..349
+          PUB_KW@346..349 "pub"
+        WHITESPACE@349..350 " "
+        FN_KW@350..352 "fn"
+        WHITESPACE@352..353 " "
+        NAME@353..364
+          IDENT@353..364 "getsockname"
+        PARAM_LIST@364..457
+          L_PAREN@364..365 "("
+          PARAM@365..380
+            IDENT_PAT@365..371
+              NAME@365..371
+                IDENT@365..371 "socket"
+            COLON@371..372 ":"
+            WHITESPACE@372..373 " "
+            PATH_TYPE@373..380
+              PATH@373..380
+                PATH_SEGMENT@373..380
+                  COLON2@373..375 "::"
+                  NAME_REF@375..380
+                    IDENT@375..380 "c_int"
+          COMMA@380..381 ","
+          WHITESPACE@381..382 " "
+          PARAM@382..404
+            IDENT_PAT@382..389
+              NAME@382..389
+                IDENT@382..389 "address"
+            COLON@389..390 ":"
+            WHITESPACE@390..391 " "
+            PTR_TYPE@391..404
+              STAR@391..392 "*"
+              MUT_KW@392..395 "mut"
+              WHITESPACE@395..396 " "
+              PATH_TYPE@396..404
+                PATH@396..404
+                  PATH_SEGMENT@396..404
+                    NAME_REF@396..404
+                      IDENT@396..404 "sockaddr"
+          COMMA@404..405 ","
+          WHITESPACE@405..429 "\n                       "
+          PARAM@429..456
+            IDENT_PAT@429..440
+              NAME@429..440
+                IDENT@429..440 "address_len"
+            COLON@440..441 ":"
+            WHITESPACE@441..442 " "
+            PTR_TYPE@442..456
+              STAR@442..443 "*"
+              MUT_KW@443..446 "mut"
+              WHITESPACE@446..447 " "
+              PATH_TYPE@447..456
+                PATH@447..456
+                  PATH_SEGMENT@447..456
+                    NAME_REF@447..456
+                      IDENT@447..456 "socklen_t"
+          R_PAREN@456..457 ")"
+        WHITESPACE@457..458 " "
+        RET_TYPE@458..468
+          THIN_ARROW@458..460 "->"
+          WHITESPACE@460..461 " "
+          PATH_TYPE@461..468
+            PATH@461..468
+              PATH_SEGMENT@461..468
+                COLON2@461..463 "::"
+                NAME_REF@463..468
+                  IDENT@463..468 "c_int"
+        SEMICOLON@468..469 ";"
+      WHITESPACE@469..474 "\n    "
+      FN@474..691
+        VISIBILITY@474..477
+          PUB_KW@474..477 "pub"
+        WHITESPACE@477..478 " "
+        FN_KW@478..480 "fn"
+        WHITESPACE@480..481 " "
+        NAME@481..491
+          IDENT@481..491 "getsockopt"
+        PARAM_LIST@491..679
+          L_PAREN@491..492 "("
+          PARAM@492..507
+            IDENT_PAT@492..498
+              NAME@492..498
+                IDENT@492..498 "sockfd"
+            COLON@498..499 ":"
+            WHITESPACE@499..500 " "
+            PATH_TYPE@500..507
+              PATH@500..507
+                PATH_SEGMENT@500..507
+                  COLON2@500..502 "::"
+                  NAME_REF@502..507
+                    IDENT@502..507 "c_int"
+          COMMA@507..508 ","
+          WHITESPACE@508..531 "\n                      "
+          PARAM@531..545
+            IDENT_PAT@531..536
+              NAME@531..536
+                IDENT@531..536 "level"
+            COLON@536..537 ":"
+            WHITESPACE@537..538 " "
+            PATH_TYPE@538..545
+              PATH@538..545
+                PATH_SEGMENT@538..545
+                  COLON2@538..540 "::"
+                  NAME_REF@540..545
+                    IDENT@540..545 "c_int"
+          COMMA@545..546 ","
+          WHITESPACE@546..569 "\n                      "
+          PARAM@569..585
+            IDENT_PAT@569..576
+              NAME@569..576
+                IDENT@569..576 "optname"
+            COLON@576..577 ":"
+            WHITESPACE@577..578 " "
+            PATH_TYPE@578..585
+              PATH@578..585
+                PATH_SEGMENT@578..585
+                  COLON2@578..580 "::"
+                  NAME_REF@580..585
+                    IDENT@580..585 "c_int"
+          COMMA@585..586 ","
+          WHITESPACE@586..609 "\n                      "
+          PARAM@609..630
+            IDENT_PAT@609..615
+              NAME@609..615
+                IDENT@609..615 "optval"
+            COLON@615..616 ":"
+            WHITESPACE@616..617 " "
+            PTR_TYPE@617..630
+              STAR@617..618 "*"
+              MUT_KW@618..621 "mut"
+              WHITESPACE@621..622 " "
+              PATH_TYPE@622..630
+                PATH@622..630
+                  PATH_SEGMENT@622..630
+                    COLON2@622..624 "::"
+                    NAME_REF@624..630
+                      IDENT@624..630 "c_void"
+          COMMA@630..631 ","
+          WHITESPACE@631..654 "\n                      "
+          PARAM@654..678
+            IDENT_PAT@654..660
+              NAME@654..660
+                IDENT@654..660 "optlen"
+            COLON@660..661 ":"
+            WHITESPACE@661..662 " "
+            PTR_TYPE@662..678
+              STAR@662..663 "*"
+              MUT_KW@663..666 "mut"
+              WHITESPACE@666..667 " "
+              PATH_TYPE@667..678
+                PATH@667..678
+                  PATH_SEGMENT@667..678
+                    COLON2@667..669 "::"
+                    NAME_REF@669..678
+                      IDENT@669..678 "socklen_t"
+          R_PAREN@678..679 ")"
+        WHITESPACE@679..680 " "
+        RET_TYPE@680..690
+          THIN_ARROW@680..682 "->"
+          WHITESPACE@682..683 " "
+          PATH_TYPE@683..690
+            PATH@683..690
+              PATH_SEGMENT@683..690
+                COLON2@683..685 "::"
+                NAME_REF@685..690
+                  IDENT@685..690 "c_int"
+        SEMICOLON@690..691 ";"
+      WHITESPACE@691..696 "\n    "
+      FN@696..864
+        VISIBILITY@696..699
+          PUB_KW@696..699 "pub"
+        WHITESPACE@699..700 " "
+        FN_KW@700..702 "fn"
+        WHITESPACE@702..703 " "
+        NAME@703..713
+          IDENT@703..713 "setsockopt"
+        PARAM_LIST@713..852
+          L_PAREN@713..714 "("
+          PARAM@714..729
+            IDENT_PAT@714..720
+              NAME@714..720
+                IDENT@714..720 "socket"
+            COLON@720..721 ":"
+            WHITESPACE@721..722 " "
+            PATH_TYPE@722..729
+              PATH@722..729
+                PATH_SEGMENT@722..729
+                  COLON2@722..724 "::"
+                  NAME_REF@724..729
+                    IDENT@724..729 "c_int"
+          COMMA@729..730 ","
+          WHITESPACE@730..731 " "
+          PARAM@731..745
+            IDENT_PAT@731..736
+              NAME@731..736
+                IDENT@731..736 "level"
+            COLON@736..737 ":"
+            WHITESPACE@737..738 " "
+            PATH_TYPE@738..745
+              PATH@738..745
+                PATH_SEGMENT@738..745
+                  COLON2@738..740 "::"
+                  NAME_REF@740..745
+                    IDENT@740..745 "c_int"
+          COMMA@745..746 ","
+          WHITESPACE@746..747 " "
+          PARAM@747..760
+            IDENT_PAT@747..751
+              NAME@747..751
+                IDENT@747..751 "name"
+            COLON@751..752 ":"
+            WHITESPACE@752..753 " "
+            PATH_TYPE@753..760
+              PATH@753..760
+                PATH_SEGMENT@753..760
+                  COLON2@753..755 "::"
+                  NAME_REF@755..760
+                    IDENT@755..760 "c_int"
+          COMMA@760..761 ","
+          WHITESPACE@761..784 "\n                      "
+          PARAM@784..806
+            IDENT_PAT@784..789
+              NAME@784..789
+                IDENT@784..789 "value"
+            COLON@789..790 ":"
+            WHITESPACE@790..791 " "
+            PTR_TYPE@791..806
+              STAR@791..792 "*"
+              CONST_KW@792..797 "const"
+              WHITESPACE@797..798 " "
+              PATH_TYPE@798..806
+                PATH@798..806
+                  PATH_SEGMENT@798..806
+                    COLON2@798..800 "::"
+                    NAME_REF@800..806
+                      IDENT@800..806 "c_void"
+          COMMA@806..807 ","
+          WHITESPACE@807..830 "\n                      "
+          PARAM@830..851
+            IDENT_PAT@830..840
+              NAME@830..840
+                IDENT@830..840 "option_len"
+            COLON@840..841 ":"
+            WHITESPACE@841..842 " "
+            PATH_TYPE@842..851
+              PATH@842..851
+                PATH_SEGMENT@842..851
+                  NAME_REF@842..851
+                    IDENT@842..851 "socklen_t"
+          R_PAREN@851..852 ")"
+        WHITESPACE@852..853 " "
+        RET_TYPE@853..863
+          THIN_ARROW@853..855 "->"
+          WHITESPACE@855..856 " "
+          PATH_TYPE@856..863
+            PATH@856..863
+              PATH_SEGMENT@856..863
+                COLON2@856..858 "::"
+                NAME_REF@858..863
+                  IDENT@858..863 "c_int"
+        SEMICOLON@863..864 ";"
+      WHITESPACE@864..869 "\n    "
+      FN@869..992
+        VISIBILITY@869..872
+          PUB_KW@869..872 "pub"
+        WHITESPACE@872..873 " "
+        FN_KW@873..875 "fn"
+        WHITESPACE@875..876 " "
+        NAME@876..887
+          IDENT@876..887 "getpeername"
+        PARAM_LIST@887..980
+          L_PAREN@887..888 "("
+          PARAM@888..903
+            IDENT_PAT@888..894
+              NAME@888..894
+                IDENT@888..894 "socket"
+            COLON@894..895 ":"
+            WHITESPACE@895..896 " "
+            PATH_TYPE@896..903
+              PATH@896..903
+                PATH_SEGMENT@896..903
+                  COLON2@896..898 "::"
+                  NAME_REF@898..903
+                    IDENT@898..903 "c_int"
+          COMMA@903..904 ","
+          WHITESPACE@904..905 " "
+          PARAM@905..927
+            IDENT_PAT@905..912
+              NAME@905..912
+                IDENT@905..912 "address"
+            COLON@912..913 ":"
+            WHITESPACE@913..914 " "
+            PTR_TYPE@914..927
+              STAR@914..915 "*"
+              MUT_KW@915..918 "mut"
+              WHITESPACE@918..919 " "
+              PATH_TYPE@919..927
+                PATH@919..927
+                  PATH_SEGMENT@919..927
+                    NAME_REF@919..927
+                      IDENT@919..927 "sockaddr"
+          COMMA@927..928 ","
+          WHITESPACE@928..952 "\n                       "
+          PARAM@952..979
+            IDENT_PAT@952..963
+              NAME@952..963
+                IDENT@952..963 "address_len"
+            COLON@963..964 ":"
+            WHITESPACE@964..965 " "
+            PTR_TYPE@965..979
+              STAR@965..966 "*"
+              MUT_KW@966..969 "mut"
+              WHITESPACE@969..970 " "
+              PATH_TYPE@970..979
+                PATH@970..979
+                  PATH_SEGMENT@970..979
+                    NAME_REF@970..979
+                      IDENT@970..979 "socklen_t"
+          R_PAREN@979..980 ")"
+        WHITESPACE@980..981 " "
+        RET_TYPE@981..991
+          THIN_ARROW@981..983 "->"
+          WHITESPACE@983..984 " "
+          PATH_TYPE@984..991
+            PATH@984..991
+              PATH_SEGMENT@984..991
+                COLON2@984..986 "::"
+                NAME_REF@986..991
+                  IDENT@986..991 "c_int"
+        SEMICOLON@991..992 ";"
+      WHITESPACE@992..997 "\n    "
+      FN@997..1173
+        VISIBILITY@997..1000
+          PUB_KW@997..1000 "pub"
+        WHITESPACE@1000..1001 " "
+        FN_KW@1001..1003 "fn"
+        WHITESPACE@1003..1004 " "
+        NAME@1004..1010
+          IDENT@1004..1010 "sendto"
+        PARAM_LIST@1010..1159
+          L_PAREN@1010..1011 "("
+          PARAM@1011..1026
+            IDENT_PAT@1011..1017
+              NAME@1011..1017
+                IDENT@1011..1017 "socket"
+            COLON@1017..1018 ":"
+            WHITESPACE@1018..1019 " "
+            PATH_TYPE@1019..1026
+              PATH@1019..1026
+                PATH_SEGMENT@1019..1026
+                  COLON2@1019..1021 "::"
+                  NAME_REF@1021..1026
+                    IDENT@1021..1026 "c_int"
+          COMMA@1026..1027 ","
+          WHITESPACE@1027..1028 " "
+          PARAM@1028..1048
+            IDENT_PAT@1028..1031
+              NAME@1028..1031
+                IDENT@1028..1031 "buf"
+            COLON@1031..1032 ":"
+            WHITESPACE@1032..1033 " "
+            PTR_TYPE@1033..1048
+              STAR@1033..1034 "*"
+              CONST_KW@1034..1039 "const"
+              WHITESPACE@1039..1040 " "
+              PATH_TYPE@1040..1048
+                PATH@1040..1048
+                  PATH_SEGMENT@1040..1048
+                    COLON2@1040..1042 "::"
+                    NAME_REF@1042..1048
+                      IDENT@1042..1048 "c_void"
+          COMMA@1048..1049 ","
+          WHITESPACE@1049..1050 " "
+          PARAM@1050..1063
+            IDENT_PAT@1050..1053
+              NAME@1050..1053
+                IDENT@1050..1053 "len"
+            COLON@1053..1054 ":"
+            WHITESPACE@1054..1055 " "
+            PATH_TYPE@1055..1063
+              PATH@1055..1063
+                PATH_SEGMENT@1055..1063
+                  COLON2@1055..1057 "::"
+                  NAME_REF@1057..1063
+                    IDENT@1057..1063 "size_t"
+          COMMA@1063..1064 ","
+          WHITESPACE@1064..1083 "\n                  "
+          PARAM@1083..1097
+            IDENT_PAT@1083..1088
+              NAME@1083..1088
+                IDENT@1083..1088 "flags"
+            COLON@1088..1089 ":"
+            WHITESPACE@1089..1090 " "
+            PATH_TYPE@1090..1097
+              PATH@1090..1097
+                PATH_SEGMENT@1090..1097
+                  COLON2@1090..1092 "::"
+                  NAME_REF@1092..1097
+                    IDENT@1092..1097 "c_int"
+          COMMA@1097..1098 ","
+          WHITESPACE@1098..1099 " "
+          PARAM@1099..1120
+            IDENT_PAT@1099..1103
+              NAME@1099..1103
+                IDENT@1099..1103 "addr"
+            COLON@1103..1104 ":"
+            WHITESPACE@1104..1105 " "
+            PTR_TYPE@1105..1120
+              STAR@1105..1106 "*"
+              CONST_KW@1106..1111 "const"
+              WHITESPACE@1111..1112 " "
+              PATH_TYPE@1112..1120
+                PATH@1112..1120
+                  PATH_SEGMENT@1112..1120
+                    NAME_REF@1112..1120
+                      IDENT@1112..1120 "sockaddr"
+          COMMA@1120..1121 ","
+          WHITESPACE@1121..1140 "\n                  "
+          PARAM@1140..1158
+            IDENT_PAT@1140..1147
+              NAME@1140..1147
+                IDENT@1140..1147 "addrlen"
+            COLON@1147..1148 ":"
+            WHITESPACE@1148..1149 " "
+            PATH_TYPE@1149..1158
+              PATH@1149..1158
+                PATH_SEGMENT@1149..1158
+                  NAME_REF@1149..1158
+                    IDENT@1149..1158 "socklen_t"
+          R_PAREN@1158..1159 ")"
+        WHITESPACE@1159..1160 " "
+        RET_TYPE@1160..1172
+          THIN_ARROW@1160..1162 "->"
+          WHITESPACE@1162..1163 " "
+          PATH_TYPE@1163..1172
+            PATH@1163..1172
+              PATH_SEGMENT@1163..1172
+                COLON2@1163..1165 "::"
+                NAME_REF@1165..1172
+                  IDENT@1165..1172 "ssize_t"
+        SEMICOLON@1172..1173 ";"
+      WHITESPACE@1173..1178 "\n    "
+      FN@1178..1289
+        VISIBILITY@1178..1181
+          PUB_KW@1178..1181 "pub"
+        WHITESPACE@1181..1182 " "
+        FN_KW@1182..1184 "fn"
+        WHITESPACE@1184..1185 " "
+        NAME@1185..1189
+          IDENT@1185..1189 "send"
+        PARAM_LIST@1189..1275
+          L_PAREN@1189..1190 "("
+          PARAM@1190..1205
+            IDENT_PAT@1190..1196
+              NAME@1190..1196
+                IDENT@1190..1196 "socket"
+            COLON@1196..1197 ":"
+            WHITESPACE@1197..1198 " "
+            PATH_TYPE@1198..1205
+              PATH@1198..1205
+                PATH_SEGMENT@1198..1205
+                  COLON2@1198..1200 "::"
+                  NAME_REF@1200..1205
+                    IDENT@1200..1205 "c_int"
+          COMMA@1205..1206 ","
+          WHITESPACE@1206..1207 " "
+          PARAM@1207..1227
+            IDENT_PAT@1207..1210
+              NAME@1207..1210
+                IDENT@1207..1210 "buf"
+            COLON@1210..1211 ":"
+            WHITESPACE@1211..1212 " "
+            PTR_TYPE@1212..1227
+              STAR@1212..1213 "*"
+              CONST_KW@1213..1218 "const"
+              WHITESPACE@1218..1219 " "
+              PATH_TYPE@1219..1227
+                PATH@1219..1227
+                  PATH_SEGMENT@1219..1227
+                    COLON2@1219..1221 "::"
+                    NAME_REF@1221..1227
+                      IDENT@1221..1227 "c_void"
+          COMMA@1227..1228 ","
+          WHITESPACE@1228..1229 " "
+          PARAM@1229..1242
+            IDENT_PAT@1229..1232
+              NAME@1229..1232
+                IDENT@1229..1232 "len"
+            COLON@1232..1233 ":"
+            WHITESPACE@1233..1234 " "
+            PATH_TYPE@1234..1242
+              PATH@1234..1242
+                PATH_SEGMENT@1234..1242
+                  COLON2@1234..1236 "::"
+                  NAME_REF@1236..1242
+                    IDENT@1236..1242 "size_t"
+          COMMA@1242..1243 ","
+          WHITESPACE@1243..1260 "\n                "
+          PARAM@1260..1274
+            IDENT_PAT@1260..1265
+              NAME@1260..1265
+                IDENT@1260..1265 "flags"
+            COLON@1265..1266 ":"
+            WHITESPACE@1266..1267 " "
+            PATH_TYPE@1267..1274
+              PATH@1267..1274
+                PATH_SEGMENT@1267..1274
+                  COLON2@1267..1269 "::"
+                  NAME_REF@1269..1274
+                    IDENT@1269..1274 "c_int"
+          R_PAREN@1274..1275 ")"
+        WHITESPACE@1275..1276 " "
+        RET_TYPE@1276..1288
+          THIN_ARROW@1276..1278 "->"
+          WHITESPACE@1278..1279 " "
+          PATH_TYPE@1279..1288
+            PATH@1279..1288
+              PATH_SEGMENT@1279..1288
+                COLON2@1279..1281 "::"
+                NAME_REF@1281..1288
+                  IDENT@1281..1288 "ssize_t"
+        SEMICOLON@1288..1289 ";"
+      WHITESPACE@1289..1294 "\n    "
+      FN@1294..1481
+        VISIBILITY@1294..1297
+          PUB_KW@1294..1297 "pub"
+        WHITESPACE@1297..1298 " "
+        FN_KW@1298..1300 "fn"
+        WHITESPACE@1300..1301 " "
+        NAME@1301..1309
+          IDENT@1301..1309 "recvfrom"
+        PARAM_LIST@1309..1467
+          L_PAREN@1309..1310 "("
+          PARAM@1310..1325
+            IDENT_PAT@1310..1316
+              NAME@1310..1316
+                IDENT@1310..1316 "socket"
+            COLON@1316..1317 ":"
+            WHITESPACE@1317..1318 " "
+            PATH_TYPE@1318..1325
+              PATH@1318..1325
+                PATH_SEGMENT@1318..1325
+                  COLON2@1318..1320 "::"
+                  NAME_REF@1320..1325
+                    IDENT@1320..1325 "c_int"
+          COMMA@1325..1326 ","
+          WHITESPACE@1326..1327 " "
+          PARAM@1327..1345
+            IDENT_PAT@1327..1330
+              NAME@1327..1330
+                IDENT@1327..1330 "buf"
+            COLON@1330..1331 ":"
+            WHITESPACE@1331..1332 " "
+            PTR_TYPE@1332..1345
+              STAR@1332..1333 "*"
+              MUT_KW@1333..1336 "mut"
+              WHITESPACE@1336..1337 " "
+              PATH_TYPE@1337..1345
+                PATH@1337..1345
+                  PATH_SEGMENT@1337..1345
+                    COLON2@1337..1339 "::"
+                    NAME_REF@1339..1345
+                      IDENT@1339..1345 "c_void"
+          COMMA@1345..1346 ","
+          WHITESPACE@1346..1347 " "
+          PARAM@1347..1360
+            IDENT_PAT@1347..1350
+              NAME@1347..1350
+                IDENT@1347..1350 "len"
+            COLON@1350..1351 ":"
+            WHITESPACE@1351..1352 " "
+            PATH_TYPE@1352..1360
+              PATH@1352..1360
+                PATH_SEGMENT@1352..1360
+                  COLON2@1352..1354 "::"
+                  NAME_REF@1354..1360
+                    IDENT@1354..1360 "size_t"
+          COMMA@1360..1361 ","
+          WHITESPACE@1361..1382 "\n                    "
+          PARAM@1382..1396
+            IDENT_PAT@1382..1387
+              NAME@1382..1387
+                IDENT@1382..1387 "flags"
+            COLON@1387..1388 ":"
+            WHITESPACE@1388..1389 " "
+            PATH_TYPE@1389..1396
+              PATH@1389..1396
+                PATH_SEGMENT@1389..1396
+                  COLON2@1389..1391 "::"
+                  NAME_REF@1391..1396
+                    IDENT@1391..1396 "c_int"
+          COMMA@1396..1397 ","
+          WHITESPACE@1397..1398 " "
+          PARAM@1398..1419
+            IDENT_PAT@1398..1402
+              NAME@1398..1402
+                IDENT@1398..1402 "addr"
+            COLON@1402..1403 ":"
+            WHITESPACE@1403..1404 " "
+            PTR_TYPE@1404..1419
+              STAR@1404..1405 "*"
+              MUT_KW@1405..1408 "mut"
+              WHITESPACE@1408..1409 " "
+              PATH_TYPE@1409..1419
+                PATH@1409..1419
+                  PATH_SEGMENT@1409..1419
+                    COLON2@1409..1411 "::"
+                    NAME_REF@1411..1419
+                      IDENT@1411..1419 "sockaddr"
+          COMMA@1419..1420 ","
+          WHITESPACE@1420..1441 "\n                    "
+          PARAM@1441..1466
+            IDENT_PAT@1441..1448
+              NAME@1441..1448
+                IDENT@1441..1448 "addrlen"
+            COLON@1448..1449 ":"
+            WHITESPACE@1449..1450 " "
+            PTR_TYPE@1450..1466
+              STAR@1450..1451 "*"
+              MUT_KW@1451..1454 "mut"
+              WHITESPACE@1454..1455 " "
+              PATH_TYPE@1455..1466
+                PATH@1455..1466
+                  PATH_SEGMENT@1455..1466
+                    COLON2@1455..1457 "::"
+                    NAME_REF@1457..1466
+                      IDENT@1457..1466 "socklen_t"
+          R_PAREN@1466..1467 ")"
+        WHITESPACE@1467..1468 " "
+        RET_TYPE@1468..1480
+          THIN_ARROW@1468..1470 "->"
+          WHITESPACE@1470..1471 " "
+          PATH_TYPE@1471..1480
+            PATH@1471..1480
+              PATH_SEGMENT@1471..1480
+                COLON2@1471..1473 "::"
+                NAME_REF@1473..1480
+                  IDENT@1473..1480 "ssize_t"
+        SEMICOLON@1480..1481 ";"
+      WHITESPACE@1481..1486 "\n    "
+      FN@1486..1595
+        VISIBILITY@1486..1489
+          PUB_KW@1486..1489 "pub"
+        WHITESPACE@1489..1490 " "
+        FN_KW@1490..1492 "fn"
+        WHITESPACE@1492..1493 " "
+        NAME@1493..1497
+          IDENT@1493..1497 "recv"
+        PARAM_LIST@1497..1581
+          L_PAREN@1497..1498 "("
+          PARAM@1498..1513
+            IDENT_PAT@1498..1504
+              NAME@1498..1504
+                IDENT@1498..1504 "socket"
+            COLON@1504..1505 ":"
+            WHITESPACE@1505..1506 " "
+            PATH_TYPE@1506..1513
+              PATH@1506..1513
+                PATH_SEGMENT@1506..1513
+                  COLON2@1506..1508 "::"
+                  NAME_REF@1508..1513
+                    IDENT@1508..1513 "c_int"
+          COMMA@1513..1514 ","
+          WHITESPACE@1514..1515 " "
+          PARAM@1515..1533
+            IDENT_PAT@1515..1518
+              NAME@1515..1518
+                IDENT@1515..1518 "buf"
+            COLON@1518..1519 ":"
+            WHITESPACE@1519..1520 " "
+            PTR_TYPE@1520..1533
+              STAR@1520..1521 "*"
+              MUT_KW@1521..1524 "mut"
+              WHITESPACE@1524..1525 " "
+              PATH_TYPE@1525..1533
+                PATH@1525..1533
+                  PATH_SEGMENT@1525..1533
+                    COLON2@1525..1527 "::"
+                    NAME_REF@1527..1533
+                      IDENT@1527..1533 "c_void"
+          COMMA@1533..1534 ","
+          WHITESPACE@1534..1535 " "
+          PARAM@1535..1548
+            IDENT_PAT@1535..1538
+              NAME@1535..1538
+                IDENT@1535..1538 "len"
+            COLON@1538..1539 ":"
+            WHITESPACE@1539..1540 " "
+            PATH_TYPE@1540..1548
+              PATH@1540..1548
+                PATH_SEGMENT@1540..1548
+                  COLON2@1540..1542 "::"
+                  NAME_REF@1542..1548
+                    IDENT@1542..1548 "size_t"
+          COMMA@1548..1549 ","
+          WHITESPACE@1549..1566 "\n                "
+          PARAM@1566..1580
+            IDENT_PAT@1566..1571
+              NAME@1566..1571
+                IDENT@1566..1571 "flags"
+            COLON@1571..1572 ":"
+            WHITESPACE@1572..1573 " "
+            PATH_TYPE@1573..1580
+              PATH@1573..1580
+                PATH_SEGMENT@1573..1580
+                  COLON2@1573..1575 "::"
+                  NAME_REF@1575..1580
+                    IDENT@1575..1580 "c_int"
+          R_PAREN@1580..1581 ")"
+        WHITESPACE@1581..1582 " "
+        RET_TYPE@1582..1594
+          THIN_ARROW@1582..1584 "->"
+          WHITESPACE@1584..1585 " "
+          PATH_TYPE@1585..1594
+            PATH@1585..1594
+              PATH_SEGMENT@1585..1594
+                COLON2@1585..1587 "::"
+                NAME_REF@1587..1594
+                  IDENT@1587..1594 "ssize_t"
+        SEMICOLON@1594..1595 ";"
+      WHITESPACE@1595..1596 "\n"
+      R_CURLY@1596..1597 "}"
+  WHITESPACE@1597..1598 "\n"

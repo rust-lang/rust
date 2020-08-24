@@ -1,0 +1,65 @@
+SOURCE_FILE@0..64
+  FN@0..63
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    GENERIC_PARAM_LIST@6..49
+      L_ANGLE@6..7 "<"
+      LIFETIME_PARAM@7..29
+        ATTR@7..26
+          POUND@7..8 "#"
+          L_BRACK@8..9 "["
+          PATH@9..15
+            PATH_SEGMENT@9..15
+              NAME_REF@9..15
+                IDENT@9..15 "derive"
+          TOKEN_TREE@15..25
+            L_PAREN@15..16 "("
+            IDENT@16..24 "Lifetime"
+            R_PAREN@24..25 ")"
+          R_BRACK@25..26 "]"
+        WHITESPACE@26..27 " "
+        LIFETIME@27..29 "\'a"
+      COMMA@29..30 ","
+      WHITESPACE@30..31 " "
+      TYPE_PARAM@31..48
+        ATTR@31..46
+          POUND@31..32 "#"
+          L_BRACK@32..33 "["
+          PATH@33..39
+            PATH_SEGMENT@33..39
+              NAME_REF@33..39
+                IDENT@33..39 "derive"
+          TOKEN_TREE@39..45
+            L_PAREN@39..40 "("
+            IDENT@40..44 "Type"
+            R_PAREN@44..45 ")"
+          R_BRACK@45..46 "]"
+        WHITESPACE@46..47 " "
+        NAME@47..48
+          IDENT@47..48 "T"
+      R_ANGLE@48..49 ">"
+    PARAM_LIST@49..59
+      L_PAREN@49..50 "("
+      PARAM@50..58
+        WILDCARD_PAT@50..51
+          UNDERSCORE@50..51 "_"
+        COLON@51..52 ":"
+        WHITESPACE@52..53 " "
+        REF_TYPE@53..58
+          AMP@53..54 "&"
+          LIFETIME@54..56 "\'a"
+          WHITESPACE@56..57 " "
+          PATH_TYPE@57..58
+            PATH@57..58
+              PATH_SEGMENT@57..58
+                NAME_REF@57..58
+                  IDENT@57..58 "T"
+      R_PAREN@58..59 ")"
+    WHITESPACE@59..60 " "
+    BLOCK_EXPR@60..63
+      L_CURLY@60..61 "{"
+      WHITESPACE@61..62 "\n"
+      R_CURLY@62..63 "}"
+  WHITESPACE@63..64 "\n"

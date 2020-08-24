@@ -1,0 +1,84 @@
+SOURCE_FILE@0..93
+  FN@0..92
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..92
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      EXPR_STMT@15..29
+        WHILE_EXPR@15..28
+          WHILE_KW@15..20 "while"
+          WHITESPACE@20..21 " "
+          CONDITION@21..25
+            LITERAL@21..25
+              TRUE_KW@21..25 "true"
+          WHITESPACE@25..26 " "
+          BLOCK_EXPR@26..28
+            L_CURLY@26..27 "{"
+            R_CURLY@27..28 "}"
+        SEMICOLON@28..29 ";"
+      WHITESPACE@29..34 "\n    "
+      EXPR_STMT@34..67
+        WHILE_EXPR@34..66
+          WHILE_KW@34..39 "while"
+          WHITESPACE@39..40 " "
+          CONDITION@40..63
+            LET_KW@40..43 "let"
+            WHITESPACE@43..44 " "
+            TUPLE_STRUCT_PAT@44..51
+              PATH@44..48
+                PATH_SEGMENT@44..48
+                  NAME_REF@44..48
+                    IDENT@44..48 "Some"
+              L_PAREN@48..49 "("
+              IDENT_PAT@49..50
+                NAME@49..50
+                  IDENT@49..50 "x"
+              R_PAREN@50..51 ")"
+            WHITESPACE@51..52 " "
+            EQ@52..53 "="
+            WHITESPACE@53..54 " "
+            METHOD_CALL_EXPR@54..63
+              PATH_EXPR@54..56
+                PATH@54..56
+                  PATH_SEGMENT@54..56
+                    NAME_REF@54..56
+                      IDENT@54..56 "it"
+              DOT@56..57 "."
+              NAME_REF@57..61
+                IDENT@57..61 "next"
+              ARG_LIST@61..63
+                L_PAREN@61..62 "("
+                R_PAREN@62..63 ")"
+          WHITESPACE@63..64 " "
+          BLOCK_EXPR@64..66
+            L_CURLY@64..65 "{"
+            R_CURLY@65..66 "}"
+        SEMICOLON@66..67 ";"
+      WHITESPACE@67..72 "\n    "
+      EXPR_STMT@72..90
+        WHILE_EXPR@72..89
+          WHILE_KW@72..77 "while"
+          WHITESPACE@77..78 " "
+          CONDITION@78..86
+            BLOCK_EXPR@78..86
+              L_CURLY@78..79 "{"
+              WHITESPACE@79..80 " "
+              LITERAL@80..84
+                TRUE_KW@80..84 "true"
+              WHITESPACE@84..85 " "
+              R_CURLY@85..86 "}"
+          WHITESPACE@86..87 " "
+          BLOCK_EXPR@87..89
+            L_CURLY@87..88 "{"
+            R_CURLY@88..89 "}"
+        SEMICOLON@89..90 ";"
+      WHITESPACE@90..91 "\n"
+      R_CURLY@91..92 "}"
+  WHITESPACE@92..93 "\n"

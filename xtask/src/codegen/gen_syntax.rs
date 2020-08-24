@@ -1,7 +1,7 @@
 //! This module generates AST datatype used by rust-analyzer.
 //!
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
-//! wrappers around `SyntaxNode` which implement `ra_syntax::AstNode`.
+//! wrappers around `SyntaxNode` which implement `syntax::AstNode`.
 
 use std::{
     collections::{BTreeSet, HashSet},
@@ -10,29 +10,27 @@ use std::{
 
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
-use ungrammar::{Grammar, Rule};
+use ungrammar::{rust_grammar, Grammar, Rule};
 
 use crate::{
     ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC},
-    codegen::{self, update, Mode},
+    codegen::{reformat, update, Mode},
     project_root, Result,
 };
 
 pub fn generate_syntax(mode: Mode) -> Result<()> {
-    let grammar = include_str!("rust.ungram")
-        .parse::<Grammar>()
-        .unwrap_or_else(|err| panic!("\n    \x1b[91merror\x1b[0m: {}\n", err));
+    let grammar = rust_grammar();
     let ast = lower(&grammar);
 
-    let syntax_kinds_file = project_root().join(codegen::SYNTAX_KINDS);
+    let syntax_kinds_file = project_root().join("crates/parser/src/syntax_kind/generated.rs");
     let syntax_kinds = generate_syntax_kinds(KINDS_SRC)?;
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
-    let ast_tokens_file = project_root().join(codegen::AST_TOKENS);
+    let ast_tokens_file = project_root().join("crates/syntax/src/ast/generated/tokens.rs");
     let contents = generate_tokens(&ast)?;
     update(ast_tokens_file.as_path(), &contents, mode)?;
 
-    let ast_nodes_file = project_root().join(codegen::AST_NODES);
+    let ast_nodes_file = project_root().join("crates/syntax/src/ast/generated/nodes.rs");
     let contents = generate_nodes(KINDS_SRC, &ast)?;
     update(ast_nodes_file.as_path(), &contents, mode)?;
 
@@ -63,7 +61,7 @@ fn generate_tokens(grammar: &AstSrc) -> Result<String> {
         }
     });
 
-    let pretty = crate::reformat(quote! {
+    let pretty = reformat(quote! {
         use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
         #(#tokens)*
     })?
@@ -153,25 +151,10 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
                 quote!(impl ast::#trait_name for #name {})
             });
 
-            (
+            let ast_node = if en.name == "Stmt" {
+                quote! {}
+            } else {
                 quote! {
-                    #[pretty_doc_comment_placeholder_workaround]
-                    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-                    pub enum #name {
-                        #(#variants(#variants),)*
-                    }
-
-                    #(#traits)*
-                },
-                quote! {
-                    #(
-                    impl From<#variants> for #name {
-                        fn from(node: #variants) -> #name {
-                            #name::#variants(node)
-                        }
-                    }
-                    )*
-
                     impl AstNode for #name {
                         fn can_cast(kind: SyntaxKind) -> bool {
                             match kind {
@@ -196,6 +179,28 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
                             }
                         }
                     }
+                }
+            };
+
+            (
+                quote! {
+                    #[pretty_doc_comment_placeholder_workaround]
+                    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+                    pub enum #name {
+                        #(#variants(#variants),)*
+                    }
+
+                    #(#traits)*
+                },
+                quote! {
+                    #(
+                        impl From<#variants> for #name {
+                            fn from(node: #variants) -> #name {
+                                #name::#variants(node)
+                            }
+                        }
+                    )*
+                    #ast_node
                 },
             )
         })
@@ -256,7 +261,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
         }
     }
 
-    let pretty = crate::reformat(res)?;
+    let pretty = reformat(res)?;
     Ok(pretty)
 }
 
@@ -378,7 +383,7 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
         }
     };
 
-    crate::reformat(ast)
+    reformat(ast)
 }
 
 fn to_upper_snake_case(s: &str) -> String {
@@ -472,11 +477,18 @@ impl Field {
                     "#" => "pound",
                     "?" => "question_mark",
                     "," => "comma",
+                    "|" => "pipe",
                     _ => name,
                 };
                 format_ident!("{}_token", name)
             }
-            Field::Node { name, .. } => format_ident!("{}", name),
+            Field::Node { name, .. } => {
+                if name == "type" {
+                    format_ident!("ty")
+                } else {
+                    format_ident!("{}", name)
+                }
+            }
         }
     }
     fn ty(&self) -> proc_macro2::Ident {
@@ -491,13 +503,7 @@ fn lower(grammar: &Grammar) -> AstSrc {
     let mut res = AstSrc::default();
     res.tokens = vec!["Whitespace".into(), "Comment".into(), "String".into(), "RawString".into()];
 
-    let nodes = grammar
-        .iter()
-        .filter(|&node| match grammar[node].rule {
-            Rule::Node(it) if it == node => false,
-            _ => true,
-        })
-        .collect::<Vec<_>>();
+    let nodes = grammar.iter().collect::<Vec<_>>();
 
     for &node in &nodes {
         let name = grammar[node].name.clone();
@@ -531,6 +537,7 @@ fn lower_enum(grammar: &Grammar, rule: &Rule) -> Option<Vec<String>> {
     for alternative in alternatives {
         match alternative {
             Rule::Node(it) => variants.push(grammar[*it].name.clone()),
+            Rule::Token(it) if grammar[*it].name == ";" => (),
             _ => return None,
         }
     }
@@ -572,6 +579,24 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
         }
         Rule::Labeled { label: l, rule } => {
             assert!(label.is_none());
+            let manually_implemented = matches!(
+                l.as_str(),
+                "lhs"
+                    | "rhs"
+                    | "then_branch"
+                    | "else_branch"
+                    | "start"
+                    | "end"
+                    | "op"
+                    | "index"
+                    | "base"
+                    | "value"
+                    | "trait"
+                    | "self_ty"
+            );
+            if manually_implemented {
+                return;
+            }
             lower_rule(acc, grammar, Some(l), rule);
         }
         Rule::Seq(rules) | Rule::Alt(rules) => {
@@ -687,6 +712,9 @@ fn extract_struct_trait(node: &mut AstNodeSrc, trait_name: &str, methods: &[&str
 
 fn extract_enum_traits(ast: &mut AstSrc) {
     for enm in &mut ast.enums {
+        if enm.name == "Stmt" {
+            continue;
+        }
         let nodes = &ast.nodes;
         let mut variant_traits = enm
             .variants

@@ -1,0 +1,194 @@
+SOURCE_FILE@0..170
+  TRAIT@0..169
+    TRAIT_KW@0..5 "trait"
+    WHITESPACE@5..6 " "
+    NAME@6..7
+      IDENT@6..7 "T"
+    WHITESPACE@7..8 " "
+    ASSOC_ITEM_LIST@8..169
+      L_CURLY@8..9 "{"
+      WHITESPACE@9..14 "\n    "
+      FN@14..46
+        FN_KW@14..16 "fn"
+        WHITESPACE@16..17 " "
+        NAME@17..19
+          IDENT@17..19 "f1"
+        PARAM_LIST@19..43
+          L_PAREN@19..20 "("
+          PARAM@20..42
+            TUPLE_PAT@20..26
+              L_PAREN@20..21 "("
+              IDENT_PAT@21..22
+                NAME@21..22
+                  IDENT@21..22 "a"
+              COMMA@22..23 ","
+              WHITESPACE@23..24 " "
+              IDENT_PAT@24..25
+                NAME@24..25
+                  IDENT@24..25 "b"
+              R_PAREN@25..26 ")"
+            COLON@26..27 ":"
+            WHITESPACE@27..28 " "
+            TUPLE_TYPE@28..42
+              L_PAREN@28..29 "("
+              PATH_TYPE@29..34
+                PATH@29..34
+                  PATH_SEGMENT@29..34
+                    NAME_REF@29..34
+                      IDENT@29..34 "usize"
+              COMMA@34..35 ","
+              WHITESPACE@35..36 " "
+              PATH_TYPE@36..41
+                PATH@36..41
+                  PATH_SEGMENT@36..41
+                    NAME_REF@36..41
+                      IDENT@36..41 "usize"
+              R_PAREN@41..42 ")"
+          R_PAREN@42..43 ")"
+        WHITESPACE@43..44 " "
+        BLOCK_EXPR@44..46
+          L_CURLY@44..45 "{"
+          R_CURLY@45..46 "}"
+      WHITESPACE@46..51 "\n    "
+      FN@51..74
+        FN_KW@51..53 "fn"
+        WHITESPACE@53..54 " "
+        NAME@54..56
+          IDENT@54..56 "f2"
+        PARAM_LIST@56..71
+          L_PAREN@56..57 "("
+          PARAM@57..70
+            RECORD_PAT@57..67
+              PATH@57..58
+                PATH_SEGMENT@57..58
+                  NAME_REF@57..58
+                    IDENT@57..58 "S"
+              WHITESPACE@58..59 " "
+              RECORD_PAT_FIELD_LIST@59..67
+                L_CURLY@59..60 "{"
+                WHITESPACE@60..61 " "
+                RECORD_PAT_FIELD@61..62
+                  IDENT_PAT@61..62
+                    NAME@61..62
+                      IDENT@61..62 "a"
+                COMMA@62..63 ","
+                WHITESPACE@63..64 " "
+                RECORD_PAT_FIELD@64..65
+                  IDENT_PAT@64..65
+                    NAME@64..65
+                      IDENT@64..65 "b"
+                WHITESPACE@65..66 " "
+                R_CURLY@66..67 "}"
+            COLON@67..68 ":"
+            WHITESPACE@68..69 " "
+            PATH_TYPE@69..70
+              PATH@69..70
+                PATH_SEGMENT@69..70
+                  NAME_REF@69..70
+                    IDENT@69..70 "S"
+          R_PAREN@70..71 ")"
+        WHITESPACE@71..72 " "
+        BLOCK_EXPR@72..74
+          L_CURLY@72..73 "{"
+          R_CURLY@73..74 "}"
+      WHITESPACE@74..79 "\n    "
+      FN@79..108
+        FN_KW@79..81 "fn"
+        WHITESPACE@81..82 " "
+        NAME@82..84
+          IDENT@82..84 "f3"
+        PARAM_LIST@84..105
+          L_PAREN@84..85 "("
+          PARAM@85..104
+            TUPLE_STRUCT_PAT@85..95
+              PATH@85..92
+                PATH_SEGMENT@85..92
+                  NAME_REF@85..92
+                    IDENT@85..92 "NewType"
+              L_PAREN@92..93 "("
+              IDENT_PAT@93..94
+                NAME@93..94
+                  IDENT@93..94 "a"
+              R_PAREN@94..95 ")"
+            COLON@95..96 ":"
+            WHITESPACE@96..97 " "
+            PATH_TYPE@97..104
+              PATH@97..104
+                PATH_SEGMENT@97..104
+                  NAME_REF@97..104
+                    IDENT@97..104 "NewType"
+          R_PAREN@104..105 ")"
+        WHITESPACE@105..106 " "
+        BLOCK_EXPR@106..108
+          L_CURLY@106..107 "{"
+          R_CURLY@107..108 "}"
+      WHITESPACE@108..113 "\n    "
+      FN@113..135
+        FN_KW@113..115 "fn"
+        WHITESPACE@115..116 " "
+        NAME@116..118
+          IDENT@116..118 "f4"
+        PARAM_LIST@118..132
+          L_PAREN@118..119 "("
+          PARAM@119..131
+            REF_PAT@119..122
+              AMP@119..120 "&"
+              REF_PAT@120..122
+                AMP@120..121 "&"
+                IDENT_PAT@121..122
+                  NAME@121..122
+                    IDENT@121..122 "a"
+            COLON@122..123 ":"
+            WHITESPACE@123..124 " "
+            REF_TYPE@124..131
+              AMP@124..125 "&"
+              REF_TYPE@125..131
+                AMP@125..126 "&"
+                PATH_TYPE@126..131
+                  PATH@126..131
+                    PATH_SEGMENT@126..131
+                      NAME_REF@126..131
+                        IDENT@126..131 "usize"
+          R_PAREN@131..132 ")"
+        WHITESPACE@132..133 " "
+        BLOCK_EXPR@133..135
+          L_CURLY@133..134 "{"
+          R_CURLY@134..135 "}"
+      WHITESPACE@135..140 "\n    "
+      FN@140..167
+        FN_KW@140..142 "fn"
+        WHITESPACE@142..143 " "
+        NAME@143..146
+          IDENT@143..146 "bar"
+        PARAM_LIST@146..166
+          L_PAREN@146..147 "("
+          PARAM@147..153
+            WILDCARD_PAT@147..148
+              UNDERSCORE@147..148 "_"
+            COLON@148..149 ":"
+            WHITESPACE@149..150 " "
+            PATH_TYPE@150..153
+              PATH@150..153
+                PATH_SEGMENT@150..153
+                  NAME_REF@150..153
+                    IDENT@150..153 "u64"
+          COMMA@153..154 ","
+          WHITESPACE@154..155 " "
+          PARAM@155..165
+            IDENT_PAT@155..160
+              MUT_KW@155..158 "mut"
+              WHITESPACE@158..159 " "
+              NAME@159..160
+                IDENT@159..160 "x"
+            COLON@160..161 ":"
+            WHITESPACE@161..162 " "
+            PATH_TYPE@162..165
+              PATH@162..165
+                PATH_SEGMENT@162..165
+                  NAME_REF@162..165
+                    IDENT@162..165 "i32"
+          R_PAREN@165..166 ")"
+        SEMICOLON@166..167 ";"
+      WHITESPACE@167..168 "\n"
+      R_CURLY@168..169 "}"
+  WHITESPACE@169..170 "\n"

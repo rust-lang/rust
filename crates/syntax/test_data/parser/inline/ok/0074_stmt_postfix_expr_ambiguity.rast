@@ -1,0 +1,59 @@
+SOURCE_FILE@0..84
+  FN@0..83
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..83
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      MATCH_EXPR@15..81
+        MATCH_KW@15..20 "match"
+        WHITESPACE@20..21 " "
+        TUPLE_EXPR@21..23
+          L_PAREN@21..22 "("
+          R_PAREN@22..23 ")"
+        WHITESPACE@23..24 " "
+        MATCH_ARM_LIST@24..81
+          L_CURLY@24..25 "{"
+          WHITESPACE@25..34 "\n        "
+          MATCH_ARM@34..41
+            WILDCARD_PAT@34..35
+              UNDERSCORE@34..35 "_"
+            WHITESPACE@35..36 " "
+            FAT_ARROW@36..38 "=>"
+            WHITESPACE@38..39 " "
+            BLOCK_EXPR@39..41
+              L_CURLY@39..40 "{"
+              R_CURLY@40..41 "}"
+          WHITESPACE@41..50 "\n        "
+          MATCH_ARM@50..58
+            TUPLE_PAT@50..52
+              L_PAREN@50..51 "("
+              R_PAREN@51..52 ")"
+            WHITESPACE@52..53 " "
+            FAT_ARROW@53..55 "=>"
+            WHITESPACE@55..56 " "
+            BLOCK_EXPR@56..58
+              L_CURLY@56..57 "{"
+              R_CURLY@57..58 "}"
+          WHITESPACE@58..67 "\n        "
+          MATCH_ARM@67..75
+            SLICE_PAT@67..69
+              L_BRACK@67..68 "["
+              R_BRACK@68..69 "]"
+            WHITESPACE@69..70 " "
+            FAT_ARROW@70..72 "=>"
+            WHITESPACE@72..73 " "
+            BLOCK_EXPR@73..75
+              L_CURLY@73..74 "{"
+              R_CURLY@74..75 "}"
+          WHITESPACE@75..80 "\n    "
+          R_CURLY@80..81 "}"
+      WHITESPACE@81..82 "\n"
+      R_CURLY@82..83 "}"
+  WHITESPACE@83..84 "\n"

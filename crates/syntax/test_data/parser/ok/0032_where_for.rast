@@ -1,0 +1,90 @@
+SOURCE_FILE@0..116
+  FN@0..115
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..21
+      IDENT@3..21 "test_serialization"
+    GENERIC_PARAM_LIST@21..26
+      L_ANGLE@21..22 "<"
+      TYPE_PARAM@22..25
+        NAME@22..25
+          IDENT@22..25 "SER"
+      R_ANGLE@25..26 ">"
+    PARAM_LIST@26..28
+      L_PAREN@26..27 "("
+      R_PAREN@27..28 ")"
+    WHITESPACE@28..29 "\n"
+    WHERE_CLAUSE@29..112
+      WHERE_KW@29..34 "where"
+      WHITESPACE@34..39 "\n    "
+      WHERE_PRED@39..111
+        PATH_TYPE@39..42
+          PATH@39..42
+            PATH_SEGMENT@39..42
+              NAME_REF@39..42
+                IDENT@39..42 "SER"
+        COLON@42..43 ":"
+        WHITESPACE@43..44 " "
+        TYPE_BOUND_LIST@44..111
+          TYPE_BOUND@44..53
+            PATH_TYPE@44..53
+              PATH@44..53
+                PATH_SEGMENT@44..53
+                  NAME_REF@44..53
+                    IDENT@44..53 "Serialize"
+          WHITESPACE@53..54 " "
+          PLUS@54..55 "+"
+          WHITESPACE@55..56 " "
+          TYPE_BOUND@56..81
+            FOR_TYPE@56..81
+              FOR_KW@56..59 "for"
+              GENERIC_PARAM_LIST@59..64
+                L_ANGLE@59..60 "<"
+                LIFETIME_PARAM@60..63
+                  LIFETIME@60..63 "\'de"
+                R_ANGLE@63..64 ">"
+              WHITESPACE@64..65 " "
+              PATH_TYPE@65..81
+                PATH@65..81
+                  PATH_SEGMENT@65..81
+                    NAME_REF@65..76
+                      IDENT@65..76 "Deserialize"
+                    GENERIC_ARG_LIST@76..81
+                      L_ANGLE@76..77 "<"
+                      LIFETIME_ARG@77..80
+                        LIFETIME@77..80 "\'de"
+                      R_ANGLE@80..81 ">"
+          WHITESPACE@81..82 " "
+          PLUS@82..83 "+"
+          WHITESPACE@83..84 " "
+          TYPE_BOUND@84..93
+            PATH_TYPE@84..93
+              PATH@84..93
+                PATH_SEGMENT@84..93
+                  NAME_REF@84..93
+                    IDENT@84..93 "PartialEq"
+          WHITESPACE@93..94 " "
+          PLUS@94..95 "+"
+          WHITESPACE@95..96 " "
+          TYPE_BOUND@96..111
+            PATH_TYPE@96..111
+              PATH@96..111
+                PATH@96..104
+                  PATH@96..99
+                    PATH_SEGMENT@96..99
+                      NAME_REF@96..99
+                        IDENT@96..99 "std"
+                  COLON2@99..101 "::"
+                  PATH_SEGMENT@101..104
+                    NAME_REF@101..104
+                      IDENT@101..104 "fmt"
+                COLON2@104..106 "::"
+                PATH_SEGMENT@106..111
+                  NAME_REF@106..111
+                    IDENT@106..111 "Debug"
+      COMMA@111..112 ","
+    WHITESPACE@112..113 "\n"
+    BLOCK_EXPR@113..115
+      L_CURLY@113..114 "{"
+      R_CURLY@114..115 "}"
+  WHITESPACE@115..116 "\n"

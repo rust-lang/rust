@@ -1,0 +1,69 @@
+SOURCE_FILE@0..63
+  FN@0..62
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..7
+      IDENT@3..7 "main"
+    PARAM_LIST@7..9
+      L_PAREN@7..8 "("
+      R_PAREN@8..9 ")"
+    WHITESPACE@9..10 " "
+    BLOCK_EXPR@10..62
+      L_CURLY@10..11 "{"
+      WHITESPACE@11..15 "\n   "
+      LET_STMT@15..60
+        LET_KW@15..18 "let"
+        WHITESPACE@18..19 " "
+        IDENT_PAT@19..22
+          NAME@19..22
+            IDENT@19..22 "foo"
+        WHITESPACE@22..23 " "
+        EQ@23..24 "="
+        WHITESPACE@24..25 " "
+        CLOSURE_EXPR@25..59
+          PARAM_LIST@25..56
+            PIPE@25..26 "|"
+            PARAM@26..29
+              IDENT_PAT@26..29
+                NAME@26..29
+                  IDENT@26..29 "bar"
+            COMMA@29..30 ","
+            WHITESPACE@30..31 " "
+            PARAM@31..39
+              IDENT_PAT@31..34
+                NAME@31..34
+                  IDENT@31..34 "baz"
+              COLON@34..35 ":"
+              WHITESPACE@35..36 " "
+              PATH_TYPE@36..39
+                PATH@36..39
+                  PATH_SEGMENT@36..39
+                    NAME_REF@36..39
+                      IDENT@36..39 "Baz"
+            COMMA@39..40 ","
+            WHITESPACE@40..41 " "
+            PARAM@41..55
+              IDENT_PAT@41..44
+                NAME@41..44
+                  IDENT@41..44 "qux"
+              COLON@44..45 ":"
+              WHITESPACE@45..46 " "
+              PATH_TYPE@46..55
+                PATH@46..55
+                  PATH@46..49
+                    PATH_SEGMENT@46..49
+                      NAME_REF@46..49
+                        IDENT@46..49 "Qux"
+                  COLON2@49..51 "::"
+                  PATH_SEGMENT@51..55
+                    NAME_REF@51..55
+                      IDENT@51..55 "Quux"
+            PIPE@55..56 "|"
+          WHITESPACE@56..57 " "
+          TUPLE_EXPR@57..59
+            L_PAREN@57..58 "("
+            R_PAREN@58..59 ")"
+        SEMICOLON@59..60 ";"
+      WHITESPACE@60..61 "\n"
+      R_CURLY@61..62 "}"
+  WHITESPACE@62..63 "\n"

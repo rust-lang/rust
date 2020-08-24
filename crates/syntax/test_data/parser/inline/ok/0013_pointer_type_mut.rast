@@ -1,0 +1,35 @@
+SOURCE_FILE@0..36
+  TYPE_ALIAS@0..17
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "M"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    PTR_TYPE@9..16
+      STAR@9..10 "*"
+      MUT_KW@10..13 "mut"
+      WHITESPACE@13..14 " "
+      TUPLE_TYPE@14..16
+        L_PAREN@14..15 "("
+        R_PAREN@15..16 ")"
+    SEMICOLON@16..17 ";"
+  WHITESPACE@17..18 "\n"
+  TYPE_ALIAS@18..35
+    TYPE_KW@18..22 "type"
+    WHITESPACE@22..23 " "
+    NAME@23..24
+      IDENT@23..24 "C"
+    WHITESPACE@24..25 " "
+    EQ@25..26 "="
+    WHITESPACE@26..27 " "
+    PTR_TYPE@27..34
+      STAR@27..28 "*"
+      MUT_KW@28..31 "mut"
+      WHITESPACE@31..32 " "
+      TUPLE_TYPE@32..34
+        L_PAREN@32..33 "("
+        R_PAREN@33..34 ")"
+    SEMICOLON@34..35 ";"
+  WHITESPACE@35..36 "\n"

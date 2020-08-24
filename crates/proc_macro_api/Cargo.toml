@@ -1,0 +1,18 @@
+[package]
+name = "proc_macro_api"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4.8"
+crossbeam-channel = "0.4.0"
+jod-thread = "0.1.1"
+
+tt = { path = "../tt" }

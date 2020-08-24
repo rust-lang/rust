@@ -1,0 +1,35 @@
+[package]
+name = "syntax"
+version = "0.0.0"
+description = "Comment and whitespace preserving parser for the Rust language"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-analyzer/rust-analyzer"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+itertools = "0.9.0"
+rowan = "0.10.0"
+rustc_lexer = { version = "673.0.0", package = "rustc-ap-rustc_lexer" }
+rustc-hash = "1.1.0"
+arrayvec = "0.5.1"
+once_cell = "1.3.1"
+# This crate transitively depends on `smol_str` via `rowan`.
+# ideally, `serde` should be enabled by `rust-analyzer`, but we enable it here
+# to reduce number of compilations
+smol_str = { version = "0.1.15", features = ["serde"] }
+serde = { version = "1.0.106", features = ["derive"] }
+
+stdx = { path = "../stdx" }
+text_edit = { path = "../text_edit" }
+parser = { path = "../parser" }
+
+[dev-dependencies]
+walkdir = "2.3.1"
+rayon = "1"
+expect-test = "0.1"
+
+test_utils = { path = "../test_utils" }

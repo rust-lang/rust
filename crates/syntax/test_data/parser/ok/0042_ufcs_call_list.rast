@@ -1,0 +1,123 @@
+SOURCE_FILE@0..199
+  COMMENT@0..60 "// https://github.com ..."
+  WHITESPACE@60..62 "\n\n"
+  STRUCT@62..73
+    STRUCT_KW@62..68 "struct"
+    WHITESPACE@68..69 " "
+    NAME@69..72
+      IDENT@69..72 "Foo"
+    SEMICOLON@72..73 ";"
+  WHITESPACE@73..75 "\n\n"
+  IMPL@75..141
+    IMPL_KW@75..79 "impl"
+    WHITESPACE@79..80 " "
+    PATH_TYPE@80..83
+      PATH@80..83
+        PATH_SEGMENT@80..83
+          NAME_REF@80..83
+            IDENT@80..83 "Foo"
+    WHITESPACE@83..84 " "
+    ASSOC_ITEM_LIST@84..141
+      L_CURLY@84..85 "{"
+      WHITESPACE@85..90 "\n    "
+      FN@90..139
+        FN_KW@90..92 "fn"
+        WHITESPACE@92..93 " "
+        NAME@93..96
+          IDENT@93..96 "bar"
+        PARAM_LIST@96..98
+          L_PAREN@96..97 "("
+          R_PAREN@97..98 ")"
+        WHITESPACE@98..99 " "
+        RET_TYPE@99..106
+          THIN_ARROW@99..101 "->"
+          WHITESPACE@101..102 " "
+          PATH_TYPE@102..106
+            PATH@102..106
+              PATH_SEGMENT@102..106
+                NAME_REF@102..106
+                  IDENT@102..106 "bool"
+        WHITESPACE@106..107 " "
+        BLOCK_EXPR@107..139
+          L_CURLY@107..108 "{"
+          WHITESPACE@108..117 "\n        "
+          MACRO_CALL@117..133
+            PATH@117..130
+              PATH_SEGMENT@117..130
+                NAME_REF@117..130
+                  IDENT@117..130 "unimplemented"
+            BANG@130..131 "!"
+            TOKEN_TREE@131..133
+              L_PAREN@131..132 "("
+              R_PAREN@132..133 ")"
+          WHITESPACE@133..138 "\n    "
+          R_CURLY@138..139 "}"
+      WHITESPACE@139..140 "\n"
+      R_CURLY@140..141 "}"
+  WHITESPACE@141..143 "\n\n"
+  FN@143..161
+    FN_KW@143..145 "fn"
+    WHITESPACE@145..146 " "
+    NAME@146..149
+      IDENT@146..149 "baz"
+    PARAM_LIST@149..158
+      L_PAREN@149..150 "("
+      PARAM@150..157
+        WILDCARD_PAT@150..151
+          UNDERSCORE@150..151 "_"
+        COLON@151..152 ":"
+        WHITESPACE@152..153 " "
+        PATH_TYPE@153..157
+          PATH@153..157
+            PATH_SEGMENT@153..157
+              NAME_REF@153..157
+                IDENT@153..157 "bool"
+      R_PAREN@157..158 ")"
+    WHITESPACE@158..159 " "
+    BLOCK_EXPR@159..161
+      L_CURLY@159..160 "{"
+      R_CURLY@160..161 "}"
+  WHITESPACE@161..163 "\n\n"
+  FN@163..198
+    FN_KW@163..165 "fn"
+    WHITESPACE@165..166 " "
+    NAME@166..170
+      IDENT@166..170 "main"
+    PARAM_LIST@170..172
+      L_PAREN@170..171 "("
+      R_PAREN@171..172 ")"
+    WHITESPACE@172..173 " "
+    BLOCK_EXPR@173..198
+      L_CURLY@173..174 "{"
+      WHITESPACE@174..179 "\n    "
+      CALL_EXPR@179..196
+        PATH_EXPR@179..182
+          PATH@179..182
+            PATH_SEGMENT@179..182
+              NAME_REF@179..182
+                IDENT@179..182 "baz"
+        ARG_LIST@182..196
+          L_PAREN@182..183 "("
+          CALL_EXPR@183..195
+            PATH_EXPR@183..193
+              PATH@183..193
+                PATH@183..188
+                  PATH_SEGMENT@183..188
+                    L_ANGLE@183..184 "<"
+                    PATH_TYPE@184..187
+                      PATH@184..187
+                        PATH_SEGMENT@184..187
+                          NAME_REF@184..187
+                            IDENT@184..187 "Foo"
+                    R_ANGLE@187..188 ">"
+                COLON2@188..190 "::"
+                PATH_SEGMENT@190..193
+                  NAME_REF@190..193
+                    IDENT@190..193 "bar"
+            ARG_LIST@193..195
+              L_PAREN@193..194 "("
+              R_PAREN@194..195 ")"
+          R_PAREN@195..196 ")"
+      WHITESPACE@196..197 "\n"
+      R_CURLY@197..198 "}"
+  WHITESPACE@198..199 "\n"

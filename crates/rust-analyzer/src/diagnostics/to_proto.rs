@@ -7,11 +7,11 @@ use stdx::format_to;
 
 use crate::{lsp_ext, to_proto::url_from_abs_path};
 
-use super::DiagnosticsConfig;
+use super::DiagnosticsMapConfig;
 
 /// Determines the LSP severity from a diagnostic
 fn diagnostic_severity(
-    config: &DiagnosticsConfig,
+    config: &DiagnosticsMapConfig,
     level: flycheck::DiagnosticLevel,
     code: Option<flycheck::DiagnosticCode>,
 ) -> Option<lsp_types::DiagnosticSeverity> {
@@ -141,7 +141,7 @@ pub(crate) struct MappedRustDiagnostic {
 ///
 /// If the diagnostic has no primary span this will return `None`
 pub(crate) fn map_rust_diagnostic_to_lsp(
-    config: &DiagnosticsConfig,
+    config: &DiagnosticsMapConfig,
     rd: &flycheck::Diagnostic,
     workspace_root: &Path,
 ) -> Vec<MappedRustDiagnostic> {
@@ -256,13 +256,13 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 mod tests {
     use super::*;
 
-    use expect::{expect_file, ExpectFile};
+    use expect_test::{expect_file, ExpectFile};
 
     fn check(diagnostics_json: &str, expect: ExpectFile) {
-        check_with_config(DiagnosticsConfig::default(), diagnostics_json, expect)
+        check_with_config(DiagnosticsMapConfig::default(), diagnostics_json, expect)
     }
 
-    fn check_with_config(config: DiagnosticsConfig, diagnostics_json: &str, expect: ExpectFile) {
+    fn check_with_config(config: DiagnosticsMapConfig, diagnostics_json: &str, expect: ExpectFile) {
         let diagnostic: flycheck::Diagnostic = serde_json::from_str(diagnostics_json).unwrap();
         let workspace_root = Path::new("/test/");
         let actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root);
@@ -402,9 +402,9 @@ mod tests {
     #[cfg(not(windows))]
     fn rustc_unused_variable_as_info() {
         check_with_config(
-            DiagnosticsConfig {
+            DiagnosticsMapConfig {
                 warnings_as_info: vec!["unused_variables".to_string()],
-                ..DiagnosticsConfig::default()
+                ..DiagnosticsMapConfig::default()
             },
             r##"{
     "message": "unused variable: `foo`",
@@ -486,9 +486,9 @@ mod tests {
     #[cfg(not(windows))]
     fn rustc_unused_variable_as_hint() {
         check_with_config(
-            DiagnosticsConfig {
+            DiagnosticsMapConfig {
                 warnings_as_hint: vec!["unused_variables".to_string()],
-                ..DiagnosticsConfig::default()
+                ..DiagnosticsMapConfig::default()
             },
             r##"{
     "message": "unused variable: `foo`",
@@ -1116,7 +1116,7 @@ mod tests {
     fn macro_compiler_error() {
         check(
             r##"{
-        "rendered": "error: Please register your known path in the path module\n   --> crates/ra_hir_def/src/path.rs:265:9\n    |\n265 |         compile_error!(\"Please register your known path in the path module\")\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    | \n   ::: crates/ra_hir_def/src/data.rs:80:16\n    |\n80  |     let path = path![std::future::Future];\n    |                -------------------------- in this macro invocation\n\n",
+        "rendered": "error: Please register your known path in the path module\n   --> crates/hir_def/src/path.rs:265:9\n    |\n265 |         compile_error!(\"Please register your known path in the path module\")\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    | \n   ::: crates/hir_def/src/data.rs:80:16\n    |\n80  |     let path = path![std::future::Future];\n    |                -------------------------- in this macro invocation\n\n",
         "children": [],
         "code": null,
         "level": "error",
@@ -1134,7 +1134,7 @@ mod tests {
                         "column_end": 2,
                         "column_start": 1,
                         "expansion": null,
-                        "file_name": "crates/ra_hir_def/src/path.rs",
+                        "file_name": "crates/hir_def/src/path.rs",
                         "is_primary": false,
                         "label": null,
                         "line_end": 267,
@@ -1227,7 +1227,7 @@ mod tests {
                                 "column_end": 2,
                                 "column_start": 1,
                                 "expansion": null,
-                                "file_name": "crates/ra_hir_def/src/path.rs",
+                                "file_name": "crates/hir_def/src/path.rs",
                                 "is_primary": false,
                                 "label": null,
                                 "line_end": 277,
@@ -1284,7 +1284,7 @@ mod tests {
                                 "column_end": 42,
                                 "column_start": 16,
                                 "expansion": null,
-                                "file_name": "crates/ra_hir_def/src/data.rs",
+                                "file_name": "crates/hir_def/src/data.rs",
                                 "is_primary": false,
                                 "label": null,
                                 "line_end": 80,
@@ -1300,7 +1300,7 @@ mod tests {
                                 ]
                             }
                         },
-                        "file_name": "crates/ra_hir_def/src/path.rs",
+                        "file_name": "crates/hir_def/src/path.rs",
                         "is_primary": false,
                         "label": null,
                         "line_end": 272,
@@ -1316,7 +1316,7 @@ mod tests {
                         ]
                     }
                 },
-                "file_name": "crates/ra_hir_def/src/path.rs",
+                "file_name": "crates/hir_def/src/path.rs",
                 "is_primary": true,
                 "label": null,
                 "line_end": 265,

@@ -1,0 +1,44 @@
+SOURCE_FILE@0..65
+  IMPL@0..64
+    DEFAULT_KW@0..7 "default"
+    WHITESPACE@7..8 " "
+    UNSAFE_KW@8..14 "unsafe"
+    WHITESPACE@14..15 " "
+    IMPL_KW@15..19 "impl"
+    WHITESPACE@19..20 " "
+    PATH_TYPE@20..21
+      PATH@20..21
+        PATH_SEGMENT@20..21
+          NAME_REF@20..21
+            IDENT@20..21 "T"
+    WHITESPACE@21..22 " "
+    FOR_KW@22..25 "for"
+    WHITESPACE@25..26 " "
+    PATH_TYPE@26..29
+      PATH@26..29
+        PATH_SEGMENT@26..29
+          NAME_REF@26..29
+            IDENT@26..29 "Foo"
+    WHITESPACE@29..30 " "
+    ASSOC_ITEM_LIST@30..64
+      L_CURLY@30..31 "{"
+      WHITESPACE@31..36 "\n    "
+      FN@36..62
+        DEFAULT_KW@36..43 "default"
+        WHITESPACE@43..44 " "
+        UNSAFE_KW@44..50 "unsafe"
+        WHITESPACE@50..51 " "
+        FN_KW@51..53 "fn"
+        WHITESPACE@53..54 " "
+        NAME@54..57
+          IDENT@54..57 "foo"
+        PARAM_LIST@57..59
+          L_PAREN@57..58 "("
+          R_PAREN@58..59 ")"
+        WHITESPACE@59..60 " "
+        BLOCK_EXPR@60..62
+          L_CURLY@60..61 "{"
+          R_CURLY@61..62 "}"
+      WHITESPACE@62..63 "\n"
+      R_CURLY@63..64 "}"
+  WHITESPACE@64..65 "\n"

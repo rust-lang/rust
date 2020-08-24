@@ -1,0 +1,135 @@
+SOURCE_FILE@0..134
+  FN@0..133
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..133
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      EXPR_STMT@15..21
+        CLOSURE_EXPR@15..20
+          PARAM_LIST@15..17
+            PIPE@15..16 "|"
+            PIPE@16..17 "|"
+          WHITESPACE@17..18 " "
+          TUPLE_EXPR@18..20
+            L_PAREN@18..19 "("
+            R_PAREN@19..20 ")"
+        SEMICOLON@20..21 ";"
+      WHITESPACE@21..26 "\n    "
+      EXPR_STMT@26..43
+        CLOSURE_EXPR@26..42
+          PARAM_LIST@26..28
+            PIPE@26..27 "|"
+            PIPE@27..28 "|"
+          WHITESPACE@28..29 " "
+          RET_TYPE@29..35
+            THIN_ARROW@29..31 "->"
+            WHITESPACE@31..32 " "
+            PATH_TYPE@32..35
+              PATH@32..35
+                PATH_SEGMENT@32..35
+                  NAME_REF@32..35
+                    IDENT@32..35 "i32"
+          WHITESPACE@35..36 " "
+          BLOCK_EXPR@36..42
+            L_CURLY@36..37 "{"
+            WHITESPACE@37..38 " "
+            LITERAL@38..40
+              INT_NUMBER@38..40 "92"
+            WHITESPACE@40..41 " "
+            R_CURLY@41..42 "}"
+        SEMICOLON@42..43 ";"
+      WHITESPACE@43..48 "\n    "
+      EXPR_STMT@48..54
+        CLOSURE_EXPR@48..53
+          PARAM_LIST@48..51
+            PIPE@48..49 "|"
+            PARAM@49..50
+              IDENT_PAT@49..50
+                NAME@49..50
+                  IDENT@49..50 "x"
+            PIPE@50..51 "|"
+          WHITESPACE@51..52 " "
+          PATH_EXPR@52..53
+            PATH@52..53
+              PATH_SEGMENT@52..53
+                NAME_REF@52..53
+                  IDENT@52..53 "x"
+        SEMICOLON@53..54 ";"
+      WHITESPACE@54..59 "\n    "
+      EXPR_STMT@59..76
+        CLOSURE_EXPR@59..75
+          MOVE_KW@59..63 "move"
+          WHITESPACE@63..64 " "
+          PARAM_LIST@64..73
+            PIPE@64..65 "|"
+            PARAM@65..71
+              IDENT_PAT@65..66
+                NAME@65..66
+                  IDENT@65..66 "x"
+              COLON@66..67 ":"
+              WHITESPACE@67..68 " "
+              PATH_TYPE@68..71
+                PATH@68..71
+                  PATH_SEGMENT@68..71
+                    NAME_REF@68..71
+                      IDENT@68..71 "i32"
+            COMMA@71..72 ","
+            PIPE@72..73 "|"
+          WHITESPACE@73..74 " "
+          PATH_EXPR@74..75
+            PATH@74..75
+              PATH_SEGMENT@74..75
+                NAME_REF@74..75
+                  IDENT@74..75 "x"
+        SEMICOLON@75..76 ";"
+      WHITESPACE@76..81 "\n    "
+      EXPR_STMT@81..93
+        CLOSURE_EXPR@81..92
+          ASYNC_KW@81..86 "async"
+          WHITESPACE@86..87 " "
+          PARAM_LIST@87..89
+            PIPE@87..88 "|"
+            PIPE@88..89 "|"
+          WHITESPACE@89..90 " "
+          BLOCK_EXPR@90..92
+            L_CURLY@90..91 "{"
+            R_CURLY@91..92 "}"
+        SEMICOLON@92..93 ";"
+      WHITESPACE@93..98 "\n    "
+      EXPR_STMT@98..109
+        CLOSURE_EXPR@98..108
+          MOVE_KW@98..102 "move"
+          WHITESPACE@102..103 " "
+          PARAM_LIST@103..105
+            PIPE@103..104 "|"
+            PIPE@104..105 "|"
+          WHITESPACE@105..106 " "
+          BLOCK_EXPR@106..108
+            L_CURLY@106..107 "{"
+            R_CURLY@107..108 "}"
+        SEMICOLON@108..109 ";"
+      WHITESPACE@109..114 "\n    "
+      EXPR_STMT@114..131
+        CLOSURE_EXPR@114..130
+          ASYNC_KW@114..119 "async"
+          WHITESPACE@119..120 " "
+          MOVE_KW@120..124 "move"
+          WHITESPACE@124..125 " "
+          PARAM_LIST@125..127
+            PIPE@125..126 "|"
+            PIPE@126..127 "|"
+          WHITESPACE@127..128 " "
+          BLOCK_EXPR@128..130
+            L_CURLY@128..129 "{"
+            R_CURLY@129..130 "}"
+        SEMICOLON@130..131 ";"
+      WHITESPACE@131..132 "\n"
+      R_CURLY@132..133 "}"
+  WHITESPACE@133..134 "\n"

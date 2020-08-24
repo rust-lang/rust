@@ -1,0 +1,145 @@
+SOURCE_FILE@0..259
+  FN@0..258
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..258
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      MATCH_EXPR@15..256
+        MATCH_KW@15..20 "match"
+        WHITESPACE@20..21 " "
+        TUPLE_EXPR@21..23
+          L_PAREN@21..22 "("
+          R_PAREN@22..23 ")"
+        WHITESPACE@23..24 " "
+        MATCH_ARM_LIST@24..256
+          L_CURLY@24..25 "{"
+          WHITESPACE@25..34 "\n        "
+          MATCH_ARM@34..74
+            ATTR@34..58
+              POUND@34..35 "#"
+              L_BRACK@35..36 "["
+              PATH@36..39
+                PATH_SEGMENT@36..39
+                  NAME_REF@36..39
+                    IDENT@36..39 "cfg"
+              TOKEN_TREE@39..57
+                L_PAREN@39..40 "("
+                IDENT@40..47 "feature"
+                WHITESPACE@47..48 " "
+                EQ@48..49 "="
+                WHITESPACE@49..50 " "
+                STRING@50..56 "\"some\""
+                R_PAREN@56..57 ")"
+              R_BRACK@57..58 "]"
+            WHITESPACE@58..67 "\n        "
+            WILDCARD_PAT@67..68
+              UNDERSCORE@67..68 "_"
+            WHITESPACE@68..69 " "
+            FAT_ARROW@69..71 "=>"
+            WHITESPACE@71..72 " "
+            TUPLE_EXPR@72..74
+              L_PAREN@72..73 "("
+              R_PAREN@73..74 ")"
+          COMMA@74..75 ","
+          WHITESPACE@75..84 "\n        "
+          MATCH_ARM@84..125
+            ATTR@84..109
+              POUND@84..85 "#"
+              L_BRACK@85..86 "["
+              PATH@86..89
+                PATH_SEGMENT@86..89
+                  NAME_REF@86..89
+                    IDENT@86..89 "cfg"
+              TOKEN_TREE@89..108
+                L_PAREN@89..90 "("
+                IDENT@90..97 "feature"
+                WHITESPACE@97..98 " "
+                EQ@98..99 "="
+                WHITESPACE@99..100 " "
+                STRING@100..107 "\"other\""
+                R_PAREN@107..108 ")"
+              R_BRACK@108..109 "]"
+            WHITESPACE@109..118 "\n        "
+            WILDCARD_PAT@118..119
+              UNDERSCORE@118..119 "_"
+            WHITESPACE@119..120 " "
+            FAT_ARROW@120..122 "=>"
+            WHITESPACE@122..123 " "
+            TUPLE_EXPR@123..125
+              L_PAREN@123..124 "("
+              R_PAREN@124..125 ")"
+          COMMA@125..126 ","
+          WHITESPACE@126..135 "\n        "
+          MATCH_ARM@135..249
+            ATTR@135..159
+              POUND@135..136 "#"
+              L_BRACK@136..137 "["
+              PATH@137..140
+                PATH_SEGMENT@137..140
+                  NAME_REF@137..140
+                    IDENT@137..140 "cfg"
+              TOKEN_TREE@140..158
+                L_PAREN@140..141 "("
+                IDENT@141..148 "feature"
+                WHITESPACE@148..149 " "
+                EQ@149..150 "="
+                WHITESPACE@150..151 " "
+                STRING@151..157 "\"many\""
+                R_PAREN@157..158 ")"
+              R_BRACK@158..159 "]"
+            WHITESPACE@159..168 "\n        "
+            ATTR@168..198
+              POUND@168..169 "#"
+              L_BRACK@169..170 "["
+              PATH@170..173
+                PATH_SEGMENT@170..173
+                  NAME_REF@170..173
+                    IDENT@170..173 "cfg"
+              TOKEN_TREE@173..197
+                L_PAREN@173..174 "("
+                IDENT@174..181 "feature"
+                WHITESPACE@181..182 " "
+                EQ@182..183 "="
+                WHITESPACE@183..184 " "
+                STRING@184..196 "\"attributes\""
+                R_PAREN@196..197 ")"
+              R_BRACK@197..198 "]"
+            WHITESPACE@198..207 "\n        "
+            ATTR@207..233
+              POUND@207..208 "#"
+              L_BRACK@208..209 "["
+              PATH@209..212
+                PATH_SEGMENT@209..212
+                  NAME_REF@209..212
+                    IDENT@209..212 "cfg"
+              TOKEN_TREE@212..232
+                L_PAREN@212..213 "("
+                IDENT@213..220 "feature"
+                WHITESPACE@220..221 " "
+                EQ@221..222 "="
+                WHITESPACE@222..223 " "
+                STRING@223..231 "\"before\""
+                R_PAREN@231..232 ")"
+              R_BRACK@232..233 "]"
+            WHITESPACE@233..242 "\n        "
+            WILDCARD_PAT@242..243
+              UNDERSCORE@242..243 "_"
+            WHITESPACE@243..244 " "
+            FAT_ARROW@244..246 "=>"
+            WHITESPACE@246..247 " "
+            TUPLE_EXPR@247..249
+              L_PAREN@247..248 "("
+              R_PAREN@248..249 ")"
+          COMMA@249..250 ","
+          WHITESPACE@250..255 "\n    "
+          R_CURLY@255..256 "}"
+      WHITESPACE@256..257 "\n"
+      R_CURLY@257..258 "}"
+  WHITESPACE@258..259 "\n"

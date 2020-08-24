@@ -3,14 +3,15 @@
 //! See https://github.com/matklad/cargo-xtask/
 
 pub mod not_bash;
+pub mod codegen;
+mod ast_src;
+
 pub mod install;
 pub mod release;
 pub mod dist;
 pub mod pre_commit;
 pub mod metrics;
-
-pub mod codegen;
-mod ast_src;
+pub mod pre_cache;
 
 use std::{
     env,
@@ -21,7 +22,7 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::{
     codegen::Mode,
-    not_bash::{fs2, pushd, pushenv, rm_rf},
+    not_bash::{pushd, pushenv},
 };
 
 pub use anyhow::{bail, Context as _, Result};
@@ -62,17 +63,6 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
     Ok(())
 }
 
-fn reformat(text: impl std::fmt::Display) -> Result<String> {
-    let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
-    ensure_rustfmt()?;
-    let stdout = run!(
-        "rustfmt --config-path {} --config fn_single_line=true", project_root().join("rustfmt.toml").display();
-        <text.to_string().as_bytes()
-    )?;
-    let preamble = "Generated file, do not edit by hand, see `xtask/src/codegen`";
-    Ok(format!("//! {}\n\n{}\n", preamble, stdout))
-}
-
 fn ensure_rustfmt() -> Result<()> {
     let out = run!("rustfmt --version")?;
     if !out.contains("stable") {
@@ -103,7 +93,7 @@ pub fn run_clippy() -> Result<()> {
 }
 
 pub fn run_fuzzer() -> Result<()> {
-    let _d = pushd("./crates/ra_syntax");
+    let _d = pushd("./crates/syntax");
     let _e = pushenv("RUSTUP_TOOLCHAIN", "nightly");
     if run!("cargo fuzz --help").is_err() {
         run!("cargo install cargo-fuzz")?;
@@ -116,42 +106,6 @@ pub fn run_fuzzer() -> Result<()> {
     }
 
     run!("cargo fuzz run parser")?;
-    Ok(())
-}
-
-/// Cleans the `./target` dir after the build such that only
-/// dependencies are cached on CI.
-pub fn run_pre_cache() -> Result<()> {
-    let slow_tests_cookie = Path::new("./target/.slow_tests_cookie");
-    if !slow_tests_cookie.exists() {
-        panic!("slow tests were skipped on CI!")
-    }
-    rm_rf(slow_tests_cookie)?;
-
-    for entry in Path::new("./target/debug").read_dir()? {
-        let entry = entry?;
-        if entry.file_type().map(|it| it.is_file()).ok() == Some(true) {
-            // Can't delete yourself on windows :-(
-            if !entry.path().ends_with("xtask.exe") {
-                rm_rf(&entry.path())?
-            }
-        }
-    }
-
-    fs2::remove_file("./target/.rustc_info.json")?;
-    let to_delete = ["ra_", "heavy_test", "xtask"];
-    for &dir in ["./target/debug/deps", "target/debug/.fingerprint"].iter() {
-        for entry in Path::new(dir).read_dir()? {
-            let entry = entry?;
-            if to_delete.iter().any(|&it| entry.path().display().to_string().contains(it)) {
-                // Can't delete yourself on windows :-(
-                if !entry.path().ends_with("xtask.exe") {
-                    rm_rf(&entry.path())?
-                }
-            }
-        }
-    }
-
     Ok(())
 }
 

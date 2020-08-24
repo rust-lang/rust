@@ -6,9 +6,9 @@ use std::path::Path;
 use anyhow::anyhow;
 use rustc_hash::FxHashSet;
 
+use base_db::SourceDatabaseExt;
 use hir::Crate;
-use ra_db::SourceDatabaseExt;
-use ra_ide::Severity;
+use ide::{DiagnosticsConfig, Severity};
 
 use crate::cli::{load_cargo::load_cargo, Result};
 
@@ -28,7 +28,7 @@ pub fn diagnostics(
     let mut work = Vec::new();
     let krates = Crate::all(db);
     for krate in krates {
-        let module = krate.root_module(db).expect("crate without root module");
+        let module = krate.root_module(db);
         let file_id = module.definition_source(db).file_id;
         let file_id = file_id.original_file(db);
         let source_root = db.file_source_root(file_id);
@@ -47,7 +47,8 @@ pub fn diagnostics(
                 String::from("unknown")
             };
             println!("processing crate: {}, module: {}", crate_name, _vfs.file_path(file_id));
-            for diagnostic in analysis.diagnostics(file_id, true).unwrap() {
+            for diagnostic in analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap()
+            {
                 if matches!(diagnostic.severity, Severity::Error) {
                     found_error = true;
                 }

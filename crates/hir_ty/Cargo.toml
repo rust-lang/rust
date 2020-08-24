@@ -1,0 +1,36 @@
+[package]
+name = "hir_ty"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+itertools = "0.9.0"
+arrayvec = "0.5.1"
+smallvec = "1.2.0"
+ena = "0.14.0"
+log = "0.4.8"
+rustc-hash = "1.1.0"
+scoped-tls = "1"
+chalk-solve = { version = "0.23.0" }
+chalk-ir = { version = "0.23.0" }
+chalk-recursive = { version = "0.23.0" }
+
+stdx = { path = "../stdx" }
+hir_def = { path = "../hir_def" }
+hir_expand = { path = "../hir_expand" }
+arena = { path = "../arena" }
+base_db = { path = "../base_db" }
+profile = { path = "../profile" }
+syntax = { path = "../syntax" }
+test_utils = { path = "../test_utils" }
+
+[dev-dependencies]
+expect-test = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "registry"] }
+tracing-tree = { version = "0.1.4" }

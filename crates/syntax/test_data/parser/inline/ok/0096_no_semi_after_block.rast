@@ -1,0 +1,123 @@
+SOURCE_FILE@0..167
+  FN@0..166
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..166
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      EXPR_STMT@15..25
+        IF_EXPR@15..25
+          IF_KW@15..17 "if"
+          WHITESPACE@17..18 " "
+          CONDITION@18..22
+            LITERAL@18..22
+              TRUE_KW@18..22 "true"
+          WHITESPACE@22..23 " "
+          BLOCK_EXPR@23..25
+            L_CURLY@23..24 "{"
+            R_CURLY@24..25 "}"
+      WHITESPACE@25..30 "\n    "
+      EXPR_STMT@30..37
+        LOOP_EXPR@30..37
+          LOOP_KW@30..34 "loop"
+          WHITESPACE@34..35 " "
+          BLOCK_EXPR@35..37
+            L_CURLY@35..36 "{"
+            R_CURLY@36..37 "}"
+      WHITESPACE@37..42 "\n    "
+      EXPR_STMT@42..53
+        MATCH_EXPR@42..53
+          MATCH_KW@42..47 "match"
+          WHITESPACE@47..48 " "
+          TUPLE_EXPR@48..50
+            L_PAREN@48..49 "("
+            R_PAREN@49..50 ")"
+          WHITESPACE@50..51 " "
+          MATCH_ARM_LIST@51..53
+            L_CURLY@51..52 "{"
+            R_CURLY@52..53 "}"
+      WHITESPACE@53..58 "\n    "
+      EXPR_STMT@58..71
+        WHILE_EXPR@58..71
+          WHILE_KW@58..63 "while"
+          WHITESPACE@63..64 " "
+          CONDITION@64..68
+            LITERAL@64..68
+              TRUE_KW@64..68 "true"
+          WHITESPACE@68..69 " "
+          BLOCK_EXPR@69..71
+            L_CURLY@69..70 "{"
+            R_CURLY@70..71 "}"
+      WHITESPACE@71..76 "\n    "
+      EXPR_STMT@76..90
+        FOR_EXPR@76..90
+          FOR_KW@76..79 "for"
+          WHITESPACE@79..80 " "
+          WILDCARD_PAT@80..81
+            UNDERSCORE@80..81 "_"
+          WHITESPACE@81..82 " "
+          IN_KW@82..84 "in"
+          WHITESPACE@84..85 " "
+          TUPLE_EXPR@85..87
+            L_PAREN@85..86 "("
+            R_PAREN@86..87 ")"
+          WHITESPACE@87..88 " "
+          BLOCK_EXPR@88..90
+            L_CURLY@88..89 "{"
+            R_CURLY@89..90 "}"
+      WHITESPACE@90..95 "\n    "
+      EXPR_STMT@95..97
+        BLOCK_EXPR@95..97
+          L_CURLY@95..96 "{"
+          R_CURLY@96..97 "}"
+      WHITESPACE@97..102 "\n    "
+      EXPR_STMT@102..104
+        BLOCK_EXPR@102..104
+          L_CURLY@102..103 "{"
+          R_CURLY@103..104 "}"
+      WHITESPACE@104..109 "\n    "
+      EXPR_STMT@109..152
+        MACRO_CALL@109..152
+          PATH@109..120
+            PATH_SEGMENT@109..120
+              NAME_REF@109..120
+                IDENT@109..120 "macro_rules"
+          BANG@120..121 "!"
+          WHITESPACE@121..122 " "
+          NAME@122..126
+            IDENT@122..126 "test"
+          WHITESPACE@126..127 " "
+          TOKEN_TREE@127..152
+            L_CURLY@127..128 "{"
+            WHITESPACE@128..138 "\n         "
+            TOKEN_TREE@138..140
+              L_PAREN@138..139 "("
+              R_PAREN@139..140 ")"
+            WHITESPACE@140..141 " "
+            EQ@141..142 "="
+            R_ANGLE@142..143 ">"
+            WHITESPACE@143..144 " "
+            TOKEN_TREE@144..146
+              L_CURLY@144..145 "{"
+              R_CURLY@145..146 "}"
+            WHITESPACE@146..151 "\n    "
+            R_CURLY@151..152 "}"
+      WHITESPACE@152..157 "\n    "
+      MACRO_CALL@157..164
+        PATH@157..161
+          PATH_SEGMENT@157..161
+            NAME_REF@157..161
+              IDENT@157..161 "test"
+        BANG@161..162 "!"
+        TOKEN_TREE@162..164
+          L_CURLY@162..163 "{"
+          R_CURLY@163..164 "}"
+      WHITESPACE@164..165 "\n"
+      R_CURLY@165..166 "}"
+  WHITESPACE@166..167 "\n"

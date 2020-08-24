@@ -1,0 +1,47 @@
+SOURCE_FILE@0..58
+  FN@0..57
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..57
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      MATCH_EXPR@15..55
+        MATCH_KW@15..20 "match"
+        WHITESPACE@20..21 " "
+        TUPLE_EXPR@21..23
+          L_PAREN@21..22 "("
+          R_PAREN@22..23 ")"
+        WHITESPACE@23..24 " "
+        MATCH_ARM_LIST@24..55
+          L_CURLY@24..25 "{"
+          WHITESPACE@25..34 "\n        "
+          MATCH_ARM@34..48
+            WILDCARD_PAT@34..35
+              UNDERSCORE@34..35 "_"
+            WHITESPACE@35..36 " "
+            MATCH_GUARD@36..42
+              IF_KW@36..38 "if"
+              WHITESPACE@38..39 " "
+              PATH_EXPR@39..42
+                PATH@39..42
+                  PATH_SEGMENT@39..42
+                    NAME_REF@39..42
+                      IDENT@39..42 "foo"
+            WHITESPACE@42..43 " "
+            FAT_ARROW@43..45 "=>"
+            WHITESPACE@45..46 " "
+            TUPLE_EXPR@46..48
+              L_PAREN@46..47 "("
+              R_PAREN@47..48 ")"
+          COMMA@48..49 ","
+          WHITESPACE@49..54 "\n    "
+          R_CURLY@54..55 "}"
+      WHITESPACE@55..56 "\n"
+      R_CURLY@56..57 "}"
+  WHITESPACE@57..58 "\n"

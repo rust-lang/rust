@@ -1,0 +1,97 @@
+SOURCE_FILE@0..105
+  FN@0..104
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..7
+      IDENT@3..7 "main"
+    PARAM_LIST@7..9
+      L_PAREN@7..8 "("
+      R_PAREN@8..9 ")"
+    WHITESPACE@9..10 " "
+    BLOCK_EXPR@10..104
+      L_CURLY@10..11 "{"
+      WHITESPACE@11..16 "\n    "
+      EXPR_STMT@16..50
+        CALL_EXPR@16..49
+          PATH_EXPR@16..20
+            PATH@16..20
+              PATH_SEGMENT@16..20
+                NAME_REF@16..20
+                  IDENT@16..20 "Some"
+          ARG_LIST@20..49
+            L_PAREN@20..21 "("
+            FOR_EXPR@21..48
+              FOR_KW@21..24 "for"
+              WHITESPACE@24..25 " "
+              WILDCARD_PAT@25..26
+                UNDERSCORE@25..26 "_"
+              WHITESPACE@26..27 " "
+              IN_KW@27..29 "in"
+              WHITESPACE@29..30 " "
+              METHOD_CALL_EXPR@30..45
+                ARRAY_EXPR@30..33
+                  L_BRACK@30..31 "["
+                  LITERAL@31..32
+                    INT_NUMBER@31..32 "1"
+                  R_BRACK@32..33 "]"
+                DOT@33..34 "."
+                NAME_REF@34..43
+                  IDENT@34..43 "into_iter"
+                ARG_LIST@43..45
+                  L_PAREN@43..44 "("
+                  R_PAREN@44..45 ")"
+              WHITESPACE@45..46 " "
+              BLOCK_EXPR@46..48
+                L_CURLY@46..47 "{"
+                R_CURLY@47..48 "}"
+            R_PAREN@48..49 ")"
+        SEMICOLON@49..50 ";"
+      WHITESPACE@50..55 "\n    "
+      EXPR_STMT@55..77
+        CALL_EXPR@55..76
+          PATH_EXPR@55..59
+            PATH@55..59
+              PATH_SEGMENT@55..59
+                NAME_REF@55..59
+                  IDENT@55..59 "Some"
+          ARG_LIST@59..76
+            L_PAREN@59..60 "("
+            LOOP_EXPR@60..75
+              LOOP_KW@60..64 "loop"
+              WHITESPACE@64..65 " "
+              BLOCK_EXPR@65..75
+                L_CURLY@65..66 "{"
+                WHITESPACE@66..67 " "
+                EXPR_STMT@67..73
+                  BREAK_EXPR@67..72
+                    BREAK_KW@67..72 "break"
+                  SEMICOLON@72..73 ";"
+                WHITESPACE@73..74 " "
+                R_CURLY@74..75 "}"
+            R_PAREN@75..76 ")"
+        SEMICOLON@76..77 ";"
+      WHITESPACE@77..82 "\n    "
+      EXPR_STMT@82..102
+        CALL_EXPR@82..101
+          PATH_EXPR@82..86
+            PATH@82..86
+              PATH_SEGMENT@82..86
+                NAME_REF@82..86
+                  IDENT@82..86 "Some"
+          ARG_LIST@86..101
+            L_PAREN@86..87 "("
+            WHILE_EXPR@87..100
+              WHILE_KW@87..92 "while"
+              WHITESPACE@92..93 " "
+              CONDITION@93..97
+                LITERAL@93..97
+                  TRUE_KW@93..97 "true"
+              WHITESPACE@97..98 " "
+              BLOCK_EXPR@98..100
+                L_CURLY@98..99 "{"
+                R_CURLY@99..100 "}"
+            R_PAREN@100..101 ")"
+        SEMICOLON@101..102 ";"
+      WHITESPACE@102..103 "\n"
+      R_CURLY@103..104 "}"
+  WHITESPACE@104..105 "\n"

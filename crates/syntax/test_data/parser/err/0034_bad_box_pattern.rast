@@ -1,0 +1,95 @@
+SOURCE_FILE@0..91
+  FN@0..89
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..7
+      IDENT@3..7 "main"
+    PARAM_LIST@7..9
+      L_PAREN@7..8 "("
+      R_PAREN@8..9 ")"
+    WHITESPACE@9..10 " "
+    BLOCK_EXPR@10..89
+      L_CURLY@10..11 "{"
+      WHITESPACE@11..16 "\n    "
+      LET_STMT@16..27
+        LET_KW@16..19 "let"
+        WHITESPACE@19..20 " "
+        IDENT_PAT@20..27
+          REF_KW@20..23 "ref"
+          WHITESPACE@23..24 " "
+          ERROR@24..27
+            BOX_KW@24..27 "box"
+      WHITESPACE@27..28 " "
+      EXPR_STMT@28..35
+        BIN_EXPR@28..34
+          PATH_EXPR@28..29
+            PATH@28..29
+              PATH_SEGMENT@28..29
+                NAME_REF@28..29
+                  IDENT@28..29 "i"
+          WHITESPACE@29..30 " "
+          EQ@30..31 "="
+          WHITESPACE@31..32 " "
+          TUPLE_EXPR@32..34
+            L_PAREN@32..33 "("
+            R_PAREN@33..34 ")"
+        SEMICOLON@34..35 ";"
+      WHITESPACE@35..40 "\n    "
+      LET_STMT@40..51
+        LET_KW@40..43 "let"
+        WHITESPACE@43..44 " "
+        IDENT_PAT@44..51
+          MUT_KW@44..47 "mut"
+          WHITESPACE@47..48 " "
+          ERROR@48..51
+            BOX_KW@48..51 "box"
+      WHITESPACE@51..52 " "
+      EXPR_STMT@52..59
+        BIN_EXPR@52..58
+          PATH_EXPR@52..53
+            PATH@52..53
+              PATH_SEGMENT@52..53
+                NAME_REF@52..53
+                  IDENT@52..53 "i"
+          WHITESPACE@53..54 " "
+          EQ@54..55 "="
+          WHITESPACE@55..56 " "
+          TUPLE_EXPR@56..58
+            L_PAREN@56..57 "("
+            R_PAREN@57..58 ")"
+        SEMICOLON@58..59 ";"
+      WHITESPACE@59..64 "\n    "
+      LET_STMT@64..79
+        LET_KW@64..67 "let"
+        WHITESPACE@67..68 " "
+        IDENT_PAT@68..79
+          REF_KW@68..71 "ref"
+          WHITESPACE@71..72 " "
+          MUT_KW@72..75 "mut"
+          WHITESPACE@75..76 " "
+          ERROR@76..79
+            BOX_KW@76..79 "box"
+      WHITESPACE@79..80 " "
+      EXPR_STMT@80..87
+        BIN_EXPR@80..86
+          PATH_EXPR@80..81
+            PATH@80..81
+              PATH_SEGMENT@80..81
+                NAME_REF@80..81
+                  IDENT@80..81 "i"
+          WHITESPACE@81..82 " "
+          EQ@82..83 "="
+          WHITESPACE@83..84 " "
+          TUPLE_EXPR@84..86
+            L_PAREN@84..85 "("
+            R_PAREN@85..86 ")"
+        SEMICOLON@86..87 ";"
+      WHITESPACE@87..88 "\n"
+      R_CURLY@88..89 "}"
+  WHITESPACE@89..91 "\n\n"
+error 24..24: expected a name
+error 27..27: expected SEMICOLON
+error 48..48: expected a name
+error 51..51: expected SEMICOLON
+error 76..76: expected a name
+error 79..79: expected SEMICOLON

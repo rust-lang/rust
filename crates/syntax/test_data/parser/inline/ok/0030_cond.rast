@@ -1,0 +1,202 @@
+SOURCE_FILE@0..197
+  FN@0..37
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..37
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..11 " "
+      IF_EXPR@11..35
+        IF_KW@11..13 "if"
+        WHITESPACE@13..14 " "
+        CONDITION@14..32
+          LET_KW@14..17 "let"
+          WHITESPACE@17..18 " "
+          TUPLE_STRUCT_PAT@18..25
+            PATH@18..22
+              PATH_SEGMENT@18..22
+                NAME_REF@18..22
+                  IDENT@18..22 "Some"
+            L_PAREN@22..23 "("
+            WILDCARD_PAT@23..24
+              UNDERSCORE@23..24 "_"
+            R_PAREN@24..25 ")"
+          WHITESPACE@25..26 " "
+          EQ@26..27 "="
+          WHITESPACE@27..28 " "
+          PATH_EXPR@28..32
+            PATH@28..32
+              PATH_SEGMENT@28..32
+                NAME_REF@28..32
+                  IDENT@28..32 "None"
+        WHITESPACE@32..33 " "
+        BLOCK_EXPR@33..35
+          L_CURLY@33..34 "{"
+          R_CURLY@34..35 "}"
+      WHITESPACE@35..36 " "
+      R_CURLY@36..37 "}"
+  WHITESPACE@37..38 "\n"
+  FN@38..196
+    FN_KW@38..40 "fn"
+    WHITESPACE@40..41 " "
+    NAME@41..44
+      IDENT@41..44 "bar"
+    PARAM_LIST@44..46
+      L_PAREN@44..45 "("
+      R_PAREN@45..46 ")"
+    WHITESPACE@46..47 " "
+    BLOCK_EXPR@47..196
+      L_CURLY@47..48 "{"
+      WHITESPACE@48..53 "\n    "
+      EXPR_STMT@53..87
+        IF_EXPR@53..87
+          IF_KW@53..55 "if"
+          WHITESPACE@55..56 " "
+          CONDITION@56..84
+            LET_KW@56..59 "let"
+            WHITESPACE@59..60 " "
+            OR_PAT@60..77
+              TUPLE_STRUCT_PAT@60..67
+                PATH@60..64
+                  PATH_SEGMENT@60..64
+                    NAME_REF@60..64
+                      IDENT@60..64 "Some"
+                L_PAREN@64..65 "("
+                WILDCARD_PAT@65..66
+                  UNDERSCORE@65..66 "_"
+                R_PAREN@66..67 ")"
+              WHITESPACE@67..68 " "
+              PIPE@68..69 "|"
+              WHITESPACE@69..70 " "
+              TUPLE_STRUCT_PAT@70..77
+                PATH@70..74
+                  PATH_SEGMENT@70..74
+                    NAME_REF@70..74
+                      IDENT@70..74 "Some"
+                L_PAREN@74..75 "("
+                WILDCARD_PAT@75..76
+                  UNDERSCORE@75..76 "_"
+                R_PAREN@76..77 ")"
+            WHITESPACE@77..78 " "
+            EQ@78..79 "="
+            WHITESPACE@79..80 " "
+            PATH_EXPR@80..84
+              PATH@80..84
+                PATH_SEGMENT@80..84
+                  NAME_REF@80..84
+                    IDENT@80..84 "None"
+          WHITESPACE@84..85 " "
+          BLOCK_EXPR@85..87
+            L_CURLY@85..86 "{"
+            R_CURLY@86..87 "}"
+      WHITESPACE@87..92 "\n    "
+      EXPR_STMT@92..118
+        IF_EXPR@92..118
+          IF_KW@92..94 "if"
+          WHITESPACE@94..95 " "
+          CONDITION@95..115
+            LET_KW@95..98 "let"
+            WHITESPACE@98..99 " "
+            PIPE@99..100 "|"
+            WHITESPACE@100..101 " "
+            TUPLE_STRUCT_PAT@101..108
+              PATH@101..105
+                PATH_SEGMENT@101..105
+                  NAME_REF@101..105
+                    IDENT@101..105 "Some"
+              L_PAREN@105..106 "("
+              WILDCARD_PAT@106..107
+                UNDERSCORE@106..107 "_"
+              R_PAREN@107..108 ")"
+            WHITESPACE@108..109 " "
+            EQ@109..110 "="
+            WHITESPACE@110..111 " "
+            PATH_EXPR@111..115
+              PATH@111..115
+                PATH_SEGMENT@111..115
+                  NAME_REF@111..115
+                    IDENT@111..115 "None"
+          WHITESPACE@115..116 " "
+          BLOCK_EXPR@116..118
+            L_CURLY@116..117 "{"
+            R_CURLY@117..118 "}"
+      WHITESPACE@118..123 "\n    "
+      EXPR_STMT@123..160
+        WHILE_EXPR@123..160
+          WHILE_KW@123..128 "while"
+          WHITESPACE@128..129 " "
+          CONDITION@129..157
+            LET_KW@129..132 "let"
+            WHITESPACE@132..133 " "
+            OR_PAT@133..150
+              TUPLE_STRUCT_PAT@133..140
+                PATH@133..137
+                  PATH_SEGMENT@133..137
+                    NAME_REF@133..137
+                      IDENT@133..137 "Some"
+                L_PAREN@137..138 "("
+                WILDCARD_PAT@138..139
+                  UNDERSCORE@138..139 "_"
+                R_PAREN@139..140 ")"
+              WHITESPACE@140..141 " "
+              PIPE@141..142 "|"
+              WHITESPACE@142..143 " "
+              TUPLE_STRUCT_PAT@143..150
+                PATH@143..147
+                  PATH_SEGMENT@143..147
+                    NAME_REF@143..147
+                      IDENT@143..147 "Some"
+                L_PAREN@147..148 "("
+                WILDCARD_PAT@148..149
+                  UNDERSCORE@148..149 "_"
+                R_PAREN@149..150 ")"
+            WHITESPACE@150..151 " "
+            EQ@151..152 "="
+            WHITESPACE@152..153 " "
+            PATH_EXPR@153..157
+              PATH@153..157
+                PATH_SEGMENT@153..157
+                  NAME_REF@153..157
+                    IDENT@153..157 "None"
+          WHITESPACE@157..158 " "
+          BLOCK_EXPR@158..160
+            L_CURLY@158..159 "{"
+            R_CURLY@159..160 "}"
+      WHITESPACE@160..165 "\n    "
+      WHILE_EXPR@165..194
+        WHILE_KW@165..170 "while"
+        WHITESPACE@170..171 " "
+        CONDITION@171..191
+          LET_KW@171..174 "let"
+          WHITESPACE@174..175 " "
+          PIPE@175..176 "|"
+          WHITESPACE@176..177 " "
+          TUPLE_STRUCT_PAT@177..184
+            PATH@177..181
+              PATH_SEGMENT@177..181
+                NAME_REF@177..181
+                  IDENT@177..181 "Some"
+            L_PAREN@181..182 "("
+            WILDCARD_PAT@182..183
+              UNDERSCORE@182..183 "_"
+            R_PAREN@183..184 ")"
+          WHITESPACE@184..185 " "
+          EQ@185..186 "="
+          WHITESPACE@186..187 " "
+          PATH_EXPR@187..191
+            PATH@187..191
+              PATH_SEGMENT@187..191
+                NAME_REF@187..191
+                  IDENT@187..191 "None"
+        WHITESPACE@191..192 " "
+        BLOCK_EXPR@192..194
+          L_CURLY@192..193 "{"
+          R_CURLY@193..194 "}"
+      WHITESPACE@194..195 "\n"
+      R_CURLY@195..196 "}"
+  WHITESPACE@196..197 "\n"

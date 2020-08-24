@@ -1,0 +1,21 @@
+[package]
+name = "mbe"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+rustc-hash = "1.1.0"
+smallvec = "1.2.0"
+log = "0.4.8"
+
+syntax = { path = "../syntax" }
+parser = { path = "../parser" }
+tt = { path = "../tt" }
+
+[dev-dependencies]
+test_utils = { path = "../test_utils" }

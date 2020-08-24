@@ -1,0 +1,56 @@
+SOURCE_FILE@0..50
+  FN@0..17
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..14
+      L_PAREN@6..7 "("
+      PARAM@7..13
+        IDENT_PAT@7..8
+          NAME@7..8
+            IDENT@7..8 "x"
+        COLON@8..9 ":"
+        WHITESPACE@9..10 " "
+        PATH_TYPE@10..13
+          PATH@10..13
+            PATH_SEGMENT@10..13
+              NAME_REF@10..13
+                IDENT@10..13 "i32"
+      R_PAREN@13..14 ")"
+    WHITESPACE@14..15 " "
+    BLOCK_EXPR@15..17
+      L_CURLY@15..16 "{"
+      R_CURLY@16..17 "}"
+  WHITESPACE@17..19 "\n\n"
+  FN@19..50
+    FN_KW@19..21 "fn"
+    WHITESPACE@21..22 " "
+    NAME@22..26
+      IDENT@22..26 "main"
+    PARAM_LIST@26..28
+      L_PAREN@26..27 "("
+      R_PAREN@27..28 ")"
+    WHITESPACE@28..29 " "
+    BLOCK_EXPR@29..50
+      L_CURLY@29..30 "{"
+      WHITESPACE@30..35 "\n    "
+      EXPR_STMT@35..48
+        CALL_EXPR@35..47
+          PATH_EXPR@35..38
+            PATH@35..38
+              PATH_SEGMENT@35..38
+                NAME_REF@35..38
+                  IDENT@35..38 "foo"
+          ARG_LIST@38..47
+            L_PAREN@38..39 "("
+            LOOP_EXPR@39..46
+              LOOP_KW@39..43 "loop"
+              WHITESPACE@43..44 " "
+              BLOCK_EXPR@44..46
+                L_CURLY@44..45 "{"
+                R_CURLY@45..46 "}"
+            R_PAREN@46..47 ")"
+        SEMICOLON@47..48 ";"
+      WHITESPACE@48..49 "\n"
+      R_CURLY@49..50 "}"

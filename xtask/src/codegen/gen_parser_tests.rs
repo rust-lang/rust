@@ -8,12 +8,12 @@ use std::{
 };
 
 use crate::{
-    codegen::{self, extract_comment_blocks, update, Mode},
+    codegen::{extract_comment_blocks, update, Mode},
     project_root, Result,
 };
 
 pub fn generate_parser_tests(mode: Mode) -> Result<()> {
-    let tests = tests_from_dir(&project_root().join(Path::new(codegen::GRAMMAR_DIR)))?;
+    let tests = tests_from_dir(&project_root().join(Path::new("crates/parser/src/grammar")))?;
     fn install_tests(tests: &HashMap<String, Test>, into: &str, mode: Mode) -> Result<()> {
         let tests_dir = project_root().join(into);
         if !tests_dir.is_dir() {
@@ -39,8 +39,8 @@ pub fn generate_parser_tests(mode: Mode) -> Result<()> {
         }
         Ok(())
     }
-    install_tests(&tests.ok, codegen::OK_INLINE_TESTS_DIR, mode)?;
-    install_tests(&tests.err, codegen::ERR_INLINE_TESTS_DIR, mode)
+    install_tests(&tests.ok, "crates/syntax/test_data/parser/inline/ok", mode)?;
+    install_tests(&tests.err, "crates/syntax/test_data/parser/inline/err", mode)
 }
 
 #[derive(Debug)]

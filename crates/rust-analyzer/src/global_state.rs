@@ -5,13 +5,13 @@
 
 use std::{sync::Arc, time::Instant};
 
+use base_db::{CrateId, VfsPath};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use lsp_types::Url;
-use parking_lot::RwLock;
-use ra_db::{CrateId, VfsPath};
-use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
-use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
+use ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
+use lsp_types::{SemanticTokens, Url};
+use parking_lot::{Mutex, RwLock};
+use project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -27,7 +27,6 @@ use crate::{
     to_proto::url_from_abs_path,
     Result,
 };
-use ra_prof::profile;
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub(crate) enum Status {
@@ -71,7 +70,9 @@ pub(crate) struct GlobalState {
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: FxHashMap<VfsPath, DocumentData>,
+    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
+    pub(crate) shutdown_requested: bool,
     pub(crate) status: Status,
     pub(crate) source_root_config: SourceRootConfig,
     pub(crate) proc_macro_client: ProcMacroClient,
@@ -86,6 +87,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) check_fixes: CheckFixes,
     pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
     mem_docs: FxHashMap<VfsPath, DocumentData>,
+    pub semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
 }
@@ -120,7 +122,9 @@ impl GlobalState {
             analysis_host,
             diagnostics: Default::default(),
             mem_docs: FxHashMap::default(),
+            semantic_tokens_cache: Arc::new(Default::default()),
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
+            shutdown_requested: false,
             status: Status::default(),
             source_root_config: SourceRootConfig::default(),
             proc_macro_client: ProcMacroClient::dummy(),
@@ -130,7 +134,7 @@ impl GlobalState {
     }
 
     pub(crate) fn process_changes(&mut self) -> bool {
-        let _p = profile("GlobalState::process_changes");
+        let _p = profile::span("GlobalState::process_changes");
         let mut fs_changes = Vec::new();
         let mut has_fs_changes = false;
 
@@ -186,6 +190,7 @@ impl GlobalState {
             latest_requests: Arc::clone(&self.latest_requests),
             check_fixes: Arc::clone(&self.diagnostics.check_fixes),
             mem_docs: self.mem_docs.clone(),
+            semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
         }
     }
 

@@ -1,0 +1,319 @@
+SOURCE_FILE@0..240
+  FN@0..53
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "f"
+    GENERIC_PARAM_LIST@4..48
+      L_ANGLE@4..5 "<"
+      TYPE_PARAM@5..47
+        NAME@5..6
+          IDENT@5..6 "T"
+        COLON@6..7 ":"
+        WHITESPACE@7..8 " "
+        TYPE_BOUND_LIST@8..47
+          TYPE_BOUND@8..14
+            L_PAREN@8..9 "("
+            PATH_TYPE@9..13
+              PATH@9..13
+                PATH_SEGMENT@9..13
+                  NAME_REF@9..13
+                    IDENT@9..13 "Copy"
+            R_PAREN@13..14 ")"
+          WHITESPACE@14..15 " "
+          PLUS@15..16 "+"
+          WHITESPACE@16..17 " "
+          TYPE_BOUND@17..25
+            L_PAREN@17..18 "("
+            QUESTION@18..19 "?"
+            PATH_TYPE@19..24
+              PATH@19..24
+                PATH_SEGMENT@19..24
+                  NAME_REF@19..24
+                    IDENT@19..24 "Sized"
+            R_PAREN@24..25 ")"
+          WHITESPACE@25..26 " "
+          PLUS@26..27 "+"
+          WHITESPACE@27..28 " "
+          TYPE_BOUND@28..47
+            L_PAREN@28..29 "("
+            FOR_TYPE@29..46
+              FOR_KW@29..32 "for"
+              GENERIC_PARAM_LIST@32..36
+                L_ANGLE@32..33 "<"
+                LIFETIME_PARAM@33..35
+                  LIFETIME@33..35 "\'a"
+                R_ANGLE@35..36 ">"
+              WHITESPACE@36..37 " "
+              PATH_TYPE@37..46
+                PATH@37..46
+                  PATH_SEGMENT@37..46
+                    NAME_REF@37..42
+                      IDENT@37..42 "Trait"
+                    GENERIC_ARG_LIST@42..46
+                      L_ANGLE@42..43 "<"
+                      LIFETIME_ARG@43..45
+                        LIFETIME@43..45 "\'a"
+                      R_ANGLE@45..46 ">"
+            R_PAREN@46..47 ")"
+      R_ANGLE@47..48 ">"
+    PARAM_LIST@48..50
+      L_PAREN@48..49 "("
+      R_PAREN@49..50 ")"
+    WHITESPACE@50..51 " "
+    BLOCK_EXPR@51..53
+      L_CURLY@51..52 "{"
+      R_CURLY@52..53 "}"
+  WHITESPACE@53..55 "\n\n"
+  FN@55..239
+    FN_KW@55..57 "fn"
+    WHITESPACE@57..58 " "
+    NAME@58..62
+      IDENT@58..62 "main"
+    PARAM_LIST@62..64
+      L_PAREN@62..63 "("
+      R_PAREN@63..64 ")"
+    WHITESPACE@64..65 " "
+    BLOCK_EXPR@65..239
+      L_CURLY@65..66 "{"
+      WHITESPACE@66..71 "\n    "
+      LET_STMT@71..121
+        LET_KW@71..74 "let"
+        WHITESPACE@74..75 " "
+        WILDCARD_PAT@75..76
+          UNDERSCORE@75..76 "_"
+        COLON@76..77 ":"
+        WHITESPACE@77..78 " "
+        DYN_TRAIT_TYPE@78..121
+          TYPE_BOUND_LIST@78..121
+            TYPE_BOUND@78..88
+              PATH_TYPE@78..88
+                PATH@78..88
+                  PATH_SEGMENT@78..88
+                    NAME_REF@78..81
+                      IDENT@78..81 "Box"
+                    GENERIC_ARG_LIST@81..88
+                      L_ANGLE@81..82 "<"
+                      TYPE_ARG@82..88
+                        PAREN_TYPE@82..88
+                          L_PAREN@82..83 "("
+                          PATH_TYPE@83..87
+                            PATH@83..87
+                              PATH_SEGMENT@83..87
+                                NAME_REF@83..87
+                                  IDENT@83..87 "Copy"
+                          R_PAREN@87..88 ")"
+            WHITESPACE@88..89 " "
+            PLUS@89..90 "+"
+            WHITESPACE@90..91 " "
+            TYPE_BOUND@91..99
+              L_PAREN@91..92 "("
+              QUESTION@92..93 "?"
+              PATH_TYPE@93..98
+                PATH@93..98
+                  PATH_SEGMENT@93..98
+                    NAME_REF@93..98
+                      IDENT@93..98 "Sized"
+              R_PAREN@98..99 ")"
+            WHITESPACE@99..100 " "
+            PLUS@100..101 "+"
+            WHITESPACE@101..102 " "
+            TYPE_BOUND@102..121
+              L_PAREN@102..103 "("
+              FOR_TYPE@103..120
+                FOR_KW@103..106 "for"
+                GENERIC_PARAM_LIST@106..110
+                  L_ANGLE@106..107 "<"
+                  LIFETIME_PARAM@107..109
+                    LIFETIME@107..109 "\'a"
+                  R_ANGLE@109..110 ">"
+                WHITESPACE@110..111 " "
+                PATH_TYPE@111..120
+                  PATH@111..120
+                    PATH_SEGMENT@111..120
+                      NAME_REF@111..116
+                        IDENT@111..116 "Trait"
+                      GENERIC_ARG_LIST@116..120
+                        L_ANGLE@116..117 "<"
+                        LIFETIME_ARG@117..119
+                          LIFETIME@117..119 "\'a"
+                        R_ANGLE@119..120 ">"
+              R_PAREN@120..121 ")"
+      EXPR_STMT@121..123
+        ERROR@121..122
+          R_ANGLE@121..122 ">"
+        SEMICOLON@122..123 ";"
+      WHITESPACE@123..128 "\n    "
+      LET_STMT@128..141
+        LET_KW@128..131 "let"
+        WHITESPACE@131..132 " "
+        WILDCARD_PAT@132..133
+          UNDERSCORE@132..133 "_"
+        COLON@133..134 ":"
+        WHITESPACE@134..135 " "
+        PATH_TYPE@135..141
+          PATH@135..141
+            PATH_SEGMENT@135..141
+              NAME_REF@135..138
+                IDENT@135..138 "Box"
+              GENERIC_ARG_LIST@138..141
+                L_ANGLE@138..139 "<"
+                TYPE_ARG@139..141
+                  PAREN_TYPE@139..141
+                    L_PAREN@139..140 "("
+                    ERROR@140..141
+                      QUESTION@140..141 "?"
+      EXPR_STMT@141..146
+        PATH_EXPR@141..146
+          PATH@141..146
+            PATH_SEGMENT@141..146
+              NAME_REF@141..146
+                IDENT@141..146 "Sized"
+      EXPR_STMT@146..147
+        ERROR@146..147
+          R_PAREN@146..147 ")"
+      WHITESPACE@147..148 " "
+      EXPR_STMT@148..149
+        ERROR@148..149
+          PLUS@148..149 "+"
+      WHITESPACE@149..150 " "
+      EXPR_STMT@150..180
+        TUPLE_EXPR@150..180
+          L_PAREN@150..151 "("
+          FOR_EXPR@151..180
+            FOR_KW@151..154 "for"
+            PATH_PAT@154..158
+              PATH@154..158
+                PATH_SEGMENT@154..158
+                  L_ANGLE@154..155 "<"
+                  ERROR@155..157
+                    LIFETIME@155..157 "\'a"
+                  R_ANGLE@157..158 ">"
+            WHITESPACE@158..159 " "
+            BIN_EXPR@159..180
+              BIN_EXPR@159..178
+                BIN_EXPR@159..169
+                  BIN_EXPR@159..167
+                    PATH_EXPR@159..164
+                      PATH@159..164
+                        PATH_SEGMENT@159..164
+                          NAME_REF@159..164
+                            IDENT@159..164 "Trait"
+                    L_ANGLE@164..165 "<"
+                    ERROR@165..167
+                      LIFETIME@165..167 "\'a"
+                  R_ANGLE@167..168 ">"
+                  ERROR@168..169
+                    R_PAREN@168..169 ")"
+                WHITESPACE@169..170 " "
+                PLUS@170..171 "+"
+                WHITESPACE@171..172 " "
+                PAREN_EXPR@172..178
+                  L_PAREN@172..173 "("
+                  PATH_EXPR@173..177
+                    PATH@173..177
+                      PATH_SEGMENT@173..177
+                        NAME_REF@173..177
+                          IDENT@173..177 "Copy"
+                  R_PAREN@177..178 ")"
+              R_ANGLE@178..179 ">"
+              ERROR@179..180
+                SEMICOLON@179..180 ";"
+      WHITESPACE@180..185 "\n    "
+      LET_STMT@185..235
+        LET_KW@185..188 "let"
+        WHITESPACE@188..189 " "
+        WILDCARD_PAT@189..190
+          UNDERSCORE@189..190 "_"
+        COLON@190..191 ":"
+        WHITESPACE@191..192 " "
+        DYN_TRAIT_TYPE@192..235
+          TYPE_BOUND_LIST@192..235
+            TYPE_BOUND@192..215
+              PATH_TYPE@192..215
+                PATH@192..215
+                  PATH_SEGMENT@192..215
+                    NAME_REF@192..195
+                      IDENT@192..195 "Box"
+                    GENERIC_ARG_LIST@195..215
+                      L_ANGLE@195..196 "<"
+                      TYPE_ARG@196..215
+                        PAREN_TYPE@196..215
+                          L_PAREN@196..197 "("
+                          FOR_TYPE@197..214
+                            FOR_KW@197..200 "for"
+                            GENERIC_PARAM_LIST@200..204
+                              L_ANGLE@200..201 "<"
+                              LIFETIME_PARAM@201..203
+                                LIFETIME@201..203 "\'a"
+                              R_ANGLE@203..204 ">"
+                            WHITESPACE@204..205 " "
+                            PATH_TYPE@205..214
+                              PATH@205..214
+                                PATH_SEGMENT@205..214
+                                  NAME_REF@205..210
+                                    IDENT@205..210 "Trait"
+                                  GENERIC_ARG_LIST@210..214
+                                    L_ANGLE@210..211 "<"
+                                    LIFETIME_ARG@211..213
+                                      LIFETIME@211..213 "\'a"
+                                    R_ANGLE@213..214 ">"
+                          R_PAREN@214..215 ")"
+            WHITESPACE@215..216 " "
+            PLUS@216..217 "+"
+            WHITESPACE@217..218 " "
+            TYPE_BOUND@218..224
+              L_PAREN@218..219 "("
+              PATH_TYPE@219..223
+                PATH@219..223
+                  PATH_SEGMENT@219..223
+                    NAME_REF@219..223
+                      IDENT@219..223 "Copy"
+              R_PAREN@223..224 ")"
+            WHITESPACE@224..225 " "
+            PLUS@225..226 "+"
+            WHITESPACE@226..227 " "
+            TYPE_BOUND@227..235
+              L_PAREN@227..228 "("
+              QUESTION@228..229 "?"
+              PATH_TYPE@229..234
+                PATH@229..234
+                  PATH_SEGMENT@229..234
+                    NAME_REF@229..234
+                      IDENT@229..234 "Sized"
+              R_PAREN@234..235 ")"
+      EXPR_STMT@235..237
+        ERROR@235..236
+          R_ANGLE@235..236 ">"
+        SEMICOLON@236..237 ";"
+      WHITESPACE@237..238 "\n"
+      R_CURLY@238..239 "}"
+  WHITESPACE@239..240 "\n"
+error 88..88: expected COMMA
+error 88..88: expected R_ANGLE
+error 121..121: expected SEMICOLON
+error 121..121: expected expression
+error 140..140: expected type
+error 141..141: expected R_PAREN
+error 141..141: expected COMMA
+error 141..141: expected R_ANGLE
+error 141..141: expected SEMICOLON
+error 146..146: expected SEMICOLON
+error 146..146: expected expression
+error 147..147: expected SEMICOLON
+error 148..148: expected expression
+error 149..149: expected SEMICOLON
+error 155..155: expected type
+error 158..158: expected IN_KW
+error 165..165: expected expression
+error 168..168: expected expression
+error 179..179: expected expression
+error 180..180: expected a block
+error 180..180: expected COMMA
+error 180..180: expected expression
+error 180..180: expected R_PAREN
+error 180..180: expected SEMICOLON
+error 215..215: expected COMMA
+error 215..215: expected R_ANGLE
+error 235..235: expected SEMICOLON
+error 235..235: expected expression

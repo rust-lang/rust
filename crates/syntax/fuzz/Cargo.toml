@@ -1,0 +1,27 @@
+
+[package]
+name = "syntax-fuzz"
+version = "0.0.1"
+authors = ["rust-analyzer developers"]
+publish = false
+edition = "2018"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+syntax = { path = ".." }
+text_edit = { path = "../../text_edit" }
+libfuzzer-sys = { git = "https://github.com/rust-fuzz/libfuzzer-sys.git" }
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "parser"
+path = "fuzz_targets/parser.rs"
+
+[[bin]]
+name = "reparse"
+path = "fuzz_targets/reparse.rs"

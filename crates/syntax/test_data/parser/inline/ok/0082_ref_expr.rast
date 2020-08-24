@@ -1,0 +1,138 @@
+SOURCE_FILE@0..200
+  FN@0..199
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..199
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      COMMENT@15..36 "// reference operator"
+      WHITESPACE@36..41 "\n    "
+      LET_STMT@41..52
+        LET_KW@41..44 "let"
+        WHITESPACE@44..45 " "
+        WILDCARD_PAT@45..46
+          UNDERSCORE@45..46 "_"
+        WHITESPACE@46..47 " "
+        EQ@47..48 "="
+        WHITESPACE@48..49 " "
+        REF_EXPR@49..51
+          AMP@49..50 "&"
+          LITERAL@50..51
+            INT_NUMBER@50..51 "1"
+        SEMICOLON@51..52 ";"
+      WHITESPACE@52..57 "\n    "
+      LET_STMT@57..75
+        LET_KW@57..60 "let"
+        WHITESPACE@60..61 " "
+        WILDCARD_PAT@61..62
+          UNDERSCORE@61..62 "_"
+        WHITESPACE@62..63 " "
+        EQ@63..64 "="
+        WHITESPACE@64..65 " "
+        REF_EXPR@65..74
+          AMP@65..66 "&"
+          MUT_KW@66..69 "mut"
+          WHITESPACE@69..70 " "
+          REF_EXPR@70..74
+            AMP@70..71 "&"
+            CALL_EXPR@71..74
+              PATH_EXPR@71..72
+                PATH@71..72
+                  PATH_SEGMENT@71..72
+                    NAME_REF@71..72
+                      IDENT@71..72 "f"
+              ARG_LIST@72..74
+                L_PAREN@72..73 "("
+                R_PAREN@73..74 ")"
+        SEMICOLON@74..75 ";"
+      WHITESPACE@75..80 "\n    "
+      LET_STMT@80..93
+        LET_KW@80..83 "let"
+        WHITESPACE@83..84 " "
+        WILDCARD_PAT@84..85
+          UNDERSCORE@84..85 "_"
+        WHITESPACE@85..86 " "
+        EQ@86..87 "="
+        WHITESPACE@87..88 " "
+        REF_EXPR@88..92
+          AMP@88..89 "&"
+          PATH_EXPR@89..92
+            PATH@89..92
+              PATH_SEGMENT@89..92
+                NAME_REF@89..92
+                  IDENT@89..92 "raw"
+        SEMICOLON@92..93 ";"
+      WHITESPACE@93..98 "\n    "
+      LET_STMT@98..113
+        LET_KW@98..101 "let"
+        WHITESPACE@101..102 " "
+        WILDCARD_PAT@102..103
+          UNDERSCORE@102..103 "_"
+        WHITESPACE@103..104 " "
+        EQ@104..105 "="
+        WHITESPACE@105..106 " "
+        REF_EXPR@106..112
+          AMP@106..107 "&"
+          FIELD_EXPR@107..112
+            PATH_EXPR@107..110
+              PATH@107..110
+                PATH_SEGMENT@107..110
+                  NAME_REF@107..110
+                    IDENT@107..110 "raw"
+            DOT@110..111 "."
+            NAME_REF@111..112
+              INT_NUMBER@111..112 "0"
+        SEMICOLON@112..113 ";"
+      WHITESPACE@113..118 "\n    "
+      COMMENT@118..143 "// raw reference oper ..."
+      WHITESPACE@143..148 "\n    "
+      LET_STMT@148..169
+        LET_KW@148..151 "let"
+        WHITESPACE@151..152 " "
+        WILDCARD_PAT@152..153
+          UNDERSCORE@152..153 "_"
+        WHITESPACE@153..154 " "
+        EQ@154..155 "="
+        WHITESPACE@155..156 " "
+        REF_EXPR@156..168
+          AMP@156..157 "&"
+          RAW_KW@157..160 "raw"
+          WHITESPACE@160..161 " "
+          MUT_KW@161..164 "mut"
+          WHITESPACE@164..165 " "
+          PATH_EXPR@165..168
+            PATH@165..168
+              PATH_SEGMENT@165..168
+                NAME_REF@165..168
+                  IDENT@165..168 "foo"
+        SEMICOLON@168..169 ";"
+      WHITESPACE@169..174 "\n    "
+      LET_STMT@174..197
+        LET_KW@174..177 "let"
+        WHITESPACE@177..178 " "
+        WILDCARD_PAT@178..179
+          UNDERSCORE@178..179 "_"
+        WHITESPACE@179..180 " "
+        EQ@180..181 "="
+        WHITESPACE@181..182 " "
+        REF_EXPR@182..196
+          AMP@182..183 "&"
+          RAW_KW@183..186 "raw"
+          WHITESPACE@186..187 " "
+          CONST_KW@187..192 "const"
+          WHITESPACE@192..193 " "
+          PATH_EXPR@193..196
+            PATH@193..196
+              PATH_SEGMENT@193..196
+                NAME_REF@193..196
+                  IDENT@193..196 "foo"
+        SEMICOLON@196..197 ";"
+      WHITESPACE@197..198 "\n"
+      R_CURLY@198..199 "}"
+  WHITESPACE@199..200 "\n"

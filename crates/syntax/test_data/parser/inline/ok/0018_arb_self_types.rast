@@ -1,0 +1,72 @@
+SOURCE_FILE@0..69
+  IMPL@0..68
+    IMPL_KW@0..4 "impl"
+    WHITESPACE@4..5 " "
+    PATH_TYPE@5..6
+      PATH@5..6
+        PATH_SEGMENT@5..6
+          NAME_REF@5..6
+            IDENT@5..6 "S"
+    WHITESPACE@6..7 " "
+    ASSOC_ITEM_LIST@7..68
+      L_CURLY@7..8 "{"
+      WHITESPACE@8..13 "\n    "
+      FN@13..33
+        FN_KW@13..15 "fn"
+        WHITESPACE@15..16 " "
+        NAME@16..17
+          IDENT@16..17 "a"
+        PARAM_LIST@17..30
+          L_PAREN@17..18 "("
+          SELF_PARAM@18..29
+            SELF_KW@18..22 "self"
+            COLON@22..23 ":"
+            WHITESPACE@23..24 " "
+            REF_TYPE@24..29
+              AMP@24..25 "&"
+              PATH_TYPE@25..29
+                PATH@25..29
+                  PATH_SEGMENT@25..29
+                    NAME_REF@25..29
+                      IDENT@25..29 "Self"
+          R_PAREN@29..30 ")"
+        WHITESPACE@30..31 " "
+        BLOCK_EXPR@31..33
+          L_CURLY@31..32 "{"
+          R_CURLY@32..33 "}"
+      WHITESPACE@33..38 "\n    "
+      FN@38..66
+        FN_KW@38..40 "fn"
+        WHITESPACE@40..41 " "
+        NAME@41..42
+          IDENT@41..42 "b"
+        PARAM_LIST@42..63
+          L_PAREN@42..43 "("
+          SELF_PARAM@43..62
+            MUT_KW@43..46 "mut"
+            WHITESPACE@46..47 " "
+            SELF_KW@47..51 "self"
+            COLON@51..52 ":"
+            WHITESPACE@52..53 " "
+            PATH_TYPE@53..62
+              PATH@53..62
+                PATH_SEGMENT@53..62
+                  NAME_REF@53..56
+                    IDENT@53..56 "Box"
+                  GENERIC_ARG_LIST@56..62
+                    L_ANGLE@56..57 "<"
+                    TYPE_ARG@57..61
+                      PATH_TYPE@57..61
+                        PATH@57..61
+                          PATH_SEGMENT@57..61
+                            NAME_REF@57..61
+                              IDENT@57..61 "Self"
+                    R_ANGLE@61..62 ">"
+          R_PAREN@62..63 ")"
+        WHITESPACE@63..64 " "
+        BLOCK_EXPR@64..66
+          L_CURLY@64..65 "{"
+          R_CURLY@65..66 "}"
+      WHITESPACE@66..67 "\n"
+      R_CURLY@67..68 "}"
+  WHITESPACE@68..69 "\n"

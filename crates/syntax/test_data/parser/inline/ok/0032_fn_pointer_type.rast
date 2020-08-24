@@ -1,0 +1,98 @@
+SOURCE_FILE@0..113
+  TYPE_ALIAS@0..14
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "A"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    FN_PTR_TYPE@9..13
+      FN_KW@9..11 "fn"
+      PARAM_LIST@11..13
+        L_PAREN@11..12 "("
+        R_PAREN@12..13 ")"
+    SEMICOLON@13..14 ";"
+  WHITESPACE@14..15 "\n"
+  TYPE_ALIAS@15..36
+    TYPE_KW@15..19 "type"
+    WHITESPACE@19..20 " "
+    NAME@20..21
+      IDENT@20..21 "B"
+    WHITESPACE@21..22 " "
+    EQ@22..23 "="
+    WHITESPACE@23..24 " "
+    FN_PTR_TYPE@24..35
+      UNSAFE_KW@24..30 "unsafe"
+      WHITESPACE@30..31 " "
+      FN_KW@31..33 "fn"
+      PARAM_LIST@33..35
+        L_PAREN@33..34 "("
+        R_PAREN@34..35 ")"
+    SEMICOLON@35..36 ";"
+  WHITESPACE@36..37 "\n"
+  TYPE_ALIAS@37..69
+    TYPE_KW@37..41 "type"
+    WHITESPACE@41..42 " "
+    NAME@42..43
+      IDENT@42..43 "C"
+    WHITESPACE@43..44 " "
+    EQ@44..45 "="
+    WHITESPACE@45..46 " "
+    FN_PTR_TYPE@46..68
+      UNSAFE_KW@46..52 "unsafe"
+      WHITESPACE@52..53 " "
+      ABI@53..63
+        EXTERN_KW@53..59 "extern"
+        WHITESPACE@59..60 " "
+        STRING@60..63 "\"C\""
+      WHITESPACE@63..64 " "
+      FN_KW@64..66 "fn"
+      PARAM_LIST@66..68
+        L_PAREN@66..67 "("
+        R_PAREN@67..68 ")"
+    SEMICOLON@68..69 ";"
+  WHITESPACE@69..70 "\n"
+  TYPE_ALIAS@70..112
+    TYPE_KW@70..74 "type"
+    WHITESPACE@74..75 " "
+    NAME@75..76
+      IDENT@75..76 "D"
+    WHITESPACE@76..77 " "
+    EQ@77..78 "="
+    WHITESPACE@78..79 " "
+    FN_PTR_TYPE@79..111
+      ABI@79..89
+        EXTERN_KW@79..85 "extern"
+        WHITESPACE@85..86 " "
+        STRING@86..89 "\"C\""
+      WHITESPACE@89..90 " "
+      FN_KW@90..92 "fn"
+      WHITESPACE@92..93 " "
+      PARAM_LIST@93..105
+        L_PAREN@93..94 "("
+        WHITESPACE@94..95 " "
+        PARAM@95..97
+          PATH_TYPE@95..97
+            PATH@95..97
+              PATH_SEGMENT@95..97
+                NAME_REF@95..97
+                  IDENT@95..97 "u8"
+        WHITESPACE@97..98 " "
+        COMMA@98..99 ","
+        WHITESPACE@99..100 " "
+        PARAM@100..103
+          DOT3@100..103 "..."
+        WHITESPACE@103..104 " "
+        R_PAREN@104..105 ")"
+      WHITESPACE@105..106 " "
+      RET_TYPE@106..111
+        THIN_ARROW@106..108 "->"
+        WHITESPACE@108..109 " "
+        PATH_TYPE@109..111
+          PATH@109..111
+            PATH_SEGMENT@109..111
+              NAME_REF@109..111
+                IDENT@109..111 "u8"
+    SEMICOLON@111..112 ";"
+  WHITESPACE@112..113 "\n"

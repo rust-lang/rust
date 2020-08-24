@@ -1,0 +1,34 @@
+SOURCE_FILE@0..22
+  FN@0..21
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..17
+      L_PAREN@6..7 "("
+      PARAM@7..13
+        IDENT_PAT@7..8
+          NAME@7..8
+            IDENT@7..8 "x"
+        COLON@8..9 ":"
+        WHITESPACE@9..10 " "
+        PATH_TYPE@10..13
+          PATH@10..13
+            PATH_SEGMENT@10..13
+              NAME_REF@10..13
+                IDENT@10..13 "i32"
+      COMMA@13..14 ","
+      WHITESPACE@14..15 " "
+      PARAM@15..16
+        IDENT_PAT@15..16
+          NAME@15..16
+            IDENT@15..16 "y"
+      R_PAREN@16..17 ")"
+    WHITESPACE@17..18 " "
+    BLOCK_EXPR@18..21
+      L_CURLY@18..19 "{"
+      WHITESPACE@19..20 "\n"
+      R_CURLY@20..21 "}"
+  WHITESPACE@21..22 "\n"
+error 16..16: expected COLON
+error 16..16: expected type

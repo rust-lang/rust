@@ -1,17 +1,15 @@
 //! The main loop of `rust-analyzer` responsible for dispatching LSP
 //! requests/replies and notifications back to the client.
 use std::{
-    borrow::Cow,
     env, fmt, panic,
     time::{Duration, Instant},
 };
 
+use base_db::VfsPath;
 use crossbeam_channel::{select, Receiver};
+use ide::{Canceled, FileId};
 use lsp_server::{Connection, Notification, Request, Response};
-use lsp_types::{notification::Notification as _, DidChangeTextDocumentParams};
-use ra_db::VfsPath;
-use ra_ide::{Canceled, FileId};
-use ra_prof::profile;
+use lsp_types::notification::Notification as _;
 
 use crate::{
     config::Config,
@@ -23,7 +21,7 @@ use crate::{
     lsp_utils::{apply_document_changes, is_canceled, notification_is, Progress},
     Result,
 };
-use ra_project_model::ProjectWorkspace;
+use project_model::ProjectWorkspace;
 use vfs::ChangeKind;
 
 pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
@@ -48,7 +46,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
-    GlobalState::new(connection.sender.clone(), config).run(connection.receiver)
+    GlobalState::new(connection.sender, config).run(connection.receiver)
 }
 
 enum Event {
@@ -174,7 +172,7 @@ impl GlobalState {
     fn handle_event(&mut self, event: Event) -> Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = profile("GlobalState::handle_event");
+        let _p = profile::span("GlobalState::handle_event");
 
         log::info!("handle_event({:?})", event);
         let queue_count = self.task_pool.handle.len();
@@ -205,7 +203,7 @@ impl GlobalState {
                 self.analysis_host.maybe_collect_garbage();
             }
             Event::Vfs(mut task) => {
-                let _p = profile("GlobalState::handle_event/vfs");
+                let _p = profile::span("GlobalState::handle_event/vfs");
                 loop {
                     match task {
                         vfs::loader::Message::Loaded { files } => {
@@ -250,7 +248,7 @@ impl GlobalState {
             Event::Flycheck(task) => match task {
                 flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
                     let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
-                        &self.config.diagnostics,
+                        &self.config.diagnostics_map,
                         &diagnostic,
                         &workspace_root,
                     );
@@ -338,11 +336,34 @@ impl GlobalState {
     fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
         self.register_request(&req, request_received);
 
+        if self.shutdown_requested {
+            self.respond(Response::new_err(
+                req.id,
+                lsp_server::ErrorCode::InvalidRequest as i32,
+                "Shutdown already requested.".to_owned(),
+            ));
+
+            return Ok(());
+        }
+
+        if self.status == Status::Loading && req.method != "shutdown" {
+            self.respond(lsp_server::Response::new_err(
+                req.id,
+                // FIXME: i32 should impl From<ErrorCode> (from() guarantees lossless conversion)
+                lsp_server::ErrorCode::ContentModified as i32,
+                "Rust Analyzer is still loading...".to_owned(),
+            ));
+            return Ok(());
+        }
+
         RequestDispatcher { req: Some(req), global_state: self }
             .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| Ok(s.fetch_workspaces()))?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
-            .on_sync::<lsp_types::request::Shutdown>(|_, ()| Ok(()))?
+            .on_sync::<lsp_types::request::Shutdown>(|s, ()| {
+                s.shutdown_requested = true;
+                Ok(())
+            })?
             .on_sync::<lsp_types::request::SelectionRangeRequest>(|s, p| {
                 handlers::handle_selection_range(s.snapshot(), p)
             })?
@@ -387,6 +408,9 @@ impl GlobalState {
                 handlers::handle_call_hierarchy_outgoing,
             )?
             .on::<lsp_types::request::SemanticTokensRequest>(handlers::handle_semantic_tokens)?
+            .on::<lsp_types::request::SemanticTokensEditsRequest>(
+                handlers::handle_semantic_tokens_edits,
+            )?
             .on::<lsp_types::request::SemanticTokensRangeRequest>(
                 handlers::handle_semantic_tokens_range,
             )?
@@ -422,20 +446,15 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidChangeTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    let DidChangeTextDocumentParams { text_document, content_changes } = params;
+                    let doc = this.mem_docs.get_mut(&path).unwrap();
                     let vfs = &mut this.vfs.write().0;
-                    let world = this.snapshot();
                     let file_id = vfs.file_id(&path).unwrap();
-
-                    // let file_id = vfs.file_id(&path).unwrap();
                     let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
-                    let line_index = world.analysis.file_line_index(file_id)?;
-                    apply_document_changes(&mut text, content_changes, Cow::Borrowed(&line_index));
+                    apply_document_changes(&mut text, params.content_changes);
 
                     // The version passed in DidChangeTextDocument is the version after all edits are applied
                     // so we should apply it before the vfs is notified.
-                    let doc = this.mem_docs.get_mut(&path).unwrap();
-                    doc.version = text_document.version;
+                    doc.version = params.text_document.version;
 
                     vfs.set_file_contents(path.clone(), Some(text.into_bytes()));
                 }
@@ -448,6 +467,8 @@ impl GlobalState {
                         Some(doc) => version = doc.version,
                         None => log::error!("orphan DidCloseTextDocument: {}", path),
                     }
+
+                    this.semantic_tokens_cache.lock().remove(&params.text_document.uri);
 
                     if let Some(path) = path.as_path() {
                         this.loader.handle.invalidate(path.to_path_buf());

@@ -1,0 +1,43 @@
+SOURCE_FILE@0..43
+  TYPE_ALIAS@0..42
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "A"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    IMPL_TRAIT_TYPE@9..41
+      IMPL_KW@9..13 "impl"
+      WHITESPACE@13..14 " "
+      TYPE_BOUND_LIST@14..41
+        TYPE_BOUND@14..36
+          PATH_TYPE@14..36
+            PATH@14..36
+              PATH_SEGMENT@14..36
+                NAME_REF@14..22
+                  IDENT@14..22 "Iterator"
+                GENERIC_ARG_LIST@22..36
+                  L_ANGLE@22..23 "<"
+                  ASSOC_TYPE_ARG@23..35
+                    NAME_REF@23..27
+                      IDENT@23..27 "Item"
+                    EQ@27..28 "="
+                    PATH_TYPE@28..35
+                      PATH@28..35
+                        PATH_SEGMENT@28..35
+                          NAME_REF@28..31
+                            IDENT@28..31 "Foo"
+                          GENERIC_ARG_LIST@31..35
+                            L_ANGLE@31..32 "<"
+                            LIFETIME_ARG@32..34
+                              LIFETIME@32..34 "\'a"
+                            R_ANGLE@34..35 ">"
+                  R_ANGLE@35..36 ">"
+        WHITESPACE@36..37 " "
+        PLUS@37..38 "+"
+        WHITESPACE@38..39 " "
+        TYPE_BOUND@39..41
+          LIFETIME@39..41 "\'a"
+    SEMICOLON@41..42 ";"
+  WHITESPACE@42..43 "\n"

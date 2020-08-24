@@ -1,0 +1,147 @@
+SOURCE_FILE@0..118
+  FN@0..117
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..117
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      LET_STMT@15..27
+        LET_KW@15..18 "let"
+        WHITESPACE@18..19 " "
+        WILDCARD_PAT@19..20
+          UNDERSCORE@19..20 "_"
+        WHITESPACE@20..21 " "
+        EQ@21..22 "="
+        WHITESPACE@22..23 " "
+        CALL_EXPR@23..26
+          PATH_EXPR@23..24
+            PATH@23..24
+              PATH_SEGMENT@23..24
+                NAME_REF@23..24
+                  IDENT@23..24 "f"
+          ARG_LIST@24..26
+            L_PAREN@24..25 "("
+            R_PAREN@25..26 ")"
+        SEMICOLON@26..27 ";"
+      WHITESPACE@27..32 "\n    "
+      LET_STMT@32..54
+        LET_KW@32..35 "let"
+        WHITESPACE@35..36 " "
+        WILDCARD_PAT@36..37
+          UNDERSCORE@36..37 "_"
+        WHITESPACE@37..38 " "
+        EQ@38..39 "="
+        WHITESPACE@39..40 " "
+        CALL_EXPR@40..53
+          CALL_EXPR@40..46
+            CALL_EXPR@40..43
+              PATH_EXPR@40..41
+                PATH@40..41
+                  PATH_SEGMENT@40..41
+                    NAME_REF@40..41
+                      IDENT@40..41 "f"
+              ARG_LIST@41..43
+                L_PAREN@41..42 "("
+                R_PAREN@42..43 ")"
+            ARG_LIST@43..46
+              L_PAREN@43..44 "("
+              LITERAL@44..45
+                INT_NUMBER@44..45 "1"
+              R_PAREN@45..46 ")"
+          ARG_LIST@46..53
+            L_PAREN@46..47 "("
+            LITERAL@47..48
+              INT_NUMBER@47..48 "1"
+            COMMA@48..49 ","
+            WHITESPACE@49..50 " "
+            LITERAL@50..51
+              INT_NUMBER@50..51 "2"
+            COMMA@51..52 ","
+            R_PAREN@52..53 ")"
+        SEMICOLON@53..54 ";"
+      WHITESPACE@54..59 "\n    "
+      LET_STMT@59..84
+        LET_KW@59..62 "let"
+        WHITESPACE@62..63 " "
+        WILDCARD_PAT@63..64
+          UNDERSCORE@63..64 "_"
+        WHITESPACE@64..65 " "
+        EQ@65..66 "="
+        WHITESPACE@66..67 " "
+        CALL_EXPR@67..83
+          PATH_EXPR@67..68
+            PATH@67..68
+              PATH_SEGMENT@67..68
+                NAME_REF@67..68
+                  IDENT@67..68 "f"
+          ARG_LIST@68..83
+            L_PAREN@68..69 "("
+            CALL_EXPR@69..82
+              PATH_EXPR@69..80
+                PATH@69..80
+                  PATH@69..74
+                    PATH_SEGMENT@69..74
+                      L_ANGLE@69..70 "<"
+                      PATH_TYPE@70..73
+                        PATH@70..73
+                          PATH_SEGMENT@70..73
+                            NAME_REF@70..73
+                              IDENT@70..73 "Foo"
+                      R_ANGLE@73..74 ">"
+                  COLON2@74..76 "::"
+                  PATH_SEGMENT@76..80
+                    NAME_REF@76..80
+                      IDENT@76..80 "func"
+              ARG_LIST@80..82
+                L_PAREN@80..81 "("
+                R_PAREN@81..82 ")"
+            R_PAREN@82..83 ")"
+        SEMICOLON@83..84 ";"
+      WHITESPACE@84..89 "\n    "
+      EXPR_STMT@89..115
+        CALL_EXPR@89..114
+          PATH_EXPR@89..90
+            PATH@89..90
+              PATH_SEGMENT@89..90
+                NAME_REF@89..90
+                  IDENT@89..90 "f"
+          ARG_LIST@90..114
+            L_PAREN@90..91 "("
+            CALL_EXPR@91..113
+              PATH_EXPR@91..111
+                PATH@91..111
+                  PATH@91..105
+                    PATH_SEGMENT@91..105
+                      L_ANGLE@91..92 "<"
+                      PATH_TYPE@92..95
+                        PATH@92..95
+                          PATH_SEGMENT@92..95
+                            NAME_REF@92..95
+                              IDENT@92..95 "Foo"
+                      WHITESPACE@95..96 " "
+                      AS_KW@96..98 "as"
+                      WHITESPACE@98..99 " "
+                      PATH_TYPE@99..104
+                        PATH@99..104
+                          PATH_SEGMENT@99..104
+                            NAME_REF@99..104
+                              IDENT@99..104 "Trait"
+                      R_ANGLE@104..105 ">"
+                  COLON2@105..107 "::"
+                  PATH_SEGMENT@107..111
+                    NAME_REF@107..111
+                      IDENT@107..111 "func"
+              ARG_LIST@111..113
+                L_PAREN@111..112 "("
+                R_PAREN@112..113 ")"
+            R_PAREN@113..114 ")"
+        SEMICOLON@114..115 ";"
+      WHITESPACE@115..116 "\n"
+      R_CURLY@116..117 "}"
+  WHITESPACE@117..118 "\n"

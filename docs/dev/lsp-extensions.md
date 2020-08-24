@@ -412,7 +412,13 @@ Reloads project information (that is, re-executes `cargo metadata`).
 
 **Method:** `rust-analyzer/status`
 
-**Notification:** `"loading" | "ready" | "invalid" | "needsReload"`
+**Notification:**
+
+```typescript
+interface StatusParams {
+    status: "loading" | "ready" | "invalid" | "needsReload",
+}
+```
 
 This notification is sent from server to client.
 The client can use it to display persistent status to the user (in modline).

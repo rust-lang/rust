@@ -1,0 +1,81 @@
+SOURCE_FILE@0..58
+  FN@0..26
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    RET_TYPE@9..23
+      THIN_ARROW@9..11 "->"
+      WHITESPACE@11..12 " "
+      PATH_TYPE@12..23
+        PATH@12..23
+          PATH_SEGMENT@12..23
+            NAME_REF@12..15
+              IDENT@12..15 "Box"
+            GENERIC_ARG_LIST@15..23
+              L_ANGLE@15..16 "<"
+              TYPE_ARG@16..22
+                DYN_TRAIT_TYPE@16..22
+                  TYPE_BOUND_LIST@16..22
+                    TYPE_BOUND@16..17
+                      PATH_TYPE@16..17
+                        PATH@16..17
+                          PATH_SEGMENT@16..17
+                            NAME_REF@16..17
+                              IDENT@16..17 "T"
+                    WHITESPACE@17..18 " "
+                    PLUS@18..19 "+"
+                    WHITESPACE@19..20 " "
+                    TYPE_BOUND@20..22
+                      LIFETIME@20..22 "\'f"
+              R_ANGLE@22..23 ">"
+    WHITESPACE@23..24 " "
+    BLOCK_EXPR@24..26
+      L_CURLY@24..25 "{"
+      R_CURLY@25..26 "}"
+  WHITESPACE@26..27 "\n"
+  FN@27..57
+    FN_KW@27..29 "fn"
+    WHITESPACE@29..30 " "
+    NAME@30..33
+      IDENT@30..33 "foo"
+    PARAM_LIST@33..35
+      L_PAREN@33..34 "("
+      R_PAREN@34..35 ")"
+    WHITESPACE@35..36 " "
+    RET_TYPE@36..54
+      THIN_ARROW@36..38 "->"
+      WHITESPACE@38..39 " "
+      PATH_TYPE@39..54
+        PATH@39..54
+          PATH_SEGMENT@39..54
+            NAME_REF@39..42
+              IDENT@39..42 "Box"
+            GENERIC_ARG_LIST@42..54
+              L_ANGLE@42..43 "<"
+              TYPE_ARG@43..53
+                DYN_TRAIT_TYPE@43..53
+                  DYN_KW@43..46 "dyn"
+                  WHITESPACE@46..47 " "
+                  TYPE_BOUND_LIST@47..53
+                    TYPE_BOUND@47..48
+                      PATH_TYPE@47..48
+                        PATH@47..48
+                          PATH_SEGMENT@47..48
+                            NAME_REF@47..48
+                              IDENT@47..48 "T"
+                    WHITESPACE@48..49 " "
+                    PLUS@49..50 "+"
+                    WHITESPACE@50..51 " "
+                    TYPE_BOUND@51..53
+                      LIFETIME@51..53 "\'f"
+              R_ANGLE@53..54 ">"
+    WHITESPACE@54..55 " "
+    BLOCK_EXPR@55..57
+      L_CURLY@55..56 "{"
+      R_CURLY@56..57 "}"
+  WHITESPACE@57..58 "\n"

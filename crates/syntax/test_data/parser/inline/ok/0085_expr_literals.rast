@@ -1,0 +1,135 @@
+SOURCE_FILE@0..189
+  FN@0..188
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..188
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      LET_STMT@15..28
+        LET_KW@15..18 "let"
+        WHITESPACE@18..19 " "
+        WILDCARD_PAT@19..20
+          UNDERSCORE@19..20 "_"
+        WHITESPACE@20..21 " "
+        EQ@21..22 "="
+        WHITESPACE@22..23 " "
+        LITERAL@23..27
+          TRUE_KW@23..27 "true"
+        SEMICOLON@27..28 ";"
+      WHITESPACE@28..33 "\n    "
+      LET_STMT@33..47
+        LET_KW@33..36 "let"
+        WHITESPACE@36..37 " "
+        WILDCARD_PAT@37..38
+          UNDERSCORE@37..38 "_"
+        WHITESPACE@38..39 " "
+        EQ@39..40 "="
+        WHITESPACE@40..41 " "
+        LITERAL@41..46
+          FALSE_KW@41..46 "false"
+        SEMICOLON@46..47 ";"
+      WHITESPACE@47..52 "\n    "
+      LET_STMT@52..62
+        LET_KW@52..55 "let"
+        WHITESPACE@55..56 " "
+        WILDCARD_PAT@56..57
+          UNDERSCORE@56..57 "_"
+        WHITESPACE@57..58 " "
+        EQ@58..59 "="
+        WHITESPACE@59..60 " "
+        LITERAL@60..61
+          INT_NUMBER@60..61 "1"
+        SEMICOLON@61..62 ";"
+      WHITESPACE@62..67 "\n    "
+      LET_STMT@67..79
+        LET_KW@67..70 "let"
+        WHITESPACE@70..71 " "
+        WILDCARD_PAT@71..72
+          UNDERSCORE@71..72 "_"
+        WHITESPACE@72..73 " "
+        EQ@73..74 "="
+        WHITESPACE@74..75 " "
+        LITERAL@75..78
+          FLOAT_NUMBER@75..78 "2.0"
+        SEMICOLON@78..79 ";"
+      WHITESPACE@79..84 "\n    "
+      LET_STMT@84..97
+        LET_KW@84..87 "let"
+        WHITESPACE@87..88 " "
+        WILDCARD_PAT@88..89
+          UNDERSCORE@88..89 "_"
+        WHITESPACE@89..90 " "
+        EQ@90..91 "="
+        WHITESPACE@91..92 " "
+        LITERAL@92..96
+          BYTE@92..96 "b\'a\'"
+        SEMICOLON@96..97 ";"
+      WHITESPACE@97..102 "\n    "
+      LET_STMT@102..114
+        LET_KW@102..105 "let"
+        WHITESPACE@105..106 " "
+        WILDCARD_PAT@106..107
+          UNDERSCORE@106..107 "_"
+        WHITESPACE@107..108 " "
+        EQ@108..109 "="
+        WHITESPACE@109..110 " "
+        LITERAL@110..113
+          CHAR@110..113 "\'b\'"
+        SEMICOLON@113..114 ";"
+      WHITESPACE@114..119 "\n    "
+      LET_STMT@119..131
+        LET_KW@119..122 "let"
+        WHITESPACE@122..123 " "
+        WILDCARD_PAT@123..124
+          UNDERSCORE@123..124 "_"
+        WHITESPACE@124..125 " "
+        EQ@125..126 "="
+        WHITESPACE@126..127 " "
+        LITERAL@127..130
+          STRING@127..130 "\"c\""
+        SEMICOLON@130..131 ";"
+      WHITESPACE@131..136 "\n    "
+      LET_STMT@136..149
+        LET_KW@136..139 "let"
+        WHITESPACE@139..140 " "
+        WILDCARD_PAT@140..141
+          UNDERSCORE@140..141 "_"
+        WHITESPACE@141..142 " "
+        EQ@142..143 "="
+        WHITESPACE@143..144 " "
+        LITERAL@144..148
+          RAW_STRING@144..148 "r\"d\""
+        SEMICOLON@148..149 ";"
+      WHITESPACE@149..154 "\n    "
+      LET_STMT@154..167
+        LET_KW@154..157 "let"
+        WHITESPACE@157..158 " "
+        WILDCARD_PAT@158..159
+          UNDERSCORE@158..159 "_"
+        WHITESPACE@159..160 " "
+        EQ@160..161 "="
+        WHITESPACE@161..162 " "
+        LITERAL@162..166
+          BYTE_STRING@162..166 "b\"e\""
+        SEMICOLON@166..167 ";"
+      WHITESPACE@167..172 "\n    "
+      LET_STMT@172..186
+        LET_KW@172..175 "let"
+        WHITESPACE@175..176 " "
+        WILDCARD_PAT@176..177
+          UNDERSCORE@176..177 "_"
+        WHITESPACE@177..178 " "
+        EQ@178..179 "="
+        WHITESPACE@179..180 " "
+        LITERAL@180..185
+          RAW_BYTE_STRING@180..185 "br\"f\""
+        SEMICOLON@185..186 ";"
+      WHITESPACE@186..187 "\n"
+      R_CURLY@187..188 "}"
+  WHITESPACE@188..189 "\n"

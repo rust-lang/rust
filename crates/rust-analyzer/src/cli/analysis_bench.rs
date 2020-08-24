@@ -3,11 +3,14 @@
 use std::{env, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 
 use anyhow::{bail, format_err, Result};
-use ra_db::{
+use base_db::{
     salsa::{Database, Durability},
     FileId,
 };
-use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CompletionConfig, FilePosition, LineCol};
+use ide::{
+    Analysis, AnalysisChange, AnalysisHost, CompletionConfig, DiagnosticsConfig, FilePosition,
+    LineCol,
+};
 use vfs::AbsPathBuf;
 
 use crate::{
@@ -52,7 +55,7 @@ impl FromStr for Position {
 
 impl BenchCmd {
     pub fn run(self, verbosity: Verbosity) -> Result<()> {
-        ra_prof::init();
+        profile::init();
 
         let start = Instant::now();
         eprint!("loading: ");
@@ -71,7 +74,7 @@ impl BenchCmd {
         match &self.what {
             BenchWhat::Highlight { .. } => {
                 let res = do_work(&mut host, file_id, |analysis| {
-                    analysis.diagnostics(file_id, true).unwrap();
+                    analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap();
                     analysis.highlight_as_html(file_id, false).unwrap()
                 });
                 if verbosity.is_verbose() {

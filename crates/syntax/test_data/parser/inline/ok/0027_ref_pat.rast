@@ -1,0 +1,49 @@
+SOURCE_FILE@0..52
+  FN@0..51
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..7
+      IDENT@3..7 "main"
+    PARAM_LIST@7..9
+      L_PAREN@7..8 "("
+      R_PAREN@8..9 ")"
+    WHITESPACE@9..10 " "
+    BLOCK_EXPR@10..51
+      L_CURLY@10..11 "{"
+      WHITESPACE@11..16 "\n    "
+      LET_STMT@16..28
+        LET_KW@16..19 "let"
+        WHITESPACE@19..20 " "
+        REF_PAT@20..22
+          AMP@20..21 "&"
+          IDENT_PAT@21..22
+            NAME@21..22
+              IDENT@21..22 "a"
+        WHITESPACE@22..23 " "
+        EQ@23..24 "="
+        WHITESPACE@24..25 " "
+        TUPLE_EXPR@25..27
+          L_PAREN@25..26 "("
+          R_PAREN@26..27 ")"
+        SEMICOLON@27..28 ";"
+      WHITESPACE@28..33 "\n    "
+      LET_STMT@33..49
+        LET_KW@33..36 "let"
+        WHITESPACE@36..37 " "
+        REF_PAT@37..43
+          AMP@37..38 "&"
+          MUT_KW@38..41 "mut"
+          WHITESPACE@41..42 " "
+          IDENT_PAT@42..43
+            NAME@42..43
+              IDENT@42..43 "b"
+        WHITESPACE@43..44 " "
+        EQ@44..45 "="
+        WHITESPACE@45..46 " "
+        TUPLE_EXPR@46..48
+          L_PAREN@46..47 "("
+          R_PAREN@47..48 ")"
+        SEMICOLON@48..49 ";"
+      WHITESPACE@49..50 "\n"
+      R_CURLY@50..51 "}"
+  WHITESPACE@51..52 "\n"

@@ -1,0 +1,116 @@
+SOURCE_FILE@0..128
+  IMPL@0..127
+    IMPL_KW@0..4 "impl"
+    WHITESPACE@4..5 " "
+    PATH_TYPE@5..6
+      PATH@5..6
+        PATH_SEGMENT@5..6
+          NAME_REF@5..6
+            IDENT@5..6 "S"
+    WHITESPACE@6..7 " "
+    ASSOC_ITEM_LIST@7..127
+      L_CURLY@7..8 "{"
+      WHITESPACE@8..13 "\n    "
+      FN@13..26
+        FN_KW@13..15 "fn"
+        WHITESPACE@15..16 " "
+        NAME@16..17
+          IDENT@16..17 "a"
+        PARAM_LIST@17..23
+          L_PAREN@17..18 "("
+          SELF_PARAM@18..22
+            SELF_KW@18..22 "self"
+          R_PAREN@22..23 ")"
+        WHITESPACE@23..24 " "
+        BLOCK_EXPR@24..26
+          L_CURLY@24..25 "{"
+          R_CURLY@25..26 "}"
+      WHITESPACE@26..31 "\n    "
+      FN@31..46
+        FN_KW@31..33 "fn"
+        WHITESPACE@33..34 " "
+        NAME@34..35
+          IDENT@34..35 "b"
+        PARAM_LIST@35..43
+          L_PAREN@35..36 "("
+          SELF_PARAM@36..41
+            AMP@36..37 "&"
+            SELF_KW@37..41 "self"
+          COMMA@41..42 ","
+          R_PAREN@42..43 ")"
+        WHITESPACE@43..44 " "
+        BLOCK_EXPR@44..46
+          L_CURLY@44..45 "{"
+          R_CURLY@45..46 "}"
+      WHITESPACE@46..51 "\n    "
+      FN@51..69
+        FN_KW@51..53 "fn"
+        WHITESPACE@53..54 " "
+        NAME@54..55
+          IDENT@54..55 "c"
+        PARAM_LIST@55..66
+          L_PAREN@55..56 "("
+          SELF_PARAM@56..64
+            AMP@56..57 "&"
+            LIFETIME@57..59 "\'a"
+            WHITESPACE@59..60 " "
+            SELF_KW@60..64 "self"
+          COMMA@64..65 ","
+          R_PAREN@65..66 ")"
+        WHITESPACE@66..67 " "
+        BLOCK_EXPR@67..69
+          L_CURLY@67..68 "{"
+          R_CURLY@68..69 "}"
+      WHITESPACE@69..74 "\n    "
+      FN@74..103
+        FN_KW@74..76 "fn"
+        WHITESPACE@76..77 " "
+        NAME@77..78
+          IDENT@77..78 "d"
+        PARAM_LIST@78..100
+          L_PAREN@78..79 "("
+          SELF_PARAM@79..91
+            AMP@79..80 "&"
+            LIFETIME@80..82 "\'a"
+            WHITESPACE@82..83 " "
+            MUT_KW@83..86 "mut"
+            WHITESPACE@86..87 " "
+            SELF_KW@87..91 "self"
+          COMMA@91..92 ","
+          WHITESPACE@92..93 " "
+          PARAM@93..99
+            IDENT_PAT@93..94
+              NAME@93..94
+                IDENT@93..94 "x"
+            COLON@94..95 ":"
+            WHITESPACE@95..96 " "
+            PATH_TYPE@96..99
+              PATH@96..99
+                PATH_SEGMENT@96..99
+                  NAME_REF@96..99
+                    IDENT@96..99 "i32"
+          R_PAREN@99..100 ")"
+        WHITESPACE@100..101 " "
+        BLOCK_EXPR@101..103
+          L_CURLY@101..102 "{"
+          R_CURLY@102..103 "}"
+      WHITESPACE@103..108 "\n    "
+      FN@108..125
+        FN_KW@108..110 "fn"
+        WHITESPACE@110..111 " "
+        NAME@111..112
+          IDENT@111..112 "e"
+        PARAM_LIST@112..122
+          L_PAREN@112..113 "("
+          SELF_PARAM@113..121
+            MUT_KW@113..116 "mut"
+            WHITESPACE@116..117 " "
+            SELF_KW@117..121 "self"
+          R_PAREN@121..122 ")"
+        WHITESPACE@122..123 " "
+        BLOCK_EXPR@123..125
+          L_CURLY@123..124 "{"
+          R_CURLY@124..125 "}"
+      WHITESPACE@125..126 "\n"
+      R_CURLY@126..127 "}"
+  WHITESPACE@127..128 "\n"

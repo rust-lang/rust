@@ -1,0 +1,103 @@
+SOURCE_FILE@0..139
+  FN@0..138
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..138
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      LET_STMT@15..24
+        LET_KW@15..18 "let"
+        WHITESPACE@18..19 " "
+        IDENT_PAT@19..22
+          NAME@19..22
+            IDENT@19..22 "foo"
+        WHITESPACE@22..23 " "
+        EQ@23..24 "="
+      WHITESPACE@24..29 "\n    "
+      LET_STMT@29..41
+        LET_KW@29..32 "let"
+        WHITESPACE@32..33 " "
+        IDENT_PAT@33..36
+          NAME@33..36
+            IDENT@33..36 "bar"
+        WHITESPACE@36..37 " "
+        EQ@37..38 "="
+        WHITESPACE@38..39 " "
+        LITERAL@39..40
+          INT_NUMBER@39..40 "1"
+        SEMICOLON@40..41 ";"
+      WHITESPACE@41..46 "\n    "
+      LET_STMT@46..49
+        LET_KW@46..49 "let"
+      WHITESPACE@49..54 "\n    "
+      LET_STMT@54..67
+        LET_KW@54..57 "let"
+        WHITESPACE@57..58 " "
+        IDENT_PAT@58..61
+          NAME@58..61
+            IDENT@58..61 "baz"
+        WHITESPACE@61..62 " "
+        EQ@62..63 "="
+        WHITESPACE@63..64 " "
+        LITERAL@64..66
+          INT_NUMBER@64..66 "92"
+        SEMICOLON@66..67 ";"
+      WHITESPACE@67..72 "\n    "
+      LET_STMT@72..75
+        LET_KW@72..75 "let"
+      WHITESPACE@75..80 "\n    "
+      EXPR_STMT@80..90
+        IF_EXPR@80..90
+          IF_KW@80..82 "if"
+          WHITESPACE@82..83 " "
+          CONDITION@83..87
+            LITERAL@83..87
+              TRUE_KW@83..87 "true"
+          WHITESPACE@87..88 " "
+          BLOCK_EXPR@88..90
+            L_CURLY@88..89 "{"
+            R_CURLY@89..90 "}"
+      WHITESPACE@90..95 "\n    "
+      LET_STMT@95..98
+        LET_KW@95..98 "let"
+      WHITESPACE@98..103 "\n    "
+      EXPR_STMT@103..116
+        WHILE_EXPR@103..116
+          WHILE_KW@103..108 "while"
+          WHITESPACE@108..109 " "
+          CONDITION@109..113
+            LITERAL@109..113
+              TRUE_KW@109..113 "true"
+          WHITESPACE@113..114 " "
+          BLOCK_EXPR@114..116
+            L_CURLY@114..115 "{"
+            R_CURLY@115..116 "}"
+      WHITESPACE@116..121 "\n    "
+      LET_STMT@121..124
+        LET_KW@121..124 "let"
+      WHITESPACE@124..129 "\n    "
+      LOOP_EXPR@129..136
+        LOOP_KW@129..133 "loop"
+        WHITESPACE@133..134 " "
+        BLOCK_EXPR@134..136
+          L_CURLY@134..135 "{"
+          R_CURLY@135..136 "}"
+      WHITESPACE@136..137 "\n"
+      R_CURLY@137..138 "}"
+  WHITESPACE@138..139 "\n"
+error 24..24: expected expression
+error 24..24: expected SEMICOLON
+error 49..49: expected pattern
+error 49..49: expected SEMICOLON
+error 75..75: expected pattern
+error 75..75: expected SEMICOLON
+error 98..98: expected pattern
+error 98..98: expected SEMICOLON
+error 124..124: expected pattern
+error 124..124: expected SEMICOLON

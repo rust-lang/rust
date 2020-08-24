@@ -1,0 +1,123 @@
+SOURCE_FILE@0..88
+  FN@0..26
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "a"
+    PARAM_LIST@4..6
+      L_PAREN@4..5 "("
+      R_PAREN@5..6 ")"
+    WHITESPACE@6..7 " "
+    RET_TYPE@7..23
+      THIN_ARROW@7..9 "->"
+      WHITESPACE@9..10 " "
+      PATH_TYPE@10..23
+        PATH@10..23
+          PATH_SEGMENT@10..23
+            NAME_REF@10..13
+              IDENT@10..13 "Foo"
+            GENERIC_ARG_LIST@13..23
+              L_ANGLE@13..14 "<"
+              TYPE_ARG@14..22
+                PATH_TYPE@14..22
+                  PATH@14..22
+                    PATH@14..17
+                      PATH_SEGMENT@14..17
+                        NAME_REF@14..17
+                          IDENT@14..17 "bar"
+                    COLON2@17..19 "::"
+                    PATH_SEGMENT@19..22
+                      NAME_REF@19..22
+                        IDENT@19..22 "Baz"
+              R_ANGLE@22..23 ">"
+    WHITESPACE@23..24 " "
+    BLOCK_EXPR@24..26
+      L_CURLY@24..25 "{"
+      R_CURLY@25..26 "}"
+  WHITESPACE@26..28 "\n\n"
+  FN@28..56
+    FN_KW@28..30 "fn"
+    WHITESPACE@30..31 " "
+    NAME@31..32
+      IDENT@31..32 "b"
+    PARAM_LIST@32..53
+      L_PAREN@32..33 "("
+      PARAM@33..52
+        WILDCARD_PAT@33..34
+          UNDERSCORE@33..34 "_"
+        COLON@34..35 ":"
+        WHITESPACE@35..36 " "
+        IMPL_TRAIT_TYPE@36..52
+          IMPL_KW@36..40 "impl"
+          WHITESPACE@40..41 " "
+          TYPE_BOUND_LIST@41..52
+            TYPE_BOUND@41..52
+              PATH_TYPE@41..52
+                PATH@41..52
+                  PATH_SEGMENT@41..52
+                    NAME_REF@41..46
+                      IDENT@41..46 "FnMut"
+                    PARAM_LIST@46..52
+                      L_PAREN@46..47 "("
+                      PARAM@47..51
+                        PATH_TYPE@47..51
+                          PATH@47..51
+                            PATH@47..48
+                              PATH_SEGMENT@47..48
+                                NAME_REF@47..48
+                                  IDENT@47..48 "x"
+                            COLON2@48..50 "::"
+                            PATH_SEGMENT@50..51
+                              NAME_REF@50..51
+                                IDENT@50..51 "Y"
+                      R_PAREN@51..52 ")"
+      R_PAREN@52..53 ")"
+    WHITESPACE@53..54 " "
+    BLOCK_EXPR@54..56
+      L_CURLY@54..55 "{"
+      R_CURLY@55..56 "}"
+  WHITESPACE@56..58 "\n\n"
+  FN@58..87
+    FN_KW@58..60 "fn"
+    WHITESPACE@60..61 " "
+    NAME@61..62
+      IDENT@61..62 "c"
+    PARAM_LIST@62..84
+      L_PAREN@62..63 "("
+      PARAM@63..83
+        WILDCARD_PAT@63..64
+          UNDERSCORE@63..64 "_"
+        COLON@64..65 ":"
+        WHITESPACE@65..66 " "
+        IMPL_TRAIT_TYPE@66..83
+          IMPL_KW@66..70 "impl"
+          WHITESPACE@70..71 " "
+          TYPE_BOUND_LIST@71..83
+            TYPE_BOUND@71..83
+              PATH_TYPE@71..83
+                PATH@71..83
+                  PATH_SEGMENT@71..83
+                    NAME_REF@71..76
+                      IDENT@71..76 "FnMut"
+                    PARAM_LIST@76..83
+                      L_PAREN@76..77 "("
+                      PARAM@77..82
+                        REF_TYPE@77..82
+                          AMP@77..78 "&"
+                          PATH_TYPE@78..82
+                            PATH@78..82
+                              PATH@78..79
+                                PATH_SEGMENT@78..79
+                                  NAME_REF@78..79
+                                    IDENT@78..79 "x"
+                              COLON2@79..81 "::"
+                              PATH_SEGMENT@81..82
+                                NAME_REF@81..82
+                                  IDENT@81..82 "Y"
+                      R_PAREN@82..83 ")"
+      R_PAREN@83..84 ")"
+    WHITESPACE@84..85 " "
+    BLOCK_EXPR@85..87
+      L_CURLY@85..86 "{"
+      R_CURLY@86..87 "}"
+  WHITESPACE@87..88 "\n"

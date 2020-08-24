@@ -1,0 +1,63 @@
+SOURCE_FILE@0..112
+  FN@0..111
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..7
+      IDENT@3..7 "main"
+    PARAM_LIST@7..9
+      L_PAREN@7..8 "("
+      R_PAREN@8..9 ")"
+    WHITESPACE@9..10 " "
+    BLOCK_EXPR@10..111
+      L_CURLY@10..11 "{"
+      WHITESPACE@11..16 "\n    "
+      LET_STMT@16..31
+        LET_KW@16..19 "let"
+        WHITESPACE@19..20 " "
+        WILDCARD_PAT@20..21
+          UNDERSCORE@20..21 "_"
+        WHITESPACE@21..22 " "
+        EQ@22..23 "="
+        WHITESPACE@23..24 " "
+        LITERAL@24..30
+          CHAR@24..30 "\'c\'u32"
+        SEMICOLON@30..31 ";"
+      WHITESPACE@31..36 "\n    "
+      LET_STMT@36..60
+        LET_KW@36..39 "let"
+        WHITESPACE@39..40 " "
+        WILDCARD_PAT@40..41
+          UNDERSCORE@40..41 "_"
+        WHITESPACE@41..42 " "
+        EQ@42..43 "="
+        WHITESPACE@43..44 " "
+        LITERAL@44..59
+          STRING@44..59 "\"string\"invalid"
+        SEMICOLON@59..60 ";"
+      WHITESPACE@60..65 "\n    "
+      LET_STMT@65..83
+        LET_KW@65..68 "let"
+        WHITESPACE@68..69 " "
+        WILDCARD_PAT@69..70
+          UNDERSCORE@69..70 "_"
+        WHITESPACE@70..71 " "
+        EQ@71..72 "="
+        WHITESPACE@72..73 " "
+        LITERAL@73..82
+          BYTE@73..82 "b\'b\'_suff"
+        SEMICOLON@82..83 ";"
+      WHITESPACE@83..88 "\n    "
+      LET_STMT@88..109
+        LET_KW@88..91 "let"
+        WHITESPACE@91..92 " "
+        WILDCARD_PAT@92..93
+          UNDERSCORE@92..93 "_"
+        WHITESPACE@93..94 " "
+        EQ@94..95 "="
+        WHITESPACE@95..96 " "
+        LITERAL@96..108
+          BYTE_STRING@96..108 "b\"bs\"invalid"
+        SEMICOLON@108..109 ";"
+      WHITESPACE@109..110 "\n"
+      R_CURLY@110..111 "}"
+  WHITESPACE@111..112 "\n"

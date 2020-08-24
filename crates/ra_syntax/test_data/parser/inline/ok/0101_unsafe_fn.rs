@@ -1,1 +1,0 @@
-unsafe fn foo() {}

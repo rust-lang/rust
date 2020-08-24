@@ -1,0 +1,49 @@
+SOURCE_FILE@0..59
+  FN@0..59
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..59
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..11 " "
+      LET_STMT@11..29
+        LET_KW@11..14 "let"
+        WHITESPACE@14..15 " "
+        IDENT_PAT@15..23
+          NAME@15..23
+            IDENT@15..23 "r#struct"
+        WHITESPACE@23..24 " "
+        EQ@24..25 "="
+        WHITESPACE@25..26 " "
+        LITERAL@26..28
+          INT_NUMBER@26..28 "92"
+        SEMICOLON@28..29 ";"
+      WHITESPACE@29..30 " "
+      LET_STMT@30..57
+        LET_KW@30..33 "let"
+        WHITESPACE@33..34 " "
+        IDENT_PAT@34..41
+          NAME@34..41
+            IDENT@34..41 "r#trait"
+        WHITESPACE@41..42 " "
+        EQ@42..43 "="
+        WHITESPACE@43..44 " "
+        BIN_EXPR@44..56
+          PATH_EXPR@44..52
+            PATH@44..52
+              PATH_SEGMENT@44..52
+                NAME_REF@44..52
+                  IDENT@44..52 "r#struct"
+          WHITESPACE@52..53 " "
+          STAR@53..54 "*"
+          WHITESPACE@54..55 " "
+          LITERAL@55..56
+            INT_NUMBER@55..56 "2"
+        SEMICOLON@56..57 ";"
+      WHITESPACE@57..58 " "
+      R_CURLY@58..59 "}"

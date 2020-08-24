@@ -1,0 +1,31 @@
+SOURCE_FILE@0..33
+  FN@0..32
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..32
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      LET_STMT@15..30
+        LET_KW@15..18 "let"
+        WHITESPACE@18..19 " "
+        WILDCARD_PAT@19..20
+          UNDERSCORE@19..20 "_"
+        WHITESPACE@20..21 " "
+        EQ@21..22 "="
+        WHITESPACE@22..23 " "
+        EFFECT_EXPR@23..29
+          TRY_KW@23..26 "try"
+          WHITESPACE@26..27 " "
+          BLOCK_EXPR@27..29
+            L_CURLY@27..28 "{"
+            R_CURLY@28..29 "}"
+        SEMICOLON@29..30 ";"
+      WHITESPACE@30..31 "\n"
+      R_CURLY@31..32 "}"
+  WHITESPACE@32..33 "\n"

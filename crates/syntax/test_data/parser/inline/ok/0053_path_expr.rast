@@ -1,0 +1,95 @@
+SOURCE_FILE@0..91
+  FN@0..90
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..90
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      LET_STMT@15..25
+        LET_KW@15..18 "let"
+        WHITESPACE@18..19 " "
+        WILDCARD_PAT@19..20
+          UNDERSCORE@19..20 "_"
+        WHITESPACE@20..21 " "
+        EQ@21..22 "="
+        WHITESPACE@22..23 " "
+        PATH_EXPR@23..24
+          PATH@23..24
+            PATH_SEGMENT@23..24
+              NAME_REF@23..24
+                IDENT@23..24 "a"
+        SEMICOLON@24..25 ";"
+      WHITESPACE@25..30 "\n    "
+      LET_STMT@30..43
+        LET_KW@30..33 "let"
+        WHITESPACE@33..34 " "
+        WILDCARD_PAT@34..35
+          UNDERSCORE@34..35 "_"
+        WHITESPACE@35..36 " "
+        EQ@36..37 "="
+        WHITESPACE@37..38 " "
+        PATH_EXPR@38..42
+          PATH@38..42
+            PATH@38..39
+              PATH_SEGMENT@38..39
+                NAME_REF@38..39
+                  IDENT@38..39 "a"
+            COLON2@39..41 "::"
+            PATH_SEGMENT@41..42
+              NAME_REF@41..42
+                IDENT@41..42 "b"
+        SEMICOLON@42..43 ";"
+      WHITESPACE@43..48 "\n    "
+      LET_STMT@48..65
+        LET_KW@48..51 "let"
+        WHITESPACE@51..52 " "
+        WILDCARD_PAT@52..53
+          UNDERSCORE@52..53 "_"
+        WHITESPACE@53..54 " "
+        EQ@54..55 "="
+        WHITESPACE@55..56 " "
+        PATH_EXPR@56..64
+          PATH@56..64
+            PATH_SEGMENT@56..64
+              COLON2@56..58 "::"
+              NAME_REF@58..59
+                IDENT@58..59 "a"
+              GENERIC_ARG_LIST@59..64
+                COLON2@59..61 "::"
+                L_ANGLE@61..62 "<"
+                TYPE_ARG@62..63
+                  PATH_TYPE@62..63
+                    PATH@62..63
+                      PATH_SEGMENT@62..63
+                        NAME_REF@62..63
+                          IDENT@62..63 "b"
+                R_ANGLE@63..64 ">"
+        SEMICOLON@64..65 ";"
+      WHITESPACE@65..70 "\n    "
+      LET_STMT@70..88
+        LET_KW@70..73 "let"
+        WHITESPACE@73..74 " "
+        WILDCARD_PAT@74..75
+          UNDERSCORE@74..75 "_"
+        WHITESPACE@75..76 " "
+        EQ@76..77 "="
+        WHITESPACE@77..78 " "
+        MACRO_CALL@78..87
+          PATH@78..84
+            PATH_SEGMENT@78..84
+              NAME_REF@78..84
+                IDENT@78..84 "format"
+          BANG@84..85 "!"
+          TOKEN_TREE@85..87
+            L_PAREN@85..86 "("
+            R_PAREN@86..87 ")"
+        SEMICOLON@87..88 ";"
+      WHITESPACE@88..89 "\n"
+      R_CURLY@89..90 "}"
+  WHITESPACE@90..91 "\n"

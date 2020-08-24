@@ -1,6 +1,6 @@
 [
     MappedRustDiagnostic {
-        url: "file:///test/crates/ra_hir_def/src/data.rs",
+        url: "file:///test/crates/hir_def/src/data.rs",
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
@@ -24,7 +24,7 @@
                 [
                     DiagnosticRelatedInformation {
                         location: Location {
-                            uri: "file:///test/crates/ra_hir_def/src/path.rs",
+                            uri: "file:///test/crates/hir_def/src/path.rs",
                             range: Range {
                                 start: Position {
                                     line: 264,

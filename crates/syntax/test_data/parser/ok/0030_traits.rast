@@ -1,0 +1,61 @@
+SOURCE_FILE@0..96
+  TRAIT@0..36
+    TRAIT_KW@0..5 "trait"
+    WHITESPACE@5..6 " "
+    NAME@6..14
+      IDENT@6..14 "Runnable"
+    WHITESPACE@14..15 " "
+    ASSOC_ITEM_LIST@15..36
+      L_CURLY@15..16 "{"
+      WHITESPACE@16..21 "\n    "
+      FN@21..34
+        FN_KW@21..23 "fn"
+        WHITESPACE@23..24 " "
+        NAME@24..31
+          IDENT@24..31 "handler"
+        PARAM_LIST@31..33
+          L_PAREN@31..32 "("
+          R_PAREN@32..33 ")"
+        SEMICOLON@33..34 ";"
+      WHITESPACE@34..35 "\n"
+      R_CURLY@35..36 "}"
+  WHITESPACE@36..38 "\n\n"
+  TRAIT@38..95
+    TRAIT_KW@38..43 "trait"
+    WHITESPACE@43..44 " "
+    NAME@44..57
+      IDENT@44..57 "TraitWithExpr"
+    WHITESPACE@57..58 " "
+    ASSOC_ITEM_LIST@58..95
+      L_CURLY@58..59 "{"
+      WHITESPACE@59..64 "\n    "
+      FN@64..93
+        FN_KW@64..66 "fn"
+        WHITESPACE@66..67 " "
+        NAME@67..79
+          IDENT@67..79 "fn_with_expr"
+        PARAM_LIST@79..92
+          L_PAREN@79..80 "("
+          PARAM@80..91
+            IDENT_PAT@80..81
+              NAME@80..81
+                IDENT@80..81 "x"
+            COLON@81..82 ":"
+            WHITESPACE@82..83 " "
+            ARRAY_TYPE@83..91
+              L_BRACK@83..84 "["
+              PATH_TYPE@84..87
+                PATH@84..87
+                  PATH_SEGMENT@84..87
+                    NAME_REF@84..87
+                      IDENT@84..87 "i32"
+              SEMICOLON@87..88 ";"
+              WHITESPACE@88..89 " "
+              LITERAL@89..90
+                INT_NUMBER@89..90 "1"
+              R_BRACK@90..91 "]"
+          R_PAREN@91..92 ")"
+        SEMICOLON@92..93 ";"
+      WHITESPACE@93..94 "\n"
+      R_CURLY@94..95 "}"
+  WHITESPACE@95..96 "\n"

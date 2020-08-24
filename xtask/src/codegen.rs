@@ -9,36 +9,49 @@ mod gen_syntax;
 mod gen_parser_tests;
 mod gen_assists_docs;
 mod gen_feature_docs;
+mod gen_features;
 
 use std::{
     fmt, mem,
     path::{Path, PathBuf},
 };
 
-use crate::{not_bash::fs2, project_root, Result};
+use crate::{
+    ensure_rustfmt,
+    not_bash::{fs2, pushenv, run},
+    project_root, Result,
+};
 
 pub use self::{
     gen_assists_docs::{generate_assists_docs, generate_assists_tests},
     gen_feature_docs::generate_feature_docs,
+    gen_features::generate_features,
     gen_parser_tests::generate_parser_tests,
     gen_syntax::generate_syntax,
 };
-
-const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
-const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/ok";
-const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/err";
-
-const SYNTAX_KINDS: &str = "crates/ra_parser/src/syntax_kind/generated.rs";
-const AST_NODES: &str = "crates/ra_syntax/src/ast/generated/nodes.rs";
-const AST_TOKENS: &str = "crates/ra_syntax/src/ast/generated/tokens.rs";
-
-const ASSISTS_DIR: &str = "crates/ra_assists/src/handlers";
-const ASSISTS_TESTS: &str = "crates/ra_assists/src/tests/generated.rs";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Mode {
     Overwrite,
     Verify,
+}
+
+pub struct CodegenCmd {
+    pub features: bool,
+}
+
+impl CodegenCmd {
+    pub fn run(self) -> Result<()> {
+        if self.features {
+            generate_features(Mode::Overwrite)?;
+        }
+        generate_syntax(Mode::Overwrite)?;
+        generate_parser_tests(Mode::Overwrite)?;
+        generate_assists_tests(Mode::Overwrite)?;
+        generate_assists_docs(Mode::Overwrite)?;
+        generate_feature_docs(Mode::Overwrite)?;
+        Ok(())
+    }
 }
 
 /// A helper to update file on disk if it has changed.
@@ -60,6 +73,18 @@ fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
     fn normalize(s: &str) -> String {
         s.replace("\r\n", "\n")
     }
+}
+
+const PREAMBLE: &str = "Generated file, do not edit by hand, see `xtask/src/codegen`";
+
+fn reformat(text: impl std::fmt::Display) -> Result<String> {
+    let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
+    ensure_rustfmt()?;
+    let stdout = run!(
+        "rustfmt --config-path {} --config fn_single_line=true", project_root().join("rustfmt.toml").display();
+        <text.to_string().as_bytes()
+    )?;
+    Ok(format!("//! {}\n\n{}\n", PREAMBLE, stdout))
 }
 
 fn extract_comment_blocks(text: &str) -> Vec<Vec<String>> {

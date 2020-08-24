@@ -1,0 +1,46 @@
+SOURCE_FILE@0..47
+  FN@0..46
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..16
+      L_PAREN@6..7 "("
+      PARAM@7..15
+        IDENT_PAT@7..10
+          NAME@7..10
+            IDENT@7..10 "foo"
+        COLON@10..11 ":"
+        WHITESPACE@11..12 " "
+        PATH_TYPE@12..15
+          PATH@12..15
+            PATH_SEGMENT@12..15
+              NAME_REF@12..15
+                IDENT@12..15 "i32"
+      R_PAREN@15..16 ")"
+    WHITESPACE@16..17 " "
+    BLOCK_EXPR@17..46
+      L_CURLY@17..18 "{"
+      WHITESPACE@18..23 "\n    "
+      LET_STMT@23..36
+        LET_KW@23..26 "let"
+        WHITESPACE@26..27 " "
+        IDENT_PAT@27..30
+          NAME@27..30
+            IDENT@27..30 "bar"
+        WHITESPACE@30..31 " "
+        EQ@31..32 "="
+        WHITESPACE@32..33 " "
+        LITERAL@33..35
+          INT_NUMBER@33..35 "92"
+        SEMICOLON@35..36 ";"
+      WHITESPACE@36..41 "\n    "
+      BIN_EXPR@41..44
+        LITERAL@41..42
+          INT_NUMBER@41..42 "1"
+        WHITESPACE@42..43 " "
+        PLUS@43..44 "+"
+      WHITESPACE@44..45 "\n"
+      R_CURLY@45..46 "}"
+  WHITESPACE@46..47 "\n"
+error 44..44: expected expression

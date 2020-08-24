@@ -1,0 +1,41 @@
+SOURCE_FILE@0..29
+  TYPE_ALIAS@0..28
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "F"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    PATH_TYPE@9..27
+      PATH@9..27
+        PATH_SEGMENT@9..27
+          NAME_REF@9..12
+            IDENT@9..12 "Box"
+          GENERIC_ARG_LIST@12..27
+            L_ANGLE@12..13 "<"
+            TYPE_ARG@13..26
+              PATH_TYPE@13..26
+                PATH@13..26
+                  PATH_SEGMENT@13..26
+                    NAME_REF@13..15
+                      IDENT@13..15 "Fn"
+                    PARAM_LIST@15..20
+                      L_PAREN@15..16 "("
+                      PARAM@16..19
+                        PATH_TYPE@16..19
+                          PATH@16..19
+                            PATH_SEGMENT@16..19
+                              NAME_REF@16..19
+                                IDENT@16..19 "i32"
+                      R_PAREN@19..20 ")"
+                    WHITESPACE@20..21 " "
+                    RET_TYPE@21..26
+                      THIN_ARROW@21..23 "->"
+                      WHITESPACE@23..24 " "
+                      TUPLE_TYPE@24..26
+                        L_PAREN@24..25 "("
+                        R_PAREN@25..26 ")"
+            R_ANGLE@26..27 ">"
+    SEMICOLON@27..28 ";"
+  WHITESPACE@28..29 "\n"

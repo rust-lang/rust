@@ -1,0 +1,80 @@
+SOURCE_FILE@0..139
+  FN@0..138
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..138
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      MATCH_EXPR@15..136
+        MATCH_KW@15..20 "match"
+        WHITESPACE@20..21 " "
+        TUPLE_EXPR@21..23
+          L_PAREN@21..22 "("
+          R_PAREN@22..23 ")"
+        WHITESPACE@23..24 " "
+        MATCH_ARM_LIST@24..136
+          L_CURLY@24..25 "{"
+          WHITESPACE@25..34 "\n        "
+          ATTR@34..60
+            POUND@34..35 "#"
+            BANG@35..36 "!"
+            L_BRACK@36..37 "["
+            PATH@37..40
+              PATH_SEGMENT@37..40
+                NAME_REF@37..40
+                  IDENT@37..40 "doc"
+            TOKEN_TREE@40..59
+              L_PAREN@40..41 "("
+              STRING@41..58 "\"Inner attribute\""
+              R_PAREN@58..59 ")"
+            R_BRACK@59..60 "]"
+          WHITESPACE@60..69 "\n        "
+          ATTR@69..86
+            POUND@69..70 "#"
+            BANG@70..71 "!"
+            L_BRACK@71..72 "["
+            PATH@72..75
+              PATH_SEGMENT@72..75
+                NAME_REF@72..75
+                  IDENT@72..75 "doc"
+            TOKEN_TREE@75..85
+              L_PAREN@75..76 "("
+              STRING@76..84 "\"Can be\""
+              R_PAREN@84..85 ")"
+            R_BRACK@85..86 "]"
+          WHITESPACE@86..95 "\n        "
+          ATTR@95..113
+            POUND@95..96 "#"
+            BANG@96..97 "!"
+            L_BRACK@97..98 "["
+            PATH@98..101
+              PATH_SEGMENT@98..101
+                NAME_REF@98..101
+                  IDENT@98..101 "doc"
+            TOKEN_TREE@101..112
+              L_PAREN@101..102 "("
+              STRING@102..111 "\"Stacked\""
+              R_PAREN@111..112 ")"
+            R_BRACK@112..113 "]"
+          WHITESPACE@113..122 "\n        "
+          MATCH_ARM@122..129
+            WILDCARD_PAT@122..123
+              UNDERSCORE@122..123 "_"
+            WHITESPACE@123..124 " "
+            FAT_ARROW@124..126 "=>"
+            WHITESPACE@126..127 " "
+            TUPLE_EXPR@127..129
+              L_PAREN@127..128 "("
+              R_PAREN@128..129 ")"
+          COMMA@129..130 ","
+          WHITESPACE@130..135 "\n    "
+          R_CURLY@135..136 "}"
+      WHITESPACE@136..137 "\n"
+      R_CURLY@137..138 "}"
+  WHITESPACE@138..139 "\n"

@@ -1,0 +1,23 @@
+SOURCE_FILE@0..21
+  TYPE_ALIAS@0..20
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "F"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    FN_PTR_TYPE@9..19
+      FN_KW@9..11 "fn"
+      PARAM_LIST@11..13
+        L_PAREN@11..12 "("
+        R_PAREN@12..13 ")"
+      WHITESPACE@13..14 " "
+      RET_TYPE@14..19
+        THIN_ARROW@14..16 "->"
+        WHITESPACE@16..17 " "
+        TUPLE_TYPE@17..19
+          L_PAREN@17..18 "("
+          R_PAREN@18..19 ")"
+    SEMICOLON@19..20 ";"
+  WHITESPACE@20..21 "\n"

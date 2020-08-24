@@ -1,0 +1,42 @@
+SOURCE_FILE@0..43
+  FN@0..42
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..42
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..15 "\n    "
+      LET_STMT@15..40
+        LET_KW@15..18 "let"
+        WHITESPACE@18..19 " "
+        WILDCARD_PAT@19..20
+          UNDERSCORE@19..20 "_"
+        WHITESPACE@20..21 " "
+        EQ@21..22 "="
+        WHITESPACE@22..23 " "
+        CAST_EXPR@23..39
+          REF_EXPR@23..25
+            AMP@23..24 "&"
+            LITERAL@24..25
+              INT_NUMBER@24..25 "1"
+          WHITESPACE@25..26 " "
+          AS_KW@26..28 "as"
+          WHITESPACE@28..29 " "
+          PTR_TYPE@29..39
+            STAR@29..30 "*"
+            CONST_KW@30..35 "const"
+            WHITESPACE@35..36 " "
+            PATH_TYPE@36..39
+              PATH@36..39
+                PATH_SEGMENT@36..39
+                  NAME_REF@36..39
+                    IDENT@36..39 "i32"
+        SEMICOLON@39..40 ";"
+      WHITESPACE@40..41 "\n"
+      R_CURLY@41..42 "}"
+  WHITESPACE@42..43 "\n"

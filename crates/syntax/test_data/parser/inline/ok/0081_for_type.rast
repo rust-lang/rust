@@ -1,0 +1,112 @@
+SOURCE_FILE@0..121
+  TYPE_ALIAS@0..28
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "A"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    FOR_TYPE@9..27
+      FOR_KW@9..12 "for"
+      GENERIC_PARAM_LIST@12..16
+        L_ANGLE@12..13 "<"
+        LIFETIME_PARAM@13..15
+          LIFETIME@13..15 "\'a"
+        R_ANGLE@15..16 ">"
+      WHITESPACE@16..17 " "
+      FN_PTR_TYPE@17..27
+        FN_KW@17..19 "fn"
+        PARAM_LIST@19..21
+          L_PAREN@19..20 "("
+          R_PAREN@20..21 ")"
+        WHITESPACE@21..22 " "
+        RET_TYPE@22..27
+          THIN_ARROW@22..24 "->"
+          WHITESPACE@24..25 " "
+          TUPLE_TYPE@25..27
+            L_PAREN@25..26 "("
+            R_PAREN@26..27 ")"
+    SEMICOLON@27..28 ";"
+  WHITESPACE@28..29 "\n"
+  TYPE_ALIAS@29..81
+    TYPE_KW@29..33 "type"
+    WHITESPACE@33..34 " "
+    NAME@34..35
+      IDENT@34..35 "B"
+    WHITESPACE@35..36 " "
+    EQ@36..37 "="
+    WHITESPACE@37..38 " "
+    FOR_TYPE@38..80
+      FOR_KW@38..41 "for"
+      GENERIC_PARAM_LIST@41..45
+        L_ANGLE@41..42 "<"
+        LIFETIME_PARAM@42..44
+          LIFETIME@42..44 "\'a"
+        R_ANGLE@44..45 ">"
+      WHITESPACE@45..46 " "
+      FN_PTR_TYPE@46..80
+        UNSAFE_KW@46..52 "unsafe"
+        WHITESPACE@52..53 " "
+        ABI@53..63
+          EXTERN_KW@53..59 "extern"
+          WHITESPACE@59..60 " "
+          STRING@60..63 "\"C\""
+        WHITESPACE@63..64 " "
+        FN_KW@64..66 "fn"
+        PARAM_LIST@66..74
+          L_PAREN@66..67 "("
+          PARAM@67..73
+            REF_TYPE@67..73
+              AMP@67..68 "&"
+              LIFETIME@68..70 "\'a"
+              WHITESPACE@70..71 " "
+              TUPLE_TYPE@71..73
+                L_PAREN@71..72 "("
+                R_PAREN@72..73 ")"
+          R_PAREN@73..74 ")"
+        WHITESPACE@74..75 " "
+        RET_TYPE@75..80
+          THIN_ARROW@75..77 "->"
+          WHITESPACE@77..78 " "
+          TUPLE_TYPE@78..80
+            L_PAREN@78..79 "("
+            R_PAREN@79..80 ")"
+    SEMICOLON@80..81 ";"
+  WHITESPACE@81..82 "\n"
+  TYPE_ALIAS@82..120
+    TYPE_KW@82..86 "type"
+    WHITESPACE@86..87 " "
+    NAME@87..90
+      IDENT@87..90 "Obj"
+    WHITESPACE@90..91 " "
+    EQ@91..92 "="
+    WHITESPACE@92..93 " "
+    FOR_TYPE@93..119
+      FOR_KW@93..96 "for"
+      GENERIC_PARAM_LIST@96..100
+        L_ANGLE@96..97 "<"
+        LIFETIME_PARAM@97..99
+          LIFETIME@97..99 "\'a"
+        R_ANGLE@99..100 ">"
+      WHITESPACE@100..101 " "
+      PATH_TYPE@101..119
+        PATH@101..119
+          PATH_SEGMENT@101..119
+            NAME_REF@101..110
+              IDENT@101..110 "PartialEq"
+            GENERIC_ARG_LIST@110..119
+              L_ANGLE@110..111 "<"
+              TYPE_ARG@111..118
+                REF_TYPE@111..118
+                  AMP@111..112 "&"
+                  LIFETIME@112..114 "\'a"
+                  WHITESPACE@114..115 " "
+                  PATH_TYPE@115..118
+                    PATH@115..118
+                      PATH_SEGMENT@115..118
+                        NAME_REF@115..118
+                          IDENT@115..118 "i32"
+              R_ANGLE@118..119 ">"
+    SEMICOLON@119..120 ";"
+  WHITESPACE@120..121 "\n"

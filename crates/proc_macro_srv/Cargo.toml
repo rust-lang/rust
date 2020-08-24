@@ -1,0 +1,29 @@
+[package]
+name = "proc_macro_srv"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+goblin = "0.2.1"
+libloading = "0.6.0"
+memmap = "0.7"
+
+tt = { path = "../tt" }
+mbe = { path = "../mbe" }
+proc_macro_api = { path = "../proc_macro_api" }
+test_utils = { path = "../test_utils" }
+
+[dev-dependencies]
+cargo_metadata = "0.11.1"
+difference = "2.0.0"
+
+# used as proc macro test targets
+serde_derive = "1.0.106"
+proc_macro_test = { path = "../proc_macro_test" }
+
+toolchain = { path = "../toolchain" }

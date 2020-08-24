@@ -3,7 +3,7 @@ pub(crate) mod to_proto;
 
 use std::{mem, sync::Arc};
 
-use ra_ide::FileId;
+use ide::FileId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::lsp_ext;
@@ -11,7 +11,7 @@ use crate::lsp_ext;
 pub(crate) type CheckFixes = Arc<FxHashMap<FileId, Vec<Fix>>>;
 
 #[derive(Debug, Default, Clone)]
-pub struct DiagnosticsConfig {
+pub struct DiagnosticsMapConfig {
     pub warnings_as_info: Vec<String>,
     pub warnings_as_hint: Vec<String>,
 }

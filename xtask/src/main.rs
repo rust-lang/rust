@@ -10,6 +10,7 @@
 
 use std::env;
 
+use codegen::CodegenCmd;
 use pico_args::Arguments;
 use xtask::{
     codegen::{self, Mode},
@@ -17,9 +18,10 @@ use xtask::{
     install::{ClientOpt, InstallCmd, Malloc, ServerOpt},
     metrics::MetricsCmd,
     not_bash::pushd,
+    pre_cache::PreCacheCmd,
     pre_commit, project_root,
     release::{PromoteCmd, ReleaseCmd},
-    run_clippy, run_fuzzer, run_pre_cache, run_rustfmt, Result,
+    run_clippy, run_fuzzer, run_rustfmt, Result,
 };
 
 fn main() -> Result<()> {
@@ -74,13 +76,9 @@ FLAGS:
             .run()
         }
         "codegen" => {
+            let features = args.contains("--features");
             args.finish()?;
-            codegen::generate_syntax(Mode::Overwrite)?;
-            codegen::generate_parser_tests(Mode::Overwrite)?;
-            codegen::generate_assists_tests(Mode::Overwrite)?;
-            codegen::generate_assists_docs(Mode::Overwrite)?;
-            codegen::generate_feature_docs(Mode::Overwrite)?;
-            Ok(())
+            CodegenCmd { features }.run()
         }
         "format" => {
             args.finish()?;
@@ -100,7 +98,7 @@ FLAGS:
         }
         "pre-cache" => {
             args.finish()?;
-            run_pre_cache()
+            PreCacheCmd.run()
         }
         "release" => {
             let dry_run = args.contains("--dry-run");
