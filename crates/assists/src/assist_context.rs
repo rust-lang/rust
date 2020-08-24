@@ -73,10 +73,6 @@ impl<'a> AssistContext<'a> {
         self.sema.db
     }
 
-    pub(crate) fn source_file(&self) -> &SourceFile {
-        &self.source_file
-    }
-
     // NB, this ignores active selection.
     pub(crate) fn offset(&self) -> TextSize {
         self.frange.range.start()
