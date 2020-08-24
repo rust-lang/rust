@@ -1579,6 +1579,9 @@ function defocusSearchBar() {
             var search = getSearchElement();
             if (results.others.length === 1
                 && getCurrentValue("rustdoc-go-to-only-result") === "true"
+                // By default, the search DOM element is "empty" (meaning it has no children not
+                // text content). Once a search has been run, it won't be empty, even if you press
+                // ESC or empty the search input (which also "cancels" the search).
                 && (!search.firstChild || search.firstChild.innerText !== getSearchLoadingText()))
             {
                 var elem = document.createElement("a");
