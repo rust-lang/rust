@@ -1264,7 +1264,7 @@ rustc_index::newtype_index! {
     /// De Bruijn index of 0, because the innermost binder in that location
     /// is the outer fn.
     ///
-    /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
+    /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
     #[derive(HashStable)]
     pub struct DebruijnIndex {
         DEBUG_FORMAT = "DebruijnIndex({})",
