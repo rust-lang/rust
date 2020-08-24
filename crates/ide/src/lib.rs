@@ -77,7 +77,9 @@ pub use crate::{
     hover::{HoverAction, HoverConfig, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     markup::Markup,
-    references::{Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult},
+    references::{
+        Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult, RenameError,
+    },
     runnables::{Runnable, RunnableKind, TestId},
     syntax_highlighting::{
         Highlight, HighlightModifier, HighlightModifiers, HighlightTag, HighlightedRange,
@@ -490,7 +492,7 @@ impl Analysis {
         &self,
         position: FilePosition,
         new_name: &str,
-    ) -> Cancelable<Option<RangeInfo<SourceChange>>> {
+    ) -> Cancelable<Result<RangeInfo<SourceChange>, RenameError>> {
         self.with_db(|db| references::rename(db, position, new_name))
     }
 
