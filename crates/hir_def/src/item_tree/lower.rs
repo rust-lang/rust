@@ -557,6 +557,10 @@ impl Ctx {
                             let statik = self.lower_static(&ast)?;
                             statik.into()
                         }
+                        ast::ExternItem::TypeAlias(ty) => {
+                            let id = self.lower_type_alias(&ty)?;
+                            id.into()
+                        }
                         ast::ExternItem::MacroCall(_) => return None,
                     };
                     self.add_attrs(id.into(), attrs);
