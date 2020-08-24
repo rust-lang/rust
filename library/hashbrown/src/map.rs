@@ -770,6 +770,7 @@ where
         let hash = make_hash(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
             Entry::Occupied(OccupiedEntry {
+                hash,
                 key: Some(key),
                 elem,
                 table: self,
@@ -2016,6 +2017,7 @@ impl<K: Debug, V: Debug, S> Debug for Entry<'_, K, V, S> {
 ///
 /// [`Entry`]: enum.Entry.html
 pub struct OccupiedEntry<'a, K, V, S> {
+    hash: u64,
     key: Option<K>,
     elem: Bucket<(K, V)>,
     table: &'a mut HashMap<K, V, S>,
@@ -2897,6 +2899,7 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
             make_hash(hash_builder, &x.0)
         });
         OccupiedEntry {
+            hash: self.hash,
             key: None,
             elem,
             table: self.table,
