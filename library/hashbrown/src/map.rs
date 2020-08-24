@@ -3944,7 +3944,7 @@ mod test_map {
     }
 
     #[test]
-    fn test_entry_replace_entry_with() {
+    fn test_entry_and_replace_entry_with() {
         let mut a = HashMap::new();
 
         let key = "a key";
