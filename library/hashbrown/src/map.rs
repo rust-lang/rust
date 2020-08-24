@@ -4102,7 +4102,8 @@ mod test_map {
         let value = "an initial value";
         let new_value = "a new value";
 
-        a.raw_entry_mut()
+        let entry = a
+            .raw_entry_mut()
             .from_key(&key)
             .insert(key, value)
             .replace_entry_with(|k, v| {
@@ -4111,18 +4112,29 @@ mod test_map {
                 Some(new_value)
             });
 
+        match entry {
+            RawEntryMut::Occupied(e) => {
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
+            }
+            RawEntryMut::Vacant(_) => panic!(),
+        }
+
         assert_eq!(a[key], new_value);
         assert_eq!(a.len(), 1);
 
-        match a.raw_entry_mut().from_key(&key) {
-            RawEntryMut::Occupied(e) => {
-                e.replace_entry_with(|k, v| {
-                    assert_eq!(k, &key);
-                    assert_eq!(v, new_value);
-                    None
-                });
-            }
+        let entry = match a.raw_entry_mut().from_key(&key) {
+            RawEntryMut::Occupied(e) => e.replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, new_value);
+                None
+            }),
             RawEntryMut::Vacant(_) => panic!(),
+        };
+
+        match entry {
+            RawEntryMut::Vacant(_) => {}
+            RawEntryMut::Occupied(_) => panic!(),
         }
 
         assert!(!a.contains_key(key));
@@ -4137,13 +4149,20 @@ mod test_map {
         let value = "an initial value";
         let new_value = "a new value";
 
-        a.raw_entry_mut()
+        let entry = a
+            .raw_entry_mut()
             .from_key(&key)
-            .and_replace_entry_with(|_, _| panic!("Can't replace a VacantEntry"));
+            .and_replace_entry_with(|_, _| panic!());
+
+        match entry {
+            RawEntryMut::Vacant(_) => {}
+            RawEntryMut::Occupied(_) => panic!(),
+        }
 
         a.insert(key, value);
 
-        a.raw_entry_mut()
+        let entry = a
+            .raw_entry_mut()
             .from_key(&key)
             .and_replace_entry_with(|k, v| {
                 assert_eq!(k, &key);
@@ -4151,16 +4170,30 @@ mod test_map {
                 Some(new_value)
             });
 
+        match entry {
+            RawEntryMut::Occupied(e) => {
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
+            }
+            RawEntryMut::Vacant(_) => panic!(),
+        }
+
         assert_eq!(a[key], new_value);
         assert_eq!(a.len(), 1);
 
-        a.raw_entry_mut()
+        let entry = a
+            .raw_entry_mut()
             .from_key(&key)
             .and_replace_entry_with(|k, v| {
                 assert_eq!(k, &key);
                 assert_eq!(v, new_value);
                 None
             });
+
+        match entry {
+            RawEntryMut::Vacant(_) => {}
+            RawEntryMut::Occupied(_) => panic!(),
+        }
 
         assert!(!a.contains_key(key));
         assert_eq!(a.len(), 0);
