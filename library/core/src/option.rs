@@ -135,7 +135,7 @@ use crate::iter::{FromIterator, FusedIterator, TrustedLen};
 use crate::pin::Pin;
 use crate::{
     convert, fmt, hint, mem,
-    ops::{self, Deref, DerefMut},
+    ops::{self, Add, Deref, DerefMut},
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
@@ -1257,6 +1257,19 @@ impl<T> Default for Option<T> {
     #[inline]
     fn default() -> Option<T> {
         None
+    }
+}
+
+#[stable(feature = "option_add", since = "1.46.0")]
+impl<T: Add<Output = T>> Add for Option<T> {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        match (self, other) {
+            (a, None) => a,
+            (None, b) => b,
+            (Some(a), Some(b)) => Some(a.add(b)),
+        }
     }
 }
 
