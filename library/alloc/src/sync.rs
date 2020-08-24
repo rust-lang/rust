@@ -349,7 +349,7 @@ impl<T> Arc<T> {
     /// });
     /// ```
     #[inline]
-    #[unstable(feature = "arc_new_cyclic", issue = "none")]
+    #[unstable(feature = "arc_new_cyclic", issue = "75861")]
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Arc<T> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
