@@ -6,6 +6,7 @@ mod sysroot;
 mod cfg_flag;
 
 use std::{
+    fmt,
     fs::{self, read_dir, ReadDir},
     io,
     process::Command,
@@ -27,12 +28,25 @@ pub use crate::{
 
 pub use proc_macro_api::ProcMacroClient;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum ProjectWorkspace {
     /// Project workspace was discovered by running `cargo metadata` and `rustc --print sysroot`.
     Cargo { cargo: CargoWorkspace, sysroot: Sysroot },
     /// Project workspace was manually specified using a `rust-project.json` file.
     Json { project: ProjectJson },
+}
+
+impl fmt::Debug for ProjectWorkspace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProjectWorkspace::Cargo { cargo, .. } => {
+                f.debug_struct("Cargo").field("n_packages", &cargo.packages().len()).finish()
+            }
+            ProjectWorkspace::Json { project } => {
+                f.debug_struct("Json").field("n_crates", &project.crates.len()).finish()
+            }
+        }
+    }
 }
 
 /// `PackageRoot` describes a package root folder.

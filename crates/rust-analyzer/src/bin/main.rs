@@ -60,11 +60,12 @@ fn setup_logging() -> Result<()> {
 }
 
 fn run_server() -> Result<()> {
-    log::info!("lifecycle: server started");
+    log::info!("server will start");
 
     let (connection, io_threads) = Connection::stdio();
 
     let (initialize_id, initialize_params) = connection.initialize_start()?;
+    log::info!("InitializeParams: {}", initialize_params);
     let initialize_params =
         from_json::<lsp_types::InitializeParams>("InitializeParams", initialize_params)?;
 
@@ -118,10 +119,9 @@ fn run_server() -> Result<()> {
                 .filter(|workspaces| !workspaces.is_empty())
                 .unwrap_or_else(|| vec![config.root_path.clone()]);
 
-            config.linked_projects = ProjectManifest::discover_all(&workspace_roots)
-                .into_iter()
-                .map(LinkedProject::from)
-                .collect();
+            let discovered = ProjectManifest::discover_all(&workspace_roots);
+            log::info!("discovered projects: {:?}", discovered);
+            config.linked_projects = discovered.into_iter().map(LinkedProject::from).collect();
         }
 
         config
@@ -129,8 +129,7 @@ fn run_server() -> Result<()> {
 
     rust_analyzer::main_loop(config, connection)?;
 
-    log::info!("shutting down IO...");
     io_threads.join()?;
-    log::info!("... IO is down");
+    log::info!("server did shut down");
     Ok(())
 }

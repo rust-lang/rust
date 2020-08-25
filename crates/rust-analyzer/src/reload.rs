@@ -92,6 +92,7 @@ impl GlobalState {
         }
     }
     pub(crate) fn fetch_workspaces(&mut self) {
+        log::info!("will fetch workspaces");
         self.task_pool.handle.spawn({
             let linked_projects = self.config.linked_projects.clone();
             let cargo_config = self.config.cargo.clone();
@@ -112,13 +113,14 @@ impl GlobalState {
                         }
                     })
                     .collect::<Vec<_>>();
+                log::info!("did fetch workspaces {:?}", workspaces);
                 Task::Workspaces(workspaces)
             }
         });
     }
     pub(crate) fn switch_workspaces(&mut self, workspaces: Vec<anyhow::Result<ProjectWorkspace>>) {
         let _p = profile::span("GlobalState::switch_workspaces");
-        log::info!("reloading projects: {:?}", self.config.linked_projects);
+        log::info!("will switch workspaces: {:?}", workspaces);
 
         let mut has_errors = false;
         let workspaces = workspaces
@@ -223,6 +225,7 @@ impl GlobalState {
         self.analysis_host.apply_change(change);
         self.process_changes();
         self.reload_flycheck();
+        log::info!("did switch workspaces");
     }
 
     fn reload_flycheck(&mut self) {
