@@ -65,7 +65,7 @@ pub(super) fn send_vectored_with_ancillary_to(
     }
 }
 
-fn add_to_ancillary_data<T: Clone>(
+fn add_to_ancillary_data<T>(
     buffer: &mut [u8],
     length: &mut usize,
     source: &[T],
