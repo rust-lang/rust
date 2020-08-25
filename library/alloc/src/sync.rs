@@ -516,6 +516,62 @@ impl<T> Arc<T> {
             Ok(elem)
         }
     }
+
+    /// Returns the inner value, if the `Arc` has exactly one strong reference.
+    ///
+    /// Otherwise, [`None`] is returned and the `Arc` is dropped.
+    ///
+    /// This will succeed even if there are outstanding weak references.
+    ///
+    /// If `unwrap_or_drop` is called on every clone of this `Arc`,
+    /// it is guaranteed that exactly one of the calls returns the inner value.
+    /// The similar expression `Arc::try_unwrap(this).ok()` does not
+    /// offer this guarantee.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unwrap_or_drop)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::new(3);
+    /// let y = Arc::clone(&x);
+    ///
+    /// let x_unwrap_thread = std::thread::spawn(|| Arc::unwrap_or_drop(x));
+    /// let y_unwrap_thread = std::thread::spawn(|| Arc::unwrap_or_drop(y));
+    ///
+    /// let x_unwrapped_value = x_unwrap_thread.join().unwrap();
+    /// let y_unwrapped_value = y_unwrap_thread.join().unwrap();
+    ///
+    /// assert!(matches!(
+    ///     (x_unwrapped_value, y_unwrapped_value),
+    ///     (None, Some(3)) | (Some(3), None)
+    /// ));
+    /// ```
+    #[inline]
+    #[unstable(feature = "unwrap_or_drop", issue = "none")] // FIXME: add issue
+    // FIXME: should this copy all/some of the comments from drop and drop_slow?
+    pub fn unwrap_or_drop(this: Self) -> Option<T> {
+        // following the implementation of `drop` (and `drop_slow`)
+        let mut this = core::mem::ManuallyDrop::new(this);
+
+        if this.inner().strong.fetch_sub(1, Release) != 1 {
+            return None;
+        }
+
+        acquire!(this.inner().strong);
+
+        // FIXME: should the part below this be moved into a seperate #[inline(never)]
+        // function, like it's done with drop_slow in drop?
+
+        // using `ptr::read` where `drop_slow` was using `ptr::drop_in_place`
+        let inner = unsafe { ptr::read(Self::get_mut_unchecked(&mut this)) };
+
+        drop(Weak { ptr: this.ptr });
+
+        Some(inner)
+    }
 }
 
 impl<T> Arc<[T]> {
