@@ -1,14 +1,16 @@
 // run-rustfix
 
-#![feature(range_is_empty)]
 #![warn(clippy::len_zero)]
 #![allow(unused)]
-#![allow(stable_features)] // TODO: https://github.com/rust-lang/rust-clippy/issues/5956
 
+// Now that `Range(Inclusive)::is_empty` is stable (1.47), we can always suggest this
 mod issue_3807 {
-    // With the feature enabled, `is_empty` should be suggested
-    fn suggestion_is_fine() {
+    fn suggestion_is_fine_range() {
         let _ = (0..42).is_empty();
+    }
+
+    fn suggestion_is_fine_range_inclusive() {
+        let _ = (0_u8..=42).is_empty();
     }
 }
 
