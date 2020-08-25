@@ -32,7 +32,7 @@ mod attrs;
 mod has_source;
 
 pub use crate::{
-    attrs::{AttrDef, HasAttrs},
+    attrs::HasAttrs,
     code_model::{
         Access, Adt, AsAssocItem, AssocItem, AssocItemContainer, Callable, CallableKind, Const,
         Crate, CrateDependency, DefWithBody, Enum, EnumVariant, Field, FieldSource, Function,

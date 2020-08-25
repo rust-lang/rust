@@ -4,59 +4,62 @@ use hir_def::{
     db::DefDatabase,
     docs::Documentation,
     resolver::{HasResolver, Resolver},
-    AdtId, FunctionId, GenericDefId, ModuleId, StaticId, TraitId, VariantId,
+    AdtId, AttrDefId, FunctionId, GenericDefId, ModuleId, StaticId, TraitId, VariantId,
 };
 use hir_ty::db::HirDatabase;
-use stdx::impl_from;
 
 use crate::{
     doc_links::Resolvable, Adt, Const, Enum, EnumVariant, Field, Function, GenericDef, ImplDef,
     Local, MacroDef, Module, ModuleDef, Static, Struct, Trait, TypeAlias, TypeParam, Union,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum AttrDef {
-    Module(Module),
-    Field(Field),
-    Adt(Adt),
-    Function(Function),
-    EnumVariant(EnumVariant),
-    Static(Static),
-    Const(Const),
-    Trait(Trait),
-    TypeAlias(TypeAlias),
-    MacroDef(MacroDef),
-}
-
-impl_from!(
-    Module,
-    Field,
-    Adt(Struct, Enum, Union),
-    EnumVariant,
-    Static,
-    Const,
-    Function,
-    Trait,
-    TypeAlias,
-    MacroDef
-    for AttrDef
-);
-
 pub trait HasAttrs {
     fn attrs(self, db: &dyn HirDatabase) -> Attrs;
     fn docs(self, db: &dyn HirDatabase) -> Option<Documentation>;
 }
 
-impl<T: Into<AttrDef>> HasAttrs for T {
-    fn attrs(self, db: &dyn HirDatabase) -> Attrs {
-        let def: AttrDef = self.into();
-        db.attrs(def.into())
-    }
-    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-        let def: AttrDef = self.into();
-        db.documentation(def.into())
-    }
+macro_rules! impl_has_attrs {
+    ($(($def:ident, $def_id:ident),)*) => {$(
+        impl HasAttrs for $def {
+            fn attrs(self, db: &dyn HirDatabase) -> Attrs {
+                let def = AttrDefId::$def_id(self.into());
+                db.attrs(def)
+            }
+            fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+                let def = AttrDefId::$def_id(self.into());
+                db.documentation(def)
+            }
+        }
+    )*};
 }
+
+impl_has_attrs![
+    (Field, FieldId),
+    (EnumVariant, EnumVariantId),
+    (Static, StaticId),
+    (Const, ConstId),
+    (Trait, TraitId),
+    (TypeAlias, TypeAliasId),
+    (MacroDef, MacroDefId),
+    (Function, FunctionId),
+    (Adt, AdtId),
+    (Module, ModuleId),
+];
+
+macro_rules! impl_has_attrs_adt {
+    ($($adt:ident),*) => {$(
+        impl HasAttrs for $adt {
+            fn attrs(self, db: &dyn HirDatabase) -> Attrs {
+                Adt::$adt(self).attrs(db)
+            }
+            fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+                Adt::$adt(self).docs(db)
+            }
+        }
+    )*};
+}
+
+impl_has_attrs_adt![Struct, Union, Enum];
 
 impl Resolvable for ModuleDef {
     fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
