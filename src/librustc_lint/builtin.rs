@@ -2180,11 +2180,12 @@ impl ClashingExternDeclarations {
                         if is_transparent && !is_non_null {
                             debug_assert!(def.variants.len() == 1);
                             let v = &def.variants[VariantIdx::new(0)];
-                            assert!(
-                                v.fields.len() > 0,
-                                "single-variant transparent structure with zero-sized field"
-                            );
-                            ty = v.transparent_newtype_field(tcx).unwrap().ty(tcx, substs);
+                            ty = v
+                                .transparent_newtype_field(tcx)
+                                .expect(
+                                    "single-variant transparent structure with zero-sized field",
+                                )
+                                .ty(tcx, substs);
                             continue;
                         }
                     }
