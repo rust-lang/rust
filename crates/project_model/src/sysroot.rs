@@ -34,16 +34,10 @@ impl ops::Index<SysrootCrate> for Sysroot {
 }
 
 impl Sysroot {
-    pub fn core(&self) -> Option<SysrootCrate> {
-        self.by_name("core")
-    }
-
-    pub fn alloc(&self) -> Option<SysrootCrate> {
-        self.by_name("alloc")
-    }
-
-    pub fn std(&self) -> Option<SysrootCrate> {
-        self.by_name("std")
+    pub fn public_deps(&self) -> impl Iterator<Item = (&'static str, SysrootCrate)> + '_ {
+        // core is added as a dependency before std in order to
+        // mimic rustcs dependency order
+        vec!["core", "alloc", "std"].into_iter().filter_map(move |it| Some((it, self.by_name(it)?)))
     }
 
     pub fn proc_macro(&self) -> Option<SysrootCrate> {
@@ -81,7 +75,7 @@ impl Sysroot {
             }
         }
 
-        if let Some(std) = sysroot.std() {
+        if let Some(std) = sysroot.by_name("std") {
             for dep in STD_DEPS.trim().lines() {
                 if let Some(dep) = sysroot.by_name(dep) {
                     sysroot.crates[std].deps.push(dep)
@@ -89,8 +83,8 @@ impl Sysroot {
             }
         }
 
-        if let Some(alloc) = sysroot.alloc() {
-            if let Some(core) = sysroot.core() {
+        if let Some(alloc) = sysroot.by_name("alloc") {
+            if let Some(core) = sysroot.by_name("core") {
                 sysroot.crates[alloc].deps.push(core);
             }
         }
