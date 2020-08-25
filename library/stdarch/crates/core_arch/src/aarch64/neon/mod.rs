@@ -88,7 +88,7 @@ extern "C" {
     fn vpaddq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
     #[link_name = "llvm.aarch64.neon.addp.v16i8"]
     fn vpaddq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
-    
+
     #[link_name = "llvm.aarch64.neon.saddv.i32.v4i16"]
     fn vaddv_s16_(a: int16x4_t) -> i16;
     #[link_name = "llvm.aarch64.neon.saddv.i32.v2i32"]
@@ -1826,9 +1826,13 @@ mod tests {
     #[simd_test(enable = "neon")]
     unsafe fn test_vpaddq_s8() {
         let a = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let b = i8x16::new(0, -1, -2, -3, -4, -5, -6, -7, -8, -8, -10, -11, -12, -13, -14, -15);
+        let b = i8x16::new(
+            0, -1, -2, -3, -4, -5, -6, -7, -8, -8, -10, -11, -12, -13, -14, -15,
+        );
         let r: i8x16 = transmute(vpaddq_s8(transmute(a), transmute(b)));
-        let e = i8x16::new(3, 7, 11, 15, 19, 23, 27, 31, -1, -5, -9, -13, -16, -21, -25, -29);
+        let e = i8x16::new(
+            3, 7, 11, 15, 19, 23, 27, 31, -1, -5, -9, -13, -16, -21, -25, -29,
+        );
         assert_eq!(r, e);
     }
     #[simd_test(enable = "neon")]
@@ -2829,7 +2833,7 @@ mod tests {
         let e = i64x2::new(i64::MIN, i64::MAX);
         assert_eq!(r, e);
     }
-    
+
     #[simd_test(enable = "neon")]
     unsafe fn test_vaddv_s16() {
         let a = i16x4::new(1, 2, 3, -4);

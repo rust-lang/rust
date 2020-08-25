@@ -175,7 +175,7 @@ extern "C" {
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxs.v2f32")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmaxp.v2f32")]
     fn vpmaxf_v2f32(a: float32x2_t, b: float32x2_t) -> float32x2_t;
-    
+
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v4i16")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.addp.v4i16")]
     fn vpadd_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
@@ -299,7 +299,7 @@ pub unsafe fn vpadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadd))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addp))]
 pub unsafe fn vpadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    vpadd_s8_(a,b)
+    vpadd_s8_(a, b)
 }
 /// Add pairwise.
 #[inline]
@@ -308,7 +308,7 @@ pub unsafe fn vpadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadd))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addp))]
 pub unsafe fn vpadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    transmute(vpadd_s16_(transmute(a),transmute(b)))
+    transmute(vpadd_s16_(transmute(a), transmute(b)))
 }
 /// Add pairwise.
 #[inline]
@@ -317,7 +317,7 @@ pub unsafe fn vpadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadd))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addp))]
 pub unsafe fn vpadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    transmute(vpadd_s32_(transmute(a),transmute(b)))
+    transmute(vpadd_s32_(transmute(a), transmute(b)))
 }
 /// Add pairwise.
 #[inline]
@@ -326,7 +326,7 @@ pub unsafe fn vpadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadd))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addp))]
 pub unsafe fn vpadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    transmute(vpadd_s8_(transmute(a),transmute(b)))
+    transmute(vpadd_s8_(transmute(a), transmute(b)))
 }
 
 /// Unsigned saturating extract narrow.
