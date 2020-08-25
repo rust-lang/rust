@@ -754,12 +754,16 @@ impl Step for RustdocGUI {
             // Second step: install npm dependencies.
             let mut cmd = Command::new("npm");
             cmd.arg("install").current_dir(builder.out.join("browser-UI-test"));
-            try_run(builder, &mut cmd);
+            if !try_run(builder, &mut cmd) {
+                panic!("failed to install browser-UI-test node package");
+            }
 
             // Third step: building documentation with lastest rustdoc version.
             let mut cmd = builder.rustdoc_cmd(self.compiler);
             cmd.current_dir(builder.out.join("test-rust-docs-ui/test-docs")).arg("src/lib.rs");
-            try_run(builder, &mut cmd);
+            if !try_run(builder, &mut cmd) {
+                panic!("Failed to build docs for rustdoc-gui test!");
+            }
 
             // Last step: running tests.
             let mut command = Command::new(nodejs);
