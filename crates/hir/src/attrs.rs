@@ -1,3 +1,4 @@
+//! Attributes & documentation for hir types.
 use hir_def::{
     attr::Attrs,
     db::DefDatabase,
@@ -11,7 +12,6 @@ use stdx::impl_from;
 use crate::{
     doc_links::Resolvable, Adt, Const, Enum, EnumVariant, Field, Function, GenericDef, ImplDef,
     Local, MacroDef, Module, ModuleDef, Static, Struct, Trait, TypeAlias, TypeParam, Union,
-    VariantDef,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -83,7 +83,7 @@ impl Resolvable for ModuleDef {
 
 impl Resolvable for TypeParam {
     fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
-        Some(Into::<ModuleId>::into(self.module(db)).resolver(db))
+        Some(ModuleId::from(self.module(db)).resolver(db))
     }
 
     fn try_into_module_def(self) -> Option<ModuleDef> {
@@ -93,7 +93,7 @@ impl Resolvable for TypeParam {
 
 impl Resolvable for MacroDef {
     fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
-        Some(Into::<ModuleId>::into(self.module(db)?).resolver(db))
+        Some(ModuleId::from(self.module(db)?).resolver(db))
     }
 
     fn try_into_module_def(self) -> Option<ModuleDef> {
@@ -103,7 +103,7 @@ impl Resolvable for MacroDef {
 
 impl Resolvable for Field {
     fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
-        Some(Into::<VariantId>::into(Into::<VariantDef>::into(self.parent_def(db))).resolver(db))
+        Some(VariantId::from(self.parent_def(db)).resolver(db))
     }
 
     fn try_into_module_def(self) -> Option<ModuleDef> {
@@ -113,7 +113,7 @@ impl Resolvable for Field {
 
 impl Resolvable for ImplDef {
     fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
-        Some(Into::<ModuleId>::into(self.module(db)).resolver(db))
+        Some(ModuleId::from(self.module(db)).resolver(db))
     }
 
     fn try_into_module_def(self) -> Option<ModuleDef> {
@@ -123,7 +123,7 @@ impl Resolvable for ImplDef {
 
 impl Resolvable for Local {
     fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
-        Some(Into::<ModuleId>::into(self.module(db)).resolver(db))
+        Some(ModuleId::from(self.module(db)).resolver(db))
     }
 
     fn try_into_module_def(self) -> Option<ModuleDef> {
