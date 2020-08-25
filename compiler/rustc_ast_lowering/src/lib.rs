@@ -972,7 +972,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
 
-        Attribute { kind, id: attr.id, style: attr.style, span: attr.span }
+        Attribute { kind, id: attr.id, style: attr.style, span: attr.span, tokens: None }
     }
 
     fn lower_mac_args(&mut self, args: &MacArgs) -> MacArgs {

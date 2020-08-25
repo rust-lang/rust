@@ -1,1 +1,1 @@
-enum e = isize; //~ ERROR expected one of `<`, `where`, or `{`, found `=`
+enum e = isize; //~ ERROR expected `where`, or `{` after enum name, found `=`

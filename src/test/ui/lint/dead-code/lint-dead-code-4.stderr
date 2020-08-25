@@ -14,7 +14,7 @@ error: variant is never constructed: `X`
   --> $DIR/lint-dead-code-4.rs:15:5
    |
 LL |     X,
-   |     ^
+   |     ^^
 
 error: variant is never constructed: `Y`
   --> $DIR/lint-dead-code-4.rs:16:5
@@ -24,7 +24,7 @@ LL | |         a: String,
 LL | |         b: i32,
 LL | |         c: i32,
 LL | |     },
-   | |_____^
+   | |______^
 
 error: enum is never used: `ABC`
   --> $DIR/lint-dead-code-4.rs:24:6
@@ -36,7 +36,7 @@ error: variant is never constructed: `I`
   --> $DIR/lint-dead-code-4.rs:36:5
    |
 LL |     I,
-   |     ^
+   |     ^^
 
 error: field is never read: `b`
   --> $DIR/lint-dead-code-4.rs:39:9

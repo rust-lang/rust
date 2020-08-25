@@ -403,6 +403,10 @@ impl Cursor {
     pub fn look_ahead(&self, n: usize) -> Option<TokenTree> {
         self.stream.0[self.index..].get(n).map(|(tree, _)| tree.clone())
     }
+
+    pub fn index(&self) -> usize {
+        self.index
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
@@ -427,4 +431,86 @@ impl DelimSpan {
     pub fn entire(self) -> Span {
         self.open.with_hi(self.close.hi())
     }
+}
+
+#[derive(Clone, Debug, Default, Encodable, Decodable)]
+pub struct PreexpTokenStream(pub Lrc<Vec<(PreexpTokenTree, Spacing)>>);
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub enum PreexpTokenTree {
+    Token(Token),
+    Delimited(DelimSpan, DelimToken, PreexpTokenStream),
+    OuterAttributes(AttributesData),
+}
+
+impl PreexpTokenStream {
+    pub fn new(tokens: Vec<(PreexpTokenTree, Spacing)>) -> PreexpTokenStream {
+        PreexpTokenStream(Lrc::new(tokens))
+    }
+
+    pub fn replace_attributes(&mut self, f: impl FnOnce(&mut AttributesData)) {
+        if let &[(PreexpTokenTree::OuterAttributes(ref data), joint)] = &**self.0 {
+            let mut data = data.clone();
+            f(&mut data);
+            *self = PreexpTokenStream::new(vec![(PreexpTokenTree::OuterAttributes(data), joint)]);
+        } else {
+            panic!("Expected a single PreexpTokenTree::OuterAttributes, found {:?}", self);
+        }
+    }
+
+    pub fn to_tokenstream(self) -> TokenStream {
+        let trees: Vec<_> = self
+            .0
+            .iter()
+            .flat_map(|tree| match &tree.0 {
+                PreexpTokenTree::Token(inner) => {
+                    smallvec![(TokenTree::Token(inner.clone()), tree.1)].into_iter()
+                }
+                PreexpTokenTree::Delimited(span, delim, stream) => smallvec![(
+                    TokenTree::Delimited(*span, *delim, stream.clone().to_tokenstream()),
+                    tree.1,
+                )]
+                .into_iter(),
+                PreexpTokenTree::OuterAttributes(data) => {
+                    let flat: SmallVec<[_; 1]> = data
+                        .attrs
+                        .iter()
+                        .filter(|attr| attr.style == crate::AttrStyle::Outer)
+                        .flat_map(|attr| {
+                            attr.tokens.as_ref().expect("Missing tokens").0.iter().cloned()
+                        })
+                        .chain(data.tokens.clone().to_tokenstream().0.iter().cloned())
+                        .collect();
+                    flat.into_iter()
+                }
+            })
+            .collect();
+        TokenStream::new(trees)
+    }
+
+    pub fn from_tokenstream(stream: TokenStream) -> PreexpTokenStream {
+        let trees: Vec<_> = stream
+            .0
+            .iter()
+            .cloned()
+            .map(|tree| {
+                let new_tree = match tree.0 {
+                    TokenTree::Token(token) => PreexpTokenTree::Token(token),
+                    TokenTree::Delimited(sp, delim, inner) => PreexpTokenTree::Delimited(
+                        sp,
+                        delim,
+                        PreexpTokenStream::from_tokenstream(inner),
+                    ),
+                };
+                (new_tree, tree.1)
+            })
+            .collect();
+        PreexpTokenStream::new(trees)
+    }
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct AttributesData {
+    pub attrs: Vec<crate::Attribute>,
+    pub tokens: PreexpTokenStream,
 }

@@ -567,7 +567,7 @@ pub fn noop_visit_parenthesized_parameter_data<T: MutVisitor>(
 }
 
 pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
-    let Local { id, pat, ty, init, span, attrs } = local.deref_mut();
+    let Local { id, pat, ty, init, span, attrs, tokens: _ } = local.deref_mut();
     vis.visit_id(id);
     vis.visit_pat(pat);
     visit_opt(ty, |ty| vis.visit_ty(ty));
@@ -577,7 +577,7 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
 }
 
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
-    let Attribute { kind, id: _, style: _, span } = attr;
+    let Attribute { kind, id: _, style: _, span, tokens: _ } = attr;
     match kind {
         AttrKind::Normal(AttrItem { path, args, tokens: _ }) => {
             vis.visit_path(path);
@@ -1311,7 +1311,7 @@ pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
         StmtKind::Semi(expr) => vis.filter_map_expr(expr).into_iter().map(StmtKind::Semi).collect(),
         StmtKind::Empty => smallvec![StmtKind::Empty],
         StmtKind::MacCall(mut mac) => {
-            let MacCallStmt { mac: mac_, style: _, attrs } = mac.deref_mut();
+            let MacCallStmt { mac: mac_, style: _, attrs, tokens: _ } = mac.deref_mut();
             vis.visit_mac(mac_);
             visit_thin_attrs(attrs, vis);
             smallvec![StmtKind::MacCall(mac)]

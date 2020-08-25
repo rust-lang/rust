@@ -90,9 +90,9 @@ error[E0731]: transparent enum needs exactly one variant, but has 2
 LL | enum TooManyVariants {
    | ^^^^^^^^^^^^^^^^^^^^ needs exactly one variant, but has 2
 LL |     Foo(String),
-   |     -----------
+   |     ------------
 LL |     Bar,
-   |     --- too many variants in `TooManyVariants`
+   |     ---- too many variants in `TooManyVariants`
 
 error[E0691]: zero-sized field in transparent enum has alignment larger than 1
   --> $DIR/repr-transparent.rs:65:14

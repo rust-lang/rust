@@ -2,9 +2,9 @@ error[E0423]: expected value, found struct variant `E::B`
   --> $DIR/fn-or-tuple-struct-without-args.rs:36:16
    |
 LL |     A(usize),
-   |     -------- similarly named tuple variant `A` defined here
+   |     --------- similarly named tuple variant `A` defined here
 LL |     B { a: usize },
-   |     -------------- `E::B` defined here
+   |     --------------- `E::B` defined here
 ...
 LL |     let _: E = E::B;
    |                ^^^^
@@ -130,7 +130,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:35:16
    |
 LL |     A(usize),
-   |     -------- fn(usize) -> E {E::A} defined here
+   |     --------- fn(usize) -> E {E::A} defined here
 ...
 LL |     let _: E = E::A;
    |            -   ^^^^ expected enum `E`, found fn item

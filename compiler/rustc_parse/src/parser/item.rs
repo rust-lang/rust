@@ -3,11 +3,14 @@ use super::ty::{AllowPlus, RecoverQPath};
 use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
+use crate::parser::attr::attrs_require_tokens;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
-use rustc_ast::{self as ast, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID};
+use rustc_ast::tokenstream::{
+    AttributesData, DelimSpan, PreexpTokenStream, PreexpTokenTree, Spacing, TokenStream, TokenTree,
+};
+use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, Mod};
 use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
@@ -98,8 +101,17 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_item_(&mut self, req_name: ReqName) -> PResult<'a, Option<Item>> {
-        let attrs = self.parse_outer_attributes()?;
-        self.parse_item_common(attrs, true, false, req_name)
+        let res = self.parse_outer_attributes_with_tokens(|this, attrs| {
+            this.parse_item_common(attrs, true, false, req_name)
+        });
+        res.map(|(mut item, tokens)| {
+            if let Some(item) = item.as_mut() {
+                if item.tokens.is_none() {
+                    item.tokens = tokens;
+                }
+            }
+            item
+        })
     }
 
     pub(super) fn parse_item_common(
@@ -110,51 +122,44 @@ impl<'a> Parser<'a> {
         req_name: ReqName,
     ) -> PResult<'a, Option<Item>> {
         maybe_whole!(self, NtItem, |item| {
-            let mut item = item;
-            mem::swap(&mut item.attrs, &mut attrs);
-            item.attrs.extend(attrs);
-            Some(item.into_inner())
-        });
+            let mut item = item.into_inner();
 
-        let mut unclosed_delims = vec![];
-        let has_attrs = !attrs.is_empty();
-        let parse_item = |this: &mut Self| {
-            let item = this.parse_item_common_(attrs, mac_allowed, attrs_allowed, req_name);
-            unclosed_delims.append(&mut this.unclosed_delims);
-            item
-        };
-
-        let (mut item, tokens) = if has_attrs {
-            let (item, tokens) = self.collect_tokens(parse_item)?;
-            (item, Some(tokens))
-        } else {
-            (parse_item(self)?, None)
-        };
-
-        self.unclosed_delims.append(&mut unclosed_delims);
-
-        // Once we've parsed an item and recorded the tokens we got while
-        // parsing we may want to store `tokens` into the item we're about to
-        // return. Note, though, that we specifically didn't capture tokens
-        // related to outer attributes. The `tokens` field here may later be
-        // used with procedural macros to convert this item back into a token
-        // stream, but during expansion we may be removing attributes as we go
-        // along.
-        //
-        // If we've got inner attributes then the `tokens` we've got above holds
-        // these inner attributes. If an inner attribute is expanded we won't
-        // actually remove it from the token stream, so we'll just keep yielding
-        // it (bad!). To work around this case for now we just avoid recording
-        // `tokens` if we detect any inner attributes. This should help keep
-        // expansion correct, but we should fix this bug one day!
-        if let Some(tokens) = tokens {
-            if let Some(item) = &mut item {
-                if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-                    item.tokens = Some(tokens);
+            if !attrs.is_empty() {
+                if let Some(tokens) = item.tokens.as_mut() {
+                    if let &[(PreexpTokenTree::OuterAttributes(ref data), joint)] = &**tokens.0 {
+                        let mut data = data.clone();
+                        let mut attrs = attrs.clone();
+                        mem::swap(&mut data.attrs, &mut attrs);
+                        data.attrs.extend(attrs);
+                        debug!("new data: {:?}", data);
+                        *tokens = PreexpTokenStream::new(vec![(
+                            PreexpTokenTree::OuterAttributes(data),
+                            joint,
+                        )]);
+                    } else {
+                        assert!(
+                            !attrs_require_tokens(self.in_derive, &item.attrs),
+                            "Attributes needed tokens: {:?}",
+                            item.attrs
+                        );
+                        let data = AttributesData { attrs: attrs.clone(), tokens: tokens.clone() };
+                        *tokens = PreexpTokenStream::new(vec![(
+                            PreexpTokenTree::OuterAttributes(data),
+                            Spacing::Alone,
+                        )])
+                    }
+                } else {
+                    panic!("Missing tokens for {:?}", item);
                 }
             }
-        }
-        Ok(item)
+
+            mem::swap(&mut item.attrs, &mut attrs);
+            item.attrs.extend(attrs);
+            Some(item)
+        });
+
+        let item = self.parse_item_common_(attrs, mac_allowed, attrs_allowed, req_name);
+        item
     }
 
     fn parse_item_common_(
@@ -1060,11 +1065,7 @@ impl<'a> Parser<'a> {
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
 
-        let (variants, _) =
-            self.parse_delim_comma_seq(token::Brace, |p| p.parse_enum_variant()).map_err(|e| {
-                self.recover_stmt();
-                e
-            })?;
+        let (variants, _) = self.parse_enum_body()?;
 
         let enum_definition =
             EnumDef { variants: variants.into_iter().filter_map(|v| v).collect() };
@@ -1072,40 +1073,57 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum_variant(&mut self) -> PResult<'a, Option<Variant>> {
-        let variant_attrs = self.parse_outer_attributes()?;
-        let vlo = self.token.span;
+        self.parse_outer_attributes(|this, variant_attrs| {
+            let vlo = this.token.span;
 
-        let vis = self.parse_visibility(FollowedByType::No)?;
-        if !self.recover_nested_adt_item(kw::Enum)? {
-            return Ok(None);
-        }
-        let ident = self.parse_ident()?;
+            let vis = this.parse_visibility(FollowedByType::No)?;
+            if !this.recover_nested_adt_item(kw::Enum)? {
+                this.eat(&token::Comma);
+                return Ok(None);
+            }
+            let ident = this.parse_ident()?;
 
-        let struct_def = if self.check(&token::OpenDelim(token::Brace)) {
-            // Parse a struct variant.
-            let (fields, recovered) = self.parse_record_struct_body()?;
-            VariantData::Struct(fields, recovered)
-        } else if self.check(&token::OpenDelim(token::Paren)) {
-            VariantData::Tuple(self.parse_tuple_struct_body()?, DUMMY_NODE_ID)
-        } else {
-            VariantData::Unit(DUMMY_NODE_ID)
-        };
+            let struct_def = if this.check(&token::OpenDelim(token::Brace)) {
+                // Parse a struct variant.
+                let (fields, recovered) = this.parse_record_struct_body()?;
+                VariantData::Struct(fields, recovered)
+            } else if this.check(&token::OpenDelim(token::Paren)) {
+                VariantData::Tuple(this.parse_tuple_struct_body()?, DUMMY_NODE_ID)
+            } else {
+                VariantData::Unit(DUMMY_NODE_ID)
+            };
 
-        let disr_expr =
-            if self.eat(&token::Eq) { Some(self.parse_anon_const_expr()?) } else { None };
+            let disr_expr =
+                if this.eat(&token::Eq) { Some(this.parse_anon_const_expr()?) } else { None };
 
-        let vr = ast::Variant {
-            ident,
-            vis,
-            id: DUMMY_NODE_ID,
-            attrs: variant_attrs,
-            data: struct_def,
-            disr_expr,
-            span: vlo.to(self.prev_token.span),
-            is_placeholder: false,
-        };
+            if !matches!(this.token.kind, token::CloseDelim(..)) {
+                if let Err(mut e) = this.expect(&token::Comma) {
+                    if this.token.is_ident() {
+                        let sp = this.sess.source_map().next_point(this.prev_token.span);
+                        e.span_suggestion(
+                            sp,
+                            "try adding a comma",
+                            ",".into(),
+                            Applicability::MachineApplicable,
+                        )
+                        .emit();
+                    }
+                }
+            }
 
-        Ok(Some(vr))
+            let vr = ast::Variant {
+                ident,
+                vis,
+                id: DUMMY_NODE_ID,
+                attrs: variant_attrs,
+                data: struct_def,
+                disr_expr,
+                span: vlo.to(this.prev_token.span),
+                is_placeholder: false,
+            };
+
+            Ok(Some(vr))
+        })
     }
 
     /// Parses `struct Foo { ... }`.
@@ -1192,11 +1210,23 @@ impl<'a> Parser<'a> {
     fn parse_record_struct_body(
         &mut self,
     ) -> PResult<'a, (Vec<StructField>, /* recovered */ bool)> {
+        self.parse_struct_or_enum_body("struct", |this| this.parse_struct_decl_field())
+    }
+
+    fn parse_enum_body(&mut self) -> PResult<'a, (Vec<Option<Variant>>, bool)> {
+        self.parse_struct_or_enum_body("enum", |this| this.parse_enum_variant())
+    }
+
+    fn parse_struct_or_enum_body<T>(
+        &mut self,
+        name: &str,
+        mut parse: impl FnMut(&mut Self) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, /* recovered */ bool)> {
         let mut fields = Vec::new();
         let mut recovered = false;
         if self.eat(&token::OpenDelim(token::Brace)) {
             while self.token != token::CloseDelim(token::Brace) {
-                let field = self.parse_struct_decl_field().map_err(|e| {
+                let field = parse(self).map_err(|e| {
                     self.consume_block(token::Brace, ConsumeClosingDelim::No);
                     recovered = true;
                     e
@@ -1212,9 +1242,13 @@ impl<'a> Parser<'a> {
             self.eat(&token::CloseDelim(token::Brace));
         } else {
             let token_str = super::token_descr(&self.token);
-            let msg = &format!("expected `where`, or `{{` after struct name, found {}", token_str);
+            let msg =
+                &format!("expected `where`, or `{{` after {} name, found {}", name, token_str);
             let mut err = self.struct_span_err(self.token.span, msg);
-            err.span_label(self.token.span, "expected `where`, or `{` after struct name");
+            err.span_label(
+                self.token.span,
+                &format!("expected `where`, or `{{` after {} name", name),
+            );
             return Err(err);
         }
 
@@ -1225,18 +1259,19 @@ impl<'a> Parser<'a> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
         self.parse_paren_comma_seq(|p| {
-            let attrs = p.parse_outer_attributes()?;
-            let lo = p.token.span;
-            let vis = p.parse_visibility(FollowedByType::Yes)?;
-            let ty = p.parse_ty()?;
-            Ok(StructField {
-                span: lo.to(ty.span),
-                vis,
-                ident: None,
-                id: DUMMY_NODE_ID,
-                ty,
-                attrs,
-                is_placeholder: false,
+            p.parse_outer_attributes(|p, attrs| {
+                let lo = p.token.span;
+                let vis = p.parse_visibility(FollowedByType::Yes)?;
+                let ty = p.parse_ty()?;
+                Ok(StructField {
+                    span: lo.to(ty.span),
+                    vis,
+                    ident: None,
+                    id: DUMMY_NODE_ID,
+                    ty,
+                    attrs,
+                    is_placeholder: false,
+                })
             })
         })
         .map(|(r, _)| r)
@@ -1244,10 +1279,11 @@ impl<'a> Parser<'a> {
 
     /// Parses an element of a struct declaration.
     fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
-        let attrs = self.parse_outer_attributes()?;
-        let lo = self.token.span;
-        let vis = self.parse_visibility(FollowedByType::No)?;
-        self.parse_single_struct_field(lo, vis, attrs)
+        self.parse_outer_attributes(|this, attrs| {
+            let lo = this.token.span;
+            let vis = this.parse_visibility(FollowedByType::No)?;
+            this.parse_single_struct_field(lo, vis, attrs)
+        })
     }
 
     /// Parses a structure field declaration.
@@ -1684,75 +1720,75 @@ impl<'a> Parser<'a> {
     /// - `self` is syntactically allowed when `first_param` holds.
     fn parse_param_general(&mut self, req_name: ReqName, first_param: bool) -> PResult<'a, Param> {
         let lo = self.token.span;
-        let attrs = self.parse_outer_attributes()?;
+        self.parse_outer_attributes(|this, attrs| {
+            // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
+            if let Some(mut param) = this.parse_self_param()? {
+                param.attrs = attrs.into();
+                return if first_param { Ok(param) } else { this.recover_bad_self_param(param) };
+            }
 
-        // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
-        if let Some(mut param) = self.parse_self_param()? {
-            param.attrs = attrs.into();
-            return if first_param { Ok(param) } else { self.recover_bad_self_param(param) };
-        }
+            let is_name_required = match this.token.kind {
+                token::DotDotDot => false,
+                _ => req_name(this.token.span.edition()),
+            };
+            let (pat, ty) = if is_name_required || this.is_named_param() {
+                debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
 
-        let is_name_required = match self.token.kind {
-            token::DotDotDot => false,
-            _ => req_name(self.token.span.edition()),
-        };
-        let (pat, ty) = if is_name_required || self.is_named_param() {
-            debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
+                let pat = this.parse_fn_param_pat()?;
+                if let Err(mut err) = this.expect(&token::Colon) {
+                    return if let Some(ident) =
+                        this.parameter_without_type(&mut err, pat, is_name_required, first_param)
+                    {
+                        err.emit();
+                        Ok(dummy_arg(ident))
+                    } else {
+                        Err(err)
+                    };
+                }
 
-            let pat = self.parse_fn_param_pat()?;
-            if let Err(mut err) = self.expect(&token::Colon) {
-                return if let Some(ident) =
-                    self.parameter_without_type(&mut err, pat, is_name_required, first_param)
+                this.eat_incorrect_doc_comment_for_param_type();
+                (pat, this.parse_ty_for_param()?)
+            } else {
+                debug!("parse_param_general ident_to_pat");
+                let parser_snapshot_before_ty = this.clone();
+                this.eat_incorrect_doc_comment_for_param_type();
+                let mut ty = this.parse_ty_for_param();
+                if ty.is_ok()
+                    && this.token != token::Comma
+                    && this.token != token::CloseDelim(token::Paren)
                 {
-                    err.emit();
-                    Ok(dummy_arg(ident))
-                } else {
-                    Err(err)
-                };
-            }
-
-            self.eat_incorrect_doc_comment_for_param_type();
-            (pat, self.parse_ty_for_param()?)
-        } else {
-            debug!("parse_param_general ident_to_pat");
-            let parser_snapshot_before_ty = self.clone();
-            self.eat_incorrect_doc_comment_for_param_type();
-            let mut ty = self.parse_ty_for_param();
-            if ty.is_ok()
-                && self.token != token::Comma
-                && self.token != token::CloseDelim(token::Paren)
-            {
-                // This wasn't actually a type, but a pattern looking like a type,
-                // so we are going to rollback and re-parse for recovery.
-                ty = self.unexpected();
-            }
-            match ty {
-                Ok(ty) => {
-                    let ident = Ident::new(kw::Invalid, self.prev_token.span);
-                    let bm = BindingMode::ByValue(Mutability::Not);
-                    let pat = self.mk_pat_ident(ty.span, bm, ident);
-                    (pat, ty)
+                    // This wasn't actually a type, but a pattern looking like a type,
+                    // so we are going to rollback and re-parse for recovery.
+                    ty = this.unexpected();
                 }
-                // If this is a C-variadic argument and we hit an error, return the error.
-                Err(err) if self.token == token::DotDotDot => return Err(err),
-                // Recover from attempting to parse the argument as a type without pattern.
-                Err(mut err) => {
-                    err.cancel();
-                    *self = parser_snapshot_before_ty;
-                    self.recover_arg_parse()?
+                match ty {
+                    Ok(ty) => {
+                        let ident = Ident::new(kw::Invalid, this.prev_token.span);
+                        let bm = BindingMode::ByValue(Mutability::Not);
+                        let pat = this.mk_pat_ident(ty.span, bm, ident);
+                        (pat, ty)
+                    }
+                    // If this is a C-variadic argument and we hit an error, return the error.
+                    Err(err) if this.token == token::DotDotDot => return Err(err),
+                    // Recover from attempting to parse the argument as a type without pattern.
+                    Err(mut err) => {
+                        err.cancel();
+                        *this = parser_snapshot_before_ty;
+                        this.recover_arg_parse()?
+                    }
                 }
-            }
-        };
+            };
 
-        let span = lo.to(self.token.span);
+            let span = lo.to(this.token.span);
 
-        Ok(Param {
-            attrs: attrs.into(),
-            id: ast::DUMMY_NODE_ID,
-            is_placeholder: false,
-            pat,
-            span,
-            ty,
+            Ok(Param {
+                attrs: attrs.into(),
+                id: ast::DUMMY_NODE_ID,
+                is_placeholder: false,
+                pat,
+                span,
+                ty,
+            })
         })
     }
 
@@ -1871,11 +1907,10 @@ impl<'a> Parser<'a> {
     }
 
     fn recover_first_param(&mut self) -> &'static str {
-        match self
-            .parse_outer_attributes()
-            .and_then(|_| self.parse_self_param())
-            .map_err(|mut e| e.cancel())
-        {
+        let res = self
+            .parse_outer_attributes(|this, _attrs| this.parse_self_param())
+            .map_err(|mut err| err.cancel());
+        match res {
             Ok(Some(_)) => "method",
             _ => "function",
         }

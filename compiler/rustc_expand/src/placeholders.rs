@@ -104,6 +104,7 @@ pub fn placeholder(
                 mac: mac_placeholder(),
                 style: ast::MacStmtStyle::Braces,
                 attrs: ast::AttrVec::new(),
+                tokens: None,
             });
             ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac), tokens: None }
         }]),

@@ -432,6 +432,8 @@ pub fn make_test(
                 }
             };
 
+            parser.is_rustdoc = true;
+
             loop {
                 match parser.parse_item() {
                     Ok(Some(item)) => {

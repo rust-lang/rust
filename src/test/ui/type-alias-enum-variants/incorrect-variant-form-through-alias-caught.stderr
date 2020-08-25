@@ -20,7 +20,7 @@ error[E0618]: expected function, found enum variant `Alias::Unit`
   --> $DIR/incorrect-variant-form-through-alias-caught.rs:17:5
    |
 LL | enum Enum { Braced {}, Unit, Tuple() }
-   |                        ---- `Alias::Unit` defined here
+   |                        ----- `Alias::Unit` defined here
 ...
 LL |     Alias::Unit();
    |     ^^^^^^^^^^^--

@@ -24,7 +24,7 @@ pub use UnsafeSource::*;
 
 use crate::ptr::P;
 use crate::token::{self, CommentKind, DelimToken};
-use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use crate::tokenstream::{DelimSpan, PreexpTokenStream, TokenStream, TokenTree};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -926,10 +926,8 @@ impl Stmt {
         self.kind = match self.kind {
             StmtKind::Expr(expr) => StmtKind::Semi(expr),
             StmtKind::MacCall(mac) => {
-                StmtKind::MacCall(mac.map(|MacCallStmt { mac, style: _, attrs }| MacCallStmt {
-                    mac,
-                    style: MacStmtStyle::Semicolon,
-                    attrs,
+                StmtKind::MacCall(mac.map(|MacCallStmt { mac, style: _, attrs, tokens }| {
+                    MacCallStmt { mac, style: MacStmtStyle::Semicolon, attrs, tokens }
                 }))
             }
             kind => kind,
@@ -973,6 +971,7 @@ pub struct MacCallStmt {
     pub mac: MacCall,
     pub style: MacStmtStyle,
     pub attrs: AttrVec,
+    pub tokens: Option<PreexpTokenStream>,
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug)]
@@ -998,6 +997,7 @@ pub struct Local {
     pub init: Option<P<Expr>>,
     pub span: Span,
     pub attrs: AttrVec,
+    pub tokens: Option<PreexpTokenStream>,
 }
 
 /// An arm of a 'match'.
@@ -1066,7 +1066,7 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub attrs: AttrVec,
-    pub tokens: Option<TokenStream>,
+    pub tokens: Option<PreexpTokenStream>,
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -2436,6 +2436,7 @@ pub struct Attribute {
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2582,7 +2583,7 @@ pub struct Item<K = ItemKind> {
     ///
     /// Note that the tokens here do not include the outer attributes, but will
     /// include inner attributes.
-    pub tokens: Option<TokenStream>,
+    pub tokens: Option<PreexpTokenStream>,
 }
 
 impl Item {

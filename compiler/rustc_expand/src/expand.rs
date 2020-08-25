@@ -494,6 +494,22 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let mut item = self.fully_configure(item);
                     item.visit_attrs(|attrs| attrs.retain(|a| !a.has_name(sym::derive)));
 
+                    if item.derive_allowed() {
+                        if let Annotatable::Item(item) = &mut item {
+                            let tokens = if let Some(tokens) = item.tokens.as_mut() {
+                                tokens
+                            } else {
+                                panic!("Missing tokens for {:?}", item);
+                            };
+                            tokens.replace_attributes(|data| {
+                                data.attrs.retain(|a| !a.has_name(sym::derive))
+                            });
+                        } else {
+                            panic!("Derive on non-item {:?}", item);
+                        }
+                    }
+                    tracing::debug!("item after: {:?}", item);
+
                     let mut derive_placeholders = Vec::with_capacity(derives.len());
                     invocations.reserve(derives.len());
                     for path in derives {
@@ -764,7 +780,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if *mark_used {
                         self.cx.sess.mark_attr_used(&attr);
                     }
-                    item.visit_attrs(|attrs| attrs.push(attr));
+
+                    item.visit_attrs(|attrs| attrs.push(attr.clone()));
+
+                    item.visit_tokens(|tokens| {
+                        tokens.replace_attributes(|data| data.attrs.push(attr));
+                    });
+
                     fragment_kind.expect_from_annotatables(iter::once(item))
                 }
                 _ => unreachable!(),
@@ -1053,19 +1075,26 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn find_attr_invoc(
         &self,
-        attrs: &mut Vec<ast::Attribute>,
+        attr_target: &mut (impl HasAttrs + std::fmt::Debug),
         after_derive: &mut bool,
     ) -> Option<ast::Attribute> {
-        let attr = attrs
-            .iter()
-            .position(|a| {
-                if a.has_name(sym::derive) {
-                    *after_derive = true;
-                }
-                !self.cx.sess.is_attr_known(a) && !is_builtin_attr(a)
-            })
-            .map(|i| attrs.remove(i));
+        let mut attr = None;
+
+        attr_target.visit_attrs(|attrs| {
+            attrs
+                .iter()
+                .position(|a| {
+                    if a.has_name(sym::derive) {
+                        *after_derive = true;
+                    }
+                    !self.cx.sess.is_attr_known(a) && !is_builtin_attr(a)
+                })
+                .map(|i| attr = Some(attrs.remove(i)));
+        });
+
+        let mut has_inner = false;
         if let Some(attr) = &attr {
+            has_inner = attr.style == ast::AttrStyle::Inner;
             if !self.cx.ecfg.custom_inner_attributes()
                 && attr.style == ast::AttrStyle::Inner
                 && !attr.has_name(sym::test)
@@ -1079,18 +1108,56 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 .emit();
             }
         }
+
+        let mut token_attr = None;
+        // Only attempt to replace tokens if we actually
+        // removed an attribute from the AST struct.
+        // We may end up collecting tokens for an AST struct
+        // even if `attrs_require_tokens` returns `false`, if
+        // a macro-rules matcher ends up forcing token collection.
+        // In this case, our collected tokens will not be a single
+        // `PreexpTokenStream::OuterAttributes`.
+        //
+        // To handle this case, we only attempt to modify the `TokenStream`
+        // if we actually need to do so - that is, if we need to remove
+        // a corresponding attribute that was removed from the parsed
+        // AST struct.
+        //
+        // FIXME: Support inner attributes.
+        // For now, we don't attempt to modify the TokenStream, which will
+        // cause us to use the pretty-print/retokenized stream later
+        // on due to the mismatch.
+        if attr.is_some() && !has_inner {
+            attr_target.visit_tokens(|tokens| {
+                tokens.replace_attributes(|data| {
+                    token_attr = data
+                        .attrs
+                        .iter()
+                        .position(|a| !self.cx.sess.is_attr_known(a) && !is_builtin_attr(a))
+                        .map(|i| data.attrs.remove(i));
+
+                    if token_attr.is_some() != attr.is_some() {
+                        panic!(
+                            "Mismatched AST and tokens: ast={:?} token_attr={:?}\ndata={:?}",
+                            attr, token_attr, data
+                        );
+                    }
+                });
+            });
+        }
+
         attr
     }
 
     /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
     fn classify_item(
         &mut self,
-        item: &mut impl HasAttrs,
+        item: &mut (impl HasAttrs + std::fmt::Debug),
     ) -> (Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool) {
-        let (mut attr, mut traits, mut after_derive) = (None, Vec::new(), false);
+        let (mut traits, mut after_derive) = (Vec::new(), false);
 
+        let attr = self.find_attr_invoc(item, &mut after_derive);
         item.visit_attrs(|mut attrs| {
-            attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
             traits = collect_derives(&mut self.cx, &mut attrs);
         });
 
@@ -1102,19 +1169,17 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     /// is a breaking change)
     fn classify_nonitem(
         &mut self,
-        nonitem: &mut impl HasAttrs,
+        nonitem: &mut (impl HasAttrs + std::fmt::Debug),
     ) -> (Option<ast::Attribute>, /* after_derive */ bool) {
-        let (mut attr, mut after_derive) = (None, false);
+        let mut after_derive = false;
 
-        nonitem.visit_attrs(|mut attrs| {
-            attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
-        });
+        let attr = self.find_attr_invoc(nonitem, &mut after_derive);
 
         (attr, after_derive)
     }
 
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
-        self.cfg.configure(node)
+        self.cfg.configure_with_tokens(node, false)
     }
 
     // Detect use of feature-gated or invalid attributes on macro invocations
@@ -1357,7 +1422,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         // we'll expand attributes on expressions separately
         if !stmt.is_expr() {
             let (attr, derives, after_derive) = if stmt.is_item() {
-                self.classify_item(&mut stmt)
+                (None, vec![], false)
+            //self.classify_item(&mut stmt)
             } else {
                 // ignore derives on non-item statements so it falls through
                 // to the unused-attributes lint
@@ -1379,7 +1445,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         if let StmtKind::MacCall(mac) = stmt.kind {
-            let MacCallStmt { mac, style, attrs } = mac.into_inner();
+            let MacCallStmt { mac, style, attrs, tokens: _ } = mac.into_inner();
             self.check_attributes(&attrs);
             let mut placeholder =
                 self.collect_bang(mac, stmt.span, AstFragmentKind::Stmts).make_stmts();
@@ -1785,6 +1851,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 span: at.span,
                 id: at.id,
                 style: at.style,
+                tokens: None,
             };
         } else {
             noop_visit_attribute(at, self)

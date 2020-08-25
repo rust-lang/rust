@@ -1,20 +1,46 @@
 error: `?` may only modify trait bounds, not lifetime bounds
   --> $DIR/issue-68890.rs:1:11
    |
-LL | enum e{A((?'a a+?+l))}
+LL | enum E{A((?'a a+?+l))}
    |           ^
 
 error: expected one of `)`, `+`, or `,`, found `a`
   --> $DIR/issue-68890.rs:1:15
    |
-LL | enum e{A((?'a a+?+l))}
+LL | enum E{A((?'a a+?+l))}
    |               ^ expected one of `)`, `+`, or `,`
 
-error: expected item, found `)`
+error: expected identifier, found `)`
   --> $DIR/issue-68890.rs:1:21
    |
-LL | enum e{A((?'a a+?+l))}
-   |                     ^ expected item
+LL | enum E{A((?'a a+?+l))}
+   |                     ^ expected identifier
 
-error: aborting due to 3 previous errors
+error[E0405]: cannot find trait `l` in this scope
+  --> $DIR/issue-68890.rs:1:19
+   |
+LL | enum E{A((?'a a+?+l))}
+   |                   ^ not found in this scope
 
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-68890.rs:1:10
+   |
+LL | enum E{A((?'a a+?+l))}
+   |          ^^^^^^^^^^ help: use `dyn`: `dyn (?'a a+?+l`
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/issue-68890.rs:1:12
+   |
+LL | enum E{A((?'a a+?+l))}
+   |       -    ^^ undeclared lifetime
+   |       |
+   |       help: consider introducing lifetime `'a` here: `<'a>`
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+
+error: aborting due to 5 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0261, E0405.
+For more information about an error, try `rustc --explain E0261`.

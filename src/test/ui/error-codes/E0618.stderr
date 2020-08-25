@@ -2,7 +2,7 @@ error[E0618]: expected function, found enum variant `X::Entry`
   --> $DIR/E0618.rs:6:5
    |
 LL |     Entry,
-   |     ----- `X::Entry` defined here
+   |     ------ `X::Entry` defined here
 ...
 LL |     X::Entry();
    |     ^^^^^^^^--

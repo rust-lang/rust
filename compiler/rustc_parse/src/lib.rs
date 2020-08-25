@@ -266,7 +266,8 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // before we fall back to the stringification.
     let tokens = match *nt {
         Nonterminal::NtItem(ref item) => {
-            prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
+            debug!("converting item tokenstream: {:?}", item.tokens);
+            item.tokens.clone().map(|t| t.to_tokenstream())
         }
         Nonterminal::NtBlock(ref block) => block.tokens.clone(),
         Nonterminal::NtStmt(ref stmt) => {
@@ -291,8 +292,10 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
         Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
             if expr.tokens.is_none() {
                 debug!("missing tokens for expr {:?}", expr);
+            } else {
+                debug!("converting expr tokenstream: {:?}", expr.tokens);
             }
-            prepend_attrs(sess, &expr.attrs, expr.tokens.as_ref(), span)
+            expr.tokens.clone().map(|t| t.to_tokenstream())
         }
     };
 
@@ -326,12 +329,16 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // tokens such as extra braces and commas, don't happen.
     if let Some(tokens) = tokens {
         if tokenstream_probably_equal_for_proc_macro(&tokens, &tokens_for_real, sess) {
+            debug!("matching tokens: {:?}", tokens);
+            debug!("reparsed tokens: {:?}", tokens_for_real);
             return tokens;
         }
         info!(
             "cached tokens found, but they're not \"probably equal\", \
                 going with stringified version"
         );
+        info!("cached stringified:   {:?}", pprust::tts_to_string(&tokens));
+        info!("reparsed stringified: {:?}", pprust::tts_to_string(&tokens_for_real));
         info!("cached tokens: {:?}", tokens);
         info!("reparsed tokens: {:?}", tokens_for_real);
     }
@@ -540,67 +547,4 @@ fn token_probably_equal_for_proc_macro(first: &Token, other: &Token) -> bool {
 
         _ => panic!("forgot to add a token?"),
     }
-}
-
-fn prepend_attrs(
-    sess: &ParseSess,
-    attrs: &[ast::Attribute],
-    tokens: Option<&tokenstream::TokenStream>,
-    span: rustc_span::Span,
-) -> Option<tokenstream::TokenStream> {
-    let tokens = tokens?;
-    if attrs.is_empty() {
-        return Some(tokens.clone());
-    }
-    let mut builder = tokenstream::TokenStreamBuilder::new();
-    for attr in attrs {
-        assert_eq!(
-            attr.style,
-            ast::AttrStyle::Outer,
-            "inner attributes should prevent cached tokens from existing"
-        );
-
-        let source = pprust::attribute_to_string(attr);
-        let macro_filename = FileName::macro_expansion_source_code(&source);
-
-        let item = match attr.kind {
-            ast::AttrKind::Normal(ref item) => item,
-            ast::AttrKind::DocComment(..) => {
-                let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
-                builder.push(stream);
-                continue;
-            }
-        };
-
-        // synthesize # [ $path $tokens ] manually here
-        let mut brackets = tokenstream::TokenStreamBuilder::new();
-
-        // For simple paths, push the identifier directly
-        if item.path.segments.len() == 1 && item.path.segments[0].args.is_none() {
-            let ident = item.path.segments[0].ident;
-            let token = token::Ident(ident.name, ident.as_str().starts_with("r#"));
-            brackets.push(tokenstream::TokenTree::token(token, ident.span));
-
-        // ... and for more complicated paths, fall back to a reparse hack that
-        // should eventually be removed.
-        } else {
-            let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
-            brackets.push(stream);
-        }
-
-        brackets.push(item.args.outer_tokens());
-
-        // The span we list here for `#` and for `[ ... ]` are both wrong in
-        // that it encompasses more than each token, but it hopefully is "good
-        // enough" for now at least.
-        builder.push(tokenstream::TokenTree::token(token::Pound, attr.span));
-        let delim_span = tokenstream::DelimSpan::from_single(attr.span);
-        builder.push(tokenstream::TokenTree::Delimited(
-            delim_span,
-            token::DelimToken::Bracket,
-            brackets.build(),
-        ));
-    }
-    builder.push(tokens.clone());
-    Some(builder.build())
 }

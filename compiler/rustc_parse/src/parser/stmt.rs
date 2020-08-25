@@ -33,43 +33,64 @@ impl<'a> Parser<'a> {
     fn parse_stmt_without_recovery(&mut self) -> PResult<'a, Option<Stmt>> {
         maybe_whole!(self, NtStmt, |x| Some(x));
 
-        let attrs = self.parse_outer_attributes()?;
-        let lo = self.token.span;
+        let (mut stmt, tokens) = self.parse_outer_attributes_with_tokens(|this, attrs| {
+            let lo = this.token.span;
 
-        let stmt = if self.eat_keyword(kw::Let) {
-            self.parse_local_mk(lo, attrs.into())?
-        } else if self.is_kw_followed_by_ident(kw::Mut) {
-            self.recover_stmt_local(lo, attrs.into(), "missing keyword", "let mut")?
-        } else if self.is_kw_followed_by_ident(kw::Auto) {
-            self.bump(); // `auto`
-            let msg = "write `let` instead of `auto` to introduce a new variable";
-            self.recover_stmt_local(lo, attrs.into(), msg, "let")?
-        } else if self.is_kw_followed_by_ident(sym::var) {
-            self.bump(); // `var`
-            let msg = "write `let` instead of `var` to introduce a new variable";
-            self.recover_stmt_local(lo, attrs.into(), msg, "let")?
-        } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
-            // We have avoided contextual keywords like `union`, items with `crate` visibility,
-            // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
-            // that starts like a path (1 token), but it fact not a path.
-            // Also, we avoid stealing syntax from `parse_item_`.
-            self.parse_stmt_path_start(lo, attrs)?
-        } else if let Some(item) = self.parse_item_common(attrs.clone(), false, true, |_| true)? {
-            // FIXME: Bad copy of attrs
-            self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
-        } else if self.eat(&token::Semi) {
-            // Do not attempt to parse an expression if we're done here.
-            self.error_outer_attrs(&attrs);
-            self.mk_stmt(lo, StmtKind::Empty)
-        } else if self.token != token::CloseDelim(token::Brace) {
-            // Remainder are line-expr stmts.
-            let e = self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs.into()))?;
-            self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
-        } else {
-            self.error_outer_attrs(&attrs);
-            return Ok(None);
-        };
-        Ok(Some(stmt))
+            let stmt = if this.eat_keyword(kw::Let) {
+                this.parse_local_mk(lo, attrs.into())?
+            } else if this.is_kw_followed_by_ident(kw::Mut) {
+                this.recover_stmt_local(lo, attrs.into(), "missing keyword", "let mut")?
+            } else if this.is_kw_followed_by_ident(kw::Auto) {
+                this.bump(); // `auto`
+                let msg = "write `let` instead of `auto` to introduce a new variable";
+                this.recover_stmt_local(lo, attrs.into(), msg, "let")?
+            } else if this.is_kw_followed_by_ident(sym::var) {
+                this.bump(); // `var`
+                let msg = "write `let` instead of `var` to introduce a new variable";
+                this.recover_stmt_local(lo, attrs.into(), msg, "let")?
+            } else if this.check_path()
+                && !this.token.is_qpath_start()
+                && !this.is_path_start_item()
+            {
+                // We have avoided contextual keywords like `union`, items with `crate` visibility,
+                // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
+                // that starts like a path (1 token), but it fact not a path.
+                // Also, we avoid stealing syntax from `parse_item_`.
+                this.parse_stmt_path_start(lo, attrs)?
+            } else if let Some(item) =
+                this.parse_item_common(attrs.clone(), false, true, |_| true)?
+            {
+                // FIXME: Bad copy of attrs
+                this.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
+            } else if this.eat(&token::Semi) {
+                // Do not attempt to parse an expression if we're done here.
+                this.error_outer_attrs(&attrs);
+                this.mk_stmt(lo, StmtKind::Empty)
+            } else if this.token != token::CloseDelim(token::Brace) {
+                // Remainder are line-expr stmts.
+                let e = this.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs.into()))?;
+                this.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
+            } else {
+                this.error_outer_attrs(&attrs);
+                return Ok(None);
+            };
+            Ok(Some(stmt))
+        })?;
+        match stmt.as_mut() {
+            Some(Stmt { kind: StmtKind::Local(local), .. }) => local.tokens = tokens,
+            Some(Stmt { kind: StmtKind::Item(item), .. }) => item.tokens = tokens,
+            Some(Stmt { kind: StmtKind::Expr(expr) | StmtKind::Semi(expr), .. }) => {
+                // FIXME: Attribute parsing should do this for us.
+                if expr.tokens.is_none() {
+                    expr.tokens = tokens
+                }
+            }
+            Some(Stmt { kind: StmtKind::Empty, .. }) => {}
+            Some(Stmt { kind: StmtKind::MacCall(mac), .. }) => mac.tokens = tokens,
+            None => {}
+        }
+
+        Ok(stmt)
     }
 
     fn parse_stmt_path_start(&mut self, lo: Span, attrs: Vec<Attribute>) -> PResult<'a, Stmt> {
@@ -107,7 +128,7 @@ impl<'a> Parser<'a> {
 
         let kind = if delim == token::Brace || self.token == token::Semi || self.token == token::Eof
         {
-            StmtKind::MacCall(P(MacCallStmt { mac, style, attrs }))
+            StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
         } else {
             // Since none of the above applied, this is an expression statement macro.
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac), AttrVec::new());
@@ -219,7 +240,7 @@ impl<'a> Parser<'a> {
             }
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
-        Ok(P(ast::Local { ty, pat, init, id: DUMMY_NODE_ID, span: lo.to(hi), attrs }))
+        Ok(P(ast::Local { ty, pat, init, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
     }
 
     /// Parses the RHS of a local variable declaration (e.g., '= 14;').

@@ -831,102 +831,107 @@ impl<'a> Parser<'a> {
         let mut etc_span = None;
 
         while self.token != token::CloseDelim(token::Brace) {
-            let attrs = match self.parse_outer_attributes() {
-                Ok(attrs) => attrs,
-                Err(err) => {
-                    if let Some(mut delayed) = delayed_err {
+            let field_pat = self.parse_outer_attributes(|this, attrs| {
+                let lo = this.token.span;
+
+                // check that a comma comes after every field
+                if !ate_comma {
+                    let err = this.struct_span_err(this.prev_token.span, "expected `,`");
+                    if let Some(delayed) = delayed_err.as_mut() {
                         delayed.emit();
                     }
                     return Err(err);
                 }
-            };
-            let lo = self.token.span;
+                ate_comma = false;
 
-            // check that a comma comes after every field
-            if !ate_comma {
-                let err = self.struct_span_err(self.prev_token.span, "expected `,`");
-                if let Some(mut delayed) = delayed_err {
-                    delayed.emit();
-                }
-                return Err(err);
-            }
-            ate_comma = false;
+                if this.check(&token::DotDot) || this.token == token::DotDotDot {
+                    etc = true;
+                    let mut etc_sp = this.token.span;
 
-            if self.check(&token::DotDot) || self.token == token::DotDotDot {
-                etc = true;
-                let mut etc_sp = self.token.span;
+                    this.recover_one_fewer_dotdot();
+                    this.bump(); // `..` || `...`
 
-                self.recover_one_fewer_dotdot();
-                self.bump(); // `..` || `...`
+                    if this.token == token::CloseDelim(token::Brace) {
+                        etc_span = Some(etc_sp);
+                        return Ok(None);
+                    }
+                    let token_str = super::token_descr(&this.token);
+                    let msg = &format!("expected `}}`, found {}", token_str);
+                    let mut err = this.struct_span_err(this.token.span, msg);
 
-                if self.token == token::CloseDelim(token::Brace) {
-                    etc_span = Some(etc_sp);
-                    break;
-                }
-                let token_str = super::token_descr(&self.token);
-                let msg = &format!("expected `}}`, found {}", token_str);
-                let mut err = self.struct_span_err(self.token.span, msg);
-
-                err.span_label(self.token.span, "expected `}`");
-                let mut comma_sp = None;
-                if self.token == token::Comma {
-                    // Issue #49257
-                    let nw_span = self.sess.source_map().span_until_non_whitespace(self.token.span);
-                    etc_sp = etc_sp.to(nw_span);
-                    err.span_label(
-                        etc_sp,
-                        "`..` must be at the end and cannot have a trailing comma",
-                    );
-                    comma_sp = Some(self.token.span);
-                    self.bump();
-                    ate_comma = true;
-                }
-
-                etc_span = Some(etc_sp.until(self.token.span));
-                if self.token == token::CloseDelim(token::Brace) {
-                    // If the struct looks otherwise well formed, recover and continue.
-                    if let Some(sp) = comma_sp {
-                        err.span_suggestion_short(
-                            sp,
-                            "remove this comma",
-                            String::new(),
-                            Applicability::MachineApplicable,
+                    err.span_label(this.token.span, "expected `}`");
+                    let mut comma_sp = None;
+                    if this.token == token::Comma {
+                        // Issue #49257
+                        let nw_span =
+                            this.sess.source_map().span_until_non_whitespace(this.token.span);
+                        etc_sp = etc_sp.to(nw_span);
+                        err.span_label(
+                            etc_sp,
+                            "`..` must be at the end and cannot have a trailing comma",
                         );
+                        comma_sp = Some(this.token.span);
+                        this.bump();
+                        ate_comma = true;
                     }
-                    err.emit();
-                    break;
-                } else if self.token.is_ident() && ate_comma {
-                    // Accept fields coming after `..,`.
-                    // This way we avoid "pattern missing fields" errors afterwards.
-                    // We delay this error until the end in order to have a span for a
-                    // suggested fix.
-                    if let Some(mut delayed_err) = delayed_err {
-                        delayed_err.emit();
-                        return Err(err);
-                    } else {
-                        delayed_err = Some(err);
-                    }
-                } else {
-                    if let Some(mut err) = delayed_err {
+
+                    etc_span = Some(etc_sp.until(this.token.span));
+                    if this.token == token::CloseDelim(token::Brace) {
+                        // If the struct looks otherwise well formed, recover and continue.
+                        if let Some(sp) = comma_sp {
+                            err.span_suggestion_short(
+                                sp,
+                                "remove this comma",
+                                String::new(),
+                                Applicability::MachineApplicable,
+                            );
+                        }
                         err.emit();
+                        return Ok(None);
+                    } else if this.token.is_ident() && ate_comma {
+                        // Accept fields coming after `..,`.
+                        // This way we avoid "pattern missing fields" errors afterwards.
+                        // We delay this error until the end in order to have a span for a
+                        // suggested fix.
+                        if let Some(delayed_err) = delayed_err.as_mut() {
+                            delayed_err.emit();
+                            return Err(err);
+                        } else {
+                            delayed_err = Some(err);
+                        }
+                    } else {
+                        if let Some(err) = delayed_err.as_mut() {
+                            err.emit();
+                        }
+                        return Err(err);
+                    }
+                }
+
+                let field_pat = match this.parse_pat_field(lo, attrs) {
+                    Ok(field) => field,
+                    Err(err) => {
+                        if let Some(delayed_err) = delayed_err.as_mut() {
+                            delayed_err.emit();
+                        }
+                        return Err(err);
+                    }
+                };
+                ate_comma = this.eat(&token::Comma);
+                Ok(Some(field_pat))
+            });
+            match field_pat {
+                Ok(Some(field_pat)) => fields.push(field_pat),
+                Ok(None) => break,
+                Err(err) => {
+                    if let Some(delayed) = delayed_err.as_mut() {
+                        delayed.emit();
                     }
                     return Err(err);
                 }
             }
-
-            fields.push(match self.parse_pat_field(lo, attrs) {
-                Ok(field) => field,
-                Err(err) => {
-                    if let Some(mut delayed_err) = delayed_err {
-                        delayed_err.emit();
-                    }
-                    return Err(err);
-                }
-            });
-            ate_comma = self.eat(&token::Comma);
         }
 
-        if let Some(mut err) = delayed_err {
+        if let Some(err) = delayed_err.as_mut() {
             if let Some(etc_span) = etc_span {
                 err.multipart_suggestion(
                     "move the `..` to the end of the field list",

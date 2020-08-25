@@ -27,6 +27,24 @@ error: expected item, found `;`
 LL | (), w20);
    |         ^ help: remove this semicolon
 
+error: mismatched closing delimiter: `)`
+  --> $DIR/issue-62895.rs:8:8
+   |
+LL | mod _ {
+   |       - unclosed delimiter
+LL | pub    g() -> is
+LL | (), w20);
+   |        ^ mismatched closing delimiter
+
+error: mismatched closing delimiter: `)`
+  --> $DIR/issue-62895.rs:10:8
+   |
+LL | mod _ {
+   |       - unclosed delimiter
+...
+LL | (), w20);
+   |        ^ mismatched closing delimiter
+
 error[E0412]: cannot find type `isizee` in this scope
   --> $DIR/issue-62895.rs:5:15
    |
@@ -41,7 +59,7 @@ LL | fn v() -> isize {
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0308, E0412.
 For more information about an error, try `rustc --explain E0308`.

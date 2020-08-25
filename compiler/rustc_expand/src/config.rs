@@ -3,7 +3,11 @@
 use rustc_ast::attr::HasAttrs;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, AttrItem, Attribute, MetaItem};
+use rustc_ast::token::{self, DelimToken, Token};
+use rustc_ast::tokenstream::{
+    DelimSpan, PreexpTokenStream, PreexpTokenTree, Spacing, TokenStream, TokenTree,
+};
+use rustc_ast::{self as ast, Attribute, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -12,6 +16,7 @@ use rustc_feature::{Feature, Features, State as FeatureState};
 use rustc_feature::{
     ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,
 };
+use rustc_parse::parser::attr::CfgAttrItem;
 use rustc_parse::{parse_in, validate_attr};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -237,9 +242,20 @@ const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
     #the-cfg_attr-attribute>";
 
 impl<'a> StripUnconfigured<'a> {
-    pub fn configure<T: HasAttrs>(&mut self, mut node: T) -> Option<T> {
+    pub fn configure_with_tokens<T: HasAttrs>(
+        &mut self,
+        mut node: T,
+        config_tokens: bool,
+    ) -> Option<T> {
         self.process_cfg_attrs(&mut node);
-        self.in_cfg(node.attrs()).then_some(node)
+        self.in_cfg(node.attrs().iter()).then(|| {
+            node.visit_tokens(|tokens| *tokens = self.configure_tokens(tokens, config_tokens));
+            node
+        })
+    }
+
+    pub fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
+        self.configure_with_tokens(node, true)
     }
 
     /// Parse and expand all `cfg_attr` attributes into a list of attributes
@@ -249,9 +265,41 @@ impl<'a> StripUnconfigured<'a> {
     /// attributes and is in the original source code. Gives compiler errors if
     /// the syntax of any `cfg_attr` is incorrect.
     pub fn process_cfg_attrs<T: HasAttrs>(&mut self, node: &mut T) {
-        node.visit_attrs(|attrs| {
-            attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
-        });
+        node.visit_attrs(|attrs| attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr)));
+    }
+
+    fn configure_tokens(
+        &mut self,
+        stream: &PreexpTokenStream,
+        config_tokens: bool,
+    ) -> PreexpTokenStream {
+        let trees: Vec<_> = stream
+            .0
+            .iter()
+            .flat_map(|tree| match tree.0.clone() {
+                PreexpTokenTree::OuterAttributes(mut data) => {
+                    data.attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
+
+                    if self.in_cfg(data.attrs.iter()) {
+                        if config_tokens {
+                            data.tokens = self.configure_tokens(&data.tokens, config_tokens);
+                        }
+                        Some((PreexpTokenTree::OuterAttributes(data), tree.1)).into_iter()
+                    } else {
+                        None.into_iter()
+                    }
+                }
+                PreexpTokenTree::Delimited(sp, delim, mut inner) => {
+                    if config_tokens {
+                        inner = self.configure_tokens(&inner, config_tokens);
+                    }
+                    Some((PreexpTokenTree::Delimited(sp, delim, inner), tree.1))
+                }
+                .into_iter(),
+                token_tree @ PreexpTokenTree::Token(_) => Some((token_tree, tree.1)).into_iter(),
+            })
+            .collect();
+        PreexpTokenStream::new(trees)
     }
 
     /// Parse and expand a single `cfg_attr` attribute into a list of attributes
@@ -288,14 +336,28 @@ impl<'a> StripUnconfigured<'a> {
         //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
         expanded_attrs
             .into_iter()
-            .flat_map(|(item, span)| {
-                let attr = attr::mk_attr_from_item(attr.style, item, span);
+            .flat_map(|item| {
+                let mut attr = attr::mk_attr_from_item(attr.style, item.item, item.span);
+                // Construct synthetic `#[]` tokens
+                let tokens = vec![
+                    (TokenTree::Token(Token::new(token::Pound, attr.span)), Spacing::Alone),
+                    (
+                        TokenTree::Delimited(
+                            DelimSpan::from_single(attr.span),
+                            DelimToken::Bracket,
+                            item.tokens,
+                        ),
+                        Spacing::Alone,
+                    ),
+                ];
+
+                attr.tokens = Some(TokenStream::new(tokens));
                 self.process_cfg_attr(attr)
             })
             .collect()
     }
 
-    fn parse_cfg_attr(&self, attr: &Attribute) -> Option<(MetaItem, Vec<(AttrItem, Span)>)> {
+    fn parse_cfg_attr(&mut self, attr: &Attribute) -> Option<(MetaItem, Vec<CfgAttrItem>)> {
         match attr.get_normal_item().args {
             ast::MacArgs::Delimited(dspan, delim, ref tts) if !tts.is_empty() => {
                 let msg = "wrong `cfg_attr` delimiters";
@@ -316,7 +378,7 @@ impl<'a> StripUnconfigured<'a> {
         None
     }
 
-    fn error_malformed_cfg_attr_missing(&self, span: Span) {
+    fn error_malformed_cfg_attr_missing(&mut self, span: Span) {
         self.sess
             .parse_sess
             .span_diagnostic
@@ -332,8 +394,8 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// Determines if a node with the given attributes should be included in this configuration.
-    pub fn in_cfg(&self, attrs: &[Attribute]) -> bool {
-        attrs.iter().all(|attr| {
+    pub fn in_cfg<'b>(&self, mut attrs: impl Iterator<Item = &'b Attribute>) -> bool {
+        attrs.all(|attr| {
             if !is_cfg(self.sess, attr) {
                 return true;
             }

@@ -1,34 +1,34 @@
-error: expected one of `(`, `,`, `=`, `{`, or `}`, found `Bad`
+error: expected one of `(`, `,`, `=`, or `{`, found `Bad`
   --> $DIR/recover-enum.rs:4:9
    |
 LL |         Very
    |             -
    |             |
-   |             expected one of `(`, `,`, `=`, `{`, or `}`
-   |             help: missing `,`
+   |             expected one of `(`, `,`, `=`, or `{`
+   |             help: try adding a comma: `,`
 LL |         Bad(usize)
    |         ^^^ unexpected token
 
-error: expected one of `,`, `=`, or `}`, found `Stuff`
+error: expected one of `,` or `=`, found `Stuff`
   --> $DIR/recover-enum.rs:6:9
    |
 LL |         Bad(usize)
    |                   -
    |                   |
-   |                   expected one of `,`, `=`, or `}`
-   |                   help: missing `,`
+   |                   expected one of `,` or `=`
+   |                   help: try adding a comma: `,`
 LL |
 LL |         Stuff { a: usize }
    |         ^^^^^ unexpected token
 
-error: expected one of `,`, `=`, or `}`, found `Here`
+error: expected one of `,` or `=`, found `Here`
   --> $DIR/recover-enum.rs:8:9
    |
 LL |         Stuff { a: usize }
    |                           -
    |                           |
-   |                           expected one of `,`, `=`, or `}`
-   |                           help: missing `,`
+   |                           expected one of `,` or `=`
+   |                           help: try adding a comma: `,`
 LL |
 LL |         Here
    |         ^^^^ unexpected token

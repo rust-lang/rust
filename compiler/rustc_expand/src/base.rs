@@ -4,7 +4,7 @@ use crate::module::DirectoryOwnership;
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, TokenStream};
+use rustc_ast::tokenstream::{self, PreexpTokenStream, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, Attribute, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
@@ -79,6 +79,24 @@ impl HasAttrs for Annotatable {
             Annotatable::Param(p) => p.visit_attrs(f),
             Annotatable::StructField(sf) => sf.visit_attrs(f),
             Annotatable::Variant(v) => v.visit_attrs(f),
+        }
+    }
+
+    fn visit_tokens(&mut self, f: impl FnOnce(&mut PreexpTokenStream)) {
+        match self {
+            Annotatable::Item(item) => item.visit_tokens(f),
+            Annotatable::TraitItem(trait_item) => trait_item.visit_tokens(f),
+            Annotatable::ImplItem(impl_item) => impl_item.visit_tokens(f),
+            Annotatable::ForeignItem(foreign_item) => foreign_item.visit_tokens(f),
+            Annotatable::Stmt(stmt) => stmt.visit_tokens(f),
+            Annotatable::Expr(expr) => expr.visit_tokens(f),
+            Annotatable::Arm(arm) => arm.visit_tokens(f),
+            Annotatable::Field(field) => field.visit_tokens(f),
+            Annotatable::FieldPat(fp) => fp.visit_tokens(f),
+            Annotatable::GenericParam(gp) => gp.visit_tokens(f),
+            Annotatable::Param(p) => p.visit_tokens(f),
+            Annotatable::StructField(sf) => sf.visit_tokens(f),
+            Annotatable::Variant(v) => v.visit_tokens(f),
         }
     }
 }

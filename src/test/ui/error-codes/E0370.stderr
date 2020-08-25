@@ -2,7 +2,7 @@ error[E0370]: enum discriminant overflowed
   --> $DIR/E0370.rs:7:5
    |
 LL |     Y,
-   |     ^ overflowed on value after 9223372036854775807
+   |     ^^ overflowed on value after 9223372036854775807
    |
    = note: explicitly set `Y = -9223372036854775808` if that is desired outcome
 

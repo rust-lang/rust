@@ -8,7 +8,7 @@ use crate::ast::{Path, PathSegment};
 use crate::mut_visit::visit_clobber;
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Token};
-use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
+use crate::tokenstream::{DelimSpan, PreexpTokenStream, TokenStream, TokenTree, TreeAndSpacing};
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::source_map::{BytePos, Spanned};
@@ -334,7 +334,7 @@ pub fn mk_attr(style: AttrStyle, path: Path, args: MacArgs, span: Span) -> Attri
 }
 
 pub fn mk_attr_from_item(style: AttrStyle, item: AttrItem, span: Span) -> Attribute {
-    Attribute { kind: AttrKind::Normal(item), id: mk_attr_id(), style, span }
+    Attribute { kind: AttrKind::Normal(item), id: mk_attr_id(), style, span, tokens: None }
 }
 
 /// Returns an inner attribute with the given value and span.
@@ -353,7 +353,13 @@ pub fn mk_doc_comment(
     data: Symbol,
     span: Span,
 ) -> Attribute {
-    Attribute { kind: AttrKind::DocComment(comment_kind, data), id: mk_attr_id(), style, span }
+    Attribute {
+        kind: AttrKind::DocComment(comment_kind, data),
+        id: mk_attr_id(),
+        style,
+        span,
+        tokens: None,
+    }
 }
 
 pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {
@@ -585,6 +591,7 @@ impl NestedMetaItem {
 pub trait HasAttrs: Sized {
     fn attrs(&self) -> &[Attribute];
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>));
+    fn visit_tokens(&mut self, f: impl FnOnce(&mut PreexpTokenStream));
 }
 
 impl<T: HasAttrs> HasAttrs for Spanned<T> {
@@ -593,6 +600,9 @@ impl<T: HasAttrs> HasAttrs for Spanned<T> {
     }
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         self.node.visit_attrs(f);
+    }
+    fn visit_tokens(&mut self, f: impl FnOnce(&mut PreexpTokenStream)) {
+        self.node.visit_tokens(f)
     }
 }
 
@@ -603,6 +613,7 @@ impl HasAttrs for Vec<Attribute> {
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         f(self)
     }
+    fn visit_tokens(&mut self, _f: impl FnOnce(&mut PreexpTokenStream)) {}
 }
 
 impl HasAttrs for AttrVec {
@@ -616,6 +627,7 @@ impl HasAttrs for AttrVec {
             vec.into()
         });
     }
+    fn visit_tokens(&mut self, _f: impl FnOnce(&mut PreexpTokenStream)) {}
 }
 
 impl<T: HasAttrs + 'static> HasAttrs for P<T> {
@@ -625,6 +637,21 @@ impl<T: HasAttrs + 'static> HasAttrs for P<T> {
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         (**self).visit_attrs(f);
     }
+    fn visit_tokens(&mut self, f: impl FnOnce(&mut PreexpTokenStream)) {
+        (**self).visit_tokens(f)
+    }
+}
+
+impl<T: HasAttrs> HasAttrs for Option<T> {
+    fn attrs(&self) -> &[Attribute] {
+        self.as_ref().map_or(&[], |inner| inner.attrs())
+    }
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+        self.as_mut().map(|inner| inner.visit_attrs(f));
+    }
+    fn visit_tokens(&mut self, f: impl FnOnce(&mut PreexpTokenStream)) {
+        self.as_mut().map(|inner| inner.visit_tokens(f));
+    }
 }
 
 impl HasAttrs for StmtKind {
@@ -632,7 +659,8 @@ impl HasAttrs for StmtKind {
         match *self {
             StmtKind::Local(ref local) => local.attrs(),
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.attrs(),
-            StmtKind::Empty | StmtKind::Item(..) => &[],
+            StmtKind::Item(..) => &[],
+            StmtKind::Empty => &[],
             StmtKind::MacCall(ref mac) => mac.attrs.attrs(),
         }
     }
@@ -641,10 +669,22 @@ impl HasAttrs for StmtKind {
         match self {
             StmtKind::Local(local) => local.visit_attrs(f),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
-            StmtKind::Empty | StmtKind::Item(..) => {}
+            StmtKind::Item(item) => item.visit_attrs(f),
+            StmtKind::Empty => {}
             StmtKind::MacCall(mac) => {
                 mac.attrs.visit_attrs(f);
             }
+        }
+    }
+
+    fn visit_tokens(&mut self, f: impl FnOnce(&mut PreexpTokenStream)) {
+        match self {
+            StmtKind::Local(local) => local.visit_tokens(f),
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_tokens(f),
+            // FIXME: Is this correct?
+            StmtKind::Item(item) => item.visit_tokens(f),
+            StmtKind::Empty => {}
+            StmtKind::MacCall(mac) => mac.attrs.visit_tokens(f),
         }
     }
 }
@@ -656,6 +696,9 @@ impl HasAttrs for Stmt {
 
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         self.kind.visit_attrs(f);
+    }
+    fn visit_tokens(&mut self, f: impl FnOnce(&mut PreexpTokenStream)) {
+        self.kind.visit_tokens(f);
     }
 }
 
@@ -669,11 +712,36 @@ macro_rules! derive_has_attrs {
             fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
                 self.attrs.visit_attrs(f);
             }
+            fn visit_tokens(&mut self, _f: impl FnOnce(&mut PreexpTokenStream)) {}
+        }
+    )* }
+}
+
+macro_rules! derive_has_attrs_with_tokens {
+    ($($ty:path),*) => { $(
+        impl HasAttrs for $ty {
+            fn attrs(&self) -> &[Attribute] {
+                &self.attrs
+            }
+
+            fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+                self.attrs.visit_attrs(f);
+            }
+
+            fn visit_tokens(&mut self, f: impl FnOnce(&mut PreexpTokenStream)) {
+                if let Some(tokens) = self.tokens.as_mut() {
+                    f(tokens)
+                }
+            }
         }
     )* }
 }
 
 derive_has_attrs! {
-    Item, Expr, Local, ast::AssocItem, ast::ForeignItem, ast::StructField, ast::Arm,
+    ast::StructField, ast::Arm,
     ast::Field, ast::FieldPat, ast::Variant, ast::Param, GenericParam
+}
+
+derive_has_attrs_with_tokens! {
+    Expr, Item, Local, ast::AssocItem, ast::ForeignItem
 }
