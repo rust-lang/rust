@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 use either::Either;
-use hir::{Docs, HirDisplay, Semantics, Type};
+use hir::{HasAttrs, HirDisplay, Semantics, Type};
 use ide_db::RootDatabase;
 use stdx::format_to;
 use syntax::{

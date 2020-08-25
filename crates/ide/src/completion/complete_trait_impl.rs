@@ -32,7 +32,7 @@
 //! ```
 
 use assists::utils::get_missing_assoc_items;
-use hir::{self, Docs, HasSource};
+use hir::{self, HasAttrs, HasSource};
 use syntax::{
     ast::{self, edit, Impl},
     AstNode, SyntaxKind, SyntaxNode, TextRange, T,
