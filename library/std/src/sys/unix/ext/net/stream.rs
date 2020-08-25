@@ -87,16 +87,13 @@ impl UnixStream {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
-        fn inner(path: &Path) -> io::Result<UnixStream> {
-            unsafe {
-                let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
-                let (addr, len) = sockaddr_un(path)?;
+        unsafe {
+            let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
+            let (addr, len) = sockaddr_un(path.as_ref())?;
 
-                cvt(libc::connect(*inner.as_inner(), &addr as *const _ as *const _, len))?;
-                Ok(UnixStream(inner))
-            }
+            cvt(libc::connect(*inner.as_inner(), &addr as *const _ as *const _, len))?;
+            Ok(UnixStream(inner))
         }
-        inner(path.as_ref())
     }
 
     /// Creates an unnamed pair of connected sockets.
