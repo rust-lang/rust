@@ -1,4 +1,4 @@
-use crate::utils::{get_item_name, higher, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{get_item_name, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -260,17 +260,6 @@ fn check_len(
 
 /// Checks if this type has an `is_empty` method.
 fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    /// Special case ranges until `range_is_empty` is stabilized. See issue 3807.
-    fn should_skip_range(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-        higher::range(expr).map_or(false, |_| {
-            !cx.tcx
-                .features()
-                .declared_lib_features
-                .iter()
-                .any(|(name, _)| name.as_str() == "range_is_empty")
-        })
-    }
-
     /// Gets an `AssocItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext<'_>, item: &ty::AssocItem) -> bool {
         if let ty::AssocKind::Fn = item.kind {
@@ -294,10 +283,6 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 .in_definition_order()
                 .any(|item| is_is_empty(cx, &item))
         })
-    }
-
-    if should_skip_range(cx, expr) {
-        return false;
     }
 
     let ty = &walk_ptrs_ty(cx.typeck_results().expr_ty(expr));
