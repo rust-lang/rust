@@ -399,6 +399,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     } else {
                         // See if it only broke because of the namespace.
                         let kind = cx.enter_resolver(|resolver| {
+                            // NOTE: this doesn't use `check_full_res` because we explicitly want to ignore `TypeNS` (we already checked it)
                             for &ns in &[MacroNS, ValueNS] {
                                 match resolver
                                     .resolve_str_path_error(DUMMY_SP, &path_root, ns, module_id)
@@ -563,9 +564,15 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         }
     }
 
-    // used for reporting better errors
+    /// Used for reporting better errors.
+    ///
+    /// Returns whether the link resolved 'fully' in another namespace.
+    /// 'fully' here means that all parts of the link resolved, not just some path segments.
+    /// This returns the `Res` even if it was erroneous for some reason
+    /// (such as having invalid URL fragments or being in the wrong namespace).
     fn check_full_res(
         &self,
+        // TODO: is this parameter actually needed, since we return results for the wrong namespace?
         ns: Namespace,
         path_str: &str,
         base_node: Option<DefId>,
@@ -1609,10 +1616,10 @@ fn anchor_failure(
     });
 }
 
-fn ambiguity_error<'a>(
+fn ambiguity_error(
     cx: &DocContext<'_>,
     item: &Item,
-    path_str: &'a str,
+    path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
     candidates: Vec<Res>,
