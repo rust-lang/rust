@@ -43,7 +43,7 @@ impl fmt::Debug for ProjectWorkspace {
                 f.debug_struct("Cargo").field("n_packages", &cargo.packages().len()).finish()
             }
             ProjectWorkspace::Json { project } => {
-                f.debug_struct("Json").field("n_crates", &project.crates.len()).finish()
+                f.debug_struct("Json").field("n_crates", &project.n_crates()).finish()
             }
         }
     }
@@ -202,9 +202,8 @@ impl ProjectWorkspace {
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         match self {
             ProjectWorkspace::Json { project } => project
-                .crates
-                .iter()
-                .map(|krate| PackageRoot {
+                .crates()
+                .map(|(_, krate)| PackageRoot {
                     is_member: krate.is_workspace_member,
                     include: krate.include.clone(),
                     exclude: krate.exclude.clone(),
@@ -243,9 +242,8 @@ impl ProjectWorkspace {
     pub fn proc_macro_dylib_paths(&self) -> Vec<AbsPathBuf> {
         match self {
             ProjectWorkspace::Json { project } => project
-                .crates
-                .iter()
-                .filter_map(|krate| krate.proc_macro_dylib_path.as_ref())
+                .crates()
+                .filter_map(|(_, krate)| krate.proc_macro_dylib_path.as_ref())
                 .cloned()
                 .collect(),
             ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => cargo
@@ -258,7 +256,7 @@ impl ProjectWorkspace {
 
     pub fn n_packages(&self) -> usize {
         match self {
-            ProjectWorkspace::Json { project, .. } => project.crates.len(),
+            ProjectWorkspace::Json { project, .. } => project.n_crates(),
             ProjectWorkspace::Cargo { cargo, sysroot } => {
                 cargo.packages().len() + sysroot.crates().len()
             }
@@ -276,10 +274,8 @@ impl ProjectWorkspace {
             ProjectWorkspace::Json { project } => {
                 let mut cfg_cache: FxHashMap<Option<&str>, Vec<CfgFlag>> = FxHashMap::default();
                 let crates: FxHashMap<_, _> = project
-                    .crates
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(seq_index, krate)| {
+                    .crates()
+                    .filter_map(|(crate_id, krate)| {
                         let file_path = &krate.root_module;
                         let file_id = load(&file_path)?;
 
@@ -297,9 +293,8 @@ impl ProjectWorkspace {
                         let mut cfg_options = CfgOptions::default();
                         cfg_options.extend(target_cfgs.iter().chain(krate.cfg.iter()).cloned());
 
-                        // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
                         Some((
-                            CrateId(seq_index as u32),
+                            crate_id,
                             crate_graph.add_crate_root(
                                 file_id,
                                 krate.edition,
@@ -313,19 +308,14 @@ impl ProjectWorkspace {
                     })
                     .collect();
 
-                for (id, krate) in project.crates.iter().enumerate() {
+                for (from, krate) in project.crates() {
                     for dep in &krate.deps {
-                        let from_crate_id = CrateId(id as u32);
                         let to_crate_id = dep.crate_id;
                         if let (Some(&from), Some(&to)) =
-                            (crates.get(&from_crate_id), crates.get(&to_crate_id))
+                            (crates.get(&from), crates.get(&to_crate_id))
                         {
-                            if crate_graph.add_dep(from, dep.name.clone(), to).is_err() {
-                                log::error!(
-                                    "cyclic dependency {:?} -> {:?}",
-                                    from_crate_id,
-                                    to_crate_id
-                                );
+                            if let Err(_) = crate_graph.add_dep(from, dep.name.clone(), to) {
+                                log::error!("cyclic dependency {:?} -> {:?}", from, to_crate_id);
                             }
                         }
                     }
