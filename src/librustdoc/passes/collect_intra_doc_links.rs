@@ -1305,7 +1305,6 @@ fn suggest_disambiguator(
             suggestion = format!("`{}`", suggestion);
         }
 
-        // FIXME: Create a version of this suggestion for when we don't have the span.
         diag.span_suggestion(sp, &help, suggestion, Applicability::MaybeIncorrect);
     } else {
         diag.help(&format!("{}: {}", help, suggestion));
