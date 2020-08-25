@@ -367,6 +367,30 @@ include::./generated_assists.adoc[]
 
 == Editor Features
 === VS Code
+
+==== Color configurations
+
+It is possible to change the foreground/background color of inlay hints. Just add this to your
+`settings.json`:
+
+[source,jsonc]
+----
+{
+  "workbench.colorCustomizations": {
+    // Name of the theme you are currently using
+    "[Default Dark+]": {
+      "rust_analyzer.inlayHints.foreground": "#868686f0",
+      "rust_analyzer.inlayHints.background": "#3d3d3d48",
+
+      // Overrides for specific kinds of inlay hints
+      "rust_analyzer.inlayHints.foreground.typeHints": "#fdb6fdf0",
+      "rust_analyzer.inlayHints.foreground.paramHints": "#fdb6fdf0",
+      "rust_analyzer.inlayHints.background.chainingHints": "#6b0c0c81"
+    }
+  }
+}
+----
+
 ==== Special `when` clause context for keybindings.
 You may use `inRustProject` context to configure keybindings for rust projects only. For example:
 [source,json]

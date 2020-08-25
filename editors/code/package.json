@@ -712,12 +712,75 @@
         ],
         "colors": [
             {
-                "id": "rust_analyzer.inlayHint",
-                "description": "Color for inlay hints",
+                "id": "rust_analyzer.inlayHints.foreground",
+                "description": "Foreground color of inlay hints (is overriden by more specific rust_analyzer.inlayHints.foreground.* configurations)",
                 "defaults": {
                     "dark": "#A0A0A0F0",
                     "light": "#747474",
                     "highContrast": "#BEBEBE"
+                }
+            },
+            {
+                "id": "rust_analyzer.inlayHints.background",
+                "description": "Background color of inlay hints (is overriden by more specific rust_analyzer.inlayHints.background.* configurations)",
+                "defaults": {
+                    "dark": "#11223300",
+                    "light": "#11223300",
+                    "highContrast": "#11223300"
+                }
+            },
+            {
+                "id": "rust_analyzer.inlayHints.foreground.typeHints",
+                "description": "Foreground color of inlay type hints for variables (overrides rust_analyzer.inlayHints.foreground)",
+                "defaults": {
+                    "dark": "rust_analyzer.inlayHints.foreground",
+                    "light": "rust_analyzer.inlayHints.foreground",
+                    "highContrast": "rust_analyzer.inlayHints.foreground"
+                }
+            },
+            {
+                "id": "rust_analyzer.inlayHints.foreground.chainingHints",
+                "description": "Foreground color of inlay type hints for method chains (overrides rust_analyzer.inlayHints.foreground)",
+                "defaults": {
+                    "dark": "rust_analyzer.inlayHints.foreground",
+                    "light": "rust_analyzer.inlayHints.foreground",
+                    "highContrast": "rust_analyzer.inlayHints.foreground"
+                }
+            },
+            {
+                "id": "rust_analyzer.inlayHints.foreground.parameterHints",
+                "description": "Foreground color of function parameter name inlay hints at the call site (overrides rust_analyzer.inlayHints.foreground)",
+                "defaults": {
+                    "dark": "rust_analyzer.inlayHints.foreground",
+                    "light": "rust_analyzer.inlayHints.foreground",
+                    "highContrast": "rust_analyzer.inlayHints.foreground"
+                }
+            },
+            {
+                "id": "rust_analyzer.inlayHints.background.typeHints",
+                "description": "Background color of inlay type hints for variables (overrides rust_analyzer.inlayHints.background)",
+                "defaults": {
+                    "dark": "rust_analyzer.inlayHints.background",
+                    "light": "rust_analyzer.inlayHints.background",
+                    "highContrast": "rust_analyzer.inlayHints.background"
+                }
+            },
+            {
+                "id": "rust_analyzer.inlayHints.background.chainingHints",
+                "description": "Background color of inlay type hints for method chains (overrides rust_analyzer.inlayHints.background)",
+                "defaults": {
+                    "dark": "rust_analyzer.inlayHints.background",
+                    "light": "rust_analyzer.inlayHints.background",
+                    "highContrast": "rust_analyzer.inlayHints.background"
+                }
+            },
+            {
+                "id": "rust_analyzer.inlayHints.background.parameterHints",
+                "description": "Background color of function parameter name inlay hints at the call site (overrides rust_analyzer.inlayHints.background)",
+                "defaults": {
+                    "dark": "rust_analyzer.inlayHints.background",
+                    "light": "rust_analyzer.inlayHints.background",
+                    "highContrast": "rust_analyzer.inlayHints.background"
                 }
             },
             {
