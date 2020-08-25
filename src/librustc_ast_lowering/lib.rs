@@ -1145,7 +1145,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 if let TyKind::Path(ref qself, ref path) = ty.kind {
                     if let Some(partial_res) = self.resolver.get_partial_res(ty.id) {
                         let res = partial_res.base_res();
-                        if !res.matches_ns(Namespace::TypeNS) {
+                        if res.ns().map(|ns| ns != Namespace::TypeNS).unwrap_or(false) {
                             debug!(
                                 "lower_generic_arg: Lowering type argument as const argument: {:?}",
                                 ty,
