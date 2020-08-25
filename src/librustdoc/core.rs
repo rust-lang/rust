@@ -257,10 +257,7 @@ where
         .filter_map(|lint| {
             // Permit feature-gated lints to avoid feature errors when trying to
             // allow all lints.
-            if lint.name == warnings_lint_name
-                || lint.feature_gate.is_some()
-                || allowed_lints.iter().any(|l| lint.name == l)
-            {
+            if lint.feature_gate.is_some() || allowed_lints.iter().any(|l| lint.name == l) {
                 None
             } else {
                 filter_call(lint)
