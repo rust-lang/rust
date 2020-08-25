@@ -137,9 +137,9 @@ impl MutPointerReturnerOk {
     }
 }
 
-struct MutPointerReturnerOk2;
+struct ConstPointerReturnerOk2;
 
-impl MutPointerReturnerOk2 {
+impl ConstPointerReturnerOk2 {
     // should not trigger lint
     pub fn new() -> *const Self {
         unimplemented!();
@@ -283,7 +283,7 @@ mod issue5435 {
         }
     }
 
-    trait MutPointerReturnerOk2 {
+    trait ConstPointerReturnerOk2 {
         // should not trigger lint
         fn new() -> *const Self
         where

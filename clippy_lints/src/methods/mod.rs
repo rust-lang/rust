@@ -725,6 +725,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
+    /// In an impl block:
     /// ```rust
     /// # struct Foo;
     /// # struct NotAFoo;
@@ -737,23 +738,38 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// # struct Foo;
-    /// # struct FooError;
+    /// struct Bar(Foo);
     /// impl Foo {
-    ///     // Good. Return type contains `Self`
-    ///     fn new() -> Result<Foo, FooError> {
-    ///         # Ok(Foo)
+    ///     // Bad. The type name must contain `Self`
+    ///     fn new() -> Bar {
+    /// # Bar(Foo)
     ///     }
     /// }
     /// ```
     ///
     /// ```rust
     /// # struct Foo;
-    /// struct Bar(Foo);
+    /// # struct FooError;
     /// impl Foo {
-    ///     // Bad. The type name must contain `Self`.
-    ///     fn new() -> Bar {
-    ///         # Bar(Foo)
+    ///     // Good. Return type contains `Self`
+    ///     fn new() -> Result<Foo, FooError> {
+    /// # Ok(Foo)
     ///     }
+    /// }
+    /// ```
+    ///
+    /// Or in a trait definition:
+    /// ```rust
+    /// pub trait Trait {
+    ///     // Bad. The type name must contain `Self`
+    ///     fn new();
+    /// }
+    /// ```
+    ///
+    /// ```rust
+    /// pub trait Trait {
+    ///     // Good. Return type contains `Self`
+    ///     fn new() -> Self;
     /// }
     /// ```
     pub NEW_RET_NO_SELF,
@@ -1679,8 +1695,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if_chain! {
-            if !in_external_macro(cx.tcx.sess, item.span);
-            if !item.span.from_expansion();
             if item.ident.name == sym!(new);
             if let TraitItemKind::Fn(FnSig { decl, .. }, _) = &item.kind;
             if let FnRetTy::Return(ret_ty) = &decl.output;
