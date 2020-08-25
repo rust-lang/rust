@@ -38,6 +38,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
 use rustc_hir::{HirId, HirIdSet, Node};
+use rustc_index::vec::Idx;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -2171,18 +2172,19 @@ impl ClashingExternDeclarations {
                 loop {
                     if let ty::Adt(def, substs) = ty.kind {
                         let is_transparent = def.subst(tcx, substs).repr.transparent();
-                        let is_enum = def.is_enum();
                         let is_non_null = crate::types::guaranteed_nonnull_optimization(tcx, &def);
                         debug!(
-                            "non_transparent_ty({:?}) -- type is transparent? {}, type is enum? {}, type is non-null? {}",
-                            ty, is_transparent, is_enum, is_non_null
+                            "non_transparent_ty({:?}) -- type is transparent? {}, type is non-null? {}",
+                            ty, is_transparent, is_non_null
                         );
-                        if is_transparent && !is_enum && !is_non_null {
-                            ty = def
-                                .non_enum_variant()
-                                .transparent_newtype_field(tcx)
-                                .unwrap()
-                                .ty(tcx, substs);
+                        if is_transparent && !is_non_null {
+                            debug_assert!(def.variants.len() == 1);
+                            let v = &def.variants[VariantIdx::new(0)];
+                            assert!(
+                                v.fields.len() > 0,
+                                "single-variant transparent structure with zero-sized field"
+                            );
+                            ty = v.transparent_newtype_field(tcx).unwrap().ty(tcx, substs);
                             continue;
                         }
                     }

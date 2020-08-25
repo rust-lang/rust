@@ -182,7 +182,9 @@ mod same_sized_members_clash {
             y: f32,
             z: f32,
         }
-        extern "C" { fn origin() -> Point3; }
+        extern "C" {
+            fn origin() -> Point3;
+        }
     }
     mod b {
         #[repr(C)]
@@ -191,8 +193,9 @@ mod same_sized_members_clash {
             y: i32,
             z: i32, // NOTE: Incorrectly redeclared as i32
         }
-        extern "C" { fn origin() -> Point3; }
-        //~^ WARN `origin` redeclared with a different signature
+        extern "C" {
+            fn origin() -> Point3; //~ WARN `origin` redeclared with a different signature
+        }
     }
 }
 
@@ -310,6 +313,22 @@ mod non_zero_transparent {
     mod b3 {
         extern "C" {
             fn f3() -> core::ptr::NonNull<i32>;
+        }
+    }
+
+    mod a4 {
+        #[repr(transparent)]
+        enum E {
+            X(std::num::NonZeroUsize),
+        }
+        extern "C" {
+            fn f4() -> E;
+        }
+    }
+
+    mod b4 {
+        extern "C" {
+            fn f4() -> std::num::NonZeroUsize;
         }
     }
 }
