@@ -2,7 +2,7 @@ error: incompatible link kind for `S`
   --> $DIR/intra-links-disambiguator-mismatch.rs:14:14
    |
 LL | /// Link to [struct@S]
-   |              ^^^^^^^^ help: to link to the enum, use its disambiguator: `enum@S`
+   |              ^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/intra-links-disambiguator-mismatch.rs:1:9
@@ -10,44 +10,64 @@ note: the lint level is defined here
 LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
    = note: this link resolved to an enum, which is not a struct
+help: to link to the enum, prefix with the item kind
+   |
+LL | /// Link to [enum@S]
+   |              ^^^^^^
 
 error: incompatible link kind for `S`
   --> $DIR/intra-links-disambiguator-mismatch.rs:19:14
    |
 LL | /// Link to [mod@S]
-   |              ^^^^^ help: to link to the enum, use its disambiguator: `enum@S`
+   |              ^^^^^
    |
    = note: this link resolved to an enum, which is not a module
+help: to link to the enum, prefix with the item kind
+   |
+LL | /// Link to [enum@S]
+   |              ^^^^^^
 
 error: incompatible link kind for `S`
   --> $DIR/intra-links-disambiguator-mismatch.rs:24:14
    |
 LL | /// Link to [union@S]
-   |              ^^^^^^^ help: to link to the enum, use its disambiguator: `enum@S`
+   |              ^^^^^^^
    |
    = note: this link resolved to an enum, which is not a union
+help: to link to the enum, prefix with the item kind
+   |
+LL | /// Link to [enum@S]
+   |              ^^^^^^
 
 error: incompatible link kind for `S`
   --> $DIR/intra-links-disambiguator-mismatch.rs:29:14
    |
 LL | /// Link to [trait@S]
-   |              ^^^^^^^ help: to link to the enum, use its disambiguator: `enum@S`
+   |              ^^^^^^^
    |
    = note: this link resolved to an enum, which is not a trait
+help: to link to the enum, prefix with the item kind
+   |
+LL | /// Link to [enum@S]
+   |              ^^^^^^
 
 error: incompatible link kind for `T`
   --> $DIR/intra-links-disambiguator-mismatch.rs:34:14
    |
 LL | /// Link to [struct@T]
-   |              ^^^^^^^^ help: to link to the trait, use its disambiguator: `trait@T`
+   |              ^^^^^^^^
    |
    = note: this link resolved to a trait, which is not a struct
+help: to link to the trait, prefix with the item kind
+   |
+LL | /// Link to [trait@T]
+   |              ^^^^^^^
 
 error: incompatible link kind for `m`
   --> $DIR/intra-links-disambiguator-mismatch.rs:39:14
    |
 LL | /// Link to [derive@m]
-   |              ^^^^^^^^ help: to link to the macro, use its disambiguator: `m!`
+   |              ^^^^^^^^ help: to link to the macro, add an exclamation mark: `m!`
    |
    = note: this link resolved to a macro, which is not a derive macro
 
@@ -55,39 +75,55 @@ error: incompatible link kind for `s`
   --> $DIR/intra-links-disambiguator-mismatch.rs:44:14
    |
 LL | /// Link to [const@s]
-   |              ^^^^^^^ help: to link to the static, use its disambiguator: `static@s`
+   |              ^^^^^^^
    |
    = note: this link resolved to a static, which is not a constant
+help: to link to the static, prefix with the item kind
+   |
+LL | /// Link to [static@s]
+   |              ^^^^^^^^
 
 error: incompatible link kind for `c`
   --> $DIR/intra-links-disambiguator-mismatch.rs:49:14
    |
 LL | /// Link to [static@c]
-   |              ^^^^^^^^ help: to link to the constant, use its disambiguator: `const@c`
+   |              ^^^^^^^^
    |
    = note: this link resolved to a constant, which is not a static
+help: to link to the constant, prefix with the item kind
+   |
+LL | /// Link to [const@c]
+   |              ^^^^^^^
 
 error: incompatible link kind for `c`
   --> $DIR/intra-links-disambiguator-mismatch.rs:54:14
    |
 LL | /// Link to [fn@c]
-   |              ^^^^ help: to link to the constant, use its disambiguator: `const@c`
+   |              ^^^^
    |
    = note: this link resolved to a constant, which is not a function
+help: to link to the constant, prefix with the item kind
+   |
+LL | /// Link to [const@c]
+   |              ^^^^^^^
 
 error: incompatible link kind for `c`
   --> $DIR/intra-links-disambiguator-mismatch.rs:59:14
    |
 LL | /// Link to [c()]
-   |              ^^^ help: to link to the constant, use its disambiguator: `const@c`
+   |              ^^^
    |
    = note: this link resolved to a constant, which is not a function
+help: to link to the constant, prefix with the item kind
+   |
+LL | /// Link to [const@c]
+   |              ^^^^^^^
 
 error: incompatible link kind for `f`
   --> $DIR/intra-links-disambiguator-mismatch.rs:64:14
    |
 LL | /// Link to [const@f]
-   |              ^^^^^^^ help: to link to the function, use its disambiguator: `f()`
+   |              ^^^^^^^ help: to link to the function, add parentheses: `f()`
    |
    = note: this link resolved to a function, which is not a constant
 

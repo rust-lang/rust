@@ -18,13 +18,13 @@
 
 /// [struct@char]
 //~^ ERROR incompatible link
-//~| HELP use its disambiguator
+//~| HELP prefix with the item kind
 //~| NOTE resolved to a module
 pub mod char {}
 
 pub mod inner {
     //! [struct@char]
     //~^ ERROR incompatible link
-    //~| HELP use its disambiguator
+    //~| HELP prefix with the item kind
     //~| NOTE resolved to a builtin type
 }
