@@ -159,13 +159,13 @@ impl<'a> IntoIterator for &'a TextEdit {
 
 impl TextEditBuilder {
     pub fn replace(&mut self, range: TextRange, replace_with: String) {
-        self.indels.push(Indel::replace(range, replace_with))
+        self.indel(Indel::replace(range, replace_with))
     }
     pub fn delete(&mut self, range: TextRange) {
-        self.indels.push(Indel::delete(range))
+        self.indel(Indel::delete(range))
     }
     pub fn insert(&mut self, offset: TextSize, text: String) {
-        self.indels.push(Indel::insert(offset, text))
+        self.indel(Indel::insert(offset, text))
     }
     pub fn finish(self) -> TextEdit {
         let mut indels = self.indels;
@@ -174,6 +174,12 @@ impl TextEditBuilder {
     }
     pub fn invalidates_offset(&self, offset: TextSize) -> bool {
         self.indels.iter().any(|indel| indel.delete.contains_inclusive(offset))
+    }
+    fn indel(&mut self, indel: Indel) {
+        self.indels.push(indel);
+        if self.indels.len() <= 16 {
+            check_disjoint(&mut self.indels);
+        }
     }
 }
 
