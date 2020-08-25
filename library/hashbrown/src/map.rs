@@ -770,6 +770,7 @@ where
         let hash = make_hash(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
             Entry::Occupied(OccupiedEntry {
+                hash,
                 key: Some(key),
                 elem,
                 table: self,
@@ -1456,7 +1457,7 @@ pub struct RawEntryBuilderMut<'a, K, V, S> {
 /// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
 pub enum RawEntryMut<'a, K, V, S> {
     /// An occupied entry.
-    Occupied(RawOccupiedEntryMut<'a, K, V>),
+    Occupied(RawOccupiedEntryMut<'a, K, V, S>),
     /// A vacant entry.
     Vacant(RawVacantEntryMut<'a, K, V, S>),
 }
@@ -1465,21 +1466,24 @@ pub enum RawEntryMut<'a, K, V, S> {
 /// It is part of the [`RawEntryMut`] enum.
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
-pub struct RawOccupiedEntryMut<'a, K, V> {
+pub struct RawOccupiedEntryMut<'a, K, V, S> {
     elem: Bucket<(K, V)>,
     table: &'a mut RawTable<(K, V)>,
+    hash_builder: &'a S,
 }
 
-unsafe impl<K, V> Send for RawOccupiedEntryMut<'_, K, V>
+unsafe impl<K, V, S> Send for RawOccupiedEntryMut<'_, K, V, S>
 where
     K: Send,
     V: Send,
+    S: Sync,
 {
 }
-unsafe impl<K, V> Sync for RawOccupiedEntryMut<'_, K, V>
+unsafe impl<K, V, S> Sync for RawOccupiedEntryMut<'_, K, V, S>
 where
     K: Sync,
     V: Sync,
+    S: Sync,
 {
 }
 
@@ -1548,6 +1552,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
             Some(elem) => RawEntryMut::Occupied(RawOccupiedEntryMut {
                 elem,
                 table: &mut self.map.table,
+                hash_builder: &self.map.hash_builder,
             }),
             None => RawEntryMut::Vacant(RawVacantEntryMut {
                 table: &mut self.map.table,
@@ -1622,7 +1627,7 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     /// assert_eq!(entry.remove_entry(), ("horseyland", 37));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn insert(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V>
+    pub fn insert(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, S>
     where
         K: Hash,
         S: BuildHasher,
@@ -1734,9 +1739,75 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
             RawEntryMut::Vacant(entry) => RawEntryMut::Vacant(entry),
         }
     }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// an occupied entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::RawEntryMut;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// let entry = map
+    ///     .raw_entry_mut()
+    ///     .from_key("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| panic!());
+    ///
+    /// match entry {
+    ///     RawEntryMut::Vacant(_) => {},
+    ///     RawEntryMut::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// map.insert("poneyland", 42);
+    ///
+    /// let entry = map
+    ///     .raw_entry_mut()
+    ///     .from_key("poneyland")
+    ///     .and_replace_entry_with(|k, v| {
+    ///         assert_eq!(k, &"poneyland");
+    ///         assert_eq!(v, 42);
+    ///         Some(v + 1)
+    ///     });
+    ///
+    /// match entry {
+    ///     RawEntryMut::Occupied(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///         assert_eq!(e.get(), &43);
+    ///     },
+    ///     RawEntryMut::Vacant(_) => panic!(),
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// let entry = map
+    ///     .raw_entry_mut()
+    ///     .from_key("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| None);
+    ///
+    /// match entry {
+    ///     RawEntryMut::Vacant(_) => {},
+    ///     RawEntryMut::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn and_replace_entry_with<F>(self, f: F) -> Self
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        match self {
+            RawEntryMut::Occupied(entry) => entry.replace_entry_with(f),
+            RawEntryMut::Vacant(_) => self,
+        }
+    }
 }
 
-impl<'a, K, V> RawOccupiedEntryMut<'a, K, V> {
+impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
     /// Gets a reference to the key in the entry.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn key(&self) -> &K {
@@ -1826,6 +1897,32 @@ impl<'a, K, V> RawOccupiedEntryMut<'a, K, V> {
     pub fn remove_entry(self) -> (K, V) {
         unsafe { self.table.remove(self.elem) }
     }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// the entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace_entry_with<F>(self, f: F) -> RawEntryMut<'a, K, V, S>
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        unsafe {
+            let still_occupied = self
+                .table
+                .replace_bucket_with(self.elem.clone(), |(key, value)| {
+                    f(&key, value).map(|new_value| (key, new_value))
+                });
+
+            if still_occupied {
+                RawEntryMut::Occupied(self)
+            } else {
+                RawEntryMut::Vacant(RawVacantEntryMut {
+                    table: self.table,
+                    hash_builder: self.hash_builder,
+                })
+            }
+        }
+    }
 }
 
 impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
@@ -1875,7 +1972,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
-    fn insert_entry(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V>
+    fn insert_entry(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, S>
     where
         K: Hash,
         S: BuildHasher,
@@ -1890,6 +1987,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         RawOccupiedEntryMut {
             elem,
             table: self.table,
+            hash_builder: self.hash_builder,
         }
     }
 }
@@ -1909,7 +2007,7 @@ impl<K: Debug, V: Debug, S> Debug for RawEntryMut<'_, K, V, S> {
     }
 }
 
-impl<K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'_, K, V> {
+impl<K: Debug, V: Debug, S> Debug for RawOccupiedEntryMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawOccupiedEntryMut")
             .field("key", self.key())
@@ -1958,6 +2056,7 @@ impl<K: Debug, V: Debug, S> Debug for Entry<'_, K, V, S> {
 ///
 /// [`Entry`]: enum.Entry.html
 pub struct OccupiedEntry<'a, K, V, S> {
+    hash: u64,
     key: Option<K>,
     elem: Bucket<(K, V)>,
     table: &'a mut HashMap<K, V, S>,
@@ -2419,6 +2518,71 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
             Entry::Vacant(entry) => Entry::Vacant(entry),
         }
     }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// an occupied entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// let entry = map
+    ///     .entry("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| panic!());
+    ///
+    /// match entry {
+    ///     Entry::Vacant(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///     }
+    ///     Entry::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// map.insert("poneyland", 42);
+    ///
+    /// let entry = map
+    ///     .entry("poneyland")
+    ///     .and_replace_entry_with(|k, v| {
+    ///         assert_eq!(k, &"poneyland");
+    ///         assert_eq!(v, 42);
+    ///         Some(v + 1)
+    ///     });
+    ///
+    /// match entry {
+    ///     Entry::Occupied(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///         assert_eq!(e.get(), &43);
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// let entry = map
+    ///     .entry("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| None);
+    ///
+    /// match entry {
+    ///     Entry::Vacant(e) => assert_eq!(e.key(), &"poneyland"),
+    ///     Entry::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn and_replace_entry_with<F>(self, f: F) -> Self
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        match self {
+            Entry::Occupied(entry) => entry.replace_entry_with(f),
+            Entry::Vacant(_) => self,
+        }
+    }
 }
 
 impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
@@ -2673,6 +2837,85 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
         let entry = unsafe { self.elem.as_mut() };
         mem::replace(&mut entry.0, self.key.unwrap())
     }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// the entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// map.insert("poneyland", 42);
+    ///
+    /// let entry = match map.entry("poneyland") {
+    ///     Entry::Occupied(e) => {
+    ///         e.replace_entry_with(|k, v| {
+    ///             assert_eq!(k, &"poneyland");
+    ///             assert_eq!(v, 42);
+    ///             Some(v + 1)
+    ///         })
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     Entry::Occupied(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///         assert_eq!(e.get(), &43);
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// let entry = match map.entry("poneyland") {
+    ///     Entry::Occupied(e) => e.replace_entry_with(|_k, _v| None),
+    ///     Entry::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     Entry::Vacant(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///     }
+    ///     Entry::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace_entry_with<F>(self, f: F) -> Entry<'a, K, V, S>
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+    {
+        unsafe {
+            let mut spare_key = None;
+
+            self.table
+                .table
+                .replace_bucket_with(self.elem.clone(), |(key, value)| {
+                    if let Some(new_value) = f(&key, value) {
+                        Some((key, new_value))
+                    } else {
+                        spare_key = Some(key);
+                        None
+                    }
+                });
+
+            if let Some(key) = spare_key {
+                Entry::Vacant(VacantEntry {
+                    hash: self.hash,
+                    key,
+                    table: self.table,
+                })
+            } else {
+                Entry::Occupied(self)
+            }
+        }
+    }
 }
 
 impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
@@ -2751,6 +2994,7 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
             make_hash(hash_builder, &x.0)
         });
         OccupiedEntry {
+            hash: self.hash,
             key: None,
             elem,
             table: self.table,
@@ -3756,6 +4000,233 @@ mod test_map {
         }
         assert_eq!(a.len(), 1);
         assert_eq!(a[key], value);
+    }
+
+    #[test]
+    fn test_occupied_entry_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        let entry = a.entry(key).insert(value).replace_entry_with(|k, v| {
+            assert_eq!(k, &key);
+            assert_eq!(v, value);
+            Some(new_value)
+        });
+
+        match entry {
+            Occupied(e) => {
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
+            }
+            Vacant(_) => panic!(),
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        let entry = match a.entry(key) {
+            Occupied(e) => e.replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, new_value);
+                None
+            }),
+            Vacant(_) => panic!(),
+        };
+
+        match entry {
+            Vacant(e) => assert_eq!(e.key(), &key),
+            Occupied(_) => panic!(),
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_entry_and_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        let entry = a.entry(key).and_replace_entry_with(|_, _| panic!());
+
+        match entry {
+            Vacant(e) => assert_eq!(e.key(), &key),
+            Occupied(_) => panic!(),
+        }
+
+        a.insert(key, value);
+
+        let entry = a.entry(key).and_replace_entry_with(|k, v| {
+            assert_eq!(k, &key);
+            assert_eq!(v, value);
+            Some(new_value)
+        });
+
+        match entry {
+            Occupied(e) => {
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
+            }
+            Vacant(_) => panic!(),
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        let entry = a.entry(key).and_replace_entry_with(|k, v| {
+            assert_eq!(k, &key);
+            assert_eq!(v, new_value);
+            None
+        });
+
+        match entry {
+            Vacant(e) => assert_eq!(e.key(), &key),
+            Occupied(_) => panic!(),
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_raw_occupied_entry_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        let entry = a
+            .raw_entry_mut()
+            .from_key(&key)
+            .insert(key, value)
+            .replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, value);
+                Some(new_value)
+            });
+
+        match entry {
+            RawEntryMut::Occupied(e) => {
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
+            }
+            RawEntryMut::Vacant(_) => panic!(),
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        let entry = match a.raw_entry_mut().from_key(&key) {
+            RawEntryMut::Occupied(e) => e.replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, new_value);
+                None
+            }),
+            RawEntryMut::Vacant(_) => panic!(),
+        };
+
+        match entry {
+            RawEntryMut::Vacant(_) => {}
+            RawEntryMut::Occupied(_) => panic!(),
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_raw_entry_and_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        let entry = a
+            .raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|_, _| panic!());
+
+        match entry {
+            RawEntryMut::Vacant(_) => {}
+            RawEntryMut::Occupied(_) => panic!(),
+        }
+
+        a.insert(key, value);
+
+        let entry = a
+            .raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, value);
+                Some(new_value)
+            });
+
+        match entry {
+            RawEntryMut::Occupied(e) => {
+                assert_eq!(e.key(), &key);
+                assert_eq!(e.get(), &new_value);
+            }
+            RawEntryMut::Vacant(_) => panic!(),
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        let entry = a
+            .raw_entry_mut()
+            .from_key(&key)
+            .and_replace_entry_with(|k, v| {
+                assert_eq!(k, &key);
+                assert_eq!(v, new_value);
+                None
+            });
+
+        match entry {
+            RawEntryMut::Vacant(_) => {}
+            RawEntryMut::Occupied(_) => panic!(),
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_replace_entry_with_doesnt_corrupt() {
+        #![allow(deprecated)] //rand
+                              // Test for #19292
+        fn check(m: &HashMap<i32, ()>) {
+            for k in m.keys() {
+                assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
+            }
+        }
+
+        let mut m = HashMap::new();
+
+        let mut rng = {
+            let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+            SmallRng::from_seed(seed)
+        };
+
+        // Populate the map with some items.
+        for _ in 0..50 {
+            let x = rng.gen_range(-10, 10);
+            m.insert(x, ());
+        }
+
+        for _ in 0..1000 {
+            let x = rng.gen_range(-10, 10);
+            m.entry(x).and_replace_entry_with(|_, _| None);
+            check(&m);
+        }
     }
 
     #[test]

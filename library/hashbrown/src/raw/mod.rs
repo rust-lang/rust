@@ -960,6 +960,33 @@ impl<T> RawTable<T> {
         }
     }
 
+    /// Temporary removes a bucket, applying the given function to the removed
+    /// element and optionally put back the returned value in the same bucket.
+    ///
+    /// Returns `true` if the bucket still contains an element
+    ///
+    /// This does not check if the given bucket is actually occupied.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub unsafe fn replace_bucket_with<F>(&mut self, bucket: Bucket<T>, f: F) -> bool
+    where
+        F: FnOnce(T) -> Option<T>,
+    {
+        let index = self.bucket_index(&bucket);
+        let old_ctrl = *self.ctrl(index);
+        debug_assert!(is_full(old_ctrl));
+        let old_growth_left = self.growth_left;
+        let item = self.remove(bucket);
+        if let Some(new_item) = f(item) {
+            self.growth_left = old_growth_left;
+            self.set_ctrl(index, old_ctrl);
+            self.items += 1;
+            self.bucket(index).write(new_item);
+            true
+        } else {
+            false
+        }
+    }
+
     /// Searches for an element in the table.
     #[inline]
     pub fn find(&self, hash: u64, mut eq: impl FnMut(&T) -> bool) -> Option<Bucket<T>> {
