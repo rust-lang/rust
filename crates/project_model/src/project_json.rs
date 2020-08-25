@@ -7,11 +7,12 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use serde::{de, Deserialize};
 
-use crate::cfg_flag::CfgFlag;
+use crate::{cfg_flag::CfgFlag, Sysroot};
 
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectJson {
+    pub(crate) sysroot: Option<Sysroot>,
     crates: Vec<Crate>,
 }
 
@@ -34,6 +35,7 @@ pub struct Crate {
 impl ProjectJson {
     pub fn new(base: &AbsPath, data: ProjectJsonData) -> ProjectJson {
         ProjectJson {
+            sysroot: data.sysroot_src.map(|it| base.join(it)).map(|it| Sysroot::load(&it)),
             crates: data
                 .crates
                 .into_iter()
@@ -43,11 +45,13 @@ impl ProjectJson {
                             && !crate_data.root_module.starts_with("..")
                             || crate_data.root_module.starts_with(base)
                     });
-                    let root_module = base.join(crate_data.root_module);
+                    let root_module = base.join(crate_data.root_module).normalize();
                     let (include, exclude) = match crate_data.source {
                         Some(src) => {
                             let absolutize = |dirs: Vec<PathBuf>| {
-                                dirs.into_iter().map(|it| base.join(it)).collect::<Vec<_>>()
+                                dirs.into_iter()
+                                    .map(|it| base.join(it).normalize())
+                                    .collect::<Vec<_>>()
                             };
                             (absolutize(src.include_dirs), absolutize(src.exclude_dirs))
                         }
@@ -89,6 +93,7 @@ impl ProjectJson {
 
 #[derive(Deserialize)]
 pub struct ProjectJsonData {
+    sysroot_src: Option<PathBuf>,
     crates: Vec<CrateData>,
 }
 

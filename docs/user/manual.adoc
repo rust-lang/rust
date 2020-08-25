@@ -273,9 +273,19 @@ However, if you use some other build system, you'll have to describe the structu
 [source,TypeScript]
 ----
 interface JsonProject {
-   /// The set of crates comprising the current project.
-   /// Must include all transitive dependencies as well as sysroot crate (libstd, libcore and such).
-   crates: Crate[];
+    /// Path to the directory with *source code* of sysroot crates.
+    ///
+    /// It should point to the directory where std, core, and friends can be found:
+    /// https://github.com/rust-lang/rust/tree/master/library.
+    ///
+    /// If provided, rust-analyzer automatically adds dependencies on sysroot
+    /// crates. Conversely, if you omit this path, you can specify sysroot
+    /// dependencies yourself and, for example, have several different "sysroots" in
+    /// one graph of crates.
+    sysroot_src?: string;
+    /// The set of crates comprising the current project.
+    /// Must include all transitive dependencies as well as sysroot crate (libstd, libcore and such).
+    crates: Crate[];
 }
 
 interface Crate {
