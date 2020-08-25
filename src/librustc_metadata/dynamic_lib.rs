@@ -54,8 +54,16 @@ mod dl {
     use std::ffi::{CString, OsStr};
     use std::os::unix::prelude::*;
 
-    // `dlerror` is process global, so we can only allow a single thread at a
-    // time to call `dlsym` and `dlopen` if we want to check the error message.
+    // As of the 2017 revision of the POSIX standard (IEEE 1003.1-2017), it is
+    // implementation-defined whether `dlerror` is thread-safe (in which case it returns the most
+    // recent error in the calling thread) or not thread-safe (in which case it returns the most
+    // recent error in *any* thread).
+    //
+    // There's no easy way to tell what strategy is used by a given POSIX implementation, so we
+    // lock around all calls that can modify `dlerror` in this module lest we accidentally read an
+    // error from a different thread. This is bulletproof when we are the *only* code using the
+    // dynamic library APIs at a given point in time. However, it's still possible for us to race
+    // with other code (see #74469) on platforms where `dlerror` is not thread-safe.
     mod error {
         use std::ffi::CStr;
         use std::lazy::SyncLazy;
@@ -97,9 +105,9 @@ mod dl {
             return Ok(ret);
         }
 
-        // A NULL return from `dlopen` indicates that an error has
-        // definitely occurred, so if nothing is in `dlerror`, we are
-        // racing with another thread that has stolen our error message.
+        // A NULL return from `dlopen` indicates that an error has definitely occurred, so if
+        // nothing is in `dlerror`, we are racing with another thread that has stolen our error
+        // message. See the explanation on the `dl::error` module for more information.
         dlerror.get().and_then(|()| Err("Unknown error".to_string()))
     }
 
@@ -107,41 +115,26 @@ mod dl {
         handle: *mut u8,
         symbol: *const libc::c_char,
     ) -> Result<*mut u8, String> {
-        // HACK(#74469): On some platforms, users observed foreign code
-        // (specifically libc) invoking `dlopen`/`dlsym` in parallel with the
-        // functions in this module. This is problematic because, according to
-        // the POSIX API documentation, `dlerror` must be called to determine
-        // whether `dlsym` succeeded. Unlike `dlopen`, a NULL return value may
-        // indicate a successfully resolved symbol with an address of zero.
-        //
-        // Because symbols with address zero shouldn't occur in practice, we
-        // treat them as errors on platforms with misbehaving libc
-        // implementations.
-        const DLSYM_NULL_IS_ERROR: bool = cfg!(target_os = "illumos");
-
         let mut dlerror = error::lock();
 
-        // No need to flush `dlerror` if we aren't using it to determine whether
-        // the subsequent call to `dlsym` succeeded. If an error occurs, any
-        // stale value will be overwritten.
-        if !DLSYM_NULL_IS_ERROR {
-            dlerror.clear();
-        }
+        // Unlike `dlopen`, it's possible for `dlsym` to return NULL without overwriting `dlerror`.
+        // Because of this, we clear `dlerror` before calling `dlsym` to avoid picking up a stale
+        // error message by accident.
+        dlerror.clear();
 
         let ret = libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8;
 
-        // A non-NULL return value *always* indicates success. There's no need
-        // to check `dlerror`.
         if !ret.is_null() {
             return Ok(ret);
         }
 
-        match dlerror.get() {
-            Ok(()) if DLSYM_NULL_IS_ERROR => Err("Unknown error".to_string()),
-            Ok(()) => Ok(ret),
-
-            Err(msg) => Err(msg),
-        }
+        // If `dlsym` returns NULL but there is nothing in `dlerror` it means one of two things:
+        // - We tried to load a symbol mapped to address 0. This is not technically an error but is
+        //   unlikely to occur in practice and equally unlikely to be handled correctly by calling
+        //   code. Therefore we treat it as an error anyway.
+        // - An error has occurred, but we are racing with another thread that has stolen our error
+        //   message. See the explanation on the `dl::error` module for more information.
+        dlerror.get().and_then(|()| Err("Tried to load symbol mapped to address 0".to_string()))
     }
 
     pub(super) unsafe fn close(handle: *mut u8) {
