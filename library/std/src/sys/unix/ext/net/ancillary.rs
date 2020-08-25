@@ -4,7 +4,7 @@ use crate::marker::PhantomData;
 use crate::mem::{size_of, zeroed};
 use crate::os::unix::io::RawFd;
 use crate::path::Path;
-use crate::ptr::null_mut;
+use crate::ptr::{null_mut, read_unaligned};
 use crate::slice::from_raw_parts;
 use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
 use crate::sys::unix::net::Socket;
@@ -131,16 +131,14 @@ impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        unsafe {
-            let mut unit = zeroed();
-            if size_of::<T>() <= self.data.len() {
-                let unit_ptr: *mut T = &mut unit;
-                libc::memcpy(unit_ptr.cast(), self.data.as_ptr().cast(), size_of::<T>());
+        if size_of::<T>() <= self.data.len() {
+            unsafe {
+                let unit = read_unaligned(self.data.as_ptr().cast());
                 self.data = &self.data[size_of::<T>()..];
                 Some(unit)
-            } else {
-                None
             }
+        } else {
+            None
         }
     }
 }
