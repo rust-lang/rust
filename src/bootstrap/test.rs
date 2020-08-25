@@ -749,7 +749,7 @@ impl Step for RustdocGUI {
             util::clone_repository(
                 "https://github.com/GuillaumeGomez/test-rust-docs-ui",
                 &builder.out.join("test-rust-docs-ui"),
-                Some("ab1380fbf6e75d5f96f11eb36a2755773e52ba18"),
+                Some("a12357e6ff192378cc88833ab02b00a529cd6aa2"),
             );
             // Second step: install npm dependencies.
             let mut cmd = Command::new("npm");
