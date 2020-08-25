@@ -2150,11 +2150,7 @@ fn lint_clone_on_ref_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::
             return;
         };
 
-        let snippet = if in_macro(arg.span) {
-            snippet_with_macro_callsite(cx, arg.span, "_")
-        } else {
-            snippet(cx, arg.span, "_")
-        };
+        let snippet = snippet_with_macro_callsite(cx, arg.span, "_");
 
         span_lint_and_sugg(
             cx,
