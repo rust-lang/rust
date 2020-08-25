@@ -4,6 +4,7 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
 use std::iter::TrustedLen;
+use std::convert::TryFrom;
 
 /// Expand `lhs = Rvalue::Aggregate(kind, operands)` into assignments to the fields.
 ///

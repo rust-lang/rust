@@ -10,8 +10,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 use std::fmt;
 
-use std::convert::TryInto;
-
 /// The value of an inserted drop flag.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DropFlagState {
@@ -744,9 +742,6 @@ where
         let tcx = self.tcx();
 
         if let Some(size) = opt_size {
-            let size: u64 = size.try_into().unwrap_or_else(|_| {
-                bug!("move out check isn't implemented for array sizes bigger than u64::MAX");
-            });
             let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size)
                 .map(|i| {
                     (
