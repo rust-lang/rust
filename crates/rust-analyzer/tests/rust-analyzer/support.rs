@@ -202,7 +202,7 @@ impl Server {
         }
         panic!("no response");
     }
-    pub fn wait_until_workspace_is_loaded(&self) {
+    pub fn wait_until_workspace_is_loaded(self) -> Server {
         self.wait_for_message_cond(1, &|msg: &Message| match msg {
             Message::Notification(n) if n.method == "$/progress" => {
                 match n.clone().extract::<ProgressParams>("$/progress").unwrap() {
@@ -214,7 +214,8 @@ impl Server {
                 }
             }
             _ => false,
-        })
+        });
+        self
     }
     fn wait_for_message_cond(&self, n: usize, cond: &dyn Fn(&Message) -> bool) {
         let mut total = 0;

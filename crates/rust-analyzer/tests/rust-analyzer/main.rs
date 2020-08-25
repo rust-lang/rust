@@ -39,7 +39,6 @@ fn completes_items_from_standard_library() {
         return;
     }
 
-    let project_start = Instant::now();
     let server = Project::with_fixture(
         r#"
 //- /Cargo.toml
@@ -52,10 +51,9 @@ use std::collections::Spam;
 "#,
     )
     .with_sysroot(true)
-    .server();
-    server.wait_until_workspace_is_loaded();
-    eprintln!("loading took    {:?}", project_start.elapsed());
-    let completion_start = Instant::now();
+    .server()
+    .wait_until_workspace_is_loaded();
+
     let res = server.send_request::<Completion>(CompletionParams {
         text_document_position: TextDocumentPositionParams::new(
             server.doc_id("src/lib.rs"),
@@ -66,7 +64,6 @@ use std::collections::Spam;
         work_done_progress_params: WorkDoneProgressParams::default(),
     });
     assert!(res.to_string().contains("HashMap"));
-    eprintln!("completion took {:?}", completion_start.elapsed());
 }
 
 #[test]
@@ -75,7 +72,8 @@ fn test_runnables_project() {
         return;
     }
 
-    let code = r#"
+    let server = Project::with_fixture(
+        r#"
 //- /foo/Cargo.toml
 [package]
 name = "foo"
@@ -95,11 +93,13 @@ version = "0.0.0"
 
 //- /bar/src/main.rs
 fn main() {}
-"#;
+"#,
+    )
+    .root("foo")
+    .root("bar")
+    .server()
+    .wait_until_workspace_is_loaded();
 
-    let server = Project::with_fixture(code).root("foo").root("bar").server();
-
-    server.wait_until_workspace_is_loaded();
     server.request::<Runnables>(
         RunnablesParams { text_document: server.doc_id("foo/tests/spam.rs"), position: None },
         json!([
@@ -166,8 +166,8 @@ fn main() {
 
 pub use std::collections::HashMap;
 "#,
-    );
-    server.wait_until_workspace_is_loaded();
+    )
+    .wait_until_workspace_is_loaded();
 
     server.request::<Formatting>(
         DocumentFormattingParams {
@@ -224,8 +224,8 @@ fn main() {
 
 pub use std::collections::HashMap;
 "#,
-    );
-    server.wait_until_workspace_is_loaded();
+    )
+    .wait_until_workspace_is_loaded();
 
     server.request::<Formatting>(
         DocumentFormattingParams {
@@ -277,14 +277,14 @@ mod bar;
 
 fn main() {}
 "#,
-    );
-    server.wait_until_workspace_is_loaded();
-    let empty_context = || CodeActionContext { diagnostics: Vec::new(), only: None };
+    )
+    .wait_until_workspace_is_loaded();
+
     server.request::<CodeActionRequest>(
         CodeActionParams {
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(0, 4), Position::new(0, 7)),
-            context: empty_context(),
+            context: CodeActionContext::default(),
             partial_result_params: PartialResultParams::default(),
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
@@ -307,7 +307,7 @@ fn main() {}
         CodeActionParams {
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(2, 4), Position::new(2, 7)),
-            context: empty_context(),
+            context: CodeActionContext::default(),
             partial_result_params: PartialResultParams::default(),
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
@@ -348,15 +348,14 @@ fn main() {{}}
         PROJECT = project.to_string(),
     );
 
-    let server = Project::with_fixture(&code).tmp_dir(tmp_dir).server();
+    let server =
+        Project::with_fixture(&code).tmp_dir(tmp_dir).server().wait_until_workspace_is_loaded();
 
-    server.wait_until_workspace_is_loaded();
-    let empty_context = || CodeActionContext { diagnostics: Vec::new(), only: None };
     server.request::<CodeActionRequest>(
         CodeActionParams {
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(0, 4), Position::new(0, 7)),
-            context: empty_context(),
+            context: CodeActionContext::default(),
             partial_result_params: PartialResultParams::default(),
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
@@ -379,7 +378,7 @@ fn main() {{}}
         CodeActionParams {
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(2, 4), Position::new(2, 7)),
-            context: empty_context(),
+            context: CodeActionContext::default(),
             partial_result_params: PartialResultParams::default(),
             work_done_progress_params: WorkDoneProgressParams::default(),
         },
@@ -412,9 +411,9 @@ fn main() {{}}
         librs, libs
     ))
     .with_sysroot(true)
-    .server();
+    .server()
+    .wait_until_workspace_is_loaded();
 
-    server.wait_until_workspace_is_loaded();
     for i in 0..10 {
         server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
@@ -425,7 +424,7 @@ fn main() {{}}
             },
         });
     }
-    let start = std::time::Instant::now();
+    let start = Instant::now();
     server.request::<OnEnter>(
         TextDocumentPositionParams {
             text_document: server.doc_id("src/m0.rs"),
@@ -461,8 +460,8 @@ version = \"0.0.0\"
 /// Some Docs\r\nfn main() {}
 ",
     )
-    .server();
-    server.wait_until_workspace_is_loaded();
+    .server()
+    .wait_until_workspace_is_loaded();
 
     server.request::<OnEnter>(
         TextDocumentPositionParams {
@@ -536,8 +535,9 @@ fn main() {
     .with_config(|config| {
         config.cargo.load_out_dirs_from_check = true;
     })
-    .server();
-    server.wait_until_workspace_is_loaded();
+    .server()
+    .wait_until_workspace_is_loaded();
+
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/main.rs"),
@@ -546,6 +546,7 @@ fn main() {
         work_done_progress_params: Default::default(),
     });
     assert!(res.to_string().contains("&str"));
+
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/main.rs"),
@@ -554,6 +555,7 @@ fn main() {
         work_done_progress_params: Default::default(),
     });
     assert!(res.to_string().contains("&str"));
+
     server.request::<GotoTypeDefinition>(
         GotoDefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
@@ -579,6 +581,7 @@ fn main() {
             "targetUri": "file:///[..]src/main.rs"
         }]),
     );
+
     server.request::<GotoTypeDefinition>(
         GotoDefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
@@ -611,6 +614,7 @@ fn resolve_proc_macro() {
     if skip_slow_tests() {
         return;
     }
+
     let server = Project::with_fixture(
         r###"
 //- /foo/Cargo.toml
@@ -679,8 +683,9 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     })
     .root("foo")
     .root("bar")
-    .server();
-    server.wait_until_workspace_is_loaded();
+    .server()
+    .wait_until_workspace_is_loaded();
+
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("foo/src/main.rs"),
@@ -688,7 +693,6 @@ pub fn foo(_input: TokenStream) -> TokenStream {
         ),
         work_done_progress_params: Default::default(),
     });
-
     let value = res.get("contents").unwrap().get("value").unwrap().to_string();
     assert_eq!(value, r#""\n```rust\nfoo::Bar\n```\n\n```rust\nfn bar()\n```""#)
 }
