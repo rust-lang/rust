@@ -349,29 +349,24 @@ impl<'a> AncillaryData<'a> {
         let scm_credentials = ScmCredentials(ancillary_data_iter);
         AncillaryData::ScmCredentials(scm_credentials)
     }
-}
 
-#[cfg(any(
-    target_os = "haiku",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "freebsd",
-    target_os = "dragonfly",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "linux",
-    target_os = "android",
-    target_os = "emscripten",
-    target_os = "fuchsia",
-    target_env = "uclibc",
-))]
-#[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-impl<'a> TryFrom<&'a libc::cmsghdr> for AncillaryData<'a> {
-    type Error = AncillaryError;
-
-    fn try_from(cmsg: &'a libc::cmsghdr) -> Result<Self, Self::Error> {
+    #[cfg(any(
+        target_os = "haiku",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "freebsd",
+        target_os = "dragonfly",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "emscripten",
+        target_os = "fuchsia",
+        target_env = "uclibc",
+    ))]
+    fn try_from_cmsghdr(cmsg: &'a libc::cmsghdr) -> Result<Self, AncillaryError> {
         unsafe {
             let cmsg_len_zero = libc::CMSG_LEN(0) as usize;
             let data_len = (*cmsg).cmsg_len - cmsg_len_zero;
@@ -472,7 +467,7 @@ impl<'a> Iterator for Messages<'a> {
 
             let cmsg = cmsg.as_ref()?;
             self.current = Some(cmsg);
-            let ancillary_result = AncillaryData::try_from(cmsg);
+            let ancillary_result = AncillaryData::try_from_cmsghdr(cmsg);
             Some(ancillary_result)
         }
     }
