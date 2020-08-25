@@ -1009,6 +1009,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "expect-test"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3e383741ea1982866572109d1a8c807bd36aad91fca701489fdca56ef92b3b8"
+dependencies = [
+ "difference",
+ "once_cell",
+]
+
+[[package]]
 name = "failure"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3653,6 +3663,7 @@ dependencies = [
 name = "rustc_lexer"
 version = "0.1.0"
 dependencies = [
+ "expect-test",
  "unicode-xid",
 ]
 
