@@ -1,0 +1,31 @@
+SOURCE_FILE@0..25
+  STRUCT@0..24
+    STRUCT_KW@0..6 "struct"
+    WHITESPACE@6..7 " "
+    NAME@7..8
+      IDENT@7..8 "S"
+    WHITESPACE@8..9 " "
+    RECORD_FIELD_LIST@9..24
+      L_CURLY@9..10 "{"
+      WHITESPACE@10..11 " "
+      RECORD_FIELD@11..12
+        NAME@11..12
+          IDENT@11..12 "f"
+      WHITESPACE@12..13 " "
+      RECORD_FIELD@13..22
+        VISIBILITY@13..16
+          PUB_KW@13..16 "pub"
+        WHITESPACE@16..17 " "
+        NAME@17..18
+          IDENT@17..18 "g"
+        COLON@18..19 ":"
+        WHITESPACE@19..20 " "
+        TUPLE_TYPE@20..22
+          L_PAREN@20..21 "("
+          R_PAREN@21..22 ")"
+      WHITESPACE@22..23 " "
+      R_CURLY@23..24 "}"
+  WHITESPACE@24..25 "\n"
+error 12..12: expected COLON
+error 12..12: expected type
+error 12..12: expected COMMA
