@@ -461,4 +461,9 @@ impl<Id> Res<Id> {
             Res::Err => None,
         }
     }
+
+    /// Always returns `true` if `self` is `Res::Err`
+    pub fn matches_ns(&self, ns: Namespace) -> bool {
+        self.ns().map(|actual_ns| actual_ns == ns).unwrap_or(true)
+    }
 }
