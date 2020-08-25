@@ -17,6 +17,7 @@
 #![feature(panic_runtime)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
+#![feature(llvm_asm)]
 
 use core::any::Any;
 
@@ -26,16 +27,7 @@ pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Sen
     unreachable!()
 }
 
-// "Leak" the payload and shim to the relevant abort on the platform in
-// question.
-//
-// For Unix we just use `abort` from libc as it'll trigger debuggers, core
-// dumps, etc, as one might expect. On Windows, however, the best option we have
-// is the `__fastfail` intrinsics, but that's unfortunately not defined in LLVM,
-// and the `RaiseFailFastException` function isn't available until Windows 7
-// which would break compat with XP. For now just use `intrinsics::abort` which
-// will kill us with an illegal instruction, which will do a good enough job for
-// now hopefully.
+// "Leak" the payload and shim to the relevant abort on the platform in question.
 #[rustc_std_internal_symbol]
 pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
     abort();
@@ -54,6 +46,21 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
                     pub fn __rust_abort() -> !;
                 }
                 __rust_abort();
+            }
+        } else if #[cfg(all(windows, any(target_arch = "x86", target_arch = "x86_64")))] {
+            // On Windows, use the processor-specific __fastfail mechanism. In Windows 8
+            // and later, this will terminate the process immediately without running any
+            // in-process exception handlers. In earlier versions of Windows, this
+            // sequence of instructions will be treated as an access violation,
+            // terminating the process but without necessarily bypassing all exception
+            // handlers.
+            //
+            // https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
+            //
+            // Note: this is the same implementation as in libstd's `abort_internal`
+            unsafe fn abort() -> ! {
+                llvm_asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+                core::intrinsics::unreachable();
             }
         } else {
             unsafe fn abort() -> ! {
