@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit;
-use rustc_hir::lang_items::FnOnceTraitLangItem;
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::hir::map as hir_map;
@@ -36,7 +36,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Closure(..) | ty::FnDef(..) | ty::FnPtr(_) => true,
             // If it's not a simple function, look for things which implement `FnOnce`.
             _ => {
-                let fn_once = match tcx.lang_items().require(FnOnceTraitLangItem) {
+                let fn_once = match tcx.lang_items().require(LangItem::FnOnce) {
                     Ok(fn_once) => fn_once,
                     Err(..) => return false,
                 };

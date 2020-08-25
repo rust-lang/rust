@@ -6,7 +6,7 @@ use rustc_trait_selection::traits::ObligationCause;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::lang_items::CloneTraitLangItem;
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
@@ -465,7 +465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self.can_coerce(ref_ty, expected) {
                     let mut sugg_sp = sp;
                     if let hir::ExprKind::MethodCall(ref segment, sp, ref args, _) = expr.kind {
-                        let clone_trait = self.tcx.require_lang_item(CloneTraitLangItem, Some(sp));
+                        let clone_trait = self.tcx.require_lang_item(LangItem::Clone, Some(sp));
                         if let ([arg], Some(true), sym::clone) = (
                             &args[..],
                             self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(

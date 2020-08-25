@@ -16,7 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
-use rustc_hir::lang_items::SizedTraitLangItem;
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Constness, GenericArg, GenericArgs};
 use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
@@ -696,7 +696,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        let kind_id = tcx.lang_items().require(SizedTraitLangItem);
+        let kind_id = tcx.lang_items().require(LangItem::Sized);
         match unbound {
             Some(tpb) => {
                 // FIXME(#8559) currently requires the unbound to be built-in.

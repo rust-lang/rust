@@ -2,7 +2,7 @@ use rustc_middle::traits;
 use rustc_middle::ty::adjustment::CustomCoerceUnsized;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-use rustc_hir::lang_items::CoerceUnsizedTraitLangItem;
+use rustc_hir::lang_items::LangItem;
 
 pub mod collector;
 pub mod partitioning;
@@ -13,7 +13,7 @@ pub fn custom_coerce_unsize_info<'tcx>(
     source_ty: Ty<'tcx>,
     target_ty: Ty<'tcx>,
 ) -> CustomCoerceUnsized {
-    let def_id = tcx.require_lang_item(CoerceUnsizedTraitLangItem, None);
+    let def_id = tcx.require_lang_item(LangItem::CoerceUnsized, None);
 
     let trait_ref = ty::Binder::bind(ty::TraitRef {
         def_id,

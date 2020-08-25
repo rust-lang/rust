@@ -2058,7 +2058,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         hir::GenericBound::LangItemTrait(
             // ::std::future::Future<future_params>
-            hir::LangItem::FutureTraitLangItem,
+            hir::LangItem::Future,
             span,
             self.next_id(),
             future_args,

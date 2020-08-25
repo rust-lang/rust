@@ -10,7 +10,7 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_ast as ast;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{AllocId, ConstValue, Pointer, Scalar};
@@ -420,14 +420,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let index = self.codegen_operand(&mut bx, index).immediate();
                 // It's `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
-                (lang_items::PanicBoundsCheckFnLangItem, vec![index, len, location])
+                (LangItem::PanicBoundsCheck, vec![index, len, location])
             }
             _ => {
                 let msg_str = Symbol::intern(msg.description());
                 let msg = bx.const_str(msg_str);
                 // It's `pub fn panic(expr: &str)`, with the wide reference being passed
                 // as two arguments, and `#[track_caller]` adds an implicit third argument.
-                (lang_items::PanicFnLangItem, vec![msg.0, msg.1, location])
+                (LangItem::Panic, vec![msg.0, msg.1, location])
             }
         };
 
@@ -492,8 +492,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 // Obtain the panic entry point.
                 // FIXME: dedup this with `codegen_assert_terminator` above.
-                let def_id =
-                    common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
+                let def_id = common::langcall(bx.tcx(), Some(span), "", LangItem::Panic);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
                 let fn_abi = FnAbi::of_instance(bx, instance, &[]);
                 let llfn = bx.get_fn_addr(instance);

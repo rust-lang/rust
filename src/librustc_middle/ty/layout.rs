@@ -8,7 +8,7 @@ use rustc_ast::{self as ast, IntTy, UintTy};
 use rustc_attr as attr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
-use rustc_hir::lang_items::{GeneratorStateLangItem, PinTypeLangItem};
+use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
@@ -2371,13 +2371,13 @@ impl<'tcx> ty::Instance<'tcx> {
                 let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
                 let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
-                let pin_did = tcx.require_lang_item(PinTypeLangItem, None);
+                let pin_did = tcx.require_lang_item(LangItem::Pin, None);
                 let pin_adt_ref = tcx.adt_def(pin_did);
                 let pin_substs = tcx.intern_substs(&[env_ty.into()]);
                 let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
 
                 sig.map_bound(|sig| {
-                    let state_did = tcx.require_lang_item(GeneratorStateLangItem, None);
+                    let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
                     let state_adt_ref = tcx.adt_def(state_did);
                     let state_substs =
                         tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);

@@ -7,7 +7,7 @@
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
@@ -669,7 +669,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // We can only make objects from sized types.
                 let tr = ty::TraitRef::new(
-                    tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
+                    tcx.require_lang_item(LangItem::Sized, None),
                     tcx.mk_substs_trait(source, &[]),
                 );
                 nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));

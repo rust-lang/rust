@@ -6,7 +6,7 @@ use rustc_attr::{self as attr, UnwindAttr};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::{GeneratorKind, HirIdMap, Node};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -145,8 +145,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
                 // (as it's created inside the body itself, not passed in from outside).
                 let ty = if fn_sig.c_variadic && index == fn_sig.inputs().len() {
-                    let va_list_did =
-                        tcx.require_lang_item(lang_items::VaListTypeLangItem, Some(arg.span));
+                    let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(arg.span));
 
                     tcx.type_of(va_list_did).subst(tcx, &[tcx.lifetimes.re_erased.into()])
                 } else {
