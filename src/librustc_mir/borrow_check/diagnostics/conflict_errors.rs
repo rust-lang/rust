@@ -113,23 +113,32 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            let msg = ""; //FIXME: add "partially " or "collaterally "
+            let is_partial_move = move_site_vec.iter().any(|move_site| {
+                let move_out = self.move_data.moves[(*move_site).moi];
+                let moved_place = &self.move_data.move_paths[move_out.path].place;
+                // `*(_1)` where `_1` is a `Box` is actually a move out.
+                let is_box_move = moved_place.as_ref().projection == &[ProjectionElem::Deref]
+                    && self.body.local_decls[moved_place.local].ty.is_box();
+
+                !is_box_move
+                    && used_place != moved_place.as_ref()
+                    && used_place.is_prefix_of(moved_place.as_ref())
+            });
+
+            let partial_str = if is_partial_move { "partial " } else { "" };
+            let partially_str = if is_partial_move { "partially " } else { "" };
 
             let mut err = self.cannot_act_on_moved_value(
                 span,
                 desired_action.as_noun(),
-                msg,
+                partially_str,
                 self.describe_place_with_options(moved_place, IncludingDowncast(true)),
             );
 
             self.add_moved_or_invoked_closure_note(location, used_place, &mut err);
 
             let mut is_loop_move = false;
-            let is_partial_move = move_site_vec.iter().any(|move_site| {
-                let move_out = self.move_data.moves[(*move_site).moi];
-                let moved_place = &self.move_data.move_paths[move_out.path].place;
-                used_place != moved_place.as_ref() && used_place.is_prefix_of(moved_place.as_ref())
-            });
+
             for move_site in &move_site_vec {
                 let move_out = self.move_data.moves[(*move_site).moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
@@ -142,13 +151,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if location == move_out.source {
                     err.span_label(
                         span,
-                        format!("value moved{} here, in previous iteration of loop", move_msg),
+                        format!(
+                            "value {}moved{} here, in previous iteration of loop",
+                            partially_str, move_msg
+                        ),
                     );
                     is_loop_move = true;
                 } else if move_site.traversed_back_edge {
                     err.span_label(
                         move_span,
-                        format!("value moved{} here, in previous iteration of loop", move_msg),
+                        format!(
+                            "value {}moved{} here, in previous iteration of loop",
+                            partially_str, move_msg
+                        ),
                     );
                 } else {
                     if let UseSpans::FnSelfUse { var_span, fn_call_span, fn_span, kind } =
@@ -162,7 +177,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             FnSelfUseKind::FnOnceCall => {
                                 err.span_label(
                                     fn_call_span,
-                                    &format!("{} moved due to this call", place_name),
+                                    &format!(
+                                        "{} {}moved due to this call",
+                                        place_name, partially_str
+                                    ),
                                 );
                                 err.span_note(
                                     var_span,
@@ -172,7 +190,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             FnSelfUseKind::Operator { self_arg } => {
                                 err.span_label(
                                     fn_call_span,
-                                    &format!("{} moved due to usage in operator", place_name),
+                                    &format!(
+                                        "{} {}moved due to usage in operator",
+                                        place_name, partially_str
+                                    ),
                                 );
                                 if self.fn_self_span_reported.insert(fn_span) {
                                     err.span_note(
@@ -186,14 +207,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     err.span_label(
                                         fn_call_span,
                                         &format!(
-                                            "{} moved due to this implicit call to `.into_iter()`",
-                                            place_name
+                                            "{} {}moved due to this implicit call to `.into_iter()`",
+                                            place_name, partially_str
                                         ),
                                     );
                                 } else {
                                     err.span_label(
                                         fn_call_span,
-                                        &format!("{} moved due to this method call", place_name),
+                                        &format!(
+                                            "{} {}moved due to this method call",
+                                            place_name, partially_str
+                                        ),
                                     );
                                 }
                                 // Avoid pointing to the same function in multiple different
@@ -207,10 +231,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                         }
                     } else {
-                        err.span_label(move_span, format!("value moved{} here", move_msg));
+                        err.span_label(
+                            move_span,
+                            format!("value {}moved{} here", partially_str, move_msg),
+                        );
                         move_spans.var_span_label(
                             &mut err,
-                            format!("variable moved due to use{}", move_spans.describe()),
+                            format!(
+                                "variable {}moved due to use{}",
+                                partially_str,
+                                move_spans.describe()
+                            ),
                         );
                     }
                 }
@@ -250,9 +281,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 err.span_label(
                     span,
                     format!(
-                        "value {} here {}",
+                        "value {} here after {}move",
                         desired_action.as_verb_in_past_tense(),
-                        if is_partial_move { "after partial move" } else { "after move" },
+                        partial_str
                     ),
                 );
             }
@@ -321,7 +352,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else {
                     None
                 };
-                self.note_type_does_not_implement_copy(&mut err, &note_msg, ty, span);
+                self.note_type_does_not_implement_copy(&mut err, &note_msg, ty, span, partial_str);
             }
 
             if let Some((_, mut old_err)) =
@@ -1398,8 +1429,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 for moi in &self.move_data.loc_map[location] {
                     debug!("report_use_of_moved_or_uninitialized: moi={:?}", moi);
-                    if mpis.contains(&self.move_data.moves[*moi].path) {
-                        debug!("report_use_of_moved_or_uninitialized: found");
+                    let path = self.move_data.moves[*moi].path;
+                    if mpis.contains(&path) {
+                        debug!(
+                            "report_use_of_moved_or_uninitialized: found {:?}",
+                            move_paths[path].place
+                        );
                         result.push(MoveSite { moi: *moi, traversed_back_edge: is_back_edge });
 
                         // Strictly speaking, we could continue our DFS here. There may be

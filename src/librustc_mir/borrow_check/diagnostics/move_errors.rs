@@ -445,7 +445,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         None => "value".to_string(),
                     };
 
-                    self.note_type_does_not_implement_copy(err, &place_desc, place_ty, Some(span));
+                    self.note_type_does_not_implement_copy(
+                        err,
+                        &place_desc,
+                        place_ty,
+                        Some(span),
+                        "",
+                    );
                 } else {
                     binds_to.sort();
                     binds_to.dedup();
@@ -467,7 +473,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Some(desc) => format!("`{}`", desc),
                     None => "value".to_string(),
                 };
-                self.note_type_does_not_implement_copy(err, &place_desc, place_ty, Some(span));
+                self.note_type_does_not_implement_copy(err, &place_desc, place_ty, Some(span), "");
 
                 use_spans.args_span_label(err, format!("move out of {} occurs here", place_desc));
                 use_spans
@@ -529,6 +535,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     &format!("`{}`", self.local_names[*local].unwrap()),
                     bind_to.ty,
                     Some(binding_span),
+                    "",
                 );
             }
         }

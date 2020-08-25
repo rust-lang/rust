@@ -14,7 +14,7 @@ error[E0382]: use of moved value: `x`
 LL |         let _y = *x;
    |                  -- value moved here
 LL |         drop_unsized(x);
-   |                      ^ value used here after partial move
+   |                      ^ value used here after move
    |
    = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
 
@@ -50,7 +50,7 @@ error[E0382]: use of moved value: `x`
 LL |         let _y = *x;
    |                  -- value moved here
 LL |         x.foo();
-   |         ^ value used here after partial move
+   |         ^ value used here after move
    |
    = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
 
