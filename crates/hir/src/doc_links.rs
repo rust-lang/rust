@@ -38,21 +38,17 @@ fn try_resolve_intra<T: Resolvable, D: DefDatabase + HirDatabase>(
     let link_target =
         if link_target.is_empty() { link_text.trim_matches('`') } else { link_target };
 
-    // Namespace disambiguation
-    let namespace = Namespace::from_intra_spec(link_target);
-
-    // Strip prefixes/suffixes
-    let link_target = strip_prefixes_suffixes(link_target);
+    let doclink = IntraDocLink::from(link_target);
 
     // Parse link as a module path
-    let path = Path::parse(link_target).ok()?;
+    let path = Path::parse(doclink.path).ok()?;
     let modpath = ModPath::from_src(path, &Hygiene::new_unhygienic()).unwrap();
 
     // Resolve it relative to symbol's location (according to the RFC this should consider small scopes)
     let resolver = definition.resolver(db)?;
 
     let resolved = resolver.resolve_module_path_in_items(db, &modpath);
-    let (defid, namespace) = match namespace {
+    let (defid, namespace) = match doclink.namespace {
         // FIXME: .or(resolved.macros)
         None => resolved
             .types
@@ -133,7 +129,7 @@ fn strip_prefixes_suffixes(mut s: &str) -> &str {
 
 fn get_doc_url(db: &dyn HirDatabase, krate: &Crate) -> Option<Url> {
     krate
-        .get_doc_url(db)
+        .get_html_root_url(db)
         .or_else(||
         // Fallback to docs.rs
         // FIXME: Specify an exact version here. This may be difficult, as multiple versions of the same crate could exist.
@@ -162,6 +158,17 @@ fn get_symbol_filename(db: &dyn HirDatabase, definition: &ModuleDef) -> Option<S
         ModuleDef::Const(c) => format!("const.{}.html", c.name(db)?),
         ModuleDef::Static(s) => format!("static.{}.html", s.name(db)?),
     })
+}
+
+struct IntraDocLink<'s> {
+    path: &'s str,
+    namespace: Option<Namespace>,
+}
+
+impl<'s> From<&'s str> for IntraDocLink<'s> {
+    fn from(s: &'s str) -> Self {
+        Self { path: strip_prefixes_suffixes(s), namespace: Namespace::from_intra_spec(s) }
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]

@@ -126,13 +126,16 @@ impl Crate {
     }
 
     /// Try to get the root URL of the documentation of a crate.
-    pub fn get_doc_url(self: &Crate, db: &dyn HirDatabase) -> Option<String> {
+    pub fn get_html_root_url(self: &Crate, db: &dyn HirDatabase) -> Option<String> {
         // Look for #![doc(html_root_url = "...")]
         let attrs = db.attrs(AttrDef::from(self.root_module(db)).into());
         let doc_attr_q = attrs.by_key("doc");
 
-        let doc_url = if doc_attr_q.exists() {
-            doc_attr_q.tt_values().map(|tt| {
+        if !doc_attr_q.exists() {
+            return None;
+        }
+
+        let doc_url = doc_attr_q.tt_values().map(|tt| {
             let name = tt.token_trees.iter()
                 .skip_while(|tt| !matches!(tt, TokenTree::Leaf(Leaf::Ident(Ident{text: ref ident, ..})) if ident == "html_root_url"))
                 .skip(2)
@@ -142,14 +145,9 @@ impl Crate {
                 Some(TokenTree::Leaf(Leaf::Literal(Literal{ref text, ..}))) => Some(text),
                 _ => None
             }
-        }).flat_map(|t| t).next().map(|s| s.to_string())
-        } else {
-            None
-        };
+        }).flat_map(|t| t).next();
 
-        doc_url
-            .map(|s| s.trim_matches('"').trim_end_matches("/").to_owned() + "/")
-            .map(|s| s.to_string())
+        doc_url.map(|s| s.trim_matches('"').trim_end_matches("/").to_owned() + "/")
     }
 }
 
