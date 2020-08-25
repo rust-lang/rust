@@ -329,11 +329,9 @@ impl<'a> State<'a> {
     {
         self.rbox(0, b);
         let len = elts.len();
-        let mut i = 0;
-        for elt in elts {
+        for (i, elt) in elts.iter().enumerate() {
             self.maybe_print_comment(get_span(elt).hi());
             op(self, elt);
-            i += 1;
             if i < len {
                 self.s.word(",");
                 self.maybe_print_trailing_comment(get_span(elt), Some(get_span(&elts[i]).hi()));
