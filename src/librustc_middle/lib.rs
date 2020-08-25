@@ -40,7 +40,6 @@
 #![feature(nll)]
 #![feature(option_expect_none)]
 #![feature(or_patterns)]
-#![feature(range_is_empty)]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(stmt_expr_attributes)]

@@ -22,7 +22,6 @@
 #![feature(extend_one)]
 #![feature(never_type)]
 #![feature(or_patterns)]
-#![feature(range_is_empty)]
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
 #![recursion_limit = "512"] // For rustdoc

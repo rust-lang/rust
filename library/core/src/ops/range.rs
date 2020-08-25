@@ -125,8 +125,6 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_is_empty)]
-    ///
     /// assert!(!(3..5).is_empty());
     /// assert!( (3..3).is_empty());
     /// assert!( (3..2).is_empty());
@@ -135,13 +133,11 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// The range is empty if either side is incomparable:
     ///
     /// ```
-    /// #![feature(range_is_empty)]
-    ///
     /// assert!(!(3.0..5.0).is_empty());
     /// assert!( (3.0..f32::NAN).is_empty());
     /// assert!( (f32::NAN..5.0).is_empty());
     /// ```
-    #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
+    #[stable(feature = "range_is_empty", since = "1.47.0")]
     pub fn is_empty(&self) -> bool {
         !(self.start < self.end)
     }
@@ -481,8 +477,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_is_empty)]
-    ///
     /// assert!(!(3..=5).is_empty());
     /// assert!(!(3..=3).is_empty());
     /// assert!( (3..=2).is_empty());
@@ -491,8 +485,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// The range is empty if either side is incomparable:
     ///
     /// ```
-    /// #![feature(range_is_empty)]
-    ///
     /// assert!(!(3.0..=5.0).is_empty());
     /// assert!( (3.0..=f32::NAN).is_empty());
     /// assert!( (f32::NAN..=5.0).is_empty());
@@ -501,14 +493,12 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// This method returns `true` after iteration has finished:
     ///
     /// ```
-    /// #![feature(range_is_empty)]
-    ///
     /// let mut r = 3..=5;
     /// for _ in r.by_ref() {}
     /// // Precise field values are unspecified here
     /// assert!(r.is_empty());
     /// ```
-    #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
+    #[stable(feature = "range_is_empty", since = "1.47.0")]
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.exhausted || !(self.start <= self.end)

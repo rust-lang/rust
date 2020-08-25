@@ -17,7 +17,6 @@
 #![feature(try_find)]
 #![feature(is_sorted)]
 #![feature(pattern)]
-#![feature(range_is_empty)]
 #![feature(raw)]
 #![feature(sort_internals)]
 #![feature(slice_partition_at_index)]
