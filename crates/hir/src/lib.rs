@@ -34,7 +34,7 @@ mod has_source;
 pub use crate::{
     code_model::{
         Access, Adt, AsAssocItem, AssocItem, AssocItemContainer, AttrDef, Callable, CallableKind,
-        Const, Crate, CrateDependency, DefWithBody, Docs, Enum, EnumVariant, Field, FieldSource,
+        Const, Crate, CrateDependency, DefWithBody, Enum, EnumVariant, Field, FieldSource,
         Function, GenericDef, HasAttrs, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef,
         ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, VariantDef, Visibility,
     },

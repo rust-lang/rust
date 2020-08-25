@@ -1771,6 +1771,7 @@ impl_from!(
 
 pub trait HasAttrs {
     fn attrs(self, db: &dyn HirDatabase) -> Attrs;
+    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation>;
 }
 
 impl<T: Into<AttrDef>> HasAttrs for T {
@@ -1778,14 +1779,8 @@ impl<T: Into<AttrDef>> HasAttrs for T {
         let def: AttrDef = self.into();
         db.attrs(def.into())
     }
-}
-
-pub trait Docs {
-    fn docs(&self, db: &dyn HirDatabase) -> Option<Documentation>;
-}
-impl<T: Into<AttrDef> + Copy> Docs for T {
-    fn docs(&self, db: &dyn HirDatabase) -> Option<Documentation> {
-        let def: AttrDef = (*self).into();
+    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+        let def: AttrDef = self.into();
         db.documentation(def.into())
     }
 }
