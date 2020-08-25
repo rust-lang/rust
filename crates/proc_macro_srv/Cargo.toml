@@ -1,6 +1,7 @@
 [package]
 name = "proc_macro_srv"
 version = "0.0.0"
+description = "TBD"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer developers"]
 edition = "2018"
@@ -13,10 +14,10 @@ goblin = "0.2.1"
 libloading = "0.6.0"
 memmap = "0.7"
 
-tt = { path = "../tt" }
-mbe = { path = "../mbe" }
-proc_macro_api = { path = "../proc_macro_api" }
-test_utils = { path = "../test_utils" }
+tt = { path = "../tt", version = "0.0.0" }
+mbe = { path = "../mbe", version = "0.0.0" }
+proc_macro_api = { path = "../proc_macro_api", version = "0.0.0" }
+test_utils = { path = "../test_utils", version = "0.0.0" }
 
 [dev-dependencies]
 cargo_metadata = "0.11.1"

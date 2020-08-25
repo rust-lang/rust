@@ -1,6 +1,7 @@
 [package]
 name = "hir"
 version = "0.0.0"
+description = "TBD"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer developers"]
 edition = "2018"
@@ -16,11 +17,11 @@ arrayvec = "0.5.1"
 itertools = "0.9.0"
 url = "2.1.1"
 
-stdx = { path = "../stdx" }
-syntax = { path = "../syntax" }
-base_db = { path = "../base_db" }
-profile = { path = "../profile" }
-hir_expand = { path = "../hir_expand" }
-hir_def = { path = "../hir_def" }
-hir_ty = { path = "../hir_ty" }
-tt = { path = "../tt" }
+stdx = { path = "../stdx", version = "0.0.0" }
+syntax = { path = "../syntax", version = "0.0.0" }
+base_db = { path = "../base_db", version = "0.0.0" }
+profile = { path = "../profile", version = "0.0.0" }
+hir_expand = { path = "../hir_expand", version = "0.0.0" }
+hir_def = { path = "../hir_def", version = "0.0.0" }
+hir_ty = { path = "../hir_ty", version = "0.0.0" }
+tt = { path = "../tt", version = "0.0.0" }

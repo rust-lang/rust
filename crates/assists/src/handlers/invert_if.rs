@@ -106,4 +106,22 @@ mod tests {
             "fn f() { i<|>f let Some(_) = Some(1) { 1 } else { 0 } }",
         )
     }
+
+    #[test]
+    fn invert_if_option_case() {
+        check_assist(
+            invert_if,
+            "fn f() { if<|> doc_style.is_some() { Class::DocComment } else { Class::Comment } }",
+            "fn f() { if doc_style.is_none() { Class::Comment } else { Class::DocComment } }",
+        )
+    }
+
+    #[test]
+    fn invert_if_result_case() {
+        check_assist(
+            invert_if,
+            "fn f() { i<|>f doc_style.is_err() { Class::Err } else { Class::Ok } }",
+            "fn f() { if doc_style.is_ok() { Class::Ok } else { Class::Err } }",
+        )
+    }
 }

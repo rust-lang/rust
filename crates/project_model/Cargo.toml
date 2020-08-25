@@ -1,6 +1,7 @@
 [package]
 name = "project_model"
 version = "0.0.0"
+description = "TBD"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer developers"]
 edition = "2018"
@@ -16,10 +17,10 @@ serde = { version = "1.0.106", features = ["derive"] }
 serde_json = "1.0.48"
 anyhow = "1.0.26"
 
-arena = { path = "../arena" }
-cfg = { path = "../cfg" }
-base_db = { path = "../base_db" }
-toolchain = { path = "../toolchain" }
-proc_macro_api =  { path = "../proc_macro_api" }
-paths =  { path = "../paths" }
-stdx =  { path = "../stdx" }
+arena = { path = "../arena", version = "0.0.0" }
+cfg = { path = "../cfg", version = "0.0.0" }
+base_db = { path = "../base_db", version = "0.0.0" }
+toolchain = { path = "../toolchain", version = "0.0.0" }
+proc_macro_api =  { path = "../proc_macro_api", version = "0.0.0" }
+paths =  { path = "../paths", version = "0.0.0" }
+stdx =  { path = "../stdx", version = "0.0.0" }

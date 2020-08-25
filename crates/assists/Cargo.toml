@@ -1,6 +1,7 @@
 [package]
 name = "assists"
 version = "0.0.0"
+description = "TBD"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer developers"]
 edition = "2018"
@@ -13,11 +14,11 @@ rustc-hash = "1.1.0"
 itertools = "0.9.0"
 either = "1.5.3"
 
-stdx = { path = "../stdx" }
-syntax = { path = "../syntax" }
-text_edit = { path = "../text_edit" }
-profile = { path = "../profile" }
-base_db = { path = "../base_db" }
-ide_db = { path = "../ide_db" }
-hir = { path = "../hir" }
-test_utils = { path = "../test_utils" }
+stdx = { path = "../stdx", version = "0.0.0" }
+syntax = { path = "../syntax", version = "0.0.0" }
+text_edit = { path = "../text_edit", version = "0.0.0" }
+profile = { path = "../profile", version = "0.0.0" }
+base_db = { path = "../base_db", version = "0.0.0" }
+ide_db = { path = "../ide_db", version = "0.0.0" }
+hir = { path = "../hir", version = "0.0.0" }
+test_utils = { path = "../test_utils", version = "0.0.0" }

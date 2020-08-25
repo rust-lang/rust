@@ -181,6 +181,30 @@ fn frobnicate(walrus: Option<Walrus>) {
 }
 ```
 
+# Early Returns
+
+Do use early returns
+
+```rust
+// Good
+fn foo() -> Option<Bar> {
+    if !condition() {
+        return None;
+    }
+
+    Some(...)
+}
+
+// Not as good
+fn foo() -> Option<Bar> {
+    if condition() {
+        Some(...)
+    } else {
+        None
+    }
+}
+```
+
 # Getters & Setters
 
 If a field can have any value without breaking invariants, make the field public.
@@ -189,7 +213,7 @@ Never provide setters.
 
 Getters should return borrowed data:
 
-```
+```rust
 struct Person {
     // Invariant: never empty
     first_name: String,
@@ -228,6 +252,41 @@ let (first_word, second_word) = match text.split_ascii_whitespace().collect_tupl
 let words = text.split_ascii_whitespace().collect::<Vec<_>>();
 if words.len() != 2 {
     return
+}
+```
+
+# Avoid Monomorphization
+
+Rust uses monomorphization to compile generic code, meaning that for each instantiation of a generic functions with concrete types, the function is compiled afresh, *per crate*.
+This allows for exceptionally good performance, but leads to increased compile times.
+Runtime performance obeys 80%/20% rule -- only a small fraction of code is hot.
+Compile time **does not** obey this rule -- all code has to be compiled.
+For this reason, avoid making a lot of code type parametric, *especially* on the boundaries between crates.
+
+```rust
+// Good
+fn frbonicate(f: impl FnMut()) {
+    frobnicate_impl(&mut f)
+}
+fn frobnicate_impl(f: &mut dyn FnMut()) {
+    // lots of code
+}
+
+// Not as good
+fn frbonicate(f: impl FnMut()) {
+    // lots of code
+}
+```
+
+Avoid `AsRef` polymorphism, it pays back only for widely used libraries:
+
+```rust
+// Good
+fn frbonicate(f: &Path) {
+}
+
+// Not as good
+fn frbonicate(f: impl AsRef<Path>) {
 }
 ```
 

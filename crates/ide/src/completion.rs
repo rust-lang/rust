@@ -92,7 +92,7 @@ pub use crate::completion::{
 /// already present, it should give all possible variants for the identifier at
 /// the caret. In other words, for
 ///
-/// ```no-run
+/// ```no_run
 /// fn f() {
 ///     let foo = 92;
 ///     let _ = bar<|>

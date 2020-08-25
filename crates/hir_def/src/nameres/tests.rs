@@ -46,6 +46,7 @@ union U { to_be: bool, not_to_be: u8 }
 enum E { V }
 
 extern {
+    type Ext;
     static EXT: u8;
     fn ext();
 }
@@ -65,6 +66,7 @@ extern {
             Baz: t v
             E: t
             EXT: v
+            Ext: t
             U: t
             ext: v
         "#]],

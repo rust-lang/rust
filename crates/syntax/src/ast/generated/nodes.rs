@@ -1380,6 +1380,7 @@ pub enum ExternItem {
     Fn(Fn),
     MacroCall(MacroCall),
     Static(Static),
+    TypeAlias(TypeAlias),
 }
 impl ast::AttrsOwner for ExternItem {}
 impl ast::NameOwner for ExternItem {}
@@ -3339,10 +3340,13 @@ impl From<MacroCall> for ExternItem {
 impl From<Static> for ExternItem {
     fn from(node: Static) -> ExternItem { ExternItem::Static(node) }
 }
+impl From<TypeAlias> for ExternItem {
+    fn from(node: TypeAlias) -> ExternItem { ExternItem::TypeAlias(node) }
+}
 impl AstNode for ExternItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            FN | MACRO_CALL | STATIC => true,
+            FN | MACRO_CALL | STATIC | TYPE_ALIAS => true,
             _ => false,
         }
     }
@@ -3351,6 +3355,7 @@ impl AstNode for ExternItem {
             FN => ExternItem::Fn(Fn { syntax }),
             MACRO_CALL => ExternItem::MacroCall(MacroCall { syntax }),
             STATIC => ExternItem::Static(Static { syntax }),
+            TYPE_ALIAS => ExternItem::TypeAlias(TypeAlias { syntax }),
             _ => return None,
         };
         Some(res)
@@ -3360,6 +3365,7 @@ impl AstNode for ExternItem {
             ExternItem::Fn(it) => &it.syntax,
             ExternItem::MacroCall(it) => &it.syntax,
             ExternItem::Static(it) => &it.syntax,
+            ExternItem::TypeAlias(it) => &it.syntax,
         }
     }
 }

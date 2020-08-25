@@ -4,6 +4,7 @@ version = "0.0.0"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer developers"]
 edition = "2018"
+publish = false
 
 [lib]
 doctest = false
