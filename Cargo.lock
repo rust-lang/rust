@@ -497,6 +497,8 @@ dependencies = [
  "rustc-hash",
  "stdx",
  "syntax",
+ "tt",
+ "url",
 ]
 
 [[package]]
@@ -596,6 +598,8 @@ dependencies = [
  "log",
  "oorandom",
  "profile",
+ "pulldown-cmark",
+ "pulldown-cmark-to-cmark",
  "rustc-hash",
  "ssr",
  "stdx",
@@ -823,6 +827,12 @@ dependencies = [
  "test_utils",
  "tt",
 ]
+
+[[package]]
+name = "memchr"
+version = "2.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3728d817d99e5ac407411fa471ff9800a778d88a24685968b36824eaf4bee400"
 
 [[package]]
 name = "memmap"
@@ -1138,6 +1148,26 @@ dependencies = [
  "serde_json",
  "stdx",
  "toolchain",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca36dea94d187597e104a5c8e4b07576a8a45aa5db48a65e12940d3eb7461f55"
+dependencies = [
+ "bitflags",
+ "memchr",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark-to-cmark"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32accf4473121d8c0b508ca5673363703762d6cc59cf25af1df48f653346f736"
+dependencies = [
+ "pulldown-cmark",
 ]
 
 [[package]]
@@ -1693,6 +1723,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca4d39065b45f658d33013f7cc93ee050708cd543f6e07dd15b4293fcf217e12"
 
 [[package]]
+name = "unicase"
+version = "2.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50f37be617794602aabbeee0be4f259dc1778fabe05e2d67ee8f79326d5cb4f6"
+dependencies = [
+ "version_check",
+]
+
+[[package]]
 name = "unicode-bidi"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1733,6 +1772,12 @@ dependencies = [
  "percent-encoding",
  "serde",
 ]
+
+[[package]]
+name = "version_check"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5a972e5669d67ba988ce3dc826706fb0a8b01471c088cb0b6110b805cc36aed"
 
 [[package]]
 name = "vfs"

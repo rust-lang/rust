@@ -15,6 +15,7 @@ rustc-hash = "1.1.0"
 either = "1.5.3"
 arrayvec = "0.5.1"
 itertools = "0.9.0"
+url = "2.1.1"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
@@ -23,3 +24,4 @@ profile = { path = "../profile", version = "0.0.0" }
 hir_expand = { path = "../hir_expand", version = "0.0.0" }
 hir_def = { path = "../hir_def", version = "0.0.0" }
 hir_ty = { path = "../hir_ty", version = "0.0.0" }
+tt = { path = "../tt", version = "0.0.0" }

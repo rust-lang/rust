@@ -14,6 +14,7 @@ use test_utils::mark;
 
 use crate::{
     display::{macro_label, ShortLabel, ToNav, TryToNav},
+    link_rewrite::rewrite_links,
     markup::Markup,
     runnables::runnable,
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
@@ -92,7 +93,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     };
     if let Some(definition) = definition {
         if let Some(markup) = hover_for_definition(db, definition) {
-            res.markup = markup;
+            let markup = rewrite_links(db, &markup.as_str(), &definition);
+            res.markup = Markup::from(markup);
             if let Some(action) = show_implementations_action(db, definition) {
                 res.actions.push(action);
             }
@@ -425,6 +427,7 @@ fn main() {
 "#,
             expect![[r#"
                 *iter*
+
                 ```rust
                 Iter<Scan<OtherStruct<OtherStruct<i32>>, |&mut u32, &u32, &mut u32| -> Option<u32>, u32>>
                 ```
@@ -443,6 +446,11 @@ fn main() { let foo_test = fo<|>o(); }
 "#,
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 pub fn foo() -> u32
                 ```
@@ -487,6 +495,11 @@ fn main() { let foo_test = fo<|>o(); }
         "#,
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str
                 ```
@@ -504,6 +517,11 @@ fn main() { }
 "#,
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 pub fn foo(a: u32, b: u32) -> u32
                 ```
@@ -525,20 +543,27 @@ pub fn foo<|>(_: &Path) {}
 
 fn main() { }
 "#,
-            expect![[r#"
+            expect![[r##"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 pub fn foo(_: &Path)
                 ```
-                ___
+
+                ---
 
                 # Example
+
                 ```
                 # use std::path::Path;
                 #
                 foo(Path::new("hello, world!"))
                 ```
-            "#]],
+            "##]],
         );
     }
 
@@ -555,8 +580,9 @@ fn main() {
 "#,
             expect![[r#"
                 *field_a*
+
                 ```rust
-                Foo
+                test::Foo
                 ```
 
                 ```rust
@@ -576,8 +602,9 @@ fn main() {
 "#,
             expect![[r#"
                 *field_a*
+
                 ```rust
-                Foo
+                test::Foo
                 ```
 
                 ```rust
@@ -593,6 +620,11 @@ fn main() {
             r#"const foo<|>: u32 = 123;"#,
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 const foo: u32 = 123
                 ```
@@ -602,6 +634,11 @@ fn main() {
             r#"static foo<|>: u32 = 456;"#,
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 static foo: u32
                 ```
@@ -620,6 +657,7 @@ fn main() {
 }"#,
             expect![[r#"
                 *zz*
+
                 ```rust
                 Test<i32, u8>
                 ```
@@ -638,8 +676,9 @@ fn main() { So<|>me(12); }
 "#,
             expect![[r#"
                 *Some*
+
                 ```rust
-                Option
+                test::Option
                 ```
 
                 ```rust
@@ -657,6 +696,7 @@ fn main() { let b<|>ar = Some(12); }
 "#,
             expect![[r#"
                 *bar*
+
                 ```rust
                 Option<i32>
                 ```
@@ -675,14 +715,16 @@ enum Option<T> {
 "#,
             expect![[r#"
                 *None*
+
                 ```rust
-                Option
+                test::Option
                 ```
 
                 ```rust
                 None
                 ```
-                ___
+
+                ---
 
                 The None variant
             "#]],
@@ -700,14 +742,16 @@ fn main() {
 "#,
             expect![[r#"
                 *Some*
+
                 ```rust
-                Option
+                test::Option
                 ```
 
                 ```rust
                 Some
                 ```
-                ___
+
+                ---
 
                 The Some variant
             "#]],
@@ -720,6 +764,7 @@ fn main() {
             r#"fn func(foo: i32) { fo<|>o; }"#,
             expect![[r#"
                 *foo*
+
                 ```rust
                 i32
                 ```
@@ -733,6 +778,7 @@ fn main() {
             r#"fn func(fo<|>o: i32) {}"#,
             expect![[r#"
                 *foo*
+
                 ```rust
                 i32
                 ```
@@ -746,6 +792,7 @@ fn main() {
             r#"fn func(foo: i32) { if true { <|>foo; }; }"#,
             expect![[r#"
                 *foo*
+
                 ```rust
                 i32
                 ```
@@ -759,6 +806,7 @@ fn main() {
             r#"fn func(<|>foo: i32) {}"#,
             expect![[r#"
                 *foo*
+
                 ```rust
                 i32
                 ```
@@ -778,6 +826,7 @@ fn main() {
             fn f(_x<|>: impl Deref<Target=u8> + DerefMut<Target=u8>) {}"#,
             expect![[r#"
                 *_x*
+
                 ```rust
                 impl Deref<Target = u8> + DerefMut<Target = u8>
                 ```
@@ -799,6 +848,7 @@ fn main() { let foo_<|>test = Thing::new(); }
             "#,
             expect![[r#"
                 *foo_test*
+
                 ```rust
                 Thing
                 ```
@@ -822,8 +872,9 @@ fn main() { let foo_test = wrapper::Thing::new<|>(); }
 "#,
             expect![[r#"
                 *new*
+
                 ```rust
-                wrapper::Thing
+                test::wrapper::Thing
                 ```
 
                 ```rust
@@ -852,6 +903,11 @@ fn main() {
 "#,
             expect![[r#"
                 *C*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 const C: u32 = 1
                 ```
@@ -929,6 +985,7 @@ fn y() {
 "#,
             expect![[r#"
                 *x*
+
                 ```rust
                 i32
                 ```
@@ -946,6 +1003,11 @@ fn f() { fo<|>o!(); }
 "#,
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 macro_rules! foo
                 ```
@@ -976,6 +1038,11 @@ id! {
 "#,
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 fn foo()
                 ```
@@ -992,6 +1059,7 @@ fn foo(bar:u32) { let a = id!(ba<|>r); }
 "#,
             expect![[r#"
                 *bar*
+
                 ```rust
                 u32
                 ```
@@ -1009,6 +1077,7 @@ fn foo(bar:u32) { let a = id!(ba<|>r); }
 "#,
             expect![[r#"
                 *bar*
+
                 ```rust
                 u32
                 ```
@@ -1067,6 +1136,11 @@ fn foo() {
 "#,
             expect![[r#"
                 *bar*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 fn bar() -> bool
                 ```
@@ -1099,12 +1173,18 @@ fn bar() { fo<|>o(); }
 ",
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 fn foo()
                 ```
-                ___
 
-                <- `　` here
+                ---
+
+                \<- `　` here
             "#]],
         );
     }
@@ -1115,6 +1195,11 @@ fn bar() { fo<|>o(); }
             r#"async fn foo<|>() {}"#,
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 async fn foo()
                 ```
@@ -1124,6 +1209,11 @@ fn bar() { fo<|>o(); }
             r#"pub const unsafe fn foo<|>() {}"#,
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 pub const unsafe fn foo()
                 ```
@@ -1133,6 +1223,11 @@ fn bar() { fo<|>o(); }
             r#"pub(crate) async unsafe extern "C" fn foo<|>() {}"#,
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 pub(crate) async unsafe extern "C" fn foo()
                 ```
@@ -1210,6 +1305,11 @@ fn my() {}
 "#,
             expect![[r#"
                 *my*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 mod my
                 ```
@@ -1228,10 +1328,16 @@ fn foo() { let bar = Ba<|>r; }
 "#,
             expect![[r#"
                 *Bar*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 struct Bar
                 ```
-                ___
+
+                ---
 
                 bar docs
             "#]],
@@ -1249,10 +1355,16 @@ fn foo() { let bar = Ba<|>r; }
 "#,
             expect![[r#"
                 *Bar*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 struct Bar
                 ```
-                ___
+
+                ---
 
                 bar docs
             "#]],
@@ -1272,16 +1384,387 @@ fn foo() { let bar = Ba<|>r; }
 "#,
             expect![[r#"
                 *Bar*
+
+                ```rust
+                test
+                ```
+
                 ```rust
                 struct Bar
                 ```
-                ___
+
+                ---
 
                 bar docs 0
 
                 bar docs 1
 
                 bar docs 2
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_path_link() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [Foo](struct.Foo.html)
+            pub struct B<|>ar
+            ",
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [Foo](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_path_link_no_strip() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [struct Foo](struct.Foo.html)
+            pub struct B<|>ar
+            ",
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [struct Foo](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[ignore = "path based links currently only support documentation on ModuleDef items"]
+    #[test]
+    fn test_hover_path_link_field() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            pub struct Bar {
+                /// [Foo](struct.Foo.html)
+                fie<|>ld: ()
+            }
+            ",
+            expect![[r#"
+                *field*
+
+                ```rust
+                test::Bar
+                ```
+
+                ```rust
+                field: ()
+                ```
+
+                ---
+
+                [Foo](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link() {
+        check(
+            r"
+            //- /lib.rs
+            pub mod foo {
+                pub struct Foo;
+            }
+            /// [Foo](foo::Foo)
+            pub struct B<|>ar
+            ",
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [Foo](https://docs.rs/test/*/test/foo/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_html_root_url() {
+        check(
+            r#"
+            //- /lib.rs
+
+            #![doc(arbitrary_attribute = "test", html_root_url = "https:/example.com", arbitrary_attribute2)]
+
+            pub mod foo {
+                pub struct Foo;
+            }
+            /// [Foo](foo::Foo)
+            pub struct B<|>ar
+            "#,
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [Foo](https://example.com/test/foo/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_shortlink() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [Foo]
+            pub struct B<|>ar
+            ",
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [Foo](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_shortlink_code() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [`Foo`]
+            pub struct B<|>ar
+            ",
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_namespaced() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            fn Foo() {}
+            /// [Foo()]
+            pub struct B<|>ar
+            ",
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [Foo](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_shortlink_namspaced_code() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [`struct Foo`]
+            pub struct B<|>ar
+            ",
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_shortlink_namspaced_code_with_at() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [`struct@Foo`]
+            pub struct B<|>ar
+            ",
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_reference() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [my Foo][foo]
+            ///
+            /// [foo]: Foo
+            pub struct B<|>ar
+            ",
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [my Foo](https://docs.rs/test/*/test/struct.Foo.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_external_url() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [external](https://www.google.com)
+            pub struct B<|>ar
+            ",
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [external](https://www.google.com)
+            "#]],
+        );
+    }
+
+    // Check that we don't rewrite links which we can't identify
+    #[test]
+    fn test_hover_unknown_target() {
+        check(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [baz](Baz)
+            pub struct B<|>ar
+            ",
+            expect![[r#"
+                *Bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub struct Bar
+                ```
+
+                ---
+
+                [baz](Baz)
             "#]],
         );
     }
@@ -1308,16 +1791,18 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
 "#,
             expect![[r#"
                 *foo*
+
                 ```rust
-                Bar
+                test::Bar
                 ```
 
                 ```rust
                 fn foo(&self)
                 ```
-                ___
 
-                 Do the foo
+                ---
+
+                Do the foo
             "#]],
         );
     }
@@ -1344,14 +1829,16 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
 "#,
             expect![[r#"
                 *foo*
+
                 ```rust
-                Bar
+                test::Bar
                 ```
 
                 ```rust
                 fn foo(&self)
                 ```
-                ___
+
+                ---
 
                 Do the foo
             "#]],
@@ -1526,7 +2013,7 @@ fn main() { let s<|>t = S{ f1:0 }; }
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "S",
+                                mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1565,7 +2052,7 @@ fn main() { let s<|>t = S{ f1:Arg(0) }; }
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "S",
+                                mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1584,7 +2071,7 @@ fn main() { let s<|>t = S{ f1:Arg(0) }; }
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "Arg",
+                                mod_path: "test::Arg",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1623,7 +2110,7 @@ fn main() { let s<|>t = S{ f1: S{ f1: Arg(0) } }; }
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "S",
+                                mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1642,7 +2129,7 @@ fn main() { let s<|>t = S{ f1: S{ f1: Arg(0) } }; }
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "Arg",
+                                mod_path: "test::Arg",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1684,7 +2171,7 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "A",
+                                mod_path: "test::A",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1703,7 +2190,7 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "B",
+                                mod_path: "test::B",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1722,7 +2209,7 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "M::C",
+                                mod_path: "test::M::C",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1761,7 +2248,7 @@ fn main() { let s<|>t = foo(); }
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "Foo",
+                                mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1801,7 +2288,7 @@ fn main() { let s<|>t = foo(); }
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "Foo",
+                                mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1820,7 +2307,7 @@ fn main() { let s<|>t = foo(); }
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "S",
+                                mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1860,7 +2347,7 @@ fn main() { let s<|>t = foo(); }
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "Foo",
+                                mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1879,7 +2366,7 @@ fn main() { let s<|>t = foo(); }
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "Bar",
+                                mod_path: "test::Bar",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1922,7 +2409,7 @@ fn main() { let s<|>t = foo(); }
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "Foo",
+                                mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1941,7 +2428,7 @@ fn main() { let s<|>t = foo(); }
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "Bar",
+                                mod_path: "test::Bar",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1960,7 +2447,7 @@ fn main() { let s<|>t = foo(); }
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "S1",
+                                mod_path: "test::S1",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -1979,7 +2466,7 @@ fn main() { let s<|>t = foo(); }
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "S2",
+                                mod_path: "test::S2",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2016,7 +2503,7 @@ fn foo(ar<|>g: &impl Foo) {}
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "Foo",
+                                mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2056,7 +2543,7 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "Foo",
+                                mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2075,7 +2562,7 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "Bar",
+                                mod_path: "test::Bar",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2094,7 +2581,7 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "S",
+                                mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2132,7 +2619,7 @@ fn foo(ar<|>g: &impl Foo<S>) {}
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "Foo",
+                                mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2151,7 +2638,7 @@ fn foo(ar<|>g: &impl Foo<S>) {}
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "S",
+                                mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2194,7 +2681,7 @@ fn main() { let s<|>t = foo(); }
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "B",
+                                mod_path: "test::B",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2213,7 +2700,7 @@ fn main() { let s<|>t = foo(); }
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "Foo",
+                                mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2250,7 +2737,7 @@ fn foo(ar<|>g: &dyn Foo) {}
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "Foo",
+                                mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2288,7 +2775,7 @@ fn foo(ar<|>g: &dyn Foo<S>) {}
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "Foo",
+                                mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2307,7 +2794,7 @@ fn foo(ar<|>g: &dyn Foo<S>) {}
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "S",
+                                mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2348,7 +2835,7 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "ImplTrait",
+                                mod_path: "test::ImplTrait",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2367,7 +2854,7 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "B",
+                                mod_path: "test::B",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2386,7 +2873,7 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "DynTrait",
+                                mod_path: "test::DynTrait",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2405,7 +2892,7 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 },
                             },
                             HoverGotoTypeData {
-                                mod_path: "S",
+                                mod_path: "test::S",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,
@@ -2453,7 +2940,7 @@ fn main() { let s<|>t = test().get(); }
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "Foo",
+                                mod_path: "test::Foo",
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         1,

@@ -27,6 +27,7 @@ pub mod diagnostics;
 
 mod from_id;
 mod code_model;
+mod doc_links;
 
 mod has_source;
 
@@ -37,6 +38,7 @@ pub use crate::{
         Function, GenericDef, HasAttrs, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef,
         ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, VariantDef, Visibility,
     },
+    doc_links::resolve_doc_link,
     has_source::HasSource,
     semantics::{original_range, PathResolution, Semantics, SemanticsScope},
 };
@@ -47,13 +49,14 @@ pub use hir_def::{
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
     docs::Documentation,
+    item_scope::ItemInNs,
     nameres::ModuleSource,
     path::ModPath,
     type_ref::{Mutability, TypeRef},
 };
 pub use hir_expand::{
-    name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc, /* FIXME */ MacroDefId,
-    MacroFile, Origin,
+    name::AsName, name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc,
+    /* FIXME */ MacroDefId, MacroFile, Origin,
 };
 pub use hir_ty::display::HirDisplay;
 

@@ -20,7 +20,7 @@ use hir_def::{
     type_ref::{Mutability, TypeRef},
     AdtId, AssocContainerId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule,
     ImplId, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StaticId, StructId,
-    TraitId, TypeAliasId, TypeParamId, UnionId,
+    TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -39,9 +39,11 @@ use syntax::{
     ast::{self, AttrsOwner, NameOwner},
     AstNode, SmolStr,
 };
+use tt::{Ident, Leaf, Literal, TokenTree};
 
 use crate::{
     db::{DefDatabase, HirDatabase},
+    doc_links::Resolvable,
     has_source::HasSource,
     HirDisplay, InFile, Name,
 };
@@ -122,6 +124,31 @@ impl Crate {
     pub fn all(db: &dyn HirDatabase) -> Vec<Crate> {
         db.crate_graph().iter().map(|id| Crate { id }).collect()
     }
+
+    /// Try to get the root URL of the documentation of a crate.
+    pub fn get_html_root_url(self: &Crate, db: &dyn HirDatabase) -> Option<String> {
+        // Look for #![doc(html_root_url = "...")]
+        let attrs = db.attrs(AttrDef::from(self.root_module(db)).into());
+        let doc_attr_q = attrs.by_key("doc");
+
+        if !doc_attr_q.exists() {
+            return None;
+        }
+
+        let doc_url = doc_attr_q.tt_values().map(|tt| {
+            let name = tt.token_trees.iter()
+                .skip_while(|tt| !matches!(tt, TokenTree::Leaf(Leaf::Ident(Ident{text: ref ident, ..})) if ident == "html_root_url"))
+                .skip(2)
+                .next();
+
+            match name {
+                Some(TokenTree::Leaf(Leaf::Literal(Literal{ref text, ..}))) => Some(text),
+                _ => None
+            }
+        }).flat_map(|t| t).next();
+
+        doc_url.map(|s| s.trim_matches('"').trim_end_matches("/").to_owned() + "/")
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -198,7 +225,6 @@ impl ModuleDef {
             ModuleDef::Function(it) => Some(it.name(db)),
             ModuleDef::EnumVariant(it) => Some(it.name(db)),
             ModuleDef::TypeAlias(it) => Some(it.name(db)),
-
             ModuleDef::Module(it) => it.name(db),
             ModuleDef::Const(it) => it.name(db),
             ModuleDef::Static(it) => it.name(db),
@@ -1769,5 +1795,78 @@ pub trait HasVisibility {
     fn is_visible_from(&self, db: &dyn HirDatabase, module: Module) -> bool {
         let vis = self.visibility(db);
         vis.is_visible_from(db.upcast(), module.id)
+    }
+}
+
+impl Resolvable for ModuleDef {
+    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
+        Some(match self {
+            ModuleDef::Module(m) => ModuleId::from(m.clone()).resolver(db),
+            ModuleDef::Function(f) => FunctionId::from(f.clone()).resolver(db),
+            ModuleDef::Adt(adt) => AdtId::from(adt.clone()).resolver(db),
+            ModuleDef::EnumVariant(ev) => {
+                GenericDefId::from(GenericDef::from(ev.clone())).resolver(db)
+            }
+            ModuleDef::Const(c) => GenericDefId::from(GenericDef::from(c.clone())).resolver(db),
+            ModuleDef::Static(s) => StaticId::from(s.clone()).resolver(db),
+            ModuleDef::Trait(t) => TraitId::from(t.clone()).resolver(db),
+            ModuleDef::TypeAlias(t) => ModuleId::from(t.module(db)).resolver(db),
+            // FIXME: This should be a resolver relative to `std/core`
+            ModuleDef::BuiltinType(_t) => None?,
+        })
+    }
+
+    fn try_into_module_def(self) -> Option<ModuleDef> {
+        Some(self)
+    }
+}
+
+impl Resolvable for TypeParam {
+    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
+        Some(Into::<ModuleId>::into(self.module(db)).resolver(db))
+    }
+
+    fn try_into_module_def(self) -> Option<ModuleDef> {
+        None
+    }
+}
+
+impl Resolvable for MacroDef {
+    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
+        Some(Into::<ModuleId>::into(self.module(db)?).resolver(db))
+    }
+
+    fn try_into_module_def(self) -> Option<ModuleDef> {
+        None
+    }
+}
+
+impl Resolvable for Field {
+    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
+        Some(Into::<VariantId>::into(Into::<VariantDef>::into(self.parent_def(db))).resolver(db))
+    }
+
+    fn try_into_module_def(self) -> Option<ModuleDef> {
+        None
+    }
+}
+
+impl Resolvable for ImplDef {
+    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
+        Some(Into::<ModuleId>::into(self.module(db)).resolver(db))
+    }
+
+    fn try_into_module_def(self) -> Option<ModuleDef> {
+        None
+    }
+}
+
+impl Resolvable for Local {
+    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
+        Some(Into::<ModuleId>::into(self.module(db)).resolver(db))
+    }
+
+    fn try_into_module_def(self) -> Option<ModuleDef> {
+        None
     }
 }

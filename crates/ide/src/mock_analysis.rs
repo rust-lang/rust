@@ -115,7 +115,7 @@ impl MockAnalysis {
                 root_crate = Some(crate_graph.add_crate_root(
                     file_id,
                     edition,
-                    None,
+                    Some("test".to_string()),
                     cfg,
                     env,
                     Default::default(),
