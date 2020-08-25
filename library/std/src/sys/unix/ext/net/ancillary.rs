@@ -564,7 +564,7 @@ impl<'a> SocketAncillary<'a> {
         target_env = "uclibc",
     ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
-    pub fn messages(&'a self) -> Messages<'a> {
+    pub fn messages(&self) -> Messages<'_> {
         Messages { buffer: &self.buffer[..self.length], current: None }
     }
 
