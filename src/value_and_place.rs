@@ -681,18 +681,20 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
-    pub(crate) fn write_place_ref(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
+    pub(crate) fn place_ref(
+        self,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+        layout: TyAndLayout<'tcx>,
+    ) -> CValue<'tcx> {
         if has_ptr_meta(fx.tcx, self.layout().ty) {
             let (ptr, extra) = self.to_ptr_maybe_unsized();
-            let ptr = CValue::by_val_pair(
+            CValue::by_val_pair(
                 ptr.get_addr(fx),
                 extra.expect("unsized type without metadata"),
-                dest.layout(),
-            );
-            dest.write_cvalue(fx, ptr);
+                layout,
+            )
         } else {
-            let ptr = CValue::by_val(self.to_ptr().get_addr(fx), dest.layout());
-            dest.write_cvalue(fx, ptr);
+            CValue::by_val(self.to_ptr().get_addr(fx), layout)
         }
     }
 

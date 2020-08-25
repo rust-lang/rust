@@ -405,7 +405,8 @@ fn trans_stmt<'tcx>(
                 }
                 Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
                     let place = trans_place(fx, *place);
-                    place.write_place_ref(fx, lval);
+                    let ref_ = place.place_ref(fx, lval.layout());
+                    lval.write_cvalue(fx, ref_);
                 }
                 Rvalue::ThreadLocalRef(def_id) => {
                     let val = crate::constant::codegen_tls_ref(fx, *def_id, lval.layout());

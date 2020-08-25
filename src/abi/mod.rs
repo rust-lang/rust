@@ -700,18 +700,13 @@ pub(crate) fn codegen_drop<'tcx>(
             _ => {
                 assert!(!matches!(drop_fn.def, InstanceDef::Virtual(_, _)));
 
-                let arg_place = CPlace::new_stack_slot(
-                    fx,
-                    fx.layout_of(fx.tcx.mk_ref(
-                        &ty::RegionKind::ReErased,
-                        TypeAndMut {
-                            ty,
-                            mutbl: crate::rustc_hir::Mutability::Mut,
-                        },
-                    )),
-                );
-                drop_place.write_place_ref(fx, arg_place);
-                let arg_value = arg_place.to_cvalue(fx);
+                let arg_value = drop_place.place_ref(fx, fx.layout_of(fx.tcx.mk_ref(
+                    &ty::RegionKind::ReErased,
+                    TypeAndMut {
+                        ty,
+                        mutbl: crate::rustc_hir::Mutability::Mut,
+                    },
+                )));
                 let arg_value = adjust_arg_for_abi(fx, arg_value);
 
                 let mut call_args: Vec<Value> = arg_value.into_iter().collect::<Vec<_>>();
