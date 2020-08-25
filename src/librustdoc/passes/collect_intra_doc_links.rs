@@ -829,16 +829,13 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             }
                             let candidates =
                                 candidates.map(|candidate| candidate.map(|(res, _)| res));
-                            let candidates = [TypeNS, ValueNS, MacroNS]
-                                .iter()
-                                .filter_map(|&ns| candidates[ns].map(|res| (res, ns)));
                             ambiguity_error(
                                 cx,
                                 &item,
                                 path_str,
                                 &dox,
                                 link_range,
-                                candidates.collect(),
+                                candidates.present_items().collect(),
                             );
                             continue;
                         }
@@ -880,7 +877,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         fragment = Some(path.to_owned());
                     } else {
                         // `[char]` when a `char` module is in scope
-                        let candidates = vec![(res, TypeNS), (prim, TypeNS)];
+                        let candidates = vec![res, prim];
                         ambiguity_error(cx, &item, path_str, &dox, link_range, candidates);
                         continue;
                     }
@@ -1251,12 +1248,12 @@ fn ambiguity_error(
     path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
-    candidates: Vec<(Res, Namespace)>,
+    candidates: Vec<Res>,
 ) {
     let mut msg = format!("`{}` is ", path_str);
 
     match candidates.as_slice() {
-        [(first_def, _), (second_def, _)] => {
+        [first_def, second_def] => {
             msg += &format!(
                 "both {} {} and {} {}",
                 first_def.article(),
@@ -1267,7 +1264,7 @@ fn ambiguity_error(
         }
         _ => {
             let mut candidates = candidates.iter().peekable();
-            while let Some((res, _)) = candidates.next() {
+            while let Some(res) = candidates.next() {
                 if candidates.peek().is_some() {
                     msg += &format!("{} {}, ", res.article(), res.descr());
                 } else {
@@ -1284,7 +1281,7 @@ fn ambiguity_error(
             diag.note("ambiguous link");
         }
 
-        for (res, _ns) in candidates {
+        for res in candidates {
             let disambiguator = Disambiguator::from_res(res);
             suggest_disambiguator(disambiguator, diag, path_str, dox, sp, &link_range);
         }
