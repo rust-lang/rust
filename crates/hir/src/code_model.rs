@@ -17,9 +17,9 @@ use hir_def::{
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
     type_ref::{Mutability, TypeRef},
-    AdtId, AssocContainerId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule,
-    ImplId, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StaticId, StructId,
-    TraitId, TypeAliasId, TypeParamId, UnionId,
+    AdtId, AssocContainerId, AttrDefId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId,
+    HasModule, ImplId, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StaticId,
+    StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -43,7 +43,7 @@ use tt::{Ident, Leaf, Literal, TokenTree};
 use crate::{
     db::{DefDatabase, HirDatabase},
     has_source::HasSource,
-    AttrDef, HirDisplay, InFile, Name,
+    HirDisplay, InFile, Name,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -126,7 +126,7 @@ impl Crate {
     /// Try to get the root URL of the documentation of a crate.
     pub fn get_html_root_url(self: &Crate, db: &dyn HirDatabase) -> Option<String> {
         // Look for #![doc(html_root_url = "...")]
-        let attrs = db.attrs(AttrDef::from(self.root_module(db)).into());
+        let attrs = db.attrs(AttrDefId::ModuleId(self.root_module(db).into()));
         let doc_attr_q = attrs.by_key("doc");
 
         if !doc_attr_q.exists() {

@@ -4,13 +4,13 @@
 //! are splitting the hir.
 
 use hir_def::{
-    expr::PatId, AdtId, AssocItemId, AttrDefId, DefWithBodyId, EnumVariantId, FieldId,
-    GenericDefId, ModuleDefId, VariantId,
+    expr::PatId, AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId,
+    ModuleDefId, VariantId,
 };
 
 use crate::{
-    code_model::ItemInNs, Adt, AssocItem, AttrDef, DefWithBody, EnumVariant, Field, GenericDef,
-    Local, MacroDef, ModuleDef, VariantDef,
+    code_model::ItemInNs, Adt, AssocItem, DefWithBody, EnumVariant, Field, GenericDef, Local,
+    MacroDef, ModuleDef, VariantDef,
 };
 
 macro_rules! from_id {
@@ -193,23 +193,6 @@ impl From<Field> for FieldId {
 impl From<FieldId> for Field {
     fn from(def: FieldId) -> Self {
         Field { parent: def.parent.into(), id: def.local_id }
-    }
-}
-
-impl From<AttrDef> for AttrDefId {
-    fn from(def: AttrDef) -> Self {
-        match def {
-            AttrDef::Module(it) => AttrDefId::ModuleId(it.id),
-            AttrDef::Field(it) => AttrDefId::FieldId(it.into()),
-            AttrDef::Adt(it) => AttrDefId::AdtId(it.into()),
-            AttrDef::Function(it) => AttrDefId::FunctionId(it.id),
-            AttrDef::EnumVariant(it) => AttrDefId::EnumVariantId(it.into()),
-            AttrDef::Static(it) => AttrDefId::StaticId(it.id),
-            AttrDef::Const(it) => AttrDefId::ConstId(it.id),
-            AttrDef::Trait(it) => AttrDefId::TraitId(it.id),
-            AttrDef::TypeAlias(it) => AttrDefId::TypeAliasId(it.id),
-            AttrDef::MacroDef(it) => AttrDefId::MacroDefId(it.id),
-        }
     }
 }
 
