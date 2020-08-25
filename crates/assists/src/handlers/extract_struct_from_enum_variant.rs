@@ -1,6 +1,7 @@
 use base_db::FileId;
 use hir::{EnumVariant, Module, ModuleDef, Name};
 use ide_db::{defs::Definition, search::Reference, RootDatabase};
+use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     algo::find_node_at_offset,
@@ -203,13 +204,11 @@ fn list_with_visibility(list: &str) -> String {
             mod_part.insert_str(index, "pub ");
             mod_part
         })
-        .collect::<Vec<String>>()
         .join(", ")
 }
 
 #[cfg(test)]
 mod tests {
-
     use crate::{
         tests::{check_assist, check_assist_not_applicable},
         utils::FamousDefs,
