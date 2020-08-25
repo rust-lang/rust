@@ -63,7 +63,7 @@ fi
 #
 # FIXME: need a scheme for changing this `nightly` value to `beta` and `stable`
 #        either automatically or manually.
-export RUST_RELEASE_CHANNEL=nightly
+export RUST_RELEASE_CHANNEL=beta
 
 # Always set the release channel for bootstrap; this is normally not important (i.e., only dist
 # builds would seem to matter) but in practice bootstrap wants to know whether we're targeting
