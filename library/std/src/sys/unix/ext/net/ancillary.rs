@@ -72,7 +72,15 @@ fn add_to_ancillary_data<T: Clone>(
     cmsg_level: libc::c_int,
     cmsg_type: libc::c_int,
 ) -> bool {
-    let len = (source.len() * size_of::<T>()) as u32;
+    let len = if let Some(len) = source.len().checked_mul(size_of::<T>()) {
+        if let Ok(len) = u32::try_from(len) {
+            len
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    };
 
     unsafe {
         let additional_space = libc::CMSG_SPACE(len) as usize;
