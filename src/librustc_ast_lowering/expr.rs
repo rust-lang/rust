@@ -1135,7 +1135,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         break;
                     }
                 }
-                required_features.sort();
+                required_features.sort_unstable();
                 required_features.dedup();
                 match &required_features[..] {
                     [] => {}

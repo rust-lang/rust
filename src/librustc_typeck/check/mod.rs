@@ -4270,7 +4270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Both checked and coerced types could have matched, thus we need to remove
                 // duplicates.
-                referenced_in.sort();
+                referenced_in.sort_unstable();
                 referenced_in.dedup();
 
                 if let (Some(ref_in), None) = (referenced_in.pop(), referenced_in.pop()) {
