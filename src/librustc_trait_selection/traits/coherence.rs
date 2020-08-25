@@ -182,7 +182,7 @@ fn overlap_within_probe(
     }
 
     if !skip_leak_check.is_yes() {
-        if let Err(_) = infcx.leak_check(true, snapshot) {
+        if infcx.leak_check(true, snapshot).is_err() {
             debug!("overlap: leak check failed");
             return None;
         }
