@@ -12,7 +12,7 @@ on:
 jobs:
   publish:
     name: publish
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -41,5 +41,5 @@ jobs:
           git config --global user.name "Github Action"
           rm Cargo.lock
           cargo workspaces rename ra_ap_%n
-          sed -i 's/rust_analyzer/ra_ap_rust_analyzer/g' crates/rust-analyzer/**/*.rs
+          find crates/rust-analyzer -type f -name '*.rs' -exec sed -i 's/rust_analyzer/ra_ap_rust_analyzer/g' {} +
           cargo workspaces publish --yes --force '*' --exact --no-git-commit --allow-dirty --skip-published custom 0.0.$PATCH
