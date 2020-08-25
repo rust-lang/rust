@@ -2,22 +2,33 @@
 
 use std::iter::once;
 
-use hir_def::{db::DefDatabase, resolver::Resolver};
+use hir_def::resolver::Resolver;
 use itertools::Itertools;
 use syntax::ast::Path;
 use url::Url;
 
 use crate::{db::HirDatabase, Adt, AsName, Crate, Hygiene, ItemInNs, ModPath, ModuleDef};
 
-pub fn resolve_doc_link<T: Resolvable + Clone, D: DefDatabase + HirDatabase>(
-    db: &D,
+pub fn resolve_doc_link<T: Resolvable + Clone>(
+    db: &dyn HirDatabase,
     definition: &T,
     link_text: &str,
     link_target: &str,
 ) -> Option<(String, String)> {
-    try_resolve_intra(db, definition, link_text, &link_target).or_else(|| {
-        let definition = definition.clone().try_into_module_def()?;
-        try_resolve_path(db, &definition, &link_target)
+    let resolver = definition.resolver(db)?;
+    let module_def = definition.clone().try_into_module_def();
+    resolve_doc_link_impl(db, &resolver, module_def, link_text, link_target)
+}
+
+fn resolve_doc_link_impl(
+    db: &dyn HirDatabase,
+    resolver: &Resolver,
+    module_def: Option<ModuleDef>,
+    link_text: &str,
+    link_target: &str,
+) -> Option<(String, String)> {
+    try_resolve_intra(db, &resolver, link_text, &link_target).or_else(|| {
+        try_resolve_path(db, &module_def?, &link_target)
             .map(|target| (target, link_text.to_string()))
     })
 }
@@ -25,9 +36,9 @@ pub fn resolve_doc_link<T: Resolvable + Clone, D: DefDatabase + HirDatabase>(
 /// Try to resolve path to local documentation via intra-doc-links (i.e. `super::gateway::Shard`).
 ///
 /// See [RFC1946](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md).
-fn try_resolve_intra<T: Resolvable, D: DefDatabase + HirDatabase>(
-    db: &D,
-    definition: &T,
+fn try_resolve_intra(
+    db: &dyn HirDatabase,
+    resolver: &Resolver,
     link_text: &str,
     link_target: &str,
 ) -> Option<(String, String)> {
@@ -41,10 +52,7 @@ fn try_resolve_intra<T: Resolvable, D: DefDatabase + HirDatabase>(
     let path = Path::parse(doclink.path).ok()?;
     let modpath = ModPath::from_src(path, &Hygiene::new_unhygienic()).unwrap();
 
-    // Resolve it relative to symbol's location (according to the RFC this should consider small scopes)
-    let resolver = definition.resolver(db)?;
-
-    let resolved = resolver.resolve_module_path_in_items(db, &modpath);
+    let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
     let (defid, namespace) = match doclink.namespace {
         // FIXME: .or(resolved.macros)
         None => resolved
@@ -225,6 +233,6 @@ impl Namespace {
 
 /// Sealed trait used solely for the generic bound on [`resolve_doc_link`].
 pub trait Resolvable {
-    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver>;
+    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver>;
     fn try_into_module_def(self) -> Option<ModuleDef>;
 }

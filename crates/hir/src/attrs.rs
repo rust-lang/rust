@@ -1,7 +1,6 @@
 //! Attributes & documentation for hir types.
 use hir_def::{
     attr::Attrs,
-    db::DefDatabase,
     docs::Documentation,
     resolver::{HasResolver, Resolver},
     AdtId, AttrDefId, FunctionId, GenericDefId, ModuleId, StaticId, TraitId, VariantId,
@@ -62,18 +61,20 @@ macro_rules! impl_has_attrs_adt {
 impl_has_attrs_adt![Struct, Union, Enum];
 
 impl Resolvable for ModuleDef {
-    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
+    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
         Some(match self {
-            ModuleDef::Module(m) => ModuleId::from(m.clone()).resolver(db),
-            ModuleDef::Function(f) => FunctionId::from(f.clone()).resolver(db),
-            ModuleDef::Adt(adt) => AdtId::from(adt.clone()).resolver(db),
+            ModuleDef::Module(m) => ModuleId::from(m.clone()).resolver(db.upcast()),
+            ModuleDef::Function(f) => FunctionId::from(f.clone()).resolver(db.upcast()),
+            ModuleDef::Adt(adt) => AdtId::from(adt.clone()).resolver(db.upcast()),
             ModuleDef::EnumVariant(ev) => {
-                GenericDefId::from(GenericDef::from(ev.clone())).resolver(db)
+                GenericDefId::from(GenericDef::from(ev.clone())).resolver(db.upcast())
             }
-            ModuleDef::Const(c) => GenericDefId::from(GenericDef::from(c.clone())).resolver(db),
-            ModuleDef::Static(s) => StaticId::from(s.clone()).resolver(db),
-            ModuleDef::Trait(t) => TraitId::from(t.clone()).resolver(db),
-            ModuleDef::TypeAlias(t) => ModuleId::from(t.module(db)).resolver(db),
+            ModuleDef::Const(c) => {
+                GenericDefId::from(GenericDef::from(c.clone())).resolver(db.upcast())
+            }
+            ModuleDef::Static(s) => StaticId::from(s.clone()).resolver(db.upcast()),
+            ModuleDef::Trait(t) => TraitId::from(t.clone()).resolver(db.upcast()),
+            ModuleDef::TypeAlias(t) => ModuleId::from(t.module(db)).resolver(db.upcast()),
             // FIXME: This should be a resolver relative to `std/core`
             ModuleDef::BuiltinType(_t) => None?,
         })
@@ -85,8 +86,8 @@ impl Resolvable for ModuleDef {
 }
 
 impl Resolvable for TypeParam {
-    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
-        Some(ModuleId::from(self.module(db)).resolver(db))
+    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
+        Some(ModuleId::from(self.module(db)).resolver(db.upcast()))
     }
 
     fn try_into_module_def(self) -> Option<ModuleDef> {
@@ -95,8 +96,8 @@ impl Resolvable for TypeParam {
 }
 
 impl Resolvable for MacroDef {
-    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
-        Some(ModuleId::from(self.module(db)?).resolver(db))
+    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
+        Some(ModuleId::from(self.module(db)?).resolver(db.upcast()))
     }
 
     fn try_into_module_def(self) -> Option<ModuleDef> {
@@ -105,8 +106,8 @@ impl Resolvable for MacroDef {
 }
 
 impl Resolvable for Field {
-    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
-        Some(VariantId::from(self.parent_def(db)).resolver(db))
+    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
+        Some(VariantId::from(self.parent_def(db)).resolver(db.upcast()))
     }
 
     fn try_into_module_def(self) -> Option<ModuleDef> {
@@ -115,8 +116,8 @@ impl Resolvable for Field {
 }
 
 impl Resolvable for ImplDef {
-    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
-        Some(ModuleId::from(self.module(db)).resolver(db))
+    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
+        Some(ModuleId::from(self.module(db)).resolver(db.upcast()))
     }
 
     fn try_into_module_def(self) -> Option<ModuleDef> {
@@ -125,8 +126,8 @@ impl Resolvable for ImplDef {
 }
 
 impl Resolvable for Local {
-    fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
-        Some(ModuleId::from(self.module(db)).resolver(db))
+    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
+        Some(ModuleId::from(self.module(db)).resolver(db.upcast()))
     }
 
     fn try_into_module_def(self) -> Option<ModuleDef> {
