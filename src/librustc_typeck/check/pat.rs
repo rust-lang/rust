@@ -1080,7 +1080,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter(|ident| !used_fields.contains_key(&ident))
             .collect::<Vec<_>>();
 
-        let inexistent_fields_err = if !inexistent_fields.is_empty() && !variant.recovered {
+        let inexistent_fields_err = if !(inexistent_fields.is_empty() || variant.is_recovered()) {
             Some(self.error_inexistent_fields(
                 adt.variant_descr(),
                 &inexistent_fields,
