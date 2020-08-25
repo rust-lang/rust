@@ -19,16 +19,30 @@ const NO_ANN: &dyn Display = &70;
 static STATIC_TUPLE: (AtomicUsize, String) = (ATOMIC, STRING);
 const ONCE_INIT: Once = Once::new();
 
-trait Trait<T>: Copy {
-    type NonCopyType;
+trait Trait<T> {
+    type AssocType;
 
     const ATOMIC: AtomicUsize;
+    const INPUT: T;
+    const ASSOC: Self::AssocType;
+
+    fn function() {
+        let _ = &Self::INPUT;
+        let _ = &Self::ASSOC;
+    }
 }
 
 impl Trait<u32> for u64 {
-    type NonCopyType = u16;
+    type AssocType = AtomicUsize;
 
     const ATOMIC: AtomicUsize = AtomicUsize::new(9);
+    const INPUT: u32 = 10;
+    const ASSOC: Self::AssocType = AtomicUsize::new(11);
+
+    fn function() {
+        let _ = &Self::INPUT;
+        let _ = &Self::ASSOC; //~ ERROR interior mutability
+    }
 }
 
 // This is just a pointer that can be safely dereferended,

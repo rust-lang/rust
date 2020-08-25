@@ -34,60 +34,64 @@ static STATIC_TUPLE: (AtomicUsize, String) = (ATOMIC, STRING);
 #[allow(clippy::declare_interior_mutable_const)]
 const ONCE_INIT: Once = Once::new();
 
-trait Trait<T>: Copy {
-    type NonCopyType;
+struct Wrapper<T>(T);
+
+trait Trait<T: Trait2<AssocType5 = AtomicUsize>> {
+    type AssocType;
+    type AssocType2;
+    type AssocType3;
 
     const ATOMIC: AtomicUsize; //~ ERROR interior mutable
     const INTEGER: u64;
     const STRING: String;
-    const SELF: Self; // (no error)
+    const SELF: Self;
     const INPUT: T;
-    //~^ ERROR interior mutable
-    //~| HELP consider requiring `T` to be `Copy`
-    const ASSOC: Self::NonCopyType;
-    //~^ ERROR interior mutable
-    //~| HELP consider requiring `<Self as Trait<T>>::NonCopyType` to be `Copy`
+    const INPUT_ASSOC: T::AssocType4;
+    const INPUT_ASSOC_2: T::AssocType5; //~ ERROR interior mutable
+    const ASSOC: Self::AssocType;
+    const ASSOC_2: Self::AssocType2;
+    const WRAPPED_ASSOC_2: Wrapper<Self::AssocType2>;
+    const WRAPPED_ASSOC_3: Wrapper<Self::AssocType3>;
 
     const AN_INPUT: T = Self::INPUT;
-    //~^ ERROR interior mutable
-    //~| ERROR consider requiring `T` to be `Copy`
-    declare_const!(ANOTHER_INPUT: T = Self::INPUT); //~ ERROR interior mutable
+    declare_const!(ANOTHER_INPUT: T = Self::INPUT);
+    declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC); //~ ERROR interior mutable
 }
 
 trait Trait2 {
-    type CopyType: Copy;
+    type AssocType4;
+    type AssocType5;
 
     const SELF_2: Self;
-    //~^ ERROR interior mutable
-    //~| HELP consider requiring `Self` to be `Copy`
-    const ASSOC_2: Self::CopyType; // (no error)
+    const ASSOC_4: Self::AssocType4;
 }
 
-// we don't lint impl of traits, because an impl has no power to change the interface.
-impl Trait<u32> for u64 {
-    type NonCopyType = u16;
+impl<T: Trait2<AssocType5 = AtomicUsize>> Trait<T> for u64 {
+    type AssocType = u16;
+    type AssocType2 = AtomicUsize;
+    type AssocType3 = T;
 
     const ATOMIC: AtomicUsize = AtomicUsize::new(9);
     const INTEGER: u64 = 10;
     const STRING: String = String::new();
     const SELF: Self = 11;
-    const INPUT: u32 = 12;
-    const ASSOC: Self::NonCopyType = 13;
+    const INPUT: T = T::SELF_2;
+    const INPUT_ASSOC: T::AssocType4 = T::ASSOC_4;
+    const INPUT_ASSOC_2: T::AssocType5 = AtomicUsize::new(16);
+    const ASSOC: Self::AssocType = 13;
+    const ASSOC_2: Self::AssocType2 = AtomicUsize::new(15); //~ ERROR interior mutable
+    const WRAPPED_ASSOC_2: Wrapper<Self::AssocType2> = Wrapper(AtomicUsize::new(16)); //~ ERROR interior mutable
+    const WRAPPED_ASSOC_3: Wrapper<Self::AssocType3> = Wrapper(T::SELF_2);
 }
 
 struct Local<T, U>(T, U);
 
-impl<T: Trait2 + Trait<u32>, U: Trait2> Local<T, U> {
-    const ASSOC_3: AtomicUsize = AtomicUsize::new(14); //~ ERROR interior mutable
+impl<T: Trait<U>, U: Trait2<AssocType5 = AtomicUsize>> Local<T, U> {
+    const ASSOC_5: AtomicUsize = AtomicUsize::new(14); //~ ERROR interior mutable
     const COW: Cow<'static, str> = Cow::Borrowed("tuvwxy");
-    const T_SELF: T = T::SELF_2;
     const U_SELF: U = U::SELF_2;
-    //~^ ERROR interior mutable
-    //~| HELP consider requiring `U` to be `Copy`
-    const T_ASSOC: T::NonCopyType = T::ASSOC;
-    //~^ ERROR interior mutable
-    //~| HELP consider requiring `<T as Trait<u32>>::NonCopyType` to be `Copy`
-    const U_ASSOC: U::CopyType = U::ASSOC_2;
+    const T_ASSOC: T::AssocType = T::ASSOC;
+    const U_ASSOC: U::AssocType5 = AtomicUsize::new(17); //~ ERROR interior mutable
 }
 
 fn main() {}
