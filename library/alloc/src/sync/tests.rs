@@ -102,6 +102,45 @@ fn try_unwrap() {
 }
 
 #[test]
+fn unwrap_or_drop() {
+    // FIXME: Is doing this kind of loop reasonable? I tested `Arc::try_unwrap(x).ok()`
+    // and it makes this kind of assertion fail in roughly every second run somewhere
+    // between 1000 and 5000 iterations; I feel like doing a single iteration is too
+    // unlikely to catch anything interesting but doing too many is way too slow
+    // for a test that wouldn't ever fail for any reasonable implementation
+
+    for _ in 0..100
+    // ^ increase chances of hitting uncommon race conditions
+    {
+        use std::sync::Arc;
+        let x = Arc::new(3);
+        let y = Arc::clone(&x);
+        let r_thread = std::thread::spawn(|| Arc::try_unwrap(x).ok());
+        let s_thread = std::thread::spawn(|| Arc::try_unwrap(y).ok());
+        let r = r_thread.join().expect("r_thread panicked");
+        let s = s_thread.join().expect("s_thread panicked");
+        assert!(
+            matches!((r, s), (None, Some(3)) | (Some(3), None)),
+            "assertion failed: unexpected result `{:?}`\
+            \n  expected `(None, Some(3))` or `(Some(3), None)`",
+            (r, s),
+        );
+    }
+
+    let x = Arc::new(3);
+    assert_eq!(Arc::unwrap_or_drop(x), Some(3));
+
+    let x = Arc::new(4);
+    let y = Arc::clone(&x);
+    assert_eq!(Arc::unwrap_or_drop(x), None);
+    assert_eq!(Arc::unwrap_or_drop(y), Some(4));
+
+    let x = Arc::new(5);
+    let _w = Arc::downgrade(&x);
+    assert_eq!(Arc::unwrap_or_drop(x), Some(5));
+}
+
+#[test]
 fn into_from_raw() {
     let x = Arc::new(box "hello");
     let y = x.clone();
