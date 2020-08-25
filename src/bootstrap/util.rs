@@ -7,7 +7,7 @@ use std::env;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, ExitStatus};
 use std::str;
 use std::time::Instant;
 
@@ -303,35 +303,60 @@ pub fn use_host_linker(target: TargetSelection) -> bool {
         || target.contains("fuchsia"))
 }
 
+fn check_command_status(cmd_status: io::Result<ExitStatus>, error_msg: &str) {
+    let success = match cmd_status {
+        Ok(s) => s.success(),
+        Err(_) => false,
+    };
+    if !success {
+        panic!("{} unsuccessful (status: {:?})", error_msg, cmd_status);
+    }
+}
+
 pub fn clone_repository(
     repository_url: &str,
     target_dir: &Path,
     specific_commit_hash: Option<&str>,
 ) {
     if target_dir.is_dir() {
-        fs::remove_dir_all(target_dir).expect("failed to remove target folder");
-    }
-    let status =
-        Command::new("git").arg("clone").arg(repository_url).arg(target_dir.as_os_str()).status();
-    let success = match status {
-        Ok(s) => s.success(),
-        Err(_) => false,
-    };
-    if !success {
-        panic!("git clone unsuccessful (status: {:?})", status);
+        // First fetch to have latest remote repository data.
+        check_command_status(
+            Command::new("git")
+                .arg("fetch")
+                .arg("origin")
+                .current_dir(target_dir.to_str().unwrap())
+                .status(),
+            "git fetch",
+        );
+        // In case there is no specific commit hash, we need to get the last version.
+        if specific_commit_hash.is_none() {
+            check_command_status(
+                Command::new("git")
+                    .arg("checkout")
+                    .arg("origin/master")
+                    .current_dir(target_dir.to_str().unwrap())
+                    .status(),
+                "git checkout on origin/master",
+            );
+        }
+    } else {
+        check_command_status(
+            Command::new("git")
+                .arg("clone")
+                .arg(repository_url)
+                .arg(target_dir.as_os_str())
+                .status(),
+            "git clone",
+        );
     }
     if let Some(specific_commit_hash) = specific_commit_hash {
-        let status = Command::new("git")
-            .arg("checkout")
-            .arg(specific_commit_hash)
-            .current_dir(target_dir.to_str().unwrap())
-            .status();
-        let success = match status {
-            Ok(s) => s.success(),
-            Err(_) => false,
-        };
-        if !success {
-            panic!("git checkout unsuccessful (status: {:?})", status);
-        }
+        check_command_status(
+            Command::new("git")
+                .arg("checkout")
+                .arg(specific_commit_hash)
+                .current_dir(target_dir.to_str().unwrap())
+                .status(),
+            "git checkout",
+        );
     }
 }
