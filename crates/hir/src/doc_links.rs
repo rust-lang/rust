@@ -2,12 +2,12 @@
 
 use std::iter::once;
 
+use hir_def::{db::DefDatabase, resolver::Resolver};
 use itertools::Itertools;
+use syntax::ast::Path;
 use url::Url;
 
 use crate::{db::HirDatabase, Adt, AsName, Crate, Hygiene, ItemInNs, ModPath, ModuleDef};
-use hir_def::{db::DefDatabase, resolver::Resolver};
-use syntax::ast::Path;
 
 pub fn resolve_doc_link<T: Resolvable + Clone, D: DefDatabase + HirDatabase>(
     db: &D,
@@ -16,12 +16,9 @@ pub fn resolve_doc_link<T: Resolvable + Clone, D: DefDatabase + HirDatabase>(
     link_target: &str,
 ) -> Option<(String, String)> {
     try_resolve_intra(db, definition, link_text, &link_target).or_else(|| {
-        if let Some(definition) = definition.clone().try_into_module_def() {
-            try_resolve_path(db, &definition, &link_target)
-                .map(|target| (target, link_text.to_string()))
-        } else {
-            None
-        }
+        let definition = definition.clone().try_into_module_def()?;
+        try_resolve_path(db, &definition, &link_target)
+            .map(|target| (target, link_text.to_string()))
     })
 }
 
@@ -57,7 +54,7 @@ fn try_resolve_intra<T: Resolvable, D: DefDatabase + HirDatabase>(
         Some(ns @ Namespace::Types) => (resolved.types?.0, ns),
         Some(ns @ Namespace::Values) => (resolved.values?.0, ns),
         // FIXME:
-        Some(Namespace::Macros) => None?,
+        Some(Namespace::Macros) => return None,
     };
 
     // Get the filepath of the final symbol
