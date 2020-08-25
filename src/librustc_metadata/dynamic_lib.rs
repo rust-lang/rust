@@ -99,10 +99,10 @@ mod dl {
         let s = CString::new(filename.as_bytes()).unwrap();
 
         let mut dlerror = error::lock();
-        let ret = unsafe { libc::dlopen(s.as_ptr(), libc::RTLD_LAZY) } as *mut u8;
+        let ret = unsafe { libc::dlopen(s.as_ptr(), libc::RTLD_LAZY | libc::RTLD_LOCAL) };
 
         if !ret.is_null() {
-            return Ok(ret);
+            return Ok(ret.cast());
         }
 
         // A NULL return from `dlopen` indicates that an error has definitely occurred, so if
@@ -122,10 +122,10 @@ mod dl {
         // error message by accident.
         dlerror.clear();
 
-        let ret = libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8;
+        let ret = libc::dlsym(handle as *mut libc::c_void, symbol);
 
         if !ret.is_null() {
-            return Ok(ret);
+            return Ok(ret.cast());
         }
 
         // If `dlsym` returns NULL but there is nothing in `dlerror` it means one of two things:
