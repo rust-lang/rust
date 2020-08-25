@@ -12,7 +12,7 @@ use crate::cfg_flag::CfgFlag;
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectJson {
-    pub(crate) crates: Vec<Crate>,
+    crates: Vec<Crate>,
 }
 
 /// A crate points to the root module of a crate and lists the dependencies of the crate. This is
@@ -78,6 +78,12 @@ impl ProjectJson {
                 })
                 .collect::<Vec<_>>(),
         }
+    }
+    pub fn n_crates(&self) -> usize {
+        self.crates.len()
+    }
+    pub fn crates(&self) -> impl Iterator<Item = (CrateId, &Crate)> + '_ {
+        self.crates.iter().enumerate().map(|(idx, krate)| (CrateId(idx as u32), krate))
     }
 }
 
