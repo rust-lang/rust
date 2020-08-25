@@ -527,7 +527,7 @@ enum FfiResult<'tcx> {
     FfiUnsafe { ty: Ty<'tcx>, reason: String, help: Option<String> },
 }
 
-crate fn guaranteed_nonnull_optimization<'tcx>(tcx: TyCtxt<'tcx>, def: &ty::AdtDef) -> bool {
+crate fn nonnull_optimization_guaranteed<'tcx>(tcx: TyCtxt<'tcx>, def: &ty::AdtDef) -> bool {
     tcx.get_attrs(def.did)
         .iter()
         .any(|a| tcx.sess.check_name(a, sym::rustc_nonnull_optimization_guaranteed))
@@ -541,7 +541,7 @@ crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: C
         ty::Ref(..) => true,
         ty::Adt(def, _) if def.is_box() && matches!(mode, CItemKind::Definition) => true,
         ty::Adt(def, substs) if def.repr.transparent() && !def.is_union() => {
-            let marked_non_null = guaranteed_nonnull_optimization(tcx, &def);
+            let marked_non_null = nonnull_optimization_guaranteed(tcx, &def);
 
             if marked_non_null {
                 return true;

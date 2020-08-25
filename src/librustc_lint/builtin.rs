@@ -2172,7 +2172,7 @@ impl ClashingExternDeclarations {
                 loop {
                     if let ty::Adt(def, substs) = ty.kind {
                         let is_transparent = def.subst(tcx, substs).repr.transparent();
-                        let is_non_null = crate::types::guaranteed_nonnull_optimization(tcx, &def);
+                        let is_non_null = crate::types::nonnull_optimization_guaranteed(tcx, &def);
                         debug!(
                             "non_transparent_ty({:?}) -- type is transparent? {}, type is non-null? {}",
                             ty, is_transparent, is_non_null
