@@ -65,7 +65,6 @@ fn ${1:feature}() {
     .add_to(acc);
 
     snippet(ctx, cap, "macro_rules", "macro_rules! $1 {\n\t($2) => {\n\t\t$0\n\t};\n}").add_to(acc);
-    snippet(ctx, cap, "pub(crate)", "pub(crate) $0").add_to(acc);
 }
 
 #[cfg(test)]
@@ -107,7 +106,6 @@ mod tests {
 "#,
             expect![[r#"
                 sn macro_rules
-                sn pub(crate)
                 sn tfn (Test function)
                 sn tmod (Test module)
             "#]],

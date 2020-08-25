@@ -129,8 +129,9 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
             add_keyword(ctx, acc, "break", "break");
         }
     }
-    if ctx.has_item_list_or_source_file_parent || ctx.has_impl_parent {
-        add_keyword(ctx, acc, "pub", "pub ")
+    if ctx.has_item_list_or_source_file_parent || ctx.has_impl_parent | ctx.has_field_list_parent {
+        add_keyword(ctx, acc, "pub(crate)", "pub(crate) ");
+        add_keyword(ctx, acc, "pub", "pub ");
     }
 
     if !ctx.is_trivial_path {
@@ -227,6 +228,7 @@ mod tests {
                 kw impl
                 kw mod
                 kw pub
+                kw pub(crate)
                 kw static
                 kw struct
                 kw trait
@@ -364,6 +366,7 @@ fn quux() -> i32 {
                 kw const
                 kw fn
                 kw pub
+                kw pub(crate)
                 kw type
                 kw unsafe
             "#]],
@@ -521,6 +524,22 @@ pub mod future {
                 kw match
                 kw return
                 kw while
+            "#]],
+        )
+    }
+
+    #[test]
+    fn before_field() {
+        check(
+            r#"
+struct Foo {
+    <|>
+    pub f: i32,
+}
+"#,
+            expect![[r#"
+                kw pub
+                kw pub(crate)
             "#]],
         )
     }

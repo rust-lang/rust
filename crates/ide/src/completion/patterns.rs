@@ -34,6 +34,14 @@ pub(crate) fn has_impl_parent(element: SyntaxElement) -> bool {
 fn test_has_impl_parent() {
     check_pattern_is_applicable(r"impl A { f<|> }", has_impl_parent);
 }
+pub(crate) fn has_field_list_parent(element: SyntaxElement) -> bool {
+    not_same_range_ancestor(element).filter(|it| it.kind() == RECORD_FIELD_LIST).is_some()
+}
+#[test]
+fn test_has_field_list_parent() {
+    check_pattern_is_applicable(r"struct Foo { f<|> }", has_field_list_parent);
+    check_pattern_is_applicable(r"struct Foo { f<|> pub f: i32}", has_field_list_parent);
+}
 
 pub(crate) fn has_block_expr_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element).filter(|it| it.kind() == BLOCK_EXPR).is_some()
