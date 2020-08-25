@@ -145,7 +145,7 @@ pub use crate::intrinsics::transmute;
 #[rustc_const_stable(feature = "const_forget", since = "1.46.0")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const fn forget<T>(t: T) {
-    ManuallyDrop::new(t);
+    let _ = ManuallyDrop::new(t);
 }
 
 /// Like [`forget`], but also accepts unsized values.
