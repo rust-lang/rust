@@ -39,11 +39,18 @@ pub enum ProjectWorkspace {
 impl fmt::Debug for ProjectWorkspace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ProjectWorkspace::Cargo { cargo, .. } => {
-                f.debug_struct("Cargo").field("n_packages", &cargo.packages().len()).finish()
-            }
+            ProjectWorkspace::Cargo { cargo, sysroot } => f
+                .debug_struct("Cargo")
+                .field("n_packages", &cargo.packages().len())
+                .field("n_sysroot_crates", &sysroot.crates().len())
+                .finish(),
             ProjectWorkspace::Json { project } => {
-                f.debug_struct("Json").field("n_crates", &project.n_crates()).finish()
+                let mut debug_struct = f.debug_struct("Json");
+                debug_struct.field("n_crates", &project.n_crates());
+                if let Some(sysroot) = &project.sysroot {
+                    debug_struct.field("n_sysroot_crates", &sysroot.crates().len());
+                }
+                debug_struct.finish()
             }
         }
     }
@@ -210,6 +217,13 @@ impl ProjectWorkspace {
                 })
                 .collect::<FxHashSet<_>>()
                 .into_iter()
+                .chain(project.sysroot.as_ref().into_iter().flat_map(|sysroot| {
+                    sysroot.crates().map(move |krate| PackageRoot {
+                        is_member: false,
+                        include: vec![sysroot[krate].root_dir().to_path_buf()],
+                        exclude: Vec::new(),
+                    })
+                }))
                 .collect::<Vec<_>>(),
             ProjectWorkspace::Cargo { cargo, sysroot } => cargo
                 .packages()
@@ -272,6 +286,11 @@ impl ProjectWorkspace {
         let mut crate_graph = CrateGraph::default();
         match self {
             ProjectWorkspace::Json { project } => {
+                let sysroot_dps = project
+                    .sysroot
+                    .as_ref()
+                    .map(|sysroot| sysroot_to_crate_graph(&mut crate_graph, sysroot, target, load));
+
                 let mut cfg_cache: FxHashMap<Option<&str>, Vec<CfgFlag>> = FxHashMap::default();
                 let crates: FxHashMap<_, _> = project
                     .crates()
@@ -309,24 +328,32 @@ impl ProjectWorkspace {
                     .collect();
 
                 for (from, krate) in project.crates() {
-                    for dep in &krate.deps {
-                        let to_crate_id = dep.crate_id;
-                        if let (Some(&from), Some(&to)) =
-                            (crates.get(&from), crates.get(&to_crate_id))
-                        {
-                            if let Err(_) = crate_graph.add_dep(from, dep.name.clone(), to) {
-                                log::error!("cyclic dependency {:?} -> {:?}", from, to_crate_id);
+                    if let Some(&from) = crates.get(&from) {
+                        if let Some((public_deps, _proc_macro)) = &sysroot_dps {
+                            for (name, to) in public_deps.iter() {
+                                if let Err(_) = crate_graph.add_dep(from, name.clone(), *to) {
+                                    log::error!("cyclic dependency on {} for {:?}", name, from)
+                                }
+                            }
+                        }
+
+                        for dep in &krate.deps {
+                            let to_crate_id = dep.crate_id;
+                            if let Some(&to) = crates.get(&to_crate_id) {
+                                if let Err(_) = crate_graph.add_dep(from, dep.name.clone(), to) {
+                                    log::error!("cyclic dependency {:?} -> {:?}", from, to);
+                                }
                             }
                         }
                     }
                 }
             }
             ProjectWorkspace::Cargo { cargo, sysroot } => {
+                let (public_deps, libproc_macro) =
+                    sysroot_to_crate_graph(&mut crate_graph, sysroot, target, load);
+
                 let mut cfg_options = CfgOptions::default();
                 cfg_options.extend(get_rustc_cfg_options(target));
-
-                let (public_deps, libproc_macro) =
-                    sysroot_to_crate_graph(&mut crate_graph, sysroot, &cfg_options, load);
 
                 let mut pkg_to_lib_crate = FxHashMap::default();
                 let mut pkg_crates = FxHashMap::default();
@@ -410,7 +437,11 @@ impl ProjectWorkspace {
                         }
                         for (name, krate) in public_deps.iter() {
                             if let Err(_) = crate_graph.add_dep(from, name.clone(), *krate) {
-                                log::error!("cyclic dependency on core for {}", &cargo[pkg].name)
+                                log::error!(
+                                    "cyclic dependency on {} for {}",
+                                    name,
+                                    &cargo[pkg].name
+                                )
                             }
                         }
                     }
@@ -485,9 +516,11 @@ fn utf8_stdout(mut cmd: Command) -> Result<String> {
 fn sysroot_to_crate_graph(
     crate_graph: &mut CrateGraph,
     sysroot: &Sysroot,
-    cfg_options: &CfgOptions,
+    target: Option<&str>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
 ) -> (Vec<(CrateName, CrateId)>, Option<CrateId>) {
+    let mut cfg_options = CfgOptions::default();
+    cfg_options.extend(get_rustc_cfg_options(target));
     let sysroot_crates: FxHashMap<_, _> = sysroot
         .crates()
         .filter_map(|krate| {
