@@ -331,7 +331,7 @@ pub fn run_core(
 
     // In addition to those specific lints, we also need to allow those given through
     // command line, otherwise they'll get ignored and we don't want that.
-    let allowed_lints = vec![
+    let lints_to_show = vec![
         intra_link_resolution_failure_name.to_owned(),
         missing_docs.to_owned(),
         missing_doc_example.to_owned(),
@@ -340,7 +340,7 @@ pub fn run_core(
         invalid_codeblock_attributes_name.to_owned(),
     ];
 
-    let (lint_opts, lint_caps) = init_lints(allowed_lints, lint_opts, |lint| {
+    let (lint_opts, lint_caps) = init_lints(lints_to_show, lint_opts, |lint| {
         if lint.name == intra_link_resolution_failure_name
             || lint.name == invalid_codeblock_attributes_name
         {
@@ -358,7 +358,7 @@ pub fn run_core(
         search_paths: libs,
         crate_types,
         lint_opts: if !display_warnings { lint_opts } else { vec![] },
-        lint_cap: Some(lint_cap.unwrap_or_else(|| lint::Forbid)),
+        lint_cap,
         cg: codegen_options,
         externs,
         target_triple: target,
