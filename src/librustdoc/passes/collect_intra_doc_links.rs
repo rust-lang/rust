@@ -156,15 +156,35 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope(
                 variant_name.to_string().into(),
             )))?;
-        let (_, ty_res) = cx
+        let ty_res = cx
             .enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path, TypeNS, module_id)
             })
-            .map_err(|_| {
-                ErrorKind::Resolve(ResolutionFailure::NotInScope(path.to_string().into()))
-            })?;
+            .map(|(_, res)| res)
+            .unwrap_or(Res::Err);
+        // This code only gets hit if three path segments in a row don't get resolved.
+        // It's a good time to check if _any_ parent of the path gets resolved.
+        // If so, report it and say the first which failed; if not, say the first path segment didn't resolve.
         if let Res::Err = ty_res {
-            return Err(ErrorKind::Resolve(ResolutionFailure::NotInScope(path.to_string().into())));
+            let mut current = path.as_str();
+            while let Some(parent) = current.rsplitn(2, "::").nth(1) {
+                current = parent;
+                if let Some(res) = self.check_full_res(
+                    TypeNS,
+                    &current,
+                    Some(module_id),
+                    current_item,
+                    extra_fragment,
+                ) {
+                    return Err(ErrorKind::Resolve(ResolutionFailure::NoAssocItem(
+                        res,
+                        Symbol::intern(&path),
+                    )));
+                }
+            }
+            return Err(ErrorKind::Resolve(ResolutionFailure::NotInScope(
+                current.to_string().into(),
+            )));
         }
         let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
         match ty_res {

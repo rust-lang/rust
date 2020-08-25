@@ -9,7 +9,7 @@ note: the lint level is defined here
    |
 LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
-   = note: no item named `path::to` is in scope
+   = note: no item named `path` is in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: unresolved link to `std::io::not::here`
@@ -80,15 +80,19 @@ error: unresolved link to `S`
   --> $DIR/intra-link-errors.rs:45:6
    |
 LL | /// [S!]
-   |      ^^ help: to link to the struct, use its disambiguator: `struct@S`
+   |      ^^
    |
    = note: this link resolves to the struct `S`, which is not in the macro namespace
+help: to link to the struct, prefix with the item kind
+   |
+LL | /// [struct@S]
+   |      ^^^^^^^^
 
 error: unresolved link to `T::g`
   --> $DIR/intra-link-errors.rs:63:6
    |
 LL | /// [type@T::g]
-   |      ^^^^^^^^^ help: to link to the associated function, use its disambiguator: `T::g()`
+   |      ^^^^^^^^^ help: to link to the associated function, add parentheses: `T::g()`
    |
    = note: this link resolves to the associated function `g`, which is not in the type namespace
 
@@ -105,7 +109,7 @@ error: unresolved link to `S::h`
   --> $DIR/intra-link-errors.rs:55:6
    |
 LL | /// [type@S::h]
-   |      ^^^^^^^^^ help: to link to the associated function, use its disambiguator: `S::h()`
+   |      ^^^^^^^^^ help: to link to the associated function, add parentheses: `S::h()`
    |
    = note: this link resolves to the associated function `h`, which is not in the type namespace
 
@@ -113,7 +117,7 @@ error: unresolved link to `m`
   --> $DIR/intra-link-errors.rs:76:6
    |
 LL | /// [m()]
-   |      ^^^ help: to link to the macro, use its disambiguator: `m!`
+   |      ^^^ help: to link to the macro, add an exclamation mark: `m!`
    |
    = note: this link resolves to the macro `m`, which is not in the value namespace
 

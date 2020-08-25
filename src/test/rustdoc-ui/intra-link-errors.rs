@@ -4,10 +4,9 @@
 // FIXME: this should say that it was skipped (maybe an allowed by default lint?)
 /// [<invalid syntax>]
 
-// FIXME: this could say which path was the first to not be found (in this case, `path`)
 /// [path::to::nonexistent::module]
 //~^ ERROR unresolved link
-//~| NOTE no item named `path::to` is in scope
+//~| NOTE no item named `path` is in scope
 //~| HELP to escape
 
 /// [std::io::not::here]
@@ -44,7 +43,7 @@
 
 /// [S!]
 //~^ ERROR unresolved link
-//~| HELP to link to the struct, use its disambiguator
+//~| HELP to link to the struct, prefix with the item kind
 //~| NOTE this link resolves to the struct `S`
 pub fn f() {}
 #[derive(Debug)]
