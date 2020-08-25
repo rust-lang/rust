@@ -808,7 +808,17 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`crate::any::TypeId::of`].
     #[rustc_const_stable(feature = "const_type_id", since = "1.46.0")]
+    #[cfg(bootstrap)]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
+
+    /// Gets an identifier which is globally unique to the specified type. This
+    /// function will return the same value for a type regardless of whichever
+    /// crate it is invoked in.
+    ///
+    /// The stabilized version of this intrinsic is [`crate::any::TypeId::of`].
+    #[rustc_const_stable(feature = "const_type_id", since = "1.46.0")]
+    #[cfg(not(bootstrap))]
+    pub fn type_id<T: ?Sized + 'static>() -> u128;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
     /// This will statically either panic, or do nothing.

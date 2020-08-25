@@ -154,7 +154,7 @@ pub enum Representability {
 impl<'tcx> TyCtxt<'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
-    pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
+    pub fn type_id_hash(self, ty: Ty<'tcx>) -> u128 {
         let mut hasher = StableHasher::new();
         let mut hcx = self.create_stable_hashing_context();
 

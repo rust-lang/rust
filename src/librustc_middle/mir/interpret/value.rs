@@ -95,8 +95,8 @@ impl<'tcx> ConstValue<'tcx> {
         ConstValue::Scalar(Scalar::from_bool(b))
     }
 
-    pub fn from_u64(i: u64) -> Self {
-        ConstValue::Scalar(Scalar::from_u64(i))
+    pub fn from_u128(i: u128) -> Self {
+        ConstValue::Scalar(Scalar::from_u128(i))
     }
 
     pub fn from_machine_usize(i: u64, cx: &impl HasDataLayout) -> Self {
@@ -322,6 +322,11 @@ impl<'tcx, Tag> Scalar<Tag> {
     pub fn from_u64(i: u64) -> Self {
         // Guaranteed to be truncated and does not need sign extension.
         Scalar::Raw { data: i.into(), size: 8 }
+    }
+
+    #[inline]
+    pub fn from_u128(i: u128) -> Self {
+        Scalar::Raw { data: i, size: 16 }
     }
 
     #[inline]

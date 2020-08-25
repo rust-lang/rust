@@ -73,7 +73,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
         }
         sym::type_id => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_u64(tcx.type_id_hash(tp_ty))
+            ConstValue::from_u128(tcx.type_id_hash(tp_ty))
         }
         sym::variant_count => {
             if let ty::Adt(ref adt, _) = tp_ty.kind {
@@ -146,7 +146,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         self.tcx.types.usize
                     }
                     sym::needs_drop => self.tcx.types.bool,
-                    sym::type_id => self.tcx.types.u64,
+                    sym::type_id => self.tcx.types.u128,
                     sym::type_name => self.tcx.mk_static_str(),
                     _ => bug!("already checked for nullary intrinsics"),
                 };

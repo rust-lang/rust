@@ -415,7 +415,10 @@ impl dyn Any + Send + Sync {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
+    #[cfg(bootstrap)]
     t: u64,
+    #[cfg(not(bootstrap))]
+    t: u128,
 }
 
 impl TypeId {

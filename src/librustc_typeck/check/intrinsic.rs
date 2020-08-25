@@ -194,7 +194,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::needs_drop => (1, Vec::new(), tcx.types.bool),
 
             sym::type_name => (1, Vec::new(), tcx.mk_static_str()),
-            sym::type_id => (1, Vec::new(), tcx.types.u64),
+            sym::type_id => (1, Vec::new(), tcx.types.u128),
             sym::offset | sym::arith_offset => (
                 1,
                 vec![
