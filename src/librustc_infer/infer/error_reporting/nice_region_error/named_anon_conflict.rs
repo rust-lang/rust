@@ -85,7 +85,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
                 debug!("try_report_named_anon_conflict: ret ty {:?}", ty);
                 if sub == &ty::ReStatic
-                    && v.0.into_iter().find(|t| t.span.desugaring_kind().is_none()).is_some()
+                    && v.0.into_iter().any(|t| t.span.desugaring_kind().is_none())
                 {
                     // If the failure is due to a `'static` requirement coming from a `dyn` or
                     // `impl` Trait that *isn't* caused by `async fn` desugaring, handle this case
