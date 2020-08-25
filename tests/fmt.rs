@@ -7,7 +7,7 @@ fn fmt() {
         return;
     }
 
-    // Skip this test if rustup nightly is unavailable
+    // Skip this test if rustfmt nightly is unavailable
     let rustup_output = Command::new("rustup")
         .args(&["component", "list", "--toolchain", "nightly"])
         .output()
