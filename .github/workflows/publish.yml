@@ -41,4 +41,5 @@ jobs:
           git config --global user.name "Github Action"
           rm Cargo.lock
           cargo workspaces rename ra_ap_%n
+          sed -i 's/rust_analyzer/ra_ap_rust_analyzer/g' crates/rust-analyzer/**/*.rs
           cargo workspaces publish --yes --force '*' --exact --no-git-commit --allow-dirty --skip-published custom 0.0.$PATCH
