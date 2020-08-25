@@ -87,7 +87,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                 }
             }
             // Take ownership of items now that we know we can optimize.
-            let discr = discr.clone();
+            let discr = *discr;
 
             // We already checked that first and second are different blocks,
             // and bb_idx has a different terminator from both of them.
@@ -117,7 +117,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                                 rustc_span::DUMMY_SP,
                             );
                             let op = if f_b { BinOp::Eq } else { BinOp::Ne };
-                            let rhs = Rvalue::BinaryOp(op, Operand::Copy(discr.clone()), const_cmp);
+                            let rhs = Rvalue::BinaryOp(op, Operand::Copy(discr), const_cmp);
                             Statement {
                                 source_info: f.source_info,
                                 kind: StatementKind::Assign(box (*lhs, rhs)),
