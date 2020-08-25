@@ -662,6 +662,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "misc",
     },
     Lint {
+        name: "float_equality_without_abs",
+        group: "correctness",
+        desc: "float equality check without `.abs()`",
+        deprecation: None,
+        module: "float_equality_without_abs",
+    },
+    Lint {
         name: "fn_address_comparisons",
         group: "correctness",
         desc: "comparison with an address of a function item",
