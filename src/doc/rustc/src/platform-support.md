@@ -118,7 +118,7 @@ target | std | host | notes
 `thumbv7neon-unknown-linux-gnueabihf` | ✓ |  | Thumb2-mode ARMv7a Linux with NEON (kernel 4.4, glibc 2.23)
 `thumbv8m.base-none-eabi` | * |  | ARMv8-M Baseline
 `thumbv8m.main-none-eabi` | * |  | ARMv8-M Mainline
-`thumbv8m.main-none-eabihf` | * |  | ARMv8-M Baseline, hardfloat
+`thumbv8m.main-none-eabihf` | * |  | ARMv8-M Mainline, hardfloat
 `wasm32-unknown-emscripten` | ✓ |  | WebAssembly via Emscripten
 `wasm32-unknown-unknown` | ✓ |  | WebAssembly
 `wasm32-wasi` | ✓ |  | WebAssembly with WASI
