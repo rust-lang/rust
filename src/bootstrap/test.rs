@@ -776,7 +776,13 @@ impl Step for RustdocGUI {
                 .arg("failures")
                 .arg("--variable")
                 .arg("DOC_PATH")
-                .arg("test-docs/doc/test_docs")
+                .arg(
+                    builder
+                        .out
+                        .canonicalize()
+                        .unwrap()
+                        .join("test-rust-docs-ui/test-docs/doc/test_docs"),
+                )
                 .arg("--show-text")
                 .arg("--generate-images")
                 .current_dir(builder.out.join("test-rust-docs-ui"));
