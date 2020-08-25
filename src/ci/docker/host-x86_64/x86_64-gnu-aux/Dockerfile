@@ -25,7 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   fonts-thai-tlwg \
   fonts-kacst \
   fonts-freefont-ttf \
-  libxss1
+  libxss1 \
+  libxtst6
 
 RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
 RUN apt install -y nodejs
