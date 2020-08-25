@@ -71,18 +71,15 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
-        fn inner(path: &Path) -> io::Result<UnixListener> {
-            unsafe {
-                let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
-                let (addr, len) = sockaddr_un(path)?;
+        unsafe {
+            let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
+            let (addr, len) = sockaddr_un(path.as_ref())?;
 
-                cvt(libc::bind(*inner.as_inner(), &addr as *const _ as *const _, len as _))?;
-                cvt(libc::listen(*inner.as_inner(), 128))?;
+            cvt(libc::bind(*inner.as_inner(), &addr as *const _ as *const _, len as _))?;
+            cvt(libc::listen(*inner.as_inner(), 128))?;
 
-                Ok(UnixListener(inner))
-            }
+            Ok(UnixListener(inner))
         }
-        inner(path.as_ref())
     }
 
     /// Accepts a new incoming connection to this listener.

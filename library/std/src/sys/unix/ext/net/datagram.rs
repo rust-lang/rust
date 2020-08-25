@@ -85,17 +85,14 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixDatagram> {
-        fn inner(path: &Path) -> io::Result<UnixDatagram> {
-            unsafe {
-                let socket = UnixDatagram::unbound()?;
-                let (addr, len) = sockaddr_un(path)?;
+        unsafe {
+            let socket = UnixDatagram::unbound()?;
+            let (addr, len) = sockaddr_un(path.as_ref())?;
 
-                cvt(libc::bind(*socket.0.as_inner(), &addr as *const _ as *const _, len as _))?;
+            cvt(libc::bind(*socket.0.as_inner(), &addr as *const _ as *const _, len as _))?;
 
-                Ok(socket)
-            }
+            Ok(socket)
         }
-        inner(path.as_ref())
     }
 
     /// Creates a Unix Datagram socket which is not bound to any address.
@@ -170,16 +167,12 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        fn inner(d: &UnixDatagram, path: &Path) -> io::Result<()> {
-            unsafe {
-                let (addr, len) = sockaddr_un(path)?;
+        unsafe {
+            let (addr, len) = sockaddr_un(path.as_ref())?;
 
-                cvt(libc::connect(*d.0.as_inner(), &addr as *const _ as *const _, len))?;
-
-                Ok(())
-            }
+            cvt(libc::connect(*self.0.as_inner(), &addr as *const _ as *const _, len))?;
         }
-        inner(self, path.as_ref())
+        Ok(())
     }
 
     /// Creates a new independently owned handle to the underlying socket.
@@ -430,22 +423,19 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn send_to<P: AsRef<Path>>(&self, buf: &[u8], path: P) -> io::Result<usize> {
-        fn inner(d: &UnixDatagram, buf: &[u8], path: &Path) -> io::Result<usize> {
-            unsafe {
-                let (addr, len) = sockaddr_un(path)?;
+        unsafe {
+            let (addr, len) = sockaddr_un(path.as_ref())?;
 
-                let count = cvt(libc::sendto(
-                    *d.0.as_inner(),
-                    buf.as_ptr() as *const _,
-                    buf.len(),
-                    MSG_NOSIGNAL,
-                    &addr as *const _ as *const _,
-                    len,
-                ))?;
-                Ok(count as usize)
-            }
+            let count = cvt(libc::sendto(
+                *self.0.as_inner(),
+                buf.as_ptr() as *const _,
+                buf.len(),
+                MSG_NOSIGNAL,
+                &addr as *const _ as *const _,
+                len,
+            ))?;
+            Ok(count as usize)
         }
-        inner(self, buf, path.as_ref())
     }
 
     /// Sends data on the socket to the socket's peer.
