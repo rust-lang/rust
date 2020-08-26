@@ -6428,7 +6428,7 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 /// ```
 ///
 /// [valid]: ../../std/ptr/index.html#safety
-/// [`NonNull::dangling()`]: ../../std/ptr/struct.NonNull.html#method.dangling
+/// [`NonNull::dangling()`]: crate::ptr::NonNull::dangling
 /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -6468,7 +6468,7 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 ///   See the safety documentation of [`pointer::offset`].
 ///
 /// [valid]: ../../std/ptr/index.html#safety
-/// [`NonNull::dangling()`]: ../../std/ptr/struct.NonNull.html#method.dangling
+/// [`NonNull::dangling()`]: crate::ptr::NonNull::dangling
 /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
