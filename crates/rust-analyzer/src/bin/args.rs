@@ -3,7 +3,7 @@
 //! If run started args, we run the LSP server loop. With a subcommand, we do a
 //! one-time batch processing.
 
-use std::{env, fmt::Write, path::PathBuf};
+use std::{env, path::PathBuf};
 
 use anyhow::{bail, format_err, Result};
 use pico_args::Arguments;
@@ -108,7 +108,7 @@ impl Args {
         let mut matches = Arguments::from_env();
 
         if matches.contains("--version") {
-            matches.finish().or_else(handle_extra_flags)?;
+            matches.finish()?;
             return Ok(Args {
                 verbosity: Verbosity::Normal,
                 log_file: None,
@@ -138,7 +138,7 @@ impl Args {
         let subcommand = match matches.subcommand()? {
             Some(it) => it,
             None => {
-                matches.finish().or_else(handle_extra_flags)?;
+                matches.finish()?;
                 return Ok(Args { verbosity, log_file, command: Command::RunServer });
             }
         };
@@ -217,20 +217,7 @@ impl Args {
                 return Ok(Args { verbosity, log_file: None, command: Command::Help });
             }
         };
-        matches.finish().or_else(handle_extra_flags)?;
+        matches.finish()?;
         Ok(Args { verbosity, log_file, command })
-    }
-}
-
-fn handle_extra_flags(e: pico_args::Error) -> Result<()> {
-    if let pico_args::Error::UnusedArgsLeft(flags) = e {
-        let mut invalid_flags = String::new();
-        for flag in flags {
-            write!(&mut invalid_flags, "{}, ", flag)?;
-        }
-        let (invalid_flags, _) = invalid_flags.split_at(invalid_flags.len() - 2);
-        bail!("Invalid flags: {}", invalid_flags);
-    } else {
-        bail!(e);
     }
 }
