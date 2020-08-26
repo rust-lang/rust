@@ -1,6 +1,8 @@
 // run-pass
-#![feature(const_generics)]
-#![allow(incomplete_features)]
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 trait SliceExt<T: Clone> {
     fn array_windows<'a, const N: usize>(&'a self) -> ArrayWindows<'a, T, N>;

@@ -1,5 +1,7 @@
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 struct Test;
 
@@ -13,7 +15,8 @@ impl Test {
     }
 
     fn test<const FN: fn() -> u8>(&self) -> u8 {
-        //~^ ERROR using function pointers as const generic parameters is forbidden
+        //[full]~^ ERROR using function pointers as const generic parameters is forbidden
+        //[min]~^^ ERROR using function pointers as const generic parameters is forbidden
         FN()
     }
 }

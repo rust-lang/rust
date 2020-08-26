@@ -1,0 +1,8 @@
+error: using raw pointers as const generic parameters is forbidden
+  --> $DIR/issue-73508.rs:6:33
+   |
+LL | pub const fn func_name<const X: *const u32>() {}
+   |                                 ^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,6 +1,10 @@
-#![feature(const_generics)] //~ WARN the feature `const_generics` is incomplete
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 pub const fn func_name<const X: *const u32>() {}
-//~^ ERROR using raw pointers
+//[full]~^ ERROR using raw pointers
+//[min]~^^ ERROR using raw pointers as const generic parameters is forbidden
 
 fn main() {}

@@ -1,5 +1,7 @@
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 struct R;
 
@@ -8,5 +10,6 @@ impl R {
 }
 fn main() {
     assert_eq!(R.method::<1u16>(), 1);
-    //~^ ERROR mismatched types
+    //[full]~^ ERROR mismatched types
+    //[min]~^^ ERROR mismatched types
 }
