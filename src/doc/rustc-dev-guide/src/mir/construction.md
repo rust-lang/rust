@@ -13,7 +13,7 @@ list of items:
 
 The lowering is triggered by calling the [`mir_built`] query.
 There is an intermediate representation
-between [HIR] and [MIR] called the [THIR] that is only used during the lowering.
+between [HIR] and [MIR] called the [THIR] that is only used during lowering.
 [THIR] means "Typed HIR" and used to be called "HAIR (High-level Abstract IR)".
 The [THIR]'s most important feature is that the various adjustments (which happen
 without explicit syntax) like coercions, autoderef, autoref and overloaded method
@@ -30,8 +30,8 @@ without having to create an in-memory copy of the entire [HIR].
 the [THIR] expressions recursively.
 
 The lowering creates local variables for every argument as specified in the signature.
-Next it creates local variables for every binding specified (e.g. `(a, b): (i32, String)`)
-produces 3 bindings, one for the argument, and two for the bindings. Next it generates
+Next, it creates local variables for every binding specified (e.g. `(a, b): (i32, String)`)
+produces 3 bindings, one for the argument, and two for the bindings. Next, it generates
 field accesses that read the fields from the argument and writes the value to the binding
 variable.
 
