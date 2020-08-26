@@ -74,8 +74,12 @@ impl<T> ManuallyDrop<T> {
     ///
     /// ```rust
     /// use std::mem::ManuallyDrop;
-    /// ManuallyDrop::new(Box::new(()));
+    /// let mut x = ManuallyDrop::new(String::from("Hello World!"));
+    /// x.truncate(5); // You can still safely operate on the value
+    /// assert_eq!(*x, "Hello");
+    /// // But `Drop` will not be run here
     /// ```
+    #[must_use = "if you don't need the wrapper, you can use `mem::forget` instead"]
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[rustc_const_stable(feature = "const_manually_drop", since = "1.36.0")]
     #[inline(always)]

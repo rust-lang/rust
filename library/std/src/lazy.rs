@@ -293,7 +293,7 @@ impl<T> SyncOnceCell<T> {
 
         // Don't drop this `SyncOnceCell`. We just moved out one of the fields, but didn't set
         // the state to uninitialized.
-        mem::ManuallyDrop::new(self);
+        mem::forget(self);
         inner
     }
 
