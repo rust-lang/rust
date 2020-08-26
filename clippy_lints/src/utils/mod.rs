@@ -574,7 +574,7 @@ pub fn snippet_block<'a, T: LintContext>(
 }
 
 /// Same as `snippet_block`, but adapts the applicability level by the rules of
-/// `snippet_with_applicabiliy`.
+/// `snippet_with_applicability`.
 pub fn snippet_block_with_applicability<'a, T: LintContext>(
     cx: &T,
     span: Span,
@@ -1304,7 +1304,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-// check if expr is calling method or function with #[must_use] attribyte
+// check if expr is calling method or function with #[must_use] attribute
 pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let did = match expr.kind {
         ExprKind::Call(ref path, _) => if_chain! {
