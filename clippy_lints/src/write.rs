@@ -297,13 +297,14 @@ impl EarlyLintPass for Write {
             if let (Some(fmt_str), expr) = self.check_tts(cx, mac.args.inner_tokens(), true) {
                 if fmt_str.symbol == Symbol::intern("") {
                     let mut applicability = Applicability::MachineApplicable;
-                    let suggestion = expr.map_or_else(
-                        || {
-                            applicability = Applicability::HasPlaceholders;
-                            Cow::Borrowed("v")
-                        },
-                        |e| snippet_with_applicability(cx, e.span, "v", &mut Applicability::MachineApplicable),
-                    );
+                    // FIXME: remove this `#[allow(...)]` once the issue #5822 gets fixed
+                    #[allow(clippy::option_if_let_else)]
+                    let suggestion = if let Some(e) = expr {
+                        snippet_with_applicability(cx, e.span, "v", &mut applicability)
+                    } else {
+                        applicability = Applicability::HasPlaceholders;
+                        Cow::Borrowed("v")
+                    };
 
                     span_lint_and_sugg(
                         cx,
