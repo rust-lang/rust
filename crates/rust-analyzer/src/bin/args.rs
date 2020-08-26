@@ -5,7 +5,7 @@
 
 use std::{env, fmt::Write, path::PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, format_err, Result};
 use pico_args::Arguments;
 use rust_analyzer::cli::{AnalysisStatsCmd, BenchCmd, BenchWhat, Position, Verbosity};
 use ssr::{SsrPattern, SsrRule};
@@ -96,8 +96,6 @@ diagnostics <PATH>
 
 ssr [RULE...]
     <RULE>            A structured search replace rule (`$a.foo($b) ==> bar($a, $b)`)
-    --debug <snippet> Prints debug information for any nodes with source exactly
-                      equal to <snippet>
 
 search [PATTERN..]
     <PATTERN>         A structured search replace pattern (`$a.foo($b)`)
@@ -145,116 +143,81 @@ impl Args {
             }
         };
         let command = match subcommand.as_str() {
-            "parse" => {
-                let no_dump = matches.contains("--no-dump");
-                matches.finish().or_else(handle_extra_flags)?;
-                Command::Parse { no_dump }
-            }
-            "symbols" => {
-                matches.finish().or_else(handle_extra_flags)?;
-                Command::Symbols
-            }
-            "highlight" => {
-                let rainbow = matches.contains("--rainbow");
-                matches.finish().or_else(handle_extra_flags)?;
-                Command::Highlight { rainbow }
-            }
-            "analysis-stats" => {
-                let randomize = matches.contains("--randomize");
-                let parallel = matches.contains("--parallel");
-                let memory_usage = matches.contains("--memory-usage");
-                let only: Option<String> = matches.opt_value_from_str(["-o", "--only"])?;
-                let with_deps: bool = matches.contains("--with-deps");
-                let load_output_dirs = matches.contains("--load-output-dirs");
-                let with_proc_macro = matches.contains("--with-proc-macro");
-                let path = {
-                    let mut trailing = matches.free()?;
-                    if trailing.len() != 1 {
-                        bail!("Invalid flags");
-                    }
-                    trailing.pop().unwrap().into()
-                };
-
-                Command::AnalysisStats(AnalysisStatsCmd {
-                    randomize,
-                    parallel,
-                    memory_usage,
-                    only,
-                    with_deps,
-                    path,
-                    load_output_dirs,
-                    with_proc_macro,
-                })
-            }
-            "analysis-bench" => {
-                let highlight_path: Option<String> = matches.opt_value_from_str("--highlight")?;
-                let complete_path: Option<Position> = matches.opt_value_from_str("--complete")?;
-                let goto_def_path: Option<Position> = matches.opt_value_from_str("--goto-def")?;
-                let what = match (highlight_path, complete_path, goto_def_path) {
-                    (Some(path), None, None) => {
-                        let path = env::current_dir().unwrap().join(path);
-                        BenchWhat::Highlight { path: AbsPathBuf::assert(path) }
-                    }
-                    (None, Some(position), None) => BenchWhat::Complete(position),
-                    (None, None, Some(position)) => BenchWhat::GotoDef(position),
-                    _ => panic!(
-                        "exactly one of  `--highlight`, `--complete` or `--goto-def` must be set"
-                    ),
-                };
-                let memory_usage = matches.contains("--memory-usage");
-                let load_output_dirs = matches.contains("--load-output-dirs");
-                let with_proc_macro = matches.contains("--with-proc-macro");
-
-                let path = {
-                    let mut trailing = matches.free()?;
-                    if trailing.len() != 1 {
-                        bail!("Invalid flags");
-                    }
-                    trailing.pop().unwrap().into()
-                };
-
-                Command::Bench(BenchCmd {
-                    memory_usage,
-                    path,
-                    what,
-                    load_output_dirs,
-                    with_proc_macro,
-                })
-            }
-            "diagnostics" => {
-                let load_output_dirs = matches.contains("--load-output-dirs");
-                let with_proc_macro = matches.contains("--with-proc-macro");
-                let path = {
-                    let mut trailing = matches.free()?;
-                    if trailing.len() != 1 {
-                        bail!("Invalid flags");
-                    }
-                    trailing.pop().unwrap().into()
-                };
-
-                Command::Diagnostics { path, load_output_dirs, with_proc_macro }
-            }
+            "parse" => Command::Parse { no_dump: matches.contains("--no-dump") },
+            "symbols" => Command::Symbols,
+            "highlight" => Command::Highlight { rainbow: matches.contains("--rainbow") },
+            "analysis-stats" => Command::AnalysisStats(AnalysisStatsCmd {
+                randomize: matches.contains("--randomize"),
+                parallel: matches.contains("--parallel"),
+                memory_usage: matches.contains("--memory-usage"),
+                only: matches.opt_value_from_str(["-o", "--only"])?,
+                with_deps: matches.contains("--with-deps"),
+                load_output_dirs: matches.contains("--load-output-dirs"),
+                with_proc_macro: matches.contains("--with-proc-macro"),
+                path: matches
+                    .free_from_str()?
+                    .ok_or_else(|| format_err!("expected positional argument"))?,
+            }),
+            "analysis-bench" => Command::Bench(BenchCmd {
+                what: {
+                    let highlight_path: Option<String> =
+                        matches.opt_value_from_str("--highlight")?;
+                    let complete_path: Option<Position> =
+                        matches.opt_value_from_str("--complete")?;
+                    let goto_def_path: Option<Position> =
+                        matches.opt_value_from_str("--goto-def")?;
+                    match (highlight_path, complete_path, goto_def_path) {
+                            (Some(path), None, None) => {
+                                let path = env::current_dir().unwrap().join(path);
+                                BenchWhat::Highlight { path: AbsPathBuf::assert(path) }
+                            }
+                            (None, Some(position), None) => BenchWhat::Complete(position),
+                            (None, None, Some(position)) => BenchWhat::GotoDef(position),
+                            _ => panic!(
+                                "exactly one of  `--highlight`, `--complete` or `--goto-def` must be set"
+                            ),
+                        }
+                },
+                memory_usage: matches.contains("--memory-usage"),
+                load_output_dirs: matches.contains("--load-output-dirs"),
+                with_proc_macro: matches.contains("--with-proc-macro"),
+                path: matches
+                    .free_from_str()?
+                    .ok_or_else(|| format_err!("expected positional argument"))?,
+            }),
+            "diagnostics" => Command::Diagnostics {
+                load_output_dirs: matches.contains("--load-output-dirs"),
+                with_proc_macro: matches.contains("--with-proc-macro"),
+                path: matches
+                    .free_from_str()?
+                    .ok_or_else(|| format_err!("expected positional argument"))?,
+            },
             "proc-macro" => Command::ProcMacro,
-            "ssr" => {
-                let mut rules = Vec::new();
-                while let Some(rule) = matches.free_from_str()? {
-                    rules.push(rule);
-                }
-                Command::Ssr { rules }
-            }
-            "search" => {
-                let debug_snippet = matches.opt_value_from_str("--debug")?;
-                let mut patterns = Vec::new();
-                while let Some(rule) = matches.free_from_str()? {
-                    patterns.push(rule);
-                }
-                Command::StructuredSearch { patterns, debug_snippet }
-            }
+            "ssr" => Command::Ssr {
+                rules: {
+                    let mut acc = Vec::new();
+                    while let Some(rule) = matches.free_from_str()? {
+                        acc.push(rule);
+                    }
+                    acc
+                },
+            },
+            "search" => Command::StructuredSearch {
+                debug_snippet: matches.opt_value_from_str("--debug")?,
+                patterns: {
+                    let mut acc = Vec::new();
+                    while let Some(rule) = matches.free_from_str()? {
+                        acc.push(rule);
+                    }
+                    acc
+                },
+            },
             _ => {
                 eprintln!("{}", HELP);
                 return Ok(Args { verbosity, log_file: None, command: Command::Help });
             }
         };
+        matches.finish().or_else(handle_extra_flags)?;
         Ok(Args { verbosity, log_file, command })
     }
 }
