@@ -2174,8 +2174,10 @@ impl<T> InPlaceDrop<T> {
 impl<T> Drop for InPlaceDrop<T> {
     #[inline]
     fn drop(&mut self) {
-        unsafe {
-            ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()));
+        if mem::needs_drop::<T>() {
+            unsafe {
+                ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()));
+            }
         }
     }
 }
@@ -2206,26 +2208,14 @@ impl<T> SpecFrom<T, IntoIter<T>> for Vec<T> {
     }
 }
 
-fn write_in_place<T>(src_end: *const T) -> impl FnMut(*mut T, T) -> Result<*mut T, !> {
-    move |mut dst, item| {
-        unsafe {
-            // the InPlaceIterable contract cannot be verified precisely here since
-            // try_fold has an exclusive reference to the source pointer
-            // all we can do is check if it's still in range
-            debug_assert!(dst as *const _ <= src_end, "InPlaceIterable contract violation");
-            ptr::write(dst, item);
-            dst = dst.add(1);
-        }
-        Ok(dst)
-    }
-}
-
 fn write_in_place_with_drop<T>(
     src_end: *const T,
 ) -> impl FnMut(InPlaceDrop<T>, T) -> Result<InPlaceDrop<T>, !> {
     move |mut sink, item| {
         unsafe {
-            // same caveat as above
+            // the InPlaceIterable contract cannot be verified precisely here since
+            // try_fold has an exclusive reference to the source pointer
+            // all we can do is check if it's still in range
             debug_assert!(sink.dst as *const _ <= src_end, "InPlaceIterable contract violation");
             ptr::write(sink.dst, item);
             sink.dst = sink.dst.add(1);
@@ -2263,23 +2253,16 @@ where
             (inner.buf.as_ptr(), inner.buf.as_ptr() as *mut T, inner.end as *const T, inner.cap)
         };
 
-        // use try-fold
+        // use try-fold since
         // - it vectorizes better for some iterator adapters
         // - unlike most internal iteration methods methods it only takes a &mut self
-        // - lets us thread the write pointer through its innards and get it back in the end
-        let dst = if mem::needs_drop::<T>() {
-            // special-case drop handling since it forces us to lug that extra field around which
-            // can inhibit optimizations
-            let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
-            let sink = iterator
-                .try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(dst_end))
-                .unwrap();
-            // iteration succeeded, don't drop head
-            let sink = mem::ManuallyDrop::new(sink);
-            sink.dst
-        } else {
-            iterator.try_fold::<_, _, Result<_, !>>(dst_buf, write_in_place(dst_end)).unwrap()
-        };
+        // - it lets us thread the write pointer through its innards and get it back in the end
+        let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
+        let sink = iterator
+            .try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(dst_end))
+            .unwrap();
+        // iteration succeeded, don't drop head
+        let dst = mem::ManuallyDrop::new(sink).dst;
 
         let src = unsafe { iterator.as_inner().as_into_iter() };
         // check if SourceIter and InPlaceIterable contracts were upheld.
