@@ -1296,7 +1296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         kind_name: &str,
         ty_span: Span,
     ) {
-        if variant.recovered {
+        if variant.is_recovered() {
             self.set_tainted_by_errors();
             return;
         }

@@ -1971,6 +1971,9 @@ bitflags! {
         const NO_VARIANT_FLAGS        = 0;
         /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
         const IS_FIELD_LIST_NON_EXHAUSTIVE = 1 << 0;
+        /// Indicates whether this variant was obtained as part of recovering from
+        /// a syntactic error. May be incomplete or bogus.
+        const IS_RECOVERED = 1 << 1;
     }
 }
 
@@ -1994,9 +1997,6 @@ pub struct VariantDef {
     pub ctor_kind: CtorKind,
     /// Flags of the variant (e.g. is field list non-exhaustive)?
     flags: VariantFlags,
-    /// Variant is obtained as part of recovering from a syntactic error.
-    /// May be incomplete or bogus.
-    pub recovered: bool,
 }
 
 impl<'tcx> VariantDef {
@@ -2039,6 +2039,10 @@ impl<'tcx> VariantDef {
             flags |= VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
         }
 
+        if recovered {
+            flags |= VariantFlags::IS_RECOVERED;
+        }
+
         VariantDef {
             def_id: variant_did.unwrap_or(parent_did),
             ctor_def_id,
@@ -2047,7 +2051,6 @@ impl<'tcx> VariantDef {
             fields,
             ctor_kind,
             flags,
-            recovered,
         }
     }
 
@@ -2055,6 +2058,12 @@ impl<'tcx> VariantDef {
     #[inline]
     pub fn is_field_list_non_exhaustive(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE)
+    }
+
+    /// Was this variant obtained as part of recovering from a syntactic error?
+    #[inline]
+    pub fn is_recovered(&self) -> bool {
+        self.flags.intersects(VariantFlags::IS_RECOVERED)
     }
 
     /// `repr(transparent)` structs can have a single non-ZST field, this function returns that
