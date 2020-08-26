@@ -3,6 +3,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
+use std::convert::TryFrom;
 use std::iter::TrustedLen;
 
 /// Expand `lhs = Rvalue::Aggregate(kind, operands)` into assignments to the fields.
@@ -52,14 +53,11 @@ pub fn expand_aggregate<'tcx>(
         .enumerate()
         .map(move |(i, (op, ty))| {
             let lhs_field = if let AggregateKind::Array(_) = kind {
-                // FIXME(eddyb) `offset` should be u64.
-                let offset = i as u32;
-                assert_eq!(offset as usize, i);
+                let offset = u64::try_from(i).unwrap();
                 tcx.mk_place_elem(
                     lhs,
                     ProjectionElem::ConstantIndex {
                         offset,
-                        // FIXME(eddyb) `min_length` doesn't appear to be used.
                         min_length: offset + 1,
                         from_end: false,
                     },

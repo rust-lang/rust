@@ -549,17 +549,17 @@ where
 
             ConstantIndex { offset, min_length, from_end } => {
                 let n = base.len(self)?;
-                if n < u64::from(min_length) {
+                if n < min_length {
                     // This can only be reached in ConstProp and non-rustc-MIR.
                     throw_ub!(BoundsCheckFailed { len: min_length.into(), index: n });
                 }
 
                 let index = if from_end {
                     assert!(0 < offset && offset <= min_length);
-                    n.checked_sub(u64::from(offset)).unwrap()
+                    n.checked_sub(offset).unwrap()
                 } else {
                     assert!(offset < min_length);
-                    u64::from(offset)
+                    offset
                 };
 
                 self.mplace_index(base, index)?

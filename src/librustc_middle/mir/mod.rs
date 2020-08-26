@@ -1564,10 +1564,10 @@ pub enum ProjectionElem<V, T> {
     /// ```
     ConstantIndex {
         /// index or -index (in Python terms), depending on from_end
-        offset: u32,
+        offset: u64,
         /// The thing being indexed must be at least this long. For arrays this
         /// is always the exact length.
-        min_length: u32,
+        min_length: u64,
         /// Counting backwards from end? This is always false when indexing an
         /// array.
         from_end: bool,
@@ -1578,8 +1578,8 @@ pub enum ProjectionElem<V, T> {
     /// If `from_end` is true `slice[from..slice.len() - to]`.
     /// Otherwise `array[from..to]`.
     Subslice {
-        from: u32,
-        to: u32,
+        from: u64,
+        to: u64,
         /// Whether `to` counts from the start or end of the array/slice.
         /// For `PlaceElem`s this is `true` if and only if the base is a slice.
         /// For `ProjectionKind`, this can also be `true` for arrays.
@@ -1616,7 +1616,7 @@ pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
 // At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(PlaceElem<'_>, 16);
+static_assert_size!(PlaceElem<'_>, 24);
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
@@ -2330,7 +2330,7 @@ impl<'tcx> UserTypeProjections {
         self.map_projections(|pat_ty_proj| pat_ty_proj.index())
     }
 
-    pub fn subslice(self, from: u32, to: u32) -> Self {
+    pub fn subslice(self, from: u64, to: u64) -> Self {
         self.map_projections(|pat_ty_proj| pat_ty_proj.subslice(from, to))
     }
 
@@ -2376,7 +2376,7 @@ impl UserTypeProjection {
         self
     }
 
-    pub(crate) fn subslice(mut self, from: u32, to: u32) -> Self {
+    pub(crate) fn subslice(mut self, from: u64, to: u64) -> Self {
         self.projs.push(ProjectionElem::Subslice { from, to, from_end: true });
         self
     }

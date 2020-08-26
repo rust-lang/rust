@@ -480,7 +480,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 }
             };
             let base_ty = base_place.ty(self.builder.body, self.builder.tcx).ty;
-            let len: u32 = match base_ty.kind {
+            let len: u64 = match base_ty.kind {
                 ty::Array(_, size) => {
                     let length = size.eval_usize(self.builder.tcx, self.builder.param_env);
                     length
