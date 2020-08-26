@@ -39,54 +39,35 @@ export function activateInlayHints(ctx: Ctx) {
     maybeUpdater.onConfigChange();
 }
 
+const typeHints = createHintStyle("type");
+const paramHints = createHintStyle("parameter");
+const chainingHints = createHintStyle("chaining");
 
-const typeHints = {
-    decorationType: vscode.window.createTextEditorDecorationType({
-        after: {
-            color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
-            fontStyle: "normal",
+function createHintStyle(hintKind: "type" | "parameter" | "chaining") {
+    const [pos, render] = ({
+        type: ["after", (label: string) => `: ${label}`],
+        parameter: ["before", (label: string) => `${label}: `],
+        chaining: ["after", (label: string) => `: ${label}`],
+    } as const)[hintKind];
+
+    const fg = new vscode.ThemeColor(`rust_analyzer.inlayHints.foreground.${hintKind}Hints`);
+    const bg = new vscode.ThemeColor(`rust_analyzer.inlayHints.background.${hintKind}Hints`);
+    return {
+        decorationType: vscode.window.createTextEditorDecorationType({
+            [pos]: {
+                color: fg,
+                backgroundColor: bg,
+                fontStyle: "normal",
+            },
+        }),
+        toDecoration(hint: ra.InlayHint, conv: lc.Protocol2CodeConverter): vscode.DecorationOptions {
+            return {
+                range: conv.asRange(hint.range),
+                renderOptions: { [pos]: { contentText: render(hint.label) } }
+            };
         }
-    }),
-
-    toDecoration(hint: ra.InlayHint.TypeHint, conv: lc.Protocol2CodeConverter): vscode.DecorationOptions {
-        return {
-            range: conv.asRange(hint.range),
-            renderOptions: { after: { contentText: `: ${hint.label}` } }
-        };
-    }
-};
-
-const paramHints = {
-    decorationType: vscode.window.createTextEditorDecorationType({
-        before: {
-            color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
-            fontStyle: "normal",
-        }
-    }),
-
-    toDecoration(hint: ra.InlayHint.ParamHint, conv: lc.Protocol2CodeConverter): vscode.DecorationOptions {
-        return {
-            range: conv.asRange(hint.range),
-            renderOptions: { before: { contentText: `${hint.label}: ` } }
-        };
-    }
-};
-
-const chainingHints = {
-    decorationType: vscode.window.createTextEditorDecorationType({
-        after: {
-            color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
-            fontStyle: "normal",
-        }
-    }),
-
-    toDecoration(hint: ra.InlayHint.ChainingHint, conv: lc.Protocol2CodeConverter): vscode.DecorationOptions {
-        return {
-            range: conv.asRange(hint.range),
-            renderOptions: { after: { contentText: ` ${hint.label}` } }
-        };
-    }
-};
+    };
+}
 
 class HintsUpdater implements Disposable {
     private sourceFiles = new Map<string, RustSourceFile>(); // map Uri -> RustSourceFile
