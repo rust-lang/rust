@@ -1,4 +1,4 @@
-use ide_db::defs::Definition;
+use ide_db::{defs::Definition, search::ReferenceKind};
 use syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,
@@ -119,7 +119,13 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
             for (desc, should_wrap) in refs.iter().zip(wrap_in_parens) {
                 let replacement =
                     if should_wrap { init_in_paren.clone() } else { init_str.clone() };
-                builder.replace(desc.file_range.range, replacement)
+                match desc.kind {
+                    ReferenceKind::FieldShorthandForLocal => {
+                        mark::hit!(inline_field_shorthand);
+                        builder.insert(desc.file_range.range.end(), format!(": {}", replacement))
+                    }
+                    _ => builder.replace(desc.file_range.range, replacement),
+                }
             }
         },
     )
@@ -663,6 +669,27 @@ fn foo() {
 fn foo() {
     match 1 > 0 {}
 }",
+        );
+    }
+
+    #[test]
+    fn inline_field_shorthand() {
+        mark::check!(inline_field_shorthand);
+        check_assist(
+            inline_local_variable,
+            r"
+struct S { foo: i32}
+fn main() {
+    let <|>foo = 92;
+    S { foo }
+}
+",
+            r"
+struct S { foo: i32}
+fn main() {
+    S { foo: 92 }
+}
+",
         );
     }
 
