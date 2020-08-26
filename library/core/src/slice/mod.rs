@@ -865,8 +865,9 @@ impl<T> [T] {
     pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
         assert_ne!(chunk_size, 0);
         let rem = self.len() % chunk_size;
-        let len = self.len() - rem;
-        let (fst, snd) = self.split_at(len);
+        let fst_len = self.len() - rem;
+        // SAFETY: 0 <= fst_len <= self.len() by construction above
+        let (fst, snd) = unsafe { self.split_at_unchecked(fst_len) };
         ChunksExact { v: fst, rem: snd, chunk_size }
     }
 
@@ -910,8 +911,9 @@ impl<T> [T] {
     pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
         assert_ne!(chunk_size, 0);
         let rem = self.len() % chunk_size;
-        let len = self.len() - rem;
-        let (fst, snd) = self.split_at_mut(len);
+        let fst_len = self.len() - rem;
+        // SAFETY: 0 <= fst_len <= self.len() by construction above
+        let (fst, snd) = unsafe { self.split_at_mut_unchecked(fst_len) };
         ChunksExactMut { v: fst, rem: snd, chunk_size }
     }
 
@@ -1063,7 +1065,8 @@ impl<T> [T] {
     pub fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<'_, T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
-        let (fst, snd) = self.split_at(rem);
+        // SAFETY: 0 <= rem <= self.len() by construction above
+        let (fst, snd) = unsafe { self.split_at_unchecked(rem) };
         RChunksExact { v: snd, rem: fst, chunk_size }
     }
 
@@ -1108,7 +1111,8 @@ impl<T> [T] {
     pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
-        let (fst, snd) = self.split_at_mut(rem);
+        // SAFETY: 0 <= rem <= self.len() by construction above
+        let (fst, snd) = unsafe { self.split_at_mut_unchecked(rem) };
         RChunksExactMut { v: snd, rem: fst, chunk_size }
     }
 
