@@ -1,10 +1,8 @@
-use crate::spec::{LinkerFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::hermit_base::opts();
     base.max_atomic_width = Some(128);
-    base.unsupported_abis = super::arm_base::unsupported_abis();
-    base.linker = Some("aarch64-hermit-gcc".to_string());
 
     Ok(Target {
         llvm_target: "aarch64-unknown-hermit".to_string(),
@@ -16,7 +14,7 @@ pub fn target() -> TargetResult {
         target_os: "hermit".to_string(),
         target_env: String::new(),
         target_vendor: "unknown".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         options: base,
     })
 }
