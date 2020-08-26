@@ -51,51 +51,90 @@ mod tests;
 
 #[cfg(unix)]
 mod dl {
-    use std::ffi::{CStr, CString, OsStr};
+    use std::ffi::{CString, OsStr};
     use std::os::unix::prelude::*;
-    use std::ptr;
-    use std::str;
 
-    pub(super) fn open(filename: &OsStr) -> Result<*mut u8, String> {
-        check_for_errors_in(|| unsafe {
-            let s = CString::new(filename.as_bytes()).unwrap();
-            libc::dlopen(s.as_ptr(), libc::RTLD_LAZY) as *mut u8
-        })
-    }
+    // As of the 2017 revision of the POSIX standard (IEEE 1003.1-2017), it is
+    // implementation-defined whether `dlerror` is thread-safe (in which case it returns the most
+    // recent error in the calling thread) or not thread-safe (in which case it returns the most
+    // recent error in *any* thread).
+    //
+    // There's no easy way to tell what strategy is used by a given POSIX implementation, so we
+    // lock around all calls that can modify `dlerror` in this module lest we accidentally read an
+    // error from a different thread. This is bulletproof when we are the *only* code using the
+    // dynamic library APIs at a given point in time. However, it's still possible for us to race
+    // with other code (see #74469) on platforms where `dlerror` is not thread-safe.
+    mod error {
+        use std::ffi::CStr;
+        use std::lazy::SyncLazy;
+        use std::sync::{Mutex, MutexGuard};
 
-    fn check_for_errors_in<T, F>(f: F) -> Result<T, String>
-    where
-        F: FnOnce() -> T,
-    {
-        use std::sync::{Mutex, Once};
-        static INIT: Once = Once::new();
-        static mut LOCK: *mut Mutex<()> = ptr::null_mut();
-        unsafe {
-            INIT.call_once(|| {
-                LOCK = Box::into_raw(Box::new(Mutex::new(())));
-            });
-            // dlerror isn't thread safe, so we need to lock around this entire
-            // sequence
-            let _guard = (*LOCK).lock();
-            let _old_error = libc::dlerror();
+        pub fn lock() -> MutexGuard<'static, Guard> {
+            static LOCK: SyncLazy<Mutex<Guard>> = SyncLazy::new(|| Mutex::new(Guard { _priv: () }));
+            LOCK.lock().unwrap()
+        }
 
-            let result = f();
+        pub struct Guard {
+            _priv: (),
+        }
 
-            let last_error = libc::dlerror() as *const _;
-            if ptr::null() == last_error {
-                Ok(result)
-            } else {
-                let s = CStr::from_ptr(last_error).to_bytes();
-                Err(str::from_utf8(s).unwrap().to_owned())
+        impl Guard {
+            pub fn get(&mut self) -> Result<(), String> {
+                let msg = unsafe { libc::dlerror() };
+                if msg.is_null() {
+                    Ok(())
+                } else {
+                    let msg = unsafe { CStr::from_ptr(msg as *const _) };
+                    Err(msg.to_string_lossy().into_owned())
+                }
+            }
+
+            pub fn clear(&mut self) {
+                let _ = unsafe { libc::dlerror() };
             }
         }
+    }
+
+    pub(super) fn open(filename: &OsStr) -> Result<*mut u8, String> {
+        let s = CString::new(filename.as_bytes()).unwrap();
+
+        let mut dlerror = error::lock();
+        let ret = unsafe { libc::dlopen(s.as_ptr(), libc::RTLD_LAZY | libc::RTLD_LOCAL) };
+
+        if !ret.is_null() {
+            return Ok(ret.cast());
+        }
+
+        // A NULL return from `dlopen` indicates that an error has definitely occurred, so if
+        // nothing is in `dlerror`, we are racing with another thread that has stolen our error
+        // message. See the explanation on the `dl::error` module for more information.
+        dlerror.get().and_then(|()| Err("Unknown error".to_string()))
     }
 
     pub(super) unsafe fn symbol(
         handle: *mut u8,
         symbol: *const libc::c_char,
     ) -> Result<*mut u8, String> {
-        check_for_errors_in(|| libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8)
+        let mut dlerror = error::lock();
+
+        // Unlike `dlopen`, it's possible for `dlsym` to return NULL without overwriting `dlerror`.
+        // Because of this, we clear `dlerror` before calling `dlsym` to avoid picking up a stale
+        // error message by accident.
+        dlerror.clear();
+
+        let ret = libc::dlsym(handle as *mut libc::c_void, symbol);
+
+        if !ret.is_null() {
+            return Ok(ret.cast());
+        }
+
+        // If `dlsym` returns NULL but there is nothing in `dlerror` it means one of two things:
+        // - We tried to load a symbol mapped to address 0. This is not technically an error but is
+        //   unlikely to occur in practice and equally unlikely to be handled correctly by calling
+        //   code. Therefore we treat it as an error anyway.
+        // - An error has occurred, but we are racing with another thread that has stolen our error
+        //   message. See the explanation on the `dl::error` module for more information.
+        dlerror.get().and_then(|()| Err("Tried to load symbol mapped to address 0".to_string()))
     }
 
     pub(super) unsafe fn close(handle: *mut u8) {
