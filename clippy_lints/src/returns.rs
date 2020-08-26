@@ -99,7 +99,10 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                     |err| {
                         err.span_label(local.span, "unnecessary `let` binding");
 
-                        if let Some(snippet) = snippet_opt(cx, initexpr.span) {
+                        if let Some(mut snippet) = snippet_opt(cx, initexpr.span) {
+                            if !cx.typeck_results().expr_adjustments(&retexpr).is_empty() {
+                                snippet.push_str(" as _");
+                            }
                             err.multipart_suggestion(
                                 "return the expression directly",
                                 vec![
