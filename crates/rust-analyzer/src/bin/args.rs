@@ -18,35 +18,92 @@ pub(crate) struct Args {
 }
 
 pub(crate) enum Command {
-    Parse {
-        no_dump: bool,
-    },
+    Parse { no_dump: bool },
     Symbols,
-    Highlight {
-        rainbow: bool,
-    },
+    Highlight { rainbow: bool },
     AnalysisStats(AnalysisStatsCmd),
     Bench(BenchCmd),
-    Diagnostics {
-        path: PathBuf,
-        load_output_dirs: bool,
-        with_proc_macro: bool,
-        /// Include files which are not modules. In rust-analyzer
-        /// this would include the parser test files.
-        all: bool,
-    },
-    Ssr {
-        rules: Vec<SsrRule>,
-    },
-    StructuredSearch {
-        debug_snippet: Option<String>,
-        patterns: Vec<SsrPattern>,
-    },
+    Diagnostics { path: PathBuf, load_output_dirs: bool, with_proc_macro: bool },
+    Ssr { rules: Vec<SsrRule> },
+    StructuredSearch { debug_snippet: Option<String>, patterns: Vec<SsrPattern> },
     ProcMacro,
     RunServer,
     Version,
     Help,
 }
+
+const HELP: &str = "\
+rust-analyzer
+
+USAGE:
+    rust-analyzer [FLAGS] [COMMAND] [COMMAND_OPTIONS]
+
+FLAGS:
+    --version         Print version
+    -h, --help        Print this help
+
+    -v,  --verbose
+    -vv, --spammy
+    -q,  --quiet      Set verbosity
+
+    --log-file <PATH> Log to the specified filed instead of stderr
+
+ENVIRONMENTAL VARIABLES:
+    RA_LOG            Set log filter in env_logger format
+    RA_PROFILE        Enable hierarchical profiler
+
+COMMANDS:
+
+not specified         Launch LSP server
+
+parse < main.rs       Parse tree
+    --no-dump         Suppress printing
+
+symbols < main.rs     Parse input an print the list of symbols
+
+highlight < main.rs   Highlight input as html
+    --rainbow         Enable rainbow highlighting of identifiers
+
+analysis-stats <PATH> Batch typecheck project and print summary statistics
+    <PATH>            Directory with Cargo.toml
+    --randomize       Randomize order in which crates, modules, and items are processed
+    --parallel        Run type inference in parallel
+    --memory-usage    Collect memory usage statistics
+    -o, --only <PATH> Only analyze items matching this path
+    --with-deps       Also analyze all dependencies
+    --load-output-dirs
+                      Load OUT_DIR values by running `cargo check` before analysis
+    --with-proc-macro Use proc-macro-srv for proc-macro expanding
+
+analysis-bench <PATH> Benchmark specific analysis operation
+    <PATH>            Directory with Cargo.toml
+    --highlight <PATH>
+                      Compute syntax highlighting for this file
+    --complete <PATH:LINE:COLUMN>
+                      Compute completions at this location
+    --goto-def <PATH:LINE:COLUMN>
+                      Compute goto definition at this location
+    --memory-usage    Collect memory usage statistics
+    --load-output-dirs
+                      Load OUT_DIR values by running `cargo check` before analysis
+    --with-proc-macro Use proc-macro-srv for proc-macro expanding
+
+diagnostics <PATH>
+    <PATH>            Directory with Cargo.toml
+    --load-output-dirs
+                      Load OUT_DIR values by running `cargo check` before analysis
+    --with-proc-macro Use proc-macro-srv for proc-macro expanding
+
+ssr [RULE...]
+    <RULE>            A structured search replace rule (`$a.foo($b) ==> bar($a, $b)`)
+    --debug <snippet> Prints debug information for any nodes with source exactly
+                      equal to <snippet>
+
+search [PATTERN..]
+    <PATTERN>         A structured search replace pattern (`$a.foo($b)`)
+    --debug <snippet> Prints debug information for any nodes with source exactly
+                      equal to <snippet>
+";
 
 impl Args {
     pub(crate) fn parse() -> Result<Args> {
@@ -75,108 +132,34 @@ impl Args {
         };
         let log_file = matches.opt_value_from_str("--log-file")?;
 
-        let help = Ok(Args { verbosity, log_file: None, command: Command::Help });
+        if matches.contains(["-h", "--help"]) {
+            eprintln!("{}", HELP);
+            return Ok(Args { verbosity, log_file: None, command: Command::Help });
+        }
+
         let subcommand = match matches.subcommand()? {
             Some(it) => it,
             None => {
-                if matches.contains(["-h", "--help"]) {
-                    print_subcommands();
-                    return help;
-                }
                 matches.finish().or_else(handle_extra_flags)?;
                 return Ok(Args { verbosity, log_file, command: Command::RunServer });
             }
         };
         let command = match subcommand.as_str() {
             "parse" => {
-                if matches.contains(["-h", "--help"]) {
-                    eprintln!(
-                        "\
-rust-analyzer parse
-
-USAGE:
-    rust-analyzer parse [FLAGS]
-
-FLAGS:
-    -h, --help       Prints help information
-        --no-dump"
-                    );
-                    return help;
-                }
-
                 let no_dump = matches.contains("--no-dump");
                 matches.finish().or_else(handle_extra_flags)?;
                 Command::Parse { no_dump }
             }
             "symbols" => {
-                if matches.contains(["-h", "--help"]) {
-                    eprintln!(
-                        "\
-rust-analyzer symbols
-
-USAGE:
-    rust-analyzer highlight [FLAGS]
-
-FLAGS:
-    -h, --help    Prints help inforamtion"
-                    );
-                    return help;
-                }
-
                 matches.finish().or_else(handle_extra_flags)?;
-
                 Command::Symbols
             }
             "highlight" => {
-                if matches.contains(["-h", "--help"]) {
-                    eprintln!(
-                        "\
-rust-analyzer highlight
-
-USAGE:
-    rust-analyzer highlight [FLAGS]
-
-FLAGS:
-    -h, --help       Prints help information
-    -r, --rainbow"
-                    );
-                    return help;
-                }
-
-                let rainbow = matches.contains(["-r", "--rainbow"]);
+                let rainbow = matches.contains("--rainbow");
                 matches.finish().or_else(handle_extra_flags)?;
                 Command::Highlight { rainbow }
             }
             "analysis-stats" => {
-                if matches.contains(["-h", "--help"]) {
-                    eprintln!(
-                        "\
-rust-analyzer analysis-stats
-
-USAGE:
-    rust-analyzer analysis-stats [FLAGS] [OPTIONS] [PATH]
-
-FLAGS:
-    -o, --only              Only analyze items matching this path
-    -h, --help              Prints help information
-        --memory-usage      Collect memory usage statistics
-        --randomize         Randomize order in which crates, modules, and items are processed
-        --parallel          Run type inference in parallel
-        --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
-        --with-proc-macro   Use ra-proc-macro-srv for proc-macro expanding
-        --with-deps         Also analyze all dependencies
-    -v, --verbose
-    -q, --quiet
-
-OPTIONS:
-    -o <ONLY>
-
-ARGS:
-    <PATH>"
-                    );
-                    return help;
-                }
-
                 let randomize = matches.contains("--randomize");
                 let parallel = matches.contains("--parallel");
                 let memory_usage = matches.contains("--memory-usage");
@@ -204,34 +187,6 @@ ARGS:
                 })
             }
             "analysis-bench" => {
-                if matches.contains(["-h", "--help"]) {
-                    eprintln!(
-                        "\
-rust-analyzer analysis-bench
-
-USAGE:
-    rust-analyzer analysis-bench [FLAGS] [OPTIONS]
-
-FLAGS:
-    -h, --help          Prints help information
-    --memory-usage      Collect memory usage statistics
-    --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
-    --with-proc-macro   Use ra-proc-macro-srv for proc-macro expanding
-    -v, --verbose
-
-OPTIONS:
-    --project <PATH>                 Path to directory with Cargo.toml
-    --complete <PATH:LINE:COLUMN>    Compute completions at this location
-    --goto-def <PATH:LINE:COLUMN>    Compute goto definition at this location
-    --highlight <PATH>               Hightlight this file
-
-ARGS:
-    <PATH>    Project to analyse"
-                    );
-                    return help;
-                }
-
-                let path: PathBuf = matches.opt_value_from_str("--project")?.unwrap_or_default();
                 let highlight_path: Option<String> = matches.opt_value_from_str("--highlight")?;
                 let complete_path: Option<Position> = matches.opt_value_from_str("--complete")?;
                 let goto_def_path: Option<Position> = matches.opt_value_from_str("--goto-def")?;
@@ -249,6 +204,15 @@ ARGS:
                 let memory_usage = matches.contains("--memory-usage");
                 let load_output_dirs = matches.contains("--load-output-dirs");
                 let with_proc_macro = matches.contains("--with-proc-macro");
+
+                let path = {
+                    let mut trailing = matches.free()?;
+                    if trailing.len() != 1 {
+                        bail!("Invalid flags");
+                    }
+                    trailing.pop().unwrap().into()
+                };
+
                 Command::Bench(BenchCmd {
                     memory_usage,
                     path,
@@ -258,28 +222,8 @@ ARGS:
                 })
             }
             "diagnostics" => {
-                if matches.contains(["-h", "--help"]) {
-                    eprintln!(
-                        "\
-rust-analyzer diagnostics
-
-USAGE:
-    rust-analyzer diagnostics [FLAGS] [PATH]
-
-FLAGS:
-    -h, --help              Prints help information
-        --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
-        --all               Include all files rather than only modules
-
-ARGS:
-    <PATH>"
-                    );
-                    return help;
-                }
-
                 let load_output_dirs = matches.contains("--load-output-dirs");
                 let with_proc_macro = matches.contains("--with-proc-macro");
-                let all = matches.contains("--all");
                 let path = {
                     let mut trailing = matches.free()?;
                     if trailing.len() != 1 {
@@ -288,30 +232,10 @@ ARGS:
                     trailing.pop().unwrap().into()
                 };
 
-                Command::Diagnostics { path, load_output_dirs, with_proc_macro, all }
+                Command::Diagnostics { path, load_output_dirs, with_proc_macro }
             }
             "proc-macro" => Command::ProcMacro,
             "ssr" => {
-                if matches.contains(["-h", "--help"]) {
-                    eprintln!(
-                        "\
-rust-analyzer ssr
-
-USAGE:
-    rust-analyzer ssr [FLAGS] [RULE...]
-
-EXAMPLE:
-    rust-analyzer ssr '$a.foo($b) ==> bar($a, $b)'
-
-FLAGS:
-    --debug <snippet>   Prints debug information for any nodes with source exactly equal to <snippet>
-    -h, --help          Prints help information
-
-ARGS:
-    <RULE>              A structured search replace rule"
-                    );
-                    return help;
-                }
                 let mut rules = Vec::new();
                 while let Some(rule) = matches.free_from_str()? {
                     rules.push(rule);
@@ -319,26 +243,6 @@ ARGS:
                 Command::Ssr { rules }
             }
             "search" => {
-                if matches.contains(["-h", "--help"]) {
-                    eprintln!(
-                        "\
-rust-analyzer search
-
-USAGE:
-    rust-analyzer search [FLAGS] [PATTERN...]
-
-EXAMPLE:
-    rust-analyzer search '$a.foo($b)'
-
-FLAGS:
-    --debug <snippet>   Prints debug information for any nodes with source exactly equal to <snippet>
-    -h, --help          Prints help information
-
-ARGS:
-    <PATTERN>           A structured search pattern"
-                    );
-                    return help;
-                }
                 let debug_snippet = matches.opt_value_from_str("--debug")?;
                 let mut patterns = Vec::new();
                 while let Some(rule) = matches.free_from_str()? {
@@ -347,36 +251,12 @@ ARGS:
                 Command::StructuredSearch { patterns, debug_snippet }
             }
             _ => {
-                print_subcommands();
-                return help;
+                eprintln!("{}", HELP);
+                return Ok(Args { verbosity, log_file: None, command: Command::Help });
             }
         };
         Ok(Args { verbosity, log_file, command })
     }
-}
-
-fn print_subcommands() {
-    eprintln!(
-        "\
-rust-analyzer
-
-USAGE:
-    rust-analyzer <SUBCOMMAND>
-
-FLAGS:
-    -h, --help        Prints help information
-
-SUBCOMMANDS:
-    analysis-bench
-    analysis-stats
-    highlight
-    diagnostics
-    proc-macro
-    parse
-    search
-    ssr
-    symbols"
-    )
 }
 
 fn handle_extra_flags(e: pico_args::Error) -> Result<()> {

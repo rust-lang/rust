@@ -38,8 +38,8 @@ fn try_main() -> Result<()> {
         args::Command::Highlight { rainbow } => cli::highlight(rainbow)?,
         args::Command::AnalysisStats(cmd) => cmd.run(args.verbosity)?,
         args::Command::Bench(cmd) => cmd.run(args.verbosity)?,
-        args::Command::Diagnostics { path, load_output_dirs, with_proc_macro, all } => {
-            cli::diagnostics(path.as_ref(), load_output_dirs, with_proc_macro, all)?
+        args::Command::Diagnostics { path, load_output_dirs, with_proc_macro } => {
+            cli::diagnostics(path.as_ref(), load_output_dirs, with_proc_macro)?
         }
         args::Command::Ssr { rules } => {
             cli::apply_ssr_rules(rules)?;
