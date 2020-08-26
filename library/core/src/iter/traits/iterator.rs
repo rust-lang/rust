@@ -648,11 +648,9 @@ pub trait Iterator {
     /// Creates an iterator which uses a closure to determine if an element
     /// should be yielded.
     ///
-    /// The closure must return `true` or `false`. `filter()` creates an
-    /// iterator which calls this closure on each element. If the closure
-    /// returns `true`, then the element is returned. If the closure returns
-    /// `false`, it will try again, and call the closure on the next element,
-    /// seeing if it passes the test.
+    /// Given an element the closure must return `true` or `false`. The returned
+    /// iterator will yield only the elements for which the closure returns
+    /// true.
     ///
     /// # Examples
     ///
@@ -719,23 +717,15 @@ pub trait Iterator {
 
     /// Creates an iterator that both filters and maps.
     ///
-    /// The closure must return an [`Option<T>`]. `filter_map` creates an
-    /// iterator which calls this closure on each element. If the closure
-    /// returns [`Some(element)`][`Some`], then that element is returned. If the
-    /// closure returns [`None`], it will try again, and call the closure on the
-    /// next element, seeing if it will return [`Some`].
+    /// The returned iterator yields only the `value`s for which the supplied
+    /// closure returns `Some(value)`.
     ///
-    /// Why `filter_map` and not just [`filter`] and [`map`]? The key is in this
-    /// part:
+    /// `filter_map` can be used to make chains of [`filter`] and [`map`] more
+    /// concise. The example below shows how a `map().filter().map()` can be
+    /// shortened to a single call to `filter_map`.
     ///
     /// [`filter`]: Iterator::filter
     /// [`map`]: Iterator::map
-    ///
-    /// > If the closure returns [`Some(element)`][`Some`], then that element is returned.
-    ///
-    /// In other words, it removes the [`Option<T>`] layer automatically. If your
-    /// mapping is already returning an [`Option<T>`] and you want to skip over
-    /// [`None`]s, then `filter_map` is much, much nicer to use.
     ///
     /// # Examples
     ///
