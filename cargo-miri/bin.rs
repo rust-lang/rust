@@ -406,7 +406,10 @@ fn parse_cargo_miri_args(
     let mut additional_args = Vec::new();
     while let Some(arg) = args.next() {
         match arg {
-            arg if arg == "--" => break,
+            arg if arg == "--" => {
+                // Miri arguments begin after the first "--".
+                break;
+            }
             arg if arg == "--lib" => lib_present = true,
             arg if arg == "--bin" => {
                 if let Some(binary) = args.next() {
@@ -419,6 +422,7 @@ fn parse_cargo_miri_args(
                     show_error(format!("\"--bin\" takes one argument."));
                 }
             }
+            arg if arg.starts_with("--bin=") => bin_targets.push((&arg[6..]).to_string()),
             arg if arg == "--test" => {
                 if let Some(test) = args.next() {
                     if test == "--" {
@@ -430,6 +434,7 @@ fn parse_cargo_miri_args(
                     show_error(format!("\"--test\" takes one argument."));
                 }
             }
+            arg if arg.starts_with("--test=") => test_targets.push((&arg[7..]).to_string()),
             other => additional_args.push(other),
         }
     }
@@ -480,6 +485,7 @@ fn in_cargo_miri() {
         cmd.arg("check");
         match (subcommand, kind.as_str()) {
             (MiriCommand::Run, "bin") => {
+                // FIXME: we default to running all binaries here.
                 cmd.arg("--bin").arg(target.name);
             }
             (MiriCommand::Test, "test") => {
@@ -495,7 +501,7 @@ fn in_cargo_miri() {
             // The remaining targets we do not even want to build.
             _ => continue,
         }
-        // Forward user-defined `cargo` args until first `--`.
+        // Forward further `cargo` args.
         for arg in cargo_args.iter() {
             cmd.arg(arg);
         }
