@@ -1,10 +1,13 @@
-#![feature(const_generics)]
-#![allow(incomplete_features)]
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 use std::ffi::{CStr, CString};
 
 unsafe fn unsafely_do_the_thing<const F: fn(&CStr) -> usize>(ptr: *const i8) -> usize {
-    //~^ ERROR: using function pointers as const generic parameters is forbidden
+    //[full]~^ ERROR: using function pointers as const generic parameters is forbidden
+    //[min]~^^ ERROR: using function pointers as const generic parameters is forbidden
     F(CStr::from_ptr(ptr))
 }
 
