@@ -854,6 +854,10 @@ impl Build {
         if let Some(linker) = self.config.target_config.get(&target).and_then(|c| c.linker.as_ref())
         {
             Some(linker)
+        } else if target.contains("vxworks") {
+            // need to use CXX compiler as linker to resolve the exception functions
+            // that are only existed in CXX libraries
+            Some(self.cxx[&target].path())
         } else if target != self.config.build
             && util::use_host_linker(target)
             && !target.contains("msvc")
