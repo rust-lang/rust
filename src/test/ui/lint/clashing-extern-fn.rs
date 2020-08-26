@@ -285,3 +285,26 @@ mod null_optimised_enums {
         }
     }
 }
+
+#[allow(improper_ctypes)]
+mod unknown_layout {
+    mod a {
+        extern "C" {
+            pub fn generic(l: Link<u32>);
+        }
+        pub struct Link<T> {
+            pub item: T,
+            pub next: *const Link<T>,
+        }
+    }
+
+    mod b {
+        extern "C" {
+            pub fn generic(l: Link<u32>);
+        }
+        pub struct Link<T> {
+            pub item: T,
+            pub next: *const Link<T>,
+        }
+    }
+}
