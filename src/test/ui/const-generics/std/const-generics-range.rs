@@ -22,7 +22,8 @@ const RANGE_FULL : _RangeFull<{ .. }> = _RangeFull;
 // Regression test for #70155
 // `RangeInclusive` should be usable within const generics:
 struct _RangeInclusive<const R: std::ops::RangeInclusive<usize>>;
-//[min]~^ ERROR `std::ops::RangeInclusive<usize>` is forbidden as the type of a const generic parameter
+//[min]~^ ERROR `std::ops::RangeInclusive<usize>` is forbidden as the type of a const generic
+// parameter
 const RANGE_INCLUSIVE : _RangeInclusive<{ 0 ..= 999 }> = _RangeInclusive;
 
 // `RangeTo` should be usable within const generics:
@@ -32,7 +33,8 @@ const RANGE_TO : _RangeTo<{ .. 1000 }> = _RangeTo;
 
 // `RangeToInclusive` should be usable within const generics:
 struct _RangeToInclusive<const R: std::ops::RangeToInclusive<usize>>;
-//[min]~^ ERROR `std::ops::RangeToInclusive<usize>` is forbidden as the type of a const generic parameter
+//[min]~^ ERROR `std::ops::RangeToInclusive<usize>` is forbidden as the type of a const generic
+// parameter
 const RANGE_TO_INCLUSIVE : _RangeToInclusive<{ ..= 999 }> = _RangeToInclusive;
 
 pub fn main() {}
