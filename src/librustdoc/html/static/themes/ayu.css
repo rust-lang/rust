@@ -514,7 +514,7 @@ kbd {
 }
 
 #theme-choices > button:not(:first-child) {
-	border-top-color: #c5c5c5;
+	border-top-color: #5c6773;
 }
 
 #theme-choices > button:hover, #theme-choices > button:focus {
