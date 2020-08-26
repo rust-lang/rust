@@ -293,6 +293,7 @@ impl<T: Ord> Deref for PeekMut<'_, T> {
 impl<T: Ord> DerefMut for PeekMut<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         debug_assert!(!self.heap.is_empty());
+        self.sift = true;
         // SAFE: PeekMut is only instantiated for non-empty heaps
         unsafe { self.heap.data.get_unchecked_mut(0) }
     }
@@ -401,7 +402,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// Cost is *O*(1) in the worst case.
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
     pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
-        if self.is_empty() { None } else { Some(PeekMut { heap: self, sift: true }) }
+        if self.is_empty() { None } else { Some(PeekMut { heap: self, sift: false }) }
     }
 
     /// Removes the greatest item from the binary heap and returns it, or `None` if it
