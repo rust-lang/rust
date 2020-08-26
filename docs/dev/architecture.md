@@ -138,14 +138,12 @@ offsets and strings as output. This works on top of rich code model powered by
 
 An LSP implementation which wraps `ide` into a language server protocol.
 
-### `ra_vfs`
+### `crates/vfs`
 
 Although `hir` and `ide` don't do any IO, we need to be able to read
-files from disk at the end of the day. This is what `ra_vfs` does. It also
+files from disk at the end of the day. This is what `vfs` does. It also
 manages overlays: "dirty" files in the editor, whose "true" contents is
-different from data on disk. This is more or less the single really
-platform-dependent component, so it lives in a separate repository and has an
-extensive cross-platform CI testing.
+different from data on disk. 
 
 ## Testing Infrastructure
 
