@@ -876,7 +876,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let mut projs = closure_env_projs.clone();
                     projs.push(ProjectionElem::Field(Field::new(i), ty));
                     match capture {
-                        ty::UpvarCapture::ByValue => {}
+                        ty::UpvarCapture::ByValue(_) => {}
                         ty::UpvarCapture::ByRef(..) => {
                             projs.push(ProjectionElem::Deref);
                         }

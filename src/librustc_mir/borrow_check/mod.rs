@@ -163,7 +163,7 @@ fn do_mir_borrowck<'a, 'tcx>(
             let var_hir_id = upvar_id.var_path.hir_id;
             let capture = tables.upvar_capture(*upvar_id);
             let by_ref = match capture {
-                ty::UpvarCapture::ByValue => false,
+                ty::UpvarCapture::ByValue(_) => false,
                 ty::UpvarCapture::ByRef(..) => true,
             };
             let mut upvar = Upvar {

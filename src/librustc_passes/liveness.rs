@@ -945,7 +945,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                         let var = self.variable(var_hir_id, upvar.span);
                         self.acc(self.s.exit_ln, var, ACC_READ | ACC_USE);
                     }
-                    ty::UpvarCapture::ByValue => {}
+                    ty::UpvarCapture::ByValue(_) => {}
                 }
             }
         }
@@ -1610,7 +1610,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 closure_expr_id: self.ir.body_owner,
             };
             match self.typeck_results.upvar_capture(upvar_id) {
-                ty::UpvarCapture::ByValue => {}
+                ty::UpvarCapture::ByValue(_) => {}
                 ty::UpvarCapture::ByRef(..) => continue,
             };
             if self.used_on_entry(entry_ln, var) {
