@@ -348,7 +348,7 @@ pub fn main() {
         // for example `clippy-driver --rustc --version` will print the rustc version that clippy-driver
         // uses
         if let Some(pos) = orig_args.iter().position(|arg| arg == "--rustc") {
-            orig_args.remove(pos);
+            drop(orig_args.remove(pos));
             orig_args[0] = "rustc".to_string();
 
             // if we call "rustc", we need to pass --sysroot here as well
@@ -372,7 +372,7 @@ pub fn main() {
 
         if wrapper_mode {
             // we still want to be able to invoke it normally though
-            orig_args.remove(1);
+            drop(orig_args.remove(1));
         }
 
         if !wrapper_mode && (orig_args.iter().any(|a| a == "--help" || a == "-h") || orig_args.len() == 1) {

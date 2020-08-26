@@ -95,6 +95,7 @@ macro_rules! vec {
 /// # Examples
 ///
 /// ```
+/// # #![allow(unused_must_use)]
 /// format!("test");
 /// format!("hello {}", "world!");
 /// format!("x = {}, y = {y}", 10, y = 30);

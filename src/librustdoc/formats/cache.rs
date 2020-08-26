@@ -472,7 +472,7 @@ impl DocFolder for Cache {
         });
 
         if pushed {
-            self.stack.pop().expect("stack already empty");
+            let _ = self.stack.pop().expect("stack already empty");
         }
         if parent_pushed {
             self.parent_stack.pop().expect("parent stack already empty");

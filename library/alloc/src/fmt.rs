@@ -12,6 +12,7 @@
 //! Some examples of the [`format!`] extension are:
 //!
 //! ```
+//! # #![allow(unused_must_use)]
 //! format!("Hello");                 // => "Hello"
 //! format!("Hello, {}!", "world");   // => "Hello, world!"
 //! format!("The number is {}", 1);   // => "The number is 1"
@@ -44,7 +45,7 @@
 //! the iterator advances. This leads to behavior like this:
 //!
 //! ```
-//! format!("{1} {} {0} {}", 1, 2); // => "2 1 1 2"
+//! println!("{1} {} {0} {}", 1, 2); // => "2 1 1 2"
 //! ```
 //!
 //! The internal iterator over the argument has not been advanced by the time
@@ -71,6 +72,7 @@
 //! For example, the following [`format!`] expressions all use named argument:
 //!
 //! ```
+//! # #![allow(unused_must_use)]
 //! format!("{argument}", argument = "test");   // => "test"
 //! format!("{name} {}", 1, name = 2);          // => "2 1"
 //! format!("{a} {c} {b}", a="a", b='b', c=3);  // => "a 3 b"

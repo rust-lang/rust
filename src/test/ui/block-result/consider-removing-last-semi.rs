@@ -5,6 +5,7 @@ pub fn f() -> String {  //~ ERROR mismatched types
     "bla".to_string();
 }
 
+#[allow(unused_must_use)]
 pub fn g() -> String {  //~ ERROR mismatched types
     "this won't work".to_string();
     "removeme".to_string();

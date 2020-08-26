@@ -14,8 +14,8 @@ impl ToStr2 for T {
 }
 
 #[allow(dead_code)]
-fn new_t(x: T) {
-    x.my_to_string();
+fn new_t(x: T) -> String {
+    x.my_to_string()
 }
 
 fn main() {

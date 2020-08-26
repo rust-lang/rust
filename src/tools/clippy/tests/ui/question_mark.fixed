@@ -94,8 +94,8 @@ impl MoveStruct {
 }
 
 fn func() -> Option<i32> {
-    fn f() -> Option<String> {
-        Some(String::new())
+    fn f() -> Option<u32> {
+        Some(42)
     }
 
     f()?;

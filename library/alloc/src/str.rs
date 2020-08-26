@@ -487,6 +487,7 @@ impl str {
     /// A panic upon overflow:
     ///
     /// ```should_panic
+    /// # #![allow(unused_must_use)]
     /// // this will panic at runtime
     /// "0123456789abcdef".repeat(usize::MAX);
     /// ```

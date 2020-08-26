@@ -48,7 +48,7 @@ fn main() {
 
     with_branch(Alpha, true);
     cannot_double_move(Alpha);
-    cannot_move_from_type_with_drop();
+    drop(cannot_move_from_type_with_drop());
     borrower_propagation();
     not_consumed();
     issue_5405();

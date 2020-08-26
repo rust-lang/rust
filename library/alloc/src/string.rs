@@ -950,6 +950,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(unused_must_use)]
     /// #![feature(try_reserve)]
     /// use std::collections::TryReserveError;
     ///
@@ -988,6 +989,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(unused_must_use)]
     /// #![feature(try_reserve)]
     /// use std::collections::TryReserveError;
     ///

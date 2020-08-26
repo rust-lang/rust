@@ -11,6 +11,7 @@ fn test_stack_assign() {
     assert!((s != u));
 }
 
+#[allow(unused_must_use)]
 fn test_heap_lit() { "a big string".to_string(); }
 
 fn test_heap_assign() {

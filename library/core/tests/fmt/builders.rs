@@ -446,7 +446,7 @@ mod debug_map {
             }
         }
 
-        format!("{:?}", Foo);
+        println!("{:?}", Foo);
     }
 
     #[test]
@@ -460,7 +460,7 @@ mod debug_map {
             }
         }
 
-        format!("{:?}", Foo);
+        println!("{:?}", Foo);
     }
 
     #[test]
@@ -474,7 +474,7 @@ mod debug_map {
             }
         }
 
-        format!("{:?}", Foo);
+        println!("{:?}", Foo);
     }
 }
 

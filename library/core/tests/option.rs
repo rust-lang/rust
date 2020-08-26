@@ -139,7 +139,7 @@ fn test_unwrap_panic1() {
 #[should_panic]
 fn test_unwrap_panic2() {
     let x: Option<String> = None;
-    x.unwrap();
+    drop(x.unwrap());
 }
 
 #[test]

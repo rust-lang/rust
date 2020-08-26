@@ -64,7 +64,7 @@ pub fn main() {
 
     // Immutable deref used for calling a method taking &self. (The
     // typechecker is smarter now about doing this.)
-    (*n).to_string();
+    let _ = (*n).to_string();
     assert_eq!(n.counts(), (3, 3));
 
     // Mutable deref used for calling a method taking &mut self.
