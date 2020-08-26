@@ -5390,7 +5390,7 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
 /// This struct is created by the [`chunks_exact`] method on [slices].
 ///
 /// [`chunks_exact`]: ../../std/primitive.slice.html#method.chunks_exact
-/// [`remainder`]: crate::slice::ChunksExact::remainder
+/// [`remainder`]: ChunksExact::remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
 #[stable(feature = "chunks_exact", since = "1.31.0")]
@@ -5530,7 +5530,7 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {
 /// This struct is created by the [`chunks_exact_mut`] method on [slices].
 ///
 /// [`chunks_exact_mut`]: ../../std/primitive.slice.html#method.chunks_exact_mut
-/// [`into_remainder`]: crate::slice::ChunksExactMut::into_remainder
+/// [`into_remainder`]: ChunksExactMut::into_remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
 #[stable(feature = "chunks_exact", since = "1.31.0")]
@@ -5667,7 +5667,7 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
 /// This struct is created by the [`array_chunks`] method on [slices].
 ///
 /// [`array_chunks`]: ../../std/primitive.slice.html#method.array_chunks
-/// [`remainder`]: crate::slice::ArrayChunks::remainder
+/// [`remainder`]: ArrayChunks::remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
 #[unstable(feature = "array_chunks", issue = "74985")]
@@ -6072,7 +6072,7 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksMut<'a, T> {
 /// This struct is created by the [`rchunks_exact`] method on [slices].
 ///
 /// [`rchunks_exact`]: ../../std/primitive.slice.html#method.rchunks_exact
-/// [`remainder`]: crate::slice::ChunksExact::remainder
+/// [`remainder`]: ChunksExact::remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -6217,7 +6217,7 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExact<'a, T> {
 /// This struct is created by the [`rchunks_exact_mut`] method on [slices].
 ///
 /// [`rchunks_exact_mut`]: ../../std/primitive.slice.html#method.rchunks_exact_mut
-/// [`into_remainder`]: crate::slice::ChunksExactMut::into_remainder
+/// [`into_remainder`]: ChunksExactMut::into_remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -6470,7 +6470,6 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 /// [valid]: ../../std/ptr/index.html#safety
 /// [`NonNull::dangling()`]: ../../std/ptr/struct.NonNull.html#method.dangling
 /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
-/// [`from_raw_parts`]: crate::slice::from_raw_parts
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
