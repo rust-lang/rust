@@ -2,8 +2,9 @@
 //!
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
 mod args;
+mod logger;
 
-use std::{convert::TryFrom, process};
+use std::{convert::TryFrom, env, fs, path::PathBuf, process};
 
 use lsp_server::Connection;
 use project_model::ProjectManifest;
@@ -26,8 +27,8 @@ fn main() {
 }
 
 fn try_main() -> Result<()> {
-    setup_logging()?;
     let args = args::Args::parse()?;
+    setup_logging(args.log_file)?;
     match args.command {
         args::Command::RunServer => run_server()?,
         args::Command::ProcMacro => proc_macro_srv::cli::run()?,
@@ -52,9 +53,21 @@ fn try_main() -> Result<()> {
     Ok(())
 }
 
-fn setup_logging() -> Result<()> {
-    std::env::set_var("RUST_BACKTRACE", "short");
-    env_logger::try_init_from_env("RA_LOG")?;
+fn setup_logging(log_file: Option<PathBuf>) -> Result<()> {
+    env::set_var("RUST_BACKTRACE", "short");
+
+    let log_file = match log_file {
+        Some(path) => {
+            if let Some(parent) = path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            Some(fs::File::create(path)?)
+        }
+        None => None,
+    };
+    let filter = env::var("RA_LOG").ok();
+    logger::Logger::new(log_file, filter.as_deref()).install();
+
     profile::init();
     Ok(())
 }
@@ -95,7 +108,7 @@ fn run_server() -> Result<()> {
         {
             Some(it) => it,
             None => {
-                let cwd = std::env::current_dir()?;
+                let cwd = env::current_dir()?;
                 AbsPathBuf::assert(cwd)
             }
         };

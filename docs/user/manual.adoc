@@ -351,7 +351,7 @@ Relative paths are interpreted relative to `rust-project.json` file location or 
 
 See https://github.com/rust-analyzer/rust-project.json-example for a small example.
 
-You can set `RA_LOG` environmental variable to `"'rust_analyzer=info"` to inspect how rust-analyzer handles config and project loading.
+You can set `RA_LOG` environmental variable to `rust_analyzer=info` to inspect how rust-analyzer handles config and project loading.
 
 == Features
 

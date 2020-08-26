@@ -13,6 +13,7 @@ use vfs::AbsPathBuf;
 
 pub(crate) struct Args {
     pub(crate) verbosity: Verbosity,
+    pub(crate) log_file: Option<PathBuf>,
     pub(crate) command: Command,
 }
 
@@ -53,7 +54,11 @@ impl Args {
 
         if matches.contains("--version") {
             matches.finish().or_else(handle_extra_flags)?;
-            return Ok(Args { verbosity: Verbosity::Normal, command: Command::Version });
+            return Ok(Args {
+                verbosity: Verbosity::Normal,
+                log_file: None,
+                command: Command::Version,
+            });
         }
 
         let verbosity = match (
@@ -68,8 +73,9 @@ impl Args {
             (false, true, false) => Verbosity::Verbose,
             (false, true, true) => bail!("Invalid flags: -q conflicts with -v"),
         };
+        let log_file = matches.opt_value_from_str("--log-file")?;
 
-        let help = Ok(Args { verbosity, command: Command::Help });
+        let help = Ok(Args { verbosity, log_file: None, command: Command::Help });
         let subcommand = match matches.subcommand()? {
             Some(it) => it,
             None => {
@@ -78,7 +84,7 @@ impl Args {
                     return help;
                 }
                 matches.finish().or_else(handle_extra_flags)?;
-                return Ok(Args { verbosity, command: Command::RunServer });
+                return Ok(Args { verbosity, log_file, command: Command::RunServer });
             }
         };
         let command = match subcommand.as_str() {
@@ -345,7 +351,7 @@ ARGS:
                 return help;
             }
         };
-        Ok(Args { verbosity, command })
+        Ok(Args { verbosity, log_file, command })
     }
 }
 
