@@ -166,10 +166,6 @@ from_str_float_impl!(f64);
 ///
 /// This error is used as the error type for the [`FromStr`] implementation
 /// for [`f32`] and [`f64`].
-///
-/// [`FromStr`]: ../str/trait.FromStr.html
-/// [`f32`]: ../../std/primitive.f32.html
-/// [`f64`]: ../../std/primitive.f64.html
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseFloatError {
