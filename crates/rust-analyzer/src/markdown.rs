@@ -1,22 +1,32 @@
 //! Transforms markdown
 
+const RUSTDOC_FENCE: &str = "```";
+const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUST_SPECIFIC: &[&str] =
+    &["", "rust", "should_panic", "ignore", "no_run", "compile_fail", "edition2015", "edition2018"];
+
 pub(crate) fn format_docs(src: &str) -> String {
     let mut processed_lines = Vec::new();
     let mut in_code_block = false;
-    for line in src.lines() {
-        if in_code_block && code_line_ignored_by_rustdoc(line) {
+    let mut is_rust = false;
+
+    for mut line in src.lines() {
+        if in_code_block && is_rust && code_line_ignored_by_rustdoc(line) {
             continue;
         }
 
-        if line.starts_with("```") {
-            in_code_block ^= true
-        }
+        if let Some(header) = line.strip_prefix(RUSTDOC_FENCE) {
+            in_code_block ^= true;
 
-        let line = if in_code_block && line.starts_with("```") && !line.contains("rust") {
-            "```rust"
-        } else {
-            line
-        };
+            if in_code_block {
+                is_rust = header
+                    .split(',')
+                    .all(|sub| RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUST_SPECIFIC.contains(&sub.trim()));
+
+                if is_rust {
+                    line = "```rust";
+                }
+            }
+        }
 
         processed_lines.push(line);
     }
@@ -39,10 +49,44 @@ mod tests {
     }
 
     #[test]
+    fn test_format_docs_handles_plain_text() {
+        let comment = "```text\nthis is plain text\n```";
+        assert_eq!(format_docs(comment), "```text\nthis is plain text\n```");
+    }
+
+    #[test]
+    fn test_format_docs_handles_non_rust() {
+        let comment = "```sh\nsupposedly shell code\n```";
+        assert_eq!(format_docs(comment), "```sh\nsupposedly shell code\n```");
+    }
+
+    #[test]
+    fn test_format_docs_handles_rust_alias() {
+        let comment = "```ignore\nlet z = 55;\n```";
+        assert_eq!(format_docs(comment), "```rust\nlet z = 55;\n```");
+    }
+
+    #[test]
+    fn test_format_docs_handles_complex_code_block_attrs() {
+        let comment = "```rust,no_run\nlet z = 55;\n```";
+        assert_eq!(format_docs(comment), "```rust\nlet z = 55;\n```");
+    }
+
+    #[test]
     fn test_format_docs_skips_comments_in_rust_block() {
         let comment =
             "```rust\n # skip1\n# skip2\n#stay1\nstay2\n#\n #\n   #    \n #\tskip3\n\t#\t\n```";
         assert_eq!(format_docs(comment), "```rust\n#stay1\nstay2\n```");
+    }
+
+    #[test]
+    fn test_format_docs_does_not_skip_lines_if_plain_text() {
+        let comment =
+            "```text\n # stay1\n# stay2\n#stay3\nstay4\n#\n #\n   #    \n #\tstay5\n\t#\t\n```";
+        assert_eq!(
+            format_docs(comment),
+            "```text\n # stay1\n# stay2\n#stay3\nstay4\n#\n #\n   #    \n #\tstay5\n\t#\t\n```",
+        );
     }
 
     #[test]
@@ -70,6 +114,23 @@ let a = 1;
         assert_eq!(
             format_docs(comment),
             "```rust\nfn main(){}\n```\nSome comment.\n```rust\nlet a = 1;\n```"
+        );
+    }
+
+    #[test]
+    fn test_code_blocks_in_comments_marked_as_text() {
+        let comment = r#"```text
+filler
+text
+```
+Some comment.
+```
+let a = 1;
+```"#;
+
+        assert_eq!(
+            format_docs(comment),
+            "```text\nfiller\ntext\n```\nSome comment.\n```rust\nlet a = 1;\n```"
         );
     }
 }
