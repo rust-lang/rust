@@ -1032,6 +1032,7 @@ impl Disambiguator {
         }
     }
 
+    /// WARNING: panics on `Res::Err`
     fn from_res(res: Res) -> Self {
         match res {
             Res::Def(kind, _) => Disambiguator::Kind(kind),
