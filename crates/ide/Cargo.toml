@@ -18,6 +18,7 @@ rustc-hash = "1.1.0"
 oorandom = "11.1.2"
 pulldown-cmark-to-cmark = "5.0.0"
 pulldown-cmark = {version = "0.7.2", default-features = false}
+url = "2.1.1"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }

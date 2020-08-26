@@ -498,7 +498,6 @@ dependencies = [
  "stdx",
  "syntax",
  "tt",
- "url",
 ]
 
 [[package]]
@@ -606,6 +605,7 @@ dependencies = [
  "syntax",
  "test_utils",
  "text_edit",
+ "url",
 ]
 
 [[package]]
