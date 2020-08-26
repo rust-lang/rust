@@ -353,6 +353,7 @@ impl<'a> FmtVisitor<'a> {
 
         let remaining = snippet[status.line_start..subslice.len() + offset].trim();
         if !remaining.is_empty() {
+            self.push_str(&self.block_indent.to_string(self.config));
             self.push_str(remaining);
             status.line_start = subslice.len() + offset;
         }
