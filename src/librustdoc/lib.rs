@@ -472,7 +472,7 @@ fn run_renderer<T: formats::FormatRenderer>(
 }
 
 fn main_options(options: config::Options) -> MainResult {
-    let diag = core::new_handler(options.error_format, None, &options.debugging_options);
+    let diag = core::new_handler(options.error_format, None, &options.debugging_opts);
 
     match (options.should_test, options.markdown_input()) {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
@@ -488,7 +488,7 @@ fn main_options(options: config::Options) -> MainResult {
 
     // need to move these items separately because we lose them by the time the closure is called,
     // but we can't crates the Handler ahead of time because it's not Send
-    let diag_opts = (options.error_format, options.edition, options.debugging_options.clone());
+    let diag_opts = (options.error_format, options.edition, options.debugging_opts.clone());
     let show_coverage = options.show_coverage;
 
     // First, parse the crate and extract all relevant information.

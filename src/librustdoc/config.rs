@@ -83,9 +83,9 @@ pub struct Options {
     /// Codegen options strings to hand to the compiler.
     pub codegen_options_strs: Vec<String>,
     /// Debugging (`-Z`) options to pass to the compiler.
-    pub debugging_options: DebuggingOptions,
+    pub debugging_opts: DebuggingOptions,
     /// Debugging (`-Z`) options strings to pass to the compiler.
-    pub debugging_options_strs: Vec<String>,
+    pub debugging_opts_strs: Vec<String>,
     /// The target used to compile the crate against.
     pub target: TargetTriple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
@@ -318,9 +318,9 @@ impl Options {
         let error_format = config::parse_error_format(&matches, color, json_rendered);
 
         let codegen_options = build_codegen_options(matches, error_format);
-        let debugging_options = build_debugging_options(matches, error_format);
+        let debugging_opts = build_debugging_options(matches, error_format);
 
-        let diag = new_handler(error_format, None, &debugging_options);
+        let diag = new_handler(error_format, None, &debugging_opts);
 
         // check for deprecated options
         check_deprecated_options(&matches, &diag);
@@ -365,7 +365,7 @@ impl Options {
             .iter()
             .map(|s| SearchPath::from_cli_opt(s, error_format))
             .collect();
-        let externs = parse_externs(&matches, &debugging_options, error_format);
+        let externs = parse_externs(&matches, &debugging_opts, error_format);
         let extern_html_root_urls = match parse_extern_html_roots(&matches) {
             Ok(ex) => ex,
             Err(err) => {
@@ -546,7 +546,7 @@ impl Options {
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
         let codegen_options_strs = matches.opt_strs("C");
-        let debugging_options_strs = matches.opt_strs("Z");
+        let debugging_opts_strs = matches.opt_strs("Z");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
         let runtool = matches.opt_str("runtool");
@@ -569,8 +569,8 @@ impl Options {
             cfgs,
             codegen_options,
             codegen_options_strs,
-            debugging_options,
-            debugging_options_strs,
+            debugging_opts,
+            debugging_opts_strs,
             target,
             edition,
             maybe_sysroot,
