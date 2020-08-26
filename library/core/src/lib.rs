@@ -98,7 +98,7 @@
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
-#![cfg_attr(not(bootstrap), feature(doc_spotlight))]
+#![feature(doc_spotlight)]
 #![feature(duration_consts_2)]
 #![feature(extern_types)]
 #![feature(fundamental)]
