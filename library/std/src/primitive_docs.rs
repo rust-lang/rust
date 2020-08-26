@@ -99,6 +99,7 @@ mod prim_bool {}
 /// at all we know it can never produce a value which isn't a [`u32`]. This illustrates another
 /// behaviour of the `!` type - expressions with type `!` will coerce into any other type.
 ///
+/// [`u32`]: prim@u32
 /// [`exit`]: process::exit
 ///
 /// # `!` and generics
@@ -801,6 +802,7 @@ mod prim_f32 {}
 ///
 /// *[See also the `std::f64::consts` module][`crate::f64::consts`].*
 ///
+/// [`f32`]: prim@f32
 /// [wikipedia]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f64 {}
