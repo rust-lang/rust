@@ -12,12 +12,7 @@ use ide::{DiagnosticsConfig, Severity};
 
 use crate::cli::{load_cargo::load_cargo, Result};
 
-pub fn diagnostics(
-    path: &Path,
-    load_output_dirs: bool,
-    with_proc_macro: bool,
-    _all: bool,
-) -> Result<()> {
+pub fn diagnostics(path: &Path, load_output_dirs: bool, with_proc_macro: bool) -> Result<()> {
     let (host, _vfs) = load_cargo(path, load_output_dirs, with_proc_macro)?;
     let db = host.raw_database();
     let analysis = host.analysis();
