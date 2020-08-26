@@ -1756,6 +1756,60 @@ pub struct B<|>ar
     }
 
     #[test]
+    fn test_doc_links_enum_variant() {
+        check(
+            r#"
+enum E {
+    /// [E]
+    V<|> { field: i32 }
+}
+"#,
+            expect![[r#"
+                *V*
+
+                ```rust
+                test::E
+                ```
+
+                ```rust
+                V
+                ```
+
+                ---
+
+                [E](https://docs.rs/test/*/test/enum.E.html)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_doc_links_field() {
+        check(
+            r#"
+struct S {
+    /// [`S`]
+    field<|>: i32
+}
+"#,
+            expect![[r#"
+                *field*
+
+                ```rust
+                test::S
+                ```
+
+                ```rust
+                field: i32
+                ```
+
+                ---
+
+                [`S`](https://docs.rs/test/*/test/struct.S.html)
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_hover_macro_generated_struct_fn_doc_comment() {
         mark::check!(hover_macro_generated_struct_fn_doc_comment);
 

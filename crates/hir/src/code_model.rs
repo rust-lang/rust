@@ -196,6 +196,16 @@ impl ModuleDef {
         }
     }
 
+    pub fn canonical_path(&self, db: &dyn HirDatabase) -> Option<String> {
+        let mut segments = Vec::new();
+        segments.push(self.name(db)?.to_string());
+        for m in self.module(db)?.path_to_root(db) {
+            segments.extend(m.name(db).map(|it| it.to_string()))
+        }
+        segments.reverse();
+        Some(segments.join("::"))
+    }
+
     pub fn definition_visibility(&self, db: &dyn HirDatabase) -> Option<Visibility> {
         let module = match self {
             ModuleDef::Module(it) => it.parent(db)?,

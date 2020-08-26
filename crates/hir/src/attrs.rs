@@ -1,20 +1,32 @@
 //! Attributes & documentation for hir types.
 use hir_def::{
-    attr::Attrs,
-    docs::Documentation,
-    resolver::{HasResolver, Resolver},
-    AdtId, AttrDefId, FunctionId, GenericDefId, ModuleId, StaticId, TraitId, VariantId,
+    attr::Attrs, docs::Documentation, path::ModPath, resolver::HasResolver, AttrDefId, ModuleDefId,
 };
+use hir_expand::hygiene::Hygiene;
 use hir_ty::db::HirDatabase;
+use syntax::ast;
 
 use crate::{
-    doc_links::Resolvable, Adt, Const, Enum, EnumVariant, Field, Function, GenericDef, ImplDef,
-    Local, MacroDef, Module, ModuleDef, Static, Struct, Trait, TypeAlias, TypeParam, Union,
+    Adt, Const, Enum, EnumVariant, Field, Function, MacroDef, Module, ModuleDef, Static, Struct,
+    Trait, TypeAlias, Union,
 };
 
 pub trait HasAttrs {
     fn attrs(self, db: &dyn HirDatabase) -> Attrs;
     fn docs(self, db: &dyn HirDatabase) -> Option<Documentation>;
+    fn resolve_doc_path(
+        self,
+        db: &dyn HirDatabase,
+        link: &str,
+        ns: Option<Namespace>,
+    ) -> Option<ModuleDef>;
+}
+
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+pub enum Namespace {
+    Types,
+    Values,
+    Macros,
 }
 
 macro_rules! impl_has_attrs {
@@ -27,6 +39,10 @@ macro_rules! impl_has_attrs {
             fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
                 let def = AttrDefId::$def_id(self.into());
                 db.documentation(def)
+            }
+            fn resolve_doc_path(self, db: &dyn HirDatabase, link: &str, ns: Option<Namespace>) -> Option<ModuleDef> {
+                let def = AttrDefId::$def_id(self.into());
+                resolve_doc_path(db, def, link, ns).map(ModuleDef::from)
             }
         }
     )*};
@@ -54,83 +70,42 @@ macro_rules! impl_has_attrs_adt {
             fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
                 Adt::$adt(self).docs(db)
             }
+            fn resolve_doc_path(self, db: &dyn HirDatabase, link: &str, ns: Option<Namespace>) -> Option<ModuleDef> {
+                Adt::$adt(self).resolve_doc_path(db, link, ns)
+            }
         }
     )*};
 }
 
 impl_has_attrs_adt![Struct, Union, Enum];
 
-impl Resolvable for ModuleDef {
-    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
-        Some(match self {
-            ModuleDef::Module(m) => ModuleId::from(m.clone()).resolver(db.upcast()),
-            ModuleDef::Function(f) => FunctionId::from(f.clone()).resolver(db.upcast()),
-            ModuleDef::Adt(adt) => AdtId::from(adt.clone()).resolver(db.upcast()),
-            ModuleDef::EnumVariant(ev) => {
-                GenericDefId::from(GenericDef::from(ev.clone())).resolver(db.upcast())
-            }
-            ModuleDef::Const(c) => {
-                GenericDefId::from(GenericDef::from(c.clone())).resolver(db.upcast())
-            }
-            ModuleDef::Static(s) => StaticId::from(s.clone()).resolver(db.upcast()),
-            ModuleDef::Trait(t) => TraitId::from(t.clone()).resolver(db.upcast()),
-            ModuleDef::TypeAlias(t) => ModuleId::from(t.module(db)).resolver(db.upcast()),
-            // FIXME: This should be a resolver relative to `std/core`
-            ModuleDef::BuiltinType(_t) => None?,
-        })
-    }
-
-    fn try_into_module_def(self) -> Option<ModuleDef> {
-        Some(self)
-    }
-}
-
-impl Resolvable for TypeParam {
-    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
-        Some(ModuleId::from(self.module(db)).resolver(db.upcast()))
-    }
-
-    fn try_into_module_def(self) -> Option<ModuleDef> {
-        None
-    }
-}
-
-impl Resolvable for MacroDef {
-    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
-        Some(ModuleId::from(self.module(db)?).resolver(db.upcast()))
-    }
-
-    fn try_into_module_def(self) -> Option<ModuleDef> {
-        None
-    }
-}
-
-impl Resolvable for Field {
-    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
-        Some(VariantId::from(self.parent_def(db)).resolver(db.upcast()))
-    }
-
-    fn try_into_module_def(self) -> Option<ModuleDef> {
-        None
-    }
-}
-
-impl Resolvable for ImplDef {
-    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
-        Some(ModuleId::from(self.module(db)).resolver(db.upcast()))
-    }
-
-    fn try_into_module_def(self) -> Option<ModuleDef> {
-        None
-    }
-}
-
-impl Resolvable for Local {
-    fn resolver(&self, db: &dyn HirDatabase) -> Option<Resolver> {
-        Some(ModuleId::from(self.module(db)).resolver(db.upcast()))
-    }
-
-    fn try_into_module_def(self) -> Option<ModuleDef> {
-        None
-    }
+fn resolve_doc_path(
+    db: &dyn HirDatabase,
+    def: AttrDefId,
+    link: &str,
+    ns: Option<Namespace>,
+) -> Option<ModuleDefId> {
+    let resolver = match def {
+        AttrDefId::ModuleId(it) => it.resolver(db.upcast()),
+        AttrDefId::FieldId(it) => it.parent.resolver(db.upcast()),
+        AttrDefId::AdtId(it) => it.resolver(db.upcast()),
+        AttrDefId::FunctionId(it) => it.resolver(db.upcast()),
+        AttrDefId::EnumVariantId(it) => it.parent.resolver(db.upcast()),
+        AttrDefId::StaticId(it) => it.resolver(db.upcast()),
+        AttrDefId::ConstId(it) => it.resolver(db.upcast()),
+        AttrDefId::TraitId(it) => it.resolver(db.upcast()),
+        AttrDefId::TypeAliasId(it) => it.resolver(db.upcast()),
+        AttrDefId::ImplId(it) => it.resolver(db.upcast()),
+        AttrDefId::MacroDefId(_) => return None,
+    };
+    let path = ast::Path::parse(link).ok()?;
+    let modpath = ModPath::from_src(path, &Hygiene::new_unhygienic()).unwrap();
+    let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
+    let def = match ns {
+        Some(Namespace::Types) => resolved.take_types()?,
+        Some(Namespace::Values) => resolved.take_values()?,
+        Some(Namespace::Macros) => return None,
+        None => resolved.iter_items().find_map(|it| it.as_module_def_id())?,
+    };
+    Some(def.into())
 }

@@ -27,19 +27,17 @@ pub mod diagnostics;
 
 mod from_id;
 mod code_model;
-mod doc_links;
 mod attrs;
 mod has_source;
 
 pub use crate::{
-    attrs::HasAttrs,
+    attrs::{HasAttrs, Namespace},
     code_model::{
         Access, Adt, AsAssocItem, AssocItem, AssocItemContainer, Callable, CallableKind, Const,
         Crate, CrateDependency, DefWithBody, Enum, EnumVariant, Field, FieldSource, Function,
         GenericDef, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, ScopeDef, Static,
         Struct, Trait, Type, TypeAlias, TypeParam, Union, VariantDef, Visibility,
     },
-    doc_links::resolve_doc_link,
     has_source::HasSource,
     semantics::{original_range, PathResolution, Semantics, SemanticsScope},
 };
