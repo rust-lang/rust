@@ -72,7 +72,11 @@ impl CargoTargetSpec {
                 extra_args.push("--nocapture".to_string());
             }
             RunnableKind::Bin => {
-                args.push("run".to_string());
+                let subcommand = match spec {
+                    Some(CargoTargetSpec { target_kind: TargetKind::Test, .. }) => "test",
+                    _ => "run",
+                };
+                args.push(subcommand.to_string());
                 if let Some(spec) = spec {
                     spec.push_to(&mut args, kind);
                 }
