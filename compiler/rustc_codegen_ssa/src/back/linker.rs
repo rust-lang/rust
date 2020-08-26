@@ -221,10 +221,8 @@ impl<'a> GccLinker<'a> {
         let opt_level = match self.sess.opts.optimize {
             config::OptLevel::No => "O0",
             config::OptLevel::Less => "O1",
-            config::OptLevel::Default => "O2",
+            config::OptLevel::Default | config::OptLevel::Size | config::OptLevel::SizeMin => "O2",
             config::OptLevel::Aggressive => "O3",
-            config::OptLevel::Size => "Os",
-            config::OptLevel::SizeMin => "Oz",
         };
 
         self.linker_arg(&format!("-plugin-opt={}", opt_level));
