@@ -2517,6 +2517,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "unused_unit",
     },
     Lint {
+        name: "unwrap_in_result",
+        group: "restriction",
+        desc: "functions of type `Result<..>` or `Option`<...> that contain `expect()` or `unwrap()`",
+        deprecation: None,
+        module: "unwrap_in_result",
+    },
+    Lint {
         name: "unwrap_used",
         group: "restriction",
         desc: "using `.unwrap()` on `Result` or `Option`, which should at least get a better message using `expect()`",

@@ -314,6 +314,7 @@ mod unused_io_amount;
 mod unused_self;
 mod unused_unit;
 mod unwrap;
+mod unwrap_in_result;
 mod use_self;
 mod useless_conversion;
 mod vec;
@@ -850,6 +851,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unused_unit::UNUSED_UNIT,
         &unwrap::PANICKING_UNWRAP,
         &unwrap::UNNECESSARY_UNWRAP,
+        &unwrap_in_result::UNWRAP_IN_RESULT,
         &use_self::USE_SELF,
         &useless_conversion::USELESS_CONVERSION,
         &utils::internal_lints::CLIPPY_LINTS_INTERNAL,
@@ -1094,6 +1096,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box pattern_type_mismatch::PatternTypeMismatch);
     store.register_late_pass(|| box stable_sort_primitive::StableSortPrimitive);
     store.register_late_pass(|| box repeat_once::RepeatOnce);
+    store.register_late_pass(|| box unwrap_in_result::UnwrapInResult);
     store.register_late_pass(|| box self_assignment::SelfAssignment);
     store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
 
@@ -1133,6 +1136,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&shadow::SHADOW_REUSE),
         LintId::of(&shadow::SHADOW_SAME),
         LintId::of(&strings::STRING_ADD),
+        LintId::of(&unwrap_in_result::UNWRAP_IN_RESULT),
         LintId::of(&verbose_file_reads::VERBOSE_FILE_READS),
         LintId::of(&write::PRINT_STDOUT),
         LintId::of(&write::USE_DEBUG),
