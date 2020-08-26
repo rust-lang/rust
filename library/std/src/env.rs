@@ -65,10 +65,9 @@ pub fn set_current_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
-/// This structure is created by the [`std::env::vars`] function. See its
-/// documentation for more.
+/// This structure is created by [`env::vars()`]. See its documentation for more.
 ///
-/// [`std::env::vars`]: vars
+/// [`env::vars()`]: vars
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Vars {
     inner: VarsOs,
@@ -76,10 +75,9 @@ pub struct Vars {
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
-/// This structure is created by the [`std::env::vars_os`] function. See
-/// its documentation for more.
+/// This structure is created by [`env::vars_os()`]. See its documentation for more.
 ///
-/// [`std::env::vars_os`]: vars_os
+/// [`env::vars()`]: vars
 #[stable(feature = "env", since = "1.0.0")]
 pub struct VarsOs {
     inner: os_imp::Env,
@@ -95,10 +93,8 @@ pub struct VarsOs {
 /// # Panics
 ///
 /// While iterating, the returned iterator will panic if any key or value in the
-/// environment is not valid unicode. If this is not desired, consider using the
-/// [`env::vars_os`] function.
-///
-/// [`env::vars_os`]: vars_os
+/// environment is not valid unicode. If this is not desired, consider using
+/// [`env::vars_os()`].
 ///
 /// # Examples
 ///
@@ -111,6 +107,8 @@ pub struct VarsOs {
 ///     println!("{}: {}", key, value);
 /// }
 /// ```
+///
+/// [`env::vars_os()`]: vars_os
 #[stable(feature = "env", since = "1.0.0")]
 pub fn vars() -> Vars {
     Vars { inner: vars_os() }
@@ -242,9 +240,9 @@ fn _var_os(key: &OsStr) -> Option<OsString> {
 }
 
 /// The error type for operations interacting with environment variables.
-/// Possibly returned from the [`env::var`] function.
+/// Possibly returned from [`env::var()`].
 ///
-/// [`env::var`]: var
+/// [`env::var()`]: var
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[stable(feature = "env", since = "1.0.0")]
 pub enum VarError {
@@ -369,10 +367,10 @@ fn _remove_var(k: &OsStr) {
 ///
 /// The iterator element type is [`PathBuf`].
 ///
-/// This structure is created by the [`std::env::split_paths`] function. See its
+/// This structure is created by [`env::split_paths()`]. See its
 /// documentation for more.
 ///
-/// [`std::env::split_paths`]: split_paths
+/// [`env::split_paths()`]: split_paths
 #[stable(feature = "env", since = "1.0.0")]
 pub struct SplitPaths<'a> {
     inner: os_imp::SplitPaths<'a>,
@@ -423,9 +421,9 @@ impl fmt::Debug for SplitPaths<'_> {
 }
 
 /// The error type for operations on the `PATH` variable. Possibly returned from
-/// the [`env::join_paths`] function.
+/// [`env::join_paths()`].
 ///
-/// [`env::join_paths`]: join_paths
+/// [`env::join_paths()`]: join_paths
 #[derive(Debug)]
 #[stable(feature = "env", since = "1.0.0")]
 pub struct JoinPathsError {
@@ -460,7 +458,8 @@ pub struct JoinPathsError {
 /// }
 /// ```
 ///
-/// Joining a path containing a colon on a Unix-like platform results in an error:
+/// Joining a path containing a colon on a Unix-like platform results in an
+/// error:
 ///
 /// ```
 /// # if cfg!(unix) {
@@ -472,8 +471,8 @@ pub struct JoinPathsError {
 /// # }
 /// ```
 ///
-/// Using `env::join_paths` with [`env::split_paths`] to append an item to the `PATH` environment
-/// variable:
+/// Using `env::join_paths()` with [`env::split_paths()`] to append an item to
+/// the `PATH` environment variable:
 ///
 /// ```
 /// use std::env;
@@ -491,7 +490,7 @@ pub struct JoinPathsError {
 /// }
 /// ```
 ///
-/// [`env::split_paths`]: split_paths
+/// [`env::split_paths()`]: split_paths
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 where
@@ -664,14 +663,14 @@ pub fn current_exe() -> io::Result<PathBuf> {
 /// An iterator over the arguments of a process, yielding a [`String`] value for
 /// each argument.
 ///
-/// This struct is created by the [`std::env::args`] function. See its
-/// documentation for more.
+/// This struct is created by [`env::args()`]. See its documentation
+/// for more.
 ///
 /// The first element is traditionally the path of the executable, but it can be
 /// set to arbitrary text, and may not even exist. This means this property
 /// should not be relied upon for security purposes.
 ///
-/// [`std::env::args`]: args
+/// [`env::args()`]: args
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Args {
     inner: ArgsOs,
@@ -680,14 +679,14 @@ pub struct Args {
 /// An iterator over the arguments of a process, yielding an [`OsString`] value
 /// for each argument.
 ///
-/// This struct is created by the [`std::env::args_os`] function. See its
-/// documentation for more.
+/// This struct is created by [`env::args_os()`]. See its documentation
+/// for more.
 ///
 /// The first element is traditionally the path of the executable, but it can be
 /// set to arbitrary text, and may not even exist. This means this property
 /// should not be relied upon for security purposes.
 ///
-/// [`std::env::args_os`]: args_os
+/// [`env::args_os()`]: args_os
 #[stable(feature = "env", since = "1.0.0")]
 pub struct ArgsOs {
     inner: sys::args::Args,
