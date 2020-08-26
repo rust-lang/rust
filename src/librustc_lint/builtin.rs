@@ -40,7 +40,7 @@ use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
 use rustc_hir::{HirId, HirIdSet, Node};
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, layout::LayoutError, Ty, TyCtxt};
 use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -2177,11 +2177,17 @@ impl ClashingExternDeclarations {
                 let a_kind = &a.kind;
                 let b_kind = &b.kind;
 
-                let compare_layouts = |a, b| -> bool {
-                    let a_layout = &cx.layout_of(a).unwrap().layout.abi;
-                    let b_layout = &cx.layout_of(b).unwrap().layout.abi;
-                    debug!("{:?} == {:?} = {}", a_layout, b_layout, a_layout == b_layout);
-                    a_layout == b_layout
+                let compare_layouts = |a, b| -> Result<bool, LayoutError<'tcx>> {
+                    debug!("compare_layouts({:?}, {:?})", a, b);
+                    let a_layout = &cx.layout_of(a)?.layout.abi;
+                    let b_layout = &cx.layout_of(b)?.layout.abi;
+                    debug!(
+                        "comparing layouts: {:?} == {:?} = {}",
+                        a_layout,
+                        b_layout,
+                        a_layout == b_layout
+                    );
+                    Ok(a_layout == b_layout)
                 };
 
                 #[allow(rustc::usage_of_ty_tykind)]
@@ -2196,11 +2202,19 @@ impl ClashingExternDeclarations {
                             let b = b.subst(cx.tcx, b_substs);
                             debug!("Comparing {:?} and {:?}", a, b);
 
+                            // We can immediately rule out these types as structurally same if
+                            // their layouts differ.
+                            match compare_layouts(a, b) {
+                                Ok(false) => return false,
+                                _ => (), // otherwise, continue onto the full, fields comparison
+                            }
+
                             // Grab a flattened representation of all fields.
                             let a_fields = a_def.variants.iter().flat_map(|v| v.fields.iter());
                             let b_fields = b_def.variants.iter().flat_map(|v| v.fields.iter());
-                            compare_layouts(a, b)
-                            && a_fields.eq_by(
+
+                            // Perform a structural comparison for each field.
+                            a_fields.eq_by(
                                 b_fields,
                                 |&ty::FieldDef { did: a_did, .. },
                                  &ty::FieldDef { did: b_did, .. }| {
@@ -2287,13 +2301,13 @@ impl ClashingExternDeclarations {
                             if let Some(ty) = crate::types::repr_nullable_ptr(cx, adt, ckind) {
                                 ty == primitive
                             } else {
-                                compare_layouts(a, b)
+                                compare_layouts(a, b).unwrap_or(false)
                             }
                         }
                         // Otherwise, just compare the layouts. This may fail to lint for some
                         // incompatible types, but at the very least, will stop reads into
                         // uninitialised memory.
-                        _ => compare_layouts(a, b),
+                        _ => compare_layouts(a, b).unwrap_or(false),
                     }
                 })
             }
