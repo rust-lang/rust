@@ -1,5 +1,5 @@
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:23:5
+  --> $DIR/unit_arg.rs:29:5
    |
 LL | /     foo({
 LL | |         1;
@@ -15,22 +15,24 @@ help: or move the expression in front of the call and replace it with the unit l
    |
 LL |     {
 LL |         1;
-LL |     }; foo(());
+LL |     };
+LL |     foo(());
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:26:5
+  --> $DIR/unit_arg.rs:32:5
    |
 LL |     foo(foo(1));
    |     ^^^^^^^^^^^
    |
 help: move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     foo(1); foo(());
-   |     ^^^^^^^^^^^^^^^
+LL |     foo(1);
+LL |     foo(());
+   |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:27:5
+  --> $DIR/unit_arg.rs:33:5
    |
 LL | /     foo({
 LL | |         foo(1);
@@ -47,11 +49,12 @@ help: or move the expression in front of the call and replace it with the unit l
 LL |     {
 LL |         foo(1);
 LL |         foo(2);
-LL |     }; foo(());
+LL |     };
+LL |     foo(());
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:32:5
+  --> $DIR/unit_arg.rs:38:5
    |
 LL | /     b.bar({
 LL | |         1;
@@ -66,22 +69,25 @@ help: or move the expression in front of the call and replace it with the unit l
    |
 LL |     {
 LL |         1;
-LL |     }; b.bar(());
+LL |     };
+LL |     b.bar(());
    |
 
 error: passing unit values to a function
-  --> $DIR/unit_arg.rs:35:5
+  --> $DIR/unit_arg.rs:41:5
    |
 LL |     taking_multiple_units(foo(0), foo(1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: move the expressions in front of the call and replace them with the unit literal `()`
    |
-LL |     foo(0); foo(1); taking_multiple_units((), ());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     foo(0);
+LL |     foo(1);
+LL |     taking_multiple_units((), ());
+   |
 
 error: passing unit values to a function
-  --> $DIR/unit_arg.rs:36:5
+  --> $DIR/unit_arg.rs:42:5
    |
 LL | /     taking_multiple_units(foo(0), {
 LL | |         foo(1);
@@ -95,14 +101,16 @@ LL |         foo(2)
    |
 help: or move the expressions in front of the call and replace them with the unit literal `()`
    |
-LL |     foo(0); {
+LL |     foo(0);
+LL |     {
 LL |         foo(1);
 LL |         foo(2);
-LL |     }; taking_multiple_units((), ());
+LL |     };
+LL |     taking_multiple_units((), ());
    |
 
 error: passing unit values to a function
-  --> $DIR/unit_arg.rs:40:5
+  --> $DIR/unit_arg.rs:46:5
    |
 LL | /     taking_multiple_units(
 LL | |         {
@@ -124,53 +132,50 @@ LL |             foo(3)
 help: or move the expressions in front of the call and replace them with the unit literal `()`
    |
 LL |     {
-LL |             foo(0);
-LL |             foo(1);
-LL |         }; {
-LL |             foo(2);
-LL |             foo(3);
+LL |         foo(0);
+LL |         foo(1);
+LL |     };
+LL |     {
+LL |         foo(2);
  ...
 
-error: use of `or` followed by a function call
-  --> $DIR/unit_arg.rs:51:10
-   |
-LL |     None.or(Some(foo(2)));
-   |          ^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some(foo(2)))`
-   |
-   = note: `-D clippy::or-fun-call` implied by `-D warnings`
-
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:51:13
+  --> $DIR/unit_arg.rs:57:13
    |
 LL |     None.or(Some(foo(2)));
    |             ^^^^^^^^^^^^
    |
 help: move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     None.or({ foo(2); Some(()) });
-   |             ^^^^^^^^^^^^^^^^^^^^
+LL |     None.or({
+LL |         foo(2);
+LL |         Some(())
+LL |     });
+   |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:54:5
+  --> $DIR/unit_arg.rs:60:5
    |
 LL |     foo(foo(()))
    |     ^^^^^^^^^^^^
    |
 help: move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     foo(()); foo(())
+LL |     foo(());
+LL |     foo(())
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:87:5
+  --> $DIR/unit_arg.rs:93:5
    |
 LL |     Some(foo(1))
    |     ^^^^^^^^^^^^
    |
 help: move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     foo(1); Some(())
+LL |     foo(1);
+LL |     Some(())
    |
 
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 

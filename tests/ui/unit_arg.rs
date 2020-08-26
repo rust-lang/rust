@@ -1,5 +1,11 @@
 #![warn(clippy::unit_arg)]
-#![allow(clippy::no_effect, unused_must_use, unused_variables, clippy::unused_unit)]
+#![allow(
+    clippy::no_effect,
+    unused_must_use,
+    unused_variables,
+    clippy::unused_unit,
+    clippy::or_fun_call
+)]
 
 use std::fmt::Debug;
 

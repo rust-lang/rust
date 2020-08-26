@@ -29,10 +29,10 @@ use rustc_typeck::hir_ty_to_ty;
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, is_type_diagnostic_item,
+    clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_type_diagnostic_item,
     last_path_segment, match_def_path, match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral,
     qpath_res, sext, snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
-    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
+    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, trim_multiline, unsext,
 };
 
 declare_clippy_lint! {
@@ -802,6 +802,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitArg {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Expr<'_>]) {
     let mut applicability = Applicability::MachineApplicable;
     let (singular, plural) = if args_to_recover.len() > 1 {
@@ -856,17 +857,37 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                 .filter(|arg| !is_empty_block(arg))
                 .filter_map(|arg| snippet_opt(cx, arg.span))
                 .collect();
+            let indent = indent_of(cx, expr.span).unwrap_or(0);
 
-            if let Some(mut sugg) = snippet_opt(cx, expr.span) {
-                arg_snippets.iter().for_each(|arg| {
-                    sugg = sugg.replacen(arg, "()", 1);
-                });
-                sugg = format!("{}{}{}", arg_snippets_without_empty_blocks.join("; "), "; ", sugg);
+            if let Some(expr_str) = snippet_opt(cx, expr.span) {
+                let expr_with_replacements = arg_snippets
+                    .iter()
+                    .fold(expr_str, |acc, arg| acc.replacen(arg, "()", 1));
+
+                // expr is not in a block statement or result expression position, wrap in a block
                 let parent_node = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(expr.hir_id));
-                if !matches!(parent_node, Some(Node::Block(_))) && !matches!(parent_node, Some(Node::Stmt(_))) {
-                    // expr is not in a block statement or result expression position, wrap in a block
-                    sugg = format!("{{ {} }}", sugg);
+                let wrap_in_block =
+                    !matches!(parent_node, Some(Node::Block(_))) && !matches!(parent_node, Some(Node::Stmt(_)));
+
+                let stmts_indent = if wrap_in_block { indent + 4 } else { indent };
+                let mut stmts_and_call = arg_snippets_without_empty_blocks.clone();
+                stmts_and_call.push(expr_with_replacements);
+                let mut stmts_and_call_str = stmts_and_call
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, v)| {
+                        let with_indent_prefix = if i > 0 { " ".repeat(stmts_indent) + &v } else { v };
+                        trim_multiline(with_indent_prefix.into(), true, Some(stmts_indent)).into_owned()
+                    })
+                    .collect::<Vec<String>>()
+                    .join(";\n");
+
+                if wrap_in_block {
+                    stmts_and_call_str = " ".repeat(stmts_indent) + &stmts_and_call_str;
+                    stmts_and_call_str = format!("{{\n{}\n{}}}", &stmts_and_call_str, " ".repeat(indent));
                 }
+
+                let sugg = stmts_and_call_str;
 
                 if arg_snippets_without_empty_blocks.is_empty() {
                     db.multipart_suggestion(
