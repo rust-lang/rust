@@ -2082,13 +2082,7 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        if self.capacity() > 0 {
-            <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
-        } else {
-            // if self has no allocation then use the more powerful from_iter specializations
-            // and overwrite self
-            *self = SpecFrom::from_iter(iter.into_iter());
-        }
+        <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
     }
 
     #[inline]
@@ -2544,13 +2538,7 @@ impl<T> Vec<T> {
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        if self.capacity() > 0 {
-            self.spec_extend(iter.into_iter())
-        } else {
-            // if self has no allocation then use the more powerful from_iter specializations
-            // and overwrite self
-            *self = SpecFrom::from_iter(iter.into_iter());
-        }
+        self.spec_extend(iter.into_iter())
     }
 
     #[inline]

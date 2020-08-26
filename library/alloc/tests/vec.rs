@@ -799,16 +799,6 @@ fn test_from_iter_partially_drained_in_place_specialization() {
 }
 
 #[test]
-fn test_extend_in_place_specialization() {
-    let src: Vec<usize> = vec![0usize; 1];
-    let srcptr = src.as_ptr();
-    let mut dst = Vec::new();
-    dst.extend(src.into_iter());
-    let dstptr = dst.as_ptr();
-    assert_eq!(srcptr, dstptr);
-}
-
-#[test]
 fn test_from_iter_specialization_with_iterator_adapters() {
     fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {};
     let src: Vec<usize> = vec![0usize; 65535];
