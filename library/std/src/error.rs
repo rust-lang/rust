@@ -33,10 +33,10 @@ use crate::string;
 /// themselves through the [`Display`] and [`Debug`] traits, and may provide
 /// cause chain information:
 ///
-/// The [`Error::source`] method is generally used when errors cross
+/// [`Error::source()`] is generally used when errors cross
 /// "abstraction boundaries". If one module must report an error that is caused
 /// by an error from a lower-level module, it can allow accessing that error
-/// via the [`Error::source`] method. This makes it possible for the high-level
+/// via [`Error::source()`]. This makes it possible for the high-level
 /// module to provide its own errors while also revealing some of the
 /// implementation for debugging via [`Error::source`] chains.
 ///
