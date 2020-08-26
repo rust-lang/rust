@@ -764,9 +764,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs: &'tcx hir::Expr<'tcx>,
         span: &Span,
     ) -> Ty<'tcx> {
-        let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
-        let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
-
         let expected_ty = expected.coercion_target_type(self, expr.span);
         if expected_ty == self.tcx.types.bool {
             // The expected type is `bool` but this will result in `()` so we can reasonably
@@ -774,19 +771,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The likely cause of this is `if foo = bar { .. }`.
             let actual_ty = self.tcx.mk_unit();
             let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap();
-            let msg = "try comparing for equality";
-            let left = self.tcx.sess.source_map().span_to_snippet(lhs.span);
-            let right = self.tcx.sess.source_map().span_to_snippet(rhs.span);
-            if let (Ok(left), Ok(right)) = (left, right) {
-                let help = format!("{} == {}", left, right);
-                err.span_suggestion(expr.span, msg, help, Applicability::MaybeIncorrect);
+            let lhs_ty = self.check_expr(&lhs);
+            let rhs_ty = self.check_expr(&rhs);
+            if self.can_coerce(lhs_ty, rhs_ty) {
+                if !lhs.is_syntactic_place_expr() {
+                    // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
+                    if let hir::Node::Expr(hir::Expr {
+                        kind: ExprKind::Match(_, _, hir::MatchSource::IfDesugar { .. }),
+                        ..
+                    }) = self.tcx.hir().get(
+                        self.tcx.hir().get_parent_node(self.tcx.hir().get_parent_node(expr.hir_id)),
+                    ) {
+                        // Likely `if let` intended.
+                        err.span_suggestion_verbose(
+                            expr.span.shrink_to_lo(),
+                            "you might have meant to use pattern matching",
+                            "let ".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+                err.span_suggestion_verbose(
+                    *span,
+                    "you might have meant to compare for equality",
+                    "==".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
             } else {
-                err.help(msg);
+                // Do this to cause extra errors about the assignment.
+                let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
+                let _ = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
             }
-            err.emit();
-        } else {
-            self.check_lhs_assignable(lhs, "E0070", span);
+
+            if self.sess().if_let_suggestions.borrow().get(&expr.span).is_some() {
+                // We already emitted an `if let` suggestion due to an identifier not found.
+                err.delay_as_bug();
+            } else {
+                err.emit();
+            }
+            return self.tcx.ty_error();
         }
+
+        self.check_lhs_assignable(lhs, "E0070", span);
+
+        let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
+        let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 

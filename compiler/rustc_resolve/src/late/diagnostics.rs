@@ -176,6 +176,19 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         let code = source.error_code(res.is_some());
         let mut err = self.r.session.struct_span_err_with_code(base_span, &base_msg, code);
 
+        match (source, self.diagnostic_metadata.in_if_condition) {
+            (PathSource::Expr(_), Some(Expr { span, kind: ExprKind::Assign(..), .. })) => {
+                err.span_suggestion_verbose(
+                    span.shrink_to_lo(),
+                    "you might have meant to use pattern matching",
+                    "let ".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+                self.r.session.if_let_suggestions.borrow_mut().insert(*span);
+            }
+            _ => {}
+        }
+
         let is_assoc_fn = self.self_type_is_available(span);
         // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
         if ["this", "my"].contains(&&*item_str.as_str()) && is_assoc_fn {
