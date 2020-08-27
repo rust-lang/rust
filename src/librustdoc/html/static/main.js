@@ -2797,8 +2797,8 @@ function defocusSearchBar() {
 
         var infos = [
             "Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to \
-             restrict the search to a given type.",
-            "Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
+             restrict the search to a given item kind.",
+            "Accepted kinds are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
              <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
              and <code>const</code>.",
             "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
