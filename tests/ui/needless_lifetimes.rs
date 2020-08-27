@@ -259,4 +259,36 @@ mod issue4291 {
     }
 }
 
+mod nested_elision_sites {
+    // Don't lint these cases, they cause FPs.
+    // The lint does not support nested elision sites.
+
+    fn nested_fn_trait_bound<'a>(i: &'a i32) -> impl Fn() -> &'a i32 {
+        move || i
+    }
+
+    fn nested_fn_mut_trait_bound<'a>(i: &'a i32) -> impl FnMut() -> &'a i32 {
+        move || i
+    }
+
+    fn nested_fn_once_trait_bound<'a>(i: &'a i32) -> impl FnOnce() -> &'a i32 {
+        move || i
+    }
+
+    fn nested_generic_fn_trait_bound<'a, T: Fn() -> &'a i32>(f: T) -> &'a i32 {
+        f()
+    }
+
+    fn nested_where_clause_fn_trait_bound<'a, T>(f: T) -> &'a i32
+    where
+        T: Fn() -> &'a i32,
+    {
+        f()
+    }
+
+    fn nested_pointer_fn<'a>(_: &'a i32) -> fn(&'a i32) -> &'a i32 {
+        |i| i
+    }
+}
+
 fn main() {}

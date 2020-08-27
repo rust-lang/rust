@@ -1,13 +1,14 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{
-    walk_fn_decl, walk_generic_param, walk_generics, walk_param_bound, walk_ty, NestedVisitorMap, Visitor,
+    walk_fn_decl, walk_generic_param, walk_generics, walk_param_bound, walk_trait_ref, walk_ty, NestedVisitorMap,
+    Visitor,
 };
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem, ImplItemKind, Item,
-    ItemKind, Lifetime, LifetimeName, ParamName, QPath, TraitBoundModifier, TraitFn, TraitItem, TraitItemKind, Ty,
-    TyKind, WhereClause, WherePredicate,
+    ItemKind, Lifetime, LifetimeName, ParamName, QPath, TraitBoundModifier, TraitFn, TraitItem, TraitItemKind,
+    TraitRef, Ty, TyKind, WhereClause, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
@@ -15,7 +16,8 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, Symbol};
 
-use crate::utils::{in_macro, last_path_segment, span_lint, trait_ref_of_method};
+use crate::utils::paths;
+use crate::utils::{get_trait_def_id, in_macro, last_path_segment, span_lint, trait_ref_of_method};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for lifetime annotations which can be removed by
@@ -124,6 +126,14 @@ fn check_fn_inner<'tcx>(
     report_extra_lifetimes: bool,
 ) {
     if in_macro(span) || has_where_lifetimes(cx, &generics.where_clause) {
+        return;
+    }
+
+    // fn pointers and closure trait bounds are also lifetime elision sites. This lint does not
+    // support nested elision sites in a fn item.
+    if FnPointerOrClosureTraitBoundFinder::find_in_generics(cx, generics)
+        || FnPointerOrClosureTraitBoundFinder::find_in_fn_decl(cx, decl)
+    {
         return;
     }
 
@@ -521,5 +531,56 @@ impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
+    }
+}
+
+const CLOSURE_TRAIT_BOUNDS: [&[&str]; 3] = [&paths::FN, &paths::FN_MUT, &paths::FN_ONCE];
+
+struct FnPointerOrClosureTraitBoundFinder<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    found: bool,
+}
+
+impl<'a, 'tcx> FnPointerOrClosureTraitBoundFinder<'a, 'tcx> {
+    fn find_in_generics(cx: &'a LateContext<'tcx>, generics: &'tcx Generics<'tcx>) -> bool {
+        let mut finder = Self { cx, found: false };
+        finder.visit_generics(generics);
+        finder.found
+    }
+
+    fn find_in_fn_decl(cx: &'a LateContext<'tcx>, generics: &'tcx FnDecl<'tcx>) -> bool {
+        let mut finder = Self { cx, found: false };
+        finder.visit_fn_decl(generics);
+        finder.found
+    }
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for FnPointerOrClosureTraitBoundFinder<'a, 'tcx> {
+    type Map = Map<'tcx>;
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_trait_ref(&mut self, tref: &'tcx TraitRef<'tcx>) {
+        if CLOSURE_TRAIT_BOUNDS
+            .iter()
+            .any(|trait_path| tref.trait_def_id() == get_trait_def_id(self.cx, trait_path))
+        {
+            self.found = true;
+        }
+        walk_trait_ref(self, tref);
+    }
+
+    fn visit_ty(&mut self, ty: &'tcx Ty<'tcx>) {
+        match ty.kind {
+            TyKind::BareFn(..) => self.found = true,
+            TyKind::OpaqueDef(item_id, _) => {
+                let map = self.cx.tcx.hir();
+                let item = map.expect_item(item_id.id);
+                self.visit_item(item);
+            },
+            _ => (),
+        }
+        walk_ty(self, ty);
     }
 }
