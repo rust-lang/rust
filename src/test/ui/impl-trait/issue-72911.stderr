@@ -1,14 +1,14 @@
-error[E0433]: failed to resolve: use of undeclared type or module `foo`
+error[E0433]: failed to resolve: use of undeclared crate or module `foo`
   --> $DIR/issue-72911.rs:12:33
    |
 LL | fn gather_from_file(dir_entry: &foo::MissingItem) -> impl Iterator<Item = Lint> {
-   |                                 ^^^ use of undeclared type or module `foo`
+   |                                 ^^^ use of undeclared crate or module `foo`
 
-error[E0433]: failed to resolve: use of undeclared type or module `foo`
+error[E0433]: failed to resolve: use of undeclared crate or module `foo`
   --> $DIR/issue-72911.rs:17:41
    |
 LL | fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
-   |                                         ^^^ use of undeclared type or module `foo`
+   |                                         ^^^ use of undeclared crate or module `foo`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/issue-72911.rs:7:24
