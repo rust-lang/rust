@@ -63,7 +63,7 @@ jobs:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
@@ -167,7 +167,7 @@ jobs:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
@@ -486,7 +486,7 @@ jobs:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
@@ -589,6 +589,7 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
+              RUST_CI_TEMP_SKIP_CANCEL_OUTDATED: 1
             os: macos-latest
           - name: dist-x86_64-apple-alt
             env:
@@ -598,6 +599,7 @@ jobs:
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              RUST_CI_TEMP_SKIP_CANCEL_OUTDATED: 1
             os: macos-latest
           - name: x86_64-apple
             env:
@@ -608,6 +610,7 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+              RUST_CI_TEMP_SKIP_CANCEL_OUTDATED: 1
             os: macos-latest
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
@@ -622,7 +625,7 @@ jobs:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:

@@ -107,7 +107,9 @@ x--expand-yaml-anchors--remove:
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
           github_token: "${{ secrets.github_token }}"
-        if: success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'
+        # TODO: remove the condition on RUST_CI_TEMP_SKIP_CANCEL_OUTDATED once
+        # we remove the `auto-fallible` job.
+        if: success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED
         <<: *step
 
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
@@ -609,6 +611,10 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
+
+              # TODO: remove once we move this job away from auto-fallible.
+              # Also, remove the variable from the cancel-outdated-builds step
+              RUST_CI_TEMP_SKIP_CANCEL_OUTDATED: 1
             <<: *job-macos-xl
 
           - name: dist-x86_64-apple-alt
@@ -619,6 +625,10 @@ jobs:
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+
+              # TODO: remove once we move this job away from auto-fallible.
+              # Also, remove the variable from the cancel-outdated-builds step
+              RUST_CI_TEMP_SKIP_CANCEL_OUTDATED: 1
             <<: *job-macos-xl
 
           - name: x86_64-apple
@@ -630,6 +640,10 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+
+              # TODO: remove once we move this job away from auto-fallible.
+              # Also, remove the variable from the cancel-outdated-builds step
+              RUST_CI_TEMP_SKIP_CANCEL_OUTDATED: 1
             <<: *job-macos-xl
 
   master:
