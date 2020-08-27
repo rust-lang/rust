@@ -65,7 +65,7 @@ cfg_if::cfg_if! {
         // - os=none ("bare metal" targets)
         // - os=uefi
         // - nvptx64-nvidia-cuda
-        // - avr-unknown-unknown
+        // - arch=avr
         #[path = "dummy.rs"]
         mod real_imp;
     }

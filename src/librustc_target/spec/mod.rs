@@ -51,10 +51,10 @@ mod android_base;
 mod apple_base;
 mod apple_sdk_base;
 mod arm_base;
+mod avr_gnu_base;
 mod cloudabi_base;
 mod dragonfly_base;
 mod freebsd_base;
-mod freestanding_base;
 mod fuchsia_base;
 mod haiku_base;
 mod hermit_base;
@@ -581,7 +581,7 @@ supported_targets! {
     ("aarch64-fuchsia", aarch64_fuchsia),
     ("x86_64-fuchsia", x86_64_fuchsia),
 
-    ("avr-unknown-unknown", avr_unknown_unknown),
+    ("avr-unknown-gnu-atmega328", avr_unknown_gnu_atmega328),
 
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
