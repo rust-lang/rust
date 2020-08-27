@@ -17,6 +17,6 @@ pub fn trim_in_place(a: &mut &[u8]) {
 pub fn trim_in_place2(a: &mut &[u8]) {
     while let Some(&42) = a.first() {
         // CHECK-NOT: slice_index_order_fail
-        *a = &a[1..];
+        *a = &a[2..];
     }
 }
