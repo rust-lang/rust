@@ -51,7 +51,7 @@ Compatibility Notes
 -------------------
 - [The target configuration option `abi_blacklist` has been renamed
   to `unsupported_abis`.][74150] The old name will still continue to work.
-- [Rustc will now warn if you have a C-like enum that implements `Drop`.][72331]
+- [Rustc will now warn if you cast a C-like enum that implements `Drop`.][72331]
   This was previously accepted but will become a hard error in a future release.
 - [Rustc will fail to compile if you have a struct with
   `#[repr(i128)]` or `#[repr(u128)]`.][74109] This representation is currently only
