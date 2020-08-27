@@ -1707,7 +1707,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "panic_in_result",
         group: "restriction",
-        desc: "default lint description",
+        desc: "functions of type `Result<..>` / `Option`<...> that contain `panic!()` or `unreachable()` or `unimplemented()` ",
         deprecation: None,
         module: "panic_in_result",
     },
