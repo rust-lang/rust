@@ -72,9 +72,9 @@ fn add_to_ancillary_data<T>(
     cmsg_level: libc::c_int,
     cmsg_type: libc::c_int,
 ) -> bool {
-    let len = if let Some(len) = source.len().checked_mul(size_of::<T>()) {
-        if let Ok(len) = u32::try_from(len) {
-            len
+    let source_len = if let Some(source_len) = source.len().checked_mul(size_of::<T>()) {
+        if let Ok(source_len) = u32::try_from(source_len) {
+            source_len
         } else {
             return false;
         }
@@ -83,14 +83,21 @@ fn add_to_ancillary_data<T>(
     };
 
     unsafe {
-        let additional_space = libc::CMSG_SPACE(len) as usize;
-        if *length + additional_space > buffer.len() {
+        let additional_space = libc::CMSG_SPACE(source_len) as usize;
+
+        let new_length = if let Some(new_length) = additional_space.checked_add(*length) {
+            new_length
+        } else {
+            return false;
+        };
+
+        if new_length > buffer.len() {
             return false;
         }
 
-        libc::memset(buffer[*length..].as_mut_ptr().cast(), 0, additional_space);
+        buffer[*length..new_length].fill(0);
 
-        *length += additional_space;
+        *length = new_length;
 
         let msg = libc::msghdr {
             msg_name: null_mut(),
@@ -115,11 +122,11 @@ fn add_to_ancillary_data<T>(
 
         (*previous_cmsg).cmsg_level = cmsg_level;
         (*previous_cmsg).cmsg_type = cmsg_type;
-        (*previous_cmsg).cmsg_len = libc::CMSG_LEN(len) as usize;
+        (*previous_cmsg).cmsg_len = libc::CMSG_LEN(source_len) as usize;
 
         let data = libc::CMSG_DATA(previous_cmsg).cast();
 
-        libc::memcpy(data, source.as_ptr().cast(), len as usize);
+        libc::memcpy(data, source.as_ptr().cast(), source_len as usize);
     }
     true
 }
