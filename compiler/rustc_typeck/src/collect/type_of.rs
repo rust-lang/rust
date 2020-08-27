@@ -1,5 +1,6 @@
+use crate::errors::AssocTypeOnInherentImpl;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, Applicability, ErrorReported, StashKey};
+use rustc_errors::{Applicability, ErrorReported, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -627,11 +628,5 @@ fn infer_placeholder_type(
 }
 
 fn report_assoc_ty_on_inherent_impl(tcx: TyCtxt<'_>, span: Span) {
-    struct_span_err!(
-        tcx.sess,
-        span,
-        E0202,
-        "associated types are not yet supported in inherent impls (see #8995)"
-    )
-    .emit();
+    tcx.sess.emit_err(AssocTypeOnInherentImpl { span });
 }

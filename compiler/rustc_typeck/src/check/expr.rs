@@ -14,8 +14,13 @@ use crate::check::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExp
 use crate::check::FnCtxt;
 use crate::check::Needs;
 use crate::check::TupleArgumentsFlag::DontTupleArguments;
+use crate::errors::{
+    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
+    YieldExprOutsideOfGenerator,
+};
 use crate::type_error_struct;
 
+use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use rustc_ast as ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
@@ -439,14 +444,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
         });
         if !is_named {
-            struct_span_err!(
-                self.tcx.sess,
-                oprnd.span,
-                E0745,
-                "cannot take address of a temporary"
-            )
-            .span_label(oprnd.span, "temporary value")
-            .emit();
+            self.tcx.sess.emit_err(AddressOfTemporaryTaken { span: oprnd.span })
         }
     }
 
@@ -665,13 +663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         if self.ret_coercion.is_none() {
-            struct_span_err!(
-                self.tcx.sess,
-                expr.span,
-                E0572,
-                "return statement outside of function body",
-            )
-            .emit();
+            self.tcx.sess.emit_err(ReturnStmtOutsideOfFnBody { span: expr.span });
         } else if let Some(ref e) = expr_opt {
             if self.ret_coercion_span.borrow().is_none() {
                 *self.ret_coercion_span.borrow_mut() = Some(e.span);
@@ -740,6 +732,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_span: &Span,
     ) {
         if !lhs.is_syntactic_place_expr() {
+            // FIXME: Make this use SessionDiagnostic once error codes can be dynamically set.
             let mut err = self.tcx.sess.struct_span_err_with_code(
                 *expr_span,
                 "invalid left-hand side of assignment",
@@ -1120,14 +1113,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Prohibit struct expressions when non-exhaustive flag is set.
         let adt = adt_ty.ty_adt_def().expect("`check_struct_path` returned non-ADT type");
         if !adt.did.is_local() && variant.is_field_list_non_exhaustive() {
-            struct_span_err!(
-                self.tcx.sess,
-                expr.span,
-                E0639,
-                "cannot create non-exhaustive {} using struct expression",
-                adt.variant_descr()
-            )
-            .emit();
+            self.tcx
+                .sess
+                .emit_err(StructExprNonExhaustive { span: expr.span, what: adt.variant_descr() });
         }
 
         let error_happened = self.check_expr_struct_fields(
@@ -1165,13 +1153,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .insert(expr.hir_id, fru_field_types);
                     }
                     _ => {
-                        struct_span_err!(
-                            self.tcx.sess,
-                            base_expr.span,
-                            E0436,
-                            "functional record update syntax requires a struct"
-                        )
-                        .emit();
+                        self.tcx
+                            .sess
+                            .emit_err(FunctionalRecordUpdateOnNonStruct { span: base_expr.span });
                     }
                 }
             }
@@ -1234,18 +1218,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 error_happened = true;
                 if let Some(prev_span) = seen_fields.get(&ident) {
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
-                        field.ident.span,
-                        E0062,
-                        "field `{}` specified more than once",
-                        ident
-                    );
-
-                    err.span_label(field.ident.span, "used more than once");
-                    err.span_label(*prev_span, format!("first use of `{}`", ident));
-
-                    err.emit();
+                    tcx.sess.emit_err(FieldMultiplySpecifiedInInitializer {
+                        span: field.ident.span,
+                        prev_span: *prev_span,
+                        ident,
+                    });
                 } else {
                     self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name, span);
                 }
@@ -1876,13 +1853,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.mk_unit()
             }
             _ => {
-                struct_span_err!(
-                    self.tcx.sess,
-                    expr.span,
-                    E0627,
-                    "yield expression outside of generator literal"
-                )
-                .emit();
+                self.tcx.sess.emit_err(YieldExprOutsideOfGenerator { span: expr.span });
                 self.tcx.mk_unit()
             }
         }

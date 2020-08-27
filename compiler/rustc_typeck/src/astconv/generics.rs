@@ -1,6 +1,7 @@
 use crate::astconv::{
     AstConv, ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
 };
+use crate::errors::AssocTypeBindingNotAllowed;
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{pluralize, struct_span_err, DiagnosticId, ErrorReported};
 use rustc_hir as hir;
@@ -544,13 +545,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Emits an error regarding forbidden type binding associations
     pub fn prohibit_assoc_ty_binding(tcx: TyCtxt<'_>, span: Span) {
-        let mut err = struct_span_err!(
-            tcx.sess,
-            span,
-            E0229,
-            "associated type bindings are not allowed here"
-        );
-        err.span_label(span, "associated type not allowed here").emit();
+        tcx.sess.emit_err(AssocTypeBindingNotAllowed { span });
     }
 
     /// Prohibits explicit lifetime arguments if late-bound lifetime parameters

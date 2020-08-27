@@ -1,6 +1,7 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
+use crate::errors::{CopyImplOnNonAdt, CopyImplOnTypeWithDtor, DropImplOnWrongItem};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -58,14 +59,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         _ => bug!("expected Drop impl item"),
     };
 
-    struct_span_err!(
-        tcx.sess,
-        sp,
-        E0120,
-        "the `Drop` trait may only be implemented for structs, enums, and unions",
-    )
-    .span_label(sp, "must be a struct, enum, or union")
-    .emit();
+    tcx.sess.emit_err(DropImplOnWrongItem { span: sp });
 }
 
 fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
@@ -108,25 +102,10 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
             let span =
                 if let ItemKind::Impl { self_ty, .. } = item.kind { self_ty.span } else { span };
 
-            struct_span_err!(
-                tcx.sess,
-                span,
-                E0206,
-                "the trait `Copy` may not be implemented for this type"
-            )
-            .span_label(span, "type is not a structure or enumeration")
-            .emit();
+            tcx.sess.emit_err(CopyImplOnNonAdt { span });
         }
         Err(CopyImplementationError::HasDestructor) => {
-            struct_span_err!(
-                tcx.sess,
-                span,
-                E0184,
-                "the trait `Copy` may not be implemented for this type; the \
-                              type has a destructor"
-            )
-            .span_label(span, "Copy not allowed on types with destructors")
-            .emit();
+            tcx.sess.emit_err(CopyImplOnTypeWithDtor { span });
         }
     }
 }

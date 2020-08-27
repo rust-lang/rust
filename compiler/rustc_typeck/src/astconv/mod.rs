@@ -7,6 +7,10 @@ mod generics;
 
 use crate::bounds::Bounds;
 use crate::collect::PlaceholderHirTyCollector;
+use crate::errors::{
+    AmbiguousLifetimeBound, MultipleRelaxedDefaultBounds, TraitObjectDeclaredWithNoTraits,
+    TypeofReservedKeywordUsed, ValueOfAssociatedStructAlreadySpecified,
+};
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
@@ -684,14 +688,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 if unbound.is_none() {
                     unbound = Some(&ptr.trait_ref);
                 } else {
-                    struct_span_err!(
-                        tcx.sess,
-                        span,
-                        E0203,
-                        "type parameter has more than one relaxed default \
-                        bound, only one is supported"
-                    )
-                    .emit();
+                    tcx.sess.emit_err(MultipleRelaxedDefaultBounds { span });
                 }
             }
         }
@@ -927,18 +924,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             dup_bindings
                 .entry(assoc_ty.def_id)
                 .and_modify(|prev_span| {
-                    struct_span_err!(
-                        self.tcx().sess,
-                        binding.span,
-                        E0719,
-                        "the value of the associated type `{}` (from trait `{}`) \
-                         is already specified",
-                        binding.item_name,
-                        tcx.def_path_str(assoc_ty.container.id())
-                    )
-                    .span_label(binding.span, "re-bound here")
-                    .span_label(*prev_span, format!("`{}` bound here first", binding.item_name))
-                    .emit();
+                    self.tcx().sess.emit_err(ValueOfAssociatedStructAlreadySpecified {
+                        span: binding.span,
+                        prev_span: *prev_span,
+                        item_name: binding.item_name,
+                        def_path: tcx.def_path_str(assoc_ty.container.id()),
+                    });
                 })
                 .or_insert(binding.span);
         }
@@ -1051,13 +1042,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         if regular_traits.is_empty() && auto_traits.is_empty() {
-            struct_span_err!(
-                tcx.sess,
-                span,
-                E0224,
-                "at least one trait is required for an object type"
-            )
-            .emit();
+            tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span });
             return tcx.ty_error();
         }
 
@@ -2059,15 +2044,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.normalize_ty(ast_ty.span, array_ty)
             }
             hir::TyKind::Typeof(ref _e) => {
-                struct_span_err!(
-                    tcx.sess,
-                    ast_ty.span,
-                    E0516,
-                    "`typeof` is a reserved keyword but unimplemented"
-                )
-                .span_label(ast_ty.span, "reserved keyword")
-                .emit();
-
+                tcx.sess.emit_err(TypeofReservedKeywordUsed { span: ast_ty.span });
                 tcx.ty_error()
             }
             hir::TyKind::Infer => {
@@ -2283,13 +2260,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // error.
         let r = derived_region_bounds[0];
         if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
-            struct_span_err!(
-                tcx.sess,
-                span,
-                E0227,
-                "ambiguous lifetime bound, explicit lifetime bound required"
-            )
-            .emit();
+            tcx.sess.emit_err(AmbiguousLifetimeBound { span });
         }
         Some(r)
     }

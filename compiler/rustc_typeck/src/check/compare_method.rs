@@ -1,3 +1,4 @@
+use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -366,24 +367,18 @@ fn check_region_bounds_on_impl_item<'tcx>(
         let item_kind = assoc_item_kind_str(impl_m);
         let def_span = tcx.sess.source_map().guess_head_span(span);
         let span = tcx.hir().get_generics(impl_m.def_id).map(|g| g.span).unwrap_or(def_span);
-        let mut err = struct_span_err!(
-            tcx.sess,
-            span,
-            E0195,
-            "lifetime parameters or bounds on {} `{}` do not match the trait declaration",
-            item_kind,
-            impl_m.ident,
-        );
-        err.span_label(span, &format!("lifetimes do not match {} in trait", item_kind));
-        if let Some(sp) = tcx.hir().span_if_local(trait_m.def_id) {
+        let generics_span = if let Some(sp) = tcx.hir().span_if_local(trait_m.def_id) {
             let def_sp = tcx.sess.source_map().guess_head_span(sp);
-            let sp = tcx.hir().get_generics(trait_m.def_id).map(|g| g.span).unwrap_or(def_sp);
-            err.span_label(
-                sp,
-                &format!("lifetimes in impl do not match this {} in trait", item_kind),
-            );
-        }
-        err.emit();
+            Some(tcx.hir().get_generics(trait_m.def_id).map(|g| g.span).unwrap_or(def_sp))
+        } else {
+            None
+        };
+        tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
+            span,
+            item_kind,
+            ident: impl_m.ident,
+            generics_span,
+        });
         return Err(ErrorReported);
     }
 
