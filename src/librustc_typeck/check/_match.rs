@@ -28,7 +28,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Type check the descriminant and get its type.
-        let scrut_ty = if force_scrutinee_bool {
+        let scrutinee_ty = if force_scrutinee_bool {
             // Here we want to ensure:
             //
             // 1. That default match bindings are *not* accepted in the condition of an
@@ -55,7 +55,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // #55810: Type check patterns first so we get types for all bindings.
         for arm in arms {
-            self.check_pat_top(&arm.pat, scrut_ty, Some(scrut.span), true);
+            self.check_pat_top(&arm.pat, scrutinee_ty, Some(scrut.span), true);
         }
 
         // Now typecheck the blocks.

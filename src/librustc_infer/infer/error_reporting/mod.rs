@@ -50,6 +50,7 @@ use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
 use crate::infer;
+use crate::infer::OriginalQueryValues;
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
@@ -60,8 +61,10 @@ use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::ParamEnvAnd;
 use rustc_middle::ty::{
     self,
     subst::{Subst, SubstsRef},
@@ -1529,6 +1532,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
         if let Some(exp_found) = exp_found {
             self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
+            self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
         }
 
         // In some (most?) cases cause.body_id points to actual body, but in some cases
@@ -1545,6 +1549,62 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // It reads better to have the error origin as the final
         // thing.
         self.note_error_origin(diag, cause, exp_found);
+    }
+
+    fn suggest_await_on_expect_found(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        exp_span: Span,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut DiagnosticBuilder<'tcx>,
+    ) {
+        debug!(
+            "suggest_await_on_expect_found: exp_span={:?}, expected_ty={:?}, found_ty={:?}",
+            exp_span, exp_found.expected, exp_found.found
+        );
+
+        if let ty::Opaque(def_id, _) = exp_found.expected.kind {
+            let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
+            // Future::Output
+            let item_def_id = self
+                .tcx
+                .associated_items(future_trait)
+                .in_definition_order()
+                .next()
+                .unwrap()
+                .def_id;
+
+            let projection_ty = self.tcx.projection_ty_from_predicates((def_id, item_def_id));
+            if let Some(projection_ty) = projection_ty {
+                let projection_query = self.canonicalize_query(
+                    &ParamEnvAnd { param_env: self.tcx.param_env(def_id), value: projection_ty },
+                    &mut OriginalQueryValues::default(),
+                );
+                if let Ok(resp) = self.tcx.normalize_projection_ty(projection_query) {
+                    let normalized_ty = resp.value.value.normalized_ty;
+                    debug!("suggest_await_on_expect_found: normalized={:?}", normalized_ty);
+                    if ty::TyS::same_type(normalized_ty, exp_found.found) {
+                        let span = if let ObligationCauseCode::Pattern {
+                            span,
+                            origin_expr: _,
+                            root_ty: _,
+                        } = cause.code
+                        {
+                            // scrutinee's span
+                            span.unwrap_or(exp_span)
+                        } else {
+                            exp_span
+                        };
+                        diag.span_suggestion_verbose(
+                            span.shrink_to_hi(),
+                            "consider awaiting on the future",
+                            ".await".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
+        }
     }
 
     /// When encountering a case where `.as_ref()` on a `Result` or `Option` would be appropriate,
