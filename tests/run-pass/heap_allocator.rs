@@ -6,39 +6,39 @@ use std::slice;
 
 fn check_alloc<T: AllocRef>(mut allocator: T) { unsafe {
     for &align in &[4, 8, 16, 32] {
-        let layout = Layout::from_size_align(20, align).unwrap();
+        let layout_20 = Layout::from_size_align(20, align).unwrap();
+        let layout_40 = Layout::from_size_align(40, 4*align).unwrap();
+        let layout_10 = Layout::from_size_align(10, align/2).unwrap();
 
         for _ in 0..32 {
-            let a = allocator.alloc(layout).unwrap().as_non_null_ptr();
-            assert_eq!(a.as_ptr() as usize % align, 0, "pointer is incorrectly aligned");
-            allocator.dealloc(a, layout);
+            let a = allocator.alloc(layout_20).unwrap().as_non_null_ptr();
+            assert_eq!(a.as_ptr() as usize % layout_20.align(), 0, "pointer is incorrectly aligned");
+            allocator.dealloc(a, layout_20);
         }
 
-        let p1 = allocator.alloc_zeroed(layout).unwrap().as_non_null_ptr();
-        assert_eq!(p1.as_ptr() as usize % align, 0, "pointer is incorrectly aligned");
+        let p1 = allocator.alloc_zeroed(layout_20).unwrap().as_non_null_ptr();
+        assert_eq!(p1.as_ptr() as usize % layout_20.align(), 0, "pointer is incorrectly aligned");
         assert_eq!(*p1.as_ptr(), 0);
 
         // old size < new size
-        let p2 = allocator.grow(p1, layout, 40).unwrap().as_non_null_ptr();
-        let layout = Layout::from_size_align(40, align).unwrap();
-        assert_eq!(p2.as_ptr() as usize % align, 0, "pointer is incorrectly aligned");
+        let p2 = allocator.grow(p1, layout_20, layout_40).unwrap().as_non_null_ptr();
+        assert_eq!(p2.as_ptr() as usize % layout_40.align(), 0, "pointer is incorrectly aligned");
         let slice = slice::from_raw_parts(p2.as_ptr(), 20);
         assert_eq!(&slice, &[0_u8; 20]);
 
         // old size == new size
-        let p3 = allocator.grow(p2, layout, 40).unwrap().as_non_null_ptr();
-        assert_eq!(p3.as_ptr() as usize % align, 0, "pointer is incorrectly aligned");
+        let p3 = allocator.grow(p2, layout_40, layout_40).unwrap().as_non_null_ptr();
+        assert_eq!(p3.as_ptr() as usize % layout_40.align(), 0, "pointer is incorrectly aligned");
         let slice = slice::from_raw_parts(p3.as_ptr(), 20);
         assert_eq!(&slice, &[0_u8; 20]);
 
         // old size > new size
-        let p4 = allocator.shrink(p3, layout, 10).unwrap().as_non_null_ptr();
-        let layout = Layout::from_size_align(10, align).unwrap();
-        assert_eq!(p4.as_ptr() as usize % align, 0, "pointer is incorrectly aligned");
+        let p4 = allocator.shrink(p3, layout_40, layout_10).unwrap().as_non_null_ptr();
+        assert_eq!(p4.as_ptr() as usize % layout_10.align(), 0, "pointer is incorrectly aligned");
         let slice = slice::from_raw_parts(p4.as_ptr(), 10);
         assert_eq!(&slice, &[0_u8; 10]);
 
-        allocator.dealloc(p4, layout);
+        allocator.dealloc(p4, layout_10);
     }
 } }
 
