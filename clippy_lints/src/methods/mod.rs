@@ -15,12 +15,11 @@ use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{FnRetTy, FnSig, TraitItem, TraitItemKind};
+use rustc_hir::{TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Ty, TyS};
+use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, SymbolStr};
@@ -28,8 +27,8 @@ use rustc_span::symbol::{sym, SymbolStr};
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro, is_copy,
-    is_ctor_or_promotable_const_function, is_expn_of, is_self_ty, is_type_diagnostic_item, iter_input_pats,
+    contains_ty, get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro,
+    is_copy, is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats,
     last_path_segment, match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls,
     method_chain_args, paths, remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability,
     snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
@@ -1656,16 +1655,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
             let ret_ty = return_ty(cx, impl_item.hir_id);
 
-            let contains_self_ty = |ty: Ty<'tcx>| {
-                ty.walk().any(|inner| match inner.unpack() {
-                    GenericArgKind::Type(inner_ty) => TyS::same_type(self_ty, inner_ty),
-
-                    GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
-                })
-            };
-
             // walk the return type and check for Self (this does not check associated types)
-            if contains_self_ty(ret_ty) {
+            if contains_ty(ret_ty, self_ty) {
                 return;
             }
 
@@ -1675,7 +1666,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 for &(predicate, _span) in cx.tcx.predicates_of(def_id).predicates {
                     if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
                         // walk the associated type and check for Self
-                        if contains_self_ty(projection_predicate.ty) {
+                        if contains_ty(projection_predicate.ty, self_ty) {
                             return;
                         }
                     }
@@ -1696,41 +1687,20 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if_chain! {
             if item.ident.name == sym!(new);
-            if let TraitItemKind::Fn(FnSig { decl, .. }, _) = &item.kind;
-            if let FnRetTy::Return(ret_ty) = &decl.output;
+            if let TraitItemKind::Fn(_, _) = item.kind;
+            let ret_ty = return_ty(cx, item.hir_id);
+            let self_ty = TraitRef::identity(cx.tcx, item.hir_id.owner.to_def_id()).self_ty();
+            if !contains_ty(ret_ty, self_ty);
 
             then {
-                let mut visitor = HasSelfVisitor { has_self_ty: false };
-                visitor.visit_ty(ret_ty);
-                if !visitor.has_self_ty {
-                    span_lint(
-                        cx,
-                        NEW_RET_NO_SELF,
-                        item.span,
-                        "methods called `new` usually return `Self`",
-                    );
-                }
+                span_lint(
+                    cx,
+                    NEW_RET_NO_SELF,
+                    item.span,
+                    "methods called `new` usually return `Self`",
+                );
             }
         }
-    }
-}
-
-struct HasSelfVisitor {
-    pub has_self_ty: bool,
-}
-
-impl<'tcx> intravisit::Visitor<'tcx> for HasSelfVisitor {
-    type Map = Map<'tcx>;
-
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
-        if is_self_ty(ty) {
-            self.has_self_ty = true;
-        } else {
-            intravisit::walk_ty(self, ty);
-        }
-    }
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::None
     }
 }
 

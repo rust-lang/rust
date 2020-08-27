@@ -42,7 +42,8 @@ use rustc_hir::{
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, layout::IntegerExt, Ty, TyCtxt, TypeFoldable};
 use rustc_mir::const_eval;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
@@ -864,6 +865,14 @@ pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId) -> Ty<'tcx> 
     let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
     let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
     cx.tcx.erase_late_bound_regions(&ret_ty)
+}
+
+/// Walk into `ty` and returns `true` if any inner type is the same as `other_ty`
+pub fn contains_ty<'tcx>(ty: Ty<'tcx>, other_ty: Ty<'tcx>) -> bool {
+    ty.walk().any(|inner| match inner.unpack() {
+        GenericArgKind::Type(inner_ty) => ty::TyS::same_type(other_ty, inner_ty),
+        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+    })
 }
 
 /// Returns `true` if the given type is an `unsafe` function.
