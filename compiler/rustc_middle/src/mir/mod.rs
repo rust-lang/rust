@@ -1530,7 +1530,24 @@ impl Debug for Statement<'_> {
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
-            Coverage(box ref coverage) => write!(fmt, "{:?}", coverage),
+            Coverage(box ref coverage) => {
+                let rgn = &coverage.code_region;
+                match coverage.kind {
+                    CoverageKind::Counter { id, .. } => {
+                        write!(fmt, "Coverage::Counter({:?}) for {:?}", id.index(), rgn)
+                    }
+                    CoverageKind::Expression { id, lhs, op, rhs } => write!(
+                        fmt,
+                        "Coverage::Expression({:?}) = {} {} {} for {:?}",
+                        id.index(),
+                        lhs.index(),
+                        if op == coverage::Op::Add { "+" } else { "-" },
+                        rhs.index(),
+                        rgn
+                    ),
+                    CoverageKind::Unreachable => write!(fmt, "Coverage::Unreachable for {:?}", rgn),
+                }
+            }
             Nop => write!(fmt, "nop"),
         }
     }
