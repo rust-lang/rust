@@ -9,7 +9,7 @@ use rustc_span::Span;
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `panic!`, `unimplemented!` or `unreachable!` in a function of type result/option.
     ///
-    /// **Why is this bad?** For some codebases,
+    /// **Why is this bad?** For some codebases, it is desirable for functions of type option/result to return an error instead of crashing. Hence unimplemented, panic and unreachable should be avoided.
     ///
     /// **Known problems:** None.
     ///
