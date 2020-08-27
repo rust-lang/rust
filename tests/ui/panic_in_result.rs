@@ -18,19 +18,9 @@ impl A {
         unreachable!();
     }
 
-    fn option_with_unreachable() -> Option<bool> // should emit lint
+    fn result_with_todo() -> Result<bool, String> // should emit lint
     {
-        unreachable!();
-    }
-
-    fn option_with_unimplemented() -> Option<bool> // should emit lint
-    {
-        unimplemented!();
-    }
-
-    fn option_with_panic() -> Option<bool> // should emit lint
-    {
-        panic!("error");
+        todo!("Finish this");
     }
 
     fn other_with_panic() // should not emit lint
@@ -48,14 +38,14 @@ impl A {
         unimplemented!();
     }
 
+    fn other_with_todo() // should not emit lint
+    {
+        todo!("finish this")
+    }
+
     fn result_without_banned_functions() -> Result<bool, String> // should not emit lint
     {
         Ok(true)
-    }
-
-    fn option_without_banned_functions() -> Option<bool> // should not emit lint
-    {
-        Some(true)
     }
 }
 

@@ -7,16 +7,16 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `panic!`, `unimplemented!` or `unreachable!` in a function of type result/option.
+    /// **What it does:** Checks for usage of `panic!`, `unimplemented!`, `todo!` or `unreachable!` in a function of type result.
     ///
-    /// **Why is this bad?** For some codebases, it is desirable for functions of type option/result to return an error instead of crashing. Hence unimplemented, panic and unreachable should be avoided.
+    /// **Why is this bad?** For some codebases, it is desirable for functions of type result to return an error instead of crashing. Hence unimplemented, panic and unreachable should be avoided.
     ///
     /// **Known problems:** None.
     ///
     /// **Example:**
     ///
     /// ```rust
-    /// fn option_with_panic() -> Option<bool>
+    /// fn result_with_panic() -> Result<bool, String>
     /// {
     ///     panic!("error");
     /// }
@@ -24,7 +24,7 @@ declare_clippy_lint! {
 
     pub PANIC_IN_RESULT,
     restriction,
-    "functions of type `Result<..>` / `Option`<...> that contain `panic!()` or `unreachable()` or `unimplemented()` "
+    "functions of type `Result<..>` that contain `panic!()`, `todo!()` or `unreachable()` or `unimplemented()` "
 }
 
 declare_lint_pass!(PanicInResult => [PANIC_IN_RESULT]);
@@ -35,8 +35,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResult {
             // first check if it's a method or function
             if let hir::ImplItemKind::Fn(ref _signature, _) = impl_item.kind;
             // checking if its return type is `result` or `option`
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym!(result_type))
-                || is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym!(option_type));
+            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym!(result_type));
             then {
                 lint_impl_body(cx, impl_item.span, impl_item);
             }
@@ -55,14 +54,13 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnimplementedUnreachable {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if is_expn_of(expr.span, "unimplemented").is_some() {
-            self.result.push(expr.span);
-        } else if is_expn_of(expr.span, "unreachable").is_some() {
-            self.result.push(expr.span);
-        } else if is_expn_of(expr.span, "panic").is_some() {
+        if is_expn_of(expr.span, "unimplemented").is_some()
+            || is_expn_of(expr.span, "unreachable").is_some()
+            || is_expn_of(expr.span, "panic").is_some()
+            || is_expn_of(expr.span, "todo").is_some()
+        {
             self.result.push(expr.span);
         }
-
         // and check sub-expressions
         intravisit::walk_expr(self, expr);
     }
@@ -88,10 +86,10 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tc
                     cx,
                     PANIC_IN_RESULT,
                     impl_span,
-                    "used unimplemented, unreachable or panic in a function that returns result or option",
+                    "used unimplemented, unreachable, todo or panic in a function that returns result",
                     move |diag| {
                         diag.help(
-                            "unimplemented, unreachable or panic should not be used in a function that returns result or option" );
+                            "unimplemented, unreachable, todo or panic should not be used in a function that returns result" );
                         diag.span_note(fpu.result, "will cause the application to crash.");
                     });
             }
