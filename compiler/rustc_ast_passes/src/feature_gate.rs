@@ -156,6 +156,39 @@ impl<'a> PostExpansionVisitor<'a> {
                     "efiapi ABI is experimental and subject to change"
                 );
             }
+            // FFI Unwinding ABI's
+            "C-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "C-unwind ABI is experimental and subject to change"
+                );
+            }
+            "stdcall-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "stdcall-unwind ABI is experimental and subject to change"
+                );
+            }
+            "system-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "system-unwind ABI is experimental and subject to change"
+                );
+            }
+            "thiscall-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "thiscall-unwind ABI is experimental and subject to change"
+                );
+            }
             abi => self
                 .sess
                 .parse_sess

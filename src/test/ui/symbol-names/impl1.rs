@@ -4,7 +4,7 @@
 //[legacy]compile-flags: -Z symbol-mangling-version=legacy
     //[v0]compile-flags: -Z symbol-mangling-version=v0
 //[legacy]normalize-stderr-32bit: "hee444285569b39c2" -> "SYMBOL_HASH"
-//[legacy]normalize-stderr-64bit: "h310ea0259fc3d32d" -> "SYMBOL_HASH"
+//[legacy]normalize-stderr-64bit: "hd949d7797008991f" -> "SYMBOL_HASH"
 
 #![feature(auto_traits, rustc_attrs)]
 #![allow(dead_code)]
@@ -75,3 +75,7 @@ fn main() {
         }
     };
 }
+
+// FIXME(katie): The 32-bit symbol hash probably needs updating as well, but I'm slightly unsure
+// about how to do that. This comment is here so that we don't break the test due to error messages
+// including incorrect line numbers.
