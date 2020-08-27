@@ -2654,14 +2654,14 @@ where
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
 
             // It's the ABI's job to select this, not ours.
-            System => bug!("system abi should be selected elsewhere"),
+            System { .. } => bug!("system abi should be selected elsewhere"),
             EfiApi => bug!("eficall abi should be selected elsewhere"),
 
-            Stdcall => Conv::X86Stdcall,
+            Stdcall { .. } => Conv::X86Stdcall,
             Fastcall => Conv::X86Fastcall,
             Vectorcall => Conv::X86VectorCall,
-            Thiscall => Conv::X86ThisCall,
-            C => Conv::C,
+            Thiscall { .. } => Conv::X86ThisCall,
+            C { .. } => Conv::C,
             Unadjusted => Conv::C,
             Win64 => Conv::X86_64Win64,
             SysV64 => Conv::X86_64SysV,
