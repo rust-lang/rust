@@ -149,6 +149,10 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/install-sccache.sh
         <<: *step
 
+      - name: select Xcode
+        run: src/ci/scripts/select-xcode.sh
+        <<: *step
+
       - name: install clang
         run: src/ci/scripts/install-clang.sh
         <<: *step
@@ -455,6 +459,34 @@ jobs:
               MACOSX_STD_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
+            <<: *job-macos-xl
+
+          # This target only needs to support 11.0 and up as nothing else supports the hardware
+          - name: dist-aarch64-apple
+            env:
+              SCRIPT: ./x.py dist --stage 2
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-apple-darwin
+                --host=aarch64-apple-darwin
+                --target=aarch64-apple-darwin
+                --enable-sanitizers
+                --enable-profiler
+                --set rust.jemalloc
+                --set llvm.ninja=false
+                --tools=rls,clippy,rustfmt,analysis,src
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              SELECT_XCODE: /Applications/Xcode_12_beta.app
+              USE_XCODE_CLANG: 1
+              MACOSX_DEPLOYMENT_TARGET: 11.0
+              MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              # TODO: Cargo is disabled until OpenSSL 1.1.1 can be
+              # compiled for aarch64-apple-darwin::
+              # https://github.com/openssl/openssl/pull/12369. Once
+              # fixed, remove `--tools`, add back
+              # `--enable-full-tools`, and enable this again
+              # DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-macos-xl
 
           ######################

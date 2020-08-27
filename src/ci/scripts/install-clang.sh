@@ -12,10 +12,18 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 LLVM_VERSION="10.0.0"
 
 if isMacOS; then
-    curl -f "${MIRRORS_BASE}/clang%2Bllvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz" | tar xJf -
+    # If the job selects a specific Xcode version, use that instead of
+    # downloading our own version.
+    if [[ ${USE_XCODE_CLANG-0} -eq 1 ]]; then
+        bindir="$(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+    else
+        file="${MIRRORS_BASE}/clang%2Bllvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz"
+        curl -f "${file}" | tar xJf -
+        bindir="$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin"
+    fi
 
-    ciCommandSetEnv CC "$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin/clang"
-    ciCommandSetEnv CXX "$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin/clang++"
+    ciCommandSetEnv CC "${bindir}/clang"
+    ciCommandSetEnv CXX "${bindir}/clang++"
 
     # macOS 10.15 onwards doesn't have libraries in /usr/include anymore: those
     # are now located deep into the filesystem, under Xcode's own files. The
