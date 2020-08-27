@@ -721,7 +721,13 @@ pub enum UpvarCapture<'tcx> {
     /// Upvar is captured by value. This is always true when the
     /// closure is labeled `move`, but can also be true in other cases
     /// depending on inference.
-    ByValue,
+    ///
+    /// If the upvar was inferred to be captured by value (e.g. `move`
+    /// was not used), then the `Span` points to a usage that
+    /// required it. There may be more than one such usage
+    /// (e.g. `|| { a; a; }`), in which case we pick an
+    /// arbitrary one.
+    ByValue(Option<Span>),
 
     /// Upvar is captured by reference.
     ByRef(UpvarBorrow<'tcx>),

@@ -959,7 +959,7 @@ fn convert_var<'tcx>(
             // ...but the upvar might be an `&T` or `&mut T` capture, at which
             // point we need an implicit deref
             match cx.typeck_results().upvar_capture(upvar_id) {
-                ty::UpvarCapture::ByValue => field_kind,
+                ty::UpvarCapture::ByValue(_) => field_kind,
                 ty::UpvarCapture::ByRef(borrow) => ExprKind::Deref {
                     arg: Expr {
                         temp_lifetime,
@@ -1074,7 +1074,7 @@ fn capture_upvar<'tcx>(
         kind: convert_var(cx, closure_expr, var_hir_id),
     };
     match upvar_capture {
-        ty::UpvarCapture::ByValue => captured_var.to_ref(),
+        ty::UpvarCapture::ByValue(_) => captured_var.to_ref(),
         ty::UpvarCapture::ByRef(upvar_borrow) => {
             let borrow_kind = match upvar_borrow.kind {
                 ty::BorrowKind::ImmBorrow => BorrowKind::Shared,

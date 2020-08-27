@@ -938,11 +938,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
         );
-        let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(def_id.as_local()?);
+        let local_did = def_id.as_local()?;
+        let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(local_did);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(.., body_id, args_span, _) = expr {
-            for (upvar, place) in self.infcx.tcx.upvars_mentioned(def_id)?.values().zip(places) {
+            for ((upvar_hir_id, upvar), place) in
+                self.infcx.tcx.upvars_mentioned(def_id)?.iter().zip(places)
+            {
                 match place {
                     Operand::Copy(place) | Operand::Move(place)
                         if target_place == place.as_ref() =>
@@ -950,7 +953,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         debug!("closure_span: found captured local {:?}", place);
                         let body = self.infcx.tcx.hir().body(*body_id);
                         let generator_kind = body.generator_kind();
-                        return Some((*args_span, generator_kind, upvar.span));
+                        let upvar_id = ty::UpvarId {
+                            var_path: ty::UpvarPath { hir_id: *upvar_hir_id },
+                            closure_expr_id: local_did,
+                        };
+
+                        // If we have a more specific span available, point to that.
+                        // We do this even though this span might be part of a borrow error
+                        // message rather than a move error message. Our goal is to point
+                        // to a span that shows why the upvar is used in the closure,
+                        // so a move-related span is as good as any (and potentially better,
+                        // if the overall error is due to a move of the upvar).
+                        let usage_span =
+                            match self.infcx.tcx.typeck(local_did).upvar_capture(upvar_id) {
+                                ty::UpvarCapture::ByValue(Some(span)) => span,
+                                _ => upvar.span,
+                            };
+                        return Some((*args_span, generator_kind, usage_span));
                     }
                     _ => {}
                 }

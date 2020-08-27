@@ -42,6 +42,7 @@ use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId};
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_span::{Span, Symbol};
+use std::collections::hash_map::Entry;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn closure_analyze(&self, body: &'tcx hir::Body<'tcx>) {
@@ -124,7 +125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 closure_captures.insert(var_hir_id, upvar_id);
 
                 let capture_kind = match capture_clause {
-                    hir::CaptureBy::Value => ty::UpvarCapture::ByValue,
+                    hir::CaptureBy::Value => ty::UpvarCapture::ByValue(None),
                     hir::CaptureBy::Ref => {
                         let origin = UpvarRegion(upvar_id, span);
                         let upvar_region = self.next_region_var(origin);
@@ -237,7 +238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     debug!("var_id={:?} upvar_ty={:?} capture={:?}", var_hir_id, upvar_ty, capture);
 
                     match capture {
-                        ty::UpvarCapture::ByValue => upvar_ty,
+                        ty::UpvarCapture::ByValue(_) => upvar_ty,
                         ty::UpvarCapture::ByRef(borrow) => tcx.mk_ref(
                             borrow.region,
                             ty::TypeAndMut { ty: upvar_ty, mutbl: borrow.kind.to_mutbl_lossy() },
@@ -300,15 +301,43 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
         debug!("adjust_upvar_borrow_kind_for_consume: upvar={:?}", upvar_id);
 
+        let usage_span = tcx.hir().span(place_with_id.hir_id);
+
         // To move out of an upvar, this must be a FnOnce closure
         self.adjust_closure_kind(
             upvar_id.closure_expr_id,
             ty::ClosureKind::FnOnce,
-            tcx.hir().span(place_with_id.hir_id),
+            usage_span,
             var_name(tcx, upvar_id.var_path.hir_id),
         );
 
-        self.adjust_upvar_captures.insert(upvar_id, ty::UpvarCapture::ByValue);
+        // In a case like `let pat = upvar`, don't use the span
+        // of the pattern, as this just looks confusing.
+        let by_value_span = match tcx.hir().get(place_with_id.hir_id) {
+            hir::Node::Pat(_) => None,
+            _ => Some(usage_span),
+        };
+
+        let new_capture = ty::UpvarCapture::ByValue(by_value_span);
+        match self.adjust_upvar_captures.entry(upvar_id) {
+            Entry::Occupied(mut e) => {
+                match e.get() {
+                    // We always overwrite `ByRef`, since we require
+                    // that the upvar be available by value.
+                    //
+                    // If we had a previous by-value usage without a specific
+                    // span, use ours instead. Otherwise, keep the first span
+                    // we encountered, since there isn't an obviously better one.
+                    ty::UpvarCapture::ByRef(_) | ty::UpvarCapture::ByValue(None) => {
+                        e.insert(new_capture);
+                    }
+                    _ => {}
+                }
+            }
+            Entry::Vacant(e) => {
+                e.insert(new_capture);
+            }
+        }
     }
 
     /// Indicates that `place_with_id` is being directly mutated (e.g., assigned
@@ -404,7 +433,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         );
 
         match upvar_capture {
-            ty::UpvarCapture::ByValue => {
+            ty::UpvarCapture::ByValue(_) => {
                 // Upvar is already by-value, the strongest criteria.
             }
             ty::UpvarCapture::ByRef(mut upvar_borrow) => {

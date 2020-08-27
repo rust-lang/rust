@@ -559,7 +559,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     var_id,
                 ));
                 match upvar_capture {
-                    ty::UpvarCapture::ByValue => {
+                    ty::UpvarCapture::ByValue(_) => {
                         let mode = copy_or_move(&self.mc, &captured_place);
                         self.delegate.consume(&captured_place, mode);
                     }

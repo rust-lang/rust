@@ -786,7 +786,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                     return;
                 }
             }
-            ty::UpvarCapture::ByValue => {}
+            ty::UpvarCapture::ByValue(_) => {}
         }
         let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(upvar_id.closure_expr_id);
         let ty = self.resolve_node_type(fn_hir_id);

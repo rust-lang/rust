@@ -331,7 +331,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_upvar_capture_map(&mut self) {
         for (upvar_id, upvar_capture) in self.fcx.typeck_results.borrow().upvar_capture_map.iter() {
             let new_upvar_capture = match *upvar_capture {
-                ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
+                ty::UpvarCapture::ByValue(span) => ty::UpvarCapture::ByValue(span),
                 ty::UpvarCapture::ByRef(ref upvar_borrow) => {
                     ty::UpvarCapture::ByRef(ty::UpvarBorrow {
                         kind: upvar_borrow.kind,
