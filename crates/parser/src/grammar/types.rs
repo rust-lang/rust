@@ -2,7 +2,7 @@
 
 use super::*;
 
-pub(super) const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(token_set![
+pub(super) const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(TokenSet::new(&[
     T!['('],
     T!['['],
     T![<],
@@ -16,16 +16,16 @@ pub(super) const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(token_set![
     T![for],
     T![impl],
     T![dyn],
-]);
+]));
 
-const TYPE_RECOVERY_SET: TokenSet = token_set![
+const TYPE_RECOVERY_SET: TokenSet = TokenSet::new(&[
     T![')'],
     T![,],
     L_DOLLAR,
     // test_err struct_field_recover
     // struct S { f pub g: () }
     T![pub],
-];
+]);
 
 pub(crate) fn type_(p: &mut Parser) {
     type_with_bounds_cond(p, true);
