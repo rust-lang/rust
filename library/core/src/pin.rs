@@ -555,7 +555,7 @@ impl<P: Deref> Pin<P> {
     ///  ```
     ///
     /// [`mem::swap`]: crate::mem::swap
-    #[cfg_attr(not(bootstrap), lang = "new_unchecked")]
+    #[lang = "new_unchecked"]
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub unsafe fn new_unchecked(pointer: P) -> Pin<P> {

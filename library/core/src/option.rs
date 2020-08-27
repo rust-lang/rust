@@ -144,11 +144,11 @@ use crate::{
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {
     /// No value
-    #[cfg_attr(not(bootstrap), lang = "None")]
+    #[lang = "None"]
     #[stable(feature = "rust1", since = "1.0.0")]
     None,
     /// Some value `T`
-    #[cfg_attr(not(bootstrap), lang = "Some")]
+    #[lang = "Some"]
     #[stable(feature = "rust1", since = "1.0.0")]
     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
 }

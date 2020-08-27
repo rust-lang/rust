@@ -36,7 +36,7 @@ use crate::hash::Hash;
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
-#[cfg_attr(not(bootstrap), lang = "RangeFull")]
+#[lang = "RangeFull"]
 #[doc(alias = "..")]
 #[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -69,7 +69,7 @@ impl fmt::Debug for RangeFull {
 /// assert_eq!(arr[1.. 3], [  1,2    ]);  // Range
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
-#[cfg_attr(not(bootstrap), lang = "Range")]
+#[lang = "Range"]
 #[doc(alias = "..")]
 #[derive(Clone, Default, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -172,7 +172,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// assert_eq!(arr[1.. 3], [  1,2    ]);
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
-#[cfg_attr(not(bootstrap), lang = "RangeFrom")]
+#[lang = "RangeFrom"]
 #[doc(alias = "..")]
 #[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -253,7 +253,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
-#[cfg_attr(not(bootstrap), lang = "RangeTo")]
+#[lang = "RangeTo"]
 #[doc(alias = "..")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -322,7 +322,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// assert_eq!(arr[1.. 3], [  1,2    ]);
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);  // RangeInclusive
 /// ```
-#[cfg_attr(not(bootstrap), lang = "RangeInclusive")]
+#[lang = "RangeInclusive"]
 #[doc(alias = "..=")]
 #[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -354,7 +354,7 @@ impl<Idx> RangeInclusive<Idx> {
     ///
     /// assert_eq!(3..=5, RangeInclusive::new(3, 5));
     /// ```
-    #[cfg_attr(not(bootstrap), lang = "range_inclusive_new")]
+    #[lang = "range_inclusive_new"]
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     #[rustc_promotable]
@@ -543,7 +543,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
-#[cfg_attr(not(bootstrap), lang = "RangeToInclusive")]
+#[lang = "RangeToInclusive"]
 #[doc(alias = "..=")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "inclusive_range", since = "1.26.0")]
