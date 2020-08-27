@@ -12,17 +12,25 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 LLVM_VERSION="10.0.0"
 
 if isMacOS; then
-    curl -f "${MIRRORS_BASE}/clang%2Bllvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz" | tar xJf -
+    if [[ -s ${SELECT_XCODE} ]]; then
+        bin="${SELECT_XCODE}/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
 
-    ciCommandSetEnv CC "$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin/clang"
-    ciCommandSetEnv CXX "$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin/clang++"
+        ciCommandSetEnv CC "${bin}/clang"
+        ciCommandSetEnv CXX "${bin}/clang++"
+    else
+        file="${MIRRORS_BASE}/clang%2Bllvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz"
+        curl -f "${file}" | tar xJf -
 
-    # macOS 10.15 onwards doesn't have libraries in /usr/include anymore: those
-    # are now located deep into the filesystem, under Xcode's own files. The
-    # native clang is configured to use the correct path, but our custom one
-    # doesn't. This sets the SDKROOT environment variable to the SDK so that
-    # our own clang can figure out the correct include path on its own.
-    ciCommandSetEnv SDKROOT "$(xcrun --sdk macosx --show-sdk-path)"
+        ciCommandSetEnv CC "$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin/clang"
+        ciCommandSetEnv CXX "$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin/clang++"
+
+        # macOS 10.15 onwards doesn't have libraries in /usr/include anymore: those
+        # are now located deep into the filesystem, under Xcode's own files. The
+        # native clang is configured to use the correct path, but our custom one
+        # doesn't. This sets the SDKROOT environment variable to the SDK so that
+        # our own clang can figure out the correct include path on its own.
+        ciCommandSetEnv SDKROOT "$(xcrun --sdk macosx --show-sdk-path)"
+    fi
 
     # Configure `AR` specifically so rustbuild doesn't try to infer it as
     # `clang-ar` by accident.

@@ -113,6 +113,10 @@ steps:
   condition: and(succeeded(), not(variables.SKIP_JOB))
   displayName: Install awscli
 
+- bash: sudo xcode-select -s $SELECT_XCODE
+  condition: and(succeeded(), variables.SELECT_XCODE, not(variables.SKIP_JOB))
+  displayName: Select Xcode version
+
 - bash: src/ci/scripts/run-build-from-ci.sh
   timeoutInMinutes: 600
   env:

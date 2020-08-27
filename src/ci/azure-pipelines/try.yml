@@ -20,3 +20,30 @@ jobs:
     vmImage: ubuntu-16.04
   steps:
   - bash: echo "We're running this job since bors is still gating on Azure"
+
+- job: macOS
+  timeoutInMinutes: 600
+  pool:
+    vmImage: macos-10.15
+  steps:
+  - template: steps/run.yml
+  strategy:
+    matrix:
+      # This target only needs to support 11.0 and up as nothing else supports the hardware
+      dist-aarch64-apple:
+        SCRIPT: ./x.py dist -vvvvvvvvvv
+        INITIAL_RUST_CONFIGURE_ARGS: >-
+          --build=x86_64-apple-darwin
+          --host=aarch64-apple-darwin
+          --target=aarch64-apple-darwin
+          --enable-sanitizers
+          --enable-profiler
+          --set rust.jemalloc
+          --set llvm.ninja=false
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        SELECT_XCODE: /Applications/Xcode_12_beta.app
+        SDKROOT: /Applications/Xcode_12_beta.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX11.0.sdk
+        MACOSX_DEPLOYMENT_TARGET: 11.0
+        MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
