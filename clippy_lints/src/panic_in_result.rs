@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// fn option_with_panic() -> Option<bool> // should emit lint
+    /// fn option_with_panic() -> Option<bool>
     /// {
     ///     panic!("error");
     /// }
