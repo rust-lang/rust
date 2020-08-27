@@ -134,8 +134,8 @@ pub const fn identity<T>(x: T) -> T {
 /// want to accept all references that can be converted to [`&str`] as an argument.
 /// Since both [`String`] and [`&str`] implement `AsRef<str>` we can accept both as input argument.
 ///
-/// [`Option<T>`]: crate::option::Option
-/// [`Result<T, E>`]: crate::result::Result
+/// [`Option<T>`]: Option
+/// [`Result<T, E>`]: Result
 /// [`Borrow`]: crate::borrow::Borrow
 /// [`Eq`]: crate::cmp::Eq
 /// [`Ord`]: crate::cmp::Ord
@@ -168,8 +168,8 @@ pub trait AsRef<T: ?Sized> {
 /// **Note: This trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
 ///
-/// [`Option<T>`]: crate::option::Option
-/// [`Result<T, E>`]: crate::result::Result
+/// [`Option<T>`]: Option
+/// [`Result<T, E>`]: Result
 ///
 /// # Generic Implementations
 ///
@@ -195,7 +195,7 @@ pub trait AsRef<T: ?Sized> {
 /// assert_eq!(*boxed_num, 1);
 /// ```
 ///
-/// [`Box<T>`]: crate::boxed::Box<T>
+/// [`Box<T>`]: ../../std/boxed/struct.Box.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsMut<T: ?Sized> {
     /// Performs the conversion.
@@ -269,10 +269,10 @@ pub trait AsMut<T: ?Sized> {
 /// is_hello(s);
 /// ```
 ///
-/// [`Option<T>`]: crate::option::Option
-/// [`Result<T, E>`]: crate::result::Result
+/// [`Option<T>`]: Option
+/// [`Result<T, E>`]: Result
 /// [`String`]: ../../std/string/struct.String.html
-/// [`Vec`]: crate::vec::Vec<T>
+/// [`Vec`]: ../../std/vec/struct.Vec.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
     /// Performs the conversion.
@@ -358,9 +358,10 @@ pub trait Into<T>: Sized {
 /// }
 /// ```
 ///
-/// [`Option<T>`]: crate::option::Option
-/// [`Result<T, E>`]: crate::result::Result
+/// [`Option<T>`]: Option
+/// [`Result<T, E>`]: Result
 /// [`String`]: ../../std/string/struct.String.html
+/// [`from`]: From::from
 /// [book]: ../../book/ch09-00-error-handling.html
 #[rustc_diagnostic_item = "from_trait"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -418,7 +419,7 @@ pub trait TryInto<T>: Sized {
 /// # Generic Implementations
 ///
 /// - `TryFrom<T> for U` implies [`TryInto`]`<U> for T`
-/// - [`TryFrom::try_from`] is reflexive, which means that `TryFrom<T> for T`
+/// - [`try_from`] is reflexive, which means that `TryFrom<T> for T`
 /// is implemented and cannot fail -- the associated `Error` type for
 /// calling `T::try_from()` on a value of type `T` is [`Infallible`].
 /// When the [`!`] type is stabilized [`Infallible`] and [`!`] will be
@@ -467,7 +468,7 @@ pub trait TryInto<T>: Sized {
 /// assert!(try_successful_smaller_number.is_ok());
 /// ```
 ///
-/// [`i32::MAX`]: crate::i32::MAX
+/// [`try_from`]: TryFrom::try_from
 /// [`!`]: ../../std/primitive.never.html
 #[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryFrom<T>: Sized {
@@ -670,8 +671,6 @@ impl AsRef<str> for str {
 /// the two `impl`s will start to overlap
 /// and therefore will be disallowed by the language’s trait coherence rules.
 ///
-/// [`Ok`]: super::result::Result::Ok
-/// [`Result`]: super::result::Result
 /// [never]: ../../std/primitive.never.html
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 #[derive(Copy)]
