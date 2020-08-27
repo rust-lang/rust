@@ -237,6 +237,14 @@ enum DiagnosticBuilderMethod {
                             // Add more variants as needed to support one-time diagnostics.
 }
 
+/// Trait implemented by error types. This should not be implemented manually. Instead, use
+/// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
+pub trait SessionDiagnostic<'a> {
+    /// Write out as a diagnostic out of `sess`.
+    #[must_use]
+    fn into_diagnostic(self, sess: &'a Session) -> DiagnosticBuilder<'a>;
+}
+
 /// Diagnostic message ID, used by `Session.one_time_diagnostics` to avoid
 /// emitting the same message more than once.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -391,6 +399,9 @@ impl Session {
     }
     pub fn err(&self, msg: &str) {
         self.diagnostic().err(msg)
+    }
+    pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) {
+        err.into_diagnostic(self).emit()
     }
     pub fn err_count(&self) -> usize {
         self.diagnostic().err_count()

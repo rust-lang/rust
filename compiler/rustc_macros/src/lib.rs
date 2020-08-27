@@ -1,3 +1,4 @@
+#![feature(proc_macro_diagnostic)]
 #![allow(rustc::default_hash_types)]
 #![recursion_limit = "128"]
 
@@ -9,6 +10,7 @@ mod hash_stable;
 mod lift;
 mod query;
 mod serialize;
+mod session_diagnostic;
 mod symbols;
 mod type_foldable;
 
@@ -36,3 +38,14 @@ decl_derive!([MetadataDecodable] => serialize::meta_decodable_derive);
 decl_derive!([MetadataEncodable] => serialize::meta_encodable_derive);
 decl_derive!([TypeFoldable, attributes(type_foldable)] => type_foldable::type_foldable_derive);
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
+decl_derive!(
+    [SessionDiagnostic, attributes(
+        message,
+        lint,
+        error,
+        label,
+        suggestion,
+        suggestion_short,
+        suggestion_hidden,
+        suggestion_verbose)] => session_diagnostic::session_diagnostic_derive
+);
