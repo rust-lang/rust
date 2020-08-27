@@ -1066,7 +1066,11 @@ themePicker.onblur = handleThemeButtonsBlur;
                 krates
                     .iter()
                     .map(|s| {
-                        format!("<li><a href=\"{}index.html\">{}</li>", ensure_trailing_slash(s), s)
+                        format!(
+                            "<li><a class=\"mod\" href=\"{}index.html\">{}</a></li>",
+                            ensure_trailing_slash(s),
+                            s
+                        )
                     })
                     .collect::<String>()
             );
