@@ -2,6 +2,7 @@
 
 use base_db::SourceDatabase;
 use oorandom::Rand32;
+use stdx::format_to;
 use syntax::{AstNode, TextRange, TextSize};
 
 use crate::{syntax_highlighting::highlight, FileId, RootDatabase};
@@ -40,7 +41,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
             }
             _ => "".into(),
         };
-        buf.push_str(&format!("<span class=\"{}\"{}>{}</span>", class, color, html_escape(curr)));
+        format_to!(buf, "<span class=\"{}\"{}>{}</span>", class, color, html_escape(curr));
 
         prev_pos = range.range.end();
     }
