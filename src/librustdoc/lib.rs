@@ -64,13 +64,13 @@ mod docfs;
 mod doctree;
 #[macro_use]
 mod error;
+mod doctest;
 mod fold;
 crate mod formats;
 pub mod html;
 mod json;
 mod markdown;
 mod passes;
-mod test;
 mod theme;
 mod visit_ast;
 mod visit_lib;
@@ -476,7 +476,7 @@ fn main_options(options: config::Options) -> MainResult {
 
     match (options.should_test, options.markdown_input()) {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
-        (true, false) => return test::run(options),
+        (true, false) => return doctest::run(options),
         (false, true) => {
             return wrap_return(
                 &diag,

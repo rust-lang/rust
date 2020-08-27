@@ -54,7 +54,7 @@ impl Tests {
     }
 }
 
-impl crate::test::Tester for Tests {
+impl crate::doctest::Tester for Tests {
     fn add_test(&mut self, _: String, _: LangString, _: usize) {
         self.found_tests += 1;
     }

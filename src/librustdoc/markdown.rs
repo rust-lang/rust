@@ -7,10 +7,10 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::DUMMY_SP;
 
 use crate::config::{Options, RenderOptions};
+use crate::doctest::{Collector, TestOptions};
 use crate::html::escape::Escape;
 use crate::html::markdown;
 use crate::html::markdown::{find_testable_code, ErrorCodes, IdMap, Markdown, MarkdownWithToc};
-use crate::test::{Collector, TestOptions};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
 fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
