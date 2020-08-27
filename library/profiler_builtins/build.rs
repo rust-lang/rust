@@ -20,6 +20,7 @@ fn main() {
         "InstrProfilingMergeFile.c",
         "InstrProfilingNameVar.c",
         "InstrProfilingPlatformDarwin.c",
+        "InstrProfilingPlatformFuchsia.c",
         "InstrProfilingPlatformLinux.c",
         "InstrProfilingPlatformOther.c",
         "InstrProfilingPlatformWindows.c",
