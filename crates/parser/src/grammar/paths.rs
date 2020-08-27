@@ -3,7 +3,7 @@
 use super::*;
 
 pub(super) const PATH_FIRST: TokenSet =
-    token_set![IDENT, T![self], T![super], T![crate], T![:], T![<]];
+    TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![:], T![<]]);
 
 pub(super) fn is_path_start(p: &Parser) -> bool {
     is_use_path_start(p) || p.at(T![<])

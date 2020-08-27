@@ -15,7 +15,7 @@ use super::*;
 //     let _ = b"e";
 //     let _ = br"f";
 // }
-pub(crate) const LITERAL_FIRST: TokenSet = token_set![
+pub(crate) const LITERAL_FIRST: TokenSet = TokenSet::new(&[
     TRUE_KW,
     FALSE_KW,
     INT_NUMBER,
@@ -25,8 +25,8 @@ pub(crate) const LITERAL_FIRST: TokenSet = token_set![
     STRING,
     RAW_STRING,
     BYTE_STRING,
-    RAW_BYTE_STRING
-];
+    RAW_BYTE_STRING,
+]);
 
 pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
     if !p.at_ts(LITERAL_FIRST) {
@@ -39,7 +39,7 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
 
 // E.g. for after the break in `if break {}`, this should not match
 pub(super) const ATOM_EXPR_FIRST: TokenSet =
-    LITERAL_FIRST.union(paths::PATH_FIRST).union(token_set![
+    LITERAL_FIRST.union(paths::PATH_FIRST).union(TokenSet::new(&[
         T!['('],
         T!['{'],
         T!['['],
@@ -59,9 +59,9 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T![loop],
         T![for],
         LIFETIME,
-    ]);
+    ]));
 
-const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW, R_DOLLAR];
+const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[LET_KW, R_DOLLAR]);
 
 pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
     if let Some(m) = literal(p) {

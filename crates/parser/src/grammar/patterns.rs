@@ -2,9 +2,18 @@
 
 use super::*;
 
-pub(super) const PATTERN_FIRST: TokenSet = expressions::LITERAL_FIRST
-    .union(paths::PATH_FIRST)
-    .union(token_set![T![box], T![ref], T![mut], T!['('], T!['['], T![&], T![_], T![-], T![.]]);
+pub(super) const PATTERN_FIRST: TokenSet =
+    expressions::LITERAL_FIRST.union(paths::PATH_FIRST).union(TokenSet::new(&[
+        T![box],
+        T![ref],
+        T![mut],
+        T!['('],
+        T!['['],
+        T![&],
+        T![_],
+        T![-],
+        T![.],
+    ]));
 
 pub(crate) fn pattern(p: &mut Parser) {
     pattern_r(p, PAT_RECOVERY_SET);
@@ -74,7 +83,7 @@ fn pattern_single_r(p: &mut Parser, recovery_set: TokenSet) {
 }
 
 const PAT_RECOVERY_SET: TokenSet =
-    token_set![LET_KW, IF_KW, WHILE_KW, LOOP_KW, MATCH_KW, R_PAREN, COMMA];
+    TokenSet::new(&[LET_KW, IF_KW, WHILE_KW, LOOP_KW, MATCH_KW, R_PAREN, COMMA]);
 
 fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     let m = match p.nth(0) {

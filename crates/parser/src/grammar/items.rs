@@ -26,7 +26,7 @@ pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     }
 }
 
-pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
+pub(super) const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
     FN_KW,
     STRUCT_KW,
     ENUM_KW,
@@ -41,7 +41,7 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
     USE_KW,
     MACRO_KW,
     T![;],
-];
+]);
 
 pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
     let m = p.start();

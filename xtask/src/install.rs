@@ -7,7 +7,7 @@ use anyhow::{bail, format_err, Context, Result};
 use crate::not_bash::{pushd, run};
 
 // Latest stable, feel free to send a PR if this lags behind.
-const REQUIRED_RUST_VERSION: u32 = 43;
+const REQUIRED_RUST_VERSION: u32 = 46;
 
 pub struct InstallCmd {
     pub client: Option<ClientOpt>,
