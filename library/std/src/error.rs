@@ -38,7 +38,7 @@ use crate::string;
 /// by an error from a lower-level module, it can allow accessing that error
 /// via [`Error::source()`]. This makes it possible for the high-level
 /// module to provide its own errors while also revealing some of the
-/// implementation for debugging via [`Error::source`] chains.
+/// implementation for debugging via `source` chains.
 ///
 /// [`Result<T, E>`]: Result
 #[stable(feature = "rust1", since = "1.0.0")]
