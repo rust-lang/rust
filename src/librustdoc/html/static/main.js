@@ -344,6 +344,7 @@ function defocusSearchBar() {
     }
 
     function getHelpElement() {
+        buildHelperPopup();
         return document.getElementById("help");
     }
 
@@ -2807,8 +2808,8 @@ function defocusSearchBar() {
 
         var infos = [
             "Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to \
-             restrict the search to a given type.",
-            "Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
+             restrict the search to a given item kind.",
+            "Accepted kinds are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
              <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
              and <code>const</code>.",
             "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
@@ -2828,12 +2829,12 @@ function defocusSearchBar() {
 
         popup.appendChild(container);
         insertAfter(popup, getSearchElement());
+        // So that it's only built once and then it'll do nothing when called!
+        buildHelperPopup = function() {};
     }
 
     onHashChange(null);
     window.onhashchange = onHashChange;
-
-    buildHelperPopup();
 }());
 
 // This is required in firefox. Explanations: when going back in the history, firefox doesn't re-run
