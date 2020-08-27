@@ -10,7 +10,7 @@ Language
   function's caller's location information for panic messages.][72445]
 - [Recursively indexing into tuples no longer needs parentheses.][71322] E.g.
   `x.0.0` over `(x.0).0`.
-- [`mem::transmute` can now be used in static and constants.][72920] **Note**
+- [`mem::transmute` can now be used in statics and constants.][72920] **Note**
   You currently can't use `mem::transmute` in constant functions.
 
 Compiler
