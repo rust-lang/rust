@@ -870,7 +870,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call: &hir::Expr<'_>,
         span: Span,
     ) {
-        if let ty::Opaque(def_id, _substs) = ty.kind {
+        if let ty::Opaque(def_id, _) = ty.kind {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
             // Future::Output
             let item_def_id = self
@@ -881,17 +881,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .unwrap()
                 .def_id;
 
-            let mut projection_ty = None;
-            for (predicate, _) in self.tcx.predicates_of(def_id).predicates {
-                if let ty::PredicateAtom::Projection(projection_predicate) =
-                    predicate.skip_binders()
-                {
-                    if item_def_id == projection_predicate.projection_ty.item_def_id {
-                        projection_ty = Some(projection_predicate.projection_ty);
-                        break;
-                    }
-                }
-            }
+            let projection_ty = self.tcx.projection_ty_from_predicates((def_id, item_def_id));
             let cause = self.misc(span);
             let mut selcx = SelectionContext::new(&self.infcx);
             let mut obligations = vec![];

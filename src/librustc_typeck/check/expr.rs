@@ -1523,15 +1523,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let item_def_id =
             self.tcx.associated_items(future_trait).in_definition_order().next().unwrap().def_id;
 
-        let mut projection_ty = None;
-        for (predicate, _) in self.tcx.predicates_of(def_id).predicates {
-            if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
-                if item_def_id == projection_predicate.projection_ty.item_def_id {
-                    projection_ty = Some(projection_predicate.projection_ty);
-                    break;
-                }
-            }
-        }
+        let projection_ty = self.tcx.projection_ty_from_predicates((def_id, item_def_id));
         debug!("suggest_await_on_field_access: projection_ty={:?}", projection_ty);
 
         let cause = self.misc(expr.span);

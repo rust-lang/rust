@@ -1574,17 +1574,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .unwrap()
                 .def_id;
 
-            let mut projection_ty = None;
-            for (predicate, _) in self.tcx.predicates_of(def_id).predicates {
-                if let ty::PredicateAtom::Projection(projection_predicate) =
-                    predicate.skip_binders()
-                {
-                    if item_def_id == projection_predicate.projection_ty.item_def_id {
-                        projection_ty = Some(projection_predicate.projection_ty);
-                        break;
-                    }
-                }
-            }
+            let projection_ty = self.tcx.projection_ty_from_predicates((def_id, item_def_id));
             if let Some(projection_ty) = projection_ty {
                 let projection_query = self.canonicalize_query(
                     &ParamEnvAnd { param_env: self.tcx.param_env(def_id), value: projection_ty },

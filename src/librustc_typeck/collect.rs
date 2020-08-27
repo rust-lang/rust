@@ -70,6 +70,7 @@ pub fn provide(providers: &mut Providers) {
         generics_of,
         predicates_of,
         predicates_defined_on,
+        projection_ty_from_predicates,
         explicit_predicates_of,
         super_predicates_of,
         type_param_predicates,
@@ -2049,6 +2050,28 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     };
     debug!("explicit_predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
+}
+
+fn projection_ty_from_predicates(
+    tcx: TyCtxt<'tcx>,
+    key: (
+        // ty_def_id
+        DefId,
+        // def_id of `N` in `<T as Trait>::N`
+        DefId,
+    ),
+) -> Option<ty::ProjectionTy<'tcx>> {
+    let (ty_def_id, item_def_id) = key;
+    let mut projection_ty = None;
+    for (predicate, _) in tcx.predicates_of(ty_def_id).predicates {
+        if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
+            if item_def_id == projection_predicate.projection_ty.item_def_id {
+                projection_ty = Some(projection_predicate.projection_ty);
+                break;
+            }
+        }
+    }
+    projection_ty
 }
 
 fn trait_associated_item_predicates(
