@@ -325,6 +325,40 @@ impl<T> Rc<T> {
         )
     }
 
+    /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
+    /// to upgrade the weak reference before this function retuns will result
+    /// in a `None` value. However, the weak reference may be cloned freely and
+    /// stored for use at a later time.
+    #[inline]
+    #[unstable(feature = "arc_new_cyclic", issue = "75861")]
+    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
+        let uninit_ptr: NonNull<_> = Box::leak(box RcBox {
+            strong: Cell::new(0),
+            weak: Cell::new(1),
+            value: mem::MaybeUninit::<T>::uninit(),
+        })
+        .into();
+
+        let init_ptr: NonNull<RcBox<T>> = uninit_ptr.cast();
+
+        let weak = Weak { ptr: init_ptr };
+
+        let data = data_fn(&weak);
+
+        unsafe {
+            let inner = init_ptr.as_ptr();
+            ptr::write(&raw mut (*inner).value, data);
+
+            let prev_value = (*inner).strong.get();
+            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
+            (*inner).strong.set(1);
+        }
+
+        let strong = Rc::from_inner(init_ptr);
+        mem::forget(weak);
+        strong
+    }
+
     /// Constructs a new `Rc` with uninitialized contents.
     ///
     /// # Examples
