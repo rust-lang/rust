@@ -133,7 +133,7 @@ fn add_to_ancillary_data<T>(
 
 struct AncillaryDataIter<'a, T> {
     data: &'a [u8],
-    phantom: crate::marker::PhantomData<T>,
+    phantom: PhantomData<T>,
 }
 
 impl<'a, T> AncillaryDataIter<'a, T> {
