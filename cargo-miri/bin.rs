@@ -422,7 +422,7 @@ fn parse_cargo_miri_args(
                     show_error(format!("\"--bin\" takes one argument."));
                 }
             }
-            arg if arg.starts_with("--bin=") => bin_targets.push((&arg[6..]).to_string()),
+            arg if arg.starts_with("--bin=") => bin_targets.push((&arg["--bin=".len()..]).to_string()),
             arg if arg == "--test" => {
                 if let Some(test) = args.next() {
                     if test == "--" {
@@ -434,7 +434,7 @@ fn parse_cargo_miri_args(
                     show_error(format!("\"--test\" takes one argument."));
                 }
             }
-            arg if arg.starts_with("--test=") => test_targets.push((&arg[7..]).to_string()),
+            arg if arg.starts_with("--test=") => test_targets.push((&arg["--test=".len()..]).to_string()),
             other => additional_args.push(other),
         }
     }
@@ -466,6 +466,7 @@ fn in_cargo_miri() {
         return;
     }
 
+    // FIXME: this accepts --test, --lib, and multiple --bin for `cargo miri run`.
     let (target_filters, cargo_args, miri_args) =
         parse_cargo_miri_args(std::env::args().skip(skip));
 
