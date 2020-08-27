@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::sys::Void;
 
