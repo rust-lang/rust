@@ -1545,13 +1545,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 normalized_ty.kind,
             );
             if let ty::Adt(def, _) = normalized_ty.kind {
-                if def.non_enum_variant().fields.iter().any(|field| field.ident == field_ident) {
-                    err.span_suggestion_verbose(
-                        base.span.shrink_to_hi(),
-                        "consider awaiting before field access",
-                        ".await".to_string(),
-                        Applicability::MaybeIncorrect,
-                    );
+                // no field access on enum type
+                if !def.is_enum() {
+                    if def.non_enum_variant().fields.iter().any(|field| field.ident == field_ident)
+                    {
+                        err.span_suggestion_verbose(
+                            base.span.shrink_to_hi(),
+                            "consider awaiting before field access",
+                            ".await".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
             }
         }
