@@ -53,9 +53,7 @@
 //! more complex forms of processing. See the [Adapters](#adapters) section
 //! below for more details.
 //!
-//! [`Some(Item)`]: Some
-//! [`Iterator`]: trait.Iterator.html
-//! [`next`]: trait.Iterator.html#tymethod.next
+//! [`next`]: Iterator::next
 //! [`TryIter`]: ../../std/sync/mpsc/struct.TryIter.html
 //!
 //! # The three forms of iteration
@@ -154,13 +152,10 @@
 //! produce an iterator. What gives?
 //!
 //! There's a trait in the standard library for converting something into an
-//! iterator: [`IntoIterator`]. This trait has one method, [`into_iter`],
+//! iterator: [`IntoIterator`]. This trait has one method, [`IntoIterator::into_iter`],
 //! which converts the thing implementing [`IntoIterator`] into an iterator.
 //! Let's take a look at that `for` loop again, and what the compiler converts
 //! it into:
-//!
-//! [`IntoIterator`]: trait.IntoIterator.html
-//! [`into_iter`]: trait.IntoIterator.html#tymethod.into_iter
 //!
 //! ```
 //! let values = vec![1, 2, 3, 4, 5];
@@ -214,7 +209,7 @@
 //! often called 'iterator adapters', as they're a form of the 'adapter
 //! pattern'.
 //!
-//! Common iterator adapters include [`map`], [`take`], and [`filter`].
+//! Common iterator adapters include [`Iterator::map`], [`Iterator::take`], and [`Iterator::filter`].
 //! For more, see their documentation.
 //!
 //! If an iterator adapter panics, the iterator will be in an unspecified (but
@@ -222,16 +217,12 @@
 //! across versions of Rust, so you should avoid relying on the exact values
 //! returned by an iterator which panicked.
 //!
-//! [`map`]: trait.Iterator.html#method.map
-//! [`take`]: trait.Iterator.html#method.take
-//! [`filter`]: trait.Iterator.html#method.filter
-//!
 //! # Laziness
 //!
 //! Iterators (and iterator [adapters](#adapters)) are *lazy*. This means that
 //! just creating an iterator doesn't _do_ a whole lot. Nothing really happens
 //! until you call [`next`]. This is sometimes a source of confusion when
-//! creating an iterator solely for its side effects. For example, the [`map`]
+//! creating an iterator solely for its side effects. For example, the [`Iterator::map`]
 //! method calls a closure on each element it iterates over:
 //!
 //! ```
@@ -248,8 +239,8 @@
 //! do nothing unless consumed
 //! ```
 //!
-//! The idiomatic way to write a [`map`] for its side effects is to use a
-//! `for` loop or call the [`for_each`] method:
+//! The idiomatic way to write a [`Iterator::map`] for its side effects is to use a
+//! `for` loop or call the [`Iterator::for_each`] method:
 //!
 //! ```
 //! let v = vec![1, 2, 3, 4, 5];
@@ -261,13 +252,8 @@
 //! }
 //! ```
 //!
-//! [`map`]: trait.Iterator.html#method.map
-//! [`for_each`]: trait.Iterator.html#method.for_each
-//!
-//! Another common way to evaluate an iterator is to use the [`collect`]
+//! Another common way to evaluate an iterator is to use the [`Iterator::collect`]
 //! method to produce a new collection.
-//!
-//! [`collect`]: trait.Iterator.html#method.collect
 //!
 //! # Infinity
 //!
@@ -278,7 +264,7 @@
 //! let numbers = 0..;
 //! ```
 //!
-//! It is common to use the [`take`] iterator adapter to turn an infinite
+//! It is common to use the [`Iterator::take`] iterator adapter to turn an infinite
 //! iterator into a finite one:
 //!
 //! ```
@@ -294,7 +280,7 @@
 //!
 //! Bear in mind that methods on infinite iterators, even those for which a
 //! result can be determined mathematically in finite time, may not terminate.
-//! Specifically, methods such as [`min`], which in the general case require
+//! Specifically, methods such as [`Iterator::min`], which in the general case require
 //! traversing every element in the iterator, are likely not to return
 //! successfully for any infinite iterators.
 //!
@@ -304,9 +290,6 @@
 //! // `ones.min()` causes an infinite loop, so we won't reach this point!
 //! println!("The smallest number one is {}.", least);
 //! ```
-//!
-//! [`take`]: trait.Iterator.html#method.take
-//! [`min`]: trait.Iterator.html#method.min
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

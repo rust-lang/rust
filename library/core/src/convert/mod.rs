@@ -31,13 +31,6 @@
 //!   `into` themselves and `from` themselves
 //!
 //! See each trait for usage examples.
-//!
-//! [`Into`]: trait.Into.html
-//! [`From`]: trait.From.html
-//! [`TryFrom`]: trait.TryFrom.html
-//! [`TryInto`]: trait.TryInto.html
-//! [`AsRef`]: trait.AsRef.html
-//! [`AsMut`]: trait.AsMut.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -141,13 +134,11 @@ pub const fn identity<T>(x: T) -> T {
 /// want to accept all references that can be converted to [`&str`] as an argument.
 /// Since both [`String`] and [`&str`] implement `AsRef<str>` we can accept both as input argument.
 ///
-/// [`Option<T>`]: ../../std/option/enum.Option.html
-/// [`Result<T, E>`]: ../../std/result/enum.Result.html
-/// [`Borrow`]: ../../std/borrow/trait.Borrow.html
-/// [`Hash`]: ../../std/hash/trait.Hash.html
-/// [`Eq`]: ../../std/cmp/trait.Eq.html
-/// [`Ord`]: ../../std/cmp/trait.Ord.html
-/// [`&str`]: ../../std/primitive.str.html
+/// [`Option<T>`]: crate::option::Option
+/// [`Result<T, E>`]: crate::result::Result
+/// [`Borrow`]: crate::borrow::Borrow
+/// [`Eq`]: crate::cmp::Eq
+/// [`Ord`]: crate::cmp::Ord
 /// [`String`]: ../../std/string/struct.String.html
 ///
 /// ```
@@ -177,8 +168,8 @@ pub trait AsRef<T: ?Sized> {
 /// **Note: This trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
 ///
-/// [`Option<T>`]: ../../std/option/enum.Option.html
-/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`Option<T>`]: crate::option::Option
+/// [`Result<T, E>`]: crate::result::Result
 ///
 /// # Generic Implementations
 ///
@@ -204,7 +195,7 @@ pub trait AsRef<T: ?Sized> {
 /// assert_eq!(*boxed_num, 1);
 /// ```
 ///
-/// [`Box<T>`]: ../../std/boxed/struct.Box.html
+/// [`Box<T>`]: crate::boxed::Box<T>
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsMut<T: ?Sized> {
     /// Performs the conversion.
@@ -278,13 +269,10 @@ pub trait AsMut<T: ?Sized> {
 /// is_hello(s);
 /// ```
 ///
-/// [`TryInto`]: trait.TryInto.html
-/// [`Option<T>`]: ../../std/option/enum.Option.html
-/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`Option<T>`]: crate::option::Option
+/// [`Result<T, E>`]: crate::result::Result
 /// [`String`]: ../../std/string/struct.String.html
-/// [`From`]: trait.From.html
-/// [`Into`]: trait.Into.html
-/// [`Vec`]: ../../std/vec/struct.Vec.html
+/// [`Vec`]: crate::vec::Vec<T>
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
     /// Performs the conversion.
@@ -370,12 +358,9 @@ pub trait Into<T>: Sized {
 /// }
 /// ```
 ///
-/// [`TryFrom`]: trait.TryFrom.html
-/// [`Option<T>`]: ../../std/option/enum.Option.html
-/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`Option<T>`]: crate::option::Option
+/// [`Result<T, E>`]: crate::result::Result
 /// [`String`]: ../../std/string/struct.String.html
-/// [`Into`]: trait.Into.html
-/// [`from`]: trait.From.html#tymethod.from
 /// [book]: ../../book/ch09-00-error-handling.html
 #[rustc_diagnostic_item = "from_trait"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -404,9 +389,6 @@ pub trait From<T>: Sized {
 ///
 /// This suffers the same restrictions and reasoning as implementing
 /// [`Into`], see there for details.
-///
-/// [`TryFrom`]: trait.TryFrom.html
-/// [`Into`]: trait.Into.html
 #[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryInto<T>: Sized {
     /// The type returned in the event of a conversion error.
@@ -436,7 +418,7 @@ pub trait TryInto<T>: Sized {
 /// # Generic Implementations
 ///
 /// - `TryFrom<T> for U` implies [`TryInto`]`<U> for T`
-/// - [`try_from`] is reflexive, which means that `TryFrom<T> for T`
+/// - [`TryFrom::try_from`] is reflexive, which means that `TryFrom<T> for T`
 /// is implemented and cannot fail -- the associated `Error` type for
 /// calling `T::try_from()` on a value of type `T` is [`Infallible`].
 /// When the [`!`] type is stabilized [`Infallible`] and [`!`] will be
@@ -485,11 +467,8 @@ pub trait TryInto<T>: Sized {
 /// assert!(try_successful_smaller_number.is_ok());
 /// ```
 ///
-/// [`try_from`]: trait.TryFrom.html#tymethod.try_from
-/// [`TryInto`]: trait.TryInto.html
-/// [`i32::MAX`]: ../../std/i32/constant.MAX.html
+/// [`i32::MAX`]: crate::i32::MAX
 /// [`!`]: ../../std/primitive.never.html
-/// [`Infallible`]: enum.Infallible.html
 #[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.
@@ -676,7 +655,6 @@ impl AsRef<str> for str {
 ///
 /// … and eventually deprecate `Infallible`.
 ///
-///
 /// However there is one case where `!` syntax can be used
 /// before `!` is stabilized as a full-fledged type: in the position of a function’s return type.
 /// Specifically, it is possible implementations for two different function pointer types:
@@ -692,10 +670,8 @@ impl AsRef<str> for str {
 /// the two `impl`s will start to overlap
 /// and therefore will be disallowed by the language’s trait coherence rules.
 ///
-/// [`Ok`]: ../result/enum.Result.html#variant.Ok
-/// [`Result`]: ../result/enum.Result.html
-/// [`TryFrom`]: trait.TryFrom.html
-/// [`Into`]: trait.Into.html
+/// [`Ok`]: super::result::Result::Ok
+/// [`Result`]: super::result::Result
 /// [never]: ../../std/primitive.never.html
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 #[derive(Copy)]
