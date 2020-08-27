@@ -344,6 +344,7 @@ function defocusSearchBar() {
     }
 
     function getHelpElement() {
+        buildHelperPopup();
         return document.getElementById("help");
     }
 
@@ -2818,12 +2819,12 @@ function defocusSearchBar() {
 
         popup.appendChild(container);
         insertAfter(popup, getSearchElement());
+        // So that it's only built once and then it'll do nothing when called!
+        buildHelperPopup = function() {};
     }
 
     onHashChange(null);
     window.onhashchange = onHashChange;
-
-    buildHelperPopup();
 }());
 
 // This is required in firefox. Explanations: when going back in the history, firefox doesn't re-run
