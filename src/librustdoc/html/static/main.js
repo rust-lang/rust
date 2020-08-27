@@ -1576,14 +1576,21 @@ function defocusSearchBar() {
         }
 
         function showResults(results) {
-            if (results.others.length === 1 &&
-                getCurrentValue("rustdoc-go-to-only-result") === "true") {
+            var search = getSearchElement();
+            if (results.others.length === 1
+                && getCurrentValue("rustdoc-go-to-only-result") === "true"
+                // By default, the search DOM element is "empty" (meaning it has no children not
+                // text content). Once a search has been run, it won't be empty, even if you press
+                // ESC or empty the search input (which also "cancels" the search).
+                && (!search.firstChild || search.firstChild.innerText !== getSearchLoadingText()))
+            {
                 var elem = document.createElement("a");
                 elem.href = results.others[0].href;
                 elem.style.display = "none";
                 // For firefox, we need the element to be in the DOM so it can be clicked.
                 document.body.appendChild(elem);
                 elem.click();
+                return;
             }
             var query = getQuery(search_input.value);
 
@@ -1602,7 +1609,6 @@ function defocusSearchBar() {
                 "</div><div id=\"results\">" +
                 ret_others[0] + ret_in_args[0] + ret_returned[0] + "</div>";
 
-            var search = getSearchElement();
             search.innerHTML = output;
             showSearchResults(search);
             var tds = search.getElementsByTagName("td");
@@ -2679,6 +2685,10 @@ function defocusSearchBar() {
         }
     }
 
+    function getSearchLoadingText() {
+        return "Loading search results...";
+    }
+
     if (search_input) {
         search_input.onfocus = function() {
             putBackSearch(this);
@@ -2688,7 +2698,7 @@ function defocusSearchBar() {
     var params = getQueryStringParams();
     if (params && params.search) {
         var search = getSearchElement();
-        search.innerHTML = "<h3 style=\"text-align: center;\">Loading search results...</h3>";
+        search.innerHTML = "<h3 style=\"text-align: center;\">" + getSearchLoadingText() + "</h3>";
         showSearchResults(search);
     }
 

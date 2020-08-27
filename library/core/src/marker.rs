@@ -728,23 +728,23 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 
 /// Types that can be safely moved after being pinned.
 ///
-/// Since Rust itself has no notion of immovable types, and considers moves
-/// (e.g., through assignment or [`mem::replace`]) to always be safe,
-/// this trait cannot prevent types from moving by itself.
+/// Rust itself has no notion of immovable types, and considers moves (e.g.,
+/// through assignment or [`mem::replace`]) to always be safe.
 ///
-/// Instead it is used to prevent moves through the type system,
-/// by controlling the behavior of pointers `P` wrapped in the [`Pin<P>`] wrapper,
-/// which "pin" the type in place by not allowing it to be moved out of them.
-/// See the [`pin module`] documentation for more information on pinning.
+/// The [`Pin`][Pin] type is used instead to prevent moves through the type
+/// system. Pointers `P<T>` wrapped in the [`Pin<P<T>>`][Pin] wrapper can't be
+/// moved out of. See the [`pin module`] documentation for more information on
+/// pinning.
 ///
-/// Implementing this trait lifts the restrictions of pinning off a type,
-/// which then allows it to move out with functions such as [`mem::replace`].
+/// Implementing the `Unpin` trait for `T` lifts the restrictions of pinning off
+/// the type, which then allows moving `T` out of [`Pin<P<T>>`][Pin] with
+/// functions such as [`mem::replace`].
 ///
 /// `Unpin` has no consequence at all for non-pinned data. In particular,
 /// [`mem::replace`] happily moves `!Unpin` data (it works for any `&mut T`, not
-/// just when `T: Unpin`). However, you cannot use
-/// [`mem::replace`] on data wrapped inside a [`Pin<P>`] because you cannot get the
-/// `&mut T` you need for that, and *that* is what makes this system work.
+/// just when `T: Unpin`). However, you cannot use [`mem::replace`] on data
+/// wrapped inside a [`Pin<P<T>>`][Pin] because you cannot get the `&mut T` you
+/// need for that, and *that* is what makes this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
@@ -765,8 +765,8 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// This trait is automatically implemented for almost every type.
 ///
 /// [`mem::replace`]: ../../std/mem/fn.replace.html
-/// [`Pin<P>`]: ../pin/struct.Pin.html
-/// [`pin module`]: ../../std/pin/index.html
+/// [Pin]: crate::pin::Pin
+/// [`pin module`]: crate::pin
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_on_unimplemented(
     on(_Self = "std::future::Future", note = "consider using `Box::pin`",),
