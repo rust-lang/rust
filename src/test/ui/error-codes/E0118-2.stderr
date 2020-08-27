@@ -1,10 +1,11 @@
 error[E0118]: no nominal type found for inherent implementation
-  --> $DIR/E0118.rs:1:6
+  --> $DIR/E0118-2.rs:3:6
    |
-LL | impl (u8, u8) {
+LL | impl &mut Foo {
    |      ^^^^^^^^ impl requires a nominal type
    |
    = note: either implement a trait on it or create a newtype to wrap it instead
+   = note: you could also try moving the reference to uses of `Foo` (such as `self`) within the implementation
 
 error: aborting due to previous error
 
