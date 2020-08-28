@@ -83,9 +83,7 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
     } else {
         match &layout.abi {
             Abi::Uninhabited => PassMode::NoPass,
-            Abi::Scalar(scalar) => {
-                PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone()))
-            }
+            Abi::Scalar(scalar) => PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone())),
             Abi::ScalarPair(a, b) => {
                 let a = scalar_to_clif_type(tcx, a.clone());
                 let b = scalar_to_clif_type(tcx, b.clone());
@@ -93,7 +91,9 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
                     // Returning (i128, i128) by-val-pair would take 4 regs, while only 3 are
                     // available on x86_64. Cranelift gets confused when too many return params
                     // are used.
-                    PassMode::ByRef { size: Some(layout.size) }
+                    PassMode::ByRef {
+                        size: Some(layout.size),
+                    }
                 } else {
                     PassMode::ByValPair(a, b)
                 }
@@ -104,11 +104,15 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
                 if let Some(vector_ty) = crate::intrinsics::clif_vector_type(tcx, layout) {
                     PassMode::ByVal(vector_ty)
                 } else {
-                    PassMode::ByRef { size: Some(layout.size) }
+                    PassMode::ByRef {
+                        size: Some(layout.size),
+                    }
                 }
             }
 
-            Abi::Aggregate { sized: true } => PassMode::ByRef { size: Some(layout.size) },
+            Abi::Aggregate { sized: true } => PassMode::ByRef {
+                size: Some(layout.size),
+            },
             Abi::Aggregate { sized: false } => PassMode::ByRef { size: None },
         }
     }
@@ -125,22 +129,18 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
             let (a, b) = arg.load_scalar_pair(fx);
             Pair(a, b)
         }
-        PassMode::ByRef { size: _ } => {
-            match arg.force_stack(fx) {
-                (ptr, None) => Single(ptr.get_addr(fx)),
-                (ptr, Some(meta)) => Pair(ptr.get_addr(fx), meta),
-            }
-        }
+        PassMode::ByRef { size: _ } => match arg.force_stack(fx) {
+            (ptr, None) => Single(ptr.get_addr(fx)),
+            (ptr, Some(meta)) => Pair(ptr.get_addr(fx), meta),
+        },
     }
 }
 
 pub(super) fn cvalue_for_param<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     start_block: Block,
-    #[cfg_attr(not(debug_assertions), allow(unused_variables))]
-    local: Option<mir::Local>,
-    #[cfg_attr(not(debug_assertions), allow(unused_variables))]
-    local_field: Option<usize>,
+    #[cfg_attr(not(debug_assertions), allow(unused_variables))] local: Option<mir::Local>,
+    #[cfg_attr(not(debug_assertions), allow(unused_variables))] local_field: Option<usize>,
     arg_ty: Ty<'tcx>,
 ) -> Option<CValue<'tcx>> {
     let layout = fx.layout_of(arg_ty);
@@ -171,7 +171,10 @@ pub(super) fn cvalue_for_param<'tcx>(
             let (a, b) = block_params.assert_pair();
             Some(CValue::by_val_pair(a, b, layout))
         }
-        PassMode::ByRef { size: Some(_) } => Some(CValue::by_ref(Pointer::new(block_params.assert_single()), layout)),
+        PassMode::ByRef { size: Some(_) } => Some(CValue::by_ref(
+            Pointer::new(block_params.assert_single()),
+            layout,
+        )),
         PassMode::ByRef { size: None } => {
             let (ptr, meta) = block_params.assert_pair();
             Some(CValue::by_ref_unsized(Pointer::new(ptr), meta, layout))

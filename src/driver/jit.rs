@@ -11,9 +11,18 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
     // Rustc opens us without the RTLD_GLOBAL flag, so __cg_clif_global_atomic_mutex will not be
     // exported. We fix this by opening ourself again as global.
     // FIXME remove once atomic_shim is gone
-    let cg_dylib = std::ffi::OsString::from(&tcx.sess.opts.debugging_opts.codegen_backend.as_ref().unwrap());
-    std::mem::forget(libloading::os::unix::Library::open(Some(cg_dylib), libc::RTLD_NOW | libc::RTLD_GLOBAL).unwrap());
-
+    let cg_dylib = std::ffi::OsString::from(
+        &tcx.sess
+            .opts
+            .debugging_opts
+            .codegen_backend
+            .as_ref()
+            .unwrap(),
+    );
+    std::mem::forget(
+        libloading::os::unix::Library::open(Some(cg_dylib), libc::RTLD_NOW | libc::RTLD_GLOBAL)
+            .unwrap(),
+    );
 
     let imported_symbols = load_imported_symbols_for_jit(tcx);
 
@@ -54,10 +63,11 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     let mut cx = crate::CodegenCx::new(tcx, jit_module, false);
 
-    let (mut jit_module, global_asm, _debug, mut unwind_context) = super::time(tcx, "codegen mono items", || {
-        super::codegen_mono_items(&mut cx, mono_items);
-        tcx.sess.time("finalize CodegenCx", || cx.finalize())
-    });
+    let (mut jit_module, global_asm, _debug, mut unwind_context) =
+        super::time(tcx, "codegen mono items", || {
+            super::codegen_mono_items(&mut cx, mono_items);
+            tcx.sess.time("finalize CodegenCx", || cx.finalize())
+        });
     if !global_asm.is_empty() {
         tcx.sess.fatal("Global asm is not supported in JIT mode");
     }

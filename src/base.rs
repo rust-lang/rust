@@ -1,5 +1,5 @@
-use rustc_middle::ty::adjustment::PointerCast;
 use rustc_index::vec::IndexVec;
+use rustc_middle::ty::adjustment::PointerCast;
 
 use crate::prelude::*;
 
@@ -29,7 +29,9 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
 
     // Predefine blocks
     let start_block = bcx.create_block();
-    let block_map: IndexVec<BasicBlock, Block> = (0..mir.basic_blocks().len()).map(|_| bcx.create_block()).collect();
+    let block_map: IndexVec<BasicBlock, Block> = (0..mir.basic_blocks().len())
+        .map(|_| bcx.create_block())
+        .collect();
 
     // Make FunctionCx
     let pointer_type = cx.module.target_config().pointer_type();
@@ -56,15 +58,22 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
         inline_asm_index: 0,
     };
 
-    let arg_uninhabited = fx.mir.args_iter().any(|arg| fx.layout_of(fx.monomorphize(&fx.mir.local_decls[arg].ty)).abi.is_uninhabited());
+    let arg_uninhabited = fx.mir.args_iter().any(|arg| {
+        fx.layout_of(fx.monomorphize(&fx.mir.local_decls[arg].ty))
+            .abi
+            .is_uninhabited()
+    });
 
     if arg_uninhabited {
-        fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
+        fx.bcx
+            .append_block_params_for_function_params(fx.block_map[START_BLOCK]);
         fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
         crate::trap::trap_unreachable(&mut fx, "function has uninhabited argument");
     } else {
         tcx.sess.time("codegen clif ir", || {
-            tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(&mut fx, start_block));
+            tcx.sess.time("codegen prelude", || {
+                crate::abi::codegen_fn_prelude(&mut fx, start_block)
+            });
             codegen_fn_content(&mut fx);
         });
     }
@@ -80,21 +89,20 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let context = &mut cx.cached_context;
     context.func = func;
 
-    crate::pretty_clif::write_clif_file(
-        tcx,
-        "unopt",
-        None,
-        instance,
-        &context,
-        &clif_comments,
-    );
+    crate::pretty_clif::write_clif_file(tcx, "unopt", None, instance, &context, &clif_comments);
 
     // Verify function
     verify_func(tcx, &clif_comments, &context.func);
 
     // Perform rust specific optimizations
     tcx.sess.time("optimize clif ir", || {
-        crate::optimize::optimize_function(tcx, instance, context, &cold_blocks, &mut clif_comments);
+        crate::optimize::optimize_function(
+            tcx,
+            instance,
+            context,
+            &cold_blocks,
+            &mut clif_comments,
+        );
     });
 
     // If the return block is not reachable, then the SSA builder may have inserted a `iconst.i128`
@@ -105,14 +113,15 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
 
     // Define function
     let module = &mut cx.module;
-    tcx.sess.time(
-        "define function",
-        || module.define_function(
-            func_id,
-            context,
-            &mut cranelift_codegen::binemit::NullTrapSink {},
-        ).unwrap(),
-    );
+    tcx.sess.time("define function", || {
+        module
+            .define_function(
+                func_id,
+                context,
+                &mut cranelift_codegen::binemit::NullTrapSink {},
+            )
+            .unwrap()
+    });
 
     // Write optimized function to file for debugging
     crate::pretty_clif::write_clif_file(
@@ -130,7 +139,15 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let unwind_context = &mut cx.unwind_context;
     tcx.sess.time("generate debug info", || {
         if let Some(debug_context) = debug_context {
-            debug_context.define_function(instance, func_id, &name, isa, context, &source_info_set, local_map);
+            debug_context.define_function(
+                instance,
+                func_id,
+                &name,
+                isa,
+                context,
+                &source_info_set,
+                local_map,
+            );
         }
         unwind_context.add_function(func_id, &context, isa);
     });
@@ -139,7 +156,11 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     context.clear();
 }
 
-pub(crate) fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
+pub(crate) fn verify_func(
+    tcx: TyCtxt<'_>,
+    writer: &crate::pretty_clif::CommentWriter,
+    func: &Function,
+) {
     tcx.sess.time("verify clif ir", || {
         let flags = cranelift_codegen::settings::Flags::new(cranelift_codegen::settings::builder());
         match cranelift_codegen::verify_function(&func, &flags) {
@@ -249,7 +270,9 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
 
                 fx.bcx.switch_to_block(failure);
 
-                let location = fx.get_caller_location(bb_data.terminator().source_info.span).load_scalar(fx);
+                let location = fx
+                    .get_caller_location(bb_data.terminator().source_info.span)
+                    .load_scalar(fx);
 
                 let args;
                 let lang_item = match msg {
@@ -262,20 +285,30 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                     _ => {
                         let msg_str = msg.description();
                         let msg_ptr = fx.anonymous_str("assert", msg_str);
-                        let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
+                        let msg_len = fx
+                            .bcx
+                            .ins()
+                            .iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
                         args = [msg_ptr, msg_len, location];
                         rustc_hir::lang_items::PanicFnLangItem
                     }
                 };
 
                 let def_id = fx.tcx.lang_items().require(lang_item).unwrap_or_else(|s| {
-                    fx.tcx.sess.span_fatal(bb_data.terminator().source_info.span, &s)
+                    fx.tcx
+                        .sess
+                        .span_fatal(bb_data.terminator().source_info.span, &s)
                 });
 
                 let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
                 let symbol_name = fx.tcx.symbol_name(instance).name;
 
-                fx.lib_call(&*symbol_name, vec![fx.pointer_type, fx.pointer_type, fx.pointer_type], vec![], &args);
+                fx.lib_call(
+                    &*symbol_name,
+                    vec![fx.pointer_type, fx.pointer_type, fx.pointer_type],
+                    vec![],
+                    &args,
+                );
 
                 crate::trap::trap_unreachable(fx, "panic lang item returned");
             }
@@ -303,14 +336,16 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 cleanup: _,
                 from_hir_call: _,
             } => {
-                fx.tcx.sess.time("codegen call", || crate::abi::codegen_terminator_call(
-                    fx,
-                    *fn_span,
-                    block,
-                    func,
-                    args,
-                    *destination,
-                ));
+                fx.tcx.sess.time("codegen call", || {
+                    crate::abi::codegen_terminator_call(
+                        fx,
+                        *fn_span,
+                        block,
+                        func,
+                        args,
+                        *destination,
+                    )
+                });
             }
             TerminatorKind::InlineAsm {
                 template,
@@ -333,7 +368,10 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                         fx.bcx.ins().jump(destination_block, &[]);
                     }
                     None => {
-                        crate::trap::trap_unreachable(fx, "[corruption] Returned from noreturn inline asm");
+                        crate::trap::trap_unreachable(
+                            fx,
+                            "[corruption] Returned from noreturn inline asm",
+                        );
                     }
                 }
             }
@@ -370,8 +408,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
 
 fn trans_stmt<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    #[allow(unused_variables)]
-    cur_block: Block,
+    #[allow(unused_variables)] cur_block: Block,
     stmt: &Statement<'tcx>,
 ) {
     let _print_guard = crate::PrintOnPanic(|| format!("stmt {:?}", stmt));
@@ -439,30 +476,24 @@ fn trans_stmt<'tcx>(
                     let layout = operand.layout();
                     let val = operand.load_scalar(fx);
                     let res = match un_op {
-                        UnOp::Not => {
-                            match layout.ty.kind {
-                                ty::Bool => {
-                                    let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
-                                    CValue::by_val(fx.bcx.ins().bint(types::I8, res), layout)
-                                }
-                                ty::Uint(_) | ty::Int(_) => {
-                                    CValue::by_val(fx.bcx.ins().bnot(val), layout)
-                                }
-                                _ => unreachable!("un op Not for {:?}", layout.ty),
+                        UnOp::Not => match layout.ty.kind {
+                            ty::Bool => {
+                                let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
+                                CValue::by_val(fx.bcx.ins().bint(types::I8, res), layout)
                             }
-                        }
+                            ty::Uint(_) | ty::Int(_) => {
+                                CValue::by_val(fx.bcx.ins().bnot(val), layout)
+                            }
+                            _ => unreachable!("un op Not for {:?}", layout.ty),
+                        },
                         UnOp::Neg => match layout.ty.kind {
                             ty::Int(IntTy::I128) => {
                                 // FIXME remove this case once ineg.i128 works
                                 let zero = CValue::const_val(fx, layout, 0);
                                 crate::num::trans_int_binop(fx, BinOp::Sub, zero, operand)
                             }
-                            ty::Int(_) => {
-                                CValue::by_val(fx.bcx.ins().ineg(val), layout)
-                            }
-                            ty::Float(_) => {
-                                CValue::by_val(fx.bcx.ins().fneg(val), layout)
-                            }
+                            ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
+                            ty::Float(_) => CValue::by_val(fx.bcx.ins().fneg(val), layout),
                             _ => unreachable!("un op Neg for {:?}", layout.ty),
                         },
                     };
@@ -474,9 +505,14 @@ fn trans_stmt<'tcx>(
                     match from_ty.kind {
                         ty::FnDef(def_id, substs) => {
                             let func_ref = fx.get_function_ref(
-                                Instance::resolve_for_fn_ptr(fx.tcx, ParamEnv::reveal_all(), def_id, substs)
-                                    .unwrap()
-                                    .polymorphize(fx.tcx),
+                                Instance::resolve_for_fn_ptr(
+                                    fx.tcx,
+                                    ParamEnv::reveal_all(),
+                                    def_id,
+                                    substs,
+                                )
+                                .unwrap()
+                                .polymorphize(fx.tcx),
                             );
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::by_val(func_addr, to_layout));
@@ -505,7 +541,9 @@ fn trans_stmt<'tcx>(
                                 |ty::TypeAndMut {
                                      ty: pointee_ty,
                                      mutbl: _,
-                                 }| has_ptr_meta(fx.tcx, pointee_ty),
+                                 }| {
+                                    has_ptr_meta(fx.tcx, pointee_ty)
+                                },
                             )
                             .unwrap_or(false)
                     }
@@ -527,13 +565,20 @@ fn trans_stmt<'tcx>(
                             _ => unreachable!("cast adt {} -> {}", from_ty, to_ty),
                         }
 
-                        use rustc_target::abi::{TagEncoding, Int, Variants};
+                        use rustc_target::abi::{Int, TagEncoding, Variants};
 
                         match &operand.layout().variants {
                             Variants::Single { index } => {
-                                let discr = operand.layout().ty.discriminant_for_variant(fx.tcx, *index).unwrap();
+                                let discr = operand
+                                    .layout()
+                                    .ty
+                                    .discriminant_for_variant(fx.tcx, *index)
+                                    .unwrap();
                                 let discr = if discr.ty.is_signed() {
-                                    rustc_middle::mir::interpret::sign_extend(discr.val, fx.layout_of(discr.ty).size)
+                                    rustc_middle::mir::interpret::sign_extend(
+                                        discr.val,
+                                        fx.layout_of(discr.ty).size,
+                                    )
                                 } else {
                                     discr.val
                                 };
@@ -550,7 +595,8 @@ fn trans_stmt<'tcx>(
                                 let cast_to = fx.clif_type(dest_layout.ty).unwrap();
 
                                 // Read the tag/niche-encoded discriminant from memory.
-                                let encoded_discr = operand.value_field(fx, mir::Field::new(*tag_field));
+                                let encoded_discr =
+                                    operand.value_field(fx, mir::Field::new(*tag_field));
                                 let encoded_discr = encoded_discr.load_scalar(fx);
 
                                 // Decode the discriminant (specifically if it's niche-encoded).
@@ -562,7 +608,7 @@ fn trans_stmt<'tcx>(
                                 let val = CValue::by_val(val, dest_layout);
                                 lval.write_cvalue(fx, val);
                             }
-                            Variants::Multiple { ..} => unreachable!(),
+                            Variants::Multiple { .. } => unreachable!(),
                         }
                     } else {
                         let to_clif_ty = fx.clif_type(to_ty).unwrap();
@@ -578,7 +624,11 @@ fn trans_stmt<'tcx>(
                         lval.write_cvalue(fx, CValue::by_val(res, dest_layout));
                     }
                 }
-                Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), operand, _to_ty) => {
+                Rvalue::Cast(
+                    CastKind::Pointer(PointerCast::ClosureFnPointer(_)),
+                    operand,
+                    _to_ty,
+                ) => {
                     let operand = trans_operand(fx, operand);
                     match operand.layout().ty.kind {
                         ty::Closure(def_id, substs) => {
@@ -587,7 +637,8 @@ fn trans_stmt<'tcx>(
                                 def_id,
                                 substs,
                                 ty::ClosureKind::FnOnce,
-                            ).polymorphize(fx.tcx);
+                            )
+                            .polymorphize(fx.tcx);
                             let func_ref = fx.get_function_ref(instance);
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::by_val(func_addr, lval.layout()));
@@ -660,7 +711,8 @@ fn trans_stmt<'tcx>(
                         .ty
                         .is_sized(fx.tcx.at(stmt.source_info.span), ParamEnv::reveal_all()));
                     let ty_size = fx.layout_of(fx.monomorphize(ty)).size.bytes();
-                    let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), ty_size.into());
+                    let val =
+                        CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), ty_size.into());
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::Aggregate(kind, operands) => match **kind {
@@ -691,12 +743,12 @@ fn trans_stmt<'tcx>(
                 inputs,
             } = &**asm;
             let rustc_hir::LlvmInlineAsmInner {
-                asm: asm_code, // Name
+                asm: asm_code,         // Name
                 outputs: output_names, // Vec<LlvmInlineAsmOutput>
                 inputs: input_names,   // Vec<Name>
-                clobbers,      // Vec<Name>
-                volatile,      // bool
-                alignstack,    // bool
+                clobbers,              // Vec<Name>
+                volatile,              // bool
+                alignstack,            // bool
                 dialect: _,
                 asm_str_style: _,
             } = asm;
@@ -705,9 +757,15 @@ fn trans_stmt<'tcx>(
                     // Black box
                 }
                 "mov %rbx, %rsi\n                  cpuid\n                  xchg %rbx, %rsi" => {
-                    assert_eq!(input_names, &[Symbol::intern("{eax}"), Symbol::intern("{ecx}")]);
+                    assert_eq!(
+                        input_names,
+                        &[Symbol::intern("{eax}"), Symbol::intern("{ecx}")]
+                    );
                     assert_eq!(output_names.len(), 4);
-                    for (i, c) in (&["={eax}", "={esi}", "={ecx}", "={edx}"]).iter().enumerate() {
+                    for (i, c) in (&["={eax}", "={esi}", "={ecx}", "={edx}"])
+                        .iter()
+                        .enumerate()
+                    {
                         assert_eq!(&output_names[i].constraint.as_str(), c);
                         assert!(!output_names[i].is_rw);
                         assert!(!output_names[i].is_indirect);
@@ -722,13 +780,18 @@ fn trans_stmt<'tcx>(
                     let leaf = trans_operand(fx, &inputs[0].1).load_scalar(fx); // %eax
                     let subleaf = trans_operand(fx, &inputs[1].1).load_scalar(fx); // %ecx
 
-                    let (eax, ebx, ecx, edx) = crate::intrinsics::codegen_cpuid_call(fx, leaf, subleaf);
+                    let (eax, ebx, ecx, edx) =
+                        crate::intrinsics::codegen_cpuid_call(fx, leaf, subleaf);
 
                     assert_eq!(outputs.len(), 4);
-                    trans_place(fx, outputs[0]).write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
-                    trans_place(fx, outputs[1]).write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
-                    trans_place(fx, outputs[2]).write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
-                    trans_place(fx, outputs[3]).write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
+                    trans_place(fx, outputs[0])
+                        .write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
+                    trans_place(fx, outputs[1])
+                        .write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
+                    trans_place(fx, outputs[2])
+                        .write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
+                    trans_place(fx, outputs[3])
+                        .write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
                 }
                 "xgetbv" => {
                     assert_eq!(input_names, &[Symbol::intern("{ecx}")]);
@@ -748,7 +811,12 @@ fn trans_stmt<'tcx>(
                     crate::trap::trap_unimplemented(fx, "_xgetbv arch intrinsic is not supported");
                 }
                 // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
-                _ if fx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") => {
+                _ if fx
+                    .tcx
+                    .symbol_name(fx.instance)
+                    .name
+                    .starts_with("___chkstk") =>
+                {
                     crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
                 }
                 _ if fx.tcx.symbol_name(fx.instance).name == "__alloca" => {
@@ -758,7 +826,10 @@ fn trans_stmt<'tcx>(
                 "int $$0x29" => {
                     crate::trap::trap_unimplemented(fx, "Windows abort");
                 }
-                _ => fx.tcx.sess.span_fatal(stmt.source_info.span, "Inline assembly is not supported"),
+                _ => fx
+                    .tcx
+                    .sess
+                    .span_fatal(stmt.source_info.span, "Inline assembly is not supported"),
             }
         }
         StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),
@@ -771,7 +842,8 @@ fn codegen_array_len<'tcx>(
 ) -> Value {
     match place.layout().ty.kind {
         ty::Array(_elem_ty, len) => {
-            let len = fx.monomorphize(&len)
+            let len = fx
+                .monomorphize(&len)
                 .eval(fx.tcx, ParamEnv::reveal_all())
                 .eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
@@ -836,7 +908,9 @@ pub(crate) fn trans_place<'tcx>(
                         let len = len.unwrap();
                         cplace = CPlace::for_ptr_with_extra(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * i64::from(from)),
-                            fx.bcx.ins().iadd_imm(len, -(i64::from(from) + i64::from(to))),
+                            fx.bcx
+                                .ins()
+                                .iadd_imm(len, -(i64::from(from) + i64::from(to))),
                             cplace.layout(),
                         );
                     }

@@ -26,7 +26,13 @@ pub(crate) fn maybe_create_entry_wrapper(
         return;
     }
 
-    create_entry_fn(tcx, module, unwind_context, main_def_id, use_start_lang_item);
+    create_entry_fn(
+        tcx,
+        module,
+        unwind_context,
+        main_def_id,
+        use_start_lang_item,
+    );
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
@@ -114,7 +120,8 @@ pub(crate) fn maybe_create_entry_wrapper(
             cmain_func_id,
             &mut ctx,
             &mut cranelift_codegen::binemit::NullTrapSink {},
-        ).unwrap();
+        )
+        .unwrap();
         unwind_context.add_function(cmain_func_id, &ctx, m.isa());
     }
 }

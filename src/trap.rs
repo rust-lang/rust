@@ -2,7 +2,8 @@ use crate::prelude::*;
 
 fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, msg: &str) {
     let puts = fx
-        .cx.module
+        .cx
+        .module
         .declare_function(
             "puts",
             Linkage::Import,

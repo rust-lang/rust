@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use super::*;
+use crate::prelude::*;
 
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,

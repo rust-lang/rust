@@ -1,3 +1,5 @@
+#![rustfmt::skip]
+
 use rustc_span::symbol::{sym, Symbol};
 
 use rustc_session::Session;

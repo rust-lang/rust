@@ -1,6 +1,6 @@
+use rustc_index::vec::IndexVec;
 use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
-use rustc_index::vec::IndexVec;
 
 use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
 
@@ -55,7 +55,11 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
             FloatTy::F64 => types::F64,
         },
         ty::FnPtr(_) => pointer_ty(tcx),
-        ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
+        ty::RawPtr(TypeAndMut {
+            ty: pointee_ty,
+            mutbl: _,
+        })
+        | ty::Ref(_, pointee_ty, _) => {
             if has_ptr_meta(tcx, pointee_ty) {
                 return None;
             } else {
@@ -63,7 +67,8 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
             }
         }
         ty::Adt(adt_def, _) if adt_def.repr.simd() => {
-            let (element, count) = match &tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().abi {
+            let (element, count) = match &tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().abi
+            {
                 Abi::Vector { element, count } => (element.clone(), *count),
                 _ => unreachable!(),
             };
@@ -79,7 +84,10 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
     })
 }
 
-fn clif_pair_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<(types::Type, types::Type)> {
+fn clif_pair_type_from_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<(types::Type, types::Type)> {
     Some(match ty.kind {
         ty::Tuple(substs) if substs.len() == 2 => {
             let mut types = substs.types();
@@ -90,11 +98,15 @@ fn clif_pair_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<(type
             }
             (a, b)
         }
-        ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
+        ty::RawPtr(TypeAndMut {
+            ty: pointee_ty,
+            mutbl: _,
+        })
+        | ty::Ref(_, pointee_ty, _) => {
             if has_ptr_meta(tcx, pointee_ty) {
                 (pointer_ty(tcx), pointer_ty(tcx))
             } else {
-                return None
+                return None;
             }
         }
         _ => return None,
@@ -103,8 +115,15 @@ fn clif_pair_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<(type
 
 /// Is a pointer to this type a fat ptr?
 pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    let ptr_ty = tcx.mk_ptr(TypeAndMut { ty, mutbl: rustc_hir::Mutability::Not });
-    match &tcx.layout_of(ParamEnv::reveal_all().and(ptr_ty)).unwrap().abi {
+    let ptr_ty = tcx.mk_ptr(TypeAndMut {
+        ty,
+        mutbl: rustc_hir::Mutability::Not,
+    });
+    match &tcx
+        .layout_of(ParamEnv::reveal_all().and(ptr_ty))
+        .unwrap()
+        .abi
+    {
         Abi::Scalar(_) => false,
         Abi::ScalarPair(_, _) => true,
         abi => unreachable!("Abi of ptr to {:?} is {:?}???", ty, abi),
@@ -200,7 +219,11 @@ pub(crate) fn resolve_value_imm(func: &Function, val: Value) -> Option<u128> {
     }
 }
 
-pub(crate) fn type_min_max_value(bcx: &mut FunctionBuilder<'_>, ty: Type, signed: bool) -> (Value, Value) {
+pub(crate) fn type_min_max_value(
+    bcx: &mut FunctionBuilder<'_>,
+    ty: Type,
+    signed: bool,
+) -> (Value, Value) {
     assert!(ty.is_int());
 
     if ty == types::I128 {
@@ -339,13 +362,11 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         T: TypeFoldable<'tcx> + Copy,
     {
         if let Some(substs) = self.instance.substs_for_mir_body() {
-            self.tcx.subst_and_normalize_erasing_regions(
-                substs,
-                ty::ParamEnv::reveal_all(),
-                value,
-            )
+            self.tcx
+                .subst_and_normalize_erasing_regions(substs, ty::ParamEnv::reveal_all(), value)
         } else {
-            self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), *value)
+            self.tcx
+                .normalize_erasing_regions(ty::ParamEnv::reveal_all(), *value)
         }
     }
 
@@ -385,11 +406,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             caller.line as u32,
             caller.col_display as u32 + 1,
         ));
-        crate::constant::trans_const_value(
-            self,
-            const_loc,
-            self.tcx.caller_location_ty(),
-        )
+        crate::constant::trans_const_value(self, const_loc, self.tcx.caller_location_ty())
     }
 
     pub(crate) fn triple(&self) -> &target_lexicon::Triple {
@@ -406,7 +423,8 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         let mut data_ctx = DataContext::new();
         data_ctx.define(msg.as_bytes().to_vec().into_boxed_slice());
         let msg_id = self
-            .cx.module
+            .cx
+            .module
             .declare_data(
                 &format!("__{}_{:08x}", prefix, msg_hash),
                 Linkage::Local,

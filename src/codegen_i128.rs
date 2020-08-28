@@ -98,7 +98,7 @@ pub(crate) fn maybe_codegen<'tcx>(
             // Optimize `val >> 64`, because compiler_builtins uses it to deconstruct an 128bit
             // integer into its lsb and msb.
             // https://github.com/rust-lang-nursery/compiler-builtins/blob/79a6a1603d5672cbb9187ff41ff4d9b5048ac1cb/src/int/mod.rs#L217
-            if  resolve_value_imm(fx.bcx.func, rhs_val) == Some(64) {
+            if resolve_value_imm(fx.bcx.func, rhs_val) == Some(64) {
                 let (lhs_lsb, lhs_msb) = fx.bcx.ins().isplit(lhs_val);
                 let all_zeros = fx.bcx.ins().iconst(types::I64, 0);
                 let val = match (bin_op, is_signed) {

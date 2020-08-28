@@ -16,8 +16,8 @@ use std::ops::Not;
 use rustc_data_structures::fx::{FxHashSet, FxHasher};
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
-use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
 use cranelift_codegen::ir::immediates::Offset32;
+use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
 
 use hashbrown::HashSet;
 use std::hash::BuildHasherDefault;
@@ -55,31 +55,41 @@ struct StackSlotUsage {
 
 impl StackSlotUsage {
     fn potential_stores_for_load(&self, ctx: &Context, load: Inst) -> Vec<Inst> {
-        self.stack_store.iter().cloned().filter(|&store| {
-            match spatial_overlap(&ctx.func, store, load) {
-                SpatialOverlap::No => false, // Can never be the source of the loaded value.
-                SpatialOverlap::Partial | SpatialOverlap::Full => true,
-            }
-        }).filter(|&store| {
-            match temporal_order(ctx, store, load) {
-                TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
-                TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
-            }
-        }).collect::<Vec<Inst>>()
+        self.stack_store
+            .iter()
+            .cloned()
+            .filter(|&store| {
+                match spatial_overlap(&ctx.func, store, load) {
+                    SpatialOverlap::No => false, // Can never be the source of the loaded value.
+                    SpatialOverlap::Partial | SpatialOverlap::Full => true,
+                }
+            })
+            .filter(|&store| {
+                match temporal_order(ctx, store, load) {
+                    TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
+                    TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
+                }
+            })
+            .collect::<Vec<Inst>>()
     }
 
     fn potential_loads_of_store(&self, ctx: &Context, store: Inst) -> Vec<Inst> {
-        self.stack_load.iter().cloned().filter(|&load| {
-            match spatial_overlap(&ctx.func, store, load) {
-                SpatialOverlap::No => false, // Can never be the source of the loaded value.
-                SpatialOverlap::Partial | SpatialOverlap::Full => true,
-            }
-        }).filter(|&load| {
-            match temporal_order(ctx, store, load) {
-                TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
-                TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
-            }
-        }).collect::<Vec<Inst>>()
+        self.stack_load
+            .iter()
+            .cloned()
+            .filter(|&load| {
+                match spatial_overlap(&ctx.func, store, load) {
+                    SpatialOverlap::No => false, // Can never be the source of the loaded value.
+                    SpatialOverlap::Partial | SpatialOverlap::Full => true,
+                }
+            })
+            .filter(|&load| {
+                match temporal_order(ctx, store, load) {
+                    TemporalOrder::NeverBefore => false, // Can never be the source of the loaded value.
+                    TemporalOrder::MaybeBefore | TemporalOrder::DefinitivelyBefore => true,
+                }
+            })
+            .collect::<Vec<Inst>>()
     }
 
     fn remove_unused_stack_addr(func: &mut Function, inst: Inst) {
@@ -134,14 +144,22 @@ impl<'a> OptimizeContext<'a> {
                         stack_slot,
                         offset: _,
                     } => {
-                        stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(StackSlotUsage::default).stack_addr.insert(inst);
+                        stack_slot_usage_map
+                            .entry(OrdStackSlot(stack_slot))
+                            .or_insert_with(StackSlotUsage::default)
+                            .stack_addr
+                            .insert(inst);
                     }
                     InstructionData::StackLoad {
                         opcode: Opcode::StackLoad,
                         stack_slot,
                         offset: _,
                     } => {
-                        stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(StackSlotUsage::default).stack_load.insert(inst);
+                        stack_slot_usage_map
+                            .entry(OrdStackSlot(stack_slot))
+                            .or_insert_with(StackSlotUsage::default)
+                            .stack_load
+                            .insert(inst);
                     }
                     InstructionData::StackStore {
                         opcode: Opcode::StackStore,
@@ -149,7 +167,11 @@ impl<'a> OptimizeContext<'a> {
                         stack_slot,
                         offset: _,
                     } => {
-                        stack_slot_usage_map.entry(OrdStackSlot(stack_slot)).or_insert_with(StackSlotUsage::default).stack_store.insert(inst);
+                        stack_slot_usage_map
+                            .entry(OrdStackSlot(stack_slot))
+                            .or_insert_with(StackSlotUsage::default)
+                            .stack_store
+                            .insert(inst);
                     }
                     _ => {}
                 }
@@ -165,7 +187,6 @@ impl<'a> OptimizeContext<'a> {
 
 pub(super) fn optimize_function(
     ctx: &mut Context,
-    #[cfg_attr(not(debug_assertions), allow(unused_variables))]
     clif_comments: &mut crate::pretty_clif::CommentWriter,
 ) {
     combine_stack_addr_with_load_store(&mut ctx.func);
@@ -176,7 +197,8 @@ pub(super) fn optimize_function(
 
     remove_unused_stack_addr_and_stack_load(&mut opt_ctx);
 
-    #[cfg(debug_assertions)] {
+    #[cfg(debug_assertions)]
+    {
         for (&OrdStackSlot(stack_slot), usage) in &opt_ctx.stack_slot_usage_map {
             clif_comments.add_comment(stack_slot, format!("used by: {:?}", usage));
         }
@@ -194,13 +216,16 @@ pub(super) fn optimize_function(
 
             #[cfg(debug_assertions)]
             for &store in &potential_stores {
-                clif_comments.add_comment(load, format!(
-                    "Potential store -> load forwarding {} -> {} ({:?}, {:?})",
-                    opt_ctx.ctx.func.dfg.display_inst(store, None),
-                    opt_ctx.ctx.func.dfg.display_inst(load, None),
-                    spatial_overlap(&opt_ctx.ctx.func, store, load),
-                    temporal_order(&opt_ctx.ctx, store, load),
-                ));
+                clif_comments.add_comment(
+                    load,
+                    format!(
+                        "Potential store -> load forwarding {} -> {} ({:?}, {:?})",
+                        opt_ctx.ctx.func.dfg.display_inst(store, None),
+                        opt_ctx.ctx.func.dfg.display_inst(load, None),
+                        spatial_overlap(&opt_ctx.ctx.func, store, load),
+                        temporal_order(&opt_ctx.ctx, store, load),
+                    ),
+                );
             }
 
             match *potential_stores {
@@ -208,12 +233,17 @@ pub(super) fn optimize_function(
                     #[cfg(debug_assertions)]
                     clif_comments.add_comment(load, format!("[BUG?] Reading uninitialized memory"));
                 }
-                [store] if spatial_overlap(&opt_ctx.ctx.func, store, load) == SpatialOverlap::Full && temporal_order(&opt_ctx.ctx, store, load) == TemporalOrder::DefinitivelyBefore => {
+                [store]
+                    if spatial_overlap(&opt_ctx.ctx.func, store, load) == SpatialOverlap::Full
+                        && temporal_order(&opt_ctx.ctx, store, load)
+                            == TemporalOrder::DefinitivelyBefore =>
+                {
                     // Only one store could have been the origin of the value.
                     let stored_value = opt_ctx.ctx.func.dfg.inst_args(store)[0];
 
                     #[cfg(debug_assertions)]
-                    clif_comments.add_comment(load, format!("Store to load forward {} -> {}", store, load));
+                    clif_comments
+                        .add_comment(load, format!("Store to load forward {} -> {}", store, load));
 
                     users.change_load_to_alias(&mut opt_ctx.ctx.func, load, stored_value);
                 }
@@ -226,13 +256,16 @@ pub(super) fn optimize_function(
 
             #[cfg(debug_assertions)]
             for &load in &potential_loads {
-                clif_comments.add_comment(store, format!(
-                    "Potential load from store {} <- {} ({:?}, {:?})",
-                    opt_ctx.ctx.func.dfg.display_inst(load, None),
-                    opt_ctx.ctx.func.dfg.display_inst(store, None),
-                    spatial_overlap(&opt_ctx.ctx.func, store, load),
-                    temporal_order(&opt_ctx.ctx, store, load),
-                ));
+                clif_comments.add_comment(
+                    store,
+                    format!(
+                        "Potential load from store {} <- {} ({:?}, {:?})",
+                        opt_ctx.ctx.func.dfg.display_inst(load, None),
+                        opt_ctx.ctx.func.dfg.display_inst(store, None),
+                        spatial_overlap(&opt_ctx.ctx.func, store, load),
+                        temporal_order(&opt_ctx.ctx, store, load),
+                    ),
+                );
             }
 
             if potential_loads.is_empty() {
@@ -240,7 +273,14 @@ pub(super) fn optimize_function(
                 // FIXME also remove stores when there is always a next store before a load.
 
                 #[cfg(debug_assertions)]
-                clif_comments.add_comment(store, format!("Remove dead stack store {} of {}", opt_ctx.ctx.func.dfg.display_inst(store, None), stack_slot.0));
+                clif_comments.add_comment(
+                    store,
+                    format!(
+                        "Remove dead stack store {} of {}",
+                        opt_ctx.ctx.func.dfg.display_inst(store, None),
+                        stack_slot.0
+                    ),
+                );
 
                 users.remove_dead_store(&mut opt_ctx.ctx.func, store);
             }
@@ -258,24 +298,52 @@ fn combine_stack_addr_with_load_store(func: &mut Function) {
     while let Some(_block) = cursor.next_block() {
         while let Some(inst) = cursor.next_inst() {
             match cursor.func.dfg[inst] {
-                InstructionData::Load { opcode: Opcode::Load, arg: addr, flags: _, offset } => {
-                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128 || cursor.func.dfg.ctrl_typevar(inst).is_vector() {
+                InstructionData::Load {
+                    opcode: Opcode::Load,
+                    arg: addr,
+                    flags: _,
+                    offset,
+                } => {
+                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128
+                        || cursor.func.dfg.ctrl_typevar(inst).is_vector()
+                    {
                         continue; // WORKAROUD: stack_load.i128 not yet implemented
                     }
-                    if let Some((stack_slot, stack_addr_offset)) = try_get_stack_slot_and_offset_for_addr(cursor.func, addr) {
-                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into()) {
+                    if let Some((stack_slot, stack_addr_offset)) =
+                        try_get_stack_slot_and_offset_for_addr(cursor.func, addr)
+                    {
+                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into())
+                        {
                             let ty = cursor.func.dfg.ctrl_typevar(inst);
-                            cursor.func.dfg.replace(inst).stack_load(ty, stack_slot, combined_offset);
+                            cursor.func.dfg.replace(inst).stack_load(
+                                ty,
+                                stack_slot,
+                                combined_offset,
+                            );
                         }
                     }
                 }
-                InstructionData::Store { opcode: Opcode::Store, args: [value, addr], flags: _, offset } => {
-                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128 || cursor.func.dfg.ctrl_typevar(inst).is_vector() {
+                InstructionData::Store {
+                    opcode: Opcode::Store,
+                    args: [value, addr],
+                    flags: _,
+                    offset,
+                } => {
+                    if cursor.func.dfg.ctrl_typevar(inst) == types::I128
+                        || cursor.func.dfg.ctrl_typevar(inst).is_vector()
+                    {
                         continue; // WORKAROUND: stack_store.i128 not yet implemented
                     }
-                    if let Some((stack_slot, stack_addr_offset)) = try_get_stack_slot_and_offset_for_addr(cursor.func, addr) {
-                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into()) {
-                            cursor.func.dfg.replace(inst).stack_store(value, stack_slot, combined_offset);
+                    if let Some((stack_slot, stack_addr_offset)) =
+                        try_get_stack_slot_and_offset_for_addr(cursor.func, addr)
+                    {
+                        if let Some(combined_offset) = offset.try_add_i64(stack_addr_offset.into())
+                        {
+                            cursor.func.dfg.replace(inst).stack_store(
+                                value,
+                                stack_slot,
+                                combined_offset,
+                            );
                         }
                     }
                 }
@@ -296,7 +364,10 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
                 if let ValueDef::Result(arg_origin, 0) = cursor.func.dfg.value_def(arg) {
                     match cursor.func.dfg[arg_origin].opcode() {
                         Opcode::StackAddr | Opcode::StackLoad => {
-                            stack_addr_load_insts_users.entry(arg_origin).or_insert_with(FxHashSet::default).insert(inst);
+                            stack_addr_load_insts_users
+                                .entry(arg_origin)
+                                .or_insert_with(FxHashSet::default)
+                                .insert(inst);
                         }
                         _ => {}
                     }
@@ -309,7 +380,8 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
     for inst in stack_addr_load_insts_users.keys() {
         let mut is_recorded_stack_addr_or_stack_load = false;
         for stack_slot_users in opt_ctx.stack_slot_usage_map.values() {
-            is_recorded_stack_addr_or_stack_load |= stack_slot_users.stack_addr.contains(inst) || stack_slot_users.stack_load.contains(inst);
+            is_recorded_stack_addr_or_stack_load |= stack_slot_users.stack_addr.contains(inst)
+                || stack_slot_users.stack_load.contains(inst);
         }
         assert!(is_recorded_stack_addr_or_stack_load);
     }
@@ -323,23 +395,37 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
     for stack_slot_users in opt_ctx.stack_slot_usage_map.values_mut() {
         stack_slot_users
             .stack_addr
-            .drain_filter(|inst| !(stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true)))
+            .drain_filter(|inst| {
+                !(stack_addr_load_insts_users
+                    .get(inst)
+                    .map(|users| users.is_empty())
+                    .unwrap_or(true))
+            })
             .for_each(|inst| StackSlotUsage::remove_unused_stack_addr(&mut func, inst));
 
         stack_slot_users
             .stack_load
-            .drain_filter(|inst| !(stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true)))
+            .drain_filter(|inst| {
+                !(stack_addr_load_insts_users
+                    .get(inst)
+                    .map(|users| users.is_empty())
+                    .unwrap_or(true))
+            })
             .for_each(|inst| StackSlotUsage::remove_unused_load(&mut func, inst));
     }
 }
 
-fn try_get_stack_slot_and_offset_for_addr(func: &Function, addr: Value) -> Option<(StackSlot, Offset32)> {
+fn try_get_stack_slot_and_offset_for_addr(
+    func: &Function,
+    addr: Value,
+) -> Option<(StackSlot, Offset32)> {
     if let ValueDef::Result(addr_inst, 0) = func.dfg.value_def(addr) {
         if let InstructionData::StackLoad {
             opcode: Opcode::StackAddr,
             stack_slot,
             offset,
-        } = func.dfg[addr_inst] {
+        } = func.dfg[addr_inst]
+        {
             return Some((stack_slot, offset));
         }
     }
@@ -390,7 +476,10 @@ fn spatial_overlap(func: &Function, src: Inst, dest: Inst) -> SpatialOverlap {
     }
 
     let src_end: i64 = src_offset.try_add_i64(i64::from(src_size)).unwrap().into();
-    let dest_end: i64 = dest_offset.try_add_i64(i64::from(dest_size)).unwrap().into();
+    let dest_end: i64 = dest_offset
+        .try_add_i64(i64::from(dest_size))
+        .unwrap()
+        .into();
     if src_end <= dest_offset.into() || dest_end <= src_offset.into() {
         return SpatialOverlap::No;
     }

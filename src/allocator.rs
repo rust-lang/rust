@@ -102,11 +102,13 @@ fn codegen_inner(
             bcx.seal_all_blocks();
             bcx.finalize();
         }
-        module.define_function(
-            func_id,
-            &mut ctx,
-            &mut cranelift_codegen::binemit::NullTrapSink {},
-        ).unwrap();
+        module
+            .define_function(
+                func_id,
+                &mut ctx,
+                &mut cranelift_codegen::binemit::NullTrapSink {},
+            )
+            .unwrap();
         unwind_context.add_function(func_id, &ctx, module.isa());
     }
 }

@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use cranelift_codegen::isa::{TargetIsa, unwind::UnwindInfo};
+use cranelift_codegen::isa::{unwind::UnwindInfo, TargetIsa};
 
 use gimli::write::{Address, CieId, EhFrame, FrameTable, Section};
 
@@ -13,12 +13,8 @@ pub(crate) struct UnwindContext<'tcx> {
 }
 
 impl<'tcx> UnwindContext<'tcx> {
-    pub(crate) fn new(
-        tcx: TyCtxt<'tcx>,
-        isa: &dyn TargetIsa,
-    ) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, isa: &dyn TargetIsa) -> Self {
         let mut frame_table = FrameTable::default();
-
 
         let cie_id = if let Some(cie) = isa.create_systemv_cie() {
             Some(frame_table.add_cie(cie))
@@ -42,11 +38,14 @@ impl<'tcx> UnwindContext<'tcx> {
 
         match unwind_info {
             UnwindInfo::SystemV(unwind_info) => {
-                self.frame_table.add_fde(self.cie_id.unwrap(), unwind_info.to_fde(Address::Symbol {
-                    symbol: func_id.as_u32() as usize,
-                    addend: 0,
-                }));
-            },
+                self.frame_table.add_fde(
+                    self.cie_id.unwrap(),
+                    unwind_info.to_fde(Address::Symbol {
+                        symbol: func_id.as_u32() as usize,
+                        addend: 0,
+                    }),
+                );
+            }
             UnwindInfo::WindowsX64(_) => {
                 // FIXME implement this
             }
@@ -54,7 +53,9 @@ impl<'tcx> UnwindContext<'tcx> {
     }
 
     pub(crate) fn emit<P: WriteDebugInfo>(self, product: &mut P) {
-        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(self.tcx)));
+        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(
+            self.tcx,
+        )));
         self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
 
         if !eh_frame.0.writer.slice().is_empty() {
@@ -74,7 +75,9 @@ impl<'tcx> UnwindContext<'tcx> {
         self,
         jit_module: &mut Module<cranelift_simplejit::SimpleJITBackend>,
     ) -> Option<UnwindRegistry> {
-        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(self.tcx)));
+        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(
+            self.tcx,
+        )));
         self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
 
         if eh_frame.0.writer.slice().is_empty() {

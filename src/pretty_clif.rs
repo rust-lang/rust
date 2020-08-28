@@ -196,7 +196,7 @@ impl<B: Backend + 'static> FunctionCx<'_, '_, B> {
         entity: E,
         comment: S,
     ) {
-       self.clif_comments.add_comment(entity, comment);
+        self.clif_comments.add_comment(entity, comment);
     }
 }
 
@@ -210,7 +210,13 @@ pub(crate) fn write_clif_file<'tcx>(
 ) {
     use std::io::Write;
 
-    if !cfg!(debug_assertions) && !tcx.sess.opts.output_types.contains_key(&OutputType::LlvmAssembly) {
+    if !cfg!(debug_assertions)
+        && !tcx
+            .sess
+            .opts
+            .output_types
+            .contains_key(&OutputType::LlvmAssembly)
+    {
         return;
     }
 

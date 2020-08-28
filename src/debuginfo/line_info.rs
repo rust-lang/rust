@@ -3,13 +3,16 @@ use std::path::{Component, Path};
 
 use crate::prelude::*;
 
-use rustc_span::{FileName, SourceFile, SourceFileAndLine, Pos, SourceFileHash, SourceFileHashAlgorithm};
+use rustc_span::{
+    FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHash, SourceFileHashAlgorithm,
+};
 
 use cranelift_codegen::binemit::CodeOffset;
 use cranelift_codegen::machinst::MachSrcLoc;
 
 use gimli::write::{
-    Address, AttributeValue, FileId, LineProgram, LineString, FileInfo, LineStringTable, UnitEntryId,
+    Address, AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable,
+    UnitEntryId,
 };
 
 // OPTIMIZATION: It is cheaper to do this in one pass than using `.parent()` and `.file_name()`.
@@ -18,7 +21,11 @@ fn split_path_dir_and_file(path: &Path) -> (&Path, &OsStr) {
     let file_name = match iter.next_back() {
         Some(Component::Normal(p)) => p,
         component => {
-            panic!("Path component {:?} of path {} is an invalid filename", component, path.display());
+            panic!(
+                "Path component {:?} of path {} is an invalid filename",
+                component,
+                path.display()
+            );
         }
     };
     let parent = iter.as_path();
@@ -27,11 +34,13 @@ fn split_path_dir_and_file(path: &Path) -> (&Path, &OsStr) {
 
 // OPTIMIZATION: Avoid UTF-8 validation on UNIX.
 fn osstr_as_utf8_bytes(path: &OsStr) -> &[u8] {
-    #[cfg(unix)] {
+    #[cfg(unix)]
+    {
         use std::os::unix::ffi::OsStrExt;
         return path.as_bytes();
     }
-    #[cfg(not(unix))] {
+    #[cfg(not(unix))]
+    {
         return path.to_str().unwrap().as_bytes();
     }
 }
@@ -69,11 +78,7 @@ fn line_program_add_file(
             } else {
                 line_program.default_directory()
             };
-            let file_name = LineString::new(
-                file_name,
-                line_program.encoding(),
-                line_strings,
-            );
+            let file_name = LineString::new(file_name, line_program.encoding(), line_strings);
 
             let info = make_file_info(file.src_hash);
 
@@ -149,8 +154,7 @@ impl<'tcx> DebugContext<'tcx> {
             // In order to have a good line stepping behavior in debugger, we overwrite debug
             // locations of macro expansions with that of the outermost expansion site
             // (unless the crate is being compiled with `-Z debug-macros`).
-            let span = if !span.from_expansion() ||
-                tcx.sess.opts.debugging_opts.debug_macros {
+            let span = if !span.from_expansion() || tcx.sess.opts.debugging_opts.debug_macros {
                 span
             } else {
                 // Walk up the macro expansion chain until we reach a non-expanded span.
@@ -163,9 +167,13 @@ impl<'tcx> DebugContext<'tcx> {
                 Ok(SourceFileAndLine { sf: file, line }) => {
                     let line_pos = file.line_begin_pos(span.lo());
 
-                    (file, u64::try_from(line).unwrap() + 1, u64::from((span.lo() - line_pos).to_u32()) + 1)
+                    (
+                        file,
+                        u64::try_from(line).unwrap() + 1,
+                        u64::from((span.lo() - line_pos).to_u32()) + 1,
+                    )
                 }
-                Err(file) => (file, 0, 0)
+                Err(file) => (file, 0, 0),
             };
 
             // line_program_add_file is very slow.
@@ -188,10 +196,7 @@ impl<'tcx> DebugContext<'tcx> {
             line_program.generate_row();
         };
 
-        line_program.begin_sequence(Some(Address::Symbol {
-            symbol,
-            addend: 0,
-        }));
+        line_program.begin_sequence(Some(Address::Symbol { symbol, addend: 0 }));
 
         let mut func_end = 0;
 
@@ -220,7 +225,8 @@ impl<'tcx> DebugContext<'tcx> {
                     let srcloc = func.srclocs[inst];
                     line_program.row().address_offset = u64::from(offset);
                     if !srcloc.is_default() {
-                        let source_info = *source_info_set.get_index(srcloc.bits() as usize).unwrap();
+                        let source_info =
+                            *source_info_set.get_index(srcloc.bits() as usize).unwrap();
                         create_row_for_span(line_program, source_info.span);
                     } else {
                         create_row_for_span(line_program, function_span);
@@ -236,12 +242,12 @@ impl<'tcx> DebugContext<'tcx> {
         let entry = self.dwarf.unit.get_mut(entry_id);
         entry.set(
             gimli::DW_AT_low_pc,
-            AttributeValue::Address(Address::Symbol {
-                symbol,
-                addend: 0,
-            }),
+            AttributeValue::Address(Address::Symbol { symbol, addend: 0 }),
         );
-        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(func_end)));
+        entry.set(
+            gimli::DW_AT_high_pc,
+            AttributeValue::Udata(u64::from(func_end)),
+        );
 
         self.emit_location(entry_id, function_span);
 

@@ -253,7 +253,11 @@ pub(crate) fn trans_checked_int_binop<'tcx>(
                     let lhs = fx.bcx.ins().uextend(ty.double_width().unwrap(), lhs);
                     let rhs = fx.bcx.ins().uextend(ty.double_width().unwrap(), rhs);
                     let val = fx.bcx.ins().imul(lhs, rhs);
-                    let has_overflow = fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, val, (1 << ty.bits()) - 1);
+                    let has_overflow = fx.bcx.ins().icmp_imm(
+                        IntCC::UnsignedGreaterThan,
+                        val,
+                        (1 << ty.bits()) - 1,
+                    );
                     let val = fx.bcx.ins().ireduce(ty, val);
                     (val, has_overflow)
                 }
@@ -261,8 +265,15 @@ pub(crate) fn trans_checked_int_binop<'tcx>(
                     let lhs = fx.bcx.ins().sextend(ty.double_width().unwrap(), lhs);
                     let rhs = fx.bcx.ins().sextend(ty.double_width().unwrap(), rhs);
                     let val = fx.bcx.ins().imul(lhs, rhs);
-                    let has_underflow = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, val, -(1 << (ty.bits() - 1)));
-                    let has_overflow = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThan, val, (1 << (ty.bits() - 1)) - 1);
+                    let has_underflow =
+                        fx.bcx
+                            .ins()
+                            .icmp_imm(IntCC::SignedLessThan, val, -(1 << (ty.bits() - 1)));
+                    let has_overflow = fx.bcx.ins().icmp_imm(
+                        IntCC::SignedGreaterThan,
+                        val,
+                        (1 << (ty.bits() - 1)) - 1,
+                    );
                     let val = fx.bcx.ins().ireduce(ty, val);
                     (val, fx.bcx.ins().bor(has_underflow, has_overflow))
                 }
@@ -275,12 +286,18 @@ pub(crate) fn trans_checked_int_binop<'tcx>(
                     } else {
                         let val_hi = fx.bcx.ins().smulhi(lhs, rhs);
                         let not_all_zero = fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, 0);
-                        let not_all_ones = fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, u64::try_from((1u128 << ty.bits()) - 1).unwrap() as i64);
+                        let not_all_ones = fx.bcx.ins().icmp_imm(
+                            IntCC::NotEqual,
+                            val_hi,
+                            u64::try_from((1u128 << ty.bits()) - 1).unwrap() as i64,
+                        );
                         fx.bcx.ins().band(not_all_zero, not_all_ones)
                     };
                     (val, has_overflow)
                 }
-                types::I128 => unreachable!("i128 should have been handled by codegen_i128::maybe_codegen"),
+                types::I128 => {
+                    unreachable!("i128 should have been handled by codegen_i128::maybe_codegen")
+                }
                 _ => unreachable!("invalid non-integer type {}", ty),
             }
         }
@@ -291,8 +308,10 @@ pub(crate) fn trans_checked_int_binop<'tcx>(
             let val = fx.bcx.ins().ishl(lhs, actual_shift);
             let ty = fx.bcx.func.dfg.value_type(val);
             let max_shift = i64::from(ty.bits()) - 1;
-            let has_overflow =
-                fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
+            let has_overflow = fx
+                .bcx
+                .ins()
+                .icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
             (val, has_overflow)
         }
         BinOp::Shr => {
@@ -306,8 +325,10 @@ pub(crate) fn trans_checked_int_binop<'tcx>(
             };
             let ty = fx.bcx.func.dfg.value_type(val);
             let max_shift = i64::from(ty.bits()) - 1;
-            let has_overflow =
-                fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
+            let has_overflow = fx
+                .bcx
+                .ins()
+                .icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
             (val, has_overflow)
         }
         _ => bug!(
@@ -323,7 +344,10 @@ pub(crate) fn trans_checked_int_binop<'tcx>(
     // FIXME directly write to result place instead
     let out_place = CPlace::new_stack_slot(
         fx,
-        fx.layout_of(fx.tcx.mk_tup([in_lhs.layout().ty, fx.tcx.types.bool].iter())),
+        fx.layout_of(
+            fx.tcx
+                .mk_tup([in_lhs.layout().ty, fx.tcx.types.bool].iter()),
+        ),
     );
     let out_layout = out_place.layout();
     out_place.write_cvalue(fx, CValue::by_val_pair(res, has_overflow, out_layout));
@@ -382,9 +406,12 @@ pub(crate) fn trans_ptr_binop<'tcx>(
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
 ) -> CValue<'tcx> {
-    let is_thin_ptr = in_lhs.layout().ty.builtin_deref(true).map(|TypeAndMut { ty, mutbl: _}| {
-        !has_ptr_meta(fx.tcx, ty)
-    }).unwrap_or(true);
+    let is_thin_ptr = in_lhs
+        .layout()
+        .ty
+        .builtin_deref(true)
+        .map(|TypeAndMut { ty, mutbl: _ }| !has_ptr_meta(fx.tcx, ty))
+        .unwrap_or(true);
 
     if is_thin_ptr {
         match bin_op {

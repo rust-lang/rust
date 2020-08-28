@@ -17,13 +17,17 @@ pub(crate) fn codegen_crate(
     tcx.sess.abort_if_errors();
 
     if std::env::var("CG_CLIF_JIT").is_ok()
-        && tcx.sess.crate_types().contains(&rustc_session::config::CrateType::Executable)
+        && tcx
+            .sess
+            .crate_types()
+            .contains(&rustc_session::config::CrateType::Executable)
     {
         #[cfg(feature = "jit")]
         let _: ! = jit::run_jit(tcx);
 
         #[cfg(not(feature = "jit"))]
-        tcx.sess.fatal("jit support was disabled when compiling rustc_codegen_cranelift");
+        tcx.sess
+            .fatal("jit support was disabled when compiling rustc_codegen_cranelift");
     }
 
     aot::run_aot(tcx, metadata, need_metadata_module)
@@ -37,8 +41,12 @@ fn codegen_mono_items<'tcx>(
         for &(mono_item, (linkage, visibility)) in &mono_items {
             match mono_item {
                 MonoItem::Fn(instance) => {
-                    let (name, sig) =
-                        get_function_name_and_sig(cx.tcx, cx.module.isa().triple(), instance, false);
+                    let (name, sig) = get_function_name_and_sig(
+                        cx.tcx,
+                        cx.module.isa().triple(),
+                        instance,
+                        false,
+                    );
                     let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
                     cx.module.declare_function(&name, linkage, &sig).unwrap();
                 }
@@ -85,7 +93,8 @@ fn trans_mono_item<'tcx, B: Backend + 'static>(
                 }
             });
 
-            tcx.sess.time("codegen fn", || crate::base::trans_fn(cx, inst, linkage));
+            tcx.sess
+                .time("codegen fn", || crate::base::trans_fn(cx, inst, linkage));
         }
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(&mut cx.constants_cx, def_id);
@@ -103,12 +112,21 @@ fn trans_mono_item<'tcx, B: Backend + 'static>(
 }
 
 fn time<R>(tcx: TyCtxt<'_>, name: &'static str, f: impl FnOnce() -> R) -> R {
-    if std::env::var("CG_CLIF_DISPLAY_CG_TIME").as_ref().map(|val| &**val) == Ok("1") {
+    if std::env::var("CG_CLIF_DISPLAY_CG_TIME")
+        .as_ref()
+        .map(|val| &**val)
+        == Ok("1")
+    {
         println!("[{:<30}: {}] start", tcx.crate_name(LOCAL_CRATE), name);
         let before = std::time::Instant::now();
         let res = tcx.sess.time(name, f);
         let after = std::time::Instant::now();
-        println!("[{:<30}: {}] end time: {:?}", tcx.crate_name(LOCAL_CRATE), name, after - before);
+        println!(
+            "[{:<30}: {}] end time: {:?}",
+            tcx.crate_name(LOCAL_CRATE),
+            name,
+            after - before
+        );
         res
     } else {
         tcx.sess.time(name, f)

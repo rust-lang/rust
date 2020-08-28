@@ -83,7 +83,9 @@ impl WriterRelocate {
                         cranelift_module::FuncId::from_u32(sym.try_into().unwrap()),
                     );
                     let val = (addr as u64 as i64 + reloc.addend) as u64;
-                    self.writer.write_udata_at(reloc.offset as usize, val, reloc.size).unwrap();
+                    self.writer
+                        .write_udata_at(reloc.offset as usize, val, reloc.size)
+                        .unwrap();
                 }
             }
         }

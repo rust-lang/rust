@@ -2,12 +2,12 @@ use std::convert::TryFrom;
 use std::fs::File;
 use std::path::Path;
 
-use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
-use rustc_session::config;
-use rustc_middle::ty::TyCtxt;
 use rustc_codegen_ssa::METADATA_FILENAME;
 use rustc_data_structures::owning_ref::{self, OwningRef};
 use rustc_data_structures::rustc_erase_owner;
+use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
+use rustc_middle::ty::TyCtxt;
+use rustc_session::config;
 use rustc_target::spec::Target;
 
 use crate::backend::WriteMetadata;
@@ -27,7 +27,7 @@ impl MetadataLoader for CraneliftMetadataLoader {
             if entry.header().identifier() == METADATA_FILENAME.as_bytes() {
                 let mut buf = Vec::with_capacity(
                     usize::try_from(entry.header().size())
-                        .expect("Rlib metadata file too big to load into memory.")
+                        .expect("Rlib metadata file too big to load into memory."),
                 );
                 ::std::io::copy(&mut entry, &mut buf).map_err(|e| format!("{:?}", e))?;
                 let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
@@ -59,7 +59,10 @@ impl MetadataLoader for CraneliftMetadataLoader {
 }
 
 // Adapted from https://github.com/rust-lang/rust/blob/da573206f87b5510de4b0ee1a9c044127e409bd3/src/librustc_codegen_llvm/base.rs#L47-L112
-pub(crate) fn write_metadata<P: WriteMetadata>(tcx: TyCtxt<'_>, product: &mut P) -> EncodedMetadata {
+pub(crate) fn write_metadata<P: WriteMetadata>(
+    tcx: TyCtxt<'_>,
+    product: &mut P,
+) -> EncodedMetadata {
     use flate2::write::DeflateEncoder;
     use flate2::Compression;
     use std::io::Write;

@@ -51,10 +51,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
         arg.load_scalar_pair(fx)
     } else {
         let (ptr, vtable) = arg.try_to_ptr().unwrap();
-        (
-            ptr.get_addr(fx),
-            vtable.unwrap()
-        )
+        (ptr.get_addr(fx), vtable.unwrap())
     };
 
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes();
@@ -92,8 +89,11 @@ fn build_vtable<'tcx>(
     let tcx = fx.tcx;
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
 
-    let drop_in_place_fn =
-        import_function(tcx, &mut fx.cx.module, Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.tcx));
+    let drop_in_place_fn = import_function(
+        tcx,
+        &mut fx.cx.module,
+        Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.tcx),
+    );
 
     let mut components: Vec<_> = vec![Some(drop_in_place_fn), None, None];
 
@@ -109,7 +109,9 @@ fn build_vtable<'tcx>(
             Some(import_function(
                 tcx,
                 &mut fx.cx.module,
-                Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap().polymorphize(fx.tcx),
+                Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs)
+                    .unwrap()
+                    .polymorphize(fx.tcx),
             ))
         })
     });
@@ -133,7 +135,8 @@ fn build_vtable<'tcx>(
     }
 
     let data_id = fx
-        .cx.module
+        .cx
+        .module
         .declare_data(
             &format!(
                 "__vtable.{}.for.{:?}.{}",

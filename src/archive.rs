@@ -2,9 +2,9 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use rustc_session::Session;
 use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
 use rustc_codegen_ssa::METADATA_FILENAME;
+use rustc_session::Session;
 
 use object::{Object, SymbolKind};
 
@@ -167,30 +167,45 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                     entry.read_to_end(&mut data).unwrap();
                     data
                 }
-                ArchiveEntry::File(file) => {
-                    std::fs::read(file).unwrap_or_else(|err| {
-                        sess.fatal(&format!("error while reading object file during archive building: {}", err));
-                    })
-                }
+                ArchiveEntry::File(file) => std::fs::read(file).unwrap_or_else(|err| {
+                    sess.fatal(&format!(
+                        "error while reading object file during archive building: {}",
+                        err
+                    ));
+                }),
             };
 
             if !self.no_builtin_ranlib {
                 match object::File::parse(&data) {
                     Ok(object) => {
-                        symbol_table.insert(entry_name.as_bytes().to_vec(), object.symbols().filter_map(|(_index, symbol)| {
-                            if symbol.is_undefined() || symbol.is_local() || symbol.kind() != SymbolKind::Data && symbol.kind() != SymbolKind::Text && symbol.kind() != SymbolKind::Tls {
-                                None
-                            } else {
-                                symbol.name().map(|name| name.as_bytes().to_vec())
-                            }
-                        }).collect::<Vec<_>>());
+                        symbol_table.insert(
+                            entry_name.as_bytes().to_vec(),
+                            object
+                                .symbols()
+                                .filter_map(|(_index, symbol)| {
+                                    if symbol.is_undefined()
+                                        || symbol.is_local()
+                                        || symbol.kind() != SymbolKind::Data
+                                            && symbol.kind() != SymbolKind::Text
+                                            && symbol.kind() != SymbolKind::Tls
+                                    {
+                                        None
+                                    } else {
+                                        symbol.name().map(|name| name.as_bytes().to_vec())
+                                    }
+                                })
+                                .collect::<Vec<_>>(),
+                        );
                     }
                     Err(err) => {
                         let err = err.to_string();
                         if err == "Unknown file magic" {
                             // Not an object file; skip it.
                         } else {
-                            sess.fatal(&format!("error parsing `{}` during archive creation: {}", entry_name, err));
+                            sess.fatal(&format!(
+                                "error parsing `{}` during archive creation: {}",
+                                entry_name, err
+                            ));
                         }
                     }
                 }
@@ -200,36 +215,44 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         }
 
         let mut builder = if self.use_gnu_style_archive {
-            BuilderKind::Gnu(ar::GnuBuilder::new(
-                File::create(&self.dst).unwrap_or_else(|err| {
-                    sess.fatal(&format!("error opening destination during archive building: {}", err));
-                }),
-                entries
-                    .iter()
-                    .map(|(name, _)| name.as_bytes().to_vec())
-                    .collect(),
-                ar::GnuSymbolTableFormat::Size32,
-                symbol_table,
-            ).unwrap())
+            BuilderKind::Gnu(
+                ar::GnuBuilder::new(
+                    File::create(&self.dst).unwrap_or_else(|err| {
+                        sess.fatal(&format!(
+                            "error opening destination during archive building: {}",
+                            err
+                        ));
+                    }),
+                    entries
+                        .iter()
+                        .map(|(name, _)| name.as_bytes().to_vec())
+                        .collect(),
+                    ar::GnuSymbolTableFormat::Size32,
+                    symbol_table,
+                )
+                .unwrap(),
+            )
         } else {
-            BuilderKind::Bsd(ar::Builder::new(
-                File::create(&self.dst).unwrap_or_else(|err| {
-                    sess.fatal(&format!("error opening destination during archive building: {}", err));
-                }),
-                symbol_table,
-            ).unwrap())
+            BuilderKind::Bsd(
+                ar::Builder::new(
+                    File::create(&self.dst).unwrap_or_else(|err| {
+                        sess.fatal(&format!(
+                            "error opening destination during archive building: {}",
+                            err
+                        ));
+                    }),
+                    symbol_table,
+                )
+                .unwrap(),
+            )
         };
 
         // Add all files
         for (entry_name, data) in entries.into_iter() {
             let header = ar::Header::new(entry_name.into_bytes(), data.len() as u64);
             match builder {
-                BuilderKind::Bsd(ref mut builder) => builder
-                    .append(&header, &mut &*data)
-                    .unwrap(),
-                BuilderKind::Gnu(ref mut builder) => builder
-                    .append(&header, &mut &*data)
-                    .unwrap(),
+                BuilderKind::Bsd(ref mut builder) => builder.append(&header, &mut &*data).unwrap(),
+                BuilderKind::Gnu(ref mut builder) => builder.append(&header, &mut &*data).unwrap(),
             }
         }
 
@@ -246,7 +269,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                 .expect("Couldn't run ranlib");
 
             if !status.success() {
-                self.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
+                self.sess
+                    .fatal(&format!("Ranlib exited with code {:?}", status.code()));
             }
         }
     }
@@ -263,9 +287,8 @@ impl<'a> ArArchiveBuilder<'a> {
         let mut i = 0;
         while let Some(entry) = archive.next_entry() {
             let entry = entry?;
-            let file_name = String::from_utf8(entry.header().identifier().to_vec()).map_err(|err| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, err)
-            })?;
+            let file_name = String::from_utf8(entry.header().identifier().to_vec())
+                .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
             if !skip(&file_name) {
                 self.entries.push((
                     file_name,
