@@ -144,8 +144,6 @@ pub fn spin_loop_hint() {
 ///
 /// **Note**: This type is only available on platforms that support atomic
 /// loads and stores of `u8`.
-///
-/// [`bool`]: ../../../std/primitive.bool.html
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(C, align(1))]
@@ -311,8 +309,6 @@ impl AtomicBool {
     ///
     /// This is safe because the mutable reference guarantees that no other threads are
     /// concurrently accessing the atomic data.
-    ///
-    /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -486,8 +482,6 @@ impl AtomicBool {
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
     ///
-    /// [`bool`]: ../../../std/primitive.bool.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -544,8 +538,6 @@ impl AtomicBool {
     ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
-    ///
-    /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -765,8 +757,6 @@ impl AtomicBool {
     /// through a shared reference, and can do so safely as long as they use atomic operations. Any
     /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
     /// restriction: operations on it must be atomic.
-    ///
-    /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -1709,8 +1699,6 @@ and must be equivalent to or weaker than the success ordering.
 
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
-
-[`bool`]: ../../../std/primitive.bool.html
 
 # Examples
 
