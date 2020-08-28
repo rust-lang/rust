@@ -91,7 +91,6 @@ pub trait Future {
     /// (memory corruption, incorrect use of `unsafe` functions, or the like),
     /// regardless of the future's state.
     ///
-    /// [`Poll::Pending`]: Poll::Pending
     /// [`Poll::Ready(val)`]: Poll::Ready
     /// [`Waker`]: crate::task::Waker
     /// [`Waker::wake`]: crate::task::Waker::wake
