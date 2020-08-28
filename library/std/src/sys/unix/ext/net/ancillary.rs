@@ -158,10 +158,36 @@ impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
     }
 }
 
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "fuchsia",
+    target_os = "ios",
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_env = "uclibc",
+))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 #[derive(Clone)]
 pub struct UCred(libc::ucred);
 
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "fuchsia",
+    target_os = "ios",
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_env = "uclibc",
+))]
 impl UCred {
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn new() -> UCred {
@@ -199,41 +225,9 @@ impl UCred {
     }
 }
 
-#[cfg(any(
-    target_os = "haiku",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "freebsd",
-    target_os = "dragonfly",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "linux",
-    target_os = "android",
-    target_os = "emscripten",
-    target_os = "fuchsia",
-    target_env = "uclibc",
-))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 pub struct ScmRights<'a>(AncillaryDataIter<'a, RawFd>);
 
-#[cfg(any(
-    target_os = "haiku",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "freebsd",
-    target_os = "dragonfly",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "linux",
-    target_os = "android",
-    target_os = "emscripten",
-    target_os = "fuchsia",
-    target_env = "uclibc",
-))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 impl<'a> Iterator for ScmRights<'a> {
     type Item = RawFd;
@@ -244,32 +238,32 @@ impl<'a> Iterator for ScmRights<'a> {
 }
 
 #[cfg(any(
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_os = "freebsd",
+    target_os = "android",
     target_os = "dragonfly",
-    target_os = "macos",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "fuchsia",
     target_os = "ios",
     target_os = "linux",
-    target_os = "android",
-    target_os = "emscripten",
-    target_os = "fuchsia",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
     target_env = "uclibc",
 ))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 pub struct ScmCredentials<'a>(AncillaryDataIter<'a, libc::ucred>);
 
 #[cfg(any(
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_os = "freebsd",
+    target_os = "android",
     target_os = "dragonfly",
-    target_os = "macos",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "fuchsia",
     target_os = "ios",
     target_os = "linux",
-    target_os = "android",
-    target_os = "emscripten",
-    target_os = "fuchsia",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
     target_env = "uclibc",
 ))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
@@ -288,58 +282,26 @@ pub enum AncillaryError {
     Unknown { cmsg_level: i32, cmsg_type: i32 },
 }
 
-#[cfg(any(
-    target_os = "haiku",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "freebsd",
-    target_os = "dragonfly",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "linux",
-    target_os = "android",
-    target_os = "emscripten",
-    target_os = "fuchsia",
-    target_env = "uclibc",
-))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 pub enum AncillaryData<'a> {
     ScmRights(ScmRights<'a>),
     #[cfg(any(
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "freebsd",
+        target_os = "android",
         target_os = "dragonfly",
-        target_os = "macos",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "ios",
         target_os = "linux",
-        target_os = "android",
-        target_os = "emscripten",
-        target_os = "fuchsia",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
         target_env = "uclibc",
     ))]
     ScmCredentials(ScmCredentials<'a>),
 }
 
 impl<'a> AncillaryData<'a> {
-    #[cfg(any(
-        target_os = "haiku",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "freebsd",
-        target_os = "dragonfly",
-        target_os = "openbsd",
-        target_os = "netbsd",
-        target_os = "linux",
-        target_os = "android",
-        target_os = "emscripten",
-        target_os = "fuchsia",
-        target_env = "uclibc",
-    ))]
     fn as_rights(data: &'a [u8]) -> Self {
         let ancillary_data_iter = AncillaryDataIter::new(data);
         let scm_rights = ScmRights(ancillary_data_iter);
@@ -347,16 +309,16 @@ impl<'a> AncillaryData<'a> {
     }
 
     #[cfg(any(
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "freebsd",
+        target_os = "android",
         target_os = "dragonfly",
-        target_os = "macos",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "ios",
         target_os = "linux",
-        target_os = "android",
-        target_os = "emscripten",
-        target_os = "fuchsia",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
         target_env = "uclibc",
     ))]
     fn as_credentials(data: &'a [u8]) -> Self {
@@ -365,22 +327,6 @@ impl<'a> AncillaryData<'a> {
         AncillaryData::ScmCredentials(scm_credentials)
     }
 
-    #[cfg(any(
-        target_os = "haiku",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "freebsd",
-        target_os = "dragonfly",
-        target_os = "openbsd",
-        target_os = "netbsd",
-        target_os = "linux",
-        target_os = "android",
-        target_os = "emscripten",
-        target_os = "fuchsia",
-        target_env = "uclibc",
-    ))]
     fn try_from_cmsghdr(cmsg: &'a libc::cmsghdr) -> Result<Self, AncillaryError> {
         unsafe {
             let cmsg_len_zero = libc::CMSG_LEN(0) as usize;
@@ -392,20 +338,20 @@ impl<'a> AncillaryData<'a> {
                 libc::SOL_SOCKET => match (*cmsg).cmsg_type {
                     libc::SCM_RIGHTS => Ok(AncillaryData::as_rights(data)),
                     #[cfg(any(
-                        target_os = "linux",
                         target_os = "android",
                         target_os = "emscripten",
                         target_os = "fuchsia",
+                        target_os = "linux",
                         target_env = "uclibc",
                     ))]
                     libc::SCM_CREDENTIALS => Ok(AncillaryData::as_credentials(data)),
                     #[cfg(any(
+                        target_os = "dragonfly",
+                        target_os = "freebsd",
+                        target_os = "ios",
+                        target_os = "macos",
                         target_os = "netbsd",
                         target_os = "openbsd",
-                        target_os = "freebsd",
-                        target_os = "dragonfly",
-                        target_os = "macos",
-                        target_os = "ios",
                     ))]
                     libc::SCM_CREDS => Ok(AncillaryData::as_credentials(data)),
                     cmsg_type => {
@@ -420,44 +366,12 @@ impl<'a> AncillaryData<'a> {
     }
 }
 
-#[cfg(any(
-    target_os = "haiku",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "freebsd",
-    target_os = "dragonfly",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "linux",
-    target_os = "android",
-    target_os = "emscripten",
-    target_os = "fuchsia",
-    target_env = "uclibc",
-))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 pub struct Messages<'a> {
     buffer: &'a [u8],
     current: Option<&'a libc::cmsghdr>,
 }
 
-#[cfg(any(
-    target_os = "haiku",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "freebsd",
-    target_os = "dragonfly",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "linux",
-    target_os = "android",
-    target_os = "emscripten",
-    target_os = "fuchsia",
-    target_env = "uclibc",
-))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 impl<'a> Iterator for Messages<'a> {
     type Item = Result<AncillaryData<'a>, AncillaryError>;
@@ -554,22 +468,6 @@ impl<'a> SocketAncillary<'a> {
         self.length
     }
 
-    #[cfg(any(
-        target_os = "haiku",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "freebsd",
-        target_os = "dragonfly",
-        target_os = "openbsd",
-        target_os = "netbsd",
-        target_os = "linux",
-        target_os = "android",
-        target_os = "emscripten",
-        target_os = "fuchsia",
-        target_env = "uclibc",
-    ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn messages(&self) -> Messages<'_> {
         Messages { buffer: &self.buffer[..self.length], current: None }
@@ -631,22 +529,6 @@ impl<'a> SocketAncillary<'a> {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(any(
-        target_os = "haiku",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "freebsd",
-        target_os = "dragonfly",
-        target_os = "openbsd",
-        target_os = "netbsd",
-        target_os = "linux",
-        target_os = "android",
-        target_os = "emscripten",
-        target_os = "fuchsia",
-        target_env = "uclibc",
-    ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn add_fds(&mut self, fds: &[RawFd]) -> bool {
         self.truncated = false;
@@ -667,16 +549,16 @@ impl<'a> SocketAncillary<'a> {
     /// and type `SCM_CREDENTIALS`.
     ///
     #[cfg(any(
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "freebsd",
+        target_os = "android",
         target_os = "dragonfly",
-        target_os = "macos",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "ios",
         target_os = "linux",
-        target_os = "android",
-        target_os = "emscripten",
-        target_os = "fuchsia",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
         target_env = "uclibc",
     ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
@@ -688,20 +570,20 @@ impl<'a> SocketAncillary<'a> {
             creds,
             libc::SOL_SOCKET,
             #[cfg(any(
-                target_os = "linux",
                 target_os = "android",
                 target_os = "emscripten",
                 target_os = "fuchsia",
+                target_os = "linux",
                 target_env = "uclibc",
             ))]
             libc::SCM_CREDENTIALS,
             #[cfg(any(
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "ios",
+                target_os = "macos",
                 target_os = "netbsd",
                 target_os = "openbsd",
-                target_os = "freebsd",
-                target_os = "dragonfly",
-                target_os = "macos",
-                target_os = "ios",
             ))]
             libc::SCM_CREDS,
         )
