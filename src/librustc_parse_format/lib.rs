@@ -760,7 +760,7 @@ fn find_skips_from_snippet(
                 (' ' | '\n' | '\t', _) if eat_ws => {
                     skips.push(pos);
                 }
-                ('\\', Some((next_pos, 'n' | 't' | '0' | '\\' | '\'' | '\"'))) => {
+                ('\\', Some((next_pos, 'n' | 't' | 'r' | '0' | '\\' | '\'' | '\"'))) => {
                     skips.push(*next_pos);
                     let _ = s.next();
                 }
