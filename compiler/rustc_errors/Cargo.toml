@@ -1,0 +1,23 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_errors"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+tracing = "0.1"
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_span = { path = "../rustc_span" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+unicode-width = "0.1.4"
+atty = "0.2"
+termcolor = "1.0"
+annotate-snippets = "0.8.0"
+termize = "0.1.1"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["handleapi", "synchapi", "winbase"] }

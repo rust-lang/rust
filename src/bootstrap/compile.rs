@@ -449,7 +449,7 @@ impl Step for Rustc {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/rustc")
+        run.path("compiler/rustc")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -524,7 +524,7 @@ pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
         .arg("--features")
         .arg(builder.rustc_features())
         .arg("--manifest-path")
-        .arg(builder.src.join("src/rustc/Cargo.toml"));
+        .arg(builder.src.join("compiler/rustc/Cargo.toml"));
     rustc_cargo_env(builder, cargo, target);
 }
 

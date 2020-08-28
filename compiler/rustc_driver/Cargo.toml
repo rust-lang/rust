@@ -1,0 +1,41 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_driver"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+lazy_static = "1.0"
+libc = "0.2"
+tracing = { version = "0.1.18", features = ["release_max_level_info"]  }
+tracing-subscriber = { version = "0.2.10", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
+rustc_middle = { path = "../rustc_middle" }
+rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_target = { path = "../rustc_target" }
+rustc_lint = { path = "../rustc_lint" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_hir_pretty = { path = "../rustc_hir_pretty" }
+rustc_metadata = { path = "../rustc_metadata" }
+rustc_mir = { path = "../rustc_mir" }
+rustc_parse = { path = "../rustc_parse" }
+rustc_plugin_impl = { path = "../rustc_plugin_impl" }
+rustc_save_analysis = { path = "../rustc_save_analysis" }
+rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
+rustc_session = { path = "../rustc_session" }
+rustc_error_codes = { path = "../rustc_error_codes" }
+rustc_interface = { path = "../rustc_interface" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_span = { path = "../rustc_span" }
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["consoleapi", "debugapi", "processenv"] }
+
+[features]
+llvm = ['rustc_interface/llvm']

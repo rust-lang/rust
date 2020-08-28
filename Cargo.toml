@@ -1,8 +1,7 @@
 [workspace]
 members = [
   "src/bootstrap",
-  "src/rustc",
-  "src/librustc_codegen_llvm",
+  "compiler/rustc",
   "library/std",
   "library/test",
   "src/tools/cargotest",

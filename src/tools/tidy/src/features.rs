@@ -71,8 +71,14 @@ pub fn collect_lib_features(base_src_path: &Path) -> Features {
     lib_features
 }
 
-pub fn check(src_path: &Path, lib_path: &Path, bad: &mut bool, verbose: bool) -> CollectedFeatures {
-    let mut features = collect_lang_features(src_path, bad);
+pub fn check(
+    src_path: &Path,
+    compiler_path: &Path,
+    lib_path: &Path,
+    bad: &mut bool,
+    verbose: bool,
+) -> CollectedFeatures {
+    let mut features = collect_lang_features(compiler_path, bad);
     assert!(!features.is_empty());
 
     let lib_features = get_and_check_lib_features(lib_path, bad, &features);
@@ -225,15 +231,15 @@ fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
     false
 }
 
-pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
-    let mut all = collect_lang_features_in(base_src_path, "active.rs", bad);
-    all.extend(collect_lang_features_in(base_src_path, "accepted.rs", bad));
-    all.extend(collect_lang_features_in(base_src_path, "removed.rs", bad));
+pub fn collect_lang_features(base_compiler_path: &Path, bad: &mut bool) -> Features {
+    let mut all = collect_lang_features_in(base_compiler_path, "active.rs", bad);
+    all.extend(collect_lang_features_in(base_compiler_path, "accepted.rs", bad));
+    all.extend(collect_lang_features_in(base_compiler_path, "removed.rs", bad));
     all
 }
 
 fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features {
-    let path = base.join("librustc_feature").join(file);
+    let path = base.join("rustc_feature").join("src").join(file);
     let contents = t!(fs::read_to_string(&path));
 
     // We allow rustc-internal features to omit a tracking issue.

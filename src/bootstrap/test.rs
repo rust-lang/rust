@@ -734,7 +734,7 @@ impl Step for Tidy {
     /// for the `dev` or `nightly` channels.
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::Tidy);
-        cmd.arg(builder.src.join("src"));
+        cmd.arg(&builder.src);
         cmd.arg(&builder.initial_cargo);
         if builder.is_verbose() {
             cmd.arg("--verbose");

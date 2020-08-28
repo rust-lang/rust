@@ -1,0 +1,55 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_interface"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+libc = "0.2"
+tracing = "0.1"
+rayon = { version = "0.3.0", package = "rustc-rayon" }
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+rustc_ast = { path = "../rustc_ast" }
+rustc_attr = { path = "../rustc_attr" }
+rustc_builtin_macros = { path = "../rustc_builtin_macros" }
+rustc_expand = { path = "../rustc_expand" }
+rustc_parse = { path = "../rustc_parse" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_ast_lowering = { path = "../rustc_ast_lowering" }
+rustc_ast_passes = { path = "../rustc_ast_passes" }
+rustc_incremental = { path = "../rustc_incremental" }
+rustc_traits = { path = "../rustc_traits" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
+rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
+rustc_codegen_llvm = { path = "../rustc_codegen_llvm", optional = true }
+rustc_hir = { path = "../rustc_hir" }
+rustc_metadata = { path = "../rustc_metadata" }
+rustc_mir = { path = "../rustc_mir" }
+rustc_mir_build = { path = "../rustc_mir_build" }
+rustc_passes = { path = "../rustc_passes" }
+rustc_typeck = { path = "../rustc_typeck" }
+rustc_lint = { path = "../rustc_lint" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_plugin_impl = { path = "../rustc_plugin_impl" }
+rustc_privacy = { path = "../rustc_privacy" }
+rustc_resolve = { path = "../rustc_resolve" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
+rustc_ty = { path = "../rustc_ty" }
+tempfile = "3.0.5"
+once_cell = "1"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["libloaderapi"] }
+
+[dev-dependencies]
+rustc_target = { path = "../rustc_target" }
+
+[features]
+llvm = ['rustc_codegen_llvm']
