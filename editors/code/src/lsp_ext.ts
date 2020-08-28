@@ -1,5 +1,5 @@
 /**
- * This file mirrors `crates/rust-analyzer/src/req.rs` declarations.
+ * This file mirrors `crates/rust-analyzer/src/lsp_ext.rs` declarations.
  */
 
 import * as lc from "vscode-languageclient";
