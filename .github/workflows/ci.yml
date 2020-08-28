@@ -59,11 +59,6 @@ jobs:
         uses: actions/checkout@v1
         with:
           fetch-depth: 2
-      - name: configure GitHub Actions to kill the build when outdated
-        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-        with:
-          github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
@@ -77,6 +72,11 @@ jobs:
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
         if: success() && !env.SKIP_JOB
+      - name: configure GitHub Actions to kill the build when outdated
+        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+        with:
+          github_token: "${{ secrets.github_token }}"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
@@ -163,11 +163,6 @@ jobs:
         uses: actions/checkout@v1
         with:
           fetch-depth: 2
-      - name: configure GitHub Actions to kill the build when outdated
-        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-        with:
-          github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
@@ -181,6 +176,11 @@ jobs:
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
         if: success() && !env.SKIP_JOB
+      - name: configure GitHub Actions to kill the build when outdated
+        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+        with:
+          github_token: "${{ secrets.github_token }}"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
@@ -482,11 +482,6 @@ jobs:
         uses: actions/checkout@v1
         with:
           fetch-depth: 2
-      - name: configure GitHub Actions to kill the build when outdated
-        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-        with:
-          github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
@@ -500,6 +495,11 @@ jobs:
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
         if: success() && !env.SKIP_JOB
+      - name: configure GitHub Actions to kill the build when outdated
+        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+        with:
+          github_token: "${{ secrets.github_token }}"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
@@ -621,11 +621,6 @@ jobs:
         uses: actions/checkout@v1
         with:
           fetch-depth: 2
-      - name: configure GitHub Actions to kill the build when outdated
-        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-        with:
-          github_token: "${{ secrets.github_token }}"
-        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
@@ -639,6 +634,11 @@ jobs:
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
         if: success() && !env.SKIP_JOB
+      - name: configure GitHub Actions to kill the build when outdated
+        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+        with:
+          github_token: "${{ secrets.github_token }}"
+        if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED"
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
         if: success() && !env.SKIP_JOB
