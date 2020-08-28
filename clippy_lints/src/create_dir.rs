@@ -1,4 +1,4 @@
-use crate::utils::{match_qpath, snippet, span_lint_and_sugg};
+use crate::utils::{match_qpath, paths, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::*;
@@ -33,7 +33,7 @@ impl LateLintPass<'_> for CreateDir {
         if_chain! {
             if let ExprKind::Call(ref func, ref args) = expr.kind;
             if let ExprKind::Path(ref path) = func.kind;
-            if match_qpath(path, &["std", "fs", "create_dir"]);
+            if match_qpath(path, &paths::STD_FS_CREATE_DIR);
             then {
                 span_lint_and_sugg(
                     cx,
