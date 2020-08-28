@@ -962,7 +962,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
         // Flush existing content to prepare for our write. We have to do this
         // before attempting to write `buf` in order to maintain consistency;
         // if we add `buf` to the buffer then try to flush it all at once,
-        // we're obligated to return Ok(), which would mean supressing any
+        // we're obligated to return Ok(), which would mean suppressing any
         // errors that occur during flush.
         self.buffer.flush_buf()?;
 
@@ -1142,7 +1142,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
                     self.inner_mut().write_all(lines)?;
                 } else {
                     // If there is any buffered data, we add the incoming lines
-                    // to that buffer before flushing, which saves us at lease
+                    // to that buffer before flushing, which saves us at least
                     // one write call. We can't really do this with `write`,
                     // since we can't do this *and* not suppress errors *and*
                     // report a consistent state to the caller in a return
@@ -2024,7 +2024,7 @@ mod tests {
     }
 
     /// Test that, in cases where vectored writing is not enabled, the
-    /// LineWriter uses the normal `write` call, which more-corectly handles
+    /// LineWriter uses the normal `write` call, which more-correctly handles
     /// partial lines
     #[test]
     fn line_vectored_ignored() {
@@ -2160,7 +2160,7 @@ mod tests {
     }
 
     /// Test that, if a write returns Ok(0) after a successful pre-flush, this
-    /// is propogated as Ok(0)
+    /// is propagated as Ok(0)
     #[test]
     fn line_buffer_write0_normal() {
         let writer = ProgrammableSink {
@@ -2298,7 +2298,7 @@ mod tests {
     }
 
     /// Test that a normal, formatted writeln only results in a single write
-    /// call to the underlying writer. A naive implementaton of
+    /// call to the underlying writer. A naive implementation of
     /// LineWriter::write_all results in two writes: one of the buffered data,
     /// and another of the final substring in the formatted set
     #[test]
