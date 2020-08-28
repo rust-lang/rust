@@ -64,7 +64,7 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
                     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
                         asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
                     } else if #[cfg(target_arch = "arm")] {
-                        asm!("brk 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
+                        asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
                     } else if #[cfg(target_arch = "aarch64")] {
                         asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
                     } else {
