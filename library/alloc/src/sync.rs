@@ -111,7 +111,7 @@ macro_rules! acquire {
 ///
 /// # Cloning references
 ///
-/// Creating a new reference from an existing reference counted pointer is done using the
+/// Creating a new reference from an existing reference-counted pointer is done using the
 /// `Clone` trait implemented for [`Arc<T>`][Arc] and [`Weak<T>`][Weak].
 ///
 /// ```
