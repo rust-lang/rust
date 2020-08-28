@@ -14,6 +14,7 @@ Rust MIR: a lowered representation of Rust.
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(drain_filter)]
+#![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(iter_order_by)]
 #![feature(never_type)]
