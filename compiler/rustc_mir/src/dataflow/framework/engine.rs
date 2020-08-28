@@ -87,6 +87,11 @@ where
     analysis: A,
 
     /// Cached, cumulative transfer functions for each block.
+    //
+    // FIXME(ecstaticmorse): This boxed `Fn` trait object is invoked inside a tight loop for
+    // gen/kill problems on cyclic CFGs. This is not ideal, but it doesn't seem to degrade
+    // performance in practice. I've tried a few ways to avoid this, but they have downsides. See
+    // the message for the commit that added this FIXME for more information.
     apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
 }
 
