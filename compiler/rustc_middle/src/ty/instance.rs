@@ -260,10 +260,11 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
             InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
             InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
-            InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({:?})", ty),
+            InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({})", ty),
             InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
-            InstanceDef::DropGlue(_, ty) => write!(f, " - shim({:?})", ty),
-            InstanceDef::CloneShim(_, ty) => write!(f, " - shim({:?})", ty),
+            InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
+            InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({}))", ty),
+            InstanceDef::CloneShim(_, ty) => write!(f, " - shim({})", ty),
         }
     }
 }

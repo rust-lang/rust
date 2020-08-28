@@ -1177,7 +1177,7 @@ fn e0307(fcx: &FnCtxt<'fcx, 'tcx>, span: Span, receiver_ty: Ty<'_>) {
         fcx.tcx.sess.diagnostic(),
         span,
         E0307,
-        "invalid `self` parameter type: {:?}",
+        "invalid `self` parameter type: {}",
         receiver_ty,
     )
     .note("type of `self` must be `Self` or a type that dereferences to it")

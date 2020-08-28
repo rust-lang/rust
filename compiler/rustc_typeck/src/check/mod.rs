@@ -2487,14 +2487,14 @@ fn fn_sig_suggestion<'tcx>(
                             _ => format!("self: {}", ty),
                         }
                     } else {
-                        format!("_: {:?}", ty)
+                        format!("_: {}", ty)
                     }
                 }
                 _ => {
                     if assoc.fn_has_self_parameter && i == 0 {
-                        format!("self: {:?}", ty)
+                        format!("self: {}", ty)
                     } else {
-                        format!("_: {:?}", ty)
+                        format!("_: {}", ty)
                     }
                 }
             })
@@ -2504,7 +2504,7 @@ fn fn_sig_suggestion<'tcx>(
         .collect::<Vec<String>>()
         .join(", ");
     let output = sig.output();
-    let output = if !output.is_unit() { format!(" -> {:?}", output) } else { String::new() };
+    let output = if !output.is_unit() { format!(" -> {}", output) } else { String::new() };
 
     let unsafety = sig.unsafety.prefix_str();
     let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates);
@@ -2542,7 +2542,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
         ty::AssocKind::Const => {
             let ty = tcx.type_of(assoc.def_id);
             let val = expr::ty_kind_suggestion(ty).unwrap_or("value");
-            format!("const {}: {:?} = {};", assoc.ident, ty, val)
+            format!("const {}: {} = {};", assoc.ident, ty, val)
         }
     }
 }
