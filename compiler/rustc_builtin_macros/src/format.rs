@@ -135,7 +135,26 @@ fn parse_args<'a>(
         return Err(ecx.struct_span_err(sp, "requires at least a format string argument"));
     }
 
-    let fmtstr = p.parse_expr()?;
+    let first_token = &p.token;
+    let fmtstr = match first_token.kind {
+        token::TokenKind::Literal(token::Lit {
+            kind: token::LitKind::Str | token::LitKind::StrRaw(_),
+            ..
+        }) => {
+            // If the first token is a string literal, then a format expression
+            // is constructed from it.
+            //
+            // This allows us to properly handle cases when the first comma
+            // after the format string is mistakenly replaced with any operator,
+            // which cause the expression parser to eat too much tokens.
+            p.parse_literal_maybe_minus()?
+        }
+        _ => {
+            // Otherwise, we fall back to the expression parser.
+            p.parse_expr()?
+        }
+    };
+
     let mut first = true;
     let mut named = false;
 

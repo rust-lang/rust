@@ -1,0 +1,32 @@
+error: unknown start of token: \u{326}
+  --> $DIR/incorrect-first-separator.rs:19:28
+   |
+LL |     format!("A number: {}" ̦ iter::once(42).next().unwrap());
+   |                            ^
+
+error: expected token: `,`
+  --> $DIR/incorrect-first-separator.rs:7:27
+   |
+LL |     format!("A number: {}". iter::once(42).next().unwrap());
+   |                           ^ expected `,`
+
+error: expected token: `,`
+  --> $DIR/incorrect-first-separator.rs:12:28
+   |
+LL |     format!("A number: {}" / iter::once(42).next().unwrap());
+   |                            ^ expected `,`
+
+error: expected token: `,`
+  --> $DIR/incorrect-first-separator.rs:15:27
+   |
+LL |     format!("A number: {}"; iter::once(42).next().unwrap());
+   |                           ^ expected `,`
+
+error: expected token: `,`
+  --> $DIR/incorrect-first-separator.rs:19:30
+   |
+LL |     format!("A number: {}" ̦ iter::once(42).next().unwrap());
+   |                             ^^^^ expected `,`
+
+error: aborting due to 5 previous errors
+
