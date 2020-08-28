@@ -125,9 +125,9 @@ expression of the closure. Between the `|`s, use function definition syntax,
 but elide types where possible.
 
 Use closures without the enclosing `{}`, if possible. Add the `{}` when you have
-a return type, when there are statements, there are comments in the body, or the
-body expression spans multiple lines and is a control-flow expression. If using
-braces, follow the rules above for blocks. Examples:
+a return type, when there are statements, when there are comments in the body,
+or when the body expression spans multiple lines and is a control-flow
+expression. If using braces, follow the rules above for blocks. Examples:
 
 ```rust
 |arg1, arg2| expr
