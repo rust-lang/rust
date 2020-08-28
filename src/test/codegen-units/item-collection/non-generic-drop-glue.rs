@@ -5,13 +5,13 @@
 #![deny(dead_code)]
 #![feature(start)]
 
-//~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<non_generic_drop_glue::StructWithDrop[0]> @@ non_generic_drop_glue-cgu.0[Internal]
+//~ MONO_ITEM fn std::intrinsics::drop_in_place::<StructWithDrop> - shim(Some(StructWithDrop)) @@ non_generic_drop_glue-cgu.0[Internal]
 struct StructWithDrop {
     x: i32
 }
 
 impl Drop for StructWithDrop {
-    //~ MONO_ITEM fn non_generic_drop_glue::{{impl}}[0]::drop[0]
+    //~ MONO_ITEM fn <StructWithDrop as std::ops::Drop>::drop
     fn drop(&mut self) {}
 }
 
@@ -19,13 +19,13 @@ struct StructNoDrop {
     x: i32
 }
 
-//~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<non_generic_drop_glue::EnumWithDrop[0]> @@ non_generic_drop_glue-cgu.0[Internal]
+//~ MONO_ITEM fn std::intrinsics::drop_in_place::<EnumWithDrop> - shim(Some(EnumWithDrop)) @@ non_generic_drop_glue-cgu.0[Internal]
 enum EnumWithDrop {
     A(i32)
 }
 
 impl Drop for EnumWithDrop {
-    //~ MONO_ITEM fn non_generic_drop_glue::{{impl}}[1]::drop[0]
+    //~ MONO_ITEM fn <EnumWithDrop as std::ops::Drop>::drop
     fn drop(&mut self) {}
 }
 
@@ -33,7 +33,7 @@ enum EnumNoDrop {
     A(i32)
 }
 
-//~ MONO_ITEM fn non_generic_drop_glue::start[0]
+//~ MONO_ITEM fn start
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
     let _ = StructWithDrop { x: 0 }.x;
