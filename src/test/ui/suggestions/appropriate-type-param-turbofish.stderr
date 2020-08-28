@@ -4,17 +4,17 @@ error[E0283]: type annotations needed
 LL |         vec![1, 2, 3].into_iter().collect();
    |                                   ^^^^^^^ cannot infer type for type parameter `B` declared on the associated function `collect`
    |
-   = note: cannot satisfy `_: std::iter::FromIterator<i32>`
+   = note: cannot satisfy `_: FromIterator<i32>`
 help: consider specifying the type argument in the method call
    |
-LL |         vec![1, 2, 3].into_iter().collect::<std::vec::Vec<_>>();
-   |                                          ^^^^^^^^^^^^^^^^^^^^
-LL |         vec![1, 2, 3].into_iter().collect::<std::collections::HashSet<_, _>>();
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |         vec![1, 2, 3].into_iter().collect::<std::path::PathBuf>();
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^
-LL |         vec![1, 2, 3].into_iter().collect::<std::boxed::Box<[_]>>();
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         vec![1, 2, 3].into_iter().collect::<Vec<_>>();
+   |                                          ^^^^^^^^^^
+LL |         vec![1, 2, 3].into_iter().collect::<HashSet<_, _>>();
+   |                                          ^^^^^^^^^^^^^^^^^
+LL |         vec![1, 2, 3].into_iter().collect::<PathBuf>();
+   |                                          ^^^^^^^^^^^
+LL |         vec![1, 2, 3].into_iter().collect::<Box<[_]>>();
+   |                                          ^^^^^^^^^^^^
      and 8 other candidates
 
 error[E0283]: type annotations needed
@@ -23,17 +23,17 @@ error[E0283]: type annotations needed
 LL |         vec!["a", "b", "c"].into_iter().collect();
    |                                         ^^^^^^^ cannot infer type for type parameter `B` declared on the associated function `collect`
    |
-   = note: cannot satisfy `_: std::iter::FromIterator<&str>`
+   = note: cannot satisfy `_: FromIterator<&str>`
 help: consider specifying the type argument in the method call
    |
-LL |         vec!["a", "b", "c"].into_iter().collect::<std::vec::Vec<_>>();
-   |                                                ^^^^^^^^^^^^^^^^^^^^
-LL |         vec!["a", "b", "c"].into_iter().collect::<std::string::String>();
-   |                                                ^^^^^^^^^^^^^^^^^^^^^^^
-LL |         vec!["a", "b", "c"].into_iter().collect::<std::collections::HashSet<_, _>>();
-   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |         vec!["a", "b", "c"].into_iter().collect::<std::path::PathBuf>();
-   |                                                ^^^^^^^^^^^^^^^^^^^^^^
+LL |         vec!["a", "b", "c"].into_iter().collect::<Vec<_>>();
+   |                                                ^^^^^^^^^^
+LL |         vec!["a", "b", "c"].into_iter().collect::<String>();
+   |                                                ^^^^^^^^^^
+LL |         vec!["a", "b", "c"].into_iter().collect::<HashSet<_, _>>();
+   |                                                ^^^^^^^^^^^^^^^^^
+LL |         vec!["a", "b", "c"].into_iter().collect::<PathBuf>();
+   |                                                ^^^^^^^^^^^
      and 10 other candidates
 
 error[E0283]: type annotations needed
@@ -42,48 +42,75 @@ error[E0283]: type annotations needed
 LL |         vec!['a', 'b', 'c'].into_iter().collect();
    |                                         ^^^^^^^ cannot infer type for type parameter `B` declared on the associated function `collect`
    |
-   = note: cannot satisfy `_: std::iter::FromIterator<char>`
+   = note: cannot satisfy `_: FromIterator<char>`
 help: consider specifying the type argument in the method call
    |
-LL |         vec!['a', 'b', 'c'].into_iter().collect::<std::vec::Vec<_>>();
-   |                                                ^^^^^^^^^^^^^^^^^^^^
-LL |         vec!['a', 'b', 'c'].into_iter().collect::<std::string::String>();
-   |                                                ^^^^^^^^^^^^^^^^^^^^^^^
-LL |         vec!['a', 'b', 'c'].into_iter().collect::<std::collections::HashSet<_, _>>();
-   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |         vec!['a', 'b', 'c'].into_iter().collect::<std::path::PathBuf>();
-   |                                                ^^^^^^^^^^^^^^^^^^^^^^
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<Vec<_>>();
+   |                                                ^^^^^^^^^^
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<String>();
+   |                                                ^^^^^^^^^^
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<HashSet<_, _>>();
+   |                                                ^^^^^^^^^^^^^^^^^
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<PathBuf>();
+   |                                                ^^^^^^^^^^^
      and 10 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:14:43
    |
 LL |         let _ = vec![1, 2, 3].into_iter().collect();
-   |             -                             ^^^^^^^ cannot infer type for type parameter `B` declared on the associated function `collect`
-   |             |
-   |             consider giving this pattern a type
+   |                                           ^^^^^^^ cannot infer type for type parameter `B` declared on the associated function `collect`
    |
-   = note: cannot satisfy `_: std::iter::FromIterator<i32>`
+   = note: cannot satisfy `_: FromIterator<i32>`
+help: consider giving this binding a type
+   |
+LL |         let _: Vec<_> = vec![1, 2, 3].into_iter().collect();
+   |              ^^^^^^^^
+LL |         let _: HashSet<_, _> = vec![1, 2, 3].into_iter().collect();
+   |              ^^^^^^^^^^^^^^^
+LL |         let _: PathBuf = vec![1, 2, 3].into_iter().collect();
+   |              ^^^^^^^^^
+LL |         let _: Box<[_]> = vec![1, 2, 3].into_iter().collect();
+   |              ^^^^^^^^^^
+     and 8 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:17:49
    |
 LL |         let _ = vec!["a", "b", "c"].into_iter().collect();
-   |             -                                   ^^^^^^^ cannot infer type for type parameter `B` declared on the associated function `collect`
-   |             |
-   |             consider giving this pattern a type
+   |                                                 ^^^^^^^ cannot infer type for type parameter `B` declared on the associated function `collect`
    |
-   = note: cannot satisfy `_: std::iter::FromIterator<&str>`
+   = note: cannot satisfy `_: FromIterator<&str>`
+help: consider giving this binding a type
+   |
+LL |         let _: Vec<_> = vec!["a", "b", "c"].into_iter().collect();
+   |              ^^^^^^^^
+LL |         let _: String = vec!["a", "b", "c"].into_iter().collect();
+   |              ^^^^^^^^
+LL |         let _: HashSet<_, _> = vec!["a", "b", "c"].into_iter().collect();
+   |              ^^^^^^^^^^^^^^^
+LL |         let _: PathBuf = vec!["a", "b", "c"].into_iter().collect();
+   |              ^^^^^^^^^
+     and 10 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:20:49
    |
 LL |         let _ = vec!['a', 'b', 'c'].into_iter().collect();
-   |             -                                   ^^^^^^^ cannot infer type for type parameter `B` declared on the associated function `collect`
-   |             |
-   |             consider giving this pattern a type
+   |                                                 ^^^^^^^ cannot infer type for type parameter `B` declared on the associated function `collect`
    |
-   = note: cannot satisfy `_: std::iter::FromIterator<char>`
+   = note: cannot satisfy `_: FromIterator<char>`
+help: consider giving this binding a type
+   |
+LL |         let _: Vec<_> = vec!['a', 'b', 'c'].into_iter().collect();
+   |              ^^^^^^^^
+LL |         let _: String = vec!['a', 'b', 'c'].into_iter().collect();
+   |              ^^^^^^^^
+LL |         let _: HashSet<_, _> = vec!['a', 'b', 'c'].into_iter().collect();
+   |              ^^^^^^^^^^^^^^^
+LL |         let _: PathBuf = vec!['a', 'b', 'c'].into_iter().collect();
+   |              ^^^^^^^^^
+     and 10 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:38:5
@@ -107,11 +134,13 @@ LL | fn x<X: T>() -> X {
    |         - required by this bound in `x`
 ...
 LL |     let _ = x();
-   |         -   ^ cannot infer type for type parameter `X` declared on the function `x`
-   |         |
-   |         consider giving this pattern a type
+   |             ^ cannot infer type for type parameter `X` declared on the function `x`
    |
    = note: cannot satisfy `_: T`
+help: consider giving this binding the explicit type `S`
+   |
+LL |     let _: S = x();
+   |          ^^^
 help: consider specifying the type argument in the function call
    |
 LL |     let _ = x::<S>();

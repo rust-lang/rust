@@ -2,9 +2,12 @@ error[E0282]: type annotations needed for `Vec<T>`
   --> $DIR/vector-no-ann.rs:2:16
    |
 LL |     let _foo = Vec::new();
-   |         ----   ^^^^^^^^ cannot infer type for type parameter `T`
-   |         |
-   |         consider giving `_foo` the explicit type `Vec<T>`, where the type parameter `T` is specified
+   |                ^^^^^^^^ cannot infer type for type parameter `T`
+   |
+help: consider giving this binding the explicit type `Vec<T>`, where the type parameter `T` is specified
+   |
+LL |     let _foo: Vec<T> = Vec::new();
+   |             ^^^^^^^^
 
 error: aborting due to previous error
 

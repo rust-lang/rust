@@ -1,12 +1,14 @@
 error[E0282]: type annotations needed
   --> $DIR/issue-2151.rs:3:5
    |
-LL |     let x = panic!();
-   |         - consider giving `x` a type
 LL |     x.clone();
    |     ^ cannot infer type
    |
    = note: type must be known at this point
+help: consider giving this binding a type
+   |
+LL |     let x: Type = panic!();
+   |          ^^^^^^
 
 error: aborting due to previous error
 

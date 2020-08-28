@@ -8,7 +8,12 @@ error[E0282]: type annotations needed
   --> $DIR/E0661.rs:6:9
    |
 LL |     let a;
-   |         ^ consider giving `a` a type
+   |         ^ cannot infer type
+   |
+help: consider giving this binding a type
+   |
+LL |     let a: Type;
+   |          ^^^^^^
 
 error: aborting due to 2 previous errors
 

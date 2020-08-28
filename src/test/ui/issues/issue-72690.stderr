@@ -58,6 +58,10 @@ LL |     String::from("x".as_ref());
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
+help: consider giving this binding the explicit type `String`
+   |
+LL |     let _: String = String::from("x");
+   |          ^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:47:5
@@ -67,6 +71,10 @@ LL |     String::from("x".as_ref());
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
+help: consider giving this binding the explicit type `String`
+   |
+LL |     let _: String = String::from("x");
+   |          ^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:55:5
@@ -76,6 +84,10 @@ LL |     String::from("x".as_ref());
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
+help: consider giving this binding the explicit type `String`
+   |
+LL |     let _: String = String::from("x");
+   |          ^^^^^^^^
 
 error: aborting due to 9 previous errors
 
