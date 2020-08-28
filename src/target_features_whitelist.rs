@@ -1,3 +1,5 @@
+#[rustfmt::skip]
+
 use rustc_span::symbol::{sym, Symbol};
 
 use rustc_session::Session;
@@ -107,10 +109,8 @@ const POWERPC_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("vsx", Some(sym::powerpc_target_feature)),
 ];
 
-const MIPS_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    ("fp64", Some(sym::mips_target_feature)),
-    ("msa", Some(sym::mips_target_feature)),
-];
+const MIPS_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] =
+    &[("fp64", Some(sym::mips_target_feature)), ("msa", Some(sym::mips_target_feature))];
 
 const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("m", Some(sym::riscv_target_feature)),
