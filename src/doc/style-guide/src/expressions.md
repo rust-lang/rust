@@ -64,8 +64,8 @@ Write an empty block as `{}`.
 Write a block on a single line if:
 
 * it is either used in expression position (not statement position) or is an
-  unsafe block in statement position
-* it contains a single-line expression and no statements
+  unsafe block in statement position,
+* it contains a single-line expression and no statements, and
 * it contains no comments
 
 For a single-line block, put spaces after the opening brace and before the
