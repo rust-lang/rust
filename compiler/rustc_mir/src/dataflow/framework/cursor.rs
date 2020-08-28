@@ -68,7 +68,12 @@ where
         self.body
     }
 
-    /// Returns the `Analysis` used to generate the underlying results.
+    /// Returns the underlying `Results`.
+    pub fn results(&self) -> &Results<'tcx, A> {
+        &self.results.borrow()
+    }
+
+    /// Returns the `Analysis` used to generate the underlying `Results`.
     pub fn analysis(&self) -> &A {
         &self.results.borrow().analysis
     }
