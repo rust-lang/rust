@@ -4,6 +4,22 @@ use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::Path;
 use crate::sys::unix::cvt;
 use crate::sys::unix::ext::net::addr::{sockaddr_un, SocketAddr};
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "fuchsia",
+    target_os = "haiku",
+    target_os = "illumos",
+    target_os = "ios",
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "solaris",
+    target_env = "uclibc",
+))]
 use crate::sys::unix::ext::net::ancillary::{
     recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary,
 };
@@ -346,6 +362,22 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "haiku",
+        target_os = "illumos",
+        target_os = "ios",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_env = "uclibc",
+    ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn recv_vectored_with_ancillary_from(
         &self,
@@ -394,6 +426,22 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "haiku",
+        target_os = "illumos",
+        target_os = "ios",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_env = "uclibc",
+    ))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn recv_vectored_with_ancillary(
         &self,
