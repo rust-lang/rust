@@ -14,10 +14,8 @@ use crate::prelude::*;
 pub(crate) use self::returning::{can_return_to_ssa_var, codegen_return};
 
 // Copied from https://github.com/rust-lang/rust/blob/f52c72948aa1dd718cc1f168d21c91c584c0a662/src/librustc_middle/ty/layout.rs#L2301
-pub(crate) fn fn_sig_for_fn_abi<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance: Instance<'tcx>,
-) -> ty::PolyFnSig<'tcx> {
+#[rustfmt::skip]
+pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::PolyFnSig<'tcx> {
     use rustc_middle::ty::subst::Subst;
 
     // FIXME(davidtwco,eddyb): A `ParamEnv` should be passed through to this function.
@@ -73,10 +71,10 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(
             let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
 
             sig.map_bound(|sig| {
-                let state_did =
-                    tcx.require_lang_item(rustc_hir::LangItem::GeneratorStateLangItem, None);
+                let state_did = tcx.require_lang_item(rustc_hir::LangItem::GeneratorStateLangItem, None);
                 let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
+                let state_substs =
+                    tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
                 let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
                 tcx.mk_fn_sig(
