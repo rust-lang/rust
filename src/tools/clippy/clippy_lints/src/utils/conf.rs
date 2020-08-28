@@ -138,7 +138,7 @@ define_Conf! {
     (type_complexity_threshold, "type_complexity_threshold": u64, 250),
     /// Lint: MANY_SINGLE_CHAR_NAMES. The maximum number of single char bindings a scope may have
     (single_char_binding_names_threshold, "single_char_binding_names_threshold": u64, 4),
-    /// Lint: BOXED_LOCAL. The maximum size of objects (in bytes) that will be linted. Larger objects are ok on the heap
+    /// Lint: BOXED_LOCAL, USELESS_VEC. The maximum size of objects (in bytes) that will be linted. Larger objects are ok on the heap
     (too_large_for_stack, "too_large_for_stack": u64, 200),
     /// Lint: ENUM_VARIANT_NAMES. The minimum number of enum variants for the lints about variant names to trigger
     (enum_variant_name_threshold, "enum_variant_name_threshold": u64, 3),

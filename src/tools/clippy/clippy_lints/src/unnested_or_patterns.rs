@@ -2,9 +2,9 @@
 
 use crate::utils::ast_utils::{eq_field_pat, eq_id, eq_pat, eq_path};
 use crate::utils::{over, span_lint_and_then};
-use rustc_ast::{self as ast, Pat, PatKind, PatKind::*, DUMMY_NODE_ID};
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, Pat, PatKind, PatKind::*, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -340,7 +340,7 @@ fn take_pat(from: &mut Pat) -> Pat {
         id: DUMMY_NODE_ID,
         kind: Wild,
         span: DUMMY_SP,
-        tokens: None
+        tokens: None,
     };
     mem::replace(from, dummy)
 }

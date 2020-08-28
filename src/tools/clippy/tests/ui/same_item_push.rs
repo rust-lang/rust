@@ -86,4 +86,12 @@ fn main() {
     for a in vec_a {
         vec12.push(2u8.pow(a.kind));
     }
+
+    // Fix #5902
+    let mut vec13: Vec<u8> = Vec::new();
+    let mut item = 0;
+    for _ in 0..10 {
+        vec13.push(item);
+        item += 10;
+    }
 }
