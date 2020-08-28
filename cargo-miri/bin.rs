@@ -378,6 +378,74 @@ path = "lib.rs"
     }
 }
 
+enum CargoTargets {
+    All,
+    Filtered { lib: bool, bin: Vec<String>, test: Vec<String> },
+}
+
+impl CargoTargets {
+    fn matches(&self, kind: &str, name: &str) -> bool {
+        match self {
+            CargoTargets::All => true,
+            CargoTargets::Filtered { lib, bin, test } => match kind {
+                "lib" => *lib,
+                "bin" => bin.iter().any(|n| n == name),
+                "test" => test.iter().any(|n| n == name),
+                _ => false,
+            },
+        }
+    }
+}
+
+fn parse_cargo_miri_args(
+    mut args: impl Iterator<Item = String>,
+) -> (CargoTargets, Vec<String>, Vec<String>) {
+    let mut lib_present = false;
+    let mut bin_targets = Vec::new();
+    let mut test_targets = Vec::new();
+    let mut additional_args = Vec::new();
+    while let Some(arg) = args.next() {
+        match arg {
+            arg if arg == "--" => {
+                // Miri arguments begin after the first "--".
+                break;
+            }
+            arg if arg == "--lib" => lib_present = true,
+            arg if arg == "--bin" => {
+                if let Some(binary) = args.next() {
+                    if binary == "--" {
+                        show_error(format!("\"--bin\" takes one argument."));
+                    } else {
+                        bin_targets.push(binary)
+                    }
+                } else {
+                    show_error(format!("\"--bin\" takes one argument."));
+                }
+            }
+            arg if arg.starts_with("--bin=") => bin_targets.push((&arg["--bin=".len()..]).to_string()),
+            arg if arg == "--test" => {
+                if let Some(test) = args.next() {
+                    if test == "--" {
+                        show_error(format!("\"--test\" takes one argument."));
+                    } else {
+                        test_targets.push(test)
+                    }
+                } else {
+                    show_error(format!("\"--test\" takes one argument."));
+                }
+            }
+            arg if arg.starts_with("--test=") => test_targets.push((&arg["--test=".len()..]).to_string()),
+            other => additional_args.push(other),
+        }
+    }
+    let targets = if !lib_present && bin_targets.len() == 0 && test_targets.len() == 0 {
+        CargoTargets::All
+    } else {
+        CargoTargets::Filtered { lib: lib_present, bin: bin_targets, test: test_targets }
+    };
+    (targets, additional_args, args.collect())
+}
+
 fn in_cargo_miri() {
     let (subcommand, skip) = match std::env::args().nth(2).as_deref() {
         Some("test") => (MiriCommand::Test, 3),
@@ -398,13 +466,19 @@ fn in_cargo_miri() {
         return;
     }
 
+    // FIXME: this accepts --test, --lib, and multiple --bin for `cargo miri run`.
+    let (target_filters, cargo_args, miri_args) =
+        parse_cargo_miri_args(std::env::args().skip(skip));
+
     // Now run the command.
     for target in list_targets() {
-        let mut args = std::env::args().skip(skip);
         let kind = target
             .kind
             .get(0)
             .expect("badly formatted cargo metadata: target::kind is an empty array");
+        if !target_filters.matches(kind, &target.name) {
+            continue;
+        }
         // Now we run `cargo check $FLAGS $ARGS`, giving the user the
         // change to add additional arguments. `FLAGS` is set to identify
         // this target.  The user gets to control what gets actually passed to Miri.
@@ -412,8 +486,7 @@ fn in_cargo_miri() {
         cmd.arg("check");
         match (subcommand, kind.as_str()) {
             (MiriCommand::Run, "bin") => {
-                // FIXME: we just run all the binaries here.
-                // We should instead support `cargo miri --bin foo`.
+                // FIXME: we default to running all binaries here.
                 cmd.arg("--bin").arg(target.name);
             }
             (MiriCommand::Test, "test") => {
@@ -429,11 +502,8 @@ fn in_cargo_miri() {
             // The remaining targets we do not even want to build.
             _ => continue,
         }
-        // Forward user-defined `cargo` args until first `--`.
-        while let Some(arg) = args.next() {
-            if arg == "--" {
-                break;
-            }
+        // Forward further `cargo` args.
+        for arg in cargo_args.iter() {
             cmd.arg(arg);
         }
         // We want to always run `cargo` with `--target`. This later helps us detect
@@ -450,8 +520,7 @@ fn in_cargo_miri() {
         // our actual target crate (the binary or the test we are running).
         // Since we're using "cargo check", we have no other way of passing
         // these arguments.
-        let args_vec: Vec<String> = args.collect();
-        cmd.env("MIRI_ARGS", serde_json::to_string(&args_vec).expect("failed to serialize args"));
+        cmd.env("MIRI_ARGS", serde_json::to_string(&miri_args).expect("failed to serialize args"));
 
         // Set `RUSTC_WRAPPER` to ourselves.  Cargo will prepend that binary to its usual invocation,
         // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish
