@@ -8,9 +8,9 @@ use rustc_index::bit_set::BitSet;
 use crate::borrow_check::{
     places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
 };
-use crate::dataflow::BottomValue;
-use crate::dataflow::{self, GenKill};
+use crate::dataflow::{self, fmt::DebugWithContext, GenKill};
 
+use std::fmt;
 use std::rc::Rc;
 
 rustc_index::newtype_index! {
@@ -227,25 +227,24 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 }
 
 impl<'tcx> dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
-    type Idx = BorrowIndex;
+    type Domain = BitSet<BorrowIndex>;
 
     const NAME: &'static str = "borrows";
 
-    fn bits_per_block(&self, _: &mir::Body<'tcx>) -> usize {
-        self.borrow_set.len() * 2
+    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = nothing is reserved or activated yet;
+        BitSet::new_empty(self.borrow_set.len() * 2)
     }
 
-    fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
         // no borrows of code region_scopes have been taken prior to
         // function execution, so this method has no effect.
-    }
-
-    fn pretty_print_idx(&self, w: &mut impl std::io::Write, idx: Self::Idx) -> std::io::Result<()> {
-        write!(w, "{:?}", self.location(idx))
     }
 }
 
 impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
+    type Idx = BorrowIndex;
+
     fn before_statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -344,7 +343,8 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BottomValue for Borrows<'a, 'tcx> {
-    /// bottom = nothing is reserved or activated yet;
-    const BOTTOM_VALUE: bool = false;
+impl DebugWithContext<Borrows<'_, '_>> for BorrowIndex {
+    fn fmt_with(&self, ctxt: &Borrows<'_, '_>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", ctxt.location(*self))
+    }
 }

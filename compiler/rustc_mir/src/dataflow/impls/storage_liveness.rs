@@ -1,6 +1,5 @@
 pub use super::*;
 
-use crate::dataflow::BottomValue;
 use crate::dataflow::{self, GenKill, Results, ResultsRefCursor};
 use crate::util::storage::AlwaysLiveLocals;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
@@ -19,15 +18,16 @@ impl MaybeStorageLive {
 }
 
 impl dataflow::AnalysisDomain<'tcx> for MaybeStorageLive {
-    type Idx = Local;
+    type Domain = BitSet<Local>;
 
     const NAME: &'static str = "maybe_storage_live";
 
-    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
-        body.local_decls.len()
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = dead
+        BitSet::new_empty(body.local_decls.len())
     }
 
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut Self::Domain) {
         assert_eq!(body.local_decls.len(), self.always_live_locals.domain_size());
         for local in self.always_live_locals.iter() {
             on_entry.insert(local);
@@ -40,6 +40,8 @@ impl dataflow::AnalysisDomain<'tcx> for MaybeStorageLive {
 }
 
 impl dataflow::GenKillAnalysis<'tcx> for MaybeStorageLive {
+    type Idx = Local;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -74,11 +76,6 @@ impl dataflow::GenKillAnalysis<'tcx> for MaybeStorageLive {
     }
 }
 
-impl BottomValue for MaybeStorageLive {
-    /// bottom = dead
-    const BOTTOM_VALUE: bool = false;
-}
-
 type BorrowedLocalsResults<'a, 'tcx> = ResultsRefCursor<'a, 'a, 'tcx, MaybeBorrowedLocals>;
 
 /// Dataflow analysis that determines whether each local requires storage at a
@@ -101,15 +98,16 @@ impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> dataflow::AnalysisDomain<'tcx> for MaybeRequiresStorage<'mir, 'tcx> {
-    type Idx = Local;
+    type Domain = BitSet<Local>;
 
     const NAME: &'static str = "requires_storage";
 
-    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
-        body.local_decls.len()
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = dead
+        BitSet::new_empty(body.local_decls.len())
     }
 
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut Self::Domain) {
         // The resume argument is live on function entry (we don't care about
         // the `self` argument)
         for arg in body.args_iter().skip(1) {
@@ -119,6 +117,8 @@ impl<'mir, 'tcx> dataflow::AnalysisDomain<'tcx> for MaybeRequiresStorage<'mir, '
 }
 
 impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tcx> {
+    type Idx = Local;
+
     fn before_statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -283,11 +283,6 @@ impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
         let mut visitor = MoveVisitor { trans, borrowed_locals: &self.borrowed_locals };
         visitor.visit_location(&self.body, loc);
     }
-}
-
-impl<'mir, 'tcx> BottomValue for MaybeRequiresStorage<'mir, 'tcx> {
-    /// bottom = dead
-    const BOTTOM_VALUE: bool = false;
 }
 
 struct MoveVisitor<'a, 'mir, 'tcx, T> {
