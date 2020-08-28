@@ -2,7 +2,7 @@
 //!
 //! A local will be maybe initialized if *any* projections of that local might be initialized.
 
-use crate::dataflow::{self, BottomValue, GenKill};
+use crate::dataflow::{self, GenKill};
 
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
@@ -10,21 +10,17 @@ use rustc_middle::mir::{self, BasicBlock, Local, Location};
 
 pub struct MaybeInitializedLocals;
 
-impl BottomValue for MaybeInitializedLocals {
-    /// bottom = uninit
-    const BOTTOM_VALUE: bool = false;
-}
-
 impl dataflow::AnalysisDomain<'tcx> for MaybeInitializedLocals {
-    type Idx = Local;
+    type Domain = BitSet<Local>;
 
     const NAME: &'static str = "maybe_init_locals";
 
-    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
-        body.local_decls.len()
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = uninit
+        BitSet::new_empty(body.local_decls.len())
     }
 
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, entry_set: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, entry_set: &mut Self::Domain) {
         // Function arguments are initialized to begin with.
         for arg in body.args_iter() {
             entry_set.insert(arg);
@@ -33,6 +29,8 @@ impl dataflow::AnalysisDomain<'tcx> for MaybeInitializedLocals {
 }
 
 impl dataflow::GenKillAnalysis<'tcx> for MaybeInitializedLocals {
+    type Idx = Local;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,

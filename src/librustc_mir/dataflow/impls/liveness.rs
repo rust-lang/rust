@@ -2,7 +2,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Local, Location};
 
-use crate::dataflow::{AnalysisDomain, Backward, BottomValue, GenKill, GenKillAnalysis};
+use crate::dataflow::{AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 
 /// A [live-variable dataflow analysis][liveness].
 ///
@@ -22,27 +22,25 @@ impl MaybeLiveLocals {
     }
 }
 
-impl BottomValue for MaybeLiveLocals {
-    // bottom = not live
-    const BOTTOM_VALUE: bool = false;
-}
-
 impl AnalysisDomain<'tcx> for MaybeLiveLocals {
-    type Idx = Local;
+    type Domain = BitSet<Local>;
     type Direction = Backward;
 
     const NAME: &'static str = "liveness";
 
-    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
-        body.local_decls.len()
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = not live
+        BitSet::new_empty(body.local_decls.len())
     }
 
-    fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
         // No variables are live until we observe a use
     }
 }
 
 impl GenKillAnalysis<'tcx> for MaybeLiveLocals {
+    type Idx = Local;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
