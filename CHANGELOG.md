@@ -1444,6 +1444,7 @@ Released 2018-09-13
 [`collapsible_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
 [`comparison_chain`]: https://rust-lang.github.io/rust-clippy/master/index.html#comparison_chain
 [`copy_iterator`]: https://rust-lang.github.io/rust-clippy/master/index.html#copy_iterator
+[`create_dir`]: https://rust-lang.github.io/rust-clippy/master/index.html#create_dir
 [`crosspointer_transmute`]: https://rust-lang.github.io/rust-clippy/master/index.html#crosspointer_transmute
 [`dbg_macro`]: https://rust-lang.github.io/rust-clippy/master/index.html#dbg_macro
 [`debug_assert_with_mut_call`]: https://rust-lang.github.io/rust-clippy/master/index.html#debug_assert_with_mut_call
