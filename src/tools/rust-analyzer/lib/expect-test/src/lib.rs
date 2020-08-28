@@ -120,6 +120,21 @@
 //! See
 //! https://blog.janestreet.com/using-ascii-waveforms-to-test-hardware-designs/
 //! for a cool example of snapshot testing in the wild!
+//!
+//! # Alternatives
+//!
+//! * [insta](https://crates.io/crates/insta) -- a more feature full snapshot
+//!   testing library.
+//! * [k9](https://crates.io/crates/k9) -- testing library which includes
+//!   support for snapshot testing among other things.
+//!
+//! # Maintenance status
+//!
+//! The main customer of this library is rust-analyzer. The library is expected
+//! to be relatively stable, but, if the need arises, it could be significantly
+//! reworked to fit rust-analyzer better.
+//!
+//! MSRV: latest stable.
 use std::{
     collections::HashMap,
     env, fmt, fs, mem,

@@ -1,7 +1,9 @@
 [package]
 name = "expect-test"
 version = "1.0.0"
-description = "A minimal snapshot testing library"
+description = "Minimalistic snapshot testing library"
+keywords = ["snapshot", "testing", "expect"]
+categories = ["development-tools::testing"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-analyzer/rust-analyzer"
 authors = ["rust-analyzer developers"]
