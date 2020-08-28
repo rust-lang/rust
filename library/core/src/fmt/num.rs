@@ -3,109 +3,47 @@
 use crate::fmt;
 use crate::mem::MaybeUninit;
 use crate::num::flt2dec;
+use crate::ops::{Div, Rem, Sub};
 use crate::ptr;
 use crate::slice;
 use crate::str;
 
 #[doc(hidden)]
-trait DisplayInt {
+trait DisplayInt:
+    PartialEq + PartialOrd + Div<Output = Self> + Rem<Output = Self> + Sub<Output = Self> + Copy
+{
+    fn zero() -> Self;
+    fn from_u8(u: u8) -> Self;
     fn to_u8(&self) -> u8;
     fn to_u16(&self) -> u16;
     fn to_u32(&self) -> u32;
     fn to_u64(&self) -> u64;
     fn to_u128(&self) -> u128;
-
-    fn fmt_int<R: GenericRadix>(self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 }
 
 macro_rules! impl_int {
     ($($t:ident)*) => (
       $(impl DisplayInt for $t {
+          fn zero() -> Self { 0 }
+          fn from_u8(u: u8) -> Self { u as Self }
           fn to_u8(&self) -> u8 { *self as u8 }
           fn to_u16(&self) -> u16 { *self as u16 }
           fn to_u32(&self) -> u32 { *self as u32 }
           fn to_u64(&self) -> u64 { *self as u64 }
           fn to_u128(&self) -> u128 { *self as u128 }
-          /// Format an integer using the radix using a formatter.
-          fn fmt_int<R: GenericRadix>(mut self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-              // The radix can be as low as 2, so we need a buffer of at least 128
-              // characters for a base 2 number.
-              let is_nonnegative = self >= 0;
-              let mut buf = [MaybeUninit::<u8>::uninit(); crate::mem::size_of::<$t>()];
-              let mut curr = buf.len();
-              let base = R::BASE as Self;
-              if is_nonnegative {
-                  // Accumulate each digit of the number from the least significant
-                  // to the most significant figure.
-                  for byte in buf.iter_mut().rev() {
-                      let n = self % base; // Get the current place value.
-                      self /= base; // Deaccumulate the number.
-                      byte.write(R::digit(n.to_u8())); // Store the digit in the buffer.
-                      curr -= 1;
-                      if self == 0 {
-                          // No more digits left to accumulate.
-                          break;
-                      };
-                  }
-              } else {
-                  // Do the same as above, but accounting for two's complement.
-                  for byte in buf.iter_mut().rev() {
-                      let n =  - (self % base); // Get the current place value.
-                      self /= base; // Deaccumulate the number.
-                      byte.write(R::digit(n.to_u8())); // Store the digit in the buffer.
-                      curr -= 1;
-                      if self == 0 {
-                          // No more digits left to accumulate.
-                          break;
-                      };
-                  }
-              }
-              let buf = &buf[curr..];
-              // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
-              // valid UTF-8
-              let buf = unsafe {
-                  str::from_utf8_unchecked(slice::from_raw_parts(MaybeUninit::first_ptr(buf), buf.len()))
-              };
-              f.pad_integral(is_nonnegative, R::PREFIX, buf)
-          }
       })*
     )
 }
 macro_rules! impl_uint {
     ($($t:ident)*) => (
       $(impl DisplayInt for $t {
+          fn zero() -> Self { 0 }
+          fn from_u8(u: u8) -> Self { u as Self }
           fn to_u8(&self) -> u8 { *self as u8 }
           fn to_u16(&self) -> u16 { *self as u16 }
           fn to_u32(&self) -> u32 { *self as u32 }
           fn to_u64(&self) -> u64 { *self as u64 }
           fn to_u128(&self) -> u128 { *self as u128 }
-          /// Format an integer using the radix using a formatter.
-          fn fmt_int<R: GenericRadix>(mut self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-              // The radix can be as low as 2, so we need a buffer of at least 128
-              // characters for a base 2 number.
-              let mut buf = [MaybeUninit::<u8>::uninit(); crate::mem::size_of::<$t>()];
-              let mut curr = buf.len();
-              let base = R::BASE as Self;
-              // Accumulate each digit of the number from the least significant
-              // to the most significant figure.
-              for byte in buf.iter_mut().rev() {
-                  let n = self % base; // Get the current place value.
-                  self /= base; // Deaccumulate the number.
-                  byte.write(R::digit(n.to_u8())); // Store the digit in the buffer.
-                  curr -= 1;
-                  if self == 0 {
-                      // No more digits left to accumulate.
-                      break;
-                  };
-              }
-              let buf = &buf[curr..];
-              // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
-              // valid UTF-8
-              let buf = unsafe {
-                  str::from_utf8_unchecked(slice::from_raw_parts(MaybeUninit::first_ptr(buf), buf.len()))
-              };
-              f.pad_integral(true, R::PREFIX, buf)
-          }
       })*
     )
 }
@@ -126,8 +64,47 @@ trait GenericRadix: Sized {
     fn digit(x: u8) -> u8;
 
     /// Format an integer using the radix using a formatter.
-    fn fmt_int<T: DisplayInt>(&self, x: T, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        x.fmt_int::<Self>(f)
+    fn fmt_int<T: DisplayInt>(&self, mut x: T, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // The radix can be as low as 2, so we need a buffer of at least 128
+        // characters for a base 2 number.
+        let zero = T::zero();
+        let is_nonnegative = x >= zero;
+        let mut buf = [MaybeUninit::<u8>::uninit(); 128];
+        let mut curr = buf.len();
+        let base = T::from_u8(Self::BASE);
+        if is_nonnegative {
+            // Accumulate each digit of the number from the least significant
+            // to the most significant figure.
+            for byte in buf.iter_mut().rev() {
+                let n = x % base; // Get the current place value.
+                x = x / base; // Deaccumulate the number.
+                byte.write(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                curr -= 1;
+                if x == zero {
+                    // No more digits left to accumulate.
+                    break;
+                };
+            }
+        } else {
+            // Do the same as above, but accounting for two's complement.
+            for byte in buf.iter_mut().rev() {
+                let n = zero - (x % base); // Get the current place value.
+                x = x / base; // Deaccumulate the number.
+                byte.write(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                curr -= 1;
+                if x == zero {
+                    // No more digits left to accumulate.
+                    break;
+                };
+            }
+        }
+        let buf = &buf[curr..];
+        // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
+        // valid UTF-8
+        let buf = unsafe {
+            str::from_utf8_unchecked(slice::from_raw_parts(MaybeUninit::first_ptr(buf), buf.len()))
+        };
+        f.pad_integral(is_nonnegative, Self::PREFIX, buf)
     }
 }
 
@@ -624,11 +601,17 @@ fn fmt_u128_2(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt:
         fmt_u64_2(rem, &mut buf, &mut curr);
 
         if n != 0 {
+            // 0 pad up to point
+            let target = (buf.len() - 19) as isize;
+            ptr::write_bytes(buf_ptr.offset(target), b'0', (curr - target) as usize);
+            curr = target;
             let (n, rem) = udiv_1e9(n);
             fmt_u64_2(rem, &mut buf, &mut curr);
             // Should this following branch be annotated with unlikely?
             if n != 0 {
-                curr -= 1;
+                let target = (buf.len() - 38) as isize;
+                ptr::write_bytes(buf_ptr.offset(target), b'0', (curr - target) as usize);
+                curr = target - 1;
                 *buf_ptr.offset(curr) = (n as u8) + b'0';
             }
         }
