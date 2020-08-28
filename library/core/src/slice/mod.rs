@@ -1148,7 +1148,10 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn split_at(&self, mid: usize) -> (&[T], &[T]) {
-        (&self[..mid], &self[mid..])
+        assert!(mid <= self.len());
+        // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
+        // fulfills the requirements of `from_raw_parts_mut`.
+        unsafe { self.split_at_unchecked(mid) }
     }
 
     /// Divides one mutable slice into two at an index.
@@ -1178,16 +1181,99 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+        assert!(mid <= self.len());
+        // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
+        // fulfills the requirements of `from_raw_parts_mut`.
+        unsafe { self.split_at_mut_unchecked(mid) }
+    }
+
+    /// Divides one slice into two at an index, without doing bounds checking.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding
+    /// the index `mid` itself) and the second will contain all
+    /// indices from `[mid, len)` (excluding the index `len` itself).
+    ///
+    /// This is generally not recommended, use with caution!
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting reference is not used.
+    /// For a safe alternative see [`split_at`].
+    ///
+    /// [`split_at`]: #method.split_at
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```compile_fail
+    /// #![feature(slice_split_at_unchecked)]
+    ///
+    /// let v = [1, 2, 3, 4, 5, 6];
+    ///
+    /// unsafe {
+    ///    let (left, right) = v.split_at_unchecked(0);
+    ///    assert!(left == []);
+    ///    assert!(right == [1, 2, 3, 4, 5, 6]);
+    /// }
+    ///
+    /// unsafe {
+    ///     let (left, right) = v.split_at_unchecked(2);
+    ///     assert!(left == [1, 2]);
+    ///     assert!(right == [3, 4, 5, 6]);
+    /// }
+    ///
+    /// unsafe {
+    ///     let (left, right) = v.split_at_unchecked(6);
+    ///     assert!(left == [1, 2, 3, 4, 5, 6]);
+    ///     assert!(right == []);
+    /// }
+    /// ```
+    #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[inline]
+    unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
+        // SAFETY: Caller has to check that 0 <= mid < self.len()
+        unsafe { (self.get_unchecked(..mid), self.get_unchecked(mid..)) }
+    }
+
+    /// Divides one mutable slice into two at an index, without doing bounds checking.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding
+    /// the index `mid` itself) and the second will contain all
+    /// indices from `[mid, len)` (excluding the index `len` itself).
+    ///
+    /// This is generally not recommended, use with caution!
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting reference is not used.
+    /// For a safe alternative see [`split_at_mut`].
+    ///
+    /// [`split_at_mut`]: #method.split_at_mut
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```compile_fail
+    /// #![feature(slice_split_at_unchecked)]
+    ///
+    /// let mut v = [1, 0, 3, 0, 5, 6];
+    /// // scoped to restrict the lifetime of the borrows
+    /// unsafe {
+    ///     let (left, right) = v.split_at_mut_unchecked(2);
+    ///     assert!(left == [1, 0]);
+    ///     assert!(right == [3, 0, 5, 6]);
+    ///     left[1] = 2;
+    ///     right[1] = 4;
+    /// }
+    /// assert!(v == [1, 2, 3, 4, 5, 6]);
+    /// ```
+    #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[inline]
+    unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
 
-        // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
-        // fulfills the requirements of `from_raw_parts_mut`.
-        unsafe {
-            assert!(mid <= len);
-
-            (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
-        }
+        // SAFETY: Caller has to check that 0 <= mid < self.len().
+        //
+        // [ptr; mid] and [mid; len] are not overlapping, so returning a mutable reference
+        // is fine.
+        unsafe { (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid)) }
     }
 
     /// Returns an iterator over subslices separated by elements that match
