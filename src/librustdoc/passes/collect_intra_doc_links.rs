@@ -592,7 +592,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// (such as having invalid URL fragments or being in the wrong namespace).
     fn check_full_res(
         &self,
-        // TODO: is this parameter actually needed, since we return results for the wrong namespace?
         ns: Namespace,
         path_str: &str,
         base_node: Option<DefId>,
@@ -1511,7 +1510,13 @@ fn resolution_failure(
                             continue;
                         }
                         diag.note(&format!("no item named `{}` is in scope", base));
-                        diag.help(r#"to escape `[` and `]` characters, add '\' before them like `\[` or `\]`"#);
+                        // If the link has `::` in the path, assume it's meant to be an intra-doc link
+                        if !path_str.contains("::") {
+                            // Otherwise, the `[]` might be unrelated.
+                            // FIXME(https://github.com/raphlinus/pulldown-cmark/issues/373):
+                            // don't show this for autolinks (`<>`), `()` style links, or reference links
+                            diag.help(r#"to escape `[` and `]` characters, add '\' before them like `\[` or `\]`"#);
+                        }
                     }
                     ResolutionFailure::Dummy => continue,
                     ResolutionFailure::WrongNamespace(res, expected_ns) => {

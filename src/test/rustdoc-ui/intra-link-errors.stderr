@@ -10,10 +10,9 @@ note: the lint level is defined here
 LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
    = note: no item named `path` is in scope
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: unresolved link to `std::io::not::here`
-  --> $DIR/intra-link-errors.rs:13:6
+  --> $DIR/intra-link-errors.rs:12:6
    |
 LL | /// [std::io::not::here]
    |      ^^^^^^^^^^^^^^^^^^
@@ -21,7 +20,7 @@ LL | /// [std::io::not::here]
    = note: the module `io` has no inner item named `not`
 
 error: unresolved link to `std::io::Error::x`
-  --> $DIR/intra-link-errors.rs:17:6
+  --> $DIR/intra-link-errors.rs:16:6
    |
 LL | /// [std::io::Error::x]
    |      ^^^^^^^^^^^^^^^^^
@@ -29,7 +28,7 @@ LL | /// [std::io::Error::x]
    = note: the struct `Error` has no field or associated item named `x`
 
 error: unresolved link to `std::io::ErrorKind::x`
-  --> $DIR/intra-link-errors.rs:21:6
+  --> $DIR/intra-link-errors.rs:20:6
    |
 LL | /// [std::io::ErrorKind::x]
    |      ^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +36,7 @@ LL | /// [std::io::ErrorKind::x]
    = note: the enum `ErrorKind` has no variant or associated item named `x`
 
 error: unresolved link to `f::A`
-  --> $DIR/intra-link-errors.rs:25:6
+  --> $DIR/intra-link-errors.rs:24:6
    |
 LL | /// [f::A]
    |      ^^^^
@@ -45,7 +44,7 @@ LL | /// [f::A]
    = note: `f` is a function, not a module or type, and cannot have associated items
 
 error: unresolved link to `S::A`
-  --> $DIR/intra-link-errors.rs:29:6
+  --> $DIR/intra-link-errors.rs:28:6
    |
 LL | /// [S::A]
    |      ^^^^
@@ -53,7 +52,7 @@ LL | /// [S::A]
    = note: the struct `S` has no field or associated item named `A`
 
 error: unresolved link to `S::fmt`
-  --> $DIR/intra-link-errors.rs:33:6
+  --> $DIR/intra-link-errors.rs:32:6
    |
 LL | /// [S::fmt]
    |      ^^^^^^
@@ -61,7 +60,7 @@ LL | /// [S::fmt]
    = note: the struct `S` has no field or associated item named `fmt`
 
 error: unresolved link to `E::D`
-  --> $DIR/intra-link-errors.rs:37:6
+  --> $DIR/intra-link-errors.rs:36:6
    |
 LL | /// [E::D]
    |      ^^^^
@@ -69,7 +68,7 @@ LL | /// [E::D]
    = note: the enum `E` has no variant or associated item named `D`
 
 error: unresolved link to `u8::not_found`
-  --> $DIR/intra-link-errors.rs:41:6
+  --> $DIR/intra-link-errors.rs:40:6
    |
 LL | /// [u8::not_found]
    |      ^^^^^^^^^^^^^
@@ -77,7 +76,7 @@ LL | /// [u8::not_found]
    = note: the builtin type `u8` does not have an associated item named `not_found`
 
 error: unresolved link to `S`
-  --> $DIR/intra-link-errors.rs:45:6
+  --> $DIR/intra-link-errors.rs:44:6
    |
 LL | /// [S!]
    |      ^^
@@ -89,7 +88,7 @@ LL | /// [struct@S]
    |      ^^^^^^^^
 
 error: unresolved link to `T::g`
-  --> $DIR/intra-link-errors.rs:63:6
+  --> $DIR/intra-link-errors.rs:62:6
    |
 LL | /// [type@T::g]
    |      ^^^^^^^^^ help: to link to the associated function, add parentheses: `T::g()`
@@ -97,16 +96,15 @@ LL | /// [type@T::g]
    = note: this link resolves to the associated function `g`, which is not in the type namespace
 
 error: unresolved link to `T::h`
-  --> $DIR/intra-link-errors.rs:68:6
+  --> $DIR/intra-link-errors.rs:67:6
    |
 LL | /// [T::h!]
    |      ^^^^^
    |
    = note: no item named `T::h` is in scope
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: unresolved link to `S::h`
-  --> $DIR/intra-link-errors.rs:55:6
+  --> $DIR/intra-link-errors.rs:54:6
    |
 LL | /// [type@S::h]
    |      ^^^^^^^^^ help: to link to the associated function, add parentheses: `S::h()`
@@ -114,7 +112,7 @@ LL | /// [type@S::h]
    = note: this link resolves to the associated function `h`, which is not in the type namespace
 
 error: unresolved link to `m`
-  --> $DIR/intra-link-errors.rs:76:6
+  --> $DIR/intra-link-errors.rs:74:6
    |
 LL | /// [m()]
    |      ^^^ help: to link to the macro, add an exclamation mark: `m!`

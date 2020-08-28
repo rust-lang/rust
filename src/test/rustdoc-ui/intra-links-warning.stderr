@@ -14,7 +14,6 @@ LL |        //! Test with [Foo::baz], [Bar::foo], ...
    |                                   ^^^^^^^^
    |
    = note: no item named `Bar` is in scope
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `Uniooon::X`
   --> $DIR/intra-links-warning.rs:6:13
@@ -23,7 +22,6 @@ LL |      //! , [Uniooon::X] and [Qux::Z].
    |             ^^^^^^^^^^
    |
    = note: no item named `Uniooon` is in scope
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `Qux::Z`
   --> $DIR/intra-links-warning.rs:6:30
@@ -32,7 +30,6 @@ LL |      //! , [Uniooon::X] and [Qux::Z].
    |                              ^^^^^^
    |
    = note: no item named `Qux` is in scope
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `Uniooon::X`
   --> $DIR/intra-links-warning.rs:10:14
@@ -41,7 +38,6 @@ LL |       //! , [Uniooon::X] and [Qux::Z].
    |              ^^^^^^^^^^
    |
    = note: no item named `Uniooon` is in scope
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `Qux::Z`
   --> $DIR/intra-links-warning.rs:10:31
@@ -50,7 +46,6 @@ LL |       //! , [Uniooon::X] and [Qux::Z].
    |                               ^^^^^^
    |
    = note: no item named `Qux` is in scope
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `Qux:Y`
   --> $DIR/intra-links-warning.rs:14:13

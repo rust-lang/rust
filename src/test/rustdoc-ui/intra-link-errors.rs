@@ -7,7 +7,6 @@
 /// [path::to::nonexistent::module]
 //~^ ERROR unresolved link
 //~| NOTE no item named `path` is in scope
-//~| HELP to escape
 
 /// [std::io::not::here]
 //~^ ERROR unresolved link
@@ -67,7 +66,6 @@ impl S {
 /// [T::h!]
 //~^ ERROR unresolved link
 //~| NOTE no item named `T::h`
-//~| HELP to escape
 pub trait T {
     fn g() {}
 }
