@@ -15,11 +15,11 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// std::fs::create_dir("foo")
+    /// std::fs::create_dir("foo");
     /// ```
     /// Use instead:
     /// ```rust
-    /// std::fs::create_dir_all("foo")
+    /// std::fs::create_dir_all("foo");
     /// ```
     pub CREATE_DIR,
     restriction,
