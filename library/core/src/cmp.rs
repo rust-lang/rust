@@ -23,6 +23,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use self::Ordering::*;
+use crate::ops;
 
 /// Trait for equality comparisons which are [partial equivalence
 /// relations](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
@@ -676,6 +677,30 @@ impl PartialOrd for Ordering {
     #[inline]
     fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {
         (*self as i32).partial_cmp(&(*other as i32))
+    }
+}
+
+#[unstable(feature = "try_trait", issue = "42327")]
+impl ops::Try for Ordering {
+    type Ok = ();
+    type Error = Self;
+
+    #[inline]
+    fn into_result(self) -> Result<(), Self> {
+        match self {
+            Equal => Ok(()),
+            _ => Err(self),
+        }
+    }
+
+    #[inline]
+    fn from_ok(_: ()) -> Self {
+        Equal
+    }
+
+    #[inline]
+    fn from_error(v: Self) -> Self {
+        v
     }
 }
 
