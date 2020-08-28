@@ -17,7 +17,7 @@
 #![feature(panic_runtime)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
-#![feature(llvm_asm)]
+#![feature(asm)]
 
 use core::any::Any;
 
@@ -62,11 +62,11 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
                 const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
                 cfg_if::cfg_if! {
                     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-                        llvm_asm!("int $$0x29" :: "{ecx}"(FAST_FAIL_FATAL_APP_EXIT) ::: volatile);
+                        asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
                     } else if #[cfg(target_arch = "arm")] {
-                        llvm_asm!(".inst 0xDEFB" :: "{r0}"(FAST_FAIL_FATAL_APP_EXIT) ::: volatile);
+                        asm!("brk 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
                     } else if #[cfg(target_arch = "aarch64")] {
-                        llvm_asm!(".inst 0xF003" :: "{x0}"(FAST_FAIL_FATAL_APP_EXIT) ::: volatile);
+                        asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
                     } else {
                         core::intrinsics::abort();
                     }
