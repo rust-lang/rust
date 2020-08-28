@@ -1,4 +1,3 @@
-use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Results};
@@ -139,16 +138,16 @@ impl<'tcx, A> ResultsVisitable<'tcx> for Results<'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    type FlowState = BitSet<A::Idx>;
+    type FlowState = A::Domain;
 
     type Direction = A::Direction;
 
     fn new_flow_state(&self, body: &mir::Body<'tcx>) -> Self::FlowState {
-        BitSet::new_empty(self.analysis.bits_per_block(body))
+        self.analysis.bottom_value(body)
     }
 
     fn reset_to_block_entry(&self, state: &mut Self::FlowState, block: BasicBlock) {
-        state.overwrite(&self.entry_set_for_block(block));
+        state.clone_from(&self.entry_set_for_block(block));
     }
 
     fn reconstruct_before_statement_effect(
@@ -217,11 +216,11 @@ macro_rules! impl_visitable {
             $( $A: Analysis<'tcx, Direction = D>, )*
         {
             type Direction = D;
-            type FlowState = $T<$( BitSet<$A::Idx> ),*>;
+            type FlowState = $T<$( $A::Domain ),*>;
 
             fn new_flow_state(&self, body: &mir::Body<'tcx>) -> Self::FlowState {
                 $T {
-                    $( $field: BitSet::new_empty(self.$field.analysis.bits_per_block(body)) ),*
+                    $( $field: self.$field.analysis.bottom_value(body) ),*
                 }
             }
 
@@ -230,7 +229,7 @@ macro_rules! impl_visitable {
                 state: &mut Self::FlowState,
                 block: BasicBlock,
             ) {
-                $( state.$field.overwrite(&self.$field.entry_set_for_block(block)); )*
+                $( state.$field.clone_from(&self.$field.entry_set_for_block(block)); )*
             }
 
             fn reconstruct_before_statement_effect(
