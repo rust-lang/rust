@@ -3289,7 +3289,7 @@ pub unsafe fn _mm256_sub_epi16(a: __m256i, b: __m256i) -> __m256i {
     transmute(simd_sub(a.as_i16x16(), b.as_i16x16()))
 }
 
-/// Subtract packed 32-bit integers in `b` from packed 16-bit integers in `a`
+/// Subtract packed 32-bit integers in `b` from packed 32-bit integers in `a`
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sub_epi32)
 #[inline]
@@ -3300,7 +3300,7 @@ pub unsafe fn _mm256_sub_epi32(a: __m256i, b: __m256i) -> __m256i {
     transmute(simd_sub(a.as_i32x8(), b.as_i32x8()))
 }
 
-/// Subtract packed 64-bit integers in `b` from packed 16-bit integers in `a`
+/// Subtract packed 64-bit integers in `b` from packed 64-bit integers in `a`
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sub_epi64)
 #[inline]
@@ -3311,7 +3311,7 @@ pub unsafe fn _mm256_sub_epi64(a: __m256i, b: __m256i) -> __m256i {
     transmute(simd_sub(a.as_i64x4(), b.as_i64x4()))
 }
 
-/// Subtract packed 8-bit integers in `b` from packed 16-bit integers in `a`
+/// Subtract packed 8-bit integers in `b` from packed 8-bit integers in `a`
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sub_epi8)
 #[inline]
