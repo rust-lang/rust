@@ -1,4 +1,3 @@
-command script import \"$RUSTC_SYSROOT/lib/rustlib/etc/lldb_lookup.py\"
 type synthetic add -l lldb_lookup.synthetic_lookup -x \".*\" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::([a-z_]+::)+)String$\" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^&str$\" --category Rust
