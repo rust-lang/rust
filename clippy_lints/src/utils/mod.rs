@@ -867,7 +867,7 @@ pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId) -> Ty<'tcx> 
     cx.tcx.erase_late_bound_regions(&ret_ty)
 }
 
-/// Walk into `ty` and returns `true` if any inner type is the same as `other_ty`
+/// Walks into `ty` and returns `true` if any inner type is the same as `other_ty`
 pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => ty::TyS::same_type(other_ty, inner_ty),
