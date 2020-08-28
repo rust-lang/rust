@@ -135,7 +135,7 @@ impl Cfg {
 
     /// Renders the configuration for human display, as a short HTML description.
     pub(crate) fn render_short_html(&self) -> String {
-        let mut msg = Html(self, true).to_string();
+        let mut msg = Display(self, Format::ShortHtml).to_string();
         if self.should_capitalize_first_letter() {
             if let Some(i) = msg.find(|c: char| c.is_ascii_alphanumeric()) {
                 msg[i..i + 1].make_ascii_uppercase();
@@ -148,11 +148,26 @@ impl Cfg {
     pub(crate) fn render_long_html(&self) -> String {
         let on = if self.should_use_with_in_description() { "with" } else { "on" };
 
-        let mut msg = format!("This is supported {} <strong>{}</strong>", on, Html(self, false));
+        let mut msg = format!(
+            "This is supported {} <strong>{}</strong>",
+            on,
+            Display(self, Format::LongHtml)
+        );
         if self.should_append_only_to_description() {
             msg.push_str(" only");
         }
         msg.push('.');
+        msg
+    }
+
+    /// Renders the configuration for long display, as a long plain text description.
+    pub(crate) fn render_long_plain(&self) -> String {
+        let on = if self.should_use_with_in_description() { "with" } else { "on" };
+
+        let mut msg = format!("This is supported {} {}", on, Display(self, Format::LongPlain));
+        if self.should_append_only_to_description() {
+            msg.push_str(" only");
+        }
         msg
     }
 
@@ -286,9 +301,31 @@ impl ops::BitOr for Cfg {
     }
 }
 
-/// Pretty-print wrapper for a `Cfg`. Also indicates whether the "short-form" rendering should be
-/// used.
-struct Html<'a>(&'a Cfg, bool);
+#[derive(Clone, Copy)]
+enum Format {
+    LongHtml,
+    LongPlain,
+    ShortHtml,
+}
+
+impl Format {
+    fn is_long(self) -> bool {
+        match self {
+            Format::LongHtml | Format::LongPlain => true,
+            Format::ShortHtml => false,
+        }
+    }
+
+    fn is_html(self) -> bool {
+        match self {
+            Format::LongHtml | Format::ShortHtml => true,
+            Format::LongPlain => false,
+        }
+    }
+}
+
+/// Pretty-print wrapper for a `Cfg`. Also indicates what form of rendering should be used.
+struct Display<'a>(&'a Cfg, Format);
 
 fn write_with_opt_paren<T: fmt::Display>(
     fmt: &mut fmt::Formatter<'_>,
@@ -305,7 +342,7 @@ fn write_with_opt_paren<T: fmt::Display>(
     Ok(())
 }
 
-impl<'a> fmt::Display for Html<'a> {
+impl<'a> fmt::Display for Display<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.0 {
             Cfg::Not(ref child) => match **child {
@@ -314,31 +351,86 @@ impl<'a> fmt::Display for Html<'a> {
                         if sub_cfgs.iter().all(Cfg::is_simple) { " nor " } else { ", nor " };
                     for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
                         fmt.write_str(if i == 0 { "neither " } else { separator })?;
-                        write_with_opt_paren(fmt, !sub_cfg.is_all(), Html(sub_cfg, self.1))?;
+                        write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
                     }
                     Ok(())
                 }
-                ref simple @ Cfg::Cfg(..) => write!(fmt, "non-{}", Html(simple, self.1)),
-                ref c => write!(fmt, "not ({})", Html(c, self.1)),
+                ref simple @ Cfg::Cfg(..) => write!(fmt, "non-{}", Display(simple, self.1)),
+                ref c => write!(fmt, "not ({})", Display(c, self.1)),
             },
 
             Cfg::Any(ref sub_cfgs) => {
                 let separator = if sub_cfgs.iter().all(Cfg::is_simple) { " or " } else { ", or " };
+
+                let short_longhand = self.1.is_long() && {
+                    let all_crate_features = sub_cfgs
+                        .iter()
+                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::feature, Some(_))));
+                    let all_target_features = sub_cfgs
+                        .iter()
+                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::target_feature, Some(_))));
+
+                    if all_crate_features {
+                        fmt.write_str("crate features ")?;
+                        true
+                    } else if all_target_features {
+                        fmt.write_str("target features ")?;
+                        true
+                    } else {
+                        false
+                    }
+                };
+
                 for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
                     if i != 0 {
                         fmt.write_str(separator)?;
                     }
-                    write_with_opt_paren(fmt, !sub_cfg.is_all(), Html(sub_cfg, self.1))?;
+                    if let (true, Cfg::Cfg(_, Some(feat))) = (short_longhand, sub_cfg) {
+                        if self.1.is_html() {
+                            write!(fmt, "<code>{}</code>", feat)?;
+                        } else {
+                            write!(fmt, "`{}`", feat)?;
+                        }
+                    } else {
+                        write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
+                    }
                 }
                 Ok(())
             }
 
             Cfg::All(ref sub_cfgs) => {
+                let short_longhand = self.1.is_long() && {
+                    let all_crate_features = sub_cfgs
+                        .iter()
+                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::feature, Some(_))));
+                    let all_target_features = sub_cfgs
+                        .iter()
+                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::target_feature, Some(_))));
+
+                    if all_crate_features {
+                        fmt.write_str("crate features ")?;
+                        true
+                    } else if all_target_features {
+                        fmt.write_str("target features ")?;
+                        true
+                    } else {
+                        false
+                    }
+                };
+
                 for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
                     if i != 0 {
                         fmt.write_str(" and ")?;
                     }
-                    write_with_opt_paren(fmt, !sub_cfg.is_simple(), Html(sub_cfg, self.1))?;
+                    if let (true, Cfg::Cfg(_, Some(feat))) = (short_longhand, sub_cfg) {
+                        if self.1.is_html() {
+                            write!(fmt, "<code>{}</code>", feat)?;
+                        } else {
+                            write!(fmt, "`{}`", feat)?;
+                        }
+                    } else {
+                        write_with_opt_paren(fmt, !sub_cfg.is_simple(), Display(sub_cfg, self.1))?;
+                    }
                 }
                 Ok(())
             }
@@ -406,26 +498,39 @@ impl<'a> fmt::Display for Html<'a> {
                     },
                     (sym::target_endian, Some(endian)) => return write!(fmt, "{}-endian", endian),
                     (sym::target_pointer_width, Some(bits)) => return write!(fmt, "{}-bit", bits),
-                    (sym::target_feature, Some(feat)) => {
-                        if self.1 {
-                            return write!(fmt, "<code>{}</code>", feat);
-                        } else {
+                    (sym::target_feature, Some(feat)) => match self.1 {
+                        Format::LongHtml => {
                             return write!(fmt, "target feature <code>{}</code>", feat);
                         }
-                    }
+                        Format::LongPlain => return write!(fmt, "target feature `{}`", feat),
+                        Format::ShortHtml => return write!(fmt, "<code>{}</code>", feat),
+                    },
+                    (sym::feature, Some(feat)) => match self.1 {
+                        Format::LongHtml => {
+                            return write!(fmt, "crate feature <code>{}</code>", feat);
+                        }
+                        Format::LongPlain => return write!(fmt, "crate feature `{}`", feat),
+                        Format::ShortHtml => return write!(fmt, "<code>{}</code>", feat),
+                    },
                     _ => "",
                 };
                 if !human_readable.is_empty() {
                     fmt.write_str(human_readable)
                 } else if let Some(v) = value {
-                    write!(
-                        fmt,
-                        "<code>{}=\"{}\"</code>",
-                        Escape(&name.as_str()),
-                        Escape(&v.as_str())
-                    )
-                } else {
+                    if self.1.is_html() {
+                        write!(
+                            fmt,
+                            r#"<code>{}="{}"</code>"#,
+                            Escape(&name.as_str()),
+                            Escape(&v.as_str())
+                        )
+                    } else {
+                        write!(fmt, r#"`{}="{}"`"#, name, v)
+                    }
+                } else if self.1.is_html() {
                     write!(fmt, "<code>{}</code>", Escape(&name.as_str()))
+                } else {
+                    write!(fmt, "`{}`", name)
                 }
             }
         }

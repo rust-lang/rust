@@ -2130,8 +2130,8 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
 fn stability_tags(item: &clean::Item) -> String {
     let mut tags = String::new();
 
-    fn tag_html(class: &str, contents: &str) -> String {
-        format!(r#"<span class="stab {}">{}</span>"#, class, contents)
+    fn tag_html(class: &str, title: &str, contents: &str) -> String {
+        format!(r#"<span class="stab {}" title="{}">{}</span>"#, class, Escape(title), contents)
     }
 
     // The trailing space after each tag is to space it properly against the rest of the docs.
@@ -2140,7 +2140,7 @@ fn stability_tags(item: &clean::Item) -> String {
         if !stability::deprecation_in_effect(depr.is_since_rustc_version, depr.since.as_deref()) {
             message = "Deprecation planned";
         }
-        tags += &tag_html("deprecated", message);
+        tags += &tag_html("deprecated", "", message);
     }
 
     // The "rustc_private" crates are permanently unstable so it makes no sense
@@ -2151,11 +2151,11 @@ fn stability_tags(item: &clean::Item) -> String {
         .map(|s| s.level == stability::Unstable && s.feature != "rustc_private")
         == Some(true)
     {
-        tags += &tag_html("unstable", "Experimental");
+        tags += &tag_html("unstable", "", "Experimental");
     }
 
     if let Some(ref cfg) = item.attrs.cfg {
-        tags += &tag_html("portability", &cfg.render_short_html());
+        tags += &tag_html("portability", &cfg.render_long_plain(), &cfg.render_short_html());
     }
 
     tags
