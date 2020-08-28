@@ -96,6 +96,7 @@ pub trait FileLoader {
     /// `#[path = "C://no/way"]`
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId>;
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
+    fn list_some_random_files_todo(&self, anchor: FileId) -> Vec<(FileId, String)>;
 }
 
 /// Database which stores all significant input facts: source code and project
@@ -155,13 +156,24 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     }
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
         // FIXME: this *somehow* should be platform agnostic...
-        let source_root = self.0.file_source_root(anchor);
-        let source_root = self.0.source_root(source_root);
+        // self.source_root(anchor)
+        let source_root = self.source_root(anchor);
         source_root.file_set.resolve_path(anchor, path)
     }
 
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         let source_root = self.0.file_source_root(file_id);
         self.0.source_root_crates(source_root)
+    }
+
+    fn list_some_random_files_todo(&self, anchor: FileId) -> Vec<(FileId, String)> {
+        self.source_root(anchor).file_set.list_some_random_files_todo(anchor)
+    }
+}
+
+impl<T: SourceDatabaseExt> FileLoaderDelegate<&'_ T> {
+    fn source_root(&self, anchor: FileId) -> Arc<SourceRoot> {
+        let source_root = self.0.file_source_root(anchor);
+        self.0.source_root(source_root)
     }
 }
