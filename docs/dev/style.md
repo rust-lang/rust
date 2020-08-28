@@ -112,6 +112,22 @@ Avoid local `use MyEnum::*` imports.
 
 Prefer `use crate::foo::bar` to `use super::bar`.
 
+When implementing `Debug` or `Display`, import `std::fmt`:
+
+```rust
+// Good
+use std::fmt;
+
+impl fmt::Display for RenameError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { .. }
+}
+
+// Not as good
+impl std::fmt::Display for RenameError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { .. }
+}
+```
+
 # Order of Items
 
 Optimize for the reader who sees the file for the first time, and wants to get a general idea about what's going on.
