@@ -868,7 +868,7 @@ pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId) -> Ty<'tcx> 
 }
 
 /// Walk into `ty` and returns `true` if any inner type is the same as `other_ty`
-pub fn contains_ty<'tcx>(ty: Ty<'tcx>, other_ty: Ty<'tcx>) -> bool {
+pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => ty::TyS::same_type(other_ty, inner_ty),
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
