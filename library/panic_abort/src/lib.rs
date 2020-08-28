@@ -117,6 +117,17 @@ pub mod personalities {
         1 // `ExceptionContinueSearch`
     }
 
+    // Similar to above, this corresponds to the `eh_catch_typeinfo` lang item
+    // that's only used on Emscripten currently.
+    //
+    // Since panics don't generate exceptions and foreign exceptions are
+    // currently UB with -C panic=abort (although this may be subject to
+    // change), any catch_unwind calls will never use this typeinfo.
+    #[rustc_std_internal_symbol]
+    #[allow(non_upper_case_globals)]
+    #[cfg(target_os = "emscripten")]
+    static rust_eh_catch_typeinfo: [usize; 2] = [0; 2];
+
     // These two are called by our startup objects on i686-pc-windows-gnu, but
     // they don't need to do anything so the bodies are nops.
     #[rustc_std_internal_symbol]

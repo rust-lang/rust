@@ -48,5 +48,6 @@ impl LanguageItems {
 weak_lang_items! {
     panic_impl,         PanicImpl,          rust_begin_unwind;
     eh_personality,     EhPersonality,      rust_eh_personality;
+    eh_catch_typeinfo,  EhCatchTypeinfo,    rust_eh_catch_typeinfo;
     oom,                Oom,                rust_oom;
 }

@@ -876,6 +876,7 @@ symbols! {
         rust_2015_preview,
         rust_2018_preview,
         rust_begin_unwind,
+        rust_eh_catch_typeinfo,
         rust_eh_personality,
         rust_eh_register_frames,
         rust_eh_unregister_frames,
