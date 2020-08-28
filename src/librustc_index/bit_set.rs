@@ -28,11 +28,18 @@ pub const WORD_BITS: usize = WORD_BYTES * 8;
 /// will panic if the bitsets have differing domain sizes.
 ///
 /// [`GrowableBitSet`]: struct.GrowableBitSet.html
-#[derive(Clone, Eq, PartialEq, Decodable, Encodable)]
-pub struct BitSet<T: Idx> {
+#[derive(Eq, PartialEq, Decodable, Encodable)]
+pub struct BitSet<T> {
     domain_size: usize,
     words: Vec<Word>,
     marker: PhantomData<T>,
+}
+
+impl<T> BitSet<T> {
+    /// Gets the domain size.
+    pub fn domain_size(&self) -> usize {
+        self.domain_size
+    }
 }
 
 impl<T: Idx> BitSet<T> {
@@ -52,11 +59,6 @@ impl<T: Idx> BitSet<T> {
         result
     }
 
-    /// Gets the domain size.
-    pub fn domain_size(&self) -> usize {
-        self.domain_size
-    }
-
     /// Clear all elements.
     #[inline]
     pub fn clear(&mut self) {
@@ -73,12 +75,6 @@ impl<T: Idx> BitSet<T> {
             let final_word_idx = self.words.len() - 1;
             self.words[final_word_idx] &= mask;
         }
-    }
-
-    /// Efficiently overwrite `self` with `other`.
-    pub fn overwrite(&mut self, other: &BitSet<T>) {
-        assert!(self.domain_size == other.domain_size);
-        self.words.clone_from_slice(&other.words);
     }
 
     /// Count the number of set bits in the set.
@@ -243,6 +239,21 @@ impl<T: Idx> SubtractFromBitSet<T> for BitSet<T> {
     }
 }
 
+impl<T> Clone for BitSet<T> {
+    fn clone(&self) -> Self {
+        BitSet { domain_size: self.domain_size, words: self.words.clone(), marker: PhantomData }
+    }
+
+    fn clone_from(&mut self, from: &Self) {
+        if self.domain_size != from.domain_size {
+            self.words.resize(from.domain_size, 0);
+            self.domain_size = from.domain_size;
+        }
+
+        self.words.copy_from_slice(&from.words);
+    }
+}
+
 impl<T: Idx> fmt::Debug for BitSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list().entries(self.iter()).finish()
@@ -363,7 +374,7 @@ const SPARSE_MAX: usize = 8;
 ///
 /// This type is used by `HybridBitSet`; do not use directly.
 #[derive(Clone, Debug)]
-pub struct SparseBitSet<T: Idx> {
+pub struct SparseBitSet<T> {
     domain_size: usize,
     elems: ArrayVec<[T; SPARSE_MAX]>,
 }
@@ -464,10 +475,19 @@ impl<T: Idx> SubtractFromBitSet<T> for SparseBitSet<T> {
 /// All operations that involve an element will panic if the element is equal
 /// to or greater than the domain size. All operations that involve two bitsets
 /// will panic if the bitsets have differing domain sizes.
-#[derive(Clone, Debug)]
-pub enum HybridBitSet<T: Idx> {
+#[derive(Clone)]
+pub enum HybridBitSet<T> {
     Sparse(SparseBitSet<T>),
     Dense(BitSet<T>),
+}
+
+impl<T: Idx> fmt::Debug for HybridBitSet<T> {
+    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Sparse(b) => b.fmt(w),
+            Self::Dense(b) => b.fmt(w),
+        }
+    }
 }
 
 impl<T: Idx> HybridBitSet<T> {
@@ -475,7 +495,7 @@ impl<T: Idx> HybridBitSet<T> {
         HybridBitSet::Sparse(SparseBitSet::new_empty(domain_size))
     }
 
-    fn domain_size(&self) -> usize {
+    pub fn domain_size(&self) -> usize {
         match self {
             HybridBitSet::Sparse(sparse) => sparse.domain_size,
             HybridBitSet::Dense(dense) => dense.domain_size,
