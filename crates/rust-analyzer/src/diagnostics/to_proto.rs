@@ -315,7 +315,7 @@ mod tests {
                 "rendered": "error[E0053]: method `next` has an incompatible type for trait\n  --> compiler/ty/list_iter.rs:52:5\n   |\n52 |     fn next(&self) -> Option<&'list ty::Ref<M>> {\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ in mutability\n   |\n   = note: expected type `fn(&mut ty::list_iter::ListIterator<'list, M>) -> std::option::Option<&ty::Ref<M>>`\n              found type `fn(&ty::list_iter::ListIterator<'list, M>) -> std::option::Option<&'list ty::Ref<M>>`\n\n"
             }
             "##,
-            expect_file!["crates/rust-analyzer/test_data/rustc_incompatible_type_for_trait.txt"],
+            expect_file!["./test_data/rustc_incompatible_type_for_trait.txt"],
         );
     }
 
@@ -394,7 +394,7 @@ mod tests {
     ],
     "rendered": "warning: unused variable: `foo`\n   --> driver/subcommand/repl.rs:291:9\n    |\n291 |     let foo = 42;\n    |         ^^^ help: consider prefixing with an underscore: `_foo`\n    |\n    = note: #[warn(unused_variables)] on by default\n\n"
     }"##,
-            expect_file!["crates/rust-analyzer/test_data/rustc_unused_variable.txt"],
+            expect_file!["./test_data/rustc_unused_variable.txt"],
         );
     }
 
@@ -478,7 +478,7 @@ mod tests {
     ],
     "rendered": "warning: unused variable: `foo`\n   --> driver/subcommand/repl.rs:291:9\n    |\n291 |     let foo = 42;\n    |         ^^^ help: consider prefixing with an underscore: `_foo`\n    |\n    = note: #[warn(unused_variables)] on by default\n\n"
     }"##,
-            expect_file!["crates/rust-analyzer/test_data/rustc_unused_variable_as_info.txt"],
+            expect_file!["./test_data/rustc_unused_variable_as_info.txt"],
         );
     }
 
@@ -562,7 +562,7 @@ mod tests {
     ],
     "rendered": "warning: unused variable: `foo`\n   --> driver/subcommand/repl.rs:291:9\n    |\n291 |     let foo = 42;\n    |         ^^^ help: consider prefixing with an underscore: `_foo`\n    |\n    = note: #[warn(unused_variables)] on by default\n\n"
     }"##,
-            expect_file!["crates/rust-analyzer/test_data/rustc_unused_variable_as_hint.txt"],
+            expect_file!["./test_data/rustc_unused_variable_as_hint.txt"],
         );
     }
 
@@ -683,7 +683,7 @@ mod tests {
     "children": [],
     "rendered": "error[E0061]: this function takes 2 parameters but 3 parameters were supplied\n   --> compiler/ty/select.rs:104:18\n    |\n104 |               self.add_evidence(target_fixed, evidence_fixed, false);\n    |                    ^^^^^^^^^^^^ expected 2 parameters\n...\n219 | /     pub fn add_evidence(\n220 | |         &mut self,\n221 | |         target_poly: &ty::Ref<ty::Poly>,\n222 | |         evidence_poly: &ty::Ref<ty::Poly>,\n...   |\n230 | |         }\n231 | |     }\n    | |_____- defined here\n\n"
     }"##,
-            expect_file!["crates/rust-analyzer/test_data/rustc_wrong_number_of_parameters.txt"],
+            expect_file!["./test_data/rustc_wrong_number_of_parameters.txt"],
         );
     }
 
@@ -800,7 +800,7 @@ mod tests {
     ],
     "rendered": "warning: this argument is passed by reference, but would be more efficient if passed by value\n  --> compiler/mir/tagset.rs:42:24\n   |\n42 |     pub fn is_disjoint(&self, other: Self) -> bool {\n   |                        ^^^^^ help: consider passing by value instead: `self`\n   |\nnote: lint level defined here\n  --> compiler/lib.rs:1:9\n   |\n1  | #![warn(clippy::all)]\n   |         ^^^^^^^^^^^\n   = note: #[warn(clippy::trivially_copy_pass_by_ref)] implied by #[warn(clippy::all)]\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref\n\n"
     }"##,
-            expect_file!["crates/rust-analyzer/test_data/clippy_pass_by_ref.txt"],
+            expect_file!["./test_data/clippy_pass_by_ref.txt"],
         );
     }
 
@@ -840,7 +840,7 @@ mod tests {
     "children": [],
     "rendered": "error[E0308]: mismatched types\n  --> runtime/compiler_support.rs:48:65\n   |\n48 |     let layout = alloc::Layout::from_size_align_unchecked(size, align);\n   |                                                                 ^^^^^ expected usize, found u32\n\n"
     }"##,
-            expect_file!["crates/rust-analyzer/test_data/rustc_mismatched_type.txt"],
+            expect_file!["./test_data/rustc_mismatched_type.txt"],
         );
     }
 
@@ -1108,7 +1108,7 @@ mod tests {
         }
     ]
     }"##,
-            expect_file!["crates/rust-analyzer/test_data/handles_macro_location.txt"],
+            expect_file!["./test_data/handles_macro_location.txt"],
         );
     }
 
@@ -1334,7 +1334,7 @@ mod tests {
         ]
     }
             "##,
-            expect_file!["crates/rust-analyzer/test_data/macro_compiler_error.txt"],
+            expect_file!["./test_data/macro_compiler_error.txt"],
         );
     }
 
@@ -1464,7 +1464,7 @@ mod tests {
                 ]
             }
             "##,
-            expect_file!["crates/rust-analyzer/test_data/snap_multi_line_fix.txt"],
+            expect_file!["./test_data/snap_multi_line_fix.txt"],
         );
     }
 }

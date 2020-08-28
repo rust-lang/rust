@@ -22,4 +22,4 @@ hir = { path = "../hir", version = "0.0.0" }
 test_utils = { path = "../test_utils", version = "0.0.0" }
 
 [dev-dependencies]
-expect-test = "0.1"
+expect-test = "1.0"
