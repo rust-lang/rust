@@ -65,7 +65,7 @@ impl S {
 
 /// [T::h!]
 //~^ ERROR unresolved link
-//~| NOTE no item named `T::h`
+//~| NOTE `T` has no macro named `h`
 pub trait T {
     fn g() {}
 }

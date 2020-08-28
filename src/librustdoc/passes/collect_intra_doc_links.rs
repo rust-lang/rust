@@ -262,11 +262,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 false,
             ) {
                 if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
-                    return Ok(res.map_id(|_| panic!("unexpected id")));
+                    return Some(Ok(res.map_id(|_| panic!("unexpected id"))));
                 }
             }
             if let Some(res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
-                return Ok(res.map_id(|_| panic!("unexpected id")));
+                return Some(Ok(res.map_id(|_| panic!("unexpected id"))));
             }
             if let Some(module_id) = parent_id {
                 debug!("resolving {} as a macro in the module {:?}", path_str, module_id);
@@ -276,14 +276,32 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // don't resolve builtins like `#[derive]`
                     if let Res::Def(..) = res {
                         let res = res.map_id(|_| panic!("unexpected node_id"));
-                        return Ok(res);
+                        return Some(Ok(res));
                     }
                 }
             } else {
                 debug!("attempting to resolve item without parent module: {}", path_str);
-                return Err(ResolutionFailure::NoParentItem);
+                return Some(Err(ResolutionFailure::NoParentItem));
             }
-            return Err(ResolutionFailure::NotInScope(path_str.into()));
+            None
+        })
+        // This weird control flow is so we don't borrow the resolver more than once at a time
+        .unwrap_or_else(|| {
+            let mut split = path_str.rsplitn(2, "::");
+            if let Some((parent, base)) = split.next().and_then(|x| Some((split.next()?, x))) {
+                if let Some(res) = self.check_full_res(TypeNS, parent, parent_id, &None, &None) {
+                    return Err(if matches!(res, Res::PrimTy(_)) {
+                        ResolutionFailure::NoPrimitiveAssocItem {
+                            res,
+                            prim_name: parent,
+                            assoc_item: Symbol::intern(base),
+                        }
+                    } else {
+                        ResolutionFailure::NoAssocItem(res, Symbol::intern(base))
+                    });
+                }
+            }
+            Err(ResolutionFailure::NotInScope(path_str.into()))
         })
     }
     /// Resolves a string as a path within a particular namespace. Also returns an optional
@@ -981,6 +999,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                     cx,
                                     &item,
                                     path_str,
+                                    disambiguator,
                                     &dox,
                                     link_range,
                                     smallvec![kind],
@@ -1060,6 +1079,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 cx,
                                 &item,
                                 path_str,
+                                disambiguator,
                                 &dox,
                                 link_range,
                                 candidates.into_iter().filter_map(|res| res.err()).collect(),
@@ -1114,6 +1134,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                     cx,
                                     &item,
                                     path_str,
+                                    disambiguator,
                                     &dox,
                                     link_range,
                                     smallvec![kind],
@@ -1489,6 +1510,7 @@ fn resolution_failure(
     cx: &DocContext<'_>,
     item: &Item,
     path_str: &str,
+    disambiguator: Option<Disambiguator>,
     dox: &str,
     link_range: Option<Range<usize>>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
@@ -1581,34 +1603,39 @@ fn resolution_failure(
 
                         let (kind, def_id) = match res {
                             Res::Def(kind, def_id) => (kind, def_id),
-                            _ => unreachable!(
-                                "primitives are covered above and other `Res` variants aren't possible at module scope"
+                            x => unreachable!(
+                                "primitives are covered above and other `Res` variants aren't possible at module scope: {:?}",
+                                x,
                             ),
                         };
                         let name = cx.tcx.item_name(def_id);
-                        let path_description = match kind {
-                            Mod | ForeignMod => "inner item",
-                            Struct => "field or associated item",
-                            Enum | Union => "variant or associated item",
-                            Variant
-                            | Field
-                            | Closure
-                            | Generator
-                            | AssocTy
-                            | AssocConst
-                            | AssocFn
-                            | Fn
-                            | Macro(_)
-                            | Const
-                            | ConstParam
-                            | ExternCrate
-                            | Use
-                            | LifetimeParam
-                            | Ctor(_, _)
-                            | AnonConst => return assoc_item_not_allowed(res, diag),
-                            Trait | TyAlias | ForeignTy | OpaqueTy | TraitAlias | TyParam
-                            | Static => "associated item",
-                            Impl | GlobalAsm => unreachable!("not a path"),
+                        let path_description = if let Some(disambiguator) = disambiguator {
+                            disambiguator.descr()
+                        } else {
+                            match kind {
+                                Mod | ForeignMod => "inner item",
+                                Struct => "field or associated item",
+                                Enum | Union => "variant or associated item",
+                                Variant
+                                | Field
+                                | Closure
+                                | Generator
+                                | AssocTy
+                                | AssocConst
+                                | AssocFn
+                                | Fn
+                                | Macro(_)
+                                | Const
+                                | ConstParam
+                                | ExternCrate
+                                | Use
+                                | LifetimeParam
+                                | Ctor(_, _)
+                                | AnonConst => return assoc_item_not_allowed(res, diag),
+                                Trait | TyAlias | ForeignTy | OpaqueTy | TraitAlias | TyParam
+                                | Static => "associated item",
+                                Impl | GlobalAsm => unreachable!("not a path"),
+                            }
                         };
                         let note = format!(
                             "the {} `{}` has no {} named `{}`",

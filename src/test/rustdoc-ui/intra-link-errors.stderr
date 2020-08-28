@@ -97,7 +97,7 @@ error: unresolved link to `T::h`
 LL | /// [T::h!]
    |      ^^^^^
    |
-   = note: no item named `T::h` is in scope
+   = note: the trait `T` has no macro named `h`
 
 error: unresolved link to `S::h`
   --> $DIR/intra-link-errors.rs:54:6
