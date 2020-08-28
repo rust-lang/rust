@@ -1,5 +1,7 @@
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/1711539/72443316-5a79f280-37ae-11ea-858f-035209ece2dd.png" alt="rust-analyzer logo">
+  <img
+    src="https://raw.githubusercontent.com/rust-analyzer/rust-analyzer/master/assets/logo-wide.svg"
+    alt="rust-analyzer logo">
 </p>
 
 rust-analyzer is an **experimental** modular compiler frontend for the Rust language.
