@@ -1686,6 +1686,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if_chain! {
+            if !in_external_macro(cx.tcx.sess, item.span);
             if item.ident.name == sym!(new);
             if let TraitItemKind::Fn(_, _) = item.kind;
             let ret_ty = return_ty(cx, item.hir_id);
