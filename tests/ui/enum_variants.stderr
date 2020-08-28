@@ -1,4 +1,4 @@
-error: Variant name ends with the enum's name
+error: variant name ends with the enum's name
   --> $DIR/enum_variants.rs:16:5
    |
 LL |     cFoo,
@@ -6,25 +6,25 @@ LL |     cFoo,
    |
    = note: `-D clippy::enum-variant-names` implied by `-D warnings`
 
-error: Variant name starts with the enum's name
+error: variant name starts with the enum's name
   --> $DIR/enum_variants.rs:27:5
    |
 LL |     FoodGood,
    |     ^^^^^^^^
 
-error: Variant name starts with the enum's name
+error: variant name starts with the enum's name
   --> $DIR/enum_variants.rs:28:5
    |
 LL |     FoodMiddle,
    |     ^^^^^^^^^^
 
-error: Variant name starts with the enum's name
+error: variant name starts with the enum's name
   --> $DIR/enum_variants.rs:29:5
    |
 LL |     FoodBad,
    |     ^^^^^^^
 
-error: All variants have the same prefix: `Food`
+error: all variants have the same prefix: `Food`
   --> $DIR/enum_variants.rs:26:1
    |
 LL | / enum Food {
@@ -36,7 +36,7 @@ LL | | }
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
-error: All variants have the same prefix: `CallType`
+error: all variants have the same prefix: `CallType`
   --> $DIR/enum_variants.rs:36:1
    |
 LL | / enum BadCallType {
@@ -48,7 +48,7 @@ LL | | }
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
-error: All variants have the same prefix: `Constant`
+error: all variants have the same prefix: `Constant`
   --> $DIR/enum_variants.rs:48:1
    |
 LL | / enum Consts {
@@ -60,7 +60,7 @@ LL | | }
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
-error: All variants have the same prefix: `With`
+error: all variants have the same prefix: `With`
   --> $DIR/enum_variants.rs:82:1
    |
 LL | / enum Seallll {
@@ -72,7 +72,7 @@ LL | | }
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
-error: All variants have the same prefix: `Prefix`
+error: all variants have the same prefix: `Prefix`
   --> $DIR/enum_variants.rs:88:1
    |
 LL | / enum NonCaps {
@@ -84,7 +84,7 @@ LL | | }
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
-error: All variants have the same prefix: `With`
+error: all variants have the same prefix: `With`
   --> $DIR/enum_variants.rs:94:1
    |
 LL | / pub enum PubSeall {

@@ -2,7 +2,7 @@ use crate::consts::{
     constant, constant_simple, Constant,
     Constant::{Int, F32, F64},
 };
-use crate::utils::{get_parent_expr, higher, numeric_literal, span_lint_and_sugg, sugg, SpanlessEq};
+use crate::utils::{eq_expr_value, get_parent_expr, higher, numeric_literal, span_lint_and_sugg, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
@@ -363,8 +363,8 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
         if_chain! {
             if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref lmul_lhs, ref lmul_rhs) = add_lhs.kind;
             if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref rmul_lhs, ref rmul_rhs) = add_rhs.kind;
-            if are_exprs_equal(cx, lmul_lhs, lmul_rhs);
-            if are_exprs_equal(cx, rmul_lhs, rmul_rhs);
+            if eq_expr_value(cx, lmul_lhs, lmul_rhs);
+            if eq_expr_value(cx, rmul_lhs, rmul_rhs);
             then {
                 return Some(format!("{}.hypot({})", Sugg::hir(cx, &lmul_lhs, ".."), Sugg::hir(cx, &rmul_lhs, "..")));
             }
@@ -502,8 +502,8 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
 fn is_testing_positive(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
-            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, right) && are_exprs_equal(cx, left, test),
-            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, left) && are_exprs_equal(cx, right, test),
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, right) && eq_expr_value(cx, left, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, left) && eq_expr_value(cx, right, test),
             _ => false,
         }
     } else {
@@ -515,17 +515,13 @@ fn is_testing_positive(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -
 fn is_testing_negative(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
-            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, left) && are_exprs_equal(cx, right, test),
-            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, right) && are_exprs_equal(cx, left, test),
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, left) && eq_expr_value(cx, right, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, right) && eq_expr_value(cx, left, test),
             _ => false,
         }
     } else {
         false
     }
-}
-
-fn are_exprs_equal(cx: &LateContext<'_>, expr1: &Expr<'_>, expr2: &Expr<'_>) -> bool {
-    SpanlessEq::new(cx).ignore_fn().eq_expr(expr1, expr2)
 }
 
 /// Returns true iff expr is some zero literal
@@ -546,12 +542,12 @@ fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// returns None.
 fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a>) -> Option<(bool, &'a Expr<'a>)> {
     if let ExprKind::Unary(UnOp::UnNeg, expr1_negated) = &expr1.kind {
-        if are_exprs_equal(cx, expr1_negated, expr2) {
+        if eq_expr_value(cx, expr1_negated, expr2) {
             return Some((false, expr2));
         }
     }
     if let ExprKind::Unary(UnOp::UnNeg, expr2_negated) = &expr2.kind {
-        if are_exprs_equal(cx, expr1, expr2_negated) {
+        if eq_expr_value(cx, expr1, expr2_negated) {
             return Some((true, expr1));
         }
     }
@@ -614,7 +610,7 @@ fn are_same_base_logs(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>
                 args_a.len() == args_b.len() &&
                 (
                     ["ln", "log2", "log10"].contains(&&*method_name_a.as_str()) ||
-                    method_name_a.as_str() == "log" && args_a.len() == 2 && are_exprs_equal(cx, &args_a[1], &args_b[1])
+                    method_name_a.as_str() == "log" && args_a.len() == 2 && eq_expr_value(cx, &args_a[1], &args_b[1])
                 );
         }
     }

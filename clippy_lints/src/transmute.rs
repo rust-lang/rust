@@ -1,5 +1,5 @@
 use crate::utils::{
-    is_normalizable, last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_sugg,
+    in_constant, is_normalizable, last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_sugg,
     span_lint_and_then, sugg,
 };
 use if_chain::if_chain;
@@ -331,6 +331,10 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::TRANSMUTE);
             then {
+                // Avoid suggesting from/to bits in const contexts.
+                // See https://github.com/rust-lang/rust/issues/73736 for progress on making them `const fn`.
+                let const_context = in_constant(cx, e.hir_id);
+
                 let from_ty = cx.typeck_results().expr_ty(&args[0]);
                 let to_ty = cx.typeck_results().expr_ty(e);
 
@@ -544,7 +548,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             },
                         )
                     },
-                    (ty::Int(_) | ty::Uint(_), ty::Float(_)) => span_lint_and_then(
+                    (ty::Int(_) | ty::Uint(_), ty::Float(_)) if !const_context => span_lint_and_then(
                         cx,
                         TRANSMUTE_INT_TO_FLOAT,
                         e.span,
@@ -567,7 +571,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             );
                         },
                     ),
-                    (ty::Float(float_ty), ty::Int(_) | ty::Uint(_)) => span_lint_and_then(
+                    (ty::Float(float_ty), ty::Int(_) | ty::Uint(_)) if !const_context => span_lint_and_then(
                         cx,
                         TRANSMUTE_FLOAT_TO_INT,
                         e.span,

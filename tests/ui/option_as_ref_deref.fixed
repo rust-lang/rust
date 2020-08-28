@@ -38,4 +38,7 @@ fn main() {
 
     let _ = opt.as_deref();
     let _ = opt.as_deref_mut();
+
+    // Issue #5927
+    let _ = opt.as_deref();
 }

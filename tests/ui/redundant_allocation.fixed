@@ -33,7 +33,7 @@ pub fn test5(a: Rc<bool>) {}
 
 // Rc<Box<T>>
 
-pub fn test6(a: Box<bool>) {}
+pub fn test6(a: Rc<bool>) {}
 
 // Box<&T>
 

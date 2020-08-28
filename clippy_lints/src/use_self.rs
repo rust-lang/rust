@@ -50,7 +50,7 @@ declare_clippy_lint! {
     /// ```
     pub USE_SELF,
     nursery,
-    "Unnecessary structure name repetition whereas `Self` is applicable"
+    "unnecessary structure name repetition whereas `Self` is applicable"
 }
 
 declare_lint_pass!(UseSelf => [USE_SELF]);

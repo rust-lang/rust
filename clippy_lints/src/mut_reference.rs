@@ -9,8 +9,8 @@ declare_clippy_lint! {
     /// **What it does:** Detects passing a mutable reference to a function that only
     /// requires an immutable reference.
     ///
-    /// **Why is this bad?** The immutable reference rules out all other references
-    /// to the value. Also the code misleads about the intent of the call site.
+    /// **Why is this bad?** The mutable reference rules out all other references to
+    /// the value. Also the code misleads about the intent of the call site.
     ///
     /// **Known problems:** None.
     ///
@@ -39,6 +39,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                         arguments,
                         cx.typeck_results().expr_ty(fn_expr),
                         &rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false)),
+                        "function",
                     );
                 }
             },
@@ -46,14 +47,20 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                 let def_id = cx.typeck_results().type_dependent_def_id(e.hir_id).unwrap();
                 let substs = cx.typeck_results().node_substs(e.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
-                check_arguments(cx, arguments, method_type, &path.ident.as_str())
+                check_arguments(cx, arguments, method_type, &path.ident.as_str(), "method")
             },
             _ => (),
         }
     }
 }
 
-fn check_arguments<'tcx>(cx: &LateContext<'tcx>, arguments: &[Expr<'_>], type_definition: Ty<'tcx>, name: &str) {
+fn check_arguments<'tcx>(
+    cx: &LateContext<'tcx>,
+    arguments: &[Expr<'_>],
+    type_definition: Ty<'tcx>,
+    name: &str,
+    fn_kind: &str,
+) {
     match type_definition.kind {
         ty::FnDef(..) | ty::FnPtr(_) => {
             let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
@@ -68,7 +75,7 @@ fn check_arguments<'tcx>(cx: &LateContext<'tcx>, arguments: &[Expr<'_>], type_de
                                 cx,
                                 UNNECESSARY_MUT_PASSED,
                                 argument.span,
-                                &format!("The function/method `{}` doesn't need a mutable reference", name),
+                                &format!("the {} `{}` doesn't need a mutable reference", fn_kind, name),
                             );
                         }
                     },
