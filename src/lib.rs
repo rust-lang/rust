@@ -1,4 +1,11 @@
-#![feature(rustc_private, decl_macro, type_alias_impl_trait, associated_type_bounds, never_type, try_blocks)]
+#![feature(
+    rustc_private,
+    decl_macro,
+    type_alias_impl_trait,
+    associated_type_bounds,
+    never_type,
+    try_blocks
+)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 
@@ -7,6 +14,7 @@ extern crate flate2;
 extern crate libc;
 #[macro_use]
 extern crate rustc_middle;
+extern crate rustc_ast;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
@@ -19,7 +27,6 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
-extern crate rustc_ast;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
 #[allow(unused_extern_crates)]
@@ -27,14 +34,14 @@ extern crate rustc_driver;
 
 use std::any::Any;
 
+use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::CodegenResults;
 use rustc_errors::ErrorReported;
 use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
-use rustc_session::Session;
-use rustc_session::config::OutputFilenames;
 use rustc_middle::ty::query::Providers;
-use rustc_codegen_ssa::CodegenResults;
-use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_session::config::OutputFilenames;
+use rustc_session::Session;
 
 use cranelift_codegen::settings::{self, Configurable};
 
@@ -46,8 +53,8 @@ mod allocator;
 mod analyze;
 mod archive;
 mod atomic_shim;
-mod base;
 mod backend;
+mod base;
 mod cast;
 mod codegen_i128;
 mod common;
@@ -77,26 +84,29 @@ mod prelude {
     pub(crate) use rustc_ast::ast::{FloatTy, IntTy, UintTy};
     pub(crate) use rustc_span::Span;
 
-    pub(crate) use rustc_middle::bug;
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+    pub(crate) use rustc_middle::bug;
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_middle::ty::layout::{self, TyAndLayout};
-    pub(crate) use rustc_target::abi::{Abi, LayoutOf, Scalar, Size, VariantIdx};
     pub(crate) use rustc_middle::ty::{
         self, FnSig, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeAndMut, TypeFoldable,
     };
+    pub(crate) use rustc_target::abi::{Abi, LayoutOf, Scalar, Size, VariantIdx};
 
     pub(crate) use rustc_data_structures::fx::FxHashMap;
 
     pub(crate) use rustc_index::vec::Idx;
 
-    pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_codegen::entity::EntitySet;
-    pub(crate) use cranelift_codegen::ir::{AbiParam, Block, ExternalName, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value};
     pub(crate) use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
     pub(crate) use cranelift_codegen::ir::function::Function;
     pub(crate) use cranelift_codegen::ir::types;
+    pub(crate) use cranelift_codegen::ir::{
+        AbiParam, Block, ExternalName, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc,
+        StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value,
+    };
     pub(crate) use cranelift_codegen::isa::{self, CallConv};
+    pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
     pub(crate) use cranelift_module::{
         self, Backend, DataContext, DataId, FuncId, Linkage, Module,
@@ -133,17 +143,10 @@ struct CodegenCx<'tcx, B: Backend + 'static> {
 }
 
 impl<'tcx, B: Backend + 'static> CodegenCx<'tcx, B> {
-    fn new(
-        tcx: TyCtxt<'tcx>,
-        module: Module<B>,
-        debug_info: bool,
-    ) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, module: Module<B>, debug_info: bool) -> Self {
         let unwind_context = UnwindContext::new(tcx, module.isa());
         let debug_context = if debug_info {
-            Some(DebugContext::new(
-                tcx,
-                module.isa(),
-            ))
+            Some(DebugContext::new(tcx, module.isa()))
         } else {
             None
         };
@@ -159,9 +162,21 @@ impl<'tcx, B: Backend + 'static> CodegenCx<'tcx, B> {
         }
     }
 
-    fn finalize(mut self) -> (Module<B>, String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
+    fn finalize(
+        mut self,
+    ) -> (
+        Module<B>,
+        String,
+        Option<DebugContext<'tcx>>,
+        UnwindContext<'tcx>,
+    ) {
         self.constants_cx.finalize(self.tcx, &mut self.module);
-        (self.module, self.global_asm, self.debug_context, self.unwind_context)
+        (
+            self.module,
+            self.global_asm,
+            self.debug_context,
+            self.unwind_context,
+        )
     }
 }
 
@@ -220,7 +235,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
         sess: &Session,
         dep_graph: &DepGraph,
     ) -> Result<Box<dyn Any>, ErrorReported> {
-        let (codegen_results, work_products) = *ongoing_codegen.downcast::<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)>().unwrap();
+        let (codegen_results, work_products) = *ongoing_codegen
+            .downcast::<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)>()
+            .unwrap();
 
         sess.time("serialize_work_products", move || {
             rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)

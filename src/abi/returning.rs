@@ -5,11 +5,14 @@ fn return_layout<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> TyAnd
     fx.layout_of(fx.monomorphize(&fx.mir.local_decls[RETURN_PLACE].ty))
 }
 
-pub(crate) fn can_return_to_ssa_var<'tcx>(tcx: TyCtxt<'tcx>, dest_layout: TyAndLayout<'tcx>) -> bool {
+pub(crate) fn can_return_to_ssa_var<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    dest_layout: TyAndLayout<'tcx>,
+) -> bool {
     match get_pass_mode(tcx, dest_layout) {
         PassMode::NoPass | PassMode::ByVal(_) => true,
         // FIXME Make it possible to return ByValPair and ByRef to an ssa var.
-        PassMode::ByValPair(_, _) | PassMode::ByRef { size: _ } => false
+        PassMode::ByValPair(_, _) | PassMode::ByRef { size: _ } => false,
     }
 }
 
@@ -35,8 +38,10 @@ pub(super) fn codegen_return_param(
         }
         PassMode::ByRef { size: Some(_) } => {
             let ret_param = fx.bcx.append_block_param(start_block, fx.pointer_type);
-            fx.local_map
-                .insert(RETURN_PLACE, CPlace::for_ptr(Pointer::new(ret_param), ret_layout));
+            fx.local_map.insert(
+                RETURN_PLACE,
+                CPlace::for_ptr(Pointer::new(ret_param), ret_layout),
+            );
 
             Single(ret_param)
         }
@@ -69,7 +74,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
     let output_pass_mode = get_pass_mode(fx.tcx, ret_layout);
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
-        PassMode::ByRef { size: Some(_)} => match ret_place {
+        PassMode::ByRef { size: Some(_) } => match ret_place {
             Some(ret_place) => Some(ret_place.to_ptr().get_addr(fx)),
             None => Some(fx.bcx.ins().iconst(fx.pointer_type, 43)), // FIXME allocate temp stack slot
         },

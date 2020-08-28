@@ -2,7 +2,11 @@ use rustc_middle::mir::mono::{Linkage as RLinkage, MonoItem, Visibility};
 
 use crate::prelude::*;
 
-pub(crate) fn get_clif_linkage(mono_item: MonoItem<'_>, linkage: RLinkage, visibility: Visibility) -> Linkage {
+pub(crate) fn get_clif_linkage(
+    mono_item: MonoItem<'_>,
+    linkage: RLinkage,
+    visibility: Visibility,
+) -> Linkage {
     match (linkage, visibility) {
         (RLinkage::External, Visibility::Default) => Linkage::Export,
         (RLinkage::Internal, Visibility::Default) => Linkage::Local,

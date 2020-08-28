@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
+use rustc_codegen_ssa::back::linker::LinkerInfo;
+use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::mir::mono::CodegenUnit;
-use rustc_session::config::{DebugInfo, OutputType};
 use rustc_session::cgu_reuse_tracker::CguReuse;
-use rustc_codegen_ssa::back::linker::LinkerInfo;
-use rustc_codegen_ssa::{CrateInfo, CodegenResults, CompiledModule, ModuleKind};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_session::config::{DebugInfo, OutputType};
 
 use crate::prelude::*;
 
@@ -20,7 +20,6 @@ fn new_module(tcx: TyCtxt<'_>, name: String) -> Module<crate::backend::Backend> 
 }
 
 struct ModuleCodegenResult(CompiledModule, Option<(WorkProductId, WorkProduct)>);
-
 
 impl<HCX> HashStable<HCX> for ModuleCodegenResult {
     fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
@@ -37,7 +36,8 @@ fn emit_module<B: Backend>(
     unwind_context: UnwindContext<'_>,
     map_product: impl FnOnce(B::Product) -> B::Product,
 ) -> ModuleCodegenResult
-    where B::Product: AddConstructor + Emit + WriteDebugInfo,
+where
+    B::Product: AddConstructor + Emit + WriteDebugInfo,
 {
     module.finalize_definitions();
     let mut product = module.finish();
@@ -55,7 +55,8 @@ fn emit_module<B: Backend>(
         .temp_path(OutputType::Object, Some(&name));
     let obj = product.emit();
     if let Err(err) = std::fs::write(&tmp_file, obj) {
-        tcx.sess.fatal(&format!("error writing object file: {}", err));
+        tcx.sess
+            .fatal(&format!("error writing object file: {}", err));
     }
 
     let work_product = if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() {
@@ -88,7 +89,9 @@ fn reuse_workproduct_for_cgu(
     let mut object = None;
     let work_product = cgu.work_product(tcx);
     if let Some(saved_file) = &work_product.saved_file {
-        let obj_out = tcx.output_filenames(LOCAL_CRATE).temp_path(OutputType::Object, Some(&cgu.name().as_str()));
+        let obj_out = tcx
+            .output_filenames(LOCAL_CRATE)
+            .temp_path(OutputType::Object, Some(&cgu.name().as_str()));
         object = Some(obj_out.clone());
         let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
         if let Err(err) = rustc_fs_util::link_or_copy(&source_file, &obj_out) {
@@ -120,22 +123,30 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
     // Initialize the global atomic mutex using a constructor for proc-macros.
     // FIXME implement atomic instructions in Cranelift.
     let mut init_atomics_mutex_from_constructor = None;
-    if tcx.sess.crate_types().contains(&rustc_session::config::CrateType::ProcMacro) {
-        if mono_items.iter().any(|(mono_item, _)| {
-            match mono_item {
-                rustc_middle::mir::mono::MonoItem::Static(def_id) => {
-                    tcx.symbol_name(Instance::mono(tcx, *def_id)).name.contains("__rustc_proc_macro_decls_")
-                }
-                _ => false,
-            }
+    if tcx
+        .sess
+        .crate_types()
+        .contains(&rustc_session::config::CrateType::ProcMacro)
+    {
+        if mono_items.iter().any(|(mono_item, _)| match mono_item {
+            rustc_middle::mir::mono::MonoItem::Static(def_id) => tcx
+                .symbol_name(Instance::mono(tcx, *def_id))
+                .name
+                .contains("__rustc_proc_macro_decls_"),
+            _ => false,
         }) {
-            init_atomics_mutex_from_constructor = Some(crate::atomic_shim::init_global_lock_constructor(&mut module, &format!("{}_init_atomics_mutex", cgu_name.as_str())));
+            init_atomics_mutex_from_constructor =
+                Some(crate::atomic_shim::init_global_lock_constructor(
+                    &mut module,
+                    &format!("{}_init_atomics_mutex", cgu_name.as_str()),
+                ));
         }
     }
 
     let mut cx = crate::CodegenCx::new(tcx, module, tcx.sess.opts.debuginfo != DebugInfo::None);
     super::codegen_mono_items(&mut cx, mono_items);
-    let (mut module, global_asm, debug, mut unwind_context) = tcx.sess.time("finalize CodegenCx", || cx.finalize());
+    let (mut module, global_asm, debug, mut unwind_context) =
+        tcx.sess.time("finalize CodegenCx", || cx.finalize());
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut unwind_context);
 
     let codegen_result = emit_module(
@@ -151,7 +162,7 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
             }
 
             product
-        }
+        },
     );
 
     codegen_global_asm(tcx, &cgu.name().as_str(), &global_asm);
@@ -181,40 +192,46 @@ pub(super) fn run_aot(
     }
 
     let modules = super::time(tcx, "codegen mono items", || {
-        cgus.iter().map(|cgu| {
-            let cgu_reuse = determine_cgu_reuse(tcx, cgu);
-            tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
+        cgus.iter()
+            .map(|cgu| {
+                let cgu_reuse = determine_cgu_reuse(tcx, cgu);
+                tcx.sess
+                    .cgu_reuse_tracker
+                    .set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
 
-            match cgu_reuse {
-                _ if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() => {}
-                CguReuse::No => {}
-                CguReuse::PreLto => {
-                    return reuse_workproduct_for_cgu(tcx, &*cgu, &mut work_products);
+                match cgu_reuse {
+                    _ if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() => {}
+                    CguReuse::No => {}
+                    CguReuse::PreLto => {
+                        return reuse_workproduct_for_cgu(tcx, &*cgu, &mut work_products);
+                    }
+                    CguReuse::PostLto => unreachable!(),
                 }
-                CguReuse::PostLto => unreachable!(),
-            }
 
-            let dep_node = cgu.codegen_dep_node(tcx);
-            let (ModuleCodegenResult(module, work_product), _) =
-                tcx.dep_graph.with_task(dep_node, tcx, cgu.name(), module_codegen, rustc_middle::dep_graph::hash_result);
+                let dep_node = cgu.codegen_dep_node(tcx);
+                let (ModuleCodegenResult(module, work_product), _) = tcx.dep_graph.with_task(
+                    dep_node,
+                    tcx,
+                    cgu.name(),
+                    module_codegen,
+                    rustc_middle::dep_graph::hash_result,
+                );
 
-            if let Some((id, product)) = work_product {
-                work_products.insert(id, product);
-            }
+                if let Some((id, product)) = work_product {
+                    work_products.insert(id, product);
+                }
 
-            module
-        }).collect::<Vec<_>>()
+                module
+            })
+            .collect::<Vec<_>>()
     });
 
     tcx.sess.abort_if_errors();
 
     let mut allocator_module = new_module(tcx, "allocator_shim".to_string());
     let mut allocator_unwind_context = UnwindContext::new(tcx, allocator_module.isa());
-    let created_alloc_shim = crate::allocator::codegen(
-        tcx,
-        &mut allocator_module,
-        &mut allocator_unwind_context,
-    );
+    let created_alloc_shim =
+        crate::allocator::codegen(tcx, &mut allocator_module, &mut allocator_unwind_context);
 
     let allocator_module = if created_alloc_shim {
         let ModuleCodegenResult(module, work_product) = emit_module(
@@ -257,7 +274,8 @@ pub(super) fn run_aot(
             });
 
             if let Err(err) = std::fs::write(&tmp_file, obj) {
-                tcx.sess.fatal(&format!("error writing metadata object file: {}", err));
+                tcx.sess
+                    .fatal(&format!("error writing metadata object file: {}", err));
             }
 
             (metadata_cgu_name, tmp_file)
@@ -277,17 +295,20 @@ pub(super) fn run_aot(
         rustc_incremental::assert_module_sources::assert_module_sources(tcx);
     }
 
-    Box::new((CodegenResults {
-        crate_name: tcx.crate_name(LOCAL_CRATE),
-        modules,
-        allocator_module,
-        metadata_module,
-        crate_hash: tcx.crate_hash(LOCAL_CRATE),
-        metadata,
-        windows_subsystem: None, // Windows is not yet supported
-        linker_info: LinkerInfo::new(tcx),
-        crate_info: CrateInfo::new(tcx),
-    }, work_products))
+    Box::new((
+        CodegenResults {
+            crate_name: tcx.crate_name(LOCAL_CRATE),
+            modules,
+            allocator_module,
+            metadata_module,
+            crate_hash: tcx.crate_hash(LOCAL_CRATE),
+            metadata,
+            windows_subsystem: None, // Windows is not yet supported
+            linker_info: LinkerInfo::new(tcx),
+            crate_info: CrateInfo::new(tcx),
+        },
+        work_products,
+    ))
 }
 
 fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
@@ -308,9 +329,12 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
 
         // FIXME fix linker error on macOS
         if cfg!(not(feature = "inline_asm")) {
-            tcx.sess.fatal("asm! and global_asm! support is disabled while compiling rustc_codegen_cranelift");
+            tcx.sess.fatal(
+                "asm! and global_asm! support is disabled while compiling rustc_codegen_cranelift",
+            );
         } else {
-            tcx.sess.fatal("asm! and global_asm! are not yet supported on macOS and Windows");
+            tcx.sess
+                .fatal("asm! and global_asm! are not yet supported on macOS and Windows");
         }
     }
 
@@ -318,13 +342,17 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
     let linker = crate::toolchain::get_toolchain_binary(tcx.sess, "ld");
 
     // Remove all LLVM style comments
-    let global_asm = global_asm.lines().map(|line| {
-        if let Some(index) = line.find("//") {
-            &line[0..index]
-        } else {
-            line
-        }
-    }).collect::<Vec<_>>().join("\n");
+    let global_asm = global_asm
+        .lines()
+        .map(|line| {
+            if let Some(index) = line.find("//") {
+                &line[0..index]
+            } else {
+                line
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
 
     let output_object_file = tcx
         .output_filenames(LOCAL_CRATE)
@@ -333,14 +361,21 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
     // Assemble `global_asm`
     let global_asm_object_file = add_file_stem_postfix(output_object_file.clone(), ".asm");
     let mut child = Command::new(assembler)
-        .arg("-o").arg(&global_asm_object_file)
+        .arg("-o")
+        .arg(&global_asm_object_file)
         .stdin(Stdio::piped())
         .spawn()
         .expect("Failed to spawn `as`.");
-    child.stdin.take().unwrap().write_all(global_asm.as_bytes()).unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(global_asm.as_bytes())
+        .unwrap();
     let status = child.wait().expect("Failed to wait for `as`.");
     if !status.success() {
-        tcx.sess.fatal(&format!("Failed to assemble `{}`", global_asm));
+        tcx.sess
+            .fatal(&format!("Failed to assemble `{}`", global_asm));
     }
 
     // Link the global asm and main object file together
@@ -348,7 +383,8 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
     std::fs::rename(&output_object_file, &main_object_file).unwrap();
     let status = Command::new(linker)
         .arg("-r") // Create a new object file
-        .arg("-o").arg(output_object_file)
+        .arg("-o")
+        .arg(output_object_file)
         .arg(&main_object_file)
         .arg(&global_asm_object_file)
         .status()
@@ -383,7 +419,11 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
     }
 
     let work_product_id = &cgu.work_product_id();
-    if tcx.dep_graph.previous_work_product(work_product_id).is_none() {
+    if tcx
+        .dep_graph
+        .previous_work_product(work_product_id)
+        .is_none()
+    {
         // We don't have anything cached for this CGU. This can happen
         // if the CGU did not exist in the previous session.
         return CguReuse::No;

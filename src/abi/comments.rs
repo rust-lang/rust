@@ -80,7 +80,10 @@ pub(super) fn add_local_place_comments<'tcx>(
         }
         CPlaceInner::VarPair(place_local, var1, var2) => {
             assert_eq!(local, place_local);
-            ("ssa", Cow::Owned(format!(",var=({}, {})", var1.index(), var2.index())))
+            (
+                "ssa",
+                Cow::Owned(format!(",var=({}, {})", var1.index(), var2.index())),
+            )
         }
         CPlaceInner::VarLane(_local, _var, _lane) => unreachable!(),
         CPlaceInner::Addr(ptr, meta) => {
@@ -90,15 +93,18 @@ pub(super) fn add_local_place_comments<'tcx>(
                 Cow::Borrowed("")
             };
             match ptr.base_and_offset() {
-                (crate::pointer::PointerBase::Addr(addr), offset) => {
-                    ("reuse", format!("storage={}{}{}", addr, offset, meta).into())
-                }
-                (crate::pointer::PointerBase::Stack(stack_slot), offset) => {
-                    ("stack", format!("storage={}{}{}", stack_slot, offset, meta).into())
-                }
-                (crate::pointer::PointerBase::Dangling(align), offset) => {
-                    ("zst", format!("align={},offset={}", align.bytes(), offset).into())
-                }
+                (crate::pointer::PointerBase::Addr(addr), offset) => (
+                    "reuse",
+                    format!("storage={}{}{}", addr, offset, meta).into(),
+                ),
+                (crate::pointer::PointerBase::Stack(stack_slot), offset) => (
+                    "stack",
+                    format!("storage={}{}{}", stack_slot, offset, meta).into(),
+                ),
+                (crate::pointer::PointerBase::Dangling(align), offset) => (
+                    "zst",
+                    format!("align={},offset={}", align.bytes(), offset).into(),
+                ),
             }
         }
     };
@@ -111,7 +117,11 @@ pub(super) fn add_local_place_comments<'tcx>(
         size.bytes(),
         align.abi.bytes(),
         align.pref.bytes(),
-        if extra.is_empty() { "" } else { "              " },
+        if extra.is_empty() {
+            ""
+        } else {
+            "              "
+        },
         extra,
     ));
 }

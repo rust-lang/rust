@@ -3,8 +3,8 @@ mod comments;
 mod pass_mode;
 mod returning;
 
-use rustc_target::spec::abi::Abi;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_target::spec::abi::Abi;
 
 use cranelift_codegen::ir::{AbiParam, ArgumentPurpose};
 
@@ -14,7 +14,10 @@ use crate::prelude::*;
 pub(crate) use self::returning::{can_return_to_ssa_var, codegen_return};
 
 // Copied from https://github.com/rust-lang/rust/blob/f52c72948aa1dd718cc1f168d21c91c584c0a662/src/librustc_middle/ty/layout.rs#L2301
-pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::PolyFnSig<'tcx> {
+pub(crate) fn fn_sig_for_fn_abi<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> ty::PolyFnSig<'tcx> {
     use rustc_middle::ty::subst::Subst;
 
     // FIXME(davidtwco,eddyb): A `ParamEnv` should be passed through to this function.
@@ -70,10 +73,10 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx
             let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
 
             sig.map_bound(|sig| {
-                let state_did = tcx.require_lang_item(rustc_hir::LangItem::GeneratorStateLangItem, None);
+                let state_did =
+                    tcx.require_lang_item(rustc_hir::LangItem::GeneratorStateLangItem, None);
                 let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs =
-                    tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
+                let state_substs = tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
                 let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
                 tcx.mk_fn_sig(
@@ -102,8 +105,16 @@ fn clif_sig_from_fn_sig<'tcx>(
         abi => abi,
     };
     let (call_conv, inputs, output): (CallConv, Vec<Ty<'tcx>>, Ty<'tcx>) = match abi {
-        Abi::Rust => (CallConv::triple_default(triple), sig.inputs().to_vec(), sig.output()),
-        Abi::C | Abi::Unadjusted => (CallConv::triple_default(triple), sig.inputs().to_vec(), sig.output()),
+        Abi::Rust => (
+            CallConv::triple_default(triple),
+            sig.inputs().to_vec(),
+            sig.output(),
+        ),
+        Abi::C | Abi::Unadjusted => (
+            CallConv::triple_default(triple),
+            sig.inputs().to_vec(),
+            sig.output(),
+        ),
         Abi::SysV64 => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
             assert_eq!(sig.inputs().len(), 2);
@@ -116,7 +127,11 @@ fn clif_sig_from_fn_sig<'tcx>(
             (CallConv::triple_default(triple), inputs, sig.output())
         }
         Abi::System => unreachable!(),
-        Abi::RustIntrinsic => (CallConv::triple_default(triple), sig.inputs().to_vec(), sig.output()),
+        Abi::RustIntrinsic => (
+            CallConv::triple_default(triple),
+            sig.inputs().to_vec(),
+            sig.output(),
+        ),
         _ => unimplemented!("unsupported abi {:?}", sig.abi),
     };
 
@@ -163,10 +178,7 @@ fn clif_sig_from_fn_sig<'tcx>(
         tcx.layout_of(ParamEnv::reveal_all().and(output)).unwrap(),
     ) {
         PassMode::NoPass => (inputs.collect(), vec![]),
-        PassMode::ByVal(ret_ty) => (
-            inputs.collect(),
-            vec![AbiParam::new(ret_ty)],
-        ),
+        PassMode::ByVal(ret_ty) => (inputs.collect(), vec![AbiParam::new(ret_ty)]),
         PassMode::ByValPair(ret_ty_a, ret_ty_b) => (
             inputs.collect(),
             vec![AbiParam::new(ret_ty_a), AbiParam::new(ret_ty_b)],
@@ -202,12 +214,24 @@ pub(crate) fn get_function_name_and_sig<'tcx>(
     support_vararg: bool,
 ) -> (String, Signature) {
     assert!(!inst.substs.needs_infer());
-    let fn_sig =
-        tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_sig_for_fn_abi(tcx, inst));
+    let fn_sig = tcx.normalize_erasing_late_bound_regions(
+        ParamEnv::reveal_all(),
+        &fn_sig_for_fn_abi(tcx, inst),
+    );
     if fn_sig.c_variadic && !support_vararg {
-        tcx.sess.span_fatal(tcx.def_span(inst.def_id()), "Variadic function definitions are not yet supported");
+        tcx.sess.span_fatal(
+            tcx.def_span(inst.def_id()),
+            "Variadic function definitions are not yet supported",
+        );
     }
-    let sig = clif_sig_from_fn_sig(tcx, triple, fn_sig, tcx.def_span(inst.def_id()), false, inst.def.requires_caller_location(tcx));
+    let sig = clif_sig_from_fn_sig(
+        tcx,
+        triple,
+        fn_sig,
+        tcx.def_span(inst.def_id()),
+        false,
+        inst.def.requires_caller_location(tcx),
+    );
     (tcx.symbol_name(inst).name.to_string(), sig)
 }
 
@@ -228,7 +252,8 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     pub(crate) fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
         let func_id = import_function(self.tcx, &mut self.cx.module, inst);
         let func_ref = self
-            .cx.module
+            .cx
+            .module
             .declare_func_in_func(func_id, &mut self.bcx.func);
 
         #[cfg(debug_assertions)]
@@ -250,11 +275,13 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             call_conv: CallConv::triple_default(self.triple()),
         };
         let func_id = self
-            .cx.module
+            .cx
+            .module
             .declare_function(&name, Linkage::Import, &sig)
             .unwrap();
         let func_ref = self
-            .cx.module
+            .cx
+            .module
             .declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
         #[cfg(debug_assertions)]
@@ -376,7 +403,9 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
     assert!(fx.caller_location.is_none());
     if fx.instance.def.requires_caller_location(fx.tcx) {
         // Store caller location for `#[track_caller]`.
-        fx.caller_location = Some(cvalue_for_param(fx, start_block, None, None, fx.tcx.caller_location_ty()).unwrap());
+        fx.caller_location = Some(
+            cvalue_for_param(fx, start_block, None, None, fx.tcx.caller_location_ty()).unwrap(),
+        );
     }
 
     fx.bcx.switch_to_block(start_block);
@@ -502,17 +531,20 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 fx.bcx.ins().jump(ret_block, &[]);
                 return;
             }
-            _ => Some(instance)
+            _ => Some(instance),
         }
     } else {
         None
     };
 
-    let is_cold =
-        instance.map(|inst|
-            fx.tcx.codegen_fn_attrs(inst.def_id())
-                .flags.contains(CodegenFnAttrFlags::COLD))
-                .unwrap_or(false);
+    let is_cold = instance
+        .map(|inst| {
+            fx.tcx
+                .codegen_fn_attrs(inst.def_id())
+                .flags
+                .contains(CodegenFnAttrFlags::COLD)
+        })
+        .unwrap_or(false);
     if is_cold {
         fx.cold_blocks.insert(current_block);
     }
@@ -524,9 +556,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         let pack_arg = trans_operand(fx, &args[1]);
 
         let tupled_arguments = match pack_arg.layout().ty.kind {
-            ty::Tuple(ref tupled_arguments) => {
-                tupled_arguments
-            }
+            ty::Tuple(ref tupled_arguments) => tupled_arguments,
             _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
         };
 
@@ -582,8 +612,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(nop_inst, "indirect call");
             }
-            let func = trans_operand(fx, func)
-                .load_scalar(fx);
+            let func = trans_operand(fx, func).load_scalar(fx);
             (
                 Some(func),
                 args.get(0)
@@ -608,7 +637,10 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 )
                 .collect::<Vec<_>>();
 
-            if instance.map(|inst| inst.def.requires_caller_location(fx.tcx)).unwrap_or(false) {
+            if instance
+                .map(|inst| inst.def.requires_caller_location(fx.tcx))
+                .unwrap_or(false)
+            {
                 // Pass the caller location for `#[track_caller]`.
                 let caller_location = fx.get_caller_location(span);
                 call_args.extend(adjust_arg_for_abi(fx, caller_location).into_iter());
@@ -637,7 +669,10 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     // FIXME find a cleaner way to support varargs
     if fn_sig.c_variadic {
         if fn_sig.abi != Abi::C {
-            fx.tcx.sess.span_fatal(span, &format!("Variadic call for non-C abi {:?}", fn_sig.abi));
+            fx.tcx.sess.span_fatal(
+                span,
+                &format!("Variadic call for non-C abi {:?}", fn_sig.abi),
+            );
         }
         let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
         let abi_params = call_args
@@ -646,7 +681,9 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 let ty = fx.bcx.func.dfg.value_type(arg);
                 if !ty.is_int() {
                     // FIXME set %al to upperbound on float args once floats are supported
-                    fx.tcx.sess.span_fatal(span, &format!("Non int ty {:?} for variadic call", ty));
+                    fx.tcx
+                        .sess
+                        .span_fatal(span, &format!("Non int ty {:?} for variadic call", ty));
                 }
                 AbiParam::new(ty)
             })
@@ -700,13 +737,16 @@ pub(crate) fn codegen_drop<'tcx>(
             _ => {
                 assert!(!matches!(drop_fn.def, InstanceDef::Virtual(_, _)));
 
-                let arg_value = drop_place.place_ref(fx, fx.layout_of(fx.tcx.mk_ref(
-                    &ty::RegionKind::ReErased,
-                    TypeAndMut {
-                        ty,
-                        mutbl: crate::rustc_hir::Mutability::Mut,
-                    },
-                )));
+                let arg_value = drop_place.place_ref(
+                    fx,
+                    fx.layout_of(fx.tcx.mk_ref(
+                        &ty::RegionKind::ReErased,
+                        TypeAndMut {
+                            ty,
+                            mutbl: crate::rustc_hir::Mutability::Mut,
+                        },
+                    )),
+                );
                 let arg_value = adjust_arg_for_abi(fx, arg_value);
 
                 let mut call_args: Vec<Value> = arg_value.into_iter().collect::<Vec<_>>();

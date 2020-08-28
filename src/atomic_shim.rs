@@ -7,7 +7,8 @@ use crate::prelude::*;
 
 #[cfg(feature = "jit")]
 #[no_mangle]
-pub static mut __cg_clif_global_atomic_mutex: libc::pthread_mutex_t = libc::PTHREAD_MUTEX_INITIALIZER;
+pub static mut __cg_clif_global_atomic_mutex: libc::pthread_mutex_t =
+    libc::PTHREAD_MUTEX_INITIALIZER;
 
 pub(crate) fn init_global_lock(module: &mut Module<impl Backend>, bcx: &mut FunctionBuilder<'_>) {
     if std::env::var("CG_CLIF_JIT").is_ok() {
@@ -19,28 +20,42 @@ pub(crate) fn init_global_lock(module: &mut Module<impl Backend>, bcx: &mut Func
 
     let mut data_ctx = DataContext::new();
     data_ctx.define_zeroinit(1024); // 1024 bytes should be big enough on all platforms.
-    let atomic_mutex = module.declare_data(
-        "__cg_clif_global_atomic_mutex",
-        Linkage::Export,
-        true,
-        false,
-        Some(16),
-    ).unwrap();
+    let atomic_mutex = module
+        .declare_data(
+            "__cg_clif_global_atomic_mutex",
+            Linkage::Export,
+            true,
+            false,
+            Some(16),
+        )
+        .unwrap();
     module.define_data(atomic_mutex, &data_ctx).unwrap();
 
-    let pthread_mutex_init = module.declare_function("pthread_mutex_init", Linkage::Import, &cranelift_codegen::ir::Signature {
-        call_conv: module.target_config().default_call_conv,
-        params: vec![
-            AbiParam::new(module.target_config().pointer_type() /* *mut pthread_mutex_t */),
-            AbiParam::new(module.target_config().pointer_type() /* *const pthread_mutex_attr_t */),
-        ],
-        returns: vec![AbiParam::new(types::I32 /* c_int */)],
-    }).unwrap();
+    let pthread_mutex_init = module
+        .declare_function(
+            "pthread_mutex_init",
+            Linkage::Import,
+            &cranelift_codegen::ir::Signature {
+                call_conv: module.target_config().default_call_conv,
+                params: vec![
+                    AbiParam::new(
+                        module.target_config().pointer_type(), /* *mut pthread_mutex_t */
+                    ),
+                    AbiParam::new(
+                        module.target_config().pointer_type(), /* *const pthread_mutex_attr_t */
+                    ),
+                ],
+                returns: vec![AbiParam::new(types::I32 /* c_int */)],
+            },
+        )
+        .unwrap();
 
     let pthread_mutex_init = module.declare_func_in_func(pthread_mutex_init, bcx.func);
 
     let atomic_mutex = module.declare_data_in_func(atomic_mutex, bcx.func);
-    let atomic_mutex = bcx.ins().global_value(module.target_config().pointer_type(), atomic_mutex);
+    let atomic_mutex = bcx
+        .ins()
+        .global_value(module.target_config().pointer_type(), atomic_mutex);
 
     let nullptr = bcx.ins().iconst(module.target_config().pointer_type(), 0);
 
@@ -49,7 +64,7 @@ pub(crate) fn init_global_lock(module: &mut Module<impl Backend>, bcx: &mut Func
 
 pub(crate) fn init_global_lock_constructor(
     module: &mut Module<impl Backend>,
-    constructor_name: &str
+    constructor_name: &str,
 ) -> FuncId {
     let sig = Signature::new(CallConv::SystemV);
     let init_func_id = module
@@ -71,61 +86,99 @@ pub(crate) fn init_global_lock_constructor(
         bcx.seal_all_blocks();
         bcx.finalize();
     }
-    module.define_function(
-        init_func_id,
-        &mut ctx,
-        &mut cranelift_codegen::binemit::NullTrapSink {},
-    ).unwrap();
+    module
+        .define_function(
+            init_func_id,
+            &mut ctx,
+            &mut cranelift_codegen::binemit::NullTrapSink {},
+        )
+        .unwrap();
 
     init_func_id
 }
 
 pub(crate) fn lock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
-    let atomic_mutex = fx.cx.module.declare_data(
-        "__cg_clif_global_atomic_mutex",
-        Linkage::Import,
-        true,
-        false,
-        None,
-    ).unwrap();
+    let atomic_mutex = fx
+        .cx
+        .module
+        .declare_data(
+            "__cg_clif_global_atomic_mutex",
+            Linkage::Import,
+            true,
+            false,
+            None,
+        )
+        .unwrap();
 
-    let pthread_mutex_lock = fx.cx.module.declare_function("pthread_mutex_lock", Linkage::Import, &cranelift_codegen::ir::Signature {
-        call_conv: fx.cx.module.target_config().default_call_conv,
-        params: vec![
-            AbiParam::new(fx.cx.module.target_config().pointer_type() /* *mut pthread_mutex_t */),
-        ],
-        returns: vec![AbiParam::new(types::I32 /* c_int */)],
-    }).unwrap();
+    let pthread_mutex_lock = fx
+        .cx
+        .module
+        .declare_function(
+            "pthread_mutex_lock",
+            Linkage::Import,
+            &cranelift_codegen::ir::Signature {
+                call_conv: fx.cx.module.target_config().default_call_conv,
+                params: vec![AbiParam::new(
+                    fx.cx.module.target_config().pointer_type(), /* *mut pthread_mutex_t */
+                )],
+                returns: vec![AbiParam::new(types::I32 /* c_int */)],
+            },
+        )
+        .unwrap();
 
-    let pthread_mutex_lock = fx.cx.module.declare_func_in_func(pthread_mutex_lock, fx.bcx.func);
+    let pthread_mutex_lock = fx
+        .cx
+        .module
+        .declare_func_in_func(pthread_mutex_lock, fx.bcx.func);
 
     let atomic_mutex = fx.cx.module.declare_data_in_func(atomic_mutex, fx.bcx.func);
-    let atomic_mutex = fx.bcx.ins().global_value(fx.cx.module.target_config().pointer_type(), atomic_mutex);
+    let atomic_mutex = fx
+        .bcx
+        .ins()
+        .global_value(fx.cx.module.target_config().pointer_type(), atomic_mutex);
 
     fx.bcx.ins().call(pthread_mutex_lock, &[atomic_mutex]);
 }
 
 pub(crate) fn unlock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
-    let atomic_mutex = fx.cx.module.declare_data(
-        "__cg_clif_global_atomic_mutex",
-        Linkage::Import,
-        true,
-        false,
-        None,
-    ).unwrap();
+    let atomic_mutex = fx
+        .cx
+        .module
+        .declare_data(
+            "__cg_clif_global_atomic_mutex",
+            Linkage::Import,
+            true,
+            false,
+            None,
+        )
+        .unwrap();
 
-    let pthread_mutex_unlock = fx.cx.module.declare_function("pthread_mutex_unlock", Linkage::Import, &cranelift_codegen::ir::Signature {
-        call_conv: fx.cx.module.target_config().default_call_conv,
-        params: vec![
-            AbiParam::new(fx.cx.module.target_config().pointer_type() /* *mut pthread_mutex_t */),
-        ],
-        returns: vec![AbiParam::new(types::I32 /* c_int */)],
-    }).unwrap();
+    let pthread_mutex_unlock = fx
+        .cx
+        .module
+        .declare_function(
+            "pthread_mutex_unlock",
+            Linkage::Import,
+            &cranelift_codegen::ir::Signature {
+                call_conv: fx.cx.module.target_config().default_call_conv,
+                params: vec![AbiParam::new(
+                    fx.cx.module.target_config().pointer_type(), /* *mut pthread_mutex_t */
+                )],
+                returns: vec![AbiParam::new(types::I32 /* c_int */)],
+            },
+        )
+        .unwrap();
 
-    let pthread_mutex_unlock = fx.cx.module.declare_func_in_func(pthread_mutex_unlock, fx.bcx.func);
+    let pthread_mutex_unlock = fx
+        .cx
+        .module
+        .declare_func_in_func(pthread_mutex_unlock, fx.bcx.func);
 
     let atomic_mutex = fx.cx.module.declare_data_in_func(atomic_mutex, fx.bcx.func);
-    let atomic_mutex = fx.bcx.ins().global_value(fx.cx.module.target_config().pointer_type(), atomic_mutex);
+    let atomic_mutex = fx
+        .bcx
+        .ins()
+        .global_value(fx.cx.module.target_config().pointer_type(), atomic_mutex);
 
     fx.bcx.ins().call(pthread_mutex_unlock, &[atomic_mutex]);
 }

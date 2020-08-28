@@ -108,7 +108,7 @@ macro call_intrinsic_match {
     }
 }
 
-macro atomic_binop_return_old($fx:expr, $op:ident<$T:ident>($ptr:ident, $src:ident) -> $ret:ident)  {
+macro atomic_binop_return_old($fx:expr, $op:ident<$T:ident>($ptr:ident, $src:ident) -> $ret:ident) {
     crate::atomic_shim::lock_global_lock($fx);
 
     let clif_ty = $fx.clif_type($T).unwrap();
@@ -144,7 +144,13 @@ macro validate_atomic_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
     match $ty.kind {
         ty::Uint(_) | ty::Int(_) => {}
         _ => {
-            $fx.tcx.sess.span_err($span, &format!("`{}` intrinsic: expected basic integer type, found `{:?}`", $intrinsic, $ty));
+            $fx.tcx.sess.span_err(
+                $span,
+                &format!(
+                    "`{}` intrinsic: expected basic integer type, found `{:?}`",
+                    $intrinsic, $ty
+                ),
+            );
             // Prevent verifier error
             crate::trap::trap_unreachable($fx, "compilation should not have succeeded");
             return;
@@ -170,10 +176,15 @@ fn lane_type_and_count<'tcx>(
         rustc_target::abi::FieldsShape::Array { stride: _, count } => u16::try_from(count).unwrap(),
         _ => unreachable!("lane_type_and_count({:?})", layout),
     };
-    let lane_layout = layout.field(&ty::layout::LayoutCx {
-        tcx,
-        param_env: ParamEnv::reveal_all(),
-    }, 0).unwrap();
+    let lane_layout = layout
+        .field(
+            &ty::layout::LayoutCx {
+                tcx,
+                param_env: ParamEnv::reveal_all(),
+            },
+            0,
+        )
+        .unwrap();
     (lane_layout, lane_count)
 }
 
@@ -405,10 +416,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                     trap_unreachable(fx, "[corruption] Called intrinsic::unreachable.");
                 }
                 "transmute" => {
-                    trap_unreachable(
-                        fx,
-                        "[corruption] Transmuting to uninhabited type.",
-                    );
+                    trap_unreachable(fx, "[corruption] Transmuting to uninhabited type.");
                 }
                 _ => unimplemented!("unsupported instrinsic {}", intrinsic),
             }

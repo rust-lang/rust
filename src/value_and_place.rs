@@ -33,7 +33,8 @@ fn codegen_field<'tcx>(
             _ => {
                 // We have to align the offset for DST's
                 let unaligned_offset = field_offset.bytes();
-                let (_, unsized_align) = crate::unsize::size_and_align_of_dst(fx, field_layout, extra);
+                let (_, unsized_align) =
+                    crate::unsize::size_and_align_of_dst(fx, field_layout, extra);
 
                 let one = fx.bcx.ins().iconst(pointer_ty(fx.tcx), 1);
                 let align_sub_1 = fx.bcx.ins().isub(unsized_align, one);
@@ -42,10 +43,7 @@ fn codegen_field<'tcx>(
                 let and_rhs = fx.bcx.ins().isub(zero, unsized_align);
                 let offset = fx.bcx.ins().band(and_lhs, and_rhs);
 
-                (
-                    base.offset_value(fx, offset),
-                    field_layout,
-                )
+                (base.offset_value(fx, offset), field_layout)
             }
         }
     } else {
@@ -53,7 +51,11 @@ fn codegen_field<'tcx>(
     }
 }
 
-fn scalar_pair_calculate_b_offset(tcx: TyCtxt<'_>, a_scalar: &Scalar, b_scalar: &Scalar) -> Offset32 {
+fn scalar_pair_calculate_b_offset(
+    tcx: TyCtxt<'_>,
+    a_scalar: &Scalar,
+    b_scalar: &Scalar,
+) -> Offset32 {
     let b_offset = a_scalar
         .value
         .size(&tcx)
@@ -77,7 +79,11 @@ impl<'tcx> CValue<'tcx> {
         CValue(CValueInner::ByRef(ptr, None), layout)
     }
 
-    pub(crate) fn by_ref_unsized(ptr: Pointer, meta: Value, layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
+    pub(crate) fn by_ref_unsized(
+        ptr: Pointer,
+        meta: Value,
+        layout: TyAndLayout<'tcx>,
+    ) -> CValue<'tcx> {
         CValue(CValueInner::ByRef(ptr, Some(meta)), layout)
     }
 
@@ -85,7 +91,11 @@ impl<'tcx> CValue<'tcx> {
         CValue(CValueInner::ByVal(value), layout)
     }
 
-    pub(crate) fn by_val_pair(value: Value, extra: Value, layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
+    pub(crate) fn by_val_pair(
+        value: Value,
+        extra: Value,
+        layout: TyAndLayout<'tcx>,
+    ) -> CValue<'tcx> {
         CValue(CValueInner::ByValPair(value, extra), layout)
     }
 
@@ -94,7 +104,10 @@ impl<'tcx> CValue<'tcx> {
     }
 
     // FIXME remove
-    pub(crate) fn force_stack(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> (Pointer, Option<Value>) {
+    pub(crate) fn force_stack(
+        self,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    ) -> (Pointer, Option<Value>) {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(ptr, meta) => (ptr, meta),
@@ -122,7 +135,8 @@ impl<'tcx> CValue<'tcx> {
                     Abi::Scalar(ref scalar) => scalar_to_clif_type(fx.tcx, scalar.clone()),
                     Abi::Vector { ref element, count } => {
                         scalar_to_clif_type(fx.tcx, element.clone())
-                            .by(u16::try_from(count).unwrap()).unwrap()
+                            .by(u16::try_from(count).unwrap())
+                            .unwrap()
                     }
                     _ => unreachable!("{:?}", layout.ty),
                 };
@@ -153,7 +167,9 @@ impl<'tcx> CValue<'tcx> {
                 let val2 = ptr.offset(fx, b_offset).load(fx, clif_ty2, MemFlags::new());
                 (val1, val2)
             }
-            CValueInner::ByRef(_, Some(_)) => bug!("load_scalar_pair for unsized value not allowed"),
+            CValueInner::ByRef(_, Some(_)) => {
+                bug!("load_scalar_pair for unsized value not allowed")
+            }
             CValueInner::ByVal(_) => bug!("Please use load_scalar for ByVal"),
             CValueInner::ByValPair(val1, val2) => (val1, val2),
         }
@@ -166,33 +182,29 @@ impl<'tcx> CValue<'tcx> {
     ) -> CValue<'tcx> {
         let layout = self.1;
         match self.0 {
-            CValueInner::ByVal(val) => {
-                match layout.abi {
-                    Abi::Vector { element: _, count } => {
-                        let count = u8::try_from(count).expect("SIMD type with more than 255 lanes???");
-                        let field = u8::try_from(field.index()).unwrap();
-                        assert!(field < count);
-                        let lane = fx.bcx.ins().extractlane(val, field);
-                        let field_layout = layout.field(&*fx, usize::from(field));
-                        CValue::by_val(lane, field_layout)
-                    }
-                    _ => unreachable!("value_field for ByVal with abi {:?}", layout.abi),
+            CValueInner::ByVal(val) => match layout.abi {
+                Abi::Vector { element: _, count } => {
+                    let count = u8::try_from(count).expect("SIMD type with more than 255 lanes???");
+                    let field = u8::try_from(field.index()).unwrap();
+                    assert!(field < count);
+                    let lane = fx.bcx.ins().extractlane(val, field);
+                    let field_layout = layout.field(&*fx, usize::from(field));
+                    CValue::by_val(lane, field_layout)
                 }
-            }
-            CValueInner::ByValPair(val1, val2) => {
-                match layout.abi {
-                    Abi::ScalarPair(_, _) => {
-                        let val = match field.as_u32() {
-                            0 => val1,
-                            1 => val2,
-                            _ => bug!("field should be 0 or 1"),
-                        };
-                        let field_layout = layout.field(&*fx, usize::from(field));
-                        CValue::by_val(val, field_layout)
-                    }
-                    _ => unreachable!("value_field for ByValPair with abi {:?}", layout.abi),
+                _ => unreachable!("value_field for ByVal with abi {:?}", layout.abi),
+            },
+            CValueInner::ByValPair(val1, val2) => match layout.abi {
+                Abi::ScalarPair(_, _) => {
+                    let val = match field.as_u32() {
+                        0 => val1,
+                        1 => val2,
+                        _ => bug!("field should be 0 or 1"),
+                    };
+                    let field_layout = layout.field(&*fx, usize::from(field));
+                    CValue::by_val(val, field_layout)
                 }
-            }
+                _ => unreachable!("value_field for ByValPair with abi {:?}", layout.abi),
+            },
             CValueInner::ByRef(ptr, None) => {
                 let (field_ptr, field_layout) = codegen_field(fx, ptr, None, layout, field);
                 CValue::by_ref(field_ptr, field_layout)
@@ -201,7 +213,11 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub(crate) fn unsize_value(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
+    pub(crate) fn unsize_value(
+        self,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+        dest: CPlace<'tcx>,
+    ) {
         crate::unsize::coerce_unsized_into(fx, self, dest);
     }
 
@@ -217,7 +233,11 @@ impl<'tcx> CValue<'tcx> {
 
         match layout.ty.kind {
             ty::Bool => {
-                assert!(const_val == 0 || const_val == 1, "Invalid bool 0x{:032X}", const_val);
+                assert!(
+                    const_val == 0 || const_val == 1,
+                    "Invalid bool 0x{:032X}",
+                    const_val
+                );
             }
             _ => {}
         }
@@ -254,8 +274,14 @@ impl<'tcx> CValue<'tcx> {
     }
 
     pub(crate) fn cast_pointer_to(self, layout: TyAndLayout<'tcx>) -> Self {
-        assert!(matches!(self.layout().ty.kind, ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)));
-        assert!(matches!(layout.ty.kind, ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)));
+        assert!(matches!(
+            self.layout().ty.kind,
+            ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)
+        ));
+        assert!(matches!(
+            layout.ty.kind,
+            ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)
+        ));
         assert_eq!(self.layout().abi, layout.abi);
         CValue(self.0, layout)
     }
@@ -319,8 +345,7 @@ impl<'tcx> CPlace<'tcx> {
     ) -> CPlace<'tcx> {
         let var = Variable::with_u32(fx.next_ssa_var);
         fx.next_ssa_var += 1;
-        fx.bcx
-            .declare_var(var, fx.clif_type(layout.ty).unwrap());
+        fx.bcx.declare_var(var, fx.clif_type(layout.ty).unwrap());
         CPlace {
             inner: CPlaceInner::Var(local, var),
             layout,
@@ -353,7 +378,11 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
-    pub(crate) fn for_ptr_with_extra(ptr: Pointer, extra: Value, layout: TyAndLayout<'tcx>) -> CPlace<'tcx> {
+    pub(crate) fn for_ptr_with_extra(
+        ptr: Pointer,
+        extra: Value,
+        layout: TyAndLayout<'tcx>,
+    ) -> CPlace<'tcx> {
         CPlace {
             inner: CPlaceInner::Addr(ptr, Some(extra)),
             layout,
@@ -365,19 +394,23 @@ impl<'tcx> CPlace<'tcx> {
         match self.inner {
             CPlaceInner::Var(_local, var) => {
                 let val = fx.bcx.use_var(var);
-                fx.bcx.set_val_label(val, cranelift_codegen::ir::ValueLabel::new(var.index()));
+                fx.bcx
+                    .set_val_label(val, cranelift_codegen::ir::ValueLabel::new(var.index()));
                 CValue::by_val(val, layout)
             }
             CPlaceInner::VarPair(_local, var1, var2) => {
                 let val1 = fx.bcx.use_var(var1);
-                fx.bcx.set_val_label(val1, cranelift_codegen::ir::ValueLabel::new(var1.index()));
+                fx.bcx
+                    .set_val_label(val1, cranelift_codegen::ir::ValueLabel::new(var1.index()));
                 let val2 = fx.bcx.use_var(var2);
-                fx.bcx.set_val_label(val2, cranelift_codegen::ir::ValueLabel::new(var2.index()));
+                fx.bcx
+                    .set_val_label(val2, cranelift_codegen::ir::ValueLabel::new(var2.index()));
                 CValue::by_val_pair(val1, val2, layout)
             }
             CPlaceInner::VarLane(_local, var, lane) => {
                 let val = fx.bcx.use_var(var);
-                fx.bcx.set_val_label(val, cranelift_codegen::ir::ValueLabel::new(var.index()));
+                fx.bcx
+                    .set_val_label(val, cranelift_codegen::ir::ValueLabel::new(var.index()));
                 let val = fx.bcx.ins().extractlane(val, lane);
                 CValue::by_val(val, layout)
             }
@@ -407,7 +440,11 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
-    pub(crate) fn write_cvalue(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, from: CValue<'tcx>) {
+    pub(crate) fn write_cvalue(
+        self,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+        from: CValue<'tcx>,
+    ) {
         fn assert_assignable<'tcx>(
             fx: &FunctionCx<'_, 'tcx, impl Backend>,
             from_ty: Ty<'tcx>,
@@ -415,7 +452,10 @@ impl<'tcx> CPlace<'tcx> {
         ) {
             match (&from_ty.kind, &to_ty.kind) {
                 (ty::Ref(_, a, _), ty::Ref(_, b, _))
-                | (ty::RawPtr(TypeAndMut { ty: a, mutbl: _}), ty::RawPtr(TypeAndMut { ty: b, mutbl: _})) => {
+                | (
+                    ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
+                    ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }),
+                ) => {
                     assert_assignable(fx, a, b);
                 }
                 (ty::FnPtr(_), ty::FnPtr(_)) => {
@@ -478,8 +518,7 @@ impl<'tcx> CPlace<'tcx> {
         self,
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         from: CValue<'tcx>,
-        #[cfg_attr(not(debug_assertions), allow(unused_variables))]
-        method: &'static str,
+        #[cfg_attr(not(debug_assertions), allow(unused_variables))] method: &'static str,
     ) {
         fn transmute_value<'tcx>(
             fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
@@ -492,16 +531,17 @@ impl<'tcx> CPlace<'tcx> {
                 (_, _) if src_ty == dst_ty => data,
 
                 // This is a `write_cvalue_transmute`.
-                (types::I32, types::F32) | (types::F32, types::I32)
-                    | (types::I64, types::F64) | (types::F64, types::I64) => {
-                        fx.bcx.ins().bitcast(dst_ty, data)
-                }
+                (types::I32, types::F32)
+                | (types::F32, types::I32)
+                | (types::I64, types::F64)
+                | (types::F64, types::I64) => fx.bcx.ins().bitcast(dst_ty, data),
                 _ if src_ty.is_vector() && dst_ty.is_vector() => {
                     fx.bcx.ins().raw_bitcast(dst_ty, data)
                 }
                 _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty, dst_ty),
             };
-            fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var.index()));
+            fx.bcx
+                .set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var.index()));
             fx.bcx.def_var(var, data);
         }
 
@@ -516,7 +556,14 @@ impl<'tcx> CPlace<'tcx> {
             };
             fx.add_comment(
                 fx.bcx.func.layout.last_inst(cur_block).unwrap(),
-                format!("{}: {:?}: {:?} <- {:?}: {:?}", method, self.inner(), self.layout().ty, from.0, from.layout().ty),
+                format!(
+                    "{}: {:?}: {:?} <- {:?}: {:?}",
+                    method,
+                    self.inner(),
+                    self.layout().ty,
+                    from.0,
+                    from.layout().ty
+                ),
             );
         }
 
@@ -540,13 +587,15 @@ impl<'tcx> CPlace<'tcx> {
 
                 // First get the old vector
                 let vector = fx.bcx.use_var(var);
-                fx.bcx.set_val_label(vector, cranelift_codegen::ir::ValueLabel::new(var.index()));
+                fx.bcx
+                    .set_val_label(vector, cranelift_codegen::ir::ValueLabel::new(var.index()));
 
                 // Next insert the written lane into the vector
                 let vector = fx.bcx.ins().insertlane(vector, data, lane);
 
                 // Finally write the new vector
-                fx.bcx.set_val_label(vector, cranelift_codegen::ir::ValueLabel::new(var.index()));
+                fx.bcx
+                    .set_val_label(vector, cranelift_codegen::ir::ValueLabel::new(var.index()));
                 fx.bcx.def_var(var, vector);
 
                 return;
@@ -571,7 +620,9 @@ impl<'tcx> CPlace<'tcx> {
                 let (value, extra) = from.load_scalar_pair(fx);
                 let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
                 to_ptr.store(fx, value, MemFlags::new());
-                to_ptr.offset(fx, b_offset).store(fx, extra, MemFlags::new());
+                to_ptr
+                    .offset(fx, b_offset)
+                    .store(fx, extra, MemFlags::new());
                 return;
             }
             _ => {}
@@ -628,14 +679,18 @@ impl<'tcx> CPlace<'tcx> {
                 let layout = layout.field(&*fx, field.index());
 
                 match field.as_u32() {
-                    0 => return CPlace {
-                        inner: CPlaceInner::Var(local, var1),
-                        layout,
-                    },
-                    1 => return CPlace {
-                        inner: CPlaceInner::Var(local, var2),
-                        layout,
-                    },
+                    0 => {
+                        return CPlace {
+                            inner: CPlaceInner::Var(local, var1),
+                            layout,
+                        }
+                    }
+                    1 => {
+                        return CPlace {
+                            inner: CPlaceInner::Var(local, var2),
+                            layout,
+                        }
+                    }
                     _ => unreachable!("field should be 0 or 1"),
                 }
             }
@@ -677,7 +732,10 @@ impl<'tcx> CPlace<'tcx> {
             let (addr, extra) = self.to_cvalue(fx).load_scalar_pair(fx);
             CPlace::for_ptr_with_extra(Pointer::new(addr), extra, inner_layout)
         } else {
-            CPlace::for_ptr(Pointer::new(self.to_cvalue(fx).load_scalar(fx)), inner_layout)
+            CPlace::for_ptr(
+                Pointer::new(self.to_cvalue(fx).load_scalar(fx)),
+                inner_layout,
+            )
         }
     }
 

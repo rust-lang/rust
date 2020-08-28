@@ -7,9 +7,10 @@ use rustc_target::spec::LinkerFlavor;
 /// Tries to infer the path of a binary for the target toolchain from the linker name.
 pub(crate) fn get_toolchain_binary(sess: &Session, tool: &str) -> PathBuf {
     let (mut linker, _linker_flavor) = linker_and_flavor(sess);
-    let linker_file_name = linker.file_name().and_then(|name| name.to_str()).unwrap_or_else(|| {
-        sess.fatal("couldn't extract file name from specified linker")
-    });
+    let linker_file_name = linker
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_else(|| sess.fatal("couldn't extract file name from specified linker"));
 
     if linker_file_name == "ld.lld" {
         if tool != "ld" {
@@ -68,9 +69,12 @@ fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 flavor,
             )),
             (Some(linker), None) => {
-                let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
-                    sess.fatal("couldn't extract file stem from specified linker")
-                });
+                let stem = linker
+                    .file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .unwrap_or_else(|| {
+                        sess.fatal("couldn't extract file stem from specified linker")
+                    });
 
                 let flavor = if stem == "emcc" {
                     LinkerFlavor::Em
@@ -99,7 +103,11 @@ fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
-    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), sess.opts.cg.linker_flavor) {
+    if let Some(ret) = infer_from(
+        sess,
+        sess.opts.cg.linker.clone(),
+        sess.opts.cg.linker_flavor,
+    ) {
         return ret;
     }
 

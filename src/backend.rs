@@ -5,8 +5,8 @@ use rustc_session::Session;
 
 use cranelift_module::{FuncId, Module};
 
-use object::{SectionKind, SymbolFlags, RelocationKind, RelocationEncoding};
 use object::write::*;
+use object::{RelocationEncoding, RelocationKind, SectionKind, SymbolFlags};
 
 use cranelift_object::{ObjectBackend, ObjectBuilder, ObjectProduct};
 
@@ -20,7 +20,9 @@ pub(crate) trait WriteMetadata {
 
 impl WriteMetadata for object::write::Object {
     fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, _is_like_osx: bool) {
-        let segment = self.segment_name(object::write::StandardSegment::Data).to_vec();
+        let segment = self
+            .segment_name(object::write::StandardSegment::Data)
+            .to_vec();
         let section_id = self.add_section(segment, b".rustc".to_vec(), object::SectionKind::Data);
         let offset = self.append_section_data(section_id, &data, 1);
         // For MachO and probably PE this is necessary to prevent the linker from throwing away the
@@ -62,7 +64,8 @@ impl WriteDebugInfo for ObjectProduct {
             id.name().replace('.', "__") // machO expects __debug_info instead of .debug_info
         } else {
             id.name().to_string()
-        }.into_bytes();
+        }
+        .into_bytes();
 
         let segment = self.object.segment_name(StandardSegment::Debug).to_vec();
         let section_id = self.object.add_section(segment, name, SectionKind::Debug);
@@ -78,22 +81,27 @@ impl WriteDebugInfo for ObjectProduct {
         reloc: &DebugReloc,
     ) {
         let (symbol, symbol_offset) = match reloc.name {
-            DebugRelocName::Section(id) => {
-                (section_map.get(&id).unwrap().1, 0)
-            }
+            DebugRelocName::Section(id) => (section_map.get(&id).unwrap().1, 0),
             DebugRelocName::Symbol(id) => {
                 let symbol_id = self.function_symbol(FuncId::from_u32(id.try_into().unwrap()));
-                self.object.symbol_section_and_offset(symbol_id).expect("Debug reloc for undef sym???")
+                self.object
+                    .symbol_section_and_offset(symbol_id)
+                    .expect("Debug reloc for undef sym???")
             }
         };
-        self.object.add_relocation(from.0, Relocation {
-            offset: u64::from(reloc.offset),
-            symbol,
-            kind: RelocationKind::Absolute,
-            encoding: RelocationEncoding::Generic,
-            size: reloc.size * 8,
-            addend: i64::try_from(symbol_offset).unwrap() + reloc.addend,
-        }).unwrap();
+        self.object
+            .add_relocation(
+                from.0,
+                Relocation {
+                    offset: u64::from(reloc.offset),
+                    symbol,
+                    kind: RelocationKind::Absolute,
+                    encoding: RelocationEncoding::Generic,
+                    size: reloc.size * 8,
+                    addend: i64::try_from(symbol_offset).unwrap() + reloc.addend,
+                },
+            )
+            .unwrap();
     }
 }
 
@@ -105,21 +113,32 @@ pub(crate) trait AddConstructor {
 impl AddConstructor for ObjectProduct {
     fn add_constructor(&mut self, func_id: FuncId) {
         let symbol = self.function_symbol(func_id);
-        let segment = self.object.segment_name(object::write::StandardSegment::Data);
-        let init_array_section = self.object.add_section(segment.to_vec(), b".init_array".to_vec(), SectionKind::Data);
+        let segment = self
+            .object
+            .segment_name(object::write::StandardSegment::Data);
+        let init_array_section =
+            self.object
+                .add_section(segment.to_vec(), b".init_array".to_vec(), SectionKind::Data);
         self.object.append_section_data(
             init_array_section,
-            &std::iter::repeat(0).take(8 /*FIXME pointer size*/).collect::<Vec<u8>>(),
+            &std::iter::repeat(0)
+                .take(8 /*FIXME pointer size*/)
+                .collect::<Vec<u8>>(),
             8,
         );
-        self.object.add_relocation(init_array_section, object::write::Relocation {
-            offset: 0,
-            size: 64, // FIXME pointer size
-            kind: RelocationKind::Absolute,
-            encoding: RelocationEncoding::Generic,
-            symbol,
-            addend: 0,
-        }).unwrap();
+        self.object
+            .add_relocation(
+                init_array_section,
+                object::write::Relocation {
+                    offset: 0,
+                    size: 64, // FIXME pointer size
+                    kind: RelocationKind::Absolute,
+                    encoding: RelocationEncoding::Generic,
+                    symbol,
+                    addend: 0,
+                },
+            )
+            .unwrap();
     }
 }
 
@@ -153,7 +172,7 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
         architecture => sess.fatal(&format!(
             "target architecture {:?} is unsupported",
             architecture,
-        ))
+        )),
     };
     let endian = match triple.endianness().unwrap() {
         target_lexicon::Endianness::Little => object::Endianness::Little,
@@ -166,7 +185,8 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
     metadata_object.write().unwrap()
 }
 
-pub(crate) type Backend = impl cranelift_module::Backend<Product: AddConstructor + Emit + WriteDebugInfo>;
+pub(crate) type Backend =
+    impl cranelift_module::Backend<Product: AddConstructor + Emit + WriteDebugInfo>;
 
 pub(crate) fn make_module(sess: &Session, name: String) -> Module<Backend> {
     let module: Module<ObjectBackend> = Module::new(
@@ -174,7 +194,8 @@ pub(crate) fn make_module(sess: &Session, name: String) -> Module<Backend> {
             crate::build_isa(sess, true),
             name + ".o",
             cranelift_module::default_libcall_names(),
-        ).unwrap(),
+        )
+        .unwrap(),
     );
     module
 }

@@ -10,8 +10,8 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::ValueLocRange;
 
 use gimli::write::{
-    Address, AttributeValue, DwarfUnit, Expression, LineProgram,
-    LineString, Location, LocationList, Range, RangeList, UnitEntryId,
+    Address, AttributeValue, DwarfUnit, Expression, LineProgram, LineString, Location,
+    LocationList, Range, RangeList, UnitEntryId,
 };
 use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, X86_64};
 
@@ -66,7 +66,7 @@ impl<'tcx> DebugContext<'tcx> {
             Some(path) => {
                 let name = path.to_string_lossy().into_owned();
                 (name, None)
-            },
+            }
             None => (tcx.crate_name(LOCAL_CRATE).to_string(), None),
         };
 
@@ -141,7 +141,10 @@ impl<'tcx> DebugContext<'tcx> {
         };
 
         let type_entry = self.dwarf.unit.get_mut(type_id);
-        type_entry.set(gimli::DW_AT_name, AttributeValue::String(format!("{}", ty).replace('i', "u").into_bytes()));
+        type_entry.set(
+            gimli::DW_AT_name,
+            AttributeValue::String(format!("{}", ty).replace('i', "u").into_bytes()),
+        );
         type_entry.set(
             gimli::DW_AT_byte_size,
             AttributeValue::Udata(u64::from(ty.bytes())),
@@ -202,18 +205,29 @@ impl<'tcx> DebugContext<'tcx> {
 
                 for (field_idx, field_def) in variant.fields.iter().enumerate() {
                     let field_offset = layout.fields.offset(field_idx);
-                    let field_layout = layout.field(&layout::LayoutCx {
-                        tcx: self.tcx,
-                        param_env: ParamEnv::reveal_all(),
-                    }, field_idx).unwrap();
+                    let field_layout = layout
+                        .field(
+                            &layout::LayoutCx {
+                                tcx: self.tcx,
+                                param_env: ParamEnv::reveal_all(),
+                            },
+                            field_idx,
+                        )
+                        .unwrap();
 
                     let field_type = self.dwarf_ty(field_layout.ty);
 
                     let field_id = self.dwarf.unit.add(type_id, gimli::DW_TAG_member);
                     let field_entry = self.dwarf.unit.get_mut(field_id);
 
-                    field_entry.set(gimli::DW_AT_name, AttributeValue::String(field_def.ident.as_str().to_string().into_bytes()));
-                    field_entry.set(gimli::DW_AT_data_member_location, AttributeValue::Udata(field_offset.bytes()));
+                    field_entry.set(
+                        gimli::DW_AT_name,
+                        AttributeValue::String(field_def.ident.as_str().to_string().into_bytes()),
+                    );
+                    field_entry.set(
+                        gimli::DW_AT_data_member_location,
+                        AttributeValue::Udata(field_offset.bytes()),
+                    );
                     field_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(field_type));
                 }
 
@@ -238,10 +252,7 @@ impl<'tcx> DebugContext<'tcx> {
     fn define_local(&mut self, scope: UnitEntryId, name: String, ty: Ty<'tcx>) -> UnitEntryId {
         let dw_ty = self.dwarf_ty(ty);
 
-        let var_id = self
-            .dwarf
-            .unit
-            .add(scope, gimli::DW_TAG_variable);
+        let var_id = self.dwarf.unit.add(scope, gimli::DW_TAG_variable);
         let var_entry = self.dwarf.unit.get_mut(var_id);
 
         var_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
@@ -266,34 +277,23 @@ impl<'tcx> DebugContext<'tcx> {
         // FIXME: add to appropriate scope instead of root
         let scope = self.dwarf.unit.root();
 
-        let entry_id = self
-            .dwarf
-            .unit
-            .add(scope, gimli::DW_TAG_subprogram);
+        let entry_id = self.dwarf.unit.add(scope, gimli::DW_TAG_subprogram);
         let entry = self.dwarf.unit.get_mut(entry_id);
         let name_id = self.dwarf.strings.add(name);
         // Gdb requires DW_AT_name. Otherwise the DW_TAG_subprogram is skipped.
-        entry.set(
-            gimli::DW_AT_name,
-            AttributeValue::StringRef(name_id),
-        );
+        entry.set(gimli::DW_AT_name, AttributeValue::StringRef(name_id));
         entry.set(
             gimli::DW_AT_linkage_name,
             AttributeValue::StringRef(name_id),
         );
 
-        let end = self.create_debug_lines(isa, symbol, entry_id, context, mir.span, source_info_set);
+        let end =
+            self.create_debug_lines(isa, symbol, entry_id, context, mir.span, source_info_set);
 
-        self
-            .unit_range_list
-            .0
-            .push(Range::StartLength {
-                begin: Address::Symbol {
-                    symbol,
-                    addend: 0,
-                },
-                length: u64::from(end),
-            });
+        self.unit_range_list.0.push(Range::StartLength {
+            begin: Address::Symbol { symbol, addend: 0 },
+            length: u64::from(end),
+        });
 
         if isa.get_mach_backend().is_some() {
             return; // Not yet implemented for the AArch64 backend.
@@ -301,29 +301,49 @@ impl<'tcx> DebugContext<'tcx> {
 
         let func_entry = self.dwarf.unit.get_mut(entry_id);
         // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is skipped.
-        func_entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(Address::Symbol {
-            symbol,
-            addend: 0,
-        }));
+        func_entry.set(
+            gimli::DW_AT_low_pc,
+            AttributeValue::Address(Address::Symbol { symbol, addend: 0 }),
+        );
         // Using Udata for DW_AT_high_pc requires at least DWARF4
         func_entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(end)));
 
         // FIXME Remove once actual debuginfo for locals works.
-        for (i, (param, &val)) in context.func.signature.params.iter().zip(context.func.dfg.block_params(context.func.layout.entry_block().unwrap())).enumerate() {
+        for (i, (param, &val)) in context
+            .func
+            .signature
+            .params
+            .iter()
+            .zip(
+                context
+                    .func
+                    .dfg
+                    .block_params(context.func.layout.entry_block().unwrap()),
+            )
+            .enumerate()
+        {
             use cranelift_codegen::ir::ArgumentPurpose;
             let base_name = match param.purpose {
                 ArgumentPurpose::Normal => "arg",
                 ArgumentPurpose::StructArgument(_) => "struct_arg",
                 ArgumentPurpose::StructReturn => "sret",
-                ArgumentPurpose::Link | ArgumentPurpose::FramePointer | ArgumentPurpose::CalleeSaved => continue,
-                ArgumentPurpose::VMContext | ArgumentPurpose::SignatureId | ArgumentPurpose::StackLimit => unreachable!(),
+                ArgumentPurpose::Link
+                | ArgumentPurpose::FramePointer
+                | ArgumentPurpose::CalleeSaved => continue,
+                ArgumentPurpose::VMContext
+                | ArgumentPurpose::SignatureId
+                | ArgumentPurpose::StackLimit => unreachable!(),
             };
             let name = format!("{}{}", base_name, i);
 
             let dw_ty = self.dwarf_ty_for_clif_ty(param.value_type);
-            let loc = translate_loc(isa, context.func.locations[val], &context.func.stack_slots).unwrap();
+            let loc =
+                translate_loc(isa, context.func.locations[val], &context.func.stack_slots).unwrap();
 
-            let arg_id = self.dwarf.unit.add(entry_id, gimli::DW_TAG_formal_parameter);
+            let arg_id = self
+                .dwarf
+                .unit
+                .add(entry_id, gimli::DW_TAG_formal_parameter);
             let var_entry = self.dwarf.unit.get_mut(arg_id);
 
             var_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
@@ -371,8 +391,10 @@ fn place_location<'tcx>(
     symbol: usize,
     context: &Context,
     local_map: &FxHashMap<mir::Local, CPlace<'tcx>>,
-    #[allow(rustc::default_hash_types)]
-    value_labels_ranges: &std::collections::HashMap<ValueLabel, Vec<ValueLocRange>>,
+    #[allow(rustc::default_hash_types)] value_labels_ranges: &std::collections::HashMap<
+        ValueLabel,
+        Vec<ValueLocRange>,
+    >,
     place: Place<'tcx>,
 ) -> AttributeValue {
     assert!(place.projection.is_empty()); // FIXME implement them
@@ -393,7 +415,12 @@ fn place_location<'tcx>(
                                 symbol,
                                 addend: i64::from(value_loc_range.end),
                             },
-                            data: translate_loc(isa, value_loc_range.loc, &context.func.stack_slots).unwrap(),
+                            data: translate_loc(
+                                isa,
+                                value_loc_range.loc,
+                                &context.func.stack_slots,
+                            )
+                            .unwrap(),
                         })
                         .collect(),
                 );
@@ -428,7 +455,11 @@ fn place_location<'tcx>(
 }
 
 // Adapted from https://github.com/CraneStation/wasmtime/blob/5a1845b4caf7a5dba8eda1fef05213a532ed4259/crates/debug/src/transform/expression.rs#L59-L137
-fn translate_loc(isa: &dyn TargetIsa, loc: ValueLoc, stack_slots: &StackSlots) -> Option<Expression> {
+fn translate_loc(
+    isa: &dyn TargetIsa,
+    loc: ValueLoc,
+    stack_slots: &StackSlots,
+) -> Option<Expression> {
     match loc {
         ValueLoc::Reg(reg) => {
             let machine_reg = isa.map_dwarf_register(reg).unwrap();
