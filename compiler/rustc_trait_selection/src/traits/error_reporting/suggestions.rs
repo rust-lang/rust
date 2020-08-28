@@ -4,9 +4,11 @@ use super::{
 };
 
 use crate::autoderef::Autoderef;
-use crate::infer::InferCtxt;
-use crate::traits::normalize_projection_type;
+use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::{InferCtxt, InferOk};
+use crate::traits::{self, normalize_projection_type};
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
@@ -15,6 +17,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
+use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{
     self, suggest_constraining_type_param, AdtKind, DefIdTree, Infer, InferTy, ToPredicate, Ty,
     TyCtxt, TypeFoldable, WithConstness,
@@ -23,6 +26,7 @@ use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
+use std::cmp::Ordering;
 use std::fmt;
 
 use super::InferCtxtPrivExt;
@@ -38,6 +42,13 @@ pub enum GeneratorInteriorOrUpvar {
 
 // This trait is public to expose the diagnostics methods to clippy.
 pub trait InferCtxtExt<'tcx> {
+    fn get_turbofish_suggestions(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        data: ty::TraitPredicate<'tcx>,
+        self_ty: Ty<'tcx>,
+    ) -> Vec<String>;
+
     fn suggest_restricting_param_bound(
         &self,
         err: &mut DiagnosticBuilder<'_>,
@@ -317,6 +328,100 @@ fn suggest_restriction(
 }
 
 impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
+    /// Try to find possible types that would satisfy the bounds in the type param to give an
+    /// appropriate turbofish suggestion.
+    fn get_turbofish_suggestions(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        data: ty::TraitPredicate<'tcx>,
+        self_ty: Ty<'tcx>,
+    ) -> Vec<String> {
+        let mut turbofish_suggestions = FxHashSet::default();
+        self.tcx.for_each_relevant_impl(data.trait_ref.def_id, self_ty, |impl_def_id| {
+            let param_env = ty::ParamEnv::empty();
+            let param_env = param_env.subst(self.tcx, data.trait_ref.substs);
+            let ty = self.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::NormalizeProjectionType,
+                span: DUMMY_SP,
+            });
+
+            let impl_substs = self.fresh_substs_for_item(obligation.cause.span, impl_def_id);
+            let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
+            let trait_ref = trait_ref.subst(self.tcx, impl_substs);
+
+            // Require the type the impl is implemented on to match
+            // our type, and ignore the impl if there was a mismatch.
+            let cause = traits::ObligationCause::dummy();
+            let eq_result = self.at(&cause, param_env).eq(trait_ref.self_ty(), ty);
+            if let Ok(InferOk { value: (), obligations }) = eq_result {
+                // FIXME: ignoring `obligations` might cause false positives.
+                drop(obligations);
+
+                let can_impl = match self.evaluate_obligation(&Obligation::new(
+                    cause,
+                    obligation.param_env,
+                    trait_ref.without_const().to_predicate(self.tcx),
+                )) {
+                    Ok(eval_result) => eval_result.may_apply(),
+                    Err(traits::OverflowError) => true, // overflow doesn't mean yes *or* no
+                };
+                if can_impl
+                    && data.trait_ref.substs.iter().zip(trait_ref.substs.iter()).all(|(l, r)| {
+                        // FIXME: ideally we would use `can_coerce` here instead, but `typeck`
+                        // comes *after* in the dependency graph.
+                        match (l.unpack(), r.unpack()) {
+                            (GenericArgKind::Type(left_ty), GenericArgKind::Type(right_ty)) => {
+                                match (&left_ty.peel_refs().kind(), &right_ty.peel_refs().kind()) {
+                                    (Infer(_), _) | (_, Infer(_)) => true,
+                                    (left_kind, right_kind) => left_kind == right_kind,
+                                }
+                            }
+                            (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_))
+                            | (GenericArgKind::Const(_), GenericArgKind::Const(_)) => true,
+                            _ => false,
+                        }
+                    })
+                    && !matches!(trait_ref.self_ty().kind(), ty::Infer(_))
+                {
+                    turbofish_suggestions.insert(trait_ref.self_ty());
+                }
+            }
+        });
+        // Sort types by always suggesting `Vec<_>` and `String` first, as they are the
+        // most likely desired types.
+        let mut turbofish_suggestions = turbofish_suggestions.into_iter().collect::<Vec<_>>();
+        turbofish_suggestions.sort_by(|left, right| {
+            let vec_type = self.tcx.get_diagnostic_item(sym::vec_type);
+            let string_type = self.tcx.get_diagnostic_item(sym::string_type);
+            match (&left.kind(), &right.kind()) {
+                (
+                    ty::Adt(ty::AdtDef { did: left, .. }, _),
+                    ty::Adt(ty::AdtDef { did: right, .. }, _),
+                ) if left == right => Ordering::Equal,
+                (
+                    ty::Adt(ty::AdtDef { did: left, .. }, _),
+                    ty::Adt(ty::AdtDef { did: right, .. }, _),
+                ) if Some(*left) == vec_type && Some(*right) == string_type => Ordering::Less,
+                (
+                    ty::Adt(ty::AdtDef { did: left, .. }, _),
+                    ty::Adt(ty::AdtDef { did: right, .. }, _),
+                ) if Some(*right) == vec_type && Some(*left) == string_type => Ordering::Greater,
+                (ty::Adt(ty::AdtDef { did, .. }, _), _)
+                    if Some(*did) == vec_type || Some(*did) == string_type =>
+                {
+                    Ordering::Less
+                }
+                (_, ty::Adt(ty::AdtDef { did, .. }, _))
+                    if Some(*did) == vec_type || Some(*did) == string_type =>
+                {
+                    Ordering::Greater
+                }
+                _ => left.cmp(right),
+            }
+        });
+        turbofish_suggestions.into_iter().map(|ty| ty.to_string()).collect()
+    }
+
     fn suggest_restricting_param_bound(
         &self,
         mut err: &mut DiagnosticBuilder<'_>,

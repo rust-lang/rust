@@ -7,8 +7,15 @@ LL |         vec![1, 2, 3].into_iter().collect();
    = note: cannot satisfy `_: std::iter::FromIterator<i32>`
 help: consider specifying the type argument in the method call
    |
-LL |         vec![1, 2, 3].into_iter().collect::<B>();
-   |                                          ^^^^^
+LL |         vec![1, 2, 3].into_iter().collect::<std::vec::Vec<_>>();
+   |                                          ^^^^^^^^^^^^^^^^^^^^
+LL |         vec![1, 2, 3].into_iter().collect::<std::collections::HashSet<_, _>>();
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         vec![1, 2, 3].into_iter().collect::<std::path::PathBuf>();
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^
+LL |         vec![1, 2, 3].into_iter().collect::<std::boxed::Box<[_]>>();
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^
+     and 8 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:6:41
@@ -19,8 +26,15 @@ LL |         vec!["a", "b", "c"].into_iter().collect();
    = note: cannot satisfy `_: std::iter::FromIterator<&str>`
 help: consider specifying the type argument in the method call
    |
-LL |         vec!["a", "b", "c"].into_iter().collect::<B>();
-   |                                                ^^^^^
+LL |         vec!["a", "b", "c"].into_iter().collect::<std::vec::Vec<_>>();
+   |                                                ^^^^^^^^^^^^^^^^^^^^
+LL |         vec!["a", "b", "c"].into_iter().collect::<std::string::String>();
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^
+LL |         vec!["a", "b", "c"].into_iter().collect::<std::collections::HashSet<_, _>>();
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         vec!["a", "b", "c"].into_iter().collect::<std::path::PathBuf>();
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^
+     and 10 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:9:41
@@ -31,8 +45,15 @@ LL |         vec!['a', 'b', 'c'].into_iter().collect();
    = note: cannot satisfy `_: std::iter::FromIterator<char>`
 help: consider specifying the type argument in the method call
    |
-LL |         vec!['a', 'b', 'c'].into_iter().collect::<B>();
-   |                                                ^^^^^
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<std::vec::Vec<_>>();
+   |                                                ^^^^^^^^^^^^^^^^^^^^
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<std::string::String>();
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<std::collections::HashSet<_, _>>();
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<std::path::PathBuf>();
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^
+     and 10 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/appropriate-type-param-turbofish.rs:14:43
@@ -76,7 +97,7 @@ LL |     x();
    = note: cannot satisfy `_: T`
 help: consider specifying the type argument in the function call
    |
-LL |     x::<X>();
+LL |     x::<S>();
    |      ^^^^^
 
 error[E0283]: type annotations needed
@@ -93,7 +114,7 @@ LL |     let _ = x();
    = note: cannot satisfy `_: T`
 help: consider specifying the type argument in the function call
    |
-LL |     let _ = x::<X>();
+LL |     let _ = x::<S>();
    |              ^^^^^
 
 error: aborting due to 8 previous errors

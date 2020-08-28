@@ -34,7 +34,7 @@ use crate::traits::query::normalize::AtExt as _;
 use on_unimplemented::InferCtxtExt as _;
 use suggestions::InferCtxtExt as _;
 
-pub use rustc_infer::traits::error_reporting::*;
+pub use rustc_infer::traits::{self, error_reporting::*};
 
 pub trait InferCtxtExt<'tcx> {
     fn report_fulfillment_errors(
@@ -1505,12 +1505,23 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
                 if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
-                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0282).emit();
+                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0282, vec![])
+                        .emit();
                     return;
                 }
-                let mut err =
-                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0283);
+                // Try to find possible types that would satisfy the bounds in the type param to
+                // give an appropriate turbofish suggestion.
+                let turbofish_suggestions =
+                    self.get_turbofish_suggestions(obligation, data, self_ty);
+                let mut err = self.emit_inference_failure_err(
+                    body_id,
+                    span,
+                    subst,
+                    ErrorCode::E0283,
+                    turbofish_suggestions.clone(),
+                );
                 err.note(&format!("cannot satisfy `{}`", predicate));
+
                 if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 } else if let (
@@ -1544,23 +1555,44 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                         //    |
                         //    = note: cannot satisfy `_: Tt`
 
-                        err.span_suggestion_verbose(
-                            span.shrink_to_hi(),
-                            &format!(
-                                "consider specifying the type argument{} in the function call",
-                                pluralize!(generics.params.len()),
-                            ),
-                            format!(
-                                "::<{}>",
-                                generics
-                                    .params
-                                    .iter()
-                                    .map(|p| p.name.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join(", ")
-                            ),
-                            Applicability::HasPlaceholders,
+                        let msg = format!(
+                            "consider specifying the type argument{} in the function call",
+                            pluralize!(generics.params.len()),
                         );
+                        if turbofish_suggestions.is_empty() {
+                            err.span_suggestion_verbose(
+                                span.shrink_to_hi(),
+                                &msg,
+                                format!(
+                                    "::<{}>",
+                                    generics
+                                        .params
+                                        .iter()
+                                        .map(|p| p.name.to_string())
+                                        .collect::<Vec<String>>()
+                                        .join(", ")
+                                ),
+                                Applicability::HasPlaceholders,
+                            );
+                        } else {
+                            if turbofish_suggestions.len() == 1 {
+                                err.span_suggestion_verbose(
+                                    span.shrink_to_hi(),
+                                    &msg,
+                                    format!("::<{}>", turbofish_suggestions[0]),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            } else {
+                                err.span_suggestions(
+                                    span.shrink_to_hi(),
+                                    &msg,
+                                    turbofish_suggestions
+                                        .into_iter()
+                                        .map(|ty| format!("::<{}>", ty)),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        }
                     }
                 }
                 err
@@ -1573,7 +1605,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                self.emit_inference_failure_err(body_id, span, arg, ErrorCode::E0282)
+                self.emit_inference_failure_err(body_id, span, arg, ErrorCode::E0282, vec![])
             }
 
             ty::PredicateAtom::Subtype(data) => {
@@ -1584,7 +1616,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
-                self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282)
+                self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282, vec![])
             }
             ty::PredicateAtom::Projection(data) => {
                 let trait_ref = bound_predicate.rebind(data).to_poly_trait_ref(self.tcx);
@@ -1600,6 +1632,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span,
                         self_ty.into(),
                         ErrorCode::E0284,
+                        vec![],
                     );
                     err.note(&format!("cannot satisfy `{}`", predicate));
                     err

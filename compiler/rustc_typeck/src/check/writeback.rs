@@ -656,6 +656,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     self.span.to_span(self.tcx),
                     t.into(),
                     E0282,
+                    vec![],
                 )
                 .emit();
         }
@@ -669,6 +670,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     self.span.to_span(self.tcx),
                     c.into(),
                     E0282,
+                    vec![],
                 )
                 .emit();
         }
