@@ -101,7 +101,7 @@ pub fn spin_loop() {
 /// [`std::convert::identity`]: https://doc.rust-lang.org/core/convert/fn.identity.html
 ///
 /// Unlike [`std::convert::identity`], a Rust compiler is encouraged to assume that `black_box` can
-/// use `x` in any possible valid way that Rust code is allowed to without introducing undefined
+/// use `dummy` in any possible valid way that Rust code is allowed to without introducing undefined
 /// behavior in the calling code. This property makes `black_box` useful for writing code in which
 /// certain optimizations are not desired, such as benchmarks.
 ///
