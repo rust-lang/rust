@@ -103,15 +103,6 @@ x--expand-yaml-anchors--remove:
         with:
           fetch-depth: 2
 
-      - name: configure GitHub Actions to kill the build when outdated
-        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
-        with:
-          github_token: "${{ secrets.github_token }}"
-        # TODO: remove the condition on RUST_CI_TEMP_SKIP_CANCEL_OUTDATED once
-        # we remove the `auto-fallible` job.
-        if: success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED
-        <<: *step
-
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
       # Actions build on its own, so a hint in the log message is needed to
       # point it in the right direction.
@@ -133,6 +124,15 @@ x--expand-yaml-anchors--remove:
 
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
+        <<: *step
+
+      - name: configure GitHub Actions to kill the build when outdated
+        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+        with:
+          github_token: "${{ secrets.github_token }}"
+        # TODO: remove the condition on RUST_CI_TEMP_SKIP_CANCEL_OUTDATED once
+        # we remove the `auto-fallible` job.
+        if: success() && !env.SKIP_JOB && github.ref != 'refs/heads/try' && !env.RUST_CI_TEMP_SKIP_CANCEL_OUTDATED
         <<: *step
 
       - name: collect CPU statistics
