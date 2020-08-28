@@ -1,4 +1,4 @@
-#[rustfmt::skip]
+#![rustfmt::skip]
 
 use rustc_span::symbol::{sym, Symbol};
 
