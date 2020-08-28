@@ -929,8 +929,15 @@ impl<'a> Resolver<'a> {
         );
         self.add_typo_suggestion(err, suggestion, ident.span);
 
-        let import_suggestions =
-            self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, |_| true);
+        let import_suggestions = self.lookup_import_candidates(
+            ident,
+            Namespace::MacroNS,
+            parent_scope,
+            |res| match res {
+                Res::Def(DefKind::Macro(MacroKind::Bang), _) => true,
+                _ => false,
+            },
+        );
         show_candidates(err, None, &import_suggestions, false, true);
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
