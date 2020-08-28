@@ -79,13 +79,9 @@ error: unresolved link to `S`
   --> $DIR/intra-link-errors.rs:44:6
    |
 LL | /// [S!]
-   |      ^^
+   |      ^^ help: to link to the struct, prefix with `struct@`: `struct@S`
    |
    = note: this link resolves to the struct `S`, which is not in the macro namespace
-help: to link to the struct, prefix with the item kind
-   |
-LL | /// [struct@S]
-   |      ^^^^^^^^
 
 error: unresolved link to `T::g`
   --> $DIR/intra-link-errors.rs:62:6

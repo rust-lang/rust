@@ -1328,21 +1328,16 @@ impl Disambiguator {
         }
     }
 
-    /// Return (description of the change, suggestion)
-    fn suggestion_for(self, path_str: &str) -> (&'static str, String) {
-        const PREFIX: &str = "prefix with the item kind";
-        const FUNCTION: &str = "add parentheses";
-        const MACRO: &str = "add an exclamation mark";
-
+    fn suggestion(self) -> Suggestion {
         let kind = match self {
-            Disambiguator::Primitive => return (PREFIX, format!("prim@{}", path_str)),
+            Disambiguator::Primitive => return Suggestion::Prefix("prim"),
             Disambiguator::Kind(kind) => kind,
             Disambiguator::Namespace(_) => panic!("display_for cannot be used on namespaces"),
         };
         if kind == DefKind::Macro(MacroKind::Bang) {
-            return (MACRO, format!("{}!", path_str));
+            return Suggestion::Macro;
         } else if kind == DefKind::Fn || kind == DefKind::AssocFn {
-            return (FUNCTION, format!("{}()", path_str));
+            return Suggestion::Function;
         }
 
         let prefix = match kind {
@@ -1367,8 +1362,7 @@ impl Disambiguator {
             },
         };
 
-        // FIXME: if this is an implied shortcut link, it's bad style to suggest `@`
-        (PREFIX, format!("{}@{}", prefix, path_str))
+        Suggestion::Prefix(prefix)
     }
 
     fn ns(self) -> Namespace {
@@ -1396,6 +1390,31 @@ impl Disambiguator {
             // for `expected.descr()` doesn't matter, since it's not a crate
             Self::Kind(k) => k.descr(DefId::local(hir::def_id::DefIndex::from_usize(0))),
             Self::Primitive => "builtin type",
+        }
+    }
+}
+
+enum Suggestion {
+    Prefix(&'static str),
+    Function,
+    Macro,
+}
+
+impl Suggestion {
+    fn descr(&self) -> Cow<'static, str> {
+        match self {
+            Self::Prefix(x) => format!("prefix with `{}@`", x).into(),
+            Self::Function => "add parentheses".into(),
+            Self::Macro => "add an exclamation mark".into(),
+        }
+    }
+
+    fn as_help(&self, path_str: &str) -> String {
+        // FIXME: if this is an implied shortcut link, it's bad style to suggest `@`
+        match self {
+            Self::Prefix(prefix) => format!("{}@{}", prefix, path_str),
+            Self::Function => format!("{}()", path_str),
+            Self::Macro => format!("{}!", path_str),
         }
     }
 }
@@ -1695,18 +1714,20 @@ fn suggest_disambiguator(
     sp: Option<rustc_span::Span>,
     link_range: &Option<Range<usize>>,
 ) {
-    let (action, mut suggestion) = disambiguator.suggestion_for(path_str);
-    let help = format!("to link to the {}, {}", disambiguator.descr(), action);
+    let suggestion = disambiguator.suggestion();
+    let help = format!("to link to the {}, {}", disambiguator.descr(), suggestion.descr());
 
     if let Some(sp) = sp {
         let link_range = link_range.as_ref().expect("must have a link range if we have a span");
-        if dox.bytes().nth(link_range.start) == Some(b'`') {
-            suggestion = format!("`{}`", suggestion);
-        }
+        let msg = if dox.bytes().nth(link_range.start) == Some(b'`') {
+            format!("`{}`", suggestion.as_help(path_str))
+        } else {
+            suggestion.as_help(path_str)
+        };
 
-        diag.span_suggestion(sp, &help, suggestion, Applicability::MaybeIncorrect);
+        diag.span_suggestion(sp, &help, msg, Applicability::MaybeIncorrect);
     } else {
-        diag.help(&format!("{}: {}", help, suggestion));
+        diag.help(&format!("{}: {}", help, suggestion.as_help(path_str)));
     }
 }
 

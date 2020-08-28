@@ -42,7 +42,7 @@
 
 /// [S!]
 //~^ ERROR unresolved link
-//~| HELP to link to the struct, prefix with the item kind
+//~| HELP to link to the struct, prefix with `struct@`
 //~| NOTE this link resolves to the struct `S`
 pub fn f() {}
 #[derive(Debug)]
