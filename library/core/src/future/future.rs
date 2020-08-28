@@ -23,7 +23,7 @@ use crate::task::{Context, Poll};
 /// When using a future, you generally won't call `poll` directly, but instead
 /// `.await` the value.
 ///
-/// [`Waker`]: ../task/struct.Waker.html
+/// [`Waker`]: crate::task::Waker
 #[doc(spotlight)]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 #[stable(feature = "futures_api", since = "1.36.0")]
@@ -91,11 +91,9 @@ pub trait Future {
     /// (memory corruption, incorrect use of `unsafe` functions, or the like),
     /// regardless of the future's state.
     ///
-    /// [`Poll::Pending`]: ../task/enum.Poll.html#variant.Pending
-    /// [`Poll::Ready(val)`]: ../task/enum.Poll.html#variant.Ready
-    /// [`Context`]: ../task/struct.Context.html
-    /// [`Waker`]: ../task/struct.Waker.html
-    /// [`Waker::wake`]: ../task/struct.Waker.html#method.wake
+    /// [`Poll::Ready(val)`]: Poll::Ready
+    /// [`Waker`]: crate::task::Waker
+    /// [`Waker::wake`]: crate::task::Waker::wake
     #[lang = "poll"]
     #[stable(feature = "futures_api", since = "1.36.0")]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
