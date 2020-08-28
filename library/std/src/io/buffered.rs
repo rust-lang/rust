@@ -527,7 +527,8 @@ impl<W: Write> BufWriter<W> {
     /// errors from this method.
     fn flush_buf(&mut self) -> io::Result<()> {
         /// Helper struct to ensure the buffer is updated after all the writes
-        /// are complete
+        /// are complete. It tracks the number of written bytes and drains them
+        /// all from the front of the buffer when dropped.
         struct BufGuard<'a> {
             buffer: &'a mut Vec<u8>,
             written: usize,
@@ -942,12 +943,13 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     /// success, the remaining data will be buffered.
     ///
     /// Because this function attempts to send completed lines to the underlying
-    /// writer, it will also flush the existing buffer if it contains any
-    /// newlines, even if the incoming data does not contain any newlines.
+    /// writer, it will also flush the existing buffer if it ends with a
+    /// newline, even if the incoming data does not contain any newlines.
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let newline_idx = match memchr::memrchr(b'\n', buf) {
             // If there are no new newlines (that is, if this write is less than
-            // one line), just do a regular buffered write
+            // one line), just do a regular buffered write (which may flush if
+            // we exceed the inner buffer's size)
             None => {
                 self.flush_if_completed_line()?;
                 return self.buffer.write(buf);
@@ -957,7 +959,11 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
             Some(newline_idx) => newline_idx + 1,
         };
 
-        // Flush existing content to prepare for our write
+        // Flush existing content to prepare for our write. We have to do this
+        // before attempting to write `buf` in order to maintain consistency;
+        // if we add `buf` to the buffer then try to flush it all at once,
+        // we're obligated to return Ok(), which would mean supressing any
+        // errors that occur during flush.
         self.buffer.flush_buf()?;
 
         // This is what we're going to try to write directly to the inner
@@ -1121,32 +1127,33 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     /// writer, it will also flush the existing buffer if it contains any
     /// newlines, even if the incoming data does not contain any newlines.
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        let newline_idx = match memchr::memrchr(b'\n', buf) {
+        match memchr::memrchr(b'\n', buf) {
             // If there are no new newlines (that is, if this write is less than
-            // one line), just do a regular buffered write
+            // one line), just do a regular buffered write (which may flush if
+            // we exceed the inner buffer's size)
             None => {
                 self.flush_if_completed_line()?;
-                return self.buffer.write_all(buf);
+                self.buffer.write_all(buf)
             }
-            // Otherwise, arrange for the lines to be written directly to the
-            // inner writer.
-            Some(newline_idx) => newline_idx,
-        };
+            Some(newline_idx) => {
+                let (lines, tail) = buf.split_at(newline_idx + 1);
 
-        // Flush existing content to prepare for our write
-        self.buffer.flush_buf()?;
+                if self.buffered().is_empty() {
+                    self.inner_mut().write_all(lines)?;
+                } else {
+                    // If there is any buffered data, we add the incoming lines
+                    // to that buffer before flushing, which saves us at lease
+                    // one write call. We can't really do this with `write`,
+                    // since we can't do this *and* not suppress errors *and*
+                    // report a consistent state to the caller in a return
+                    // value, but here in write_all it's fine.
+                    self.buffer.write_all(lines)?;
+                    self.buffer.flush_buf()?;
+                }
 
-        // This is what we're going to try to write directly to the inner
-        // writer. The rest will be buffered, if nothing goes wrong.
-        let (lines, tail) = buf.split_at(newline_idx + 1);
-
-        // Write `lines` directly to the inner writer, bypassing the buffer.
-        self.inner_mut().write_all(lines)?;
-
-        // Now that the write has succeeded, buffer the rest with
-        // BufWriter::write_all. This will buffer as much as possible, but
-        // continue flushing as necessary if our tail is huge.
-        self.buffer.write_all(tail)
+                self.buffer.write_all(tail)
+            }
+        }
     }
 }
 
@@ -1401,7 +1408,11 @@ mod tests {
     // rustfmt-on-save.
     impl Read for ShortReader {
         fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-            if self.lengths.is_empty() { Ok(0) } else { Ok(self.lengths.remove(0)) }
+            if self.lengths.is_empty() {
+                Ok(0)
+            } else {
+                Ok(self.lengths.remove(0))
+            }
         }
     }
 
@@ -2259,5 +2270,47 @@ mod tests {
 
         writer.flush().unwrap();
         assert_eq!(writer.get_ref().buffer, *b"AAAAABBBBB");
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    enum RecordedEvent {
+        Write(String),
+        Flush,
+    }
+
+    #[derive(Debug, Clone, Default)]
+    struct WriteRecorder {
+        pub events: Vec<RecordedEvent>,
+    }
+
+    impl Write for WriteRecorder {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            use crate::str::from_utf8;
+
+            self.events.push(RecordedEvent::Write(from_utf8(buf).unwrap().to_string()));
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            self.events.push(RecordedEvent::Flush);
+            Ok(())
+        }
+    }
+
+    /// Test that a normal, formatted writeln only results in a single write
+    /// call to the underlying writer. A naive implementaton of
+    /// LineWriter::write_all results in two writes: one of the buffered data,
+    /// and another of the final substring in the formatted set
+    #[test]
+    fn single_formatted_write() {
+        let writer = WriteRecorder::default();
+        let mut writer = LineWriter::new(writer);
+
+        // Under a naive implementation of LineWriter, this will result in two
+        // writes: "hello, world" and "!\n", because write() has to flush the
+        // buffer before attempting to write the last "!\n". write_all shouldn't
+        // have this limitation.
+        writeln!(&mut writer, "{}, {}!", "hello", "world").unwrap();
+        assert_eq!(writer.get_ref().events, [RecordedEvent::Write("hello, world!\n".to_string())]);
     }
 }
