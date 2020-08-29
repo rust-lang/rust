@@ -1290,7 +1290,7 @@ h4 > .notable-traits {
 #theme-choices > button {
 	border: none;
 	width: 100%;
-	padding: 4px;
+	padding: 4px 8px;
 	text-align: center;
 	background: rgba(0,0,0,0);
 }
