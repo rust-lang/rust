@@ -326,7 +326,7 @@ impl<T> Rc<T> {
     }
 
     /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
-    /// to upgrade the weak reference before this function retuns will result
+    /// to upgrade the weak reference before this function returns will result
     /// in a `None` value. However, the weak reference may be cloned freely and
     /// stored for use at a later time.
     #[inline]
