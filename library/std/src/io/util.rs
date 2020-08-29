@@ -55,18 +55,18 @@ where
     // to uninitialized data, but within libstd we can rely on more guarantees
     // than if this code were in an external lib.
     unsafe {
-        reader.initializer().initialize(buf.get_mut());
+        reader.initializer().initialize(buf.assume_init_mut());
     }
 
     let mut written = 0;
     loop {
-        let len = match reader.read(unsafe { buf.get_mut() }) {
+        let len = match reader.read(unsafe { buf.assume_init_mut() }) {
             Ok(0) => return Ok(written),
             Ok(len) => len,
             Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         };
-        writer.write_all(unsafe { &buf.get_ref()[..len] })?;
+        writer.write_all(unsafe { &buf.assume_init_ref()[..len] })?;
         written += len as u64;
     }
 }

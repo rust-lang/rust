@@ -28,8 +28,8 @@ where
             *num,
             sign,
             precision,
-            buf.get_mut(),
-            parts.get_mut(),
+            buf.assume_init_mut(),
+            parts.assume_init_mut(),
         );
         fmt.pad_formatted_parts(&formatted)
     }
@@ -58,8 +58,8 @@ where
             *num,
             sign,
             precision,
-            buf.get_mut(),
-            parts.get_mut(),
+            buf.assume_init_mut(),
+            parts.assume_init_mut(),
         );
         fmt.pad_formatted_parts(&formatted)
     }
@@ -114,8 +114,8 @@ where
             sign,
             precision,
             upper,
-            buf.get_mut(),
-            parts.get_mut(),
+            buf.assume_init_mut(),
+            parts.assume_init_mut(),
         );
         fmt.pad_formatted_parts(&formatted)
     }
@@ -145,8 +145,8 @@ where
             sign,
             (0, 0),
             upper,
-            buf.get_mut(),
-            parts.get_mut(),
+            buf.assume_init_mut(),
+            parts.assume_init_mut(),
         );
         fmt.pad_formatted_parts(&formatted)
     }
