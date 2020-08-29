@@ -117,7 +117,6 @@ use crate::raw_vec::RawVec;
 ///
 /// // The following is equivalent, but potentially slower:
 /// let mut vec = Vec::with_capacity(5);
-/// assert_eq!(vec, []);
 /// vec.resize(5, 0);
 /// assert_eq!(vec, [0, 0, 0, 0, 0]);
 /// ```
