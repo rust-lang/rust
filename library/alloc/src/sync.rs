@@ -540,7 +540,7 @@ impl<T> Arc<T> {
     ///
     /// The similar expression `Arc::try_unwrap(this).ok()` does not
     /// offer such a guarantee. See the last example below and the documentation
-    /// of `try_unwrap`[`Arc::try_unwrap`].
+    /// of [`try_unwrap`][`Arc::try_unwrap`].
     ///
     /// # Examples
     ///
