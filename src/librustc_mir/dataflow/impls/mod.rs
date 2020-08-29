@@ -71,11 +71,17 @@ pub struct MaybeInitializedPlaces<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
+    mark_inactive_variants_as_uninit: bool,
 }
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
-        MaybeInitializedPlaces { tcx, body, mdpe }
+        MaybeInitializedPlaces { tcx, body, mdpe, mark_inactive_variants_as_uninit: false }
+    }
+
+    pub fn mark_inactive_variants_as_uninit(mut self, yes: bool) -> Self {
+        self.mark_inactive_variants_as_uninit = yes;
+        self
     }
 }
 
@@ -138,8 +144,8 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
     ///
     /// This is correct in a vacuum but is not the default because it causes problems in the borrow
     /// checker, where this information gets propagated along `FakeEdge`s.
-    pub fn mark_inactive_variants_as_uninit(mut self) -> Self {
-        self.mark_inactive_variants_as_uninit = true;
+    pub fn mark_inactive_variants_as_uninit(mut self, yes: bool) -> Self {
+        self.mark_inactive_variants_as_uninit = yes;
         self
     }
 }
@@ -362,6 +368,10 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         _adt: &ty::AdtDef,
         variant: VariantIdx,
     ) {
+        if !self.mark_inactive_variants_as_uninit {
+            return;
+        }
+
         // Kill all move paths that correspond to variants we know to be inactive along this
         // particular outgoing edge of a `SwitchInt`.
         drop_flag_effects::on_all_inactive_variants(

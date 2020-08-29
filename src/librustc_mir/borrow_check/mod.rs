@@ -204,6 +204,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mdpe = MoveDataParamEnv { move_data, param_env };
 
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, &body, &mdpe)
+        .mark_inactive_variants_as_uninit(true)
         .into_engine(tcx, &body, def.did.to_def_id())
         .iterate_to_fixpoint()
         .into_results_cursor(&body);
