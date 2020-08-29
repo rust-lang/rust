@@ -9,7 +9,7 @@
 //!
 //! # Examples
 //!
-//! You can explicitly create a [`Vec<T>`] with [`new`]:
+//! You can explicitly create a [`Vec`] with [`Vec::new`]:
 //!
 //! ```
 //! let v: Vec<i32> = Vec::new();
@@ -50,8 +50,6 @@
 //! v[1] = v[1] + 5;
 //! ```
 //!
-//! [`Vec<T>`]: Vec
-//! [`new`]: Vec::new
 //! [`push`]: Vec::push
 
 #![stable(feature = "rust1", since = "1.0.0")]
