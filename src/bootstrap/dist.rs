@@ -647,6 +647,7 @@ impl Step for DebuggerScripts {
 
             cp_debugger_script("lldb_lookup.py");
             cp_debugger_script("lldb_providers.py");
+            cp_debugger_script("lldb_commands")
         }
     }
 }
