@@ -178,11 +178,9 @@ impl Step for Llvm {
             .define("LLVM_TARGET_ARCH", target_native.split('-').next().unwrap())
             .define("LLVM_DEFAULT_TARGET_TRIPLE", target_native);
 
-        if !target.contains("netbsd") && target != "aarch64-apple-darwin" {
+        if target != "aarch64-apple-darwin" {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {
-            // FIXME: Enable zlib on NetBSD too
-            // https://github.com/rust-lang/rust/pull/72696#issuecomment-641517185
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
         }
 
