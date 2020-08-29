@@ -1610,6 +1610,8 @@ impl<T: Clone> Vec<T> {
     /// vec.extend_from_slice(&[2, 3, 4]);
     /// assert_eq!(vec, [1, 2, 3, 4]);
     /// ```
+    ///
+    /// [`extend`]: Vec::extend
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
