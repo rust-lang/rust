@@ -197,7 +197,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn with_hasher(hasher: S) -> Self {
+    pub const fn with_hasher(hasher: S) -> Self {
         Self {
             map: HashMap::with_hasher(hasher),
         }
@@ -2095,5 +2095,27 @@ mod test_set {
             drop(set.drain_filter(|&k| k % 2 == 0));
             assert_eq!(set.len(), 4, "Removes non-matching items on drop");
         }
+    }
+
+    #[test]
+    fn test_const_with_hasher() {
+        use core::hash::BuildHasher;
+        use std::collections::hash_map::DefaultHasher;
+
+        #[derive(Clone)]
+        struct MyHasher;
+        impl BuildHasher for MyHasher {
+            type Hasher = DefaultHasher;
+
+            fn build_hasher(&self) -> DefaultHasher {
+                DefaultHasher::new()
+            }
+        }
+
+        const EMPTY_SET: HashSet<u32, MyHasher> = HashSet::with_hasher(MyHasher);
+
+        let mut set = EMPTY_SET.clone();
+        set.insert(19);
+        assert!(set.contains(&19));
     }
 }

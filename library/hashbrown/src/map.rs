@@ -275,7 +275,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn with_hasher(hash_builder: S) -> Self {
+    pub const fn with_hasher(hash_builder: S) -> Self {
         Self {
             hash_builder,
             table: RawTable::new(),
@@ -4499,5 +4499,29 @@ mod test_map {
             // just for safety:
             assert_eq!(m.table.len(), left);
         }
+    }
+
+    #[test]
+    fn test_const_with_hasher() {
+        use core::hash::BuildHasher;
+        use std::borrow::ToOwned;
+        use std::collections::hash_map::DefaultHasher;
+
+        #[derive(Clone)]
+        struct MyHasher;
+        impl BuildHasher for MyHasher {
+            type Hasher = DefaultHasher;
+
+            fn build_hasher(&self) -> DefaultHasher {
+                DefaultHasher::new()
+            }
+        }
+
+        const EMPTY_MAP: HashMap<u32, std::string::String, MyHasher> =
+            HashMap::with_hasher(MyHasher);
+
+        let mut map = EMPTY_MAP.clone();
+        map.insert(17, "seventeen".to_owned());
+        assert_eq!("seventeen", map[&17]);
     }
 }

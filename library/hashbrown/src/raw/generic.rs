@@ -47,20 +47,20 @@ impl Group {
     pub const WIDTH: usize = mem::size_of::<Self>();
 
     /// Returns a full group of empty bytes, suitable for use as the initial
-    /// value for an empty hash table. This value is explicitly declared as
-    /// a static variable to ensure the address is consistent across dylibs.
+    /// value for an empty hash table.
     ///
     /// This is guaranteed to be aligned to the group size.
-    #[inline]
-    pub fn static_empty() -> &'static [u8] {
-        union AlignedBytes {
-            _align: Group,
+    pub const fn static_empty() -> &'static [u8; Group::WIDTH] {
+        #[repr(C)]
+        struct AlignedBytes {
+            _align: [Group; 0],
             bytes: [u8; Group::WIDTH],
         };
-        static ALIGNED_BYTES: AlignedBytes = AlignedBytes {
+        const ALIGNED_BYTES: AlignedBytes = AlignedBytes {
+            _align: [],
             bytes: [EMPTY; Group::WIDTH],
         };
-        unsafe { &ALIGNED_BYTES.bytes }
+        &ALIGNED_BYTES.bytes
     }
 
     /// Loads a group of bytes starting at the given address.
