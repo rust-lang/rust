@@ -474,20 +474,22 @@ mod imp {
     impl_Exp!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named exp_u32);
     impl_Exp!(i64, u64 as u64 via to_u64 named exp_u64);
 }
-
-// impl_Display!(i128, u128 as u128 via to_u128 named fmt_u128);
 impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
-fn fmt_u64_2<const N: usize>(mut rem: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut isize) {
+/// Helper function for writing a u64 into `buf` going from last to first, with `curr`.
+fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut isize) {
     let buf_ptr = MaybeUninit::first_ptr_mut(buf);
     let lut_ptr = DEC_DIGITS_LUT.as_ptr();
+    assert!(*curr > 19);
 
     // SAFETY:
-    // FIXME(fill this in after reviews)
+    // Writes at most 19 characters into the buffer. Guaranteed that any ptr into LUT is at most
+    // 198, so will never OOB. There is a check above that there are at least 19 characters
+    // remaining.
     unsafe {
-        if rem >= 1e16 as u64 {
-            let to_parse = rem % 1e16 as u64;
-            rem /= 1e16 as u64;
+        if n >= 1e16 as u64 {
+            let to_parse = n % 1e16 as u64;
+            n /= 1e16 as u64;
 
             // Some of these are nops but it looks more elegant this way.
             let d1 = ((to_parse / 1e14 as u64) % 100) << 1;
@@ -510,9 +512,9 @@ fn fmt_u64_2<const N: usize>(mut rem: u64, buf: &mut [MaybeUninit<u8>; N], curr:
             ptr::copy_nonoverlapping(lut_ptr.offset(d7 as isize), buf_ptr.offset(*curr + 12), 2);
             ptr::copy_nonoverlapping(lut_ptr.offset(d8 as isize), buf_ptr.offset(*curr + 14), 2);
         }
-        if rem >= 1e8 as u64 {
-            let to_parse = rem % 1e8 as u64;
-            rem /= 1e8 as u64;
+        if n >= 1e8 as u64 {
+            let to_parse = n % 1e8 as u64;
+            n /= 1e8 as u64;
 
             // Some of these are nops but it looks more elegant this way.
             let d1 = ((to_parse / 1e6 as u64) % 100) << 1;
@@ -526,11 +528,11 @@ fn fmt_u64_2<const N: usize>(mut rem: u64, buf: &mut [MaybeUninit<u8>; N], curr:
             ptr::copy_nonoverlapping(lut_ptr.offset(d3 as isize), buf_ptr.offset(*curr + 4), 2);
             ptr::copy_nonoverlapping(lut_ptr.offset(d4 as isize), buf_ptr.offset(*curr + 6), 2);
         }
-        // `rem` < 1e8 < (1 << 32)
-        let mut rem = rem as u32;
-        if rem >= 1e4 as u32 {
-            let to_parse = rem % 1e4 as u32;
-            rem /= 1e4 as u32;
+        // `n` < 1e8 < (1 << 32)
+        let mut n = n as u32;
+        if n >= 1e4 as u32 {
+            let to_parse = n % 1e4 as u32;
+            n /= 1e4 as u32;
 
             let d1 = (to_parse / 100) << 1;
             let d2 = (to_parse % 100) << 1;
@@ -540,21 +542,21 @@ fn fmt_u64_2<const N: usize>(mut rem: u64, buf: &mut [MaybeUninit<u8>; N], curr:
             ptr::copy_nonoverlapping(lut_ptr.offset(d2 as isize), buf_ptr.offset(*curr + 2), 2);
         }
 
-        // `rem` < 1e4 < (1 << 16)
-        let mut rem = rem as u16;
-        if rem >= 100 {
-            let d1 = (rem % 100) << 1;
-            rem /= 100;
+        // `n` < 1e4 < (1 << 16)
+        let mut n = n as u16;
+        if n >= 100 {
+            let d1 = (n % 100) << 1;
+            n /= 100;
             *curr -= 2;
             ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr), 2);
         }
 
         // decode last 1 or 2 chars
-        if rem < 10 {
+        if n < 10 {
             *curr -= 1;
-            *buf_ptr.offset(*curr) = (rem as u8) + b'0';
+            *buf_ptr.offset(*curr) = (n as u8) + b'0';
         } else {
-            let d1 = rem << 1;
+            let d1 = n << 1;
             *curr -= 2;
             ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr), 2);
         }
@@ -564,7 +566,7 @@ fn fmt_u64_2<const N: usize>(mut rem: u64, buf: &mut [MaybeUninit<u8>; N], curr:
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for u128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_u128_2(*self, true, f)
+        fmt_u128(*self, true, f)
     }
 }
 
@@ -578,38 +580,41 @@ impl fmt::Display for i128 {
             // convert the negative num to positive by summing 1 to it's 2 complement
             (!self.to_u128()).wrapping_add(1)
         };
-        fmt_u128_2(n, is_nonnegative, f)
+        fmt_u128(n, is_nonnegative, f)
     }
 }
 
-#[allow(dead_code)]
-fn fmt_u128_2(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// Specialized optimization for u128. Instead of taking two items at a time, it splits
+/// into at most 2 u64s, and then chunks by 10e16, 10e8, 10e4, 10e2, and then 10e1.
+/// It also has to handle 1 last item, as 10^40 > 2^128 > 10^39, whereas
+/// 10^20 > 2^64 > 10^19.
+fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     // 2^128 is about 3*10^38, so 39 gives an extra byte of space
     let mut buf = [MaybeUninit::<u8>::uninit(); 39];
     let mut curr = buf.len() as isize;
     let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
 
-    // SAFETY: Since `d1` and `d2` are always less than or equal to `198`, we
-    // can copy from `lut_ptr[d1..d1 + 1]` and `lut_ptr[d2..d2 + 1]`. To show
-    // that it's OK to copy into `buf_ptr`, notice that at the beginning
-    // `curr == buf.len() == 39 > log(n)` since `n < 2^128 < 10^39`, and at
-    // each step this is kept the same as `n` is divided. Since `n` is always
-    // non-negative, this means that `curr > 0` so `buf_ptr[curr..curr + 1]`
-    // is safe to access.
-    unsafe {
-        let (n, rem) = udiv_1e9(n);
-        fmt_u64_2(rem, &mut buf, &mut curr);
+    let (n, rem) = udiv_1e19(n);
+    parse_u64_into(rem, &mut buf, &mut curr);
 
-        if n != 0 {
-            // 0 pad up to point
-            let target = (buf.len() - 19) as isize;
+    if n != 0 {
+        // 0 pad up to point
+        let target = (buf.len() - 19) as isize;
+        // SAFETY: Guaranteed that we wrote at most 19 bytes, and there must be space
+        // remaining since it has length 39
+        unsafe {
             ptr::write_bytes(buf_ptr.offset(target), b'0', (curr - target) as usize);
-            curr = target;
-            let (n, rem) = udiv_1e9(n);
-            fmt_u64_2(rem, &mut buf, &mut curr);
-            // Should this following branch be annotated with unlikely?
-            if n != 0 {
-                let target = (buf.len() - 38) as isize;
+        }
+        curr = target;
+
+        let (n, rem) = udiv_1e19(n);
+        parse_u64_into(rem, &mut buf, &mut curr);
+        // Should this following branch be annotated with unlikely?
+        if n != 0 {
+            let target = (buf.len() - 38) as isize;
+            // SAFETY: At this point we wrote at most 38 bytes, pad up to that point,
+            // There can only be at most 1 digit remaining.
+            unsafe {
                 ptr::write_bytes(buf_ptr.offset(target), b'0', (curr - target) as usize);
                 curr = target - 1;
                 *buf_ptr.offset(curr) = (n as u8) + b'0';
@@ -628,7 +633,8 @@ fn fmt_u128_2(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt:
     f.pad_integral(is_nonnegative, "", buf_slice)
 }
 
-fn udiv_1e9(n: u128) -> (u128, u64) {
+/// Partition of `n` into n > 1e19 and rem <= 1e19
+fn udiv_1e19(n: u128) -> (u128, u64) {
     const DIV: u64 = 1e19 as u64;
     let high = (n >> 64) as u64;
     if high == 0 {
