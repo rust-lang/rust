@@ -1,14 +1,8 @@
 use rand_xoshiro::rand_core::{RngCore, SeedableRng};
 use rand_xoshiro::Xoshiro128StarStar;
 
-use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divti3, __modti3};
+use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};
 use compiler_builtins::int::udiv::{__udivmoddi4, __udivmodsi4, __udivmodti4};
-
-// because `__divmodti4` does not exist, we synthesize it
-fn __divmodti4(a: i128, b: i128, rem: &mut i128) -> i128 {
-    *rem = __modti3(a, b);
-    __divti3(a, b)
-}
 
 /// Creates intensive test functions for division functions of a certain size
 macro_rules! test {

@@ -54,5 +54,12 @@ intrinsics! {
         i128_div_rem(a, b).1
     }
 
-    // LLVM does not currently have a `__divmodti4` function
+    // LLVM does not currently have a `__divmodti4` function, but GCC does
+    #[maybe_use_optimized_c_shim]
+    /// Returns `n / d` and sets `*rem = n % d`
+    pub extern "C" fn __divmodti4(a: i128, b: i128, rem: &mut i128) -> i128 {
+        let quo_rem = i128_div_rem(a, b);
+        *rem = quo_rem.1;
+        quo_rem.0
+    }
 }
