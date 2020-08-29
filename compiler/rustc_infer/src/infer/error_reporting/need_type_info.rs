@@ -342,7 +342,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         span: Span,
         arg: GenericArg<'tcx>,
         error_code: TypeAnnotationNeeded,
-        turbofish_suggestions: Vec<String>,
+        turbofish_suggestions: &[String],
     ) -> DiagnosticBuilder<'tcx> {
         let arg = self.resolve_vars_if_possible(&arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
@@ -686,7 +686,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         segment: &hir::PathSegment<'_>,
         e: &Expr<'_>,
         err: &mut DiagnosticBuilder<'_>,
-        turbofish_suggestions: Vec<String>,
+        turbofish_suggestions: &[String],
     ) {
         if let (Some(typeck_results), None) = (self.in_progress_typeck_results, &segment.args) {
             let borrow = typeck_results.borrow();

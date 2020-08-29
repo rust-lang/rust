@@ -1505,7 +1505,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
                 if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
-                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0282, vec![])
+                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0282, &[])
                         .emit();
                     return;
                 }
@@ -1518,7 +1518,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     span,
                     subst,
                     ErrorCode::E0283,
-                    turbofish_suggestions.clone(),
+                    &turbofish_suggestions,
                 );
                 err.note(&format!("cannot satisfy `{}`", predicate));
 
@@ -1605,7 +1605,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                self.emit_inference_failure_err(body_id, span, arg, ErrorCode::E0282, vec![])
+                self.emit_inference_failure_err(body_id, span, arg, ErrorCode::E0282, &[])
             }
 
             ty::PredicateAtom::Subtype(data) => {
@@ -1616,7 +1616,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
-                self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282, vec![])
+                self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282, &[])
             }
             ty::PredicateAtom::Projection(data) => {
                 let trait_ref = bound_predicate.rebind(data).to_poly_trait_ref(self.tcx);
@@ -1632,7 +1632,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span,
                         self_ty.into(),
                         ErrorCode::E0284,
-                        vec![],
+                        &[],
                     );
                     err.note(&format!("cannot satisfy `{}`", predicate));
                     err

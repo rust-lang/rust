@@ -4,11 +4,10 @@ use super::{
 };
 
 use crate::autoderef::Autoderef;
-use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{self, normalize_projection_type};
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
@@ -336,64 +335,80 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         data: ty::TraitPredicate<'tcx>,
         self_ty: Ty<'tcx>,
     ) -> Vec<String> {
-        let mut turbofish_suggestions = FxHashSet::default();
+        let mut turbofish_suggestions = FxHashMap::default();
         self.tcx.for_each_relevant_impl(data.trait_ref.def_id, self_ty, |impl_def_id| {
-            let param_env = ty::ParamEnv::empty();
-            let param_env = param_env.subst(self.tcx, data.trait_ref.substs);
-            let ty = self.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::NormalizeProjectionType,
-                span: DUMMY_SP,
-            });
+            self.probe(|_| {
+                let impl_substs = self.fresh_substs_for_item(DUMMY_SP, impl_def_id);
+                let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
+                let trait_ref = trait_ref.subst(self.tcx, impl_substs);
 
-            let impl_substs = self.fresh_substs_for_item(obligation.cause.span, impl_def_id);
-            let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
-            let trait_ref = trait_ref.subst(self.tcx, impl_substs);
-
-            // Require the type the impl is implemented on to match
-            // our type, and ignore the impl if there was a mismatch.
-            let cause = traits::ObligationCause::dummy();
-            let eq_result = self.at(&cause, param_env).eq(trait_ref.self_ty(), ty);
-            if let Ok(InferOk { value: (), obligations }) = eq_result {
-                // FIXME: ignoring `obligations` might cause false positives.
-                drop(obligations);
-
-                let can_impl = match self.evaluate_obligation(&Obligation::new(
-                    cause,
-                    obligation.param_env,
-                    trait_ref.without_const().to_predicate(self.tcx),
-                )) {
-                    Ok(eval_result) => eval_result.may_apply(),
-                    Err(traits::OverflowError) => true, // overflow doesn't mean yes *or* no
-                };
-                if can_impl
-                    && data.trait_ref.substs.iter().zip(trait_ref.substs.iter()).all(|(l, r)| {
-                        // FIXME: ideally we would use `can_coerce` here instead, but `typeck`
-                        // comes *after* in the dependency graph.
-                        match (l.unpack(), r.unpack()) {
-                            (GenericArgKind::Type(left_ty), GenericArgKind::Type(right_ty)) => {
-                                match (&left_ty.peel_refs().kind(), &right_ty.peel_refs().kind()) {
-                                    (Infer(_), _) | (_, Infer(_)) => true,
-                                    (left_kind, right_kind) => left_kind == right_kind,
-                                }
-                            }
-                            (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_))
-                            | (GenericArgKind::Const(_), GenericArgKind::Const(_)) => true,
-                            _ => false,
+                // Require the type the impl is implemented on to match
+                // our type, and ignore the impl if there was a mismatch.
+                let cause = traits::ObligationCause::dummy();
+                let eq_result =
+                    self.at(&cause, obligation.param_env).eq(trait_ref.self_ty(), self_ty);
+                if let Ok(InferOk { value: (), obligations: _ }) = eq_result {
+                    if let Ok(eval_result) = self.evaluate_obligation(&Obligation::new(
+                        cause.clone(),
+                        obligation.param_env,
+                        trait_ref.without_const().to_predicate(self.tcx),
+                    )) {
+                        // FIXME: We will also suggest cases where `eval_result` is
+                        // `EvaluatedToAmbig`, we just put them at the end of the sugg list.
+                        // Ideally we would only suggest types that would always apply cleanly.
+                        // This means that for `collect` we will suggest `PathBuf` as a valid type
+                        // whereas that `impl` has an extra requirement `T: AsRef<Path>` which we
+                        // don't evaluate.
+                        if eval_result.may_apply()
+                            && data.trait_ref.substs.iter().zip(trait_ref.substs.iter()).all(
+                                // Here we'll have something like `[_, i32]` coming from our code
+                                // and `[Vec<_>, _]` from the probe. For cases with
+                                // inference variables we are left with ambiguous cases due to
+                                // trait bounds we couldn't evaluate, but we *can* filter out cases
+                                // like `[std::string::String, char]`, where we can `collect` a
+                                // `String` only if we have an `IntoIterator<Item = char>`, which
+                                // won't match the `i32` we have.
+                                |(l, r)| {
+                                    // FIXME: ideally we would use `can_coerce` here instead, but `typeck`
+                                    // comes *after* in the dependency graph.
+                                    match (l.unpack(), r.unpack()) {
+                                        (
+                                            GenericArgKind::Type(left_ty),
+                                            GenericArgKind::Type(right_ty),
+                                        ) => match (
+                                            &left_ty.peel_refs().kind(),
+                                            &right_ty.peel_refs().kind(),
+                                        ) {
+                                            (Infer(_), _) | (_, Infer(_)) => true,
+                                            (left_kind, right_kind) => left_kind == right_kind,
+                                        },
+                                        (
+                                            GenericArgKind::Lifetime(_),
+                                            GenericArgKind::Lifetime(_),
+                                        )
+                                        | (GenericArgKind::Const(_), GenericArgKind::Const(_)) => {
+                                            true
+                                        }
+                                        _ => false,
+                                    }
+                                },
+                            )
+                            && !matches!(trait_ref.self_ty().kind(), ty::Infer(_))
+                        {
+                            turbofish_suggestions.insert(trait_ref.self_ty(), eval_result);
                         }
-                    })
-                    && !matches!(trait_ref.self_ty().kind(), ty::Infer(_))
-                {
-                    turbofish_suggestions.insert(trait_ref.self_ty());
+                    };
                 }
-            }
+            })
         });
         // Sort types by always suggesting `Vec<_>` and `String` first, as they are the
-        // most likely desired types.
+        // most likely desired types. Otherwise sort first by `EvaluationResult` and then by their
+        // string representation.
         let mut turbofish_suggestions = turbofish_suggestions.into_iter().collect::<Vec<_>>();
         turbofish_suggestions.sort_by(|left, right| {
             let vec_type = self.tcx.get_diagnostic_item(sym::vec_type);
             let string_type = self.tcx.get_diagnostic_item(sym::string_type);
-            match (&left.kind(), &right.kind()) {
+            match (&left.0.kind(), &right.0.kind()) {
                 (
                     ty::Adt(ty::AdtDef { did: left, .. }, _),
                     ty::Adt(ty::AdtDef { did: right, .. }, _),
@@ -416,10 +431,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 {
                     Ordering::Greater
                 }
-                _ => left.cmp(right),
+                _ => {
+                    // We give preferential place in the suggestion list to types that will apply
+                    // without doubt, to push types with abiguities (may or may not apply depending
+                    // on other obligations we don't have access to here) later in the sugg list.
+                    if left.1 == right.1 {
+                        left.0.to_string().cmp(&right.0.to_string())
+                    } else {
+                        left.1.cmp(&right.1)
+                    }
+                }
             }
         });
-        turbofish_suggestions.into_iter().map(|ty| ty.to_string()).collect()
+        turbofish_suggestions.into_iter().map(|(ty, _)| ty.to_string()).collect()
     }
 
     fn suggest_restricting_param_bound(
