@@ -310,11 +310,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             StatementKind::StorageDead(local) => {
                 self.gather_move(Place::from(*local));
             }
-            StatementKind::SetDiscriminant { .. } => {
-                span_bug!(
-                    stmt.source_info.span,
-                    "SetDiscriminant should not exist during borrowck"
-                );
+            StatementKind::SetDiscriminant { place, .. } => {
+                // `SetDiscriminant` should not exist during borrowck, but we need to handle
+                // it here to compute what places are moved from during later compilation stages.
+                self.create_move_path(**place);
             }
             StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
