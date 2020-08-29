@@ -4,55 +4,14 @@ use std::{
     cell::RefCell,
     env,
     ffi::OsString,
-    io::Write,
+    io::{self, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
 use anyhow::{bail, Context, Result};
 
-pub mod fs2 {
-    use std::{fs, path::Path};
-
-    use anyhow::{Context, Result};
-
-    pub fn read_dir<P: AsRef<Path>>(path: P) -> Result<fs::ReadDir> {
-        let path = path.as_ref();
-        fs::read_dir(path).with_context(|| format!("Failed to read {}", path.display()))
-    }
-
-    pub fn read_to_string<P: AsRef<Path>>(path: P) -> Result<String> {
-        let path = path.as_ref();
-        fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))
-    }
-
-    pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> Result<()> {
-        let path = path.as_ref();
-        fs::write(path, contents).with_context(|| format!("Failed to write {}", path.display()))
-    }
-
-    pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> Result<u64> {
-        let from = from.as_ref();
-        let to = to.as_ref();
-        fs::copy(from, to)
-            .with_context(|| format!("Failed to copy {} to {}", from.display(), to.display()))
-    }
-
-    pub fn remove_file<P: AsRef<Path>>(path: P) -> Result<()> {
-        let path = path.as_ref();
-        fs::remove_file(path).with_context(|| format!("Failed to remove file {}", path.display()))
-    }
-
-    pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> Result<()> {
-        let path = path.as_ref();
-        fs::remove_dir_all(path).with_context(|| format!("Failed to remove dir {}", path.display()))
-    }
-
-    pub fn create_dir_all<P: AsRef<Path>>(path: P) -> Result<()> {
-        let path = path.as_ref();
-        fs::create_dir_all(path).with_context(|| format!("Failed to create dir {}", path.display()))
-    }
-}
+pub use fs_err as fs2;
 
 #[macro_export]
 macro_rules! run {
@@ -98,7 +57,7 @@ impl Drop for Pushenv {
     }
 }
 
-pub fn rm_rf(path: impl AsRef<Path>) -> Result<()> {
+pub fn rm_rf(path: impl AsRef<Path>) -> io::Result<()> {
     let path = path.as_ref();
     if !path.exists() {
         return Ok(());
