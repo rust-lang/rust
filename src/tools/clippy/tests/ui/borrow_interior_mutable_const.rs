@@ -2,7 +2,7 @@
 #![allow(clippy::declare_interior_mutable_const, clippy::ref_in_deref)]
 
 use std::borrow::Cow;
-use std::cell::Cell;
+use std::cell::{Cell, UnsafeCell};
 use std::fmt::Display;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Once;
@@ -29,6 +29,37 @@ impl Trait<u32> for u64 {
 
     const ATOMIC: AtomicUsize = AtomicUsize::new(9);
 }
+
+// This is just a pointer that can be safely dereferended,
+// it's semantically the same as `&'static T`;
+// but it isn't allowed to make a static reference from an arbitrary integer value at the moment.
+// For more information, please see the issue #5918.
+pub struct StaticRef<T> {
+    ptr: *const T,
+}
+
+impl<T> StaticRef<T> {
+    /// Create a new `StaticRef` from a raw pointer
+    ///
+    /// ## Safety
+    ///
+    /// Callers must pass in a reference to statically allocated memory which
+    /// does not overlap with other values.
+    pub const unsafe fn new(ptr: *const T) -> StaticRef<T> {
+        StaticRef { ptr }
+    }
+}
+
+impl<T> std::ops::Deref for StaticRef<T> {
+    type Target = T;
+
+    fn deref(&self) -> &'static T {
+        unsafe { &*self.ptr }
+    }
+}
+
+// use a tuple to make sure referencing a field behind a pointer isn't linted.
+const CELL_REF: StaticRef<(UnsafeCell<u32>,)> = unsafe { StaticRef::new(std::ptr::null()) };
 
 fn main() {
     ATOMIC.store(1, Ordering::SeqCst); //~ ERROR interior mutability
@@ -82,4 +113,6 @@ fn main() {
     assert_eq!(u64::ATOMIC.load(Ordering::SeqCst), 9); //~ ERROR interior mutability
 
     assert_eq!(NO_ANN.to_string(), "70"); // should never lint this.
+
+    let _ = &CELL_REF.0;
 }

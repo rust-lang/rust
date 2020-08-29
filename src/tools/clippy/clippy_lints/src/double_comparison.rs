@@ -6,7 +6,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
-use crate::utils::{snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
+use crate::utils::{eq_expr_value, snippet_with_applicability, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for double comparisons that could be simplified to a single expression.
@@ -46,8 +46,7 @@ impl<'tcx> DoubleComparisons {
             },
             _ => return,
         };
-        let mut spanless_eq = SpanlessEq::new(cx).ignore_fn();
-        if !(spanless_eq.eq_expr(&llhs, &rlhs) && spanless_eq.eq_expr(&lrhs, &rrhs)) {
+        if !(eq_expr_value(cx, &llhs, &rlhs) && eq_expr_value(cx, &lrhs, &rrhs)) {
             return;
         }
         macro_rules! lint_double_comparison {

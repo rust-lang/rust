@@ -39,12 +39,12 @@ declare_lint_pass!(RepeatOnce => [REPEAT_ONCE]);
 impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, [receiver, count], _) = &expr.kind;
             if path.ident.name == sym!(repeat);
-            if let Some(Constant::Int(1)) = constant_context(cx, cx.typeck_results()).expr(&args[1]);
-            if !in_macro(args[0].span);
+            if let Some(Constant::Int(1)) = constant_context(cx, cx.typeck_results()).expr(&count);
+            if !in_macro(receiver.span);
             then {
-                let ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&args[0]));
+                let ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&receiver));
                 if ty.is_str() {
                     span_lint_and_sugg(
                         cx,
@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
                         expr.span,
                         "calling `repeat(1)` on str",
                         "consider using `.to_string()` instead",
-                        format!("{}.to_string()", snippet(cx, args[0].span, r#""...""#)),
+                        format!("{}.to_string()", snippet(cx, receiver.span, r#""...""#)),
                         Applicability::MachineApplicable,
                     );
                 } else if ty.builtin_index().is_some() {
@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
                         expr.span,
                         "calling `repeat(1)` on slice",
                         "consider using `.to_vec()` instead",
-                        format!("{}.to_vec()", snippet(cx, args[0].span, r#""...""#)),
+                        format!("{}.to_vec()", snippet(cx, receiver.span, r#""...""#)),
                         Applicability::MachineApplicable,
                     );
                 } else if is_type_diagnostic_item(cx, ty, sym!(string_type)) {
@@ -72,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
                         expr.span,
                         "calling `repeat(1)` on a string literal",
                         "consider using `.clone()` instead",
-                        format!("{}.clone()", snippet(cx, args[0].span, r#""...""#)),
+                        format!("{}.clone()", snippet(cx, receiver.span, r#""...""#)),
                         Applicability::MachineApplicable,
                     );
                 }

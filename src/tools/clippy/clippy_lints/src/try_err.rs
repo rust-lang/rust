@@ -1,10 +1,10 @@
 use crate::utils::{
-    is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet,
-    snippet_with_macro_callsite, span_lint_and_sugg,
+    is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet, snippet_with_macro_callsite,
+    span_lint_and_sugg,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath, LangItem, MatchSource};
+use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
