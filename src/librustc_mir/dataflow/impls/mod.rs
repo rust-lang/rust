@@ -67,15 +67,15 @@ pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageLive};
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeUninitializedPlaces` yields the set of
 /// places that would require a dynamic drop-flag at that statement.
-pub struct MaybeInitializedPlaces<'a, 'tcx> {
+pub struct MaybeInitializedPlaces<'a, 'tcx, M = &'a MoveDataParamEnv<'tcx>> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    mdpe: &'a MoveDataParamEnv<'tcx>,
+    pub(crate) mdpe: M,
     mark_inactive_variants_as_uninit: bool,
 }
 
-impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
+impl<'a, 'tcx, M> MaybeInitializedPlaces<'a, 'tcx, M> {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: M) -> Self {
         MaybeInitializedPlaces { tcx, body, mdpe, mark_inactive_variants_as_uninit: false }
     }
 
@@ -85,9 +85,12 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
+impl<'a, 'tcx, M> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx, M>
+where
+    M: std::borrow::Borrow<MoveDataParamEnv<'tcx>>,
+{
     fn move_data(&self) -> &MoveData<'tcx> {
-        &self.mdpe.move_data
+        &self.mdpe.borrow().move_data
     }
 }
 
@@ -256,7 +259,7 @@ impl<'a, 'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
+impl<'a, 'tcx, M> MaybeInitializedPlaces<'a, 'tcx, M> {
     fn update_bits(
         trans: &mut impl GenKill<MovePathIndex>,
         path: MovePathIndex,
@@ -295,7 +298,10 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
+impl<'tcx, M> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx, M>
+where
+    M: std::borrow::Borrow<MoveDataParamEnv<'tcx>>,
+{
     type Idx = MovePathIndex;
 
     const NAME: &'static str = "maybe_init";
@@ -305,7 +311,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
-        drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe, |path, s| {
+        drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe.borrow(), |path, s| {
             assert!(s == DropFlagState::Present);
             state.insert(path);
         });
@@ -316,16 +322,23 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
+impl<'tcx, M> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx, M>
+where
+    M: std::borrow::Borrow<MoveDataParamEnv<'tcx>>,
+{
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
-            Self::update_bits(trans, path, s)
-        })
+        drop_flag_effects_for_location(
+            self.tcx,
+            self.body,
+            self.mdpe.borrow(),
+            location,
+            |path, s| Self::update_bits(trans, path, s),
+        )
     }
 
     fn terminator_effect(
@@ -334,9 +347,13 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
-            Self::update_bits(trans, path, s)
-        })
+        drop_flag_effects_for_location(
+            self.tcx,
+            self.body,
+            self.mdpe.borrow(),
+            location,
+            |path, s| Self::update_bits(trans, path, s),
+        )
     }
 
     fn call_return_effect(
@@ -636,7 +653,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BottomValue for MaybeInitializedPlaces<'a, 'tcx> {
+impl<'a, 'tcx, M> BottomValue for MaybeInitializedPlaces<'a, 'tcx, M> {
     /// bottom = uninitialized
     const BOTTOM_VALUE: bool = false;
 }

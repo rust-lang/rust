@@ -307,6 +307,15 @@ pub enum LookupResult {
     Parent(Option<MovePathIndex>),
 }
 
+impl LookupResult {
+    pub fn expect_exact(self, s: &str) -> MovePathIndex {
+        match self {
+            Self::Exact(mpi) => mpi,
+            Self::Parent(_) => panic!("{}", s),
+        }
+    }
+}
+
 impl MovePathLookup {
     // Unlike the builder `fn move_path_for` below, this lookup
     // alternative will *not* create a MovePath on the fly for an
