@@ -2955,6 +2955,12 @@ impl<T> Iterator for IntoIter<T> {
         unsafe {
             if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
         }
+    #[inline]
+    fn last(self) -> Option<Self::Item>
+    where
+        Self: Sized,
+    {
+        if self.ptr == self.end { None } else { unsafe { Some(ptr::read(self.end.offset(-1))) } }
     }
 }
 
