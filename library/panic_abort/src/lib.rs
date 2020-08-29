@@ -17,7 +17,7 @@
 #![feature(panic_runtime)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
-#![feature(llvm_asm)]
+#![feature(asm)]
 
 use core::any::Any;
 
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
                 }
                 __rust_abort();
             }
-        } else if #[cfg(all(windows, any(target_arch = "x86", target_arch = "x86_64")))] {
+        } else if #[cfg(windows)] {
             // On Windows, use the processor-specific __fastfail mechanism. In Windows 8
             // and later, this will terminate the process immediately without running any
             // in-process exception handlers. In earlier versions of Windows, this
@@ -59,7 +59,18 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
             //
             // Note: this is the same implementation as in libstd's `abort_internal`
             unsafe fn abort() -> ! {
-                llvm_asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+                const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
+                cfg_if::cfg_if! {
+                    if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+                        asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
+                    } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
+                        asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
+                    } else if #[cfg(target_arch = "aarch64")] {
+                        asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
+                    } else {
+                        core::intrinsics::abort();
+                    }
+                }
                 core::intrinsics::unreachable();
             }
         } else {
