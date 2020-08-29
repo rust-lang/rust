@@ -382,10 +382,10 @@ impl<T> RawTable<T> {
     /// leave the data pointer dangling since that bucket is never written to
     /// due to our load factor forcing us to always have at least 1 free bucket.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             // Be careful to cast the entire slice to a raw pointer.
-            ctrl: unsafe { NonNull::new_unchecked(Group::static_empty().as_ptr() as *mut u8) },
+            ctrl: unsafe { NonNull::new_unchecked(Group::static_empty() as *const _ as *mut u8) },
             bucket_mask: 0,
             items: 0,
             growth_left: 0,
