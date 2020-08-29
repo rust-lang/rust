@@ -439,10 +439,6 @@ impl<'a> StringReader<'a> {
         (lit_kind, id)
     }
 
-    pub fn pos(&self) -> BytePos {
-        self.pos
-    }
-
     #[inline]
     fn src_index(&self, pos: BytePos) -> usize {
         (pos - self.start_pos).to_usize()
