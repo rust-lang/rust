@@ -3365,7 +3365,6 @@ name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "flate2",
  "libc",
  "measureme",
  "rustc-demangle",
@@ -3386,6 +3385,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.4.2",
+ "snap",
  "tracing",
 ]
 
@@ -3711,7 +3711,6 @@ dependencies = [
 name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
- "flate2",
  "libc",
  "memmap",
  "rustc_ast",
@@ -3729,6 +3728,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.4.2",
+ "snap",
  "stable_deref_trait",
  "tracing",
  "winapi 0.3.9",
@@ -4398,6 +4398,12 @@ name = "smallvec"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbee7696b84bbf3d89a1c2eccff0850e3047ed46bfcd2e92c29a2d074d57e252"
+
+[[package]]
+name = "snap"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da73c8f77aebc0e40c300b93f0a5f1bece7a248a36eee287d4e095f35c7b7d6e"
 
 [[package]]
 name = "socket2"

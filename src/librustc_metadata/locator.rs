@@ -229,7 +229,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
 
-use flate2::read::DeflateDecoder;
+use snap::read::FrameDecoder;
 use std::io::{Read, Result as IoResult, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -766,7 +766,7 @@ fn get_metadata_section(
             let compressed_bytes = &buf[header_len..];
             debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
             let mut inflated = Vec::new();
-            match DeflateDecoder::new(compressed_bytes).read_to_end(&mut inflated) {
+            match FrameDecoder::new(compressed_bytes).read_to_end(&mut inflated) {
                 Ok(_) => rustc_erase_owner!(OwningRef::new(inflated).map_owner_box()),
                 Err(_) => {
                     return Err(format!("failed to decompress metadata: {}", filename.display()));
