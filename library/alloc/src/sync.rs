@@ -485,6 +485,17 @@ impl<T> Arc<T> {
     ///
     /// This will succeed even if there are outstanding weak references.
     ///
+    /// It is strongly recommended to use [`Arc::unwrap_or_drop`] instead if you don't
+    /// want to keep the `Arc` in the [`Err`] case.
+    /// Immediately dropping the [`Err`] payload, like in the expression
+    /// `Arc::try_unwrap(this).ok()`, can still cause the strong count to
+    /// drop to zero and the inner value of the `Arc` to be dropped:
+    /// For instance if two threads execute this expression in parallel, then
+    /// there is a race condition. The threads could first both check whether they
+    /// have the last clone of their `Arc` via `try_unwrap`, and then
+    /// both drop their `Arc` in the call to [`ok`][`Result::ok`],
+    /// taking the strong count from two down to zero.
+    ///
     /// # Examples
     ///
     /// ```
@@ -525,8 +536,11 @@ impl<T> Arc<T> {
     ///
     /// If `unwrap_or_drop` is called on every clone of this `Arc`,
     /// it is guaranteed that exactly one of the calls returns the inner value.
+    /// This means in particular that the inner value is not dropped.
+    ///
     /// The similar expression `Arc::try_unwrap(this).ok()` does not
-    /// offer this guarantee.
+    /// offer such a guarantee. See the last example below and the documentation
+    /// of `try_unwrap`[`Arc::try_unwrap`].
     ///
     /// # Examples
     ///
@@ -538,16 +552,67 @@ impl<T> Arc<T> {
     /// let x = Arc::new(3);
     /// let y = Arc::clone(&x);
     ///
+    /// // Two threads calling `unwrap_or_drop` on both clones of an `Arc`:
     /// let x_unwrap_thread = std::thread::spawn(|| Arc::unwrap_or_drop(x));
     /// let y_unwrap_thread = std::thread::spawn(|| Arc::unwrap_or_drop(y));
     ///
     /// let x_unwrapped_value = x_unwrap_thread.join().unwrap();
     /// let y_unwrapped_value = y_unwrap_thread.join().unwrap();
     ///
+    /// // One of the threads is guaranteed to receive the inner value:
     /// assert!(matches!(
     ///     (x_unwrapped_value, y_unwrapped_value),
     ///     (None, Some(3)) | (Some(3), None)
     /// ));
+    ///
+    ///
+    ///
+    /// // For a somewhat more practical example,
+    /// // we define a singly linked list using `Arc`:
+    /// #[derive(Clone)]
+    /// struct LinkedList<T>(Option<Arc<Node<T>>>);
+    /// struct Node<T>(T, Option<Arc<Node<T>>>);
+    ///
+    /// // Dropping a long `LinkedList<T>` relying on the destructor of `Arc`
+    /// // can cause a stack overflow. To prevent this, we can provide a
+    /// // manual `Drop` implementation that does the destruction in a loop:
+    /// impl<T> Drop for LinkedList<T> {
+    ///     fn drop(&mut self) {
+    ///         let mut x = self.0.take();
+    ///         while let Some(arc) = x.take() {
+    ///             Arc::unwrap_or_drop(arc).map(|node| x = node.1);
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// // implementation of `new` and `push` omitted
+    /// impl<T> LinkedList<T> {
+    ///     /* ... */
+    /// #   fn new() -> Self {
+    /// #       LinkedList(None)
+    /// #   }
+    /// #   fn push(&mut self, x: T) {
+    /// #       self.0 = Some(Arc::new(Node(x, self.0.take())));
+    /// #   }
+    /// }
+    ///
+    /// // The following code could still cause a stack overflow
+    /// // despite the manual `Drop` impl if that `Drop` impl used
+    /// // `Arc::try_unwrap(arc).ok()` instead of `Arc::unwrap_or_drop(arc)`.
+    /// {
+    ///     // create a long list and clone it
+    ///     let mut x = LinkedList::new();
+    ///     for i in 0..100000 {
+    ///         x.push(i); // adds i to the front of x
+    ///     }
+    ///     let y = x.clone();
+    ///
+    ///     // drop the clones in parallel
+    ///     let t1 = std::thread::spawn(|| drop(x));
+    ///     let t2 = std::thread::spawn(|| drop(y));
+    ///     t1.join().unwrap();
+    ///     t2.join().unwrap();
+    /// }
     /// ```
     #[inline]
     #[unstable(feature = "unwrap_or_drop", issue = "none")] // FIXME: add issue
