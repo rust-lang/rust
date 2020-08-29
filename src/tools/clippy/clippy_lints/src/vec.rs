@@ -1,12 +1,19 @@
-use crate::consts::constant;
+use crate::consts::{constant, Constant};
+use crate::rustc_target::abi::LayoutOf;
 use crate::utils::{higher, is_copy, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
+
+#[allow(clippy::module_name_repetitions)]
+#[derive(Copy, Clone)]
+pub struct UselessVec {
+    pub too_large_for_stack: u64,
+}
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `&vec![..]` when using `&[..]` would
@@ -31,7 +38,7 @@ declare_clippy_lint! {
     "useless `vec!`"
 }
 
-declare_lint_pass!(UselessVec => [USELESS_VEC]);
+impl_lint_pass!(UselessVec => [USELESS_VEC]);
 
 impl<'tcx> LateLintPass<'tcx> for UselessVec {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -42,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
             if let ExprKind::AddrOf(BorrowKind::Ref, _, ref addressee) = expr.kind;
             if let Some(vec_args) = higher::vec_macro(cx, addressee);
             then {
-                check_vec_macro(cx, &vec_args, expr.span);
+                self.check_vec_macro(cx, &vec_args, expr.span);
             }
         }
 
@@ -60,46 +67,62 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                     .ctxt()
                     .outer_expn_data()
                     .call_site;
-                check_vec_macro(cx, &vec_args, span);
+                self.check_vec_macro(cx, &vec_args, span);
             }
         }
     }
 }
 
-fn check_vec_macro<'tcx>(cx: &LateContext<'tcx>, vec_args: &higher::VecArgs<'tcx>, span: Span) {
-    let mut applicability = Applicability::MachineApplicable;
-    let snippet = match *vec_args {
-        higher::VecArgs::Repeat(elem, len) => {
-            if constant(cx, cx.typeck_results(), len).is_some() {
-                format!(
-                    "&[{}; {}]",
-                    snippet_with_applicability(cx, elem.span, "elem", &mut applicability),
-                    snippet_with_applicability(cx, len.span, "len", &mut applicability)
-                )
-            } else {
-                return;
-            }
-        },
-        higher::VecArgs::Vec(args) => {
-            if let Some(last) = args.iter().last() {
-                let span = args[0].span.to(last.span);
+impl UselessVec {
+    fn check_vec_macro<'tcx>(self, cx: &LateContext<'tcx>, vec_args: &higher::VecArgs<'tcx>, span: Span) {
+        let mut applicability = Applicability::MachineApplicable;
+        let snippet = match *vec_args {
+            higher::VecArgs::Repeat(elem, len) => {
+                if let Some((Constant::Int(len_constant), _)) = constant(cx, cx.typeck_results(), len) {
+                    #[allow(clippy::cast_possible_truncation)]
+                    if len_constant as u64 * size_of(cx, elem) > self.too_large_for_stack {
+                        return;
+                    }
 
-                format!("&[{}]", snippet_with_applicability(cx, span, "..", &mut applicability))
-            } else {
-                "&[]".into()
-            }
-        },
-    };
+                    format!(
+                        "&[{}; {}]",
+                        snippet_with_applicability(cx, elem.span, "elem", &mut applicability),
+                        snippet_with_applicability(cx, len.span, "len", &mut applicability)
+                    )
+                } else {
+                    return;
+                }
+            },
+            higher::VecArgs::Vec(args) => {
+                if let Some(last) = args.iter().last() {
+                    #[allow(clippy::cast_possible_truncation)]
+                    if args.len() as u64 * size_of(cx, last) > self.too_large_for_stack {
+                        return;
+                    }
+                    let span = args[0].span.to(last.span);
 
-    span_lint_and_sugg(
-        cx,
-        USELESS_VEC,
-        span,
-        "useless use of `vec!`",
-        "you can use a slice directly",
-        snippet,
-        applicability,
-    );
+                    format!("&[{}]", snippet_with_applicability(cx, span, "..", &mut applicability))
+                } else {
+                    "&[]".into()
+                }
+            },
+        };
+
+        span_lint_and_sugg(
+            cx,
+            USELESS_VEC,
+            span,
+            "useless use of `vec!`",
+            "you can use a slice directly",
+            snippet,
+            applicability,
+        );
+    }
+}
+
+fn size_of(cx: &LateContext<'_>, expr: &Expr<'_>) -> u64 {
+    let ty = cx.typeck_results().expr_ty_adjusted(expr);
+    cx.layout_of(ty).map_or(0, |l| l.size.bytes())
 }
 
 /// Returns the item type of the vector (i.e., the `T` in `Vec<T>`).

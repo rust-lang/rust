@@ -3,9 +3,9 @@ use crate::utils::differing_macro_contexts;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::{
-    BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprKind, Field, FieldPat,
-    FnRetTy, GenericArg, GenericArgs, Guard, InlineAsmOperand, Lifetime, LifetimeName, ParamName,
-    Pat, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
+    BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprKind, Field, FieldPat, FnRetTy,
+    GenericArg, GenericArgs, Guard, InlineAsmOperand, Lifetime, LifetimeName, ParamName, Pat, PatKind, Path,
+    PathSegment, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lint::LateContext;
 use rustc_middle::ich::StableHashingContextProvider;
@@ -23,9 +23,7 @@ pub struct SpanlessEq<'a, 'tcx> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
-    /// If is true, never consider as equal expressions containing function
-    /// calls.
-    ignore_fn: bool,
+    allow_side_effects: bool,
 }
 
 impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
@@ -33,13 +31,14 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         Self {
             cx,
             maybe_typeck_results: cx.maybe_typeck_results(),
-            ignore_fn: false,
+            allow_side_effects: true,
         }
     }
 
-    pub fn ignore_fn(self) -> Self {
+    /// Consider expressions containing potential side effects as not equal.
+    pub fn deny_side_effects(self) -> Self {
         Self {
-            ignore_fn: true,
+            allow_side_effects: false,
             ..self
         }
     }
@@ -67,7 +66,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     #[allow(clippy::similar_names)]
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
-        if self.ignore_fn && differing_macro_contexts(left.span, right.span) {
+        if !self.allow_side_effects && differing_macro_contexts(left.span, right.span) {
             return false;
         }
 
@@ -90,10 +89,10 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                 both(&li.label, &ri.label, |l, r| l.ident.as_str() == r.ident.as_str())
             },
             (&ExprKind::Assign(ref ll, ref lr, _), &ExprKind::Assign(ref rl, ref rr, _)) => {
-                self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
+                self.allow_side_effects && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             },
             (&ExprKind::AssignOp(ref lo, ref ll, ref lr), &ExprKind::AssignOp(ref ro, ref rl, ref rr)) => {
-                lo.node == ro.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
+                self.allow_side_effects && lo.node == ro.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             },
             (&ExprKind::Block(ref l, _), &ExprKind::Block(ref r, _)) => self.eq_block(l, r),
             (&ExprKind::Binary(l_op, ref ll, ref lr), &ExprKind::Binary(r_op, ref rl, ref rr)) => {
@@ -108,7 +107,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             },
             (&ExprKind::Box(ref l), &ExprKind::Box(ref r)) => self.eq_expr(l, r),
             (&ExprKind::Call(l_fun, l_args), &ExprKind::Call(r_fun, r_args)) => {
-                !self.ignore_fn && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
+                self.allow_side_effects && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Cast(ref lx, ref lt), &ExprKind::Cast(ref rx, ref rt))
             | (&ExprKind::Type(ref lx, ref lt), &ExprKind::Type(ref rx, ref rt)) => {
@@ -134,7 +133,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                     })
             },
             (&ExprKind::MethodCall(l_path, _, l_args, _), &ExprKind::MethodCall(r_path, _, r_args, _)) => {
-                !self.ignore_fn && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
+                self.allow_side_effects && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Repeat(ref le, ref ll_id), &ExprKind::Repeat(ref re, ref rl_id)) => {
                 let mut celcx = constant_context(self.cx, self.cx.tcx.typeck_body(ll_id.body));
@@ -186,10 +185,8 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 
     pub fn eq_fieldpat(&mut self, left: &FieldPat<'_>, right: &FieldPat<'_>) -> bool {
-        match (&left, &right) {
-            (FieldPat { ident: li, pat: lp, .. }, FieldPat { ident: ri, pat: rp, .. }) =>
-                li.name.as_str() == ri.name.as_str() && self.eq_pat(lp, rp),
-        }
+        let (FieldPat { ident: li, pat: lp, .. }, FieldPat { ident: ri, pat: rp, .. }) = (&left, &right);
+        li.name.as_str() == ri.name.as_str() && self.eq_pat(lp, rp)
     }
 
     /// Checks whether two patterns are the same.
@@ -233,8 +230,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             (&QPath::TypeRelative(ref lty, ref lseg), &QPath::TypeRelative(ref rty, ref rseg)) => {
                 self.eq_ty(lty, rty) && self.eq_path_segment(lseg, rseg)
             },
-            (&QPath::LangItem(llang_item, _), &QPath::LangItem(rlang_item, _)) =>
-                llang_item == rlang_item,
+            (&QPath::LangItem(llang_item, _), &QPath::LangItem(rlang_item, _)) => llang_item == rlang_item,
             _ => false,
         }
     }
@@ -350,6 +346,11 @@ pub fn both<X>(l: &Option<X>, r: &Option<X>, mut eq_fn: impl FnMut(&X, &X) -> bo
 /// Checks if two slices are equal as per `eq_fn`.
 pub fn over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
+}
+
+/// Checks if two expressions evaluate to the same value, and don't contain any side effects.
+pub fn eq_expr_value(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>) -> bool {
+    SpanlessEq::new(cx).deny_side_effects().eq_expr(left, right)
 }
 
 /// Type used to hash an ast element. This is different from the `Hash` trait
@@ -615,7 +616,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             QPath::LangItem(lang_item, ..) => {
                 lang_item.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
-            }
+            },
         }
         // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);
     }
@@ -727,7 +728,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 },
                 QPath::LangItem(lang_item, ..) => {
                     lang_item.hash(&mut self.s);
-                }
+                },
             },
             TyKind::OpaqueDef(_, arg_list) => {
                 self.hash_generic_args(arg_list);

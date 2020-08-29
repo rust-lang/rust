@@ -1,5 +1,5 @@
 error: methods called `from_*` usually take no self; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:17:17
+  --> $DIR/wrong_self_convention.rs:18:17
    |
 LL |     fn from_i32(self) {}
    |                 ^^^^
@@ -7,67 +7,67 @@ LL |     fn from_i32(self) {}
    = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
 
 error: methods called `from_*` usually take no self; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:23:21
+  --> $DIR/wrong_self_convention.rs:24:21
    |
 LL |     pub fn from_i64(self) {}
    |                     ^^^^
 
 error: methods called `as_*` usually take self by reference or self by mutable reference; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:35:15
+  --> $DIR/wrong_self_convention.rs:36:15
    |
 LL |     fn as_i32(self) {}
    |               ^^^^
 
 error: methods called `into_*` usually take self by value; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:37:17
+  --> $DIR/wrong_self_convention.rs:38:17
    |
 LL |     fn into_i32(&self) {}
    |                 ^^^^^
 
 error: methods called `is_*` usually take self by reference or no self; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:39:15
+  --> $DIR/wrong_self_convention.rs:40:15
    |
 LL |     fn is_i32(self) {}
    |               ^^^^
 
 error: methods called `to_*` usually take self by reference; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:41:15
+  --> $DIR/wrong_self_convention.rs:42:15
    |
 LL |     fn to_i32(self) {}
    |               ^^^^
 
 error: methods called `from_*` usually take no self; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:43:17
+  --> $DIR/wrong_self_convention.rs:44:17
    |
 LL |     fn from_i32(self) {}
    |                 ^^^^
 
 error: methods called `as_*` usually take self by reference or self by mutable reference; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:45:19
+  --> $DIR/wrong_self_convention.rs:46:19
    |
 LL |     pub fn as_i64(self) {}
    |                   ^^^^
 
 error: methods called `into_*` usually take self by value; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:46:21
+  --> $DIR/wrong_self_convention.rs:47:21
    |
 LL |     pub fn into_i64(&self) {}
    |                     ^^^^^
 
 error: methods called `is_*` usually take self by reference or no self; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:47:19
+  --> $DIR/wrong_self_convention.rs:48:19
    |
 LL |     pub fn is_i64(self) {}
    |                   ^^^^
 
 error: methods called `to_*` usually take self by reference; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:48:19
+  --> $DIR/wrong_self_convention.rs:49:19
    |
 LL |     pub fn to_i64(self) {}
    |                   ^^^^
 
 error: methods called `from_*` usually take no self; consider choosing a less ambiguous name
-  --> $DIR/wrong_self_convention.rs:49:21
+  --> $DIR/wrong_self_convention.rs:50:21
    |
 LL |     pub fn from_i64(self) {}
    |                     ^^^^

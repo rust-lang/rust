@@ -1,16 +1,22 @@
 use crate::utils::{implements_trait, is_entrypoint_fn, is_type_diagnostic_item, return_ty, span_lint};
 use if_chain::if_chain;
 use itertools::Itertools;
-use rustc_ast::ast::{AttrKind, Attribute};
+use rustc_ast::ast::{Async, AttrKind, Attribute, FnRetTy, ItemKind};
 use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::emitter::EmitterWriter;
+use rustc_errors::Handler;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
+use rustc_parse::maybe_new_parser_from_source_str;
+use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::{BytePos, MultiSpan, Span};
-use rustc_span::Pos;
+use rustc_span::source_map::{BytePos, FilePathMapping, MultiSpan, SourceMap, Span};
+use rustc_span::{FileName, Pos};
+use std::io;
 use std::ops::Range;
 use url::Url;
 
@@ -431,10 +437,67 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     headers
 }
 
-static LEAVE_MAIN_PATTERNS: &[&str] = &["static", "fn main() {}", "extern crate", "async fn main() {"];
-
 fn check_code(cx: &LateContext<'_>, text: &str, span: Span) {
-    if text.contains("fn main() {") && !LEAVE_MAIN_PATTERNS.iter().any(|p| text.contains(p)) {
+    fn has_needless_main(code: &str) -> bool {
+        let filename = FileName::anon_source_code(code);
+
+        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
+        let handler = Handler::with_emitter(false, None, box emitter);
+        let sess = ParseSess::with_span_handler(handler, sm);
+
+        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code.into()) {
+            Ok(p) => p,
+            Err(errs) => {
+                for mut err in errs {
+                    err.cancel();
+                }
+                return false;
+            },
+        };
+
+        let mut relevant_main_found = false;
+        loop {
+            match parser.parse_item() {
+                Ok(Some(item)) => match &item.kind {
+                    // Tests with one of these items are ignored
+                    ItemKind::Static(..)
+                    | ItemKind::Const(..)
+                    | ItemKind::ExternCrate(..)
+                    | ItemKind::ForeignMod(..) => return false,
+                    // We found a main function ...
+                    ItemKind::Fn(_, sig, _, Some(block)) if item.ident.name == sym!(main) => {
+                        let is_async = matches!(sig.header.asyncness, Async::Yes{..});
+                        let returns_nothing = match &sig.decl.output {
+                            FnRetTy::Default(..) => true,
+                            FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
+                            _ => false,
+                        };
+
+                        if returns_nothing && !is_async && !block.stmts.is_empty() {
+                            // This main function should be linted, but only if there are no other functions
+                            relevant_main_found = true;
+                        } else {
+                            // This main function should not be linted, we're done
+                            return false;
+                        }
+                    },
+                    // Another function was found; this case is ignored too
+                    ItemKind::Fn(..) => return false,
+                    _ => {},
+                },
+                Ok(None) => break,
+                Err(mut e) => {
+                    e.cancel();
+                    return false;
+                },
+            }
+        }
+
+        relevant_main_found
+    }
+
+    if has_needless_main(text) {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }
 }

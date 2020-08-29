@@ -3,6 +3,7 @@ mod inefficient_to_string;
 mod manual_saturating_arithmetic;
 mod option_map_unwrap_or;
 mod unnecessary_filter_map;
+mod unnecessary_lazy_eval;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -14,11 +15,11 @@ use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Ty, TyS};
+use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, SymbolStr};
@@ -26,12 +27,12 @@ use rustc_span::symbol::{sym, SymbolStr};
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro, is_copy,
-    is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
-    match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls, method_chain_args, paths,
-    remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
-    span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then, sugg, walk_ptrs_ty,
-    walk_ptrs_ty_depth, SpanlessEq,
+    contains_ty, get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro,
+    is_copy, is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats,
+    last_path_segment, match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls,
+    method_chain_args, paths, remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability,
+    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
+    span_lint_and_then, sugg, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -723,6 +724,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
+    /// In an impl block:
     /// ```rust
     /// # struct Foo;
     /// # struct NotAFoo;
@@ -735,23 +737,38 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// # struct Foo;
-    /// # struct FooError;
+    /// struct Bar(Foo);
     /// impl Foo {
-    ///     // Good. Return type contains `Self`
-    ///     fn new() -> Result<Foo, FooError> {
-    ///         # Ok(Foo)
+    ///     // Bad. The type name must contain `Self`
+    ///     fn new() -> Bar {
+    /// # Bar(Foo)
     ///     }
     /// }
     /// ```
     ///
     /// ```rust
     /// # struct Foo;
-    /// struct Bar(Foo);
+    /// # struct FooError;
     /// impl Foo {
-    ///     // Bad. The type name must contain `Self`.
-    ///     fn new() -> Bar {
-    ///         # Bar(Foo)
+    ///     // Good. Return type contains `Self`
+    ///     fn new() -> Result<Foo, FooError> {
+    /// # Ok(Foo)
     ///     }
+    /// }
+    /// ```
+    ///
+    /// Or in a trait definition:
+    /// ```rust
+    /// pub trait Trait {
+    ///     // Bad. The type name must contain `Self`
+    ///     fn new();
+    /// }
+    /// ```
+    ///
+    /// ```rust
+    /// pub trait Trait {
+    ///     // Good. Return type contains `Self`
+    ///     fn new() -> Self;
     /// }
     /// ```
     pub NEW_RET_NO_SELF,
@@ -799,7 +816,7 @@ declare_clippy_lint! {
     ///     call_some_ffi_func(c_str);
     /// }
     /// ```
-    /// Here `c_str` point to a freed address. The correct use would be:
+    /// Here `c_str` points to a freed address. The correct use would be:
     /// ```rust
     /// # use std::ffi::CString;
     /// # fn call_some_ffi_func(_: *const i8) {}
@@ -1306,6 +1323,65 @@ declare_clippy_lint! {
     "using `.iter().next()` on a sliced array, which can be shortened to just `.get()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Warns when using push_str with a single-character string literal,
+    /// and push with a char would work fine.
+    ///
+    /// **Why is this bad?** It's less clear that we are pushing a single character
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```
+    /// let mut string = String::new();
+    /// string.push_str("R");
+    /// ```
+    /// Could be written as
+    /// ```
+    /// let mut string = String::new();
+    /// string.push('R');
+    /// ```
+    pub SINGLE_CHAR_PUSH_STR,
+    style,
+    "`push_str()` used with a single-character string literal as parameter"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** As the counterpart to `or_fun_call`, this lint looks for unnecessary
+    /// lazily evaluated closures on `Option` and `Result`.
+    ///
+    /// This lint suggests changing the following functions, when eager evaluation results in
+    /// simpler code:
+    ///  - `unwrap_or_else` to `unwrap_or`
+    ///  - `and_then` to `and`
+    ///  - `or_else` to `or`
+    ///  - `get_or_insert_with` to `get_or_insert`
+    ///  - `ok_or_else` to `ok_or`
+    ///
+    /// **Why is this bad?** Using eager evaluation is shorter and simpler in some cases.
+    ///
+    /// **Known problems:** It is possible, but not recommended for `Deref` and `Index` to have
+    /// side effects. Eagerly evaluating them can change the semantics of the program.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // example code where clippy issues a warning
+    /// let opt: Option<u32> = None;
+    ///
+    /// opt.unwrap_or_else(|| 42);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let opt: Option<u32> = None;
+    ///
+    /// opt.unwrap_or(42);
+    /// ```
+    pub UNNECESSARY_LAZY_EVALUATIONS,
+    style,
+    "using unnecessary lazy evaluation, which can be replaced with simpler eager evaluation"
+}
+
 declare_lint_pass!(Methods => [
     UNWRAP_USED,
     EXPECT_USED,
@@ -1327,6 +1403,7 @@ declare_lint_pass!(Methods => [
     INEFFICIENT_TO_STRING,
     NEW_RET_NO_SELF,
     SINGLE_CHAR_PATTERN,
+    SINGLE_CHAR_PUSH_STR,
     SEARCH_IS_SOME,
     TEMPORARY_CSTRING_AS_PTR,
     FILTER_NEXT,
@@ -1354,6 +1431,7 @@ declare_lint_pass!(Methods => [
     ZST_OFFSET,
     FILETYPE_IS_FILE,
     OPTION_AS_REF_DEREF,
+    UNNECESSARY_LAZY_EVALUATIONS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
@@ -1374,13 +1452,19 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["expect", "ok"] => lint_ok_expect(cx, expr, arg_lists[1]),
             ["expect", ..] => lint_expect(cx, expr, arg_lists[0]),
             ["unwrap_or", "map"] => option_map_unwrap_or::lint(cx, expr, arg_lists[1], arg_lists[0], method_spans[1]),
-            ["unwrap_or_else", "map"] => lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0]),
+            ["unwrap_or_else", "map"] => {
+                if !lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0]) {
+                    unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], true, "unwrap_or");
+                }
+            },
             ["map_or", ..] => lint_map_or_none(cx, expr, arg_lists[0]),
             ["and_then", ..] => {
+                unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], false, "and");
                 bind_instead_of_map::OptionAndThenSome::lint(cx, expr, arg_lists[0]);
                 bind_instead_of_map::ResultAndThenOk::lint(cx, expr, arg_lists[0]);
             },
             ["or_else", ..] => {
+                unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], false, "or");
                 bind_instead_of_map::ResultOrElseErrInfo::lint(cx, expr, arg_lists[0]);
             },
             ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
@@ -1424,6 +1508,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["is_file", ..] => lint_filetype_is_file(cx, expr, arg_lists[0]),
             ["map", "as_ref"] => lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], false),
             ["map", "as_mut"] => lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], true),
+            ["unwrap_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], true, "unwrap_or"),
+            ["get_or_insert_with", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], true, "get_or_insert"),
+            ["ok_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], true, "ok_or"),
             _ => {},
         }
 
@@ -1439,6 +1526,12 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 }
                 if args.len() == 1 && method_call.ident.name == sym!(to_string) {
                     inefficient_to_string::lint(cx, expr, &args[0], self_ty);
+                }
+
+                if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+                    if match_def_path(cx, fn_def_id, &paths::PUSH_STR) {
+                        lint_single_char_push_string(cx, expr, args);
+                    }
                 }
 
                 match self_ty.kind {
@@ -1470,6 +1563,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         if in_external_macro(cx.sess(), impl_item.span) {
             return;
@@ -1495,16 +1589,31 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
             then {
                 if cx.access_levels.is_exported(impl_item.hir_id) {
-                // check missing trait implementations
-                    for &(method_name, n_args, fn_header, self_kind, out_type, trait_name) in &TRAIT_METHODS {
-                        if name == method_name &&
-                            sig.decl.inputs.len() == n_args &&
-                            out_type.matches(cx, &sig.decl.output) &&
-                            self_kind.matches(cx, self_ty, first_arg_ty) &&
-                            fn_header_equals(*fn_header, sig.header) {
-                            span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
-                                "defining a method called `{}` on this type; consider implementing \
-                                the `{}` trait or choosing a less ambiguous name", name, trait_name));
+                    // check missing trait implementations
+                    for method_config in &TRAIT_METHODS {
+                        if name == method_config.method_name &&
+                            sig.decl.inputs.len() == method_config.param_count &&
+                            method_config.output_type.matches(cx, &sig.decl.output) &&
+                            method_config.self_kind.matches(cx, self_ty, first_arg_ty) &&
+                            fn_header_equals(method_config.fn_header, sig.header) &&
+                            method_config.lifetime_param_cond(&impl_item)
+                        {
+                            span_lint_and_help(
+                                cx,
+                                SHOULD_IMPLEMENT_TRAIT,
+                                impl_item.span,
+                                &format!(
+                                    "method `{}` can be confused for the standard trait method `{}::{}`",
+                                    method_config.method_name,
+                                    method_config.trait_name,
+                                    method_config.method_name
+                                ),
+                                None,
+                                &format!(
+                                    "consider implementing the trait `{}` or choosing a less ambiguous method name",
+                                    method_config.trait_name
+                                )
+                            );
                         }
                     }
                 }
@@ -1538,19 +1647,16 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             }
         }
 
+        // if this impl block implements a trait, lint in trait definition instead
+        if let hir::ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
+            return;
+        }
+
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
             let ret_ty = return_ty(cx, impl_item.hir_id);
 
-            let contains_self_ty = |ty: Ty<'tcx>| {
-                ty.walk().any(|inner| match inner.unpack() {
-                    GenericArgKind::Type(inner_ty) => TyS::same_type(self_ty, inner_ty),
-
-                    GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
-                })
-            };
-
             // walk the return type and check for Self (this does not check associated types)
-            if contains_self_ty(ret_ty) {
+            if contains_ty(ret_ty, self_ty) {
                 return;
             }
 
@@ -1560,7 +1666,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 for &(predicate, _span) in cx.tcx.predicates_of(def_id).predicates {
                     if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
                         // walk the associated type and check for Self
-                        if contains_self_ty(projection_predicate.ty) {
+                        if contains_ty(projection_predicate.ty, self_ty) {
                             return;
                         }
                     }
@@ -1572,6 +1678,26 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     cx,
                     NEW_RET_NO_SELF,
                     impl_item.span,
+                    "methods called `new` usually return `Self`",
+                );
+            }
+        }
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
+        if_chain! {
+            if !in_external_macro(cx.tcx.sess, item.span);
+            if item.ident.name == sym!(new);
+            if let TraitItemKind::Fn(_, _) = item.kind;
+            let ret_ty = return_ty(cx, item.hir_id);
+            let self_ty = TraitRef::identity(cx.tcx, item.hir_id.owner.to_def_id()).self_ty();
+            if !contains_ty(ret_ty, self_ty);
+
+            then {
+                span_lint(
+                    cx,
+                    NEW_RET_NO_SELF,
+                    item.span,
                     "methods called `new` usually return `Self`",
                 );
             }
@@ -2057,18 +2183,15 @@ fn lint_clone_on_ref_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::
             return;
         };
 
+        let snippet = snippet_with_macro_callsite(cx, arg.span, "_");
+
         span_lint_and_sugg(
             cx,
             CLONE_ON_REF_PTR,
             expr.span,
             "using `.clone()` on a ref-counted pointer",
             "try this",
-            format!(
-                "{}::<{}>::clone(&{})",
-                caller_type,
-                subst.type_at(0),
-                snippet(cx, arg.span, "_")
-            ),
+            format!("{}::<{}>::clone(&{})", caller_type, subst.type_at(0), snippet),
             Applicability::Unspecified, // Sometimes unnecessary ::<_> after Rc/Arc/Weak
         );
     }
@@ -2280,7 +2403,7 @@ fn lint_iter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_
                     cx,
                     ITER_NEXT_SLICE,
                     expr.span,
-                    "Using `.iter().next()` on a Slice without end index.",
+                    "using `.iter().next()` on a Slice without end index",
                     "try calling",
                     format!("{}.get({})", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability), start_idx),
                     applicability,
@@ -2299,7 +2422,7 @@ fn lint_iter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_
             cx,
             ITER_NEXT_SLICE,
             expr.span,
-            "Using `.iter().next()` on an array",
+            "using `.iter().next()` on an array",
             "try calling",
             format!(
                 "{}.get(0)",
@@ -2618,12 +2741,13 @@ fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
 }
 
 /// lint use of `map().unwrap_or_else()` for `Option`s and `Result`s
+/// Return true if lint triggered
 fn lint_map_unwrap_or_else<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     map_args: &'tcx [hir::Expr<'_>],
     unwrap_args: &'tcx [hir::Expr<'_>],
-) {
+) -> bool {
     // lint if the caller of `map()` is an `Option`
     let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym!(option_type));
     let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym!(result_type));
@@ -2635,10 +2759,10 @@ fn lint_map_unwrap_or_else<'tcx>(
         let unwrap_mutated_vars = mutated_variables(&unwrap_args[1], cx);
         if let (Some(map_mutated_vars), Some(unwrap_mutated_vars)) = (map_mutated_vars, unwrap_mutated_vars) {
             if map_mutated_vars.intersection(&unwrap_mutated_vars).next().is_some() {
-                return;
+                return false;
             }
         } else {
-            return;
+            return false;
         }
 
         // lint message
@@ -2668,10 +2792,14 @@ fn lint_map_unwrap_or_else<'tcx>(
                     map_snippet, unwrap_snippet,
                 ),
             );
+            return true;
         } else if same_span && multiline {
             span_lint(cx, MAP_UNWRAP_OR, expr.span, msg);
-        };
+            return true;
+        }
     }
+
+    false
 }
 
 /// lint use of `_.map_or(None, _)` for `Option`s and `Result`s
@@ -3124,15 +3252,18 @@ fn lint_chars_last_cmp_with_unwrap<'tcx>(cx: &LateContext<'tcx>, info: &BinaryEx
     }
 }
 
-/// lint for length-1 `str`s for methods in `PATTERN_METHODS`
-fn lint_single_char_pattern<'tcx>(cx: &LateContext<'tcx>, _expr: &'tcx hir::Expr<'_>, arg: &'tcx hir::Expr<'_>) {
+fn get_hint_if_single_char_arg(
+    cx: &LateContext<'_>,
+    arg: &hir::Expr<'_>,
+    applicability: &mut Applicability,
+) -> Option<String> {
     if_chain! {
         if let hir::ExprKind::Lit(lit) = &arg.kind;
         if let ast::LitKind::Str(r, style) = lit.node;
-        if r.as_str().len() == 1;
+        let string = r.as_str();
+        if string.len() == 1;
         then {
-            let mut applicability = Applicability::MachineApplicable;
-            let snip = snippet_with_applicability(cx, arg.span, "..", &mut applicability);
+            let snip = snippet_with_applicability(cx, arg.span, &string, applicability);
             let ch = if let ast::StrStyle::Raw(nhash) = style {
                 let nhash = nhash as usize;
                 // for raw string: r##"a"##
@@ -3142,16 +3273,44 @@ fn lint_single_char_pattern<'tcx>(cx: &LateContext<'tcx>, _expr: &'tcx hir::Expr
                 &snip[1..(snip.len() - 1)]
             };
             let hint = format!("'{}'", if ch == "'" { "\\'" } else { ch });
-            span_lint_and_sugg(
-                cx,
-                SINGLE_CHAR_PATTERN,
-                arg.span,
-                "single-character string constant used as pattern",
-                "try using a `char` instead",
-                hint,
-                applicability,
-            );
+            Some(hint)
+        } else {
+            None
         }
+    }
+}
+
+/// lint for length-1 `str`s for methods in `PATTERN_METHODS`
+fn lint_single_char_pattern(cx: &LateContext<'_>, _expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
+    let mut applicability = Applicability::MachineApplicable;
+    if let Some(hint) = get_hint_if_single_char_arg(cx, arg, &mut applicability) {
+        span_lint_and_sugg(
+            cx,
+            SINGLE_CHAR_PATTERN,
+            arg.span,
+            "single-character string constant used as pattern",
+            "try using a `char` instead",
+            hint,
+            applicability,
+        );
+    }
+}
+
+/// lint for length-1 `str`s as argument for `push_str`
+fn lint_single_char_push_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+    let mut applicability = Applicability::MachineApplicable;
+    if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[1], &mut applicability) {
+        let base_string_snippet = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
+        let sugg = format!("{}.push({})", base_string_snippet, extension_string);
+        span_lint_and_sugg(
+            cx,
+            SINGLE_CHAR_PUSH_STR,
+            expr.span,
+            "calling `push_str()` using a single-character string literal",
+            "consider using `push` with a character literal",
+            sugg,
+            applicability,
+        );
     }
 }
 
@@ -3292,7 +3451,12 @@ fn lint_option_as_ref_deref<'tcx>(
     ];
 
     let is_deref = match map_args[1].kind {
-        hir::ExprKind::Path(ref expr_qpath) => deref_aliases.iter().any(|path| match_qpath(expr_qpath, path)),
+        hir::ExprKind::Path(ref expr_qpath) => cx
+            .qpath_res(expr_qpath, map_args[1].hir_id)
+            .opt_def_id()
+            .map_or(false, |fun_def_id| {
+                deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
+            }),
         hir::ExprKind::Closure(_, _, body_id, _, _) => {
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
@@ -3403,38 +3567,85 @@ const FN_HEADER: hir::FnHeader = hir::FnHeader {
     abi: rustc_target::spec::abi::Abi::Rust,
 };
 
+struct ShouldImplTraitCase {
+    trait_name: &'static str,
+    method_name: &'static str,
+    param_count: usize,
+    fn_header: hir::FnHeader,
+    // implicit self kind expected (none, self, &self, ...)
+    self_kind: SelfKind,
+    // checks against the output type
+    output_type: OutType,
+    // certain methods with explicit lifetimes can't implement the equivalent trait method
+    lint_explicit_lifetime: bool,
+}
+impl ShouldImplTraitCase {
+    const fn new(
+        trait_name: &'static str,
+        method_name: &'static str,
+        param_count: usize,
+        fn_header: hir::FnHeader,
+        self_kind: SelfKind,
+        output_type: OutType,
+        lint_explicit_lifetime: bool,
+    ) -> ShouldImplTraitCase {
+        ShouldImplTraitCase {
+            trait_name,
+            method_name,
+            param_count,
+            fn_header,
+            self_kind,
+            output_type,
+            lint_explicit_lifetime,
+        }
+    }
+
+    fn lifetime_param_cond(&self, impl_item: &hir::ImplItem<'_>) -> bool {
+        self.lint_explicit_lifetime
+            || !impl_item.generics.params.iter().any(|p| {
+                matches!(
+                    p.kind,
+                    hir::GenericParamKind::Lifetime {
+                        kind: hir::LifetimeParamKind::Explicit
+                    }
+                )
+            })
+    }
+}
+
 #[rustfmt::skip]
-const TRAIT_METHODS: [(&str, usize, &hir::FnHeader, SelfKind, OutType, &str); 30] = [
-    ("add", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Add"),
-    ("as_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
-    ("as_ref", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
-    ("bitand", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
-    ("bitor", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
-    ("bitxor", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
-    ("borrow", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
-    ("borrow_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
-    ("clone", 1, &FN_HEADER, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
-    ("cmp", 2, &FN_HEADER, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
-    ("default", 0, &FN_HEADER, SelfKind::No, OutType::Any, "std::default::Default"),
-    ("deref", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
-    ("deref_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
-    ("div", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Div"),
-    ("drop", 1, &FN_HEADER, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
-    ("eq", 2, &FN_HEADER, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
-    ("from_iter", 1, &FN_HEADER, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
-    ("from_str", 1, &FN_HEADER, SelfKind::No, OutType::Any, "std::str::FromStr"),
-    ("hash", 2, &FN_HEADER, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
-    ("index", 2, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
-    ("index_mut", 2, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
-    ("into_iter", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
-    ("mul", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Mul"),
-    ("neg", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Neg"),
-    ("next", 1, &FN_HEADER, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
-    ("not", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Not"),
-    ("rem", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Rem"),
-    ("shl", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Shl"),
-    ("shr", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Shr"),
-    ("sub", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Sub"),
+const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
+    ShouldImplTraitCase::new("std::ops::Add", "add",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::convert::AsMut", "as_mut",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::convert::AsRef", "as_ref",  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::BitAnd", "bitand",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::BitOr", "bitor",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::BitXor", "bitxor",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::borrow::Borrow", "borrow",  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::borrow::BorrowMut", "borrow_mut",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::clone::Clone", "clone",  1,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::cmp::Ord", "cmp",  2,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
+    // FIXME: default doesn't work
+    ShouldImplTraitCase::new("std::default::Default", "default",  0,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Deref", "deref",  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::DerefMut", "deref_mut",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::Div", "div",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Drop", "drop",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Unit, true),
+    ShouldImplTraitCase::new("std::cmp::PartialEq", "eq",  2,  FN_HEADER,  SelfKind::Ref,  OutType::Bool, true),
+    ShouldImplTraitCase::new("std::iter::FromIterator", "from_iter",  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::str::FromStr", "from_str",  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::hash::Hash", "hash",  2,  FN_HEADER,  SelfKind::Ref,  OutType::Unit, true),
+    ShouldImplTraitCase::new("std::ops::Index", "index",  2,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::IndexMut", "index_mut",  2,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::iter::IntoIterator", "into_iter",  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Mul", "mul",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Neg", "neg",  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::iter::Iterator", "next",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Any, false),
+    ShouldImplTraitCase::new("std::ops::Not", "not",  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Rem", "rem",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Shl", "shl",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Shr", "shr",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Sub", "sub",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
 ];
 
 #[rustfmt::skip]

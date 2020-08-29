@@ -97,6 +97,24 @@ mod issue3992 {
     pub fn c(d: &u16) {}
 }
 
+mod issue5876 {
+    // Don't lint here as it is always inlined
+    #[inline(always)]
+    fn foo_always(x: &i32) {
+        println!("{}", x);
+    }
+
+    #[inline(never)]
+    fn foo_never(x: &i32) {
+        println!("{}", x);
+    }
+
+    #[inline]
+    fn foo(x: &i32) {
+        println!("{}", x);
+    }
+}
+
 fn main() {
     let (mut foo, bar) = (Foo(0), Bar([0; 24]));
     let (mut a, b, c, x, y, z) = (0, 0, Bar([0; 24]), 0, Foo(0), 0);

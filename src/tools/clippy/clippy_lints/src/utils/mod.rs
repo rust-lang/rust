@@ -21,7 +21,7 @@ pub mod sugg;
 pub mod usage;
 pub use self::attrs::*;
 pub use self::diagnostics::*;
-pub use self::hir_utils::{both, over, SpanlessEq, SpanlessHash};
+pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
 
 use std::borrow::Cow;
 use std::mem;
@@ -42,7 +42,8 @@ use rustc_hir::{
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, layout::IntegerExt, Ty, TyCtxt, TypeFoldable};
 use rustc_mir::const_eval;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
@@ -574,7 +575,7 @@ pub fn snippet_block<'a, T: LintContext>(
 }
 
 /// Same as `snippet_block`, but adapts the applicability level by the rules of
-/// `snippet_with_applicabiliy`.
+/// `snippet_with_applicability`.
 pub fn snippet_block_with_applicability<'a, T: LintContext>(
     cx: &T,
     span: Span,
@@ -864,6 +865,14 @@ pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId) -> Ty<'tcx> 
     let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
     let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
     cx.tcx.erase_late_bound_regions(&ret_ty)
+}
+
+/// Walks into `ty` and returns `true` if any inner type is the same as `other_ty`
+pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
+    ty.walk().any(|inner| match inner.unpack() {
+        GenericArgKind::Type(inner_ty) => ty::TyS::same_type(other_ty, inner_ty),
+        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+    })
 }
 
 /// Returns `true` if the given type is an `unsafe` function.
@@ -1304,7 +1313,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-// check if expr is calling method or function with #[must_use] attribyte
+// check if expr is calling method or function with #[must_use] attribute
 pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let did = match expr.kind {
         ExprKind::Call(ref path, _) => if_chain! {
@@ -1409,11 +1418,13 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     }
 }
 
-/// Returns true iff the given expression is a slice of primitives (as defined in the
-/// `is_recursively_primitive_type` function).
-pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+/// Returns Option<String> where String is a textual representation of the type encapsulated in the
+/// slice iff the given expression is a slice of primitives (as defined in the
+/// `is_recursively_primitive_type` function) and None otherwise.
+pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
-    match expr_type.kind {
+    let expr_kind = &expr_type.kind;
+    let is_primitive = match expr_kind {
         ty::Slice(ref element_type)
         | ty::Ref(
             _,
@@ -1424,7 +1435,24 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             _,
         ) => is_recursively_primitive_type(element_type),
         _ => false,
+    };
+
+    if is_primitive {
+        // if we have wrappers like Array, Slice or Tuple, print these
+        // and get the type enclosed in the slice ref
+        match expr_type.peel_refs().walk().nth(1).unwrap().expect_ty().kind {
+            ty::Slice(..) => return Some("slice".into()),
+            ty::Array(..) => return Some("array".into()),
+            ty::Tuple(..) => return Some("tuple".into()),
+            _ => {
+                // is_recursively_primitive_type() should have taken care
+                // of the rest and we can rely on the type that is found
+                let refs_peeled = expr_type.peel_refs();
+                return Some(refs_peeled.walk().last().unwrap().to_string());
+            },
+        }
     }
+    None
 }
 
 #[macro_export]

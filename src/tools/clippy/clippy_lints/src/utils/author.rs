@@ -175,18 +175,15 @@ impl PrintVisitor {
     }
 
     fn print_qpath(&mut self, path: &QPath<'_>) {
-        match  *path {
-            QPath::LangItem(lang_item, _) => {
-                println!(
-                    "    if matches!({}, QPath::LangItem(LangItem::{:?}, _));",
-                   self.current, lang_item,
-                );
-            },
-            _ => {
-                print!("    if match_qpath({}, &[", self.current);
-                print_path(path, &mut true);
-                println!("]);");
-            },
+        if let QPath::LangItem(lang_item, _) = *path {
+            println!(
+                "    if matches!({}, QPath::LangItem(LangItem::{:?}, _));",
+                self.current, lang_item,
+            );
+        } else {
+            print!("    if match_qpath({}, &[", self.current);
+            print_path(path, &mut true);
+            println!("]);");
         }
     }
 }
