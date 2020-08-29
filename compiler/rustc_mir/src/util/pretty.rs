@@ -6,6 +6,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use super::graphviz::write_mir_fn_graphviz;
+use super::spanview::write_mir_fn_spanview;
 use crate::transform::MirSource;
 use either::Either;
 use rustc_data_structures::fx::FxHashMap;
@@ -145,6 +146,16 @@ fn dump_matched_mir_node<'tcx, F>(
             let mut file =
                 create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, source)?;
             write_mir_fn_graphviz(tcx, source.def_id(), body, false, &mut file)?;
+        };
+    }
+
+    if let Some(spanview) = tcx.sess.opts.debugging_opts.dump_mir_spanview {
+        let _: io::Result<()> = try {
+            let mut file =
+                create_dump_file(tcx, "html", pass_num, pass_name, disambiguator, source)?;
+            if source.def_id().is_local() {
+                write_mir_fn_spanview(tcx, source.def_id(), body, spanview, &mut file)?;
+            }
         };
     }
 }
