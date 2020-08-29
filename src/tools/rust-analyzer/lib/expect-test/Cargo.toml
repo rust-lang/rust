@@ -5,7 +5,7 @@ description = "Minimalistic snapshot testing library"
 keywords = ["snapshot", "testing", "expect"]
 categories = ["development-tools::testing"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/rust-analyzer/rust-analyzer"
+repository = "https://github.com/rust-analyzer/expect-test"
 authors = ["rust-analyzer developers"]
 edition = "2018"
 
