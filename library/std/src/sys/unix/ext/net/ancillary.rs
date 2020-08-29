@@ -159,6 +159,7 @@ impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
 }
 
 #[cfg(any(
+    doc,
     target_os = "android",
     target_os = "dragonfly",
     target_os = "emscripten",
@@ -176,6 +177,7 @@ impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
 pub struct UCred(libc::ucred);
 
 #[cfg(any(
+    doc,
     target_os = "android",
     target_os = "dragonfly",
     target_os = "emscripten",
@@ -238,6 +240,7 @@ impl<'a> Iterator for ScmRights<'a> {
 }
 
 #[cfg(any(
+    doc,
     target_os = "android",
     target_os = "dragonfly",
     target_os = "emscripten",
@@ -254,6 +257,7 @@ impl<'a> Iterator for ScmRights<'a> {
 pub struct ScmCredentials<'a>(AncillaryDataIter<'a, libc::ucred>);
 
 #[cfg(any(
+    doc,
     target_os = "android",
     target_os = "dragonfly",
     target_os = "emscripten",
@@ -286,6 +290,7 @@ pub enum AncillaryError {
 pub enum AncillaryData<'a> {
     ScmRights(ScmRights<'a>),
     #[cfg(any(
+        doc,
         target_os = "android",
         target_os = "dragonfly",
         target_os = "emscripten",
@@ -309,6 +314,7 @@ impl<'a> AncillaryData<'a> {
     }
 
     #[cfg(any(
+        doc,
         target_os = "android",
         target_os = "dragonfly",
         target_os = "emscripten",
@@ -549,6 +555,7 @@ impl<'a> SocketAncillary<'a> {
     /// and type `SCM_CREDENTIALS`.
     ///
     #[cfg(any(
+        doc,
         target_os = "android",
         target_os = "dragonfly",
         target_os = "emscripten",
