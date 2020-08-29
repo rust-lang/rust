@@ -42,7 +42,7 @@ impl LateLintPass<'_> for CreateDir {
                     "calling `std::fs::create_dir` where there may be a better way",
                     "consider calling `std::fs::create_dir_all` instead",
                     format!("std::fs::create_dir_all({})", snippet(cx, args[0].span, "..")),
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                 )
             }
         }
