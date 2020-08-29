@@ -4109,6 +4109,7 @@ dependencies = [
 name = "rustdoc"
 version = "0.0.0"
 dependencies = [
+ "expect-test",
  "itertools 0.8.2",
  "minifier",
  "pulldown-cmark",

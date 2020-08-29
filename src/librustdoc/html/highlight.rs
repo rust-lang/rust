@@ -7,18 +7,12 @@
 
 use crate::html::escape::Escape;
 
-use std::fmt::Display;
-use std::io;
-use std::io::prelude::*;
+use std::fmt::{Display, Write};
+use std::iter::Peekable;
 
-use rustc_ast::token::{self, Token};
-use rustc_data_structures::sync::Lrc;
-use rustc_parse::lexer;
-use rustc_session::parse::ParseSess;
-use rustc_span::hygiene::SyntaxContext;
-use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, sym};
-use rustc_span::{BytePos, FileName, SourceFile, Span};
+use rustc_lexer::{LiteralKind, TokenKind};
+use rustc_span::symbol::Ident;
+use rustc_span::with_default_session_globals;
 
 /// Highlights `src`, returning the HTML output.
 pub fn render_with_highlighting(
@@ -28,7 +22,7 @@ pub fn render_with_highlighting(
     tooltip: Option<(&str, &str)>,
 ) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
-    let mut out = Vec::new();
+    let mut out = String::with_capacity(src.len());
     if let Some((tooltip, class)) = tooltip {
         write!(
             out,
@@ -39,60 +33,30 @@ pub fn render_with_highlighting(
         .unwrap();
     }
 
-    let sess = ParseSess::with_silent_emitter();
-    let source_file = sess
-        .source_map()
-        .new_source_file(FileName::Custom(String::from("rustdoc-highlighting")), src);
+    write_header(&mut out, class);
+    write_code(&mut out, &src);
+    write_footer(&mut out, playground_button);
 
-    let classifier_source_file = Lrc::clone(&source_file);
-    let highlight_result = rustc_driver::catch_fatal_errors(|| {
-        let mut classifier = Classifier::new(&sess, classifier_source_file);
-
-        let mut highlighted_source = vec![];
-        if classifier.write_source(&mut highlighted_source).is_err() {
-            Err(())
-        } else {
-            Ok(String::from_utf8_lossy(&highlighted_source).into_owned())
-        }
-    })
-    .unwrap_or(Err(()));
-
-    match highlight_result {
-        Ok(highlighted_source) => {
-            write_header(class, &mut out).unwrap();
-            write!(out, "{}", highlighted_source).unwrap();
-            write_footer(&mut out, playground_button).unwrap();
-        }
-        Err(()) => {
-            // Get the source back out of the source map to avoid a copy in the happy path.
-            let span =
-                Span::new(BytePos(0), BytePos(source_file.byte_length()), SyntaxContext::root());
-            let src = sess
-                .source_map()
-                .span_to_snippet(span)
-                .expect("could not retrieve snippet from artificial source file");
-
-            // If errors are encountered while trying to highlight, just emit
-            // the unhighlighted source.
-            write!(out, "<pre><code>{}</code></pre>", Escape(&src)).unwrap();
-        }
-    }
-
-    String::from_utf8_lossy(&out[..]).into_owned()
+    out
 }
 
-/// Processes a program (nested in the internal `lexer`), classifying strings of
-/// text by highlighting category (`Class`). Calls out to a `Writer` to write
-/// each span of text in sequence.
-struct Classifier<'sess> {
-    lexer: lexer::StringReader<'sess>,
-    peek_token: Option<Token>,
-    source_map: &'sess SourceMap,
+fn write_header(out: &mut String, class: Option<&str>) {
+    write!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">\n", class.unwrap_or_default())
+        .unwrap()
+}
 
-    // State of the classifier.
-    in_attribute: bool,
-    in_macro: bool,
-    in_macro_nonterminal: bool,
+fn write_code(out: &mut String, src: &str) {
+    Classifier::new(src).highlight(&mut |highlight| {
+        match highlight {
+            Highlight::Token { text, class } => string(out, Escape(text), class),
+            Highlight::EnterSpan { class } => enter_span(out, class),
+            Highlight::ExitSpan => exit_span(out),
+        };
+    });
+}
+
+fn write_footer(out: &mut String, playground_button: Option<&str>) {
+    write!(out, "</pre>{}</div>\n", playground_button.unwrap_or_default()).unwrap()
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.
@@ -119,306 +83,9 @@ enum Class {
     QuestionMark,
 }
 
-/// Trait that controls writing the output of syntax highlighting. Users should
-/// implement this trait to customize writing output.
-///
-/// The classifier will call into the `Writer` implementation as it finds spans
-/// of text to highlight. Exactly how that text should be highlighted is up to
-/// the implementation.
-trait Writer {
-    /// Called when we start processing a span of text that should be highlighted.
-    /// The `Class` argument specifies how it should be highlighted.
-    fn enter_span(&mut self, _: Class) -> io::Result<()>;
-
-    /// Called at the end of a span of highlighted text.
-    fn exit_span(&mut self) -> io::Result<()>;
-
-    /// Called for a span of text. If the text should be highlighted differently from the
-    /// surrounding text, then the `Class` argument will be a value other than `None`.
-    ///
-    /// The following sequences of callbacks are equivalent:
-    /// ```plain
-    ///     enter_span(Foo), string("text", None), exit_span()
-    ///     string("text", Foo)
-    /// ```
-    /// The latter can be thought of as a shorthand for the former, which is
-    /// more flexible.
-    fn string<T: Display>(&mut self, text: T, klass: Class) -> io::Result<()>;
-}
-
-// Implement `Writer` for anything that can be written to, this just implements
-// the default rustdoc behaviour.
-impl<U: Write> Writer for U {
-    fn string<T: Display>(&mut self, text: T, klass: Class) -> io::Result<()> {
-        match klass {
-            Class::None => write!(self, "{}", text),
-            klass => write!(self, "<span class=\"{}\">{}</span>", klass.rustdoc_class(), text),
-        }
-    }
-
-    fn enter_span(&mut self, klass: Class) -> io::Result<()> {
-        write!(self, "<span class=\"{}\">", klass.rustdoc_class())
-    }
-
-    fn exit_span(&mut self) -> io::Result<()> {
-        write!(self, "</span>")
-    }
-}
-
-#[derive(Debug)]
-enum HighlightError {
-    LexError,
-    IoError(io::Error),
-}
-
-impl From<io::Error> for HighlightError {
-    fn from(err: io::Error) -> Self {
-        HighlightError::IoError(err)
-    }
-}
-
-impl<'sess> Classifier<'sess> {
-    fn new(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Classifier<'_> {
-        let lexer = lexer::StringReader::new(sess, source_file, None);
-
-        Classifier {
-            lexer,
-            peek_token: None,
-            source_map: sess.source_map(),
-            in_attribute: false,
-            in_macro: false,
-            in_macro_nonterminal: false,
-        }
-    }
-
-    /// Gets the next token out of the lexer.
-    fn try_next_token(&mut self) -> Result<Token, HighlightError> {
-        if let Some(token) = self.peek_token.take() {
-            return Ok(token);
-        }
-        let token = self.lexer.next_token();
-        if let token::Unknown(..) = &token.kind {
-            return Err(HighlightError::LexError);
-        }
-        Ok(token)
-    }
-
-    fn peek(&mut self) -> Result<&Token, HighlightError> {
-        if self.peek_token.is_none() {
-            let token = self.lexer.next_token();
-            if let token::Unknown(..) = &token.kind {
-                return Err(HighlightError::LexError);
-            }
-            self.peek_token = Some(token);
-        }
-        Ok(self.peek_token.as_ref().unwrap())
-    }
-
-    /// Exhausts the `lexer` writing the output into `out`.
-    ///
-    /// The general structure for this method is to iterate over each token,
-    /// possibly giving it an HTML span with a class specifying what flavor of token
-    /// is used. All source code emission is done as slices from the source map,
-    /// not from the tokens themselves, in order to stay true to the original
-    /// source.
-    fn write_source<W: Writer>(&mut self, out: &mut W) -> Result<(), HighlightError> {
-        loop {
-            let mut next = self.try_next_token()?;
-            if next == token::Eof {
-                break;
-            }
-
-            // Glue any tokens that need to be glued.
-            if let Some(joint) = next.glue(self.peek()?) {
-                next = joint;
-                let _ = self.try_next_token()?;
-            }
-
-            self.write_token(out, next)?;
-        }
-
-        Ok(())
-    }
-
-    // Handles an individual token from the lexer.
-    fn write_token<W: Writer>(&mut self, out: &mut W, token: Token) -> Result<(), HighlightError> {
-        let klass = match token.kind {
-            token::Shebang(s) => {
-                out.string(Escape(&s.as_str()), Class::None)?;
-                return Ok(());
-            }
-
-            token::Whitespace | token::Unknown(..) => Class::None,
-            token::Comment => Class::Comment,
-            token::DocComment(..) => Class::DocComment,
-
-            // If this '&' or '*' token is followed by a non-whitespace token, assume that it's the
-            // reference or dereference operator or a reference or pointer type, instead of the
-            // bit-and or multiplication operator.
-            token::BinOp(token::And | token::Star) if self.peek()? != &token::Whitespace => {
-                Class::RefKeyWord
-            }
-
-            // Consider this as part of a macro invocation if there was a
-            // leading identifier.
-            token::Not if self.in_macro => {
-                self.in_macro = false;
-                Class::Macro
-            }
-
-            // Operators.
-            token::Eq
-            | token::Lt
-            | token::Le
-            | token::EqEq
-            | token::Ne
-            | token::Ge
-            | token::Gt
-            | token::AndAnd
-            | token::OrOr
-            | token::Not
-            | token::BinOp(..)
-            | token::RArrow
-            | token::BinOpEq(..)
-            | token::FatArrow => Class::Op,
-
-            // Miscellaneous, no highlighting.
-            token::Dot
-            | token::DotDot
-            | token::DotDotDot
-            | token::DotDotEq
-            | token::Comma
-            | token::Semi
-            | token::Colon
-            | token::ModSep
-            | token::LArrow
-            | token::OpenDelim(_)
-            | token::CloseDelim(token::Brace | token::Paren | token::NoDelim) => Class::None,
-
-            token::Question => Class::QuestionMark,
-
-            token::Dollar => {
-                if self.peek()?.is_ident() {
-                    self.in_macro_nonterminal = true;
-                    Class::MacroNonTerminal
-                } else {
-                    Class::None
-                }
-            }
-
-            // This might be the start of an attribute. We're going to want to
-            // continue highlighting it as an attribute until the ending ']' is
-            // seen, so skip out early. Down below we terminate the attribute
-            // span when we see the ']'.
-            token::Pound => {
-                // We can't be sure that our # begins an attribute (it could
-                // just be appearing in a macro) until we read either `#![` or
-                // `#[` from the input stream.
-                //
-                // We don't want to start highlighting as an attribute until
-                // we're confident there is going to be a ] coming up, as
-                // otherwise # tokens in macros highlight the rest of the input
-                // as an attribute.
-
-                // Case 1: #![inner_attribute]
-                if self.peek()? == &token::Not {
-                    self.try_next_token()?; // NOTE: consumes `!` token!
-                    if self.peek()? == &token::OpenDelim(token::Bracket) {
-                        self.in_attribute = true;
-                        out.enter_span(Class::Attribute)?;
-                    }
-                    out.string("#", Class::None)?;
-                    out.string("!", Class::None)?;
-                    return Ok(());
-                }
-
-                // Case 2: #[outer_attribute]
-                if self.peek()? == &token::OpenDelim(token::Bracket) {
-                    self.in_attribute = true;
-                    out.enter_span(Class::Attribute)?;
-                }
-                out.string("#", Class::None)?;
-                return Ok(());
-            }
-            token::CloseDelim(token::Bracket) => {
-                if self.in_attribute {
-                    self.in_attribute = false;
-                    out.string("]", Class::None)?;
-                    out.exit_span()?;
-                    return Ok(());
-                } else {
-                    Class::None
-                }
-            }
-
-            token::Literal(lit) => {
-                match lit.kind {
-                    // Text literals.
-                    token::Byte
-                    | token::Char
-                    | token::Err
-                    | token::ByteStr
-                    | token::ByteStrRaw(..)
-                    | token::Str
-                    | token::StrRaw(..) => Class::String,
-
-                    // Number literals.
-                    token::Integer | token::Float => Class::Number,
-
-                    token::Bool => panic!("literal token contains `Lit::Bool`"),
-                }
-            }
-
-            // Keywords are also included in the identifier set.
-            token::Ident(name, is_raw) => match name {
-                kw::Ref | kw::Mut if !is_raw => Class::RefKeyWord,
-
-                kw::SelfLower | kw::SelfUpper => Class::Self_,
-                kw::False | kw::True if !is_raw => Class::Bool,
-
-                sym::Option | sym::Result => Class::PreludeTy,
-                sym::Some | sym::None | sym::Ok | sym::Err => Class::PreludeVal,
-
-                _ if token.is_reserved_ident() => Class::KeyWord,
-
-                _ => {
-                    if self.in_macro_nonterminal {
-                        self.in_macro_nonterminal = false;
-                        Class::MacroNonTerminal
-                    } else if self.peek()? == &token::Not {
-                        self.in_macro = true;
-                        Class::Macro
-                    } else {
-                        Class::Ident
-                    }
-                }
-            },
-
-            token::Lifetime(..) => Class::Lifetime,
-
-            token::Eof
-            | token::Interpolated(..)
-            | token::Tilde
-            | token::At
-            | token::SingleQuote => Class::None,
-        };
-
-        // Anything that didn't return above is the simple case where we the
-        // class just spans a single token, so we can use the `string` method.
-        out.string(Escape(&self.snip(token.span)), klass)?;
-
-        Ok(())
-    }
-
-    // Helper function to get a snippet from the source_map.
-    fn snip(&self, sp: Span) -> String {
-        self.source_map.span_to_snippet(sp).unwrap()
-    }
-}
-
 impl Class {
     /// Returns the css class expected by rustdoc for each `Class`.
-    fn rustdoc_class(self) -> &'static str {
+    fn as_html(self) -> &'static str {
         match self {
             Class::None => "",
             Class::Comment => "comment",
@@ -442,12 +109,239 @@ impl Class {
     }
 }
 
-fn write_header(class: Option<&str>, out: &mut dyn Write) -> io::Result<()> {
-    write!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">\n", class.unwrap_or(""))
+enum Highlight<'a> {
+    Token { text: &'a str, class: Class },
+    EnterSpan { class: Class },
+    ExitSpan,
 }
 
-fn write_footer(out: &mut dyn Write, playground_button: Option<&str>) -> io::Result<()> {
-    write!(out, "</pre>{}</div>\n", if let Some(button) = playground_button { button } else { "" })
+struct TokenIter<'a> {
+    src: &'a str,
+}
+
+impl Iterator for TokenIter<'a> {
+    type Item = (TokenKind, &'a str);
+    fn next(&mut self) -> Option<(TokenKind, &'a str)> {
+        if self.src.is_empty() {
+            return None;
+        }
+        let token = rustc_lexer::first_token(self.src);
+        let (text, rest) = self.src.split_at(token.len);
+        self.src = rest;
+        Some((token.kind, text))
+    }
+}
+
+/// Processes program tokens, classifying strings of text by highlighting
+/// category (`Class`).
+struct Classifier<'a> {
+    tokens: Peekable<TokenIter<'a>>,
+    in_attribute: bool,
+    in_macro: bool,
+    in_macro_nonterminal: bool,
+}
+
+impl<'a> Classifier<'a> {
+    fn new(src: &str) -> Classifier<'_> {
+        let tokens = TokenIter { src }.peekable();
+        Classifier { tokens, in_attribute: false, in_macro: false, in_macro_nonterminal: false }
+    }
+
+    /// Exhausts the `Classifier` writing the output into `sink`.
+    ///
+    /// The general structure for this method is to iterate over each token,
+    /// possibly giving it an HTML span with a class specifying what flavor of
+    /// token is used.
+    fn highlight(mut self, sink: &mut dyn FnMut(Highlight<'a>)) {
+        with_default_session_globals(|| {
+            while let Some((token, text)) = self.tokens.next() {
+                self.advance(token, text, sink);
+            }
+        })
+    }
+
+    /// Single step of highlighting. This will classify `token`, but maybe also
+    /// a couple of following ones as well.
+    fn advance(&mut self, token: TokenKind, text: &'a str, sink: &mut dyn FnMut(Highlight<'a>)) {
+        let lookahead = self.peek();
+        let class = match token {
+            TokenKind::Whitespace => Class::None,
+            TokenKind::LineComment { doc_style } | TokenKind::BlockComment { doc_style, .. } => {
+                if doc_style.is_some() {
+                    Class::DocComment
+                } else {
+                    Class::Comment
+                }
+            }
+            // Consider this as part of a macro invocation if there was a
+            // leading identifier.
+            TokenKind::Bang if self.in_macro => {
+                self.in_macro = false;
+                Class::Macro
+            }
+
+            // Assume that '&' or '*' is the reference or dereference operator
+            // or a reference or pointer type. Unless, of course, it looks like
+            // a logical and or a multiplication operator: `&&` or `* `.
+            TokenKind::Star => match lookahead {
+                Some(TokenKind::Whitespace) => Class::Op,
+                _ => Class::RefKeyWord,
+            },
+            TokenKind::And => match lookahead {
+                Some(TokenKind::And) => {
+                    let _and = self.tokens.next();
+                    sink(Highlight::Token { text: "&&", class: Class::Op });
+                    return;
+                }
+                Some(TokenKind::Eq) => {
+                    let _eq = self.tokens.next();
+                    sink(Highlight::Token { text: "&=", class: Class::Op });
+                    return;
+                }
+                Some(TokenKind::Whitespace) => Class::Op,
+                _ => Class::RefKeyWord,
+            },
+
+            // Operators.
+            TokenKind::Minus
+            | TokenKind::Plus
+            | TokenKind::Or
+            | TokenKind::Slash
+            | TokenKind::Caret
+            | TokenKind::Percent
+            | TokenKind::Bang
+            | TokenKind::Eq
+            | TokenKind::Lt
+            | TokenKind::Gt => Class::Op,
+
+            // Miscellaneous, no highlighting.
+            TokenKind::Dot
+            | TokenKind::Semi
+            | TokenKind::Comma
+            | TokenKind::OpenParen
+            | TokenKind::CloseParen
+            | TokenKind::OpenBrace
+            | TokenKind::CloseBrace
+            | TokenKind::OpenBracket
+            | TokenKind::At
+            | TokenKind::Tilde
+            | TokenKind::Colon
+            | TokenKind::Unknown => Class::None,
+
+            TokenKind::Question => Class::QuestionMark,
+
+            TokenKind::Dollar => match lookahead {
+                Some(TokenKind::Ident) => {
+                    self.in_macro_nonterminal = true;
+                    Class::MacroNonTerminal
+                }
+                _ => Class::None,
+            },
+
+            // This might be the start of an attribute. We're going to want to
+            // continue highlighting it as an attribute until the ending ']' is
+            // seen, so skip out early. Down below we terminate the attribute
+            // span when we see the ']'.
+            TokenKind::Pound => {
+                match lookahead {
+                    // Case 1: #![inner_attribute]
+                    Some(TokenKind::Bang) => {
+                        let _not = self.tokens.next().unwrap();
+                        if let Some(TokenKind::OpenBracket) = self.peek() {
+                            self.in_attribute = true;
+                            sink(Highlight::EnterSpan { class: Class::Attribute });
+                        }
+                        sink(Highlight::Token { text: "#", class: Class::None });
+                        sink(Highlight::Token { text: "!", class: Class::None });
+                        return;
+                    }
+                    // Case 2: #[outer_attribute]
+                    Some(TokenKind::OpenBracket) => {
+                        self.in_attribute = true;
+                        sink(Highlight::EnterSpan { class: Class::Attribute });
+                    }
+                    _ => (),
+                }
+                Class::None
+            }
+            TokenKind::CloseBracket => {
+                if self.in_attribute {
+                    self.in_attribute = false;
+                    sink(Highlight::Token { text: "]", class: Class::None });
+                    sink(Highlight::ExitSpan);
+                    return;
+                }
+                Class::None
+            }
+            TokenKind::Literal { kind, .. } => match kind {
+                // Text literals.
+                LiteralKind::Byte { .. }
+                | LiteralKind::Char { .. }
+                | LiteralKind::Str { .. }
+                | LiteralKind::ByteStr { .. }
+                | LiteralKind::RawStr { .. }
+                | LiteralKind::RawByteStr { .. } => Class::String,
+                // Number literals.
+                LiteralKind::Float { .. } | LiteralKind::Int { .. } => Class::Number,
+            },
+            TokenKind::Ident | TokenKind::RawIdent if lookahead == Some(TokenKind::Bang) => {
+                self.in_macro = true;
+                Class::Macro
+            }
+            TokenKind::Ident => match text {
+                "ref" | "mut" => Class::RefKeyWord,
+                "self" | "Self" => Class::Self_,
+                "false" | "true" => Class::Bool,
+                "Option" | "Result" => Class::PreludeTy,
+                "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
+                // Keywords are also included in the identifier set.
+                _ if Ident::from_str(text).is_reserved() => Class::KeyWord,
+                _ if self.in_macro_nonterminal => {
+                    self.in_macro_nonterminal = false;
+                    Class::MacroNonTerminal
+                }
+                _ => Class::Ident,
+            },
+            TokenKind::RawIdent => Class::Ident,
+            TokenKind::Lifetime { .. } => Class::Lifetime,
+        };
+        // Anything that didn't return above is the simple case where we the
+        // class just spans a single token, so we can use the `string` method.
+        sink(Highlight::Token { text, class });
+    }
+
+    fn peek(&mut self) -> Option<TokenKind> {
+        self.tokens.peek().map(|(toke_kind, _text)| *toke_kind)
+    }
+}
+
+/// Called when we start processing a span of text that should be highlighted.
+/// The `Class` argument specifies how it should be highlighted.
+fn enter_span(out: &mut String, klass: Class) {
+    write!(out, "<span class=\"{}\">", klass.as_html()).unwrap()
+}
+
+/// Called at the end of a span of highlighted text.
+fn exit_span(out: &mut String) {
+    write!(out, "</span>").unwrap()
+}
+
+/// Called for a span of text. If the text should be highlighted differently
+/// from the surrounding text, then the `Class` argument will be a value other
+/// than `None`.
+///
+/// The following sequences of callbacks are equivalent:
+/// ```plain
+///     enter_span(Foo), string("text", None), exit_span()
+///     string("text", Foo)
+/// ```
+/// The latter can be thought of as a shorthand for the former, which is more
+/// flexible.
+fn string<T: Display>(out: &mut String, text: T, klass: Class) {
+    match klass {
+        Class::None => write!(out, "{}", text).unwrap(),
+        klass => write!(out, "<span class=\"{}\">{}</span>", klass.as_html(), text).unwrap(),
+    }
 }
 
 #[cfg(test)]
