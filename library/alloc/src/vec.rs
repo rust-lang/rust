@@ -3028,7 +3028,7 @@ impl<T> Drain<'_, T> {
 
 /// A draining iterator with filter predicate for `Vec`.
 ///
-/// This struct is created by [`Vec::drain_filter()`].
+/// This struct is created by [`Vec::drain_filter`].
 /// See its documentation for more.
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
