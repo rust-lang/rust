@@ -544,6 +544,7 @@ impl<T> Arc<T> {
     ///
     /// # Examples
     ///
+    /// Minimal example demonstrating the guarantee that `unwrap_or_drop` gives.
     /// ```
     /// #![feature(unwrap_or_drop)]
     ///
@@ -564,11 +565,17 @@ impl<T> Arc<T> {
     ///     (x_unwrapped_value, y_unwrapped_value),
     ///     (None, Some(3)) | (Some(3), None)
     /// ));
+    /// // The result could also be `(None, None)` if the threads called
+    /// // `Arc::try_unwrap(x).ok()` and `Arc::try_unwrap(y).ok()` instead.
+    /// ```
     ///
+    /// A more practical example demonstrating the need for `unwrap_or_drop`:
+    /// ```
+    /// #![feature(unwrap_or_drop)]
     ///
+    /// use std::sync::Arc;
     ///
-    /// // For a somewhat more practical example,
-    /// // we define a singly linked list using `Arc`:
+    /// // Definition of a simple singly linked list using `Arc`:
     /// #[derive(Clone)]
     /// struct LinkedList<T>(Option<Arc<Node<T>>>);
     /// struct Node<T>(T, Option<Arc<Node<T>>>);
