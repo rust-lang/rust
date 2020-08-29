@@ -39,8 +39,6 @@
 //! If you need more control over how a value is hashed, you need to implement
 //! the [`Hash`] trait:
 //!
-//! [`Hash`]: trait.Hash.html
-//!
 //! ```rust
 //! use std::collections::hash_map::DefaultHasher;
 //! use std::hash::{Hash, Hasher};
@@ -149,11 +147,9 @@ mod sip;
 /// Thankfully, you won't need to worry about upholding this property when
 /// deriving both [`Eq`] and `Hash` with `#[derive(PartialEq, Eq, Hash)]`.
 ///
-/// [`Eq`]: ../../std/cmp/trait.Eq.html
-/// [`Hasher`]: trait.Hasher.html
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 /// [`HashSet`]: ../../std/collections/struct.HashSet.html
-/// [`hash`]: #tymethod.hash
+/// [`hash`]: Hash::hash
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hash {
     /// Feeds this value into the given [`Hasher`].
@@ -168,8 +164,6 @@ pub trait Hash {
     /// 7920.hash(&mut hasher);
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
-    ///
-    /// [`Hasher`]: trait.Hasher.html
     #[stable(feature = "rust1", since = "1.0.0")]
     fn hash<H: Hasher>(&self, state: &mut H);
 
@@ -186,8 +180,6 @@ pub trait Hash {
     /// Hash::hash_slice(&numbers, &mut hasher);
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
-    ///
-    /// [`Hasher`]: trait.Hasher.html
     #[stable(feature = "hash_slice", since = "1.3.0")]
     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H)
     where
@@ -239,10 +231,9 @@ pub use macros::Hash;
 /// println!("Hash is {:x}!", hasher.finish());
 /// ```
 ///
-/// [`Hash`]: trait.Hash.html
-/// [`finish`]: #tymethod.finish
-/// [`write`]: #tymethod.write
-/// [`write_u8`]: #method.write_u8
+/// [`finish`]: Hasher::finish
+/// [`write`]: Hasher::write
+/// [`write_u8`]: Hasher::write_u8
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hasher {
     /// Returns the hash value for the values written so far.
@@ -264,7 +255,7 @@ pub trait Hasher {
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
     ///
-    /// [`write`]: #tymethod.write
+    /// [`write`]: Hasher::write
     #[stable(feature = "rust1", since = "1.0.0")]
     fn finish(&self) -> u64;
 
@@ -433,8 +424,7 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
 /// assert_eq!(hasher_1.finish(), hasher_2.finish());
 /// ```
 ///
-/// [`build_hasher`]: #tymethod.build_hasher
-/// [`Hasher`]: trait.Hasher.html
+/// [`build_hasher`]: BuildHasher::build_hasher
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub trait BuildHasher {
@@ -456,8 +446,6 @@ pub trait BuildHasher {
     /// let s = RandomState::new();
     /// let new_s = s.build_hasher();
     /// ```
-    ///
-    /// [`Hasher`]: trait.Hasher.html
     #[stable(since = "1.7.0", feature = "build_hasher")]
     fn build_hasher(&self) -> Self::Hasher;
 }
@@ -470,7 +458,7 @@ pub trait BuildHasher {
 /// defined.
 ///
 /// Any `BuildHasherDefault` is [zero-sized]. It can be created with
-/// [`default`][method.Default]. When using `BuildHasherDefault` with [`HashMap`] or
+/// [`default`][method.default]. When using `BuildHasherDefault` with [`HashMap`] or
 /// [`HashSet`], this doesn't need to be done, since they implement appropriate
 /// [`Default`] instances themselves.
 ///
@@ -503,10 +491,7 @@ pub trait BuildHasher {
 /// let hash_map = HashMap::<u32, u32, MyBuildHasher>::default();
 /// ```
 ///
-/// [`BuildHasher`]: trait.BuildHasher.html
-/// [`Default`]: ../default/trait.Default.html
-/// [method.default]: #method.default
-/// [`Hasher`]: trait.Hasher.html
+/// [method.default]: BuildHasherDefault::default
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 /// [`HashSet`]: ../../std/collections/struct.HashSet.html
 /// [zero-sized]: https://doc.rust-lang.org/nomicon/exotic-sizes.html#zero-sized-types-zsts
