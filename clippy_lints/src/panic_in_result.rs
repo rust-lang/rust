@@ -31,7 +31,6 @@ declare_clippy_lint! {
 declare_lint_pass!(PanicInResult => [PANIC_IN_RESULT]);
 
 impl<'tcx> LateLintPass<'tcx> for PanicInResult {
-    /*
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -48,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResult {
                 lint_impl_body(cx, span, body);
             }
         }
-    }*/
+    }
 }
 
 struct FindPanicUnimplementedUnreachable {
