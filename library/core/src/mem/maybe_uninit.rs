@@ -679,7 +679,7 @@ impl<T> MaybeUninit<T> {
     /// // the `&mut MaybeUninit<[u8; 2048]>` to a `&mut [u8; 2048]`:
     /// let buf: &mut [u8; 2048] = unsafe {
     ///     // Safety: `buf` has been initialized.
-    ///     buf.assume_init_ref()
+    ///     buf.assume_init_mut()
     /// };
     ///
     /// // Now we can use `buf` as a normal slice:
@@ -746,7 +746,7 @@ impl<T> MaybeUninit<T> {
     ///                  // ^^^^^^^^^^^^^
     ///                  // (mutable) reference to uninitialized memory!
     ///                  // This is undefined behavior.
-    ///     foo.assume_init_mut()
+    ///     foo.assume_init()
     /// };
     /// ```
     // FIXME(#53491): We currently rely on the above being incorrect, i.e., we have references
