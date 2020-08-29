@@ -1075,7 +1075,7 @@ pub(crate) fn handle_inlay_hints(
         .analysis
         .inlay_hints(file_id, &snap.config.inlay_hints)?
         .into_iter()
-        .map(|it| to_proto::inlay_int(&line_index, it))
+        .map(|it| to_proto::inlay_hint(&line_index, it))
         .collect())
 }
 

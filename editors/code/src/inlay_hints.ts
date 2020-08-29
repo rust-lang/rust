@@ -111,7 +111,6 @@ class HintsUpdater implements Disposable {
     }
 
     syncCacheAndRenderHints() {
-        // FIXME: make inlayHints request pass an array of files?
         this.sourceFiles.forEach((file, uri) => this.fetchHints(file).then(hints => {
             if (!hints) return;
 

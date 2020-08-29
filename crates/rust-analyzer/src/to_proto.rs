@@ -294,7 +294,7 @@ pub(crate) fn signature_help(
     }
 }
 
-pub(crate) fn inlay_int(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_ext::InlayHint {
+pub(crate) fn inlay_hint(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_ext::InlayHint {
     lsp_ext::InlayHint {
         label: inlay_hint.label.to_string(),
         range: range(line_index, inlay_hint.range),
