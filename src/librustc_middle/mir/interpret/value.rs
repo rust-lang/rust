@@ -503,6 +503,11 @@ impl<'tcx, Tag> Scalar<Tag> {
         self.to_unsigned_with_bit_width(64).map(|v| u64::try_from(v).unwrap())
     }
 
+    /// Converts the scalar to produce an `u128`. Fails if the scalar is a pointer.
+    pub fn to_u128(self) -> InterpResult<'static, u128> {
+        self.to_unsigned_with_bit_width(128)
+    }
+
     pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'static, u64> {
         let b = self.to_bits(cx.data_layout().pointer_size)?;
         Ok(u64::try_from(b).unwrap())
@@ -533,6 +538,11 @@ impl<'tcx, Tag> Scalar<Tag> {
     /// Converts the scalar to produce an `i64`. Fails if the scalar is a pointer.
     pub fn to_i64(self) -> InterpResult<'static, i64> {
         self.to_signed_with_bit_width(64).map(|v| i64::try_from(v).unwrap())
+    }
+
+    /// Converts the scalar to produce an `i128`. Fails if the scalar is a pointer.
+    pub fn to_i128(self) -> InterpResult<'static, i128> {
+        self.to_signed_with_bit_width(128)
     }
 
     pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {
