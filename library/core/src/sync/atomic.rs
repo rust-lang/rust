@@ -10,17 +10,9 @@
 //! Atomic types present operations that, when used correctly, synchronize
 //! updates between threads.
 //!
-//! [`AtomicBool`]: struct.AtomicBool.html
-//! [`AtomicIsize`]: struct.AtomicIsize.html
-//! [`AtomicUsize`]: struct.AtomicUsize.html
-//! [`AtomicI8`]: struct.AtomicI8.html
-//! [`AtomicU16`]: struct.AtomicU16.html
-//!
 //! Each method takes an [`Ordering`] which represents the strength of
 //! the memory barrier for that operation. These orderings are the
 //! same as the [C++20 atomic orderings][1]. For more information see the [nomicon][2].
-//!
-//! [`Ordering`]: enum.Ordering.html
 //!
 //! [1]: https://en.cppreference.com/w/cpp/atomic/memory_order
 //! [2]: ../../../nomicon/atomics.html
@@ -31,14 +23,11 @@
 //! The most common way to share an atomic variable is to put it into an [`Arc`][arc] (an
 //! atomically-reference-counted shared pointer).
 //!
-//! [`Sync`]: ../../marker/trait.Sync.html
 //! [arc]: ../../../std/sync/struct.Arc.html
 //!
 //! Atomic types may be stored in static variables, initialized using
 //! the constant initializers like [`AtomicBool::new`]. Atomic statics
 //! are often used for lazy global initialization.
-//!
-//! [`AtomicBool::new`]: struct.AtomicBool.html#method.new
 //!
 //! # Portability
 //!
@@ -155,8 +144,6 @@ pub fn spin_loop_hint() {
 ///
 /// **Note**: This type is only available on platforms that support atomic
 /// loads and stores of `u8`.
-///
-/// [`bool`]: ../../../std/primitive.bool.html
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(C, align(1))]
@@ -212,8 +199,8 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// Atomic memory orderings
 ///
 /// Memory orderings specify the way atomic operations synchronize memory.
-/// In its weakest [`Relaxed`][Ordering::Relaxed], only the memory directly touched by the
-/// operation is synchronized. On the other hand, a store-load pair of [`SeqCst`][Ordering::SeqCst]
+/// In its weakest [`Ordering::Relaxed`], only the memory directly touched by the
+/// operation is synchronized. On the other hand, a store-load pair of [`Ordering::SeqCst`]
 /// operations synchronize other memory while additionally preserving a total order of such
 /// operations across all threads.
 ///
@@ -223,8 +210,6 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// For more information see the [nomicon].
 ///
 /// [nomicon]: ../../../nomicon/atomics.html
-/// [Ordering::Relaxed]: #variant.Relaxed
-/// [Ordering::SeqCst]: #variant.SeqCst
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[non_exhaustive]
@@ -248,9 +233,6 @@ pub enum Ordering {
     ///
     /// Corresponds to [`memory_order_release`] in C++20.
     ///
-    /// [`Release`]: #variant.Release
-    /// [`Acquire`]: #variant.Acquire
-    /// [`Relaxed`]: #variant.Relaxed
     /// [`memory_order_release`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
     Release,
@@ -266,9 +248,6 @@ pub enum Ordering {
     ///
     /// Corresponds to [`memory_order_acquire`] in C++20.
     ///
-    /// [`Acquire`]: #variant.Acquire
-    /// [`Release`]: #variant.Release
-    /// [`Relaxed`]: #variant.Relaxed
     /// [`memory_order_acquire`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
     Acquire,
@@ -284,9 +263,6 @@ pub enum Ordering {
     /// Corresponds to [`memory_order_acq_rel`] in C++20.
     ///
     /// [`memory_order_acq_rel`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
-    /// [`Acquire`]: #variant.Acquire
-    /// [`Release`]: #variant.Release
-    /// [`Relaxed`]: #variant.Relaxed
     #[stable(feature = "rust1", since = "1.0.0")]
     AcqRel,
     /// Like [`Acquire`]/[`Release`]/[`AcqRel`] (for load, store, and load-with-store
@@ -296,16 +272,11 @@ pub enum Ordering {
     /// Corresponds to [`memory_order_seq_cst`] in C++20.
     ///
     /// [`memory_order_seq_cst`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Sequentially-consistent_ordering
-    /// [`Acquire`]: #variant.Acquire
-    /// [`Release`]: #variant.Release
-    /// [`AcqRel`]: #variant.AcqRel
     #[stable(feature = "rust1", since = "1.0.0")]
     SeqCst,
 }
 
 /// An [`AtomicBool`] initialized to `false`.
-///
-/// [`AtomicBool`]: struct.AtomicBool.html
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(
@@ -338,8 +309,6 @@ impl AtomicBool {
     ///
     /// This is safe because the mutable reference guarantees that no other threads are
     /// concurrently accessing the atomic data.
-    ///
-    /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -386,13 +355,6 @@ impl AtomicBool {
     ///
     /// Panics if `order` is [`Release`] or [`AcqRel`].
     ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
-    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
-    ///
     /// # Examples
     ///
     /// ```
@@ -418,13 +380,6 @@ impl AtomicBool {
     /// # Panics
     ///
     /// Panics if `order` is [`Acquire`] or [`AcqRel`].
-    ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
-    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -455,11 +410,6 @@ impl AtomicBool {
     ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
-    ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     ///
     /// # Examples
     ///
@@ -492,13 +442,6 @@ impl AtomicBool {
     ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
-    ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
-    /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -538,13 +481,6 @@ impl AtomicBool {
     ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
-    ///
-    /// [`bool`]: ../../../std/primitive.bool.html
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -587,7 +523,7 @@ impl AtomicBool {
 
     /// Stores a value into the [`bool`] if the current value is the same as the `current` value.
     ///
-    /// Unlike [`compare_exchange`], this function is allowed to spuriously fail even when the
+    /// Unlike [`AtomicBool::compare_exchange`], this function is allowed to spuriously fail even when the
     /// comparison succeeds, which can result in more efficient code on some platforms. The
     /// return value is a result indicating whether the new value was written and containing the
     /// previous value.
@@ -602,14 +538,6 @@ impl AtomicBool {
     ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
-    ///
-    /// [`bool`]: ../../../std/primitive.bool.html
-    /// [`compare_exchange`]: #method.compare_exchange
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -658,11 +586,6 @@ impl AtomicBool {
     /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
     /// using [`Release`] makes the load part [`Relaxed`].
     ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
     ///
@@ -705,11 +628,6 @@ impl AtomicBool {
     ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
-    ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     ///
     /// # Examples
     ///
@@ -763,11 +681,6 @@ impl AtomicBool {
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
     ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    ///
     /// # Examples
     ///
     /// ```
@@ -808,11 +721,6 @@ impl AtomicBool {
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
     ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    ///
     /// # Examples
     ///
     /// ```
@@ -849,8 +757,6 @@ impl AtomicBool {
     /// through a shared reference, and can do so safely as long as they use atomic operations. Any
     /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
     /// restriction: operations on it must be atomic.
-    ///
-    /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -942,13 +848,6 @@ impl<T> AtomicPtr<T> {
     ///
     /// Panics if `order` is [`Release`] or [`AcqRel`].
     ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
-    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
-    ///
     /// # Examples
     ///
     /// ```
@@ -974,13 +873,6 @@ impl<T> AtomicPtr<T> {
     /// # Panics
     ///
     /// Panics if `order` is [`Acquire`] or [`AcqRel`].
-    ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
-    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -1012,11 +904,6 @@ impl<T> AtomicPtr<T> {
     ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on pointers.
-    ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     ///
     /// # Examples
     ///
@@ -1051,12 +938,6 @@ impl<T> AtomicPtr<T> {
     ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on pointers.
-    ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     ///
     /// # Examples
     ///
@@ -1095,12 +976,6 @@ impl<T> AtomicPtr<T> {
     ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on pointers.
-    ///
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -1143,7 +1018,7 @@ impl<T> AtomicPtr<T> {
 
     /// Stores a value into the pointer if the current value is the same as the `current` value.
     ///
-    /// Unlike [`compare_exchange`], this function is allowed to spuriously fail even when the
+    /// Unlike [`AtomicPtr::compare_exchange`], this function is allowed to spuriously fail even when the
     /// comparison succeeds, which can result in more efficient code on some platforms. The
     /// return value is a result indicating whether the new value was written and containing the
     /// previous value.
@@ -1158,13 +1033,6 @@ impl<T> AtomicPtr<T> {
     ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on pointers.
-    ///
-    /// [`compare_exchange`]: #method.compare_exchange
-    /// [`Ordering`]: enum.Ordering.html
-    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-    /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -1271,7 +1139,7 @@ macro_rules! atomic_int {
         #[doc = $int_ref]
         /// ).
         ///
-        /// [module-level documentation]: index.html
+        /// [module-level documentation]: crate::sync::atomic
         #[$stable]
         #[repr(C, align($align))]
         pub struct $atomic_type {
@@ -1389,13 +1257,6 @@ Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
 
 Panics if `order` is [`Release`] or [`AcqRel`].
 
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-[`AcqRel`]: enum.Ordering.html#variant.AcqRel
-[`SeqCst`]: enum.Ordering.html#variant.SeqCst
-
 # Examples
 
 ```
@@ -1422,13 +1283,6 @@ assert_eq!(some_var.load(Ordering::Relaxed), 5);
 # Panics
 
 Panics if `order` is [`Acquire`] or [`AcqRel`].
-
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-[`AcqRel`]: enum.Ordering.html#variant.AcqRel
-[`SeqCst`]: enum.Ordering.html#variant.SeqCst
 
 # Examples
 
@@ -1458,11 +1312,6 @@ using [`Release`] makes the load part [`Relaxed`].
 
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
-
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
 
 # Examples
 
@@ -1497,12 +1346,6 @@ happens, and using [`Release`] makes the load part [`Relaxed`].
 
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
-
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-[`AcqRel`]: enum.Ordering.html#variant.AcqRel
 
 # Examples
 
@@ -1553,12 +1396,6 @@ and must be equivalent to or weaker than the success ordering.
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
 
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-[`SeqCst`]: enum.Ordering.html#variant.SeqCst
-
 # Examples
 
 ```
@@ -1595,7 +1432,7 @@ assert_eq!(some_var.load(Ordering::Relaxed), 10);
                 concat!("Stores a value into the atomic integer if the current value is the same as
 the `current` value.
 
-Unlike [`compare_exchange`], this function is allowed to spuriously fail even
+Unlike [`", stringify!($atomic_type), "::compare_exchange`], this function is allowed to spuriously fail even
 when the comparison succeeds, which can result in more efficient code on some
 platforms. The return value is a result indicating whether the new value was
 written and containing the previous value.
@@ -1607,13 +1444,6 @@ operation fails. Using [`Acquire`] as success ordering makes the store part
 of this operation [`Relaxed`], and using [`Release`] makes the successful load
 [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
 and must be equivalent to or weaker than the success ordering.
-
-[`compare_exchange`]: #method.compare_exchange
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-[`SeqCst`]: enum.Ordering.html#variant.SeqCst
 
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
@@ -1662,11 +1492,6 @@ using [`Release`] makes the load part [`Relaxed`].
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
 
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-
 # Examples
 
 ```
@@ -1697,11 +1522,6 @@ using [`Release`] makes the load part [`Relaxed`].
 
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
-
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
 
 # Examples
 
@@ -1737,11 +1557,6 @@ using [`Release`] makes the load part [`Relaxed`].
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
 
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-
 # Examples
 
 ```
@@ -1775,11 +1590,6 @@ using [`Release`] makes the load part [`Relaxed`].
 
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
-
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
 
 # Examples
 
@@ -1816,11 +1626,6 @@ using [`Release`] makes the load part [`Relaxed`].
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
 
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-
 # Examples
 
 ```
@@ -1855,11 +1660,6 @@ using [`Release`] makes the load part [`Relaxed`].
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
 
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-
 # Examples
 
 ```
@@ -1890,7 +1690,7 @@ only once to the stored value.
 `fetch_update` takes two [`Ordering`] arguments to describe the memory ordering of this operation.
 The first describes the required ordering for when the operation finally succeeds while the second
 describes the required ordering for loads. These correspond to the success and failure orderings of
-[`compare_exchange`] respectively.
+[`", stringify!($atomic_type), "::compare_exchange`] respectively.
 
 Using [`Acquire`] as success ordering makes the store part
 of this operation [`Relaxed`], and using [`Release`] makes the final successful load
@@ -1899,14 +1699,6 @@ and must be equivalent to or weaker than the success ordering.
 
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
-
-[`bool`]: ../../../std/primitive.bool.html
-[`compare_exchange`]: #method.compare_exchange
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-[`SeqCst`]: enum.Ordering.html#variant.SeqCst
 
 # Examples
 
@@ -1954,11 +1746,6 @@ using [`Release`] makes the load part [`Relaxed`].
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
 
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-
 # Examples
 
 ```
@@ -2003,11 +1790,6 @@ using [`Release`] makes the load part [`Relaxed`].
 
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
-
-[`Ordering`]: enum.Ordering.html
-[`Relaxed`]: enum.Ordering.html#variant.Relaxed
-[`Release`]: enum.Ordering.html#variant.Release
-[`Acquire`]: enum.Ordering.html#variant.Acquire
 
 # Examples
 
@@ -2660,13 +2442,6 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 ///     }
 /// }
 /// ```
-///
-/// [`Ordering`]: enum.Ordering.html
-/// [`Acquire`]: enum.Ordering.html#variant.Acquire
-/// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
-/// [`Release`]: enum.Ordering.html#variant.Release
-/// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
-/// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn fence(order: Ordering) {
@@ -2747,13 +2522,6 @@ pub fn fence(order: Ordering) {
 /// }
 /// ```
 ///
-/// [`fence`]: fn.fence.html
-/// [`Ordering`]: enum.Ordering.html
-/// [`Acquire`]: enum.Ordering.html#variant.Acquire
-/// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
-/// [`Release`]: enum.Ordering.html#variant.Release
-/// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
-/// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 /// [memory barriers]: https://www.kernel.org/doc/Documentation/memory-barriers.txt
 #[inline]
 #[stable(feature = "compiler_fences", since = "1.21.0")]
