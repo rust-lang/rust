@@ -717,11 +717,11 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     continue;
                 }
 
-                // We stripped ` characters for `path_str`.
-                // The original link might have had multiple pairs of backticks,
-                // but we don't handle this case.
-                //link_text = if had_backticks { format!("`{}`", path_str) } else { path_str.to_owned() };
-                link_text = path_str.to_owned();
+                // We stripped `()` and `!` when parsing the disambiguator.
+                // Add them back to be displayed, but not prefix disambiguators.
+                link_text = disambiguator
+                    .map(|d| d.display_for(path_str))
+                    .unwrap_or_else(|| path_str.to_owned());
 
                 // In order to correctly resolve intra-doc-links we need to
                 // pick a base AST node to work from.  If the documentation for
@@ -1000,6 +1000,18 @@ enum Disambiguator {
 }
 
 impl Disambiguator {
+    /// The text that should be displayed when the path is rendered as HTML.
+    ///
+    /// NOTE: `path` is not the original link given by the user, but a name suitable for passing to `resolve`.
+    fn display_for(&self, path: &str) -> String {
+        match self {
+            // FIXME: this will have different output if the user had `m!()` originally.
+            Self::Kind(DefKind::Macro(MacroKind::Bang)) => format!("{}!", path),
+            Self::Kind(DefKind::Fn) => format!("{}()", path),
+            _ => path.to_owned(),
+        }
+    }
+
     /// (disambiguator, path_str)
     fn from_str(link: &str) -> Result<(Self, &str), ()> {
         use Disambiguator::{Kind, Namespace as NS, Primitive};

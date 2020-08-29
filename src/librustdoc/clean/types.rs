@@ -439,7 +439,7 @@ pub struct ItemLink {
     /// The link text displayed in the HTML.
     ///
     /// This may not be the same as `link` if there was a disambiguator
-    /// in an intra-doc link (e.g. [`fn@f`])
+    /// in an intra-doc link (e.g. \[`fn@f`\])
     pub(crate) link_text: String,
     pub(crate) did: Option<DefId>,
     /// The url fragment to append to the link
@@ -447,7 +447,9 @@ pub struct ItemLink {
 }
 
 pub struct RenderedLink {
-    /// The text the link was original written as
+    /// The text the link was original written as.
+    ///
+    /// This could potentially include disambiguators and backticks.
     pub(crate) original_text: String,
     /// The text to display in the HTML
     pub(crate) new_text: String,
