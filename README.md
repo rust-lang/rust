@@ -36,6 +36,7 @@ by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
    * `python` 3 or 2.7
    * GNU `make` 3.81 or later
    * `cmake` 3.4.3 or later
+   * `ninja`
    * `curl`
    * `git`
    * `ssl` which comes in `libssl-dev` or `openssl-devel`

@@ -3,6 +3,7 @@ FROM ubuntu:16.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++-multilib \
   make \
+  ninja-build \
   file \
   curl \
   ca-certificates \
