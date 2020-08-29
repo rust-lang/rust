@@ -315,12 +315,23 @@ mod lazy {
             // value (an aliasing violation). To avoid setting the "I'm running a
             // destructor" flag we just use `mem::replace` which should sequence the
             // operations a little differently and make this safe to call.
+            //
+            // `ptr` can be dereferenced safely since it was obtained from
+            // `UnsafeCell::get`, which should not return a non-aligned or NUL pointer.
+            // What's more a `LazyKeyInner` can only be created with `new`, which ensures
+            // `inner` is correctly initialized and all calls to methods on `LazyKeyInner`
+            // will leave `inner` initialized too.
             unsafe {
                 let _ = mem::replace(&mut *ptr, Some(value));
             }
 
-            // SAFETY: the *ptr operation is made safe by the `mem::replace`
-            // call above that made sure a valid value is present behind it.
+            // SAFETY: the `*ptr` operation is made safe by the `mem::replace`
+            // call above combined with `ptr` being correct from the beginning
+            // (see previous SAFETY: comment above).
+            //
+            // Plus, with the call to `mem::replace` it is guaranteed there is
+            // a `Some` behind `ptr`, not a `None` so `unreachable_unchecked`
+            // will never be reached.
             unsafe {
                 // After storing `Some` we want to get a reference to the contents of
                 // what we just stored. While we could use `unwrap` here and it should
@@ -337,8 +348,8 @@ mod lazy {
         #[allow(unused)]
         pub unsafe fn take(&mut self) -> Option<T> {
             // SAFETY: The other methods hand out references while taking &self.
-            // As such, calling this method when such references are still alive
-            // will fail because it takes a &mut self, conflicting with them.
+            // As such, callers of this method must ensure no `&` and `&mut` are
+            // available and used at the same time.
             unsafe { (*self.inner.get()).take() }
         }
     }
@@ -451,9 +462,9 @@ pub mod fast {
         // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
         #[inline(never)]
         unsafe fn try_initialize<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
-            // SAFETY: See comment above.
+            // SAFETY: See comment above (this function doc).
             if !mem::needs_drop::<T>() || unsafe { self.try_register_dtor() } {
-                // SAFETY: See comment above.
+                // SAFETY: See comment above (his function doc).
                 Some(unsafe { self.inner.initialize(init) })
             } else {
                 None
