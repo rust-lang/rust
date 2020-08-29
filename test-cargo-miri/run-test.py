@@ -50,6 +50,10 @@ def test_cargo_miri_run():
         cargo_miri("run"),
         "stdout.ref", "stderr.ref"
     )
+    test("cargo miri run (with target)",
+        cargo_miri("run") + ["--bin", "cargo-miri-test"],
+        "stdout.ref", "stderr.ref"
+    )
     test("cargo miri run (with arguments)",
         cargo_miri("run") + ["--", "--", "hello world", '"hello world"'],
         "stdout.ref", "stderr.ref2"
@@ -67,6 +71,14 @@ def test_cargo_miri_test():
     test("cargo miri test (without isolation)",
         cargo_miri("test") + ["--", "-Zmiri-disable-isolation", "--", "num_cpus"],
         "test.stdout.ref3", "test.stderr.ref"
+    )
+    test("cargo miri test (test target)",
+        cargo_miri("test") + ["--test", "test"],
+        "test.stdout.ref4", "test.stderr.ref"
+    )
+    test("cargo miri test (bin target)",
+        cargo_miri("test") + ["--bin", "cargo-miri-test"],
+        "test.stdout.ref5", "test.stderr.ref"
     )
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
