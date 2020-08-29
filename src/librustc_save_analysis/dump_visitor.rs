@@ -14,7 +14,7 @@
 //! recording the output.
 
 use rustc_ast as ast;
-use rustc_ast::{token, walk_list};
+use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind as HirDefKind, Res};
@@ -1207,9 +1207,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
 
                 // Otherwise it's a span with wrong macro expansion info, which
                 // we don't want to track anyway, since it's probably macro-internal `use`
-                if let Some(sub_span) =
-                    self.span.sub_span_of_token(item.span, token::BinOp(token::Star))
-                {
+                if let Some(sub_span) = self.span.sub_span_of_star(item.span) {
                     if !self.span.filter_generated(item.span) {
                         let access = access_from!(self.save_ctxt, item, item.hir_id);
                         let span = self.span_from_span(sub_span);

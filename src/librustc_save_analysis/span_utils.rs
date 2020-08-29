@@ -1,6 +1,6 @@
 use crate::generated_code;
-use rustc_ast::token::{self, TokenKind};
-use rustc_parse::lexer::{self, StringReader};
+use rustc_data_structures::sync::Lrc;
+use rustc_lexer::{tokenize, TokenKind};
 use rustc_session::Session;
 use rustc_span::*;
 
@@ -43,61 +43,37 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    pub fn retokenise_span(&self, span: Span) -> StringReader<'a> {
-        lexer::StringReader::retokenize(&self.sess.parse_sess, span)
-    }
-
-    pub fn sub_span_of_token(&self, span: Span, tok: TokenKind) -> Option<Span> {
-        let mut toks = self.retokenise_span(span);
-        loop {
-            let next = toks.next_token();
-            if next == token::Eof {
-                return None;
-            }
-            if next == tok {
-                return Some(next.span);
-            }
+    /// Finds the span of `*` token withing the larger `span`.
+    pub fn sub_span_of_star(&self, mut span: Span) -> Option<Span> {
+        let begin = self.sess.source_map().lookup_byte_offset(span.lo());
+        let end = self.sess.source_map().lookup_byte_offset(span.hi());
+        // Make the range zero-length if the span is invalid.
+        if begin.sf.start_pos != end.sf.start_pos {
+            span = span.shrink_to_lo();
         }
+
+        let sf = Lrc::clone(&begin.sf);
+
+        self.sess.source_map().ensure_source_file_source_present(Lrc::clone(&sf));
+        let src =
+            sf.src.clone().or_else(|| sf.external_src.borrow().get_source().map(Lrc::clone))?;
+        let to_index = |pos: BytePos| -> usize { (pos - sf.start_pos).0 as usize };
+        let text = &src[to_index(span.lo())..to_index(span.hi())];
+        let start_pos = {
+            let mut pos = 0;
+            tokenize(text)
+                .map(|token| {
+                    let start = pos;
+                    pos += token.len;
+                    (start, token)
+                })
+                .find(|(_pos, token)| token.kind == TokenKind::Star)?
+                .0
+        };
+        let lo = span.lo() + BytePos(start_pos as u32);
+        let hi = lo + BytePos(1);
+        Some(span.with_lo(lo).with_hi(hi))
     }
-
-    // // Return the name for a macro definition (identifier after first `!`)
-    // pub fn span_for_macro_def_name(&self, span: Span) -> Option<Span> {
-    //     let mut toks = self.retokenise_span(span);
-    //     loop {
-    //         let ts = toks.real_token();
-    //         if ts == token::Eof {
-    //             return None;
-    //         }
-    //         if ts == token::Not {
-    //             let ts = toks.real_token();
-    //             if ts.kind.is_ident() {
-    //                 return Some(ts.sp);
-    //             } else {
-    //                 return None;
-    //             }
-    //         }
-    //     }
-    // }
-
-    // // Return the name for a macro use (identifier before first `!`).
-    // pub fn span_for_macro_use_name(&self, span:Span) -> Option<Span> {
-    //     let mut toks = self.retokenise_span(span);
-    //     let mut prev = toks.real_token();
-    //     loop {
-    //         if prev == token::Eof {
-    //             return None;
-    //         }
-    //         let ts = toks.real_token();
-    //         if ts == token::Not {
-    //             if prev.kind.is_ident() {
-    //                 return Some(prev.sp);
-    //             } else {
-    //                 return None;
-    //             }
-    //         }
-    //         prev = ts;
-    //     }
-    // }
 
     /// Return true if the span is generated code, and
     /// it is not a subspan of the root callsite.
