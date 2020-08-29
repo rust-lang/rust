@@ -61,8 +61,8 @@ impl<'tcx> LateLintPass<'tcx> for OkIfLet {
                     cx,
                     IF_LET_SOME_RESULT,
                     expr.span.with_hi(op.span.hi()),
-                    "Matching on `Some` with `ok()` is redundant",
-                    &format!("Consider matching on `Ok({})` and removing the call to `ok` instead", some_expr_string),
+                    "matching on `Some` with `ok()` is redundant",
+                    &format!("consider matching on `Ok({})` and removing the call to `ok` instead", some_expr_string),
                     sugg,
                     applicability,
                 );
