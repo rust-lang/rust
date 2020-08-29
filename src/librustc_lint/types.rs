@@ -11,7 +11,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{sign_extend, truncate};
 use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtKind, Ty, TypeFoldable};
+use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
@@ -527,22 +527,26 @@ enum FfiResult<'tcx> {
     FfiUnsafe { ty: Ty<'tcx>, reason: String, help: Option<String> },
 }
 
+crate fn nonnull_optimization_guaranteed<'tcx>(tcx: TyCtxt<'tcx>, def: &ty::AdtDef) -> bool {
+    tcx.get_attrs(def.did)
+        .iter()
+        .any(|a| tcx.sess.check_name(a, sym::rustc_nonnull_optimization_guaranteed))
+}
+
 /// Is type known to be non-null?
-fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
+crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
     let tcx = cx.tcx;
     match ty.kind {
         ty::FnPtr(_) => true,
         ty::Ref(..) => true,
         ty::Adt(def, _) if def.is_box() && matches!(mode, CItemKind::Definition) => true,
         ty::Adt(def, substs) if def.repr.transparent() && !def.is_union() => {
-            let guaranteed_nonnull_optimization = tcx
-                .get_attrs(def.did)
-                .iter()
-                .any(|a| tcx.sess.check_name(a, sym::rustc_nonnull_optimization_guaranteed));
+            let marked_non_null = nonnull_optimization_guaranteed(tcx, &def);
 
-            if guaranteed_nonnull_optimization {
+            if marked_non_null {
                 return true;
             }
+
             for variant in &def.variants {
                 if let Some(field) = variant.transparent_newtype_field(tcx) {
                     if ty_is_known_nonnull(cx, field.ty(tcx, substs), mode) {
