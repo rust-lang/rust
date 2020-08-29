@@ -485,7 +485,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) 
                 format!("{{{}{}}}", class, idx)
             } else if reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
                 // LLVM doesn't recognize x30
-                "lr".to_string()
+                "{lr}".to_string()
             } else {
                 format!("{{{}}}", reg.name())
             }

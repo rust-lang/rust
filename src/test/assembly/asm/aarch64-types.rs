@@ -96,6 +96,17 @@ pub unsafe fn sym_static() {
     asm!("adr x0, {}", sym extern_static);
 }
 
+// Regression test for #75761
+// CHECK-LABEL: issue_75761:
+// CHECK: str {{.*}}x30
+// CHECK: //APP
+// CHECK: //NO_APP
+// CHECK: ldr {{.*}}x30
+#[no_mangle]
+pub unsafe fn issue_75761() {
+    asm!("", out("v0") _, out("x30") _);
+}
+
 macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal $modifier:literal) => {
         #[no_mangle]
@@ -553,8 +564,3 @@ check_reg!(v0_f32x4 f32x4 "s0" "fmov");
 // CHECK: fmov s0, s0
 // CHECK: //NO_APP
 check_reg!(v0_f64x2 f64x2 "s0" "fmov");
-
-// Regression test for #75761
-pub unsafe fn issue_75761() {
-    asm!("", out("v0") _, out("x30") _);
-}
