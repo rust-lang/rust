@@ -141,41 +141,6 @@ fn unwrap_or_drop() {
 }
 
 #[test]
-fn unwrap_or_drop_linked_list() {
-    #[derive(Clone)]
-    struct LinkedList<T>(Option<Arc<Node<T>>>);
-    struct Node<T>(T, Option<Arc<Node<T>>>);
-
-    impl<T> Drop for LinkedList<T> {
-        fn drop(&mut self) {
-            let mut x = self.0.take();
-            while let Some(arc) = x.take() {
-                Arc::unwrap_or_drop(arc).map(|node| x = node.1);
-            }
-        }
-    }
-
-    impl<T> LinkedList<T> {
-        fn push(&mut self, x: T) {
-            self.0 = Some(Arc::new(Node(x, self.0.take())));
-        }
-    }
-
-    use std::thread;
-    for _ in 0..25 {
-        let mut x = LinkedList(None);
-        for i in 0..100000 {
-            x.push(i);
-        }
-        let y = x.clone();
-        let t1 = thread::spawn(|| drop(x));
-        let t2 = thread::spawn(|| drop(y));
-        t1.join().unwrap();
-        t2.join().unwrap();
-    }
-}
-
-#[test]
 fn into_from_raw() {
     let x = Arc::new(box "hello");
     let y = x.clone();
