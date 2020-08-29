@@ -685,7 +685,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 continue;
             }
 
-            //let had_backticks = ori_link.contains("`");
             let link = ori_link.replace("`", "");
             let parts = link.split('#').collect::<Vec<_>>();
             let (link, extra_fragment) = if parts.len() > 2 {
@@ -1053,7 +1052,7 @@ impl Disambiguator {
     }
 
     /// Return (description of the change, suggestion)
-    fn display_for(self, path_str: &str) -> (&'static str, String) {
+    fn suggestion_for(self, path_str: &str) -> (&'static str, String) {
         const PREFIX: &str = "prefix with the item kind";
         const FUNCTION: &str = "add parentheses";
         const MACRO: &str = "add an exclamation mark";
@@ -1308,7 +1307,7 @@ fn suggest_disambiguator(
     sp: Option<rustc_span::Span>,
     link_range: &Option<Range<usize>>,
 ) {
-    let (action, mut suggestion) = disambiguator.display_for(path_str);
+    let (action, mut suggestion) = disambiguator.suggestion_for(path_str);
     let help = format!("to link to the {}, {}", disambiguator.descr(), action);
 
     if let Some(sp) = sp {
