@@ -8,7 +8,7 @@ use crate::va_arg::emit_va_arg;
 use crate::value::Value;
 
 use rustc_ast as ast;
-use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
+use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::glue;
@@ -301,7 +301,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 unsafe {
                     llvm::LLVMSetAlignment(load, align);
                 }
-                to_immediate(self, load, self.layout_of(tp_ty))
+                self.to_immediate(load, self.layout_of(tp_ty))
             }
             sym::volatile_store => {
                 let dst = args[0].deref(self.cx());

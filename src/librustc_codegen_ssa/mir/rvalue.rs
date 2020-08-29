@@ -98,7 +98,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
-                    let v = base::from_immediate(&mut bx, v);
+                    let v = bx.from_immediate(v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
                         bx.memset(start, v, size, dest.align, MemFlags::empty());
                         return bx;
