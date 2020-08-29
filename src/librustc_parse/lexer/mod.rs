@@ -46,19 +46,10 @@ impl<'a> StringReader<'a> {
         source_file: Lrc<rustc_span::SourceFile>,
         override_span: Option<Span>,
     ) -> Self {
-        // Make sure external source is loaded first, before accessing it.
-        // While this can't show up during normal parsing, `retokenize` may
-        // be called with a source file from an external crate.
-        sess.source_map().ensure_source_file_source_present(Lrc::clone(&source_file));
-
-        let src = if let Some(src) = &source_file.src {
-            Lrc::clone(&src)
-        } else if let Some(src) = source_file.external_src.borrow().get_source() {
-            Lrc::clone(&src)
-        } else {
+        let src = source_file.src.clone().unwrap_or_else(|| {
             sess.span_diagnostic
                 .bug(&format!("cannot lex `source_file` without source: {}", source_file.name));
-        };
+        });
 
         StringReader {
             sess,
@@ -68,23 +59,6 @@ impl<'a> StringReader<'a> {
             src,
             override_span,
         }
-    }
-
-    pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {
-        let begin = sess.source_map().lookup_byte_offset(span.lo());
-        let end = sess.source_map().lookup_byte_offset(span.hi());
-
-        // Make the range zero-length if the span is invalid.
-        if begin.sf.start_pos != end.sf.start_pos {
-            span = span.shrink_to_lo();
-        }
-
-        let mut sr = StringReader::new(sess, begin.sf, None);
-
-        // Seek the lexer to the right byte range.
-        sr.end_src_index = sr.src_index(span.hi());
-
-        sr
     }
 
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
