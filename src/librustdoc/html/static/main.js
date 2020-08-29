@@ -2740,6 +2740,10 @@ function defocusSearchBar() {
     }
 
     window.addSearchOptions = function(crates) {
+        if (search_input) {
+            search_input.removeAttribute('disabled');
+        }
+
         var elem = document.getElementById("crate-search");
 
         if (!elem) {
@@ -2781,9 +2785,6 @@ function defocusSearchBar() {
             }
         }
 
-        if (search_input) {
-            search_input.removeAttribute('disabled');
-        }
     };
 
     function buildHelperPopup() {
