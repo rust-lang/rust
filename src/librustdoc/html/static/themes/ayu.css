@@ -518,7 +518,7 @@ kbd {
 }
 
 #theme-choices > button:hover, #theme-choices > button:focus {
-	background-color: rgba(70, 70, 70, 0.33);
+	background-color: rgba(110, 110, 110, 0.33);
 }
 
 @media (max-width: 700px) {
