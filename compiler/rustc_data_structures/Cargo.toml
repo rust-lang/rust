@@ -13,7 +13,6 @@ indexmap = "1.5.1"
 tracing = "0.1"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 lazy_static = "1"
-once_cell = { version = "1", features = ["parking_lot"] }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_graphviz = { path = "../rustc_graphviz" }

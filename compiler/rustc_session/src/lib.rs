@@ -1,4 +1,5 @@
 #![feature(crate_visibility_modifier)]
+#![feature(once_cell)]
 #![feature(or_patterns)]
 
 #[macro_use]
