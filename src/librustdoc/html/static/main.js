@@ -92,6 +92,7 @@ function defocusSearchBar() {
     var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") === "true";
     var search_input = getSearchInput();
     var searchTimeout = null;
+    var toggleAllDocsId = "toggle-all-docs";
 
     // On the search screen, so you remain on the last tab you opened.
     //
@@ -1397,8 +1398,8 @@ function defocusSearchBar() {
                 // "current" is used to know which tab we're looking into.
                 var current = 0;
                 onEachLazy(document.getElementById("results").childNodes, function(e) {
-                    onEachLazy(e.getElementsByClassName("highlighted"), function(e) {
-                        actives[current].push(e);
+                    onEachLazy(e.getElementsByClassName("highlighted"), function(h_e) {
+                        actives[current].push(h_e);
                     });
                     current += 1;
                 });
@@ -2121,7 +2122,7 @@ function defocusSearchBar() {
     }
 
     function toggleAllDocs(pageId, fromAutoCollapse) {
-        var innerToggle = document.getElementById("toggle-all-docs");
+        var innerToggle = document.getElementById(toggleAllDocsId);
         if (!innerToggle) {
             return;
         }
@@ -2314,11 +2315,6 @@ function defocusSearchBar() {
         }
     }
 
-    var toggles = document.getElementById("toggle-all-docs");
-    if (toggles) {
-        toggles.onclick = toggleAllDocs;
-    }
-
     function insertAfter(newNode, referenceNode) {
         referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
     }
@@ -2368,6 +2364,11 @@ function defocusSearchBar() {
     }
 
     (function() {
+        var toggles = document.getElementById(toggleAllDocsId);
+        if (toggles) {
+            toggles.onclick = toggleAllDocs;
+        }
+
         var toggle = createSimpleToggle(false);
         var hideMethodDocs = getCurrentValue("rustdoc-auto-hide-method-docs") === "true";
         var hideImplementors = getCurrentValue("rustdoc-auto-collapse-implementors") !== "false";
