@@ -158,6 +158,7 @@ impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
     }
 }
 
+/// Unix credential.
 #[cfg(any(
     doc,
     target_os = "android",
@@ -191,42 +192,54 @@ pub struct UCred(libc::ucred);
     target_env = "uclibc",
 ))]
 impl UCred {
+    /// Create a Unix credential struct.
+    ///
+    /// PID, UID and GID is set to 0.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn new() -> UCred {
         UCred(libc::ucred { pid: 0, uid: 0, gid: 0 })
     }
 
+    /// Set the PID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn set_pid(&mut self, pid: i32) {
         self.0.pid = pid;
     }
 
+    /// Get the current PID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn get_pid(&self) -> i32 {
         self.0.pid
     }
 
+    /// Set the UID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn set_uid(&mut self, uid: u32) {
         self.0.uid = uid;
     }
 
+    /// Get the current UID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn get_uid(&self) -> u32 {
         self.0.uid
     }
 
+    /// Set the GID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn set_gid(&mut self, gid: u32) {
         self.0.gid = gid;
     }
 
+    /// Get the current GID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn get_gid(&self) -> u32 {
         self.0.gid
     }
 }
 
+/// This control message contains file descriptors.
+///
+/// The level is equal to `SOL_SOCKET` and the type is equal to `SCM_RIGHTS`.
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 pub struct ScmRights<'a>(AncillaryDataIter<'a, RawFd>);
 
@@ -239,6 +252,9 @@ impl<'a> Iterator for ScmRights<'a> {
     }
 }
 
+/// This control message contains unix credentials.
+///
+/// The level is equal to `SOL_SOCKET` and the type is equal to `SCM_CREDENTIALS` or `SCM_CREDS`.
 #[cfg(any(
     doc,
     target_os = "android",
@@ -279,6 +295,7 @@ impl<'a> Iterator for ScmCredentials<'a> {
     }
 }
 
+/// The error type which is returned from parsing the type a control message.
 #[non_exhaustive]
 #[derive(Debug)]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
@@ -286,6 +303,7 @@ pub enum AncillaryError {
     Unknown { cmsg_level: i32, cmsg_type: i32 },
 }
 
+/// This enum represent one control message of variable type.
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 pub enum AncillaryData<'a> {
     ScmRights(ScmRights<'a>),
@@ -372,6 +390,7 @@ impl<'a> AncillaryData<'a> {
     }
 }
 
+/// This struct is used to iterate through the control messages.
 #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
 pub struct Messages<'a> {
     buffer: &'a [u8],
@@ -474,6 +493,7 @@ impl<'a> SocketAncillary<'a> {
         self.length
     }
 
+    /// Returns the iterator of the control messages.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
     pub fn messages(&self) -> Messages<'_> {
         Messages { buffer: &self.buffer[..self.length], current: None }
@@ -552,7 +572,7 @@ impl<'a> SocketAncillary<'a> {
     /// The function returns `true` if there was enough space in the buffer.
     /// If there was not enough space then no credentials was appended.
     /// Technically, that means this operation adds a control message with the level `SOL_SOCKET`
-    /// and type `SCM_CREDENTIALS`.
+    /// and type `SCM_CREDENTIALS` or `SCM_CREDS`.
     ///
     #[cfg(any(
         doc,
