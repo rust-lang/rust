@@ -9,7 +9,7 @@ note: the lint level is defined here
    |
 LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
-help: to link to the struct, prefix with the item type
+help: to link to the struct, prefix with the item kind
    |
 LL | /// [`struct@ambiguous`] is ambiguous.
    |      ^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ error: `ambiguous` is both a struct and a function
 LL | /// [ambiguous] is ambiguous.
    |      ^^^^^^^^^ ambiguous link
    |
-help: to link to the struct, prefix with the item type
+help: to link to the struct, prefix with the item kind
    |
 LL | /// [struct@ambiguous] is ambiguous.
    |      ^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ error: `multi_conflict` is a struct, a function, and a macro
 LL | /// [`multi_conflict`] is a three-way conflict.
    |      ^^^^^^^^^^^^^^^^ ambiguous link
    |
-help: to link to the struct, prefix with the item type
+help: to link to the struct, prefix with the item kind
    |
 LL | /// [`struct@multi_conflict`] is a three-way conflict.
    |      ^^^^^^^^^^^^^^^^^^^^^^^
@@ -58,11 +58,11 @@ error: `type_and_value` is both a module and a constant
 LL | /// Ambiguous [type_and_value].
    |                ^^^^^^^^^^^^^^ ambiguous link
    |
-help: to link to the module, prefix with the item type
+help: to link to the module, prefix with the item kind
    |
-LL | /// Ambiguous [module@type_and_value].
-   |                ^^^^^^^^^^^^^^^^^^^^^
-help: to link to the constant, prefix with the item type
+LL | /// Ambiguous [mod@type_and_value].
+   |                ^^^^^^^^^^^^^^^^^^
+help: to link to the constant, prefix with the item kind
    |
 LL | /// Ambiguous [const@type_and_value].
    |                ^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ error: `foo::bar` is both an enum and a function
 LL | /// Ambiguous non-implied shortcut link [`foo::bar`].
    |                                          ^^^^^^^^^^ ambiguous link
    |
-help: to link to the enum, prefix with the item type
+help: to link to the enum, prefix with the item kind
    |
 LL | /// Ambiguous non-implied shortcut link [`enum@foo::bar`].
    |                                          ^^^^^^^^^^^^^^^

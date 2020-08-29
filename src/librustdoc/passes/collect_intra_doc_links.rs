@@ -829,16 +829,13 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             }
                             let candidates =
                                 candidates.map(|candidate| candidate.map(|(res, _)| res));
-                            let candidates = [TypeNS, ValueNS, MacroNS]
-                                .iter()
-                                .filter_map(|&ns| candidates[ns].map(|res| (res, ns)));
                             ambiguity_error(
                                 cx,
                                 &item,
                                 path_str,
                                 &dox,
                                 link_range,
-                                candidates.collect(),
+                                candidates.present_items().collect(),
                             );
                             continue;
                         }
@@ -880,7 +877,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         fragment = Some(path.to_owned());
                     } else {
                         // `[char]` when a `char` module is in scope
-                        let candidates = vec![(res, TypeNS), (prim, TypeNS)];
+                        let candidates = vec![res, prim];
                         ambiguity_error(cx, &item, path_str, &dox, link_range, candidates);
                         continue;
                     }
@@ -898,20 +895,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         specified.article(),
                         specified.descr()
                     );
-                    let suggestion = resolved.display_for(path_str);
-                    let help_msg =
-                        format!("to link to the {}, use its disambiguator", resolved.descr());
                     diag.note(&note);
-                    if let Some(sp) = sp {
-                        diag.span_suggestion(
-                            sp,
-                            &help_msg,
-                            suggestion,
-                            Applicability::MaybeIncorrect,
-                        );
-                    } else {
-                        diag.help(&format!("{}: {}", help_msg, suggestion));
-                    }
+                    suggest_disambiguator(resolved, diag, path_str, &dox, sp, &link_range);
                 });
             };
             if let Res::PrimTy(_) = res {
@@ -1047,17 +1032,32 @@ impl Disambiguator {
         }
     }
 
-    fn display_for(self, path_str: &str) -> String {
+    /// WARNING: panics on `Res::Err`
+    fn from_res(res: Res) -> Self {
+        match res {
+            Res::Def(kind, _) => Disambiguator::Kind(kind),
+            Res::PrimTy(_) => Disambiguator::Primitive,
+            _ => Disambiguator::Namespace(res.ns().expect("can't call `from_res` on Res::err")),
+        }
+    }
+
+    /// Return (description of the change, suggestion)
+    fn display_for(self, path_str: &str) -> (&'static str, String) {
+        const PREFIX: &str = "prefix with the item kind";
+        const FUNCTION: &str = "add parentheses";
+        const MACRO: &str = "add an exclamation mark";
+
         let kind = match self {
-            Disambiguator::Primitive => return format!("prim@{}", path_str),
+            Disambiguator::Primitive => return (PREFIX, format!("prim@{}", path_str)),
             Disambiguator::Kind(kind) => kind,
             Disambiguator::Namespace(_) => panic!("display_for cannot be used on namespaces"),
         };
         if kind == DefKind::Macro(MacroKind::Bang) {
-            return format!("{}!", path_str);
+            return (MACRO, format!("{}!", path_str));
         } else if kind == DefKind::Fn || kind == DefKind::AssocFn {
-            return format!("{}()", path_str);
+            return (FUNCTION, format!("{}()", path_str));
         }
+
         let prefix = match kind {
             DefKind::Struct => "struct",
             DefKind::Enum => "enum",
@@ -1079,7 +1079,9 @@ impl Disambiguator {
                 Namespace::MacroNS => "macro",
             },
         };
-        format!("{}@{}", prefix, path_str)
+
+        // FIXME: if this is an implied shortcut link, it's bad style to suggest `@`
+        (PREFIX, format!("{}@{}", prefix, path_str))
     }
 
     fn ns(self) -> Namespace {
@@ -1247,12 +1249,12 @@ fn ambiguity_error(
     path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
-    candidates: Vec<(Res, Namespace)>,
+    candidates: Vec<Res>,
 ) {
     let mut msg = format!("`{}` is ", path_str);
 
     match candidates.as_slice() {
-        [(first_def, _), (second_def, _)] => {
+        [first_def, second_def] => {
             msg += &format!(
                 "both {} {} and {} {}",
                 first_def.article(),
@@ -1263,7 +1265,7 @@ fn ambiguity_error(
         }
         _ => {
             let mut candidates = candidates.iter().peekable();
-            while let Some((res, _)) = candidates.next() {
+            while let Some(res) = candidates.next() {
                 if candidates.peek().is_some() {
                     msg += &format!("{} {}, ", res.article(), res.descr());
                 } else {
@@ -1276,52 +1278,38 @@ fn ambiguity_error(
     report_diagnostic(cx, &msg, item, dox, link_range.clone(), |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "ambiguous link");
+        } else {
+            diag.note("ambiguous link");
+        }
 
-            let link_range = link_range.expect("must have a link range if we have a span");
-
-            for (res, ns) in candidates {
-                let (action, mut suggestion) = match res {
-                    Res::Def(DefKind::AssocFn | DefKind::Fn, _) => {
-                        ("add parentheses", format!("{}()", path_str))
-                    }
-                    Res::Def(DefKind::Macro(MacroKind::Bang), _) => {
-                        ("add an exclamation mark", format!("{}!", path_str))
-                    }
-                    _ => {
-                        let type_ = match (res, ns) {
-                            (Res::PrimTy(_), _) => "prim",
-                            (Res::Def(DefKind::Const, _), _) => "const",
-                            (Res::Def(DefKind::Static, _), _) => "static",
-                            (Res::Def(DefKind::Struct, _), _) => "struct",
-                            (Res::Def(DefKind::Enum, _), _) => "enum",
-                            (Res::Def(DefKind::Union, _), _) => "union",
-                            (Res::Def(DefKind::Trait, _), _) => "trait",
-                            (Res::Def(DefKind::Mod, _), _) => "module",
-                            (_, TypeNS) => "type",
-                            (_, ValueNS) => "value",
-                            (Res::Def(DefKind::Macro(MacroKind::Derive), _), MacroNS) => "derive",
-                            (_, MacroNS) => "macro",
-                        };
-
-                        // FIXME: if this is an implied shortcut link, it's bad style to suggest `@`
-                        ("prefix with the item type", format!("{}@{}", type_, path_str))
-                    }
-                };
-
-                if dox.bytes().nth(link_range.start) == Some(b'`') {
-                    suggestion = format!("`{}`", suggestion);
-                }
-
-                // FIXME: Create a version of this suggestion for when we don't have the span.
-                diag.span_suggestion(
-                    sp,
-                    &format!("to link to the {}, {}", res.descr(), action),
-                    suggestion,
-                    Applicability::MaybeIncorrect,
-                );
-            }
+        for res in candidates {
+            let disambiguator = Disambiguator::from_res(res);
+            suggest_disambiguator(disambiguator, diag, path_str, dox, sp, &link_range);
         }
     });
+}
+
+fn suggest_disambiguator(
+    disambiguator: Disambiguator,
+    diag: &mut DiagnosticBuilder<'_>,
+    path_str: &str,
+    dox: &str,
+    sp: Option<rustc_span::Span>,
+    link_range: &Option<Range<usize>>,
+) {
+    let (action, mut suggestion) = disambiguator.display_for(path_str);
+    let help = format!("to link to the {}, {}", disambiguator.descr(), action);
+
+    if let Some(sp) = sp {
+        let link_range = link_range.as_ref().expect("must have a link range if we have a span");
+        if dox.bytes().nth(link_range.start) == Some(b'`') {
+            suggestion = format!("`{}`", suggestion);
+        }
+
+        diag.span_suggestion(sp, &help, suggestion, Applicability::MaybeIncorrect);
+    } else {
+        diag.help(&format!("{}: {}", help, suggestion));
+    }
 }
 
 fn privacy_error(

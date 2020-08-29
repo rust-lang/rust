@@ -451,13 +451,19 @@ impl<Id> Res<Id> {
         }
     }
 
-    pub fn matches_ns(&self, ns: Namespace) -> bool {
+    /// Returns `None` if this is `Res::Err`
+    pub fn ns(&self) -> Option<Namespace> {
         match self {
-            Res::Def(kind, ..) => kind.ns() == Some(ns),
-            Res::PrimTy(..) | Res::SelfTy(..) | Res::ToolMod => ns == Namespace::TypeNS,
-            Res::SelfCtor(..) | Res::Local(..) => ns == Namespace::ValueNS,
-            Res::NonMacroAttr(..) => ns == Namespace::MacroNS,
-            Res::Err => true,
+            Res::Def(kind, ..) => kind.ns(),
+            Res::PrimTy(..) | Res::SelfTy(..) | Res::ToolMod => Some(Namespace::TypeNS),
+            Res::SelfCtor(..) | Res::Local(..) => Some(Namespace::ValueNS),
+            Res::NonMacroAttr(..) => Some(Namespace::MacroNS),
+            Res::Err => None,
         }
+    }
+
+    /// Always returns `true` if `self` is `Res::Err`
+    pub fn matches_ns(&self, ns: Namespace) -> bool {
+        self.ns().map_or(true, |actual_ns| actual_ns == ns)
     }
 }
