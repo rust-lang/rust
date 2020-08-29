@@ -20,6 +20,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     libc6-dev \
     libc6-dev-riscv64-cross \
     make \
+    ninja-build \
     patch \
     python3 \
     qemu-system-misc \

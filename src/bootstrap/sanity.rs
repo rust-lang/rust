@@ -100,8 +100,16 @@ pub fn check(build: &mut Build) {
         if build.config.ninja {
             // Some Linux distros rename `ninja` to `ninja-build`.
             // CMake can work with either binary name.
-            if cmd_finder.maybe_have("ninja-build").is_none() {
-                cmd_finder.must_have("ninja");
+            if cmd_finder.maybe_have("ninja-build").is_none()
+                && cmd_finder.maybe_have("ninja").is_none()
+            {
+                eprintln!(
+                    "
+Couldn't find required command: ninja
+You should install ninja, or set ninja=false in config.toml
+"
+                );
+                std::process::exit(1);
             }
         }
 

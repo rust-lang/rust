@@ -450,6 +450,7 @@ impl Config {
     pub fn default_opts() -> Config {
         let mut config = Config::default();
         config.llvm_optimize = true;
+        config.ninja = true;
         config.llvm_version_check = true;
         config.backtrace = true;
         config.rust_optimize = true;
