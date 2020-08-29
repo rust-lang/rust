@@ -1754,11 +1754,6 @@ impl Step for Crate {
             cargo.arg("--quiet");
         }
 
-        if builder.config.cmd.bless() {
-            // Bless `expect!` tests.
-            cargo.env("UPDATE_EXPECT", "1");
-        }
-
         if target.contains("emscripten") {
             cargo.env(
                 format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),

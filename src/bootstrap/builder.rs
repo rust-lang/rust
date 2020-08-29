@@ -1079,6 +1079,11 @@ impl<'a> Builder<'a> {
             },
         );
 
+        if self.config.cmd.bless() {
+            // Bless `expect!` tests.
+            cargo.env("UPDATE_EXPECT", "1");
+        }
+
         if !mode.is_tool() {
             cargo.env("RUSTC_FORCE_UNSTABLE", "1");
         }
