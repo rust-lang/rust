@@ -171,7 +171,7 @@ use crate::raw_vec::RawVec;
 ///
 /// // ... and that's all!
 /// // you can also do it like this:
-/// let x : &[usize] = &v;
+/// let u: &[usize] = &v; // or &[_]
 /// ```
 ///
 /// In Rust, it's more common to pass slices as arguments rather than vectors
