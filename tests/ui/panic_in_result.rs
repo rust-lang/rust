@@ -49,4 +49,22 @@ impl A {
     }
 }
 
-fn main() {}
+fn function_result_with_panic() -> Result<bool, String> // should emit lint
+{
+    panic!("error");
+}
+
+fn todo() {
+    println!("something");
+}
+
+fn function_result_with_custom_todo() -> Result<bool, String> // should not emit lint
+{
+    todo();
+    Ok(true)
+}
+
+fn main() -> Result<(), String> {
+    todo!("finish main method");
+    Ok(())
+}

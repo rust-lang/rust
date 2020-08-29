@@ -1,6 +1,8 @@
 use crate::utils::{is_expn_of, is_type_diagnostic_item, return_ty, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_hir as hir;
+use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
+use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -21,7 +23,6 @@ declare_clippy_lint! {
     ///     panic!("error");
     /// }
     /// ```
-
     pub PANIC_IN_RESULT,
     restriction,
     "functions of type `Result<..>` that contain `panic!()`, `todo!()` or `unreachable()` or `unimplemented()` "
@@ -30,21 +31,25 @@ declare_clippy_lint! {
 declare_lint_pass!(PanicInResult => [PANIC_IN_RESULT]);
 
 impl<'tcx> LateLintPass<'tcx> for PanicInResult {
-    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
+    /*
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        _: FnKind<'tcx>,
+        _: &'tcx hir::FnDecl<'tcx>,
+        body: &'tcx hir::Body<'tcx>,
+        span: Span,
+        hir_id: hir::HirId,
+    ) {
         if_chain! {
-            // first check if it's a method or function
-            if let hir::ImplItemKind::Fn(ref _signature, _) = impl_item.kind;
-            // checking if its return type is `result` or `option`
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym!(result_type));
-            then {
-                lint_impl_body(cx, impl_item.span, impl_item);
+            if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type));
+            then
+            {
+                lint_impl_body(cx, span, body);
             }
         }
-    }
+    }*/
 }
-
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, ImplItemKind};
 
 struct FindPanicUnimplementedUnreachable {
     result: Vec<Span>,
@@ -70,29 +75,21 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnimplementedUnreachable {
     }
 }
 
-fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tcx hir::ImplItem<'_>) {
-    if_chain! {
-        if let ImplItemKind::Fn(_, body_id) = impl_item.kind;
-        then {
-            let body = cx.tcx.hir().body(body_id);
-            let mut fpu = FindPanicUnimplementedUnreachable {
-                result: Vec::new(),
-            };
-            fpu.visit_expr(&body.value);
-
-            // if we've found one, lint
-            if  !fpu.result.is_empty()  {
-                span_lint_and_then(
-                    cx,
-                    PANIC_IN_RESULT,
-                    impl_span,
-                    "used unimplemented, unreachable, todo or panic in a function that returns result",
-                    move |diag| {
-                        diag.help(
-                            "unimplemented, unreachable, todo or panic should not be used in a function that returns result" );
-                        diag.span_note(fpu.result, "will cause the application to crash.");
-                    });
-            }
-        }
+fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir::Body<'tcx>) {
+    let mut panics = FindPanicUnimplementedUnreachable { result: Vec::new() };
+    panics.visit_expr(&body.value);
+    if !panics.result.is_empty() {
+        span_lint_and_then(
+            cx,
+            PANIC_IN_RESULT,
+            impl_span,
+            "used `unimplemented!()`, `unreachable!()`, `todo!()` or `panic!()` in a function that returns `Result`",
+            move |diag| {
+                diag.help(
+                    "`unimplemented!()`, `unreachable!()`, `todo!()` or `panic!()` should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing",
+                );
+                diag.span_note(panics.result, "return Err() instead of panicking");
+            },
+        );
     }
 }
