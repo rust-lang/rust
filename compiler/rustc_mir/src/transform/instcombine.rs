@@ -6,7 +6,7 @@ use rustc_hir::Mutability;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::{
-    Body, Constant, Local, Location, Operand, Place, PlaceRef, ProjectionElem, Rvalue,
+    BinOp, Body, Constant, Local, Location, Operand, Place, PlaceRef, ProjectionElem, Rvalue,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use std::mem;
@@ -66,6 +66,11 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
             *rvalue = Rvalue::Use(Operand::Constant(box constant));
         }
 
+        if let Some(operand) = self.optimizations.unneeded_not_equal.remove(&location) {
+            debug!("replacing {:?} with {:?}", rvalue, operand);
+            *rvalue = Rvalue::Use(operand);
+        }
+
         self.super_rvalue(rvalue, location)
     }
 }
@@ -80,6 +85,23 @@ struct OptimizationFinder<'b, 'tcx> {
 impl OptimizationFinder<'b, 'tcx> {
     fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'tcx>) -> OptimizationFinder<'b, 'tcx> {
         OptimizationFinder { body, tcx, optimizations: OptimizationList::default() }
+    }
+
+    fn find_operand_in_ne_false_pattern(
+        &self,
+        l: &Operand<'tcx>,
+        r: &'a Operand<'tcx>,
+    ) -> Option<&'a Operand<'tcx>> {
+        let const_ = l.constant()?;
+        if const_.literal.ty == self.tcx.types.bool
+            && const_.literal.val.try_to_bool() == Some(false)
+        {
+            if r.place().is_some() {
+                return Some(r);
+            }
+        }
+
+        return None;
     }
 }
 
@@ -106,6 +128,18 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
             }
         }
 
+        // find Ne(_place, false) or Ne(false, _place)
+        if let Rvalue::BinaryOp(BinOp::Ne, l, r) = rvalue {
+            // (false, _place)
+            if let Some(o) = self.find_operand_in_ne_false_pattern(l, r) {
+                self.optimizations.unneeded_not_equal.insert(location, o.clone());
+            }
+            // (_place, false)
+            else if let Some(o) = self.find_operand_in_ne_false_pattern(r, l) {
+                self.optimizations.unneeded_not_equal.insert(location, o.clone());
+            }
+        }
+
         self.super_rvalue(rvalue, location)
     }
 }
@@ -114,4 +148,5 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 struct OptimizationList<'tcx> {
     and_stars: FxHashSet<Location>,
     arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
+    unneeded_not_equal: FxHashMap<Location, Operand<'tcx>>,
 }
