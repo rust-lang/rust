@@ -578,6 +578,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         let parent_node = if item.is_fake() {
             // FIXME: is this correct?
             None
+        // If we're documenting the crate root itself, it has no parent. Use the root instead.
+        } else if item.def_id.is_top_level_module() {
+            Some(item.def_id)
         } else {
             let mut current = item.def_id;
             // The immediate parent might not always be a module.
@@ -589,6 +592,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                     current = parent;
                 } else {
+                    debug!("{:?} has no parent (kind={:?}, original was {:?})", current, self.cx.tcx.def_kind(current), item.def_id);
                     break None;
                 }
             }
