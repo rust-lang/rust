@@ -34,8 +34,8 @@ use crate::slice::{self, SliceIndex};
 /// it is your responsibility to ensure that `as_mut` is never called, and `as_ptr`
 /// is never used for mutation.
 ///
-/// [`PhantomData`]: ../marker/struct.PhantomData.html
-/// [`UnsafeCell<T>`]: ../cell/struct.UnsafeCell.html
+/// [`PhantomData`]: crate::marker::PhantomData
+/// [`UnsafeCell<T>`]: crate::cell::UnsafeCell
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
@@ -82,8 +82,8 @@ impl<T: Sized> NonNull<T> {
     ///
     /// For the mutable counterpart see [`as_uninit_mut`].
     ///
-    /// [`as_ref`]: #method.as_ref
-    /// [`as_uninit_mut`]: #method.as_uninit_mut
+    /// [`as_ref`]: NonNull::as_ref
+    /// [`as_uninit_mut`]: NonNull::as_uninit_mut
     ///
     /// # Safety
     ///
@@ -114,8 +114,8 @@ impl<T: Sized> NonNull<T> {
     ///
     /// For the shared counterpart see [`as_uninit_ref`].
     ///
-    /// [`as_mut`]: #method.as_mut
-    /// [`as_uninit_ref`]: #method.as_uninit_ref
+    /// [`as_mut`]: NonNull::as_mut
+    /// [`as_uninit_ref`]: NonNull::as_uninit_ref
     ///
     /// # Safety
     ///
@@ -181,8 +181,8 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// For the mutable counterpart see [`as_mut`].
     ///
-    /// [`as_uninit_ref`]: #method.as_uninit_ref
-    /// [`as_mut`]: #method.as_mut
+    /// [`as_uninit_ref`]: NonNull::as_uninit_ref
+    /// [`as_mut`]: NonNull::as_mut
     ///
     /// # Safety
     ///
@@ -217,8 +217,8 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// For the shared counterpart see [`as_ref`].
     ///
-    /// [`as_uninit_mut`]: #method.as_uninit_mut
-    /// [`as_ref`]: #method.as_ref
+    /// [`as_uninit_mut`]: NonNull::as_uninit_mut
+    /// [`as_ref`]: NonNull::as_ref
     ///
     /// # Safety
     ///
@@ -265,8 +265,6 @@ impl<T> NonNull<[T]> {
     ///
     /// This function is safe, but dereferencing the return value is unsafe.
     /// See the documentation of [`slice::from_raw_parts`] for slice safety requirements.
-    ///
-    /// [`slice::from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
     ///
     /// # Examples
     ///
@@ -357,8 +355,8 @@ impl<T> NonNull<[T]> {
     ///
     /// For the mutable counterpart see [`as_uninit_slice_mut`].
     ///
-    /// [`as_ref`]: #method.as_ref
-    /// [`as_uninit_slice_mut`]: #method.as_uninit_slice_mut
+    /// [`as_ref`]: NonNull::as_ref
+    /// [`as_uninit_slice_mut`]: NonNull::as_uninit_slice_mut
     ///
     /// # Safety
     ///
@@ -386,10 +384,9 @@ impl<T> NonNull<[T]> {
     ///
     /// This applies even if the result of this method is unused!
     ///
-    /// See also [`slice::from_raw_parts`][].
+    /// See also [`slice::from_raw_parts`].
     ///
     /// [valid]: crate::ptr#safety
-    /// [`NonNull::dangling()`]: NonNull::dangling
     /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
@@ -403,8 +400,8 @@ impl<T> NonNull<[T]> {
     ///
     /// For the shared counterpart see [`as_uninit_slice`].
     ///
-    /// [`as_mut`]: #method.as_mut
-    /// [`as_uninit_slice`]: #method.as_uninit_slice
+    /// [`as_mut`]: NonNull::as_mut
+    /// [`as_uninit_slice`]: NonNull::as_uninit_slice
     ///
     /// # Safety
     ///
@@ -432,10 +429,9 @@ impl<T> NonNull<[T]> {
     ///
     /// This applies even if the result of this method is unused!
     ///
-    /// See also [`slice::from_raw_parts_mut`][].
+    /// See also [`slice::from_raw_parts_mut`].
     ///
     /// [valid]: crate::ptr#safety
-    /// [`NonNull::dangling()`]: NonNull::dangling
     /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
     ///
     /// # Examples
