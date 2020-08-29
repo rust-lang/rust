@@ -350,6 +350,14 @@
                     "default": null,
                     "description": "List of features to activate. Defaults to `rust-analyzer.cargo.features`."
                 },
+                "rust-analyzer.checkOnSave.target": {
+                    "type": [
+                        "null",
+                        "string"
+                    ],
+                    "default": null,
+                    "description": "Check for a specific target. Defaults to `rust-analyzer.cargo.target`."
+                },
                 "rust-analyzer.cargoRunner": {
                     "type": [
                         "null",
