@@ -3026,7 +3026,7 @@ impl<T> Drain<'_, T> {
     }
 }
 
-/// A draining iterator with filter predicate for `Vec`.
+/// An iterator which uses a closure to determine if an element should be removed.
 ///
 /// This struct is created by [`Vec::drain_filter`].
 /// See its documentation for more.
