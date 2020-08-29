@@ -159,7 +159,7 @@ use crate::raw_vec::RawVec;
 /// # Slicing
 ///
 /// A `Vec` can be mutable. Slices, on the other hand, are read-only objects.
-/// To get a slice, use `&`. Example:
+/// To get a slice, use [`&`][prim@reference]. Example:
 ///
 /// ```
 /// fn read_slice(slice: &[usize]) {
