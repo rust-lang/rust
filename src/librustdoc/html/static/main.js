@@ -92,6 +92,7 @@ function defocusSearchBar() {
     var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") === "true";
     var search_input = getSearchInput();
     var searchTimeout = null;
+    var toggleAllDocsId = "toggle-all-docs";
 
     // On the search screen, so you remain on the last tab you opened.
     //
@@ -2113,12 +2114,8 @@ function defocusSearchBar() {
         }
     }
 
-    function getToggleAllDocsElement() {
-        return document.getElementById("toggle-all-docs");
-    }
-
     function toggleAllDocs(pageId, fromAutoCollapse) {
-        var innerToggle = getToggleAllDocsElement();
+        var innerToggle = document.getElementById(toggleAllDocsId);
         if (!innerToggle) {
             return;
         }
@@ -2360,7 +2357,7 @@ function defocusSearchBar() {
     }
 
     (function() {
-        var toggles = document.getElementById("toggle-all-docs");
+        var toggles = document.getElementById(toggleAllDocsId);
         if (toggles) {
             toggles.onclick = toggleAllDocs;
         }
