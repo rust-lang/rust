@@ -194,6 +194,19 @@ use crate::raw_vec::RawVec;
 /// can be slow. For this reason, it is recommended to use [`Vec::with_capacity`]
 /// whenever possible to specify how big the vector is expected to get.
 ///
+/// In summary, a vector containing 1, 2 with capacity 4 can be visualized as:
+/// ```text
+/// Stack  +--------+--------+--------+
+///        |    ptr |capacity|    len |
+///        | 0x0123 |      4 |      2 |
+///        +--------+--------+--------+
+///             |
+///             v
+/// Heap   +--------+--------+--------+--------+
+///        |      1 |      2 |        |        |
+///        +--------+--------+--------+--------+
+/// ```
+///
 /// # Guarantees
 ///
 /// Due to its incredibly fundamental nature, `Vec` makes a lot of guarantees
