@@ -2785,6 +2785,7 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
 /// A draining iterator for `Vec<T>`.
 ///
 /// This `struct` is created by [`Vec::drain`].
+/// See its documentation for more.
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     /// Index of tail to preserve
