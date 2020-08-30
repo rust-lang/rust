@@ -1,3 +1,138 @@
+Version 1.47.0 (2020-10-08)
+==========================
+
+Language
+--------
+- [Closures will now warn when not used.][74869]
+
+Compiler
+--------
+- [Stabilized the `-C control-flow-guard` codegen option][73893], which enables
+  [Control Flow Guard][1.47.0-cfg] for Windows platforms, and is ignored on other
+  platforms.
+- [Upgraded to LLVM 11.][73526]
+- [Added tier 3\* support for the `thumbv4t-none-eabi` target.][74419]
+- [Upgrade the FreeBSD toolchain to version 11.4][75204]
+- [`RUST_BACKTRACE`'s output is now more compact.][75048]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+Libraries
+---------
+- [`CStr` now implements `Index<RangeFrom<usize>>`.][74021]
+- [Traits in `std`/`core` are now implemented for arrays of any length, not just
+  those of length less than 33.][74060]
+- [`ops::RangeFull` and `ops::Range` now implement Default.][73197]
+- [`panic::Location` now implements `Copy`, `Clone`, `Eq`, `Hash`, `Ord`,
+  `PartialEq`, and `PartialOrd`.][73583]
+
+Stabilized APIs
+---------------
+- [`Ident::new_raw`]
+- [`Range::is_empty`]
+- [`RangeInclusive::is_empty`]
+- [`Result::as_deref`]
+- [`Result::as_deref_mut`]
+- [`Vec::leak`]
+- [`pointer::offset_from`]
+- [`f32::TAU`]
+- [`f64::TAU`]
+
+The following previously stable APIs have now been made const.
+
+- [The `new` method for all `NonZero` integers.][73858]
+- [The `checked_add`,`checked_sub`,`checked_mul`,`checked_neg`, `checked_shl`,
+  `checked_shr`, `saturating_add`, `saturating_sub`, and `saturating_mul`
+  methods for all integers.][73858]
+- [The `checked_abs`, `saturating_abs`, `saturating_neg`, and `signum`  for all
+  signed integers.][73858]
+- [The `is_ascii_alphabetic`, `is_ascii_uppercase`, `is_ascii_lowercase`,
+  `is_ascii_alphanumeric`, `is_ascii_digit`, `is_ascii_hexdigit`,
+  `is_ascii_punctuation`, `is_ascii_graphic`, `is_ascii_whitespace`, and
+  `is_ascii_control` methods for `char` and `u8`.][73858]
+
+Cargo
+-----
+- [`build-dependencies` are now built with opt-level 0 by default.][cargo/8500]
+  You can override this by setting the following in your `Cargo.toml`.
+  ```toml
+  [profile.release.build-override]
+  opt-level = 3
+  ```
+- [`cargo-help` will now display man pages for commands rather just the
+  `--help` text.][cargo/8456]
+- [`cargo-metadata` now emits a `test` field indicating if a target has
+  tests enabled.][cargo/8478]
+- [`workspace.default-members` now respects `workspace.exclude`.][cargo/8485]
+- [`cargo-publish` will now use an alternative registry by default if it's the
+  only registry specified in `package.publish`.][cargo/8571]
+
+Misc
+----
+- [Added a help button beside Rustdoc's searchbar that explains rustdoc's
+  type based search.][75366]
+- [Added the Ayu theme to rustdoc.][71237]
+
+Compatibility Notes
+-------------------
+- [Bumped the minimum supported Emscripten version to 1.39.20.][75716]
+- [Fixed a regression parsing `{} && false` in tail expressions.][74650]
+- [Added changes to how proc-macros are expanded in `macro_rules!` that should
+  help to preserve more span information.][73084] These changes may cause
+  compiliation errors if your macro was unhygenic or didn't correctly handle
+  `Delimiter::None`.
+- [Moved support for the CloudABI target to tier 3.][75568]
+- [`linux-gnu` targets now require minimum kernel 2.6.32 and glibc 2.11.][74163]
+- [Added the `rustc-docs` component.][75560] This allows you to install
+  and read the documentation for the compiler internal APIs. (Currently only
+  available for `x86_64-unknown-linux-gnu`.)
+
+Internal Only
+--------
+- [Improved default settings for bootstrapping in `x.py`.][73964] You can read details about this change in the ["Changes To `x.py` Defaults"](https://blog.rust-lang.org/inside-rust/2020/08/30/changes-to-x-py-defaults.html) post on the Inside Rust blog.
+
+[1.47.0-cfg]: https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard
+[75048]: https://github.com/rust-lang/rust/pull/75048/
+[74163]: https://github.com/rust-lang/rust/pull/74163/
+[71237]: https://github.com/rust-lang/rust/pull/71237/
+[74869]: https://github.com/rust-lang/rust/pull/74869/
+[73858]: https://github.com/rust-lang/rust/pull/73858/
+[75716]: https://github.com/rust-lang/rust/pull/75716/
+[75908]: https://github.com/rust-lang/rust/pull/75908/
+[75516]: https://github.com/rust-lang/rust/pull/75516/
+[75560]: https://github.com/rust-lang/rust/pull/75560/
+[75568]: https://github.com/rust-lang/rust/pull/75568/
+[75366]: https://github.com/rust-lang/rust/pull/75366/
+[75204]: https://github.com/rust-lang/rust/pull/75204/
+[74650]: https://github.com/rust-lang/rust/pull/74650/
+[74419]: https://github.com/rust-lang/rust/pull/74419/
+[73964]: https://github.com/rust-lang/rust/pull/73964/
+[74021]: https://github.com/rust-lang/rust/pull/74021/
+[74060]: https://github.com/rust-lang/rust/pull/74060/
+[73893]: https://github.com/rust-lang/rust/pull/73893/
+[73526]: https://github.com/rust-lang/rust/pull/73526/
+[73583]: https://github.com/rust-lang/rust/pull/73583/
+[73084]: https://github.com/rust-lang/rust/pull/73084/
+[73197]: https://github.com/rust-lang/rust/pull/73197/
+[72488]: https://github.com/rust-lang/rust/pull/72488/
+[cargo/8456]: https://github.com/rust-lang/cargo/pull/8456/
+[cargo/8478]: https://github.com/rust-lang/cargo/pull/8478/
+[cargo/8485]: https://github.com/rust-lang/cargo/pull/8485/
+[cargo/8500]: https://github.com/rust-lang/cargo/pull/8500/
+[cargo/8571]: https://github.com/rust-lang/cargo/pull/8571/
+[`Ident::new_raw`]:  https://doc.rust-lang.org/nightly/proc_macro/struct.Ident.html#method.new_raw
+[`Range::is_empty`]: https://doc.rust-lang.org/nightly/std/ops/struct.Range.html#method.is_empty
+[`RangeInclusive::is_empty`]: https://doc.rust-lang.org/nightly/std/ops/struct.RangeInclusive.html#method.is_empty
+[`Result::as_deref_mut`]: https://doc.rust-lang.org/nightly/std/result/enum.Result.html#method.as_deref_mut
+[`Result::as_deref`]: https://doc.rust-lang.org/nightly/std/result/enum.Result.html#method.as_deref
+[`TypeId::of`]: https://doc.rust-lang.org/nightly/std/any/struct.TypeId.html#method.of
+[`Vec::leak`]: https://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.leak
+[`f32::TAU`]: https://doc.rust-lang.org/nightly/std/f32/consts/constant.TAU.html
+[`f64::TAU`]: https://doc.rust-lang.org/nightly/std/f64/consts/constant.TAU.html
+[`pointer::offset_from`]: https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.offset_from
+
+
 Version 1.46.0 (2020-08-27)
 ==========================
 
