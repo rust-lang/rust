@@ -232,10 +232,7 @@ mod prim_bool {}
 ///
 /// ```
 /// #![feature(never_type)]
-/// # use std::fmt;
-/// # trait Debug {
-/// #     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result;
-/// # }
+/// # use std::fmt::{self, Debug};
 /// impl Debug for ! {
 ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
 ///         *self
