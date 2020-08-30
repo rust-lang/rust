@@ -90,6 +90,16 @@ fn checked_add() {
 }
 
 #[test]
+fn saturating_add() {
+    assert_eq!(Duration::new(0, 0).saturating_add(Duration::new(0, 1)), Duration::new(0, 1));
+    assert_eq!(
+        Duration::new(0, 500_000_000).saturating_add(Duration::new(0, 500_000_001)),
+        Duration::new(1, 1)
+    );
+    assert_eq!(Duration::new(1, 0).saturating_add(Duration::new(u64::MAX, 0)), Duration::MAX);
+}
+
+#[test]
 fn sub() {
     assert_eq!(Duration::new(0, 1) - Duration::new(0, 0), Duration::new(0, 1));
     assert_eq!(Duration::new(0, 500_000_001) - Duration::new(0, 500_000_000), Duration::new(0, 1));
@@ -105,6 +115,17 @@ fn checked_sub() {
     assert_eq!(one_sec.checked_sub(one_nano), Some(Duration::new(0, 999_999_999)));
     assert_eq!(zero.checked_sub(one_nano), None);
     assert_eq!(zero.checked_sub(one_sec), None);
+}
+
+#[test]
+fn saturating_sub() {
+    let zero = Duration::new(0, 0);
+    let one_nano = Duration::new(0, 1);
+    let one_sec = Duration::new(1, 0);
+    assert_eq!(one_nano.saturating_sub(zero), Duration::new(0, 1));
+    assert_eq!(one_sec.saturating_sub(one_nano), Duration::new(0, 999_999_999));
+    assert_eq!(zero.saturating_sub(one_nano), Duration::MIN);
+    assert_eq!(zero.saturating_sub(one_sec), Duration::MIN);
 }
 
 #[test]
@@ -134,6 +155,15 @@ fn checked_mul() {
     assert_eq!(Duration::new(0, 500_000_001).checked_mul(4), Some(Duration::new(2, 4)));
     assert_eq!(Duration::new(0, 500_000_001).checked_mul(4000), Some(Duration::new(2000, 4000)));
     assert_eq!(Duration::new(u64::MAX - 1, 0).checked_mul(2), None);
+}
+
+#[test]
+fn saturating_mul() {
+    assert_eq!(Duration::new(0, 1).saturating_mul(2), Duration::new(0, 2));
+    assert_eq!(Duration::new(1, 1).saturating_mul(3), Duration::new(3, 3));
+    assert_eq!(Duration::new(0, 500_000_001).saturating_mul(4), Duration::new(2, 4));
+    assert_eq!(Duration::new(0, 500_000_001).saturating_mul(4000), Duration::new(2000, 4000));
+    assert_eq!(Duration::new(u64::MAX - 1, 0).saturating_mul(2), Duration::MAX);
 }
 
 #[test]

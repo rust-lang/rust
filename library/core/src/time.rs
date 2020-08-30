@@ -108,6 +108,34 @@ impl Duration {
     #[unstable(feature = "duration_constants", issue = "57391")]
     pub const NANOSECOND: Duration = Duration::from_nanos(1);
 
+    /// The minimum duration.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MIN, Duration::new(0, 0));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const MIN: Duration = Duration::from_nanos(0);
+
+    /// The maximum duration.
+    ///
+    /// It is roughly equal to a duration of 584,942,417,355 years.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MAX, Duration::new(u64::MAX, 1_000_000_000 - 1));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const MAX: Duration = Duration::new(u64::MAX, NANOS_PER_SEC - 1);
+
     /// Creates a new `Duration` from the specified number of whole seconds and
     /// additional nanoseconds.
     ///
@@ -450,6 +478,29 @@ impl Duration {
         }
     }
 
+    /// Saturating `Duration` addition. Computes `self + other`, returning [`Duration::MAX`]
+    /// if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_saturating_ops)]
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 0).saturating_add(Duration::new(0, 1)), Duration::new(0, 1));
+    /// assert_eq!(Duration::new(1, 0).saturating_add(Duration::new(u64::MAX, 0)), Duration::MAX);
+    /// ```
+    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn saturating_add(self, rhs: Duration) -> Duration {
+        match self.checked_add(rhs) {
+            Some(res) => res,
+            None => Duration::MAX,
+        }
+    }
+
     /// Checked `Duration` subtraction. Computes `self - other`, returning [`None`]
     /// if the result would be negative or if overflow occurred.
     ///
@@ -485,6 +536,29 @@ impl Duration {
         }
     }
 
+    /// Saturating `Duration` subtraction. Computes `self - other`, returning [`Duration::MIN`]
+    /// if the result would be negative or if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_saturating_ops)]
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 1).saturating_sub(Duration::new(0, 0)), Duration::new(0, 1));
+    /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::MIN);
+    /// ```
+    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn saturating_sub(self, rhs: Duration) -> Duration {
+        match self.checked_sub(rhs) {
+            Some(res) => res,
+            None => Duration::MIN,
+        }
+    }
+
     /// Checked `Duration` multiplication. Computes `self * other`, returning
     /// [`None`] if overflow occurred.
     ///
@@ -513,6 +587,29 @@ impl Duration {
             }
         }
         None
+    }
+
+    /// Saturating `Duration` multiplication. Computes `self * other`, returning
+    /// [`Duration::MAX`] if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_saturating_ops)]
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 500_000_001).saturating_mul(2), Duration::new(1, 2));
+    /// assert_eq!(Duration::new(u64::MAX - 1, 0).saturating_mul(2), Duration::MAX);
+    /// ```
+    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
+    pub const fn saturating_mul(self, rhs: u32) -> Duration {
+        match self.checked_mul(rhs) {
+            Some(res) => res,
+            None => Duration::MAX,
+        }
     }
 
     /// Checked `Duration` division. Computes `self / other`, returning [`None`]

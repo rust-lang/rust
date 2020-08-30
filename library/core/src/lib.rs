@@ -100,6 +100,7 @@
 #![feature(doc_cfg)]
 #![feature(doc_spotlight)]
 #![feature(duration_consts_2)]
+#![feature(duration_saturating_ops)]
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
