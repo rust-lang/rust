@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 mod code_layout;
+pub(crate) mod peephole;
 mod stack2reg;
 
 pub(crate) fn optimize_function<'tcx>(

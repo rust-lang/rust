@@ -110,6 +110,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     context.compute_cfg();
     context.compute_domtree();
     context.eliminate_unreachable_code(cx.module.isa()).unwrap();
+    context.dce(cx.module.isa()).unwrap();
 
     // Define function
     let module = &mut cx.module;
@@ -315,18 +316,45 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
 
             TerminatorKind::SwitchInt {
                 discr,
-                switch_ty: _,
+                switch_ty,
                 values,
                 targets,
             } => {
                 let discr = trans_operand(fx, discr).load_scalar(fx);
-                let mut switch = ::cranelift_frontend::Switch::new();
-                for (i, value) in values.iter().enumerate() {
-                    let block = fx.get_block(targets[i]);
-                    switch.set_entry(*value, block);
+
+                if switch_ty.kind == fx.tcx.types.bool.kind {
+                    assert_eq!(targets.len(), 2);
+                    let then_block = fx.get_block(targets[0]);
+                    let else_block = fx.get_block(targets[1]);
+                    let test_zero = match **values {
+                        [0] => true,
+                        [1] => false,
+                        _ => unreachable!("{:?}", values),
+                    };
+
+                    let discr = crate::optimize::peephole::maybe_unwrap_bint(&mut fx.bcx, discr);
+                    let (discr, is_inverted) =
+                        crate::optimize::peephole::maybe_unwrap_bool_not(&mut fx.bcx, discr);
+                    let test_zero = if is_inverted { !test_zero } else { test_zero };
+                    let discr = crate::optimize::peephole::maybe_unwrap_bint(&mut fx.bcx, discr);
+                    let discr =
+                        crate::optimize::peephole::make_branchable_value(&mut fx.bcx, discr);
+                    if test_zero {
+                        fx.bcx.ins().brz(discr, then_block, &[]);
+                        fx.bcx.ins().jump(else_block, &[]);
+                    } else {
+                        fx.bcx.ins().brnz(discr, then_block, &[]);
+                        fx.bcx.ins().jump(else_block, &[]);
+                    }
+                } else {
+                    let mut switch = ::cranelift_frontend::Switch::new();
+                    for (i, value) in values.iter().enumerate() {
+                        let block = fx.get_block(targets[i]);
+                        switch.set_entry(*value, block);
+                    }
+                    let otherwise_block = fx.get_block(targets[targets.len() - 1]);
+                    switch.emit(&mut fx.bcx, discr, otherwise_block);
                 }
-                let otherwise_block = fx.get_block(targets[targets.len() - 1]);
-                switch.emit(&mut fx.bcx, discr, otherwise_block);
             }
             TerminatorKind::Call {
                 func,
