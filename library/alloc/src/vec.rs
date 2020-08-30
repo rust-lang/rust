@@ -196,8 +196,8 @@ use crate::raw_vec::RawVec;
 ///
 /// In summary, a vector containing 1, 2 with capacity 4 can be visualized as:
 /// ```text
-/// Stack  +--------+--------+--------+
-///        |   ptr  |capacity|   len  |
+/// Stack      ptr   capacity    len
+///        +--------+--------+--------+
 ///        | 0x0123 |      4 |      2 |
 ///        +--------+--------+--------+
 ///             |
