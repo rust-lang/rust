@@ -592,7 +592,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                     current = parent;
                 } else {
-                    debug!("{:?} has no parent (kind={:?}, original was {:?})", current, self.cx.tcx.def_kind(current), item.def_id);
+                    debug!(
+                        "{:?} has no parent (kind={:?}, original was {:?})",
+                        current,
+                        self.cx.tcx.def_kind(current),
+                        item.def_id
+                    );
                     break None;
                 }
             }
