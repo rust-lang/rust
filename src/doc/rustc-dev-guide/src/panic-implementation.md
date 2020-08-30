@@ -24,9 +24,10 @@ unsafe { panic_impl(&pi) }
 
 Actually resolving this goes through several layers of indirection:
 
-1. In `compiler/rustc_middle/src/middle/weak_lang_items.rs`, `panic_impl` is declared as 'weak lang item',
-   with the symbol `rust_begin_unwind`. This is used in `rustc_typeck/src/collect.rs`
-   to set the actual symbol name to `rust_begin_unwind`.
+1. In `compiler/rustc_middle/src/middle/weak_lang_items.rs`, `panic_impl` is
+   declared as 'weak lang item', with the symbol `rust_begin_unwind`. This is
+   used in `rustc_typeck/src/collect.rs` to set the actual symbol name to
+   `rust_begin_unwind`.
 
    Note that `panic_impl` is declared in an `extern "Rust"` block,
    which means that core will attempt to call a foreign symbol called `rust_begin_unwind`
