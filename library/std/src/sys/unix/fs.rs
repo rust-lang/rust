@@ -692,6 +692,7 @@ impl OpenOptions {
     }
 }
 
+
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = cstr(path)?;
@@ -960,6 +961,12 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     let new = cstr(new)?;
     cvt(unsafe { libc::rename(old.as_ptr(), new.as_ptr()) })?;
     Ok(())
+}
+
+pub fn get_openopetions_as_cint(from: OpenOptions) -> io::Result<libc::c_int> {
+    let access_mode = from.get_access_mode()?;
+    let creation_mode = from.get_creation_mode()?;
+    Ok(creation_mode | access_mode)
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
