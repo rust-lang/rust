@@ -2227,6 +2227,12 @@ fn write_in_place_with_drop<T>(
 #[rustc_unsafe_specialization_marker]
 trait SourceIterMarker: SourceIter<Source: AsIntoIter> {}
 
+// The std-internal SourceIter/InPlaceIterable traits are only implemented by chains of
+// Adapter<Adapter<Adapter<IntoIter>>> (all owned by core/std). Additional bounds
+// on the adapter implementations (beyond `impl<I: Trait> Trait for Adapter<I>`) only depend on other
+// traits already marked as specialization traits (Copy, TrustedRandomAccess, FusedIterator).
+// I.e. the marker does not depend on lifetimes of user-supplied types. Modulo the Copy hole, which
+// several other specializations already depend on.
 impl<T> SourceIterMarker for T where T: SourceIter<Source: AsIntoIter> + InPlaceIterable {}
 
 impl<T, I> SpecFrom<T, I> for Vec<T>
