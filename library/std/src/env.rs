@@ -77,7 +77,7 @@ pub struct Vars {
 ///
 /// This structure is created by [`env::vars_os()`]. See its documentation for more.
 ///
-/// [`env::vars()`]: vars
+/// [`env::vars_os()`]: vars_os
 #[stable(feature = "env", since = "1.0.0")]
 pub struct VarsOs {
     inner: os_imp::Env,
