@@ -115,7 +115,7 @@ impl Patch {
         self
     }
 
-    fn commit(&self) -> Result<()> {
+    fn commit(&self) -> io::Result<()> {
         fs2::write(&self.path, &self.contents)
     }
 }

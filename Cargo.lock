@@ -386,6 +386,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fs-err"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1a51f8b7158efbe531f7baa74e38e49fbc41239e5d66720bb37ed39c27c241a"
+
+[[package]]
 name = "fsevent"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1875,6 +1881,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "flate2",
+ "fs-err",
  "pico-args",
  "proc-macro2",
  "quote",
