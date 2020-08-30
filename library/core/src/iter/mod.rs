@@ -53,6 +53,7 @@
 //! more complex forms of processing. See the [Adapters](#adapters) section
 //! below for more details.
 //!
+//! [`Some(Item)`]: Some
 //! [`next`]: Iterator::next
 //! [`TryIter`]: ../../std/sync/mpsc/struct.TryIter.html
 //!
