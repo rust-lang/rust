@@ -222,7 +222,7 @@ mod prim_bool {}
 ///
 /// The reason is that, in the first example, there are many possible types that `!` could coerce
 /// to, because the function can return one of many concrete types. However, in the second example,
-/// the other branch returns a `0` of type `u32`, which is a concrete type that `!` can be coerced
+/// the `else` branch returns a `0` of type `u32`, which is a concrete type that `!` can be coerced
 /// to. See issue [#36375] for more information on this quirk of `!`.
 ///
 /// [#36375]: https://github.com/rust-lang/rust/issues/36375
