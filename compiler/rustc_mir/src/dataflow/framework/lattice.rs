@@ -1,18 +1,42 @@
 //! Traits used to represent [lattices] for use as the domain of a dataflow analysis.
 //!
-//! ## Implementation Notes
+//! # Overview
 //!
-//! Given that they represent partially ordered sets, you may be surprised that [`MeetSemiLattice`]
-//! and [`JoinSemiLattice`] do not have [`PartialOrd`][std::cmp::PartialOrd] as a supertrait. This
-//! is because most standard library types use lexicographic ordering instead of [set inclusion]
-//! for their `PartialOrd` impl. Since we do not actually need to compare lattice elements to run a
-//! dataflow analysis, there's no need for a hypothetical `SetInclusion` newtype with a custom
-//! `PartialOrd` impl.  The only benefit would be the ability to check (in debug mode) that the
-//! least upper (or greatest lower) bound returned by the lattice join (or meet) operator was in
-//! fact greater (or lower) than the inputs.
+//! The most common lattice is a powerset of some set `S`, ordered by [set inclusion]. The [Hasse
+//! diagram] for the powerset of a set with two elements (`X` and `Y`) is shown below. Note that
+//! distinct elements at the same height in a Hasse diagram (e.g. `{X}` and `{Y}`) are
+//! *incomparable*, not equal.
+//!
+//! ```text
+//!      {X, Y}    <- top
+//!       /  \
+//!    {X}    {Y}
+//!       \  /
+//!        {}      <- bottom
+//!
+//! ```
+//!
+//! The defining characteristic of a lattice—the one that differentiates it from a [partially
+//! ordered set][poset]—is the existence of a *unique* least upper and greatest lower bound for
+//! every pair of elements. The lattice join operator (`∨`) returns the least upper bound, and the
+//! lattice meet operator (`∧`) returns the greatest lower bound. Types that implement one operator
+//! but not the other are known as semilattices. Dataflow analysis only uses the join operator and
+//! will work with any join-semilattice, but both should be specified when possible.
+//!
+//! ## `PartialOrd`
+//!
+//! Given that they represent partially ordered sets, you may be surprised that [`JoinSemiLattice`]
+//! and [`MeetSemiLattice`] do not have [`PartialOrd`][std::cmp::PartialOrd] as a supertrait. This
+//! is because most standard library types use lexicographic ordering instead of set inclusion for
+//! their `PartialOrd` impl. Since we do not actually need to compare lattice elements to run a
+//! dataflow analysis, there's no need for a newtype wrapper with a custom `PartialOrd` impl. The
+//! only benefit would be the ability to check that the least upper (or greatest lower) bound
+//! returned by the lattice join (or meet) operator was in fact greater (or lower) than the inputs.
 //!
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 //! [set inclusion]: https://en.wikipedia.org/wiki/Subset
+//! [Hasse diagram]: https://en.wikipedia.org/wiki/Hasse_diagram
+//! [poset]: https://en.wikipedia.org/wiki/Partially_ordered_set
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
@@ -47,7 +71,13 @@ pub trait MeetSemiLattice: Eq {
     fn meet(&mut self, other: &Self) -> bool;
 }
 
-/// A `bool` is a "two-point" lattice with `true` as the top element and `false` as the bottom.
+/// A `bool` is a "two-point" lattice with `true` as the top element and `false` as the bottom:
+///
+/// ```text
+///      true
+///        |
+///      false
+/// ```
 impl JoinSemiLattice for bool {
     fn join(&mut self, other: &Self) -> bool {
         if let (false, true) = (*self, *other) {
@@ -70,8 +100,11 @@ impl MeetSemiLattice for bool {
     }
 }
 
-/// A tuple or list of lattices is itself a lattice whose least upper bound is the concatenation of
-/// the least upper bounds of each element of the tuple or list.
+/// A tuple (or list) of lattices is itself a lattice whose least upper bound is the concatenation
+/// of the least upper bounds of each element of the tuple (or list).
+///
+/// In other words:
+///     (A₀, A₁, ..., Aₙ) ∨ (B₀, B₁, ..., Bₙ) = (A₀∨B₀, A₁∨B₁, ..., Aₙ∨Bₙ)
 impl<I: Idx, T: JoinSemiLattice> JoinSemiLattice for IndexVec<I, T> {
     fn join(&mut self, other: &Self) -> bool {
         assert_eq!(self.len(), other.len());
@@ -96,9 +129,9 @@ impl<I: Idx, T: MeetSemiLattice> MeetSemiLattice for IndexVec<I, T> {
     }
 }
 
-/// A `BitSet` is an efficent way to store a tuple of "two-point" lattices. Equivalently, it is the
-/// lattice corresponding to the powerset of the set of all possibe values of the index type `T`
-/// ordered by inclusion.
+/// A `BitSet` represents the lattice formed by the powerset of all possible values of
+/// the index type `T` ordered by inclusion. Equivalently, it is a tuple of "two-point" lattices,
+/// one for each possible value of `T`.
 impl<T: Idx> JoinSemiLattice for BitSet<T> {
     fn join(&mut self, other: &Self) -> bool {
         self.union(other)
@@ -146,8 +179,7 @@ impl<T: JoinSemiLattice> MeetSemiLattice for Dual<T> {
 }
 
 /// Extends a type `T` with top and bottom elements to make it a partially ordered set in which no
-/// value of `T` is comparable with any other. A flat set has the following [Hasse
-/// diagram](https://en.wikipedia.org/wiki/Hasse_diagram):
+/// value of `T` is comparable with any other. A flat set has the following [Hasse diagram]:
 ///
 /// ```text
 ///         top
@@ -156,6 +188,8 @@ impl<T: JoinSemiLattice> MeetSemiLattice for Dual<T> {
 ///       \ \  / /
 ///        bottom
 /// ```
+///
+/// [Hasse diagram]: https://en.wikipedia.org/wiki/Hasse_diagram
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FlatSet<T> {
     Bottom,
