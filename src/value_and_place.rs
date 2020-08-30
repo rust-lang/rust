@@ -140,7 +140,9 @@ impl<'tcx> CValue<'tcx> {
                     }
                     _ => unreachable!("{:?}", layout.ty),
                 };
-                ptr.load(fx, clif_ty, MemFlags::new())
+                let mut flags = MemFlags::new();
+                flags.set_notrap();
+                ptr.load(fx, clif_ty, flags)
             }
             CValueInner::ByVal(value) => value,
             CValueInner::ByRef(_, Some(_)) => bug!("load_scalar for unsized value not allowed"),
@@ -163,8 +165,10 @@ impl<'tcx> CValue<'tcx> {
                 let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
                 let clif_ty1 = scalar_to_clif_type(fx.tcx, a_scalar.clone());
                 let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar.clone());
-                let val1 = ptr.load(fx, clif_ty1, MemFlags::new());
-                let val2 = ptr.offset(fx, b_offset).load(fx, clif_ty2, MemFlags::new());
+                let mut flags = MemFlags::new();
+                flags.set_notrap();
+                let val1 = ptr.load(fx, clif_ty1, flags);
+                let val2 = ptr.offset(fx, b_offset).load(fx, clif_ty2, flags);
                 (val1, val2)
             }
             CValueInner::ByRef(_, Some(_)) => {
@@ -609,20 +613,20 @@ impl<'tcx> CPlace<'tcx> {
             CPlaceInner::Addr(_, Some(_)) => bug!("Can't write value to unsized place {:?}", self),
         };
 
+        let mut flags = MemFlags::new();
+        flags.set_notrap();
         match from.layout().abi {
             // FIXME make Abi::Vector work too
             Abi::Scalar(_) => {
                 let val = from.load_scalar(fx);
-                to_ptr.store(fx, val, MemFlags::new());
+                to_ptr.store(fx, val, flags);
                 return;
             }
             Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
                 let (value, extra) = from.load_scalar_pair(fx);
                 let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
-                to_ptr.store(fx, value, MemFlags::new());
-                to_ptr
-                    .offset(fx, b_offset)
-                    .store(fx, extra, MemFlags::new());
+                to_ptr.store(fx, value, flags);
+                to_ptr.offset(fx, b_offset).store(fx, extra, flags);
                 return;
             }
             _ => {}
@@ -630,7 +634,7 @@ impl<'tcx> CPlace<'tcx> {
 
         match from.0 {
             CValueInner::ByVal(val) => {
-                to_ptr.store(fx, val, MemFlags::new());
+                to_ptr.store(fx, val, flags);
             }
             CValueInner::ByValPair(_, _) => {
                 bug!(
