@@ -4,7 +4,6 @@ use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{FnAbiExt, TyAndLayout};
-use rustc_middle::ty::print::obsolete::DefPathBasedNames;
 use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
@@ -60,9 +59,7 @@ fn uncached_llvm_type<'a, 'tcx>(
         // ty::Dynamic(..) |
         ty::Foreign(..) |
         ty::Str => {
-            let mut name = String::with_capacity(32);
-            let printer = DefPathBasedNames::new(cx.tcx, true, true);
-            printer.push_type_name(layout.ty, &mut name, false);
+            let mut name = layout.ty.to_string();
             if let (&ty::Adt(def, _), &Variants::Single { index })
                  = (&layout.ty.kind, &layout.variants)
             {

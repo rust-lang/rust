@@ -21,7 +21,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx) {
         debug!(
             "BEGIN IMPLEMENTING '{} ({})' in cgu {}",
-            self.to_string(cx.tcx(), true),
+            self,
             self.to_raw_string(),
             cx.codegen_unit().name()
         );
@@ -45,7 +45,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 
         debug!(
             "END IMPLEMENTING '{} ({})' in cgu {}",
-            self.to_string(cx.tcx(), true),
+            self,
             self.to_raw_string(),
             cx.codegen_unit().name()
         );
@@ -59,7 +59,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
     ) {
         debug!(
             "BEGIN PREDEFINING '{} ({})' in cgu {}",
-            self.to_string(cx.tcx(), true),
+            self,
             self.to_raw_string(),
             cx.codegen_unit().name()
         );
@@ -80,7 +80,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 
         debug!(
             "END PREDEFINING '{} ({})' in cgu {}",
-            self.to_string(cx.tcx(), true),
+            self,
             self.to_raw_string(),
             cx.codegen_unit().name()
         );

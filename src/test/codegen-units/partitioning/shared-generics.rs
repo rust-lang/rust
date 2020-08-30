@@ -9,10 +9,10 @@
 // aux-build:shared_generics_aux.rs
 extern crate shared_generics_aux;
 
-//~ MONO_ITEM fn shared_generics::foo[0]
+//~ MONO_ITEM fn foo
 pub fn foo() {
 
-    //~ MONO_ITEM fn shared_generics_aux::generic_fn[0]<u16> @@ shared_generics_aux-in-shared_generics.volatile[External]
+    //~ MONO_ITEM fn shared_generics_aux::generic_fn::<u16> @@ shared_generics_aux-in-shared_generics.volatile[External]
     let _ = shared_generics_aux::generic_fn(0u16, 1u16);
 
     // This should not generate a monomorphization because it's already

@@ -1,6 +1,5 @@
 use crate::dep_graph::{DepConstructor, DepNode, WorkProduct, WorkProductId};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
-use crate::ty::print::obsolete::DefPathBasedNames;
 use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
@@ -171,30 +170,6 @@ impl<'tcx> MonoItem<'tcx> {
         !tcx.subst_and_check_impossible_predicates((def_id, &substs))
     }
 
-    pub fn to_string(&self, tcx: TyCtxt<'tcx>, debug: bool) -> String {
-        return match *self {
-            MonoItem::Fn(instance) => to_string_internal(tcx, "fn ", instance, debug),
-            MonoItem::Static(def_id) => {
-                let instance = Instance::new(def_id, tcx.intern_substs(&[]));
-                to_string_internal(tcx, "static ", instance, debug)
-            }
-            MonoItem::GlobalAsm(..) => "global_asm".to_string(),
-        };
-
-        fn to_string_internal<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            prefix: &str,
-            instance: Instance<'tcx>,
-            debug: bool,
-        ) -> String {
-            let mut result = String::with_capacity(32);
-            result.push_str(prefix);
-            let printer = DefPathBasedNames::new(tcx, false, false);
-            printer.push_instance_as_string(instance, &mut result, debug);
-            result
-        }
-    }
-
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
         match *self {
             MonoItem::Fn(Instance { def, .. }) => {
@@ -225,6 +200,18 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
                     node_id.hash_stable(hcx, hasher);
                 })
             }
+        }
+    }
+}
+
+impl<'tcx> fmt::Display for MonoItem<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            MonoItem::Fn(instance) => write!(f, "fn {}", instance),
+            MonoItem::Static(def_id) => {
+                write!(f, "static {}", Instance::new(def_id, InternalSubsts::empty()))
+            }
+            MonoItem::GlobalAsm(..) => write!(f, "global_asm"),
         }
     }
 }
