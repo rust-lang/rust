@@ -541,7 +541,7 @@ impl<P: Deref> Pin<P> {
     /// use std::pin::Pin;
     ///
     /// fn move_pinned_rc<T>(mut x: Rc<T>) {
-    ///     let pinned = unsafe { Pin::new_unchecked(x.clone()) };
+    ///     let pinned = unsafe { Pin::new_unchecked(Rc::clone(&x)) };
     ///     {
     ///         let p: Pin<&T> = pinned.as_ref();
     ///         // This should mean the pointee can never move again.
