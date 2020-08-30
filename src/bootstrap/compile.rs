@@ -819,7 +819,7 @@ impl Step for Assemble {
 
         // Link the compiler binary itself into place
         let out_dir = builder.cargo_out(build_compiler, Mode::Rustc, host);
-        let rustc = out_dir.join(exe("rustc_binary", host));
+        let rustc = out_dir.join(exe("rustc-main", host));
         let bindir = sysroot.join("bin");
         t!(fs::create_dir_all(&bindir));
         let compiler = builder.rustc(target_compiler);

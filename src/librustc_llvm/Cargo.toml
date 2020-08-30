@@ -5,7 +5,6 @@ version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "rustc_llvm"
 path = "lib.rs"
 
 [features]
