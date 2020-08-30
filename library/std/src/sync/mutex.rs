@@ -85,7 +85,7 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 /// use std::thread;
 ///
 /// let lock = Arc::new(Mutex::new(0_u32));
-/// let lock2 = lock.clone();
+/// let lock2 = Arc::clone(&lock);
 ///
 /// let _ = thread::spawn(move || -> () {
 ///     // This thread will acquire the mutex first, unwrapping the result of
@@ -256,7 +256,7 @@ impl<T: ?Sized> Mutex<T> {
     /// use std::thread;
     ///
     /// let mutex = Arc::new(Mutex::new(0));
-    /// let c_mutex = mutex.clone();
+    /// let c_mutex = Arc::clone(&mutex);
     ///
     /// thread::spawn(move || {
     ///     *c_mutex.lock().unwrap() = 10;
@@ -292,7 +292,7 @@ impl<T: ?Sized> Mutex<T> {
     /// use std::thread;
     ///
     /// let mutex = Arc::new(Mutex::new(0));
-    /// let c_mutex = mutex.clone();
+    /// let c_mutex = Arc::clone(&mutex);
     ///
     /// thread::spawn(move || {
     ///     let mut lock = c_mutex.try_lock();
@@ -328,7 +328,7 @@ impl<T: ?Sized> Mutex<T> {
     /// use std::thread;
     ///
     /// let mutex = Arc::new(Mutex::new(0));
-    /// let c_mutex = mutex.clone();
+    /// let c_mutex = Arc::clone(&mutex);
     ///
     /// let _ = thread::spawn(move || {
     ///     let _lock = c_mutex.lock().unwrap();
