@@ -220,7 +220,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             _ => bug!("OperandRef::extract_field({:?}): not applicable", self),
         };
 
-        match (&mut val, &self.layout.abi) {
+        match (&mut val, &field.abi) {
             (OperandValue::Immediate(llval), _) => {
                 // Bools in union fields needs to be truncated.
                 *llval = bx.to_immediate(*llval, field);
@@ -228,9 +228,11 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 *llval = bx.bitcast(*llval, bx.cx().immediate_backend_type(field));
             }
             (OperandValue::Pair(a, b), Abi::ScalarPair(a_abi, b_abi)) => {
+                // Bools in union fields needs to be truncated.
                 *a = bx.to_immediate_scalar(*a, a_abi);
-                *a = bx.bitcast(*a, bx.cx().scalar_pair_element_backend_type(field, 0, true));
                 *b = bx.to_immediate_scalar(*b, b_abi);
+                // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+                *a = bx.bitcast(*a, bx.cx().scalar_pair_element_backend_type(field, 0, true));
                 *b = bx.bitcast(*b, bx.cx().scalar_pair_element_backend_type(field, 1, true));
             }
             (OperandValue::Pair(..), _) => bug!(),
