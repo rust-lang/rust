@@ -92,7 +92,11 @@ pub fn placeholder(
             AstFragment::Ty(P(ast::Ty { id, span, kind: ast::TyKind::MacCall(mac_placeholder()) }))
         }
         AstFragmentKind::Stmts => AstFragment::Stmts(smallvec![{
-            let mac = P((mac_placeholder(), ast::MacStmtStyle::Braces, ast::AttrVec::new()));
+            let mac = P(ast::MacCallStmt {
+                mac: mac_placeholder(),
+                style: ast::MacStmtStyle::Braces,
+                attrs: ast::AttrVec::new(),
+            });
             ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac) }
         }]),
         AstFragmentKind::Arms => AstFragment::Arms(smallvec![ast::Arm {
@@ -293,7 +297,7 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
 
     fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         let (style, mut stmts) = match stmt.kind {
-            ast::StmtKind::MacCall(mac) => (mac.1, self.remove(stmt.id).make_stmts()),
+            ast::StmtKind::MacCall(mac) => (mac.style, self.remove(stmt.id).make_stmts()),
             _ => return noop_flat_map_stmt(stmt, self),
         };
 
