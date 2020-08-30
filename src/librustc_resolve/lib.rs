@@ -2385,8 +2385,12 @@ impl<'a> Resolver<'a> {
                             Res::Def(DefKind::Mod, _) => true,
                             _ => false,
                         };
-                        let mut candidates =
-                            self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod);
+                        // Don't look up import candidates if this is a speculative resolve
+                        let mut candidates = if record_used {
+                            self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod)
+                        } else {
+                            Vec::new()
+                        };
                         candidates.sort_by_cached_key(|c| {
                             (c.path.segments.len(), pprust::path_to_string(&c.path))
                         });
@@ -3200,7 +3204,7 @@ impl<'a> Resolver<'a> {
             &Segment::from_path(path),
             Some(ns),
             parent_scope,
-            true,
+            false,
             path.span,
             CrateLint::No,
         ) {
