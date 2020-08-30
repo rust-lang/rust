@@ -290,14 +290,14 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             ast::ItemKind::Fn(..) => {
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
                     self.report_overriden_symbol_name(
                         cx,
                         attr.span,
                         "declaration of a `no_mangle` function",
                     );
                 }
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
                     self.report_overriden_symbol_name(
                         cx,
                         attr.span,
@@ -307,14 +307,14 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             ast::ItemKind::Static(..) => {
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
                     self.report_overriden_symbol_name(
                         cx,
                         attr.span,
                         "declaration of a `no_mangle` static",
                     );
                 }
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
+                if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
                     self.report_overriden_symbol_name(
                         cx,
                         attr.span,
