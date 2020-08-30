@@ -274,7 +274,7 @@ directory, but rather the compiler is split into three different Cargo projects:
 
 * `library/std` - the standard library
 * `library/test` - testing support, depends on libstd
-* `src/rustc` - the actual compiler itself
+* `compiler/rustc` - the actual compiler itself
 
 Each "project" has a corresponding Cargo.lock file with all dependencies, and
 this means that building the compiler involves running Cargo three times. The

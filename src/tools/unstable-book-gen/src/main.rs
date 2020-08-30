@@ -94,14 +94,16 @@ fn copy_recursive(from: &Path, to: &Path) {
 }
 
 fn main() {
-    let library_path_str = env::args_os().nth(1).expect("library path required");
-    let src_path_str = env::args_os().nth(2).expect("source path required");
-    let dest_path_str = env::args_os().nth(3).expect("destination path required");
+    let library_path_str = env::args_os().nth(1).expect("library/ path required");
+    let compiler_path_str = env::args_os().nth(2).expect("compiler/ path required");
+    let src_path_str = env::args_os().nth(3).expect("src/ path required");
+    let dest_path_str = env::args_os().nth(4).expect("destination path required");
     let library_path = Path::new(&library_path_str);
+    let compiler_path = Path::new(&compiler_path_str);
     let src_path = Path::new(&src_path_str);
     let dest_path = Path::new(&dest_path_str);
 
-    let lang_features = collect_lang_features(src_path, &mut false);
+    let lang_features = collect_lang_features(compiler_path, &mut false);
     let lib_features = collect_lib_features(library_path)
         .into_iter()
         .filter(|&(ref name, _)| !lang_features.contains_key(name))

@@ -371,7 +371,7 @@ mod dist {
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(
             &Builder::get_step_descriptions(Kind::Build),
-            &["src/rustc".into(), "library/std".into()],
+            &["compiler/rustc".into(), "library/std".into()],
         );
 
         let a = TargetSelection::from_user("A");
