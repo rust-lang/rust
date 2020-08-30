@@ -422,4 +422,17 @@ impl<T, const N: usize> [T; N] {
         // and we just need to cast it to the correct type.
         unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
     }
+
+    /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
+    #[unstable(feature = "array_methods", issue = "76118")]
+    pub fn as_slice(&self) -> &[T] {
+        self
+    }
+
+    /// Returns a mutable slice containing the entire array. Equivalent to
+    /// `&mut s[..]`.
+    #[unstable(feature = "array_methods", issue = "76118")]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        self
+    }
 }
