@@ -43,7 +43,6 @@ rustc_resolve = { path = "../rustc_resolve" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty = { path = "../rustc_ty" }
 tempfile = "3.0.5"
-once_cell = "1"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["libloaderapi"] }

@@ -3606,7 +3606,6 @@ name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
  "libc",
- "once_cell",
  "rustc-rayon",
  "rustc_ast",
  "rustc_ast_lowering",
