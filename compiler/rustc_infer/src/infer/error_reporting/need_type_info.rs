@@ -783,18 +783,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> String {
         if type_name == "_" {
             format!("cannot infer {}", kind_str)
-        } else {
-            let parent_desc = if let Some(parent_name) = parent_name {
-                let parent_type_descr = if let Some(parent_descr) = parent_descr {
-                    format!(" the {}", parent_descr)
-                } else {
-                    "".into()
-                };
-
-                format!(" declared on{} `{}`", parent_type_descr, parent_name)
-            } else {
-                "".to_string()
-            };
+        } else if let (Some(parent_name), Some(parent_descr)) = (parent_name, parent_descr) {
+            let parent_type_descr = format!(" the {}", parent_descr);
+            let parent_desc = format!(" declared on{} `{}`", parent_type_descr, parent_name);
 
             // FIXME: We really shouldn't be dealing with strings here
             // but instead use a sensible enum for cases like this.
@@ -804,7 +795,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 "cannot infer {} {} {} `{}`{}",
                 kind_str, preposition, descr, type_name, parent_desc
             )
-            .into()
+        } else {
+            format!("cannot infer type for {} `{}`", descr, type_name)
         }
     }
 }

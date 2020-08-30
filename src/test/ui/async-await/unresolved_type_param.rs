@@ -10,9 +10,9 @@ async fn foo() {
     //~^ ERROR type inside `async fn` body must be known in this context
     //~| ERROR type inside `async fn` body must be known in this context
     //~| ERROR type inside `async fn` body must be known in this context
-    //~| NOTE cannot infer type for type parameter `T`
-    //~| NOTE cannot infer type for type parameter `T`
-    //~| NOTE cannot infer type for type parameter `T`
+    //~| NOTE function `bar` has a type parameter `T` we couldn't infer
+    //~| NOTE function `bar` has a type parameter `T` we couldn't infer
+    //~| NOTE function `bar` has a type parameter `T` we couldn't infer
     //~| NOTE the type is part of the `async fn` body because of this `await`
     //~| NOTE the type is part of the `async fn` body because of this `await`
     //~| NOTE the type is part of the `async fn` body because of this `await`

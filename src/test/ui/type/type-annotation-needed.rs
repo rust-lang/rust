@@ -4,6 +4,6 @@ fn foo<T: Into<String>>(x: i32) {}
 fn main() {
     foo(42);
     //~^ ERROR type annotations needed
-    //~| NOTE cannot infer type
+    //~| NOTE function `foo` has a type parameter `T` we couldn't infer
     //~| NOTE cannot satisfy
 }
