@@ -3417,7 +3417,6 @@ dependencies = [
  "ena",
  "indexmap",
  "jobserver",
- "lazy_static",
  "libc",
  "measureme",
  "parking_lot 0.10.2",
