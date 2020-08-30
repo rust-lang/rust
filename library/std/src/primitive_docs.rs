@@ -194,14 +194,47 @@ mod prim_bool {}
 /// # `!` and traits
 ///
 /// When writing your own traits, `!` should have an `impl` whenever there is an obvious `impl`
-/// which doesn't `panic!`. As it turns out, most traits can have an `impl` for `!`. Take [`Debug`]
+/// which doesn't `panic!`. The reason is that functions returning an `impl Trait` cannot have
+/// divergence, i.e., returning `!`, as their only possible code path. As an example, this code
+/// doesn't compile:
+///
+/// ```compile_fail
+/// use core::ops::Add;
+///
+/// fn foo() -> impl Add<u32> {
+///     unimplemented!()
+/// }
+/// ```
+///
+/// While this code does:
+///
+/// ```
+/// use core::ops::Add;
+///
+/// fn foo() -> impl Add<u32> {
+///     if true {
+///         unimplemented!()
+///     } else {
+///         0
+///     }
+/// }
+/// ```
+///
+/// The reason is that, in the first example, there are many possible types for `!` to coerce
+/// to, because the function's return value is polymorphic. However, in the second example, the
+/// other branch returns `0` which has a concrete type that `!` can be coerced to. See issue
+/// [#36375] for more information on this quirk of `!`.
+///
+/// [#36375]: https://github.com/rust-lang/rust/issues/36375
+///
+/// As it turns out, though, most traits can have an `impl` for `!`. Take [`Debug`]
 /// for example:
 ///
 /// ```
 /// #![feature(never_type)]
 /// # use std::fmt;
 /// # trait Debug {
-/// # fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result;
+/// #     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result;
 /// # }
 /// impl Debug for ! {
 ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
