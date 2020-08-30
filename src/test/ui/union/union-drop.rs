@@ -48,11 +48,11 @@ fn main() {
         {
             let y = Y { a: S };
         }
-        assert_eq!(CHECK, 2); // 2, dtor of Y is called
+        assert_eq!(CHECK, 2); // 2, Y has no dtor
         {
-            let y2 = Y { a: S };
-            std::mem::forget(y2);
+            let u2 = U { a: 1 };
+            std::mem::forget(u2);
         }
-        assert_eq!(CHECK, 2); // 2, dtor of Y *not* called for y2
+        assert_eq!(CHECK, 2); // 2, dtor of U *not* called for u2
     }
 }
