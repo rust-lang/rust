@@ -167,8 +167,7 @@ use crate::mem::ManuallyDrop;
 ///
 /// // For each item in the array, drop if we allocated it.
 /// for elem in &mut data[0..data_len] {
-///     unsafe { ptr::drop_in_place(elem.
-/// ptr()); }
+///     unsafe { ptr::drop_in_place(elem.ptr()); }
 /// }
 /// ```
 ///
@@ -718,7 +717,7 @@ impl<T> MaybeUninit<T> {
     /// {
     ///     let mut buffer = MaybeUninit::<[u8; 64]>::uninit();
     ///     reader.read_exact(unsafe { buffer.assume_init_mut() })?;
-    ///                             // ^^^^^^^^^^^^^^^^
+    ///                             // ^^^^^^^^^^^^^^^^^^^^^^^^
     ///                             // (mutable) reference to uninitialized memory!
     ///                             // This is undefined behavior.
     ///     Ok(unsafe { buffer.assume_init() })
@@ -739,11 +738,11 @@ impl<T> MaybeUninit<T> {
     /// let foo: Foo = unsafe {
     ///     let mut foo = MaybeUninit::<Foo>::uninit();
     ///     ptr::write(&mut foo.assume_init_mut().a as *mut u32, 1337);
-    ///                  // ^^^^^^^^^^^^^
+    ///                  // ^^^^^^^^^^^^^^^^^^^^^
     ///                  // (mutable) reference to uninitialized memory!
     ///                  // This is undefined behavior.
     ///     ptr::write(&mut foo.assume_init_mut().b as *mut u8, 42);
-    ///                  // ^^^^^^^^^^^^^
+    ///                  // ^^^^^^^^^^^^^^^^^^^^^
     ///                  // (mutable) reference to uninitialized memory!
     ///                  // This is undefined behavior.
     ///     foo.assume_init()

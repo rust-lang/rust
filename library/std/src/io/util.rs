@@ -49,7 +49,7 @@ where
     W: Write,
 {
     let mut buf = MaybeUninit::<[u8; super::DEFAULT_BUF_SIZE]>::uninit();
-    // FIXME(#53491): This is calling `get_mut` and `get_ref` on an uninitialized
+    // FIXME(#76092): This is calling `get_mut` and `get_ref` on an uninitialized
     // `MaybeUninit`. Revisit this once we decided whether that is valid or not.
     // This is still technically undefined behavior due to creating a reference
     // to uninitialized data, but within libstd we can rely on more guarantees
