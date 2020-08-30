@@ -119,7 +119,6 @@
 #![feature(raw_ref_op)]
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]
-#![feature(renamed_spin_loop)]
 #![feature(min_specialization)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
