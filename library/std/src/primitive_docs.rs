@@ -194,9 +194,9 @@ mod prim_bool {}
 /// # `!` and traits
 ///
 /// When writing your own traits, `!` should have an `impl` whenever there is an obvious `impl`
-/// which doesn't `panic!`. The reason is that functions returning an `impl Trait` cannot diverge,
-/// i.e., returning `!`, as their only possible code path. As an example, this code doesn't
-/// compile:
+/// which doesn't `panic!`. The reason is that functions returning an `impl Trait` where `!`
+/// does not have an `impl` of `Trait` cannot diverge as their only possible code path. In other
+/// words, they can't return `!` from every code path. As an example, this code doesn't compile:
 ///
 /// ```compile_fail
 /// use core::ops::Add;
@@ -206,7 +206,7 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// While this code does:
+/// But this code does:
 ///
 /// ```
 /// use core::ops::Add;
