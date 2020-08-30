@@ -492,7 +492,7 @@ declare_lint! {
 
 declare_lint! {
     pub MUTABLE_BORROW_RESERVATION_CONFLICT,
-    Warn,
+    Deny,
     "reservation of a two-phased borrow conflicts with other shared borrows",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #59159 <https://github.com/rust-lang/rust/issues/59159>",

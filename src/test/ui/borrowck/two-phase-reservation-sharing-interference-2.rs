@@ -40,10 +40,10 @@ fn reservation_conflict() {
     v.push(shared.len());
     //[nll2015]~^ ERROR cannot borrow `v` as mutable
     //[nll2018]~^^ ERROR cannot borrow `v` as mutable
-    //[migrate2015]~^^^ WARNING cannot borrow `v` as mutable
+    //[migrate2015]~^^^ ERROR cannot borrow `v` as mutable
     //[migrate2015]~| WARNING may become a hard error in the future
 
-    //[migrate2018]~^^^^^^ WARNING cannot borrow `v` as mutable
+    //[migrate2018]~^^^^^^ ERROR cannot borrow `v` as mutable
     //[migrate2018]~| WARNING may become a hard error in the future
 }
 
