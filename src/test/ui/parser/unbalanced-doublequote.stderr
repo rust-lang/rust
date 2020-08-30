@@ -5,6 +5,25 @@ LL | /     "
 LL | | }
    | |__^
 
-error: aborting due to previous error
+error: this file contains an unclosed delimiter
+  --> $DIR/unbalanced-doublequote.rs:6:3
+   |
+LL | fn main() {
+   |           - unclosed delimiter
+LL |     "
+LL | }
+   |   ^
 
-For more information about this error, try `rustc --explain E0765`.
+error[E0308]: mismatched types
+  --> $DIR/unbalanced-doublequote.rs:5:5
+   |
+LL |   fn main() {
+   |             - expected `()` because of default return type
+LL | /     "
+LL | | }
+   | |__^ expected `()`, found `&str`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0765.
+For more information about an error, try `rustc --explain E0308`.

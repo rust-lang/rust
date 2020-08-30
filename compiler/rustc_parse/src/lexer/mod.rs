@@ -169,7 +169,6 @@ impl<'a> StringReader<'a> {
                             error_code!(E0758),
                         )
                         .emit();
-                    FatalError.raise();
                 }
                 match doc_style {
                     Some(doc_style) => {
@@ -336,9 +335,8 @@ impl<'a> StringReader<'a> {
                             error_code!(E0762),
                         )
                         .emit();
-                    FatalError.raise();
                 }
-                (token::Char, Mode::Char, 1, 1) // ' '
+                (token::Char, Mode::Char, 1, if terminated { 1 } else { 0 }) // ' '
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
@@ -350,9 +348,8 @@ impl<'a> StringReader<'a> {
                             error_code!(E0763),
                         )
                         .emit();
-                    FatalError.raise();
                 }
-                (token::Byte, Mode::Byte, 2, 1) // b' '
+                (token::Byte, Mode::Byte, 2, if terminated { 1 } else { 0 }) // b' '
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
@@ -364,9 +361,8 @@ impl<'a> StringReader<'a> {
                             error_code!(E0765),
                         )
                         .emit();
-                    FatalError.raise();
                 }
-                (token::Str, Mode::Str, 1, 1) // " "
+                (token::Str, Mode::Str, 1, if terminated { 1 } else { 0 }) // " "
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
@@ -378,9 +374,8 @@ impl<'a> StringReader<'a> {
                             error_code!(E0766),
                         )
                         .emit();
-                    FatalError.raise();
                 }
-                (token::ByteStr, Mode::ByteStr, 2, 1) // b" "
+                (token::ByteStr, Mode::ByteStr, 2, if terminated { 1 } else { 0 }) // b" "
             }
             rustc_lexer::LiteralKind::RawStr { n_hashes, err } => {
                 self.report_raw_str_error(start, err);

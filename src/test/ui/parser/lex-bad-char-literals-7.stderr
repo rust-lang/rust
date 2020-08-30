@@ -16,6 +16,26 @@ error[E0762]: unterminated character literal
 LL |     let _ = ' hello // here's a comment
    |             ^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: character literal may only contain one codepoint
+  --> $DIR/lex-bad-char-literals-7.rs:11:13
+   |
+LL |     let _ = ' hello // here's a comment
+   |             ^^^^^^^^^
+   |
+help: if you meant to write a `str` literal, use double quotes
+   |
+LL |     let _ = " hello "/ here's a comment
+   |             ^^^^^^^^^
+
+error: expected `;`, found `}`
+  --> $DIR/lex-bad-char-literals-7.rs:11:21
+   |
+LL |     let _ = ' hello // here's a comment
+   |                     ^ help: add `;` here
+LL |
+LL | }
+   | - unexpected token
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0762`.

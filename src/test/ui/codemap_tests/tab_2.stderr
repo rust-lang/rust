@@ -1,11 +1,35 @@
 error[E0765]: unterminated double quote string
   --> $DIR/tab_2.rs:4:7
    |
-LL |                   """;
+LL |                   """; //~ ERROR unterminated double quote
    |  ___________________^
 LL | | }
    | |__^
 
-error: aborting due to previous error
+error: this file contains an unclosed delimiter
+  --> $DIR/tab_2.rs:5:3
+   |
+LL | fn main() {
+   |           - unclosed delimiter
+LL |                 """; //~ ERROR unterminated double quote
+LL | }
+   |   ^
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `"; //~ ERROR unterminated double quote
+}
+"`
+  --> $DIR/tab_2.rs:4:7
+   |
+LL |   fn main() {
+   |             - unclosed delimiter
+LL |                   """; //~ ERROR unterminated double quote
+   |                     ^
+   |                     |
+   |                     expected one of `.`, `;`, `?`, `}`, or an operator
+   |  ___________________help: `}` may belong here
+   | |
+LL | | }
+   | |__^ unexpected token
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0765`.

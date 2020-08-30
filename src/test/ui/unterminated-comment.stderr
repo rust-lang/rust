@@ -4,6 +4,13 @@ error[E0758]: unterminated block comment
 LL | /*
    | ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error[E0601]: `main` function not found in crate `unterminated_comment`
+  --> $DIR/unterminated-comment.rs:1:20
+   |
+LL | /*
+   |                    ^ consider adding a `main` function to `$DIR/unterminated-comment.rs`
 
-For more information about this error, try `rustc --explain E0758`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0601, E0758.
+For more information about an error, try `rustc --explain E0601`.

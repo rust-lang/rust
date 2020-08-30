@@ -40,6 +40,17 @@ error[E0763]: unterminated byte constant
 LL |     b'a
    |      ^^^^
 
-error: aborting due to 7 previous errors
+error: character literal may only contain one codepoint
+  --> $DIR/byte-literals.rs:11:6
+   |
+LL |     b'a
+   |      ^^^^^
+   |
+help: if you meant to write a byte string literal, use double quotes
+   |
+LL |     b"a  "/~ ERROR unterminated byte constant [E0763]
+   |      ^^^^^
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0763`.
