@@ -38,6 +38,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
 use rustc_hir::{HirId, HirIdSet, Node};
+use rustc_index::vec::Idx;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{self, layout::LayoutError, Ty, TyCtxt};
@@ -2162,6 +2163,40 @@ impl ClashingExternDeclarations {
             ckind: CItemKind,
         ) -> bool {
             debug!("structurally_same_type_impl(cx, a = {:?}, b = {:?})", a, b);
+            let tcx = cx.tcx;
+
+            // Given a transparent newtype, reach through and grab the inner
+            // type unless the newtype makes the type non-null.
+            let non_transparent_ty = |ty: Ty<'tcx>| -> Ty<'tcx> {
+                let mut ty = ty;
+                loop {
+                    if let ty::Adt(def, substs) = ty.kind {
+                        let is_transparent = def.subst(tcx, substs).repr.transparent();
+                        let is_non_null = crate::types::nonnull_optimization_guaranteed(tcx, &def);
+                        debug!(
+                            "non_transparent_ty({:?}) -- type is transparent? {}, type is non-null? {}",
+                            ty, is_transparent, is_non_null
+                        );
+                        if is_transparent && !is_non_null {
+                            debug_assert!(def.variants.len() == 1);
+                            let v = &def.variants[VariantIdx::new(0)];
+                            ty = v
+                                .transparent_newtype_field(tcx)
+                                .expect(
+                                    "single-variant transparent structure with zero-sized field",
+                                )
+                                .ty(tcx, substs);
+                            continue;
+                        }
+                    }
+                    debug!("non_transparent_ty -> {:?}", ty);
+                    return ty;
+                }
+            };
+
+            let a = non_transparent_ty(a);
+            let b = non_transparent_ty(b);
+
             if !seen_types.insert((a, b)) {
                 // We've encountered a cycle. There's no point going any further -- the types are
                 // structurally the same.

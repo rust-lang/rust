@@ -306,10 +306,20 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 /// that function for more information on `__fastfail`
 #[allow(unreachable_code)]
 pub fn abort_internal() -> ! {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
     unsafe {
-        llvm_asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
-        crate::intrinsics::unreachable();
+        cfg_if::cfg_if! {
+            if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+                asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
+                crate::intrinsics::unreachable();
+            } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
+                asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
+                crate::intrinsics::unreachable();
+            } else if #[cfg(target_arch = "aarch64")] {
+                asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
+                crate::intrinsics::unreachable();
+            }
+        }
     }
     crate::intrinsics::abort();
 }

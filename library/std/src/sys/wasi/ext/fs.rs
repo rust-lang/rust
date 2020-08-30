@@ -9,8 +9,6 @@ use crate::sys::fs::osstr2str;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 
 /// WASI-specific extensions to [`File`].
-///
-/// [`File`]: ../../../../std/fs/struct.File.html
 pub trait FileExt {
     /// Reads a number of bytes starting from a given offset.
     ///
@@ -23,8 +21,6 @@ pub trait FileExt {
     ///
     /// Note that similar to [`File::read`], it is not an error to return with a
     /// short read.
-    ///
-    /// [`File::read`]: ../../../../std/fs/struct.File.html#method.read
     fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         let bufs = &mut [IoSliceMut::new(buf)];
         self.read_vectored_at(bufs, offset)
@@ -41,8 +37,6 @@ pub trait FileExt {
     ///
     /// Note that similar to [`File::read_vectored`], it is not an error to
     /// return with a short read.
-    ///
-    /// [`File::read`]: ../../../../std/fs/struct.File.html#method.read_vectored
     fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize>;
 
     /// Reads the exact number of byte required to fill `buf` from the given offset.
@@ -54,8 +48,7 @@ pub trait FileExt {
     ///
     /// Similar to [`Read::read_exact`] but uses [`read_at`] instead of `read`.
     ///
-    /// [`Read::read_exact`]: ../../../../std/io/trait.Read.html#method.read_exact
-    /// [`read_at`]: #tymethod.read_at
+    /// [`read_at`]: FileExt::read_at
     ///
     /// # Errors
     ///
@@ -73,9 +66,6 @@ pub trait FileExt {
     /// If this function returns an error, it is unspecified how many bytes it
     /// has read, but it will never read more than would be necessary to
     /// completely fill the buffer.
-    ///
-    /// [`ErrorKind::Interrupted`]: ../../../../std/io/enum.ErrorKind.html#variant.Interrupted
-    /// [`ErrorKind::UnexpectedEof`]: ../../../../std/io/enum.ErrorKind.html#variant.UnexpectedEof
     #[stable(feature = "rw_exact_all_at", since = "1.33.0")]
     fn read_exact_at(&self, mut buf: &mut [u8], mut offset: u64) -> io::Result<()> {
         while !buf.is_empty() {
@@ -111,8 +101,6 @@ pub trait FileExt {
     ///
     /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
-    ///
-    /// [`File::write`]: ../../../../std/fs/struct.File.html#write.v
     fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         let bufs = &[IoSlice::new(buf)];
         self.write_vectored_at(bufs, offset)
@@ -132,8 +120,6 @@ pub trait FileExt {
     ///
     /// Note that similar to [`File::write_vectored`], it is not an error to return a
     /// short write.
-    ///
-    /// [`File::write`]: ../../../../std/fs/struct.File.html#method.write_vectored
     fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize>;
 
     /// Attempts to write an entire buffer starting from a given offset.
@@ -155,8 +141,7 @@ pub trait FileExt {
     /// This function will return the first error of
     /// non-[`ErrorKind::Interrupted`] kind that [`write_at`] returns.
     ///
-    /// [`ErrorKind::Interrupted`]: ../../../../std/io/enum.ErrorKind.html#variant.Interrupted
-    /// [`write_at`]: #tymethod.write_at
+    /// [`write_at`]: FileExt::write_at
     #[stable(feature = "rw_exact_all_at", since = "1.33.0")]
     fn write_all_at(&self, mut buf: &[u8], mut offset: u64) -> io::Result<()> {
         while !buf.is_empty() {
@@ -289,8 +274,6 @@ impl FileExt for fs::File {
 }
 
 /// WASI-specific extensions to [`fs::OpenOptions`].
-///
-/// [`fs::OpenOptions`]: ../../../../std/fs/struct.OpenOptions.html
 pub trait OpenOptionsExt {
     /// Pass custom `dirflags` argument to `path_open`.
     ///
@@ -406,8 +389,6 @@ impl OpenOptionsExt for OpenOptions {
 }
 
 /// WASI-specific extensions to [`fs::Metadata`].
-///
-/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 pub trait MetadataExt {
     /// Returns the `st_dev` field of the internal `filestat_t`
     fn dev(&self) -> u64;
@@ -448,8 +429,6 @@ impl MetadataExt for fs::Metadata {
 ///
 /// Adds support for special WASI file types such as block/character devices,
 /// pipes, and sockets.
-///
-/// [`FileType`]: ../../../../std/fs/struct.FileType.html
 pub trait FileTypeExt {
     /// Returns `true` if this file type is a block device.
     fn is_block_device(&self) -> bool;
@@ -477,8 +456,6 @@ impl FileTypeExt for fs::FileType {
 }
 
 /// WASI-specific extension methods for [`fs::DirEntry`].
-///
-/// [`fs::DirEntry`]: ../../../../std/fs/struct.DirEntry.html
 pub trait DirEntryExt {
     /// Returns the underlying `d_ino` field of the `dirent_t`
     fn ino(&self) -> u64;
