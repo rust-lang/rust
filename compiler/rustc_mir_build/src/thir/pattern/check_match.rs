@@ -71,13 +71,13 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
             hir::LocalSource::AwaitDesugar => ("`await` future binding", None),
         };
         self.check_irrefutable(&loc.pat, msg, sp);
-        self.check_patterns(false, &loc.pat);
+        self.check_patterns(&loc.pat);
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
         intravisit::walk_param(self, param);
         self.check_irrefutable(&param.pat, "function argument", None);
-        self.check_patterns(false, &param.pat);
+        self.check_patterns(&param.pat);
     }
 }
 
@@ -119,10 +119,7 @@ impl PatCtxt<'_, '_> {
 }
 
 impl<'tcx> MatchVisitor<'_, 'tcx> {
-    fn check_patterns(&mut self, has_guard: bool, pat: &Pat<'_>) {
-        if !self.tcx.features().move_ref_pattern {
-            check_legality_of_move_bindings(self, has_guard, pat);
-        }
+    fn check_patterns(&mut self, pat: &Pat<'_>) {
         pat.walk_always(|pat| check_borrow_conflicts_in_at_patterns(self, pat));
         if !self.tcx.features().bindings_after_at {
             check_legality_of_bindings_in_at_patterns(self, pat);
@@ -165,7 +162,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
     ) {
         for arm in arms {
             // Check the arm for some things unrelated to exhaustiveness.
-            self.check_patterns(arm.guard.is_some(), &arm.pat);
+            self.check_patterns(&arm.pat);
         }
 
         let mut cx = self.new_cx(scrut.hir_id);
@@ -599,65 +596,6 @@ fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> 
 /// Check if a by-value binding is by-value. That is, check if the binding's type is not `Copy`.
 fn is_binding_by_move(cx: &MatchVisitor<'_, '_>, hir_id: HirId, span: Span) -> bool {
     !cx.typeck_results.node_type(hir_id).is_copy_modulo_regions(cx.tcx.at(span), cx.param_env)
-}
-
-/// Check the legality of legality of by-move bindings.
-fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: bool, pat: &Pat<'_>) {
-    let sess = cx.tcx.sess;
-    let typeck_results = cx.typeck_results;
-
-    // Find all by-ref spans.
-    let mut by_ref_spans = Vec::new();
-    pat.each_binding(|_, hir_id, span, _| {
-        if let Some(ty::BindByReference(_)) =
-            typeck_results.extract_binding_mode(sess, hir_id, span)
-        {
-            by_ref_spans.push(span);
-        }
-    });
-
-    // Find bad by-move spans:
-    let by_move_spans = &mut Vec::new();
-    let mut check_move = |p: &Pat<'_>, sub: Option<&Pat<'_>>| {
-        // Check legality of moving out of the enum.
-        //
-        // `x @ Foo(..)` is legal, but `x @ Foo(y)` isn't.
-        if sub.map_or(false, |p| p.contains_bindings()) {
-            struct_span_err!(sess, p.span, E0007, "cannot bind by-move with sub-bindings")
-                .span_label(p.span, "binds an already bound by-move value by moving it")
-                .emit();
-        } else if !has_guard && !by_ref_spans.is_empty() {
-            by_move_spans.push(p.span);
-        }
-    };
-    pat.walk_always(|p| {
-        if let hir::PatKind::Binding(.., sub) = &p.kind {
-            if let Some(ty::BindByValue(_)) =
-                typeck_results.extract_binding_mode(sess, p.hir_id, p.span)
-            {
-                if is_binding_by_move(cx, p.hir_id, p.span) {
-                    check_move(p, sub.as_deref());
-                }
-            }
-        }
-    });
-
-    // Found some bad by-move spans, error!
-    if !by_move_spans.is_empty() {
-        let mut err = feature_err(
-            &sess.parse_sess,
-            sym::move_ref_pattern,
-            by_move_spans.clone(),
-            "binding by-move and by-ref in the same pattern is unstable",
-        );
-        for span in by_ref_spans.iter() {
-            err.span_label(*span, "by-ref pattern here");
-        }
-        for span in by_move_spans.iter() {
-            err.span_label(*span, "by-move pattern here");
-        }
-        err.emit();
-    }
 }
 
 /// Check that there are no borrow or move conflicts in `binding @ subpat` patterns.
