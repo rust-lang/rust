@@ -203,9 +203,11 @@ use crate::raw_vec::RawVec;
 ///             |
 ///             v
 /// Heap   +--------+--------+--------+--------+
-///        |      1 |      2 |        |        |
+///        |      1 |      2 | uninit | uninit |
 ///        +--------+--------+--------+--------+
 /// ```
+///
+/// - **uninit** represents memory that is not initialized, see [`MaybeUninit`]
 ///
 /// # Guarantees
 ///
@@ -300,6 +302,7 @@ use crate::raw_vec::RawVec;
 /// [`insert`]: Vec::insert
 /// [`reserve`]: Vec::reserve
 /// [owned slice]: Box
+/// [`MaybeUninit`]: crate::mem::MaybeUninit
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "vec_type")]
 pub struct Vec<T> {
