@@ -252,11 +252,6 @@ pub struct Evaluator<'mir, 'tcx> {
     pub(crate) file_handler: shims::posix::FileHandler,
     pub(crate) dir_handler: shims::posix::DirHandler,
 
-    /// The temporary used for storing the argument of
-    /// the call to `miri_start_panic` (the panic payload) when unwinding.
-    /// This is pointer-sized, and matches the `Payload` type in `src/libpanic_unwind/miri.rs`.
-    pub(crate) panic_payload: Option<Scalar<Tag>>,
-
     /// The "time anchor" for this machine's monotone clock (for `Instant` simulation).
     pub(crate) time_anchor: Instant,
 
@@ -291,7 +286,6 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             validate,
             file_handler: Default::default(),
             dir_handler: Default::default(),
-            panic_payload: None,
             time_anchor: Instant::now(),
             layouts,
             threads: ThreadManager::default(),

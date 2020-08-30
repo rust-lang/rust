@@ -1,0 +1,4 @@
+warning: thread support is experimental. For example, Miri does not detect data races yet.
+
+thread '<unnamed>' panicked at 'panic in thread 2', $DIR/concurrent-panic.rs:49:13
+thread '<unnamed>' panicked at 'panic in thread 1', $DIR/concurrent-panic.rs:36:13

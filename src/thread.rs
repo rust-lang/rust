@@ -106,12 +106,21 @@ enum ThreadJoinStatus {
 /// A thread.
 pub struct Thread<'mir, 'tcx> {
     state: ThreadState,
+
     /// Name of the thread.
     thread_name: Option<Vec<u8>>,
+
     /// The virtual call stack.
     stack: Vec<Frame<'mir, 'tcx, Tag, FrameData<'tcx>>>,
+
     /// The join status.
     join_status: ThreadJoinStatus,
+
+    /// The temporary used for storing the argument of
+    /// the call to `miri_start_panic` (the panic payload) when unwinding.
+    /// This is pointer-sized, and matches the `Payload` type in `src/libpanic_unwind/miri.rs`.
+    panic_payload: Option<Scalar<Tag>>,
+
 }
 
 impl<'mir, 'tcx> Thread<'mir, 'tcx> {
@@ -150,6 +159,7 @@ impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
             thread_name: None,
             stack: Vec::new(),
             join_status: ThreadJoinStatus::Joinable,
+            panic_payload: None,
         }
     }
 }
@@ -509,6 +519,21 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             throw_machine_stop!(TerminationInfo::Deadlock);
         }
     }
+
+    /// Store the panic payload when beginning unwinding.
+    fn set_panic_payload(&mut self, payload: Scalar<Tag>) {
+        let thread = self.active_thread_mut();
+        assert!(
+            thread.panic_payload.is_none(),
+            "the panic runtime should avoid double-panics"
+        );
+        thread.panic_payload = Some(payload);
+    }
+
+    /// Retrieve the panic payload, for use in `catch_unwind`.
+    fn take_panic_payload(&mut self) -> Scalar<Tag> {
+        self.active_thread_mut().panic_payload.take().unwrap()
+    }
 }
 
 // Public interface to thread management.
@@ -685,5 +710,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.memory.deallocate(ptr, None, MiriMemoryKind::Tls.into())?;
         }
         Ok(())
+    }
+
+    /// Store the panic payload when beginning unwinding.
+    fn set_panic_payload(&mut self, payload: Scalar<Tag>) {
+        let this = self.eval_context_mut();
+        this.machine.threads.set_panic_payload(payload);
+    }
+
+    /// Retrieve the panic payload, for use in `catch_unwind`.
+    fn take_panic_payload(&mut self) -> Scalar<Tag> {
+        let this = self.eval_context_mut();
+        this.machine.threads.take_panic_payload()
     }
 }
