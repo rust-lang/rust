@@ -32,14 +32,14 @@ How does any sort of `main` function invoke these tests if they're not visible?
 What exactly is `rustc --test` doing?
 
 `#[test]` is implemented as a syntactic transformation inside the compiler's
-[`librustc_ast` crate][librustc_ast]. Essentially, it's a fancy macro, that
+[`rustc_ast` crate][rustc_ast]. Essentially, it's a fancy macro, that
 rewrites the crate in 3 steps:
 
 #### Step 1: Re-Exporting
 
 As mentioned earlier, tests can exist inside private modules, so we need a
 way of exposing them to the main function, without breaking any existing
-code. To that end, `librustc_ast` will create local modules called
+code. To that end, `rustc_ast` will create local modules called
 `__test_reexports` that recursively reexport tests. This expansion translates
 the above example into:
 
@@ -79,7 +79,7 @@ hygiene.
 
 #### Step 2: Harness Generation
 Now that our tests are accessible from the root of our crate, we need to do
-something with them. `librustc_ast` generates a module like so:
+something with them. `rustc_ast` generates a module like so:
 
 ```rust,ignore
 #[main]
@@ -116,7 +116,7 @@ fn foo() {
 This means our tests are more than just simple functions, they have
 configuration information as well. `test` encodes this configuration data
 into a struct called [`TestDesc`][TestDesc]. For each test function in a
-crate, `librustc_ast` will parse its attributes and generate a `TestDesc`
+crate, `rustc_ast` will parse its attributes and generate a `TestDesc`
 instance. It then combines the `TestDesc` and test function into the
 predictably named `TestDescAndFn` struct, that `test_main_static` operates
 on. For a given test, the generated `TestDescAndFn` instance looks like so:
@@ -150,4 +150,4 @@ $ rustc my_mod.rs -Z unpretty=hir
 [Symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
 [Ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
 [eRFC]: https://github.com/rust-lang/rfcs/blob/master/text/2318-custom-test-frameworks.md
-[librustc_ast]: https://github.com/rust-lang/rust/tree/master/src/librustc_ast
+[rustc_ast]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_ast

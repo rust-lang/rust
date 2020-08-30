@@ -183,7 +183,7 @@ This may *look* like it only builds `std`, but that is not the case.
 What this command does is the following:
 
 - Build `std` using the stage0 compiler (using incremental)
-- Build `librustc` using the stage0 compiler (using incremental)
+- Build `rustc` using the stage0 compiler (using incremental)
   - This produces the stage1 compiler
 - Build `std` using the stage1 compiler (cannot use incremental)
 
@@ -207,9 +207,9 @@ workflows"](./suggested.md) below.
 
 Note that this whole command just gives you a subset of the full `rustc`
 build. The **full** `rustc` build (what you get if you say `./x.py build
---stage 2 src/rustc`) has quite a few more steps:
+--stage 2 compiler/rustc`) has quite a few more steps:
 
-- Build `librustc` and `rustc` with the stage1 compiler.
+- Build `rustc` with the stage1 compiler.
   - The resulting compiler here is called the "stage2" compiler.
 - Build `std` with stage2 compiler.
 - Build `librustdoc` and a bunch of other things with the stage2 compiler.

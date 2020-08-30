@@ -22,31 +22,31 @@ we'll talk about that later.
   enable nightly features (`-Z` flags), perform `check`-only builds, or emit
   LLVM-IR rather than executable machine code. The `rustc` executable call may
   be indirect through the use of `cargo`.
-- Command line argument parsing occurs in the [`librustc_driver`]. This crate
+- Command line argument parsing occurs in the [`rustc_driver`]. This crate
   defines the compile configuration that is requested by the user and passes it
   to the rest of the compilation process as a [`rustc_interface::Config`].
 - The raw Rust source text is analyzed by a low-level lexer located in
-  [`librustc_lexer`]. At this stage, the source text is turned into a stream of
+  [`rustc_lexer`]. At this stage, the source text is turned into a stream of
   atomic source code units known as _tokens_.  The lexer supports the
   Unicode character encoding.
 - The token stream passes through a higher-level lexer located in
-  [`librustc_parse`] to prepare for the next stage of the compile process. The
+  [`rustc_parse`] to prepare for the next stage of the compile process. The
   [`StringReader`] struct is used at this stage to perform a set of validations
   and turn strings into interned symbols (_interning_ is discussed later).
 - The lexer has a small interface and doesn't depend directly on the
   diagnostic infrastructure in `rustc`. Instead it provides diagnostics as plain
-  data which are emitted in `librustc_parse::lexer::mod` as real diagnostics.
+  data which are emitted in `rustc_parse::lexer::mod` as real diagnostics.
 - The lexer preserves full fidelity information for both IDEs and proc macros.
 - The parser [translates the token stream from the lexer into an Abstract Syntax
   Tree (AST)][parser]. It uses a recursive descent (top-down) approach to syntax
   analysis. The crate entry points for the parser are the `Parser::parse_crate_mod()` and
-  `Parser::parse_mod()` methods found in `librustc_parse::parser::item`. The external
-  module parsing entry point is `librustc_expand::module::parse_external_mod`. And
+  `Parser::parse_mod()` methods found in `rustc_parse::parser::item`. The external
+  module parsing entry point is `rustc_expand::module::parse_external_mod`. And
   the macro parser entry point is [`Parser::parse_nonterminal()`][parse_nonterminal].
 - Parsing is performed with a set of `Parser` utility methods including `fn bump`,
   `fn check`, `fn eat`, `fn expect`, `fn look_ahead`.
 - Parsing is organized by the semantic construct that is being parsed. Separate
-  `parse_*` methods can be found in `librustc_parse` `parser` directory. The source
+  `parse_*` methods can be found in `rustc_parse` `parser` directory. The source
   file name follows the construct name. For example, the following files are found
   in the parser:
     - `expr.rs`
@@ -97,12 +97,12 @@ we'll talk about that later.
   - The different libraries/binaries are linked together to produce the final
     binary.
 
-[`librustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
-[`librustc_driver`]: https://rustc-dev-guide.rust-lang.org/rustc-driver.html
+[`rustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
+[`rustc_driver`]: https://rustc-dev-guide.rust-lang.org/rustc-driver.html
 [`rustc_interface::Config`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Config.html
 [lex]: https://rustc-dev-guide.rust-lang.org/the-parser.html
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
-[`librustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
+[`rustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html
 [type inference]: https://rustc-dev-guide.rust-lang.org/type-inference.html
@@ -340,16 +340,16 @@ For more details on bootstrapping, see
   - Main entry point: [`rustc_session::config::build_session_options`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/config/fn.build_session_options.html)
 - Lexical Analysis: Lex the user program to a stream of tokens
   - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
-  - Lexer definition: [`librustc_lexer`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html)
+  - Lexer definition: [`rustc_lexer`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html)
   - Main entry point: [`rustc_lexer::first_token`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/fn.first_token.html)
 - Parsing: Parse the stream of tokens to an Abstract Syntax Tree (AST)
   - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
-  - Parser definition: [`librustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
+  - Parser definition: [`rustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
   - Main entry points:
     - [Entry point for first file in crate](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/passes/fn.parse.html)
     - [Entry point for outline module parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/module/fn.parse_external_mod.html)
     - [Entry point for macro fragments][parse_nonterminal]
-  - AST definition: [`librustc_ast`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html)
+  - AST definition: [`rustc_ast`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html)
   - Expansion: **TODO**
   - Name Resolution: **TODO**
   - Feature gating: **TODO**
@@ -371,8 +371,8 @@ For more details on bootstrapping, see
     - These two functions can't be decoupled.
 - The Mid Level Intermediate Representation (MIR)
   - Guide: [The MIR (Mid level IR)](https://rustc-dev-guide.rust-lang.org/mir/index.html)
-  - Definition: [`librustc_middle/mir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html)
-  - Definition of source that manipulates the MIR: [`librustc_mir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/index.html)
+  - Definition: [`rustc_middle/src/mir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html)
+  - Definition of source that manipulates the MIR: [`rustc_mir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/index.html)
 - The Borrow Checker
   - Guide: [MIR Borrow Check](https://rustc-dev-guide.rust-lang.org/borrow_check.html)
   - Definition: [`rustc_mir/borrow_check`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/index.html)

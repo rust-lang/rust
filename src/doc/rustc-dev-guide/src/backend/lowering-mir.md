@@ -15,14 +15,14 @@ MIR to LLVM IR.
 
 The code is split into modules which handle particular MIR primitives:
 
-- [`librustc_codegen_ssa::mir::block`][mirblk] will deal with translating
+- [`rustc_codegen_ssa::mir::block`][mirblk] will deal with translating
   blocks and their terminators.  The most complicated and also the most
   interesting thing this module does is generating code for function calls,
   including the necessary unwinding handling IR.
-- [`librustc_codegen_ssa::mir::statement`][mirst] translates MIR statements.
-- [`librustc_codegen_ssa::mir::operand`][mirop] translates MIR operands.
-- [`librustc_codegen_ssa::mir::place`][mirpl] translates MIR place references.
-- [`librustc_codegen_ssa::mir::rvalue`][mirrv] translates MIR r-values.
+- [`rustc_codegen_ssa::mir::statement`][mirst] translates MIR statements.
+- [`rustc_codegen_ssa::mir::operand`][mirop] translates MIR operands.
+- [`rustc_codegen_ssa::mir::place`][mirpl] translates MIR place references.
+- [`rustc_codegen_ssa::mir::rvalue`][mirrv] translates MIR r-values.
 
 [mirblk]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/block/index.html
 [mirst]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/statement/index.html
@@ -49,7 +49,7 @@ and can be found in [`rustc_codegen_llvm::intrinsic`][llvmint].
 [llvmint]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/intrinsic/index.html
 
 Everything else will use the [builder interface][builder]. This is the code that gets
-called in the [`librustc_codegen_ssa::mir::*`][ssamir] modules discussed above.
+called in the [`rustc_codegen_ssa::mir::*`][ssamir] modules discussed above.
 
 [builder]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/builder/index.html
 [ssamir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/index.html

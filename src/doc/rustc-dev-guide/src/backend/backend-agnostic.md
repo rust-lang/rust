@@ -1,7 +1,7 @@
 # Backend Agnostic Codegen
 
 In the future, it would be nice to allow other codegen backends (e.g.
-[Cranelift]). To this end, `librustc_codegen_ssa` provides an
+[Cranelift]). To this end, `rustc_codegen_ssa` provides an
 abstract interface for all backends to implement.
 
 [Cranelift]: https://github.com/bytecodealliance/wasmtime/tree/HEAD/cranelift

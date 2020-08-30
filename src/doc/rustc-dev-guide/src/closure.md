@@ -115,7 +115,7 @@ Let's start with defining a term that we will be using quite a bit in the rest o
 *upvar*. An **upvar** is a variable that is local to the function where the closure is defined. So,
 in the above examples, **x** will be an upvar to the closure. They are also sometimes referred to as
 the *free variables* meaning they are not bound to the context of the closure.
-[`src/librustc_middle/ty/query/mod.rs`][upvars] defines a query called *upvars_mentioned*
+[`compiler/rustc_middle/src/ty/query/mod.rs`][upvars] defines a query called *upv.rs_mentioned*
 for this purpose.
 
 [upvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/query/queries/struct.upvars_mentioned.html
@@ -135,8 +135,8 @@ appropriate trait: `Fn` trait for immutable borrow, `FnMut` for mutable borrow,
 and `FnOnce` for move semantics.
 
 Most of the code related to the closure is in the
-[`src/librustc_typeck/check/upvar.rs`][upvar] file and the data structures are
-declared in the file [`src/librustc_middle/ty/mod.rs`][ty].
+[`compiler/rustc_typeck/src/check/upvar.rs`][upvar] file and the data structures are
+declared in the file [`compiler/rustc_middle/src/ty/mod.rs`][ty].
 
 [upvar]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/check/upvar/index.html
 [ty]:https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
@@ -184,7 +184,7 @@ The callbacks are defined by implementing the [`Delegate`] trait. The
 records for each upvar which mode of borrow was required. The modes of borrow
 can be `ByValue` (moved) or `ByRef` (borrowed). For `ByRef` borrows, it can be
 `shared`, `shallow`, `unique` or `mut` as defined in the
-[`src/librustc_middle/mir/mod.rs`][mir_mod].
+[`compiler/rustc_middle/src/mir/mod.rs`][mir_mod].
 
 [mir_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html
 
@@ -194,7 +194,7 @@ can be `ByValue` (moved) or `ByRef` (borrowed). For `ByRef` borrows, it can be
 
 All of these callbacks have a common argument *cmt* which stands for Category,
 Mutability and Type and is defined in
-[`src/librustc_middle/middle/mem_categorization.rs`][cmt]. Borrowing from the code
+[`compiler/rustc_middle/src/middle/mem_categorization.rs`][cmt]. Borrowing from the code
 comments, "`cmt` is a complete categorization of a value indicating where it
 originated and how it is located, as well as the mutability of the memory in
 which the value is stored". Based on the callback (consume, borrow etc.), we

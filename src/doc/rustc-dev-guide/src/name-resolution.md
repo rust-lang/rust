@@ -55,7 +55,7 @@ A successful run of the second phase ([`Resolver::resolve_crate`]) creates kind
 of an index the rest of the compilation may use to ask about the present names
 (through the `hir::lowering::Resolver` interface).
 
-The name resolution lives in the `librustc_resolve` crate, with the meat in
+The name resolution lives in the `rustc_resolve` crate, with the meat in
 `lib.rs` and some helpers or symbol-type specific logic in the other modules.
 
 [`Resolver::resolve_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/struct.Resolver.html#method.resolve_crate

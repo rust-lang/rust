@@ -18,7 +18,7 @@ of such structures include but are not limited to
     * Converted to a virtual `existential type` declaration
 
 Lowering needs to uphold several invariants in order to not trigger the
-sanity checks in `src/librustc_middle/hir/map/hir_id_validator.rs`:
+sanity checks in `compiler/rustc_middle/src/hir/map/hir_id_validator.rs`:
 
 1. A `HirId` must be used if created. So if you use the `lower_node_id`,
   you *must* use the resulting `NodeId` or `HirId` (either is fine, since

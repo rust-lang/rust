@@ -32,7 +32,7 @@ Here we see the highest error code in use is `E0591`, so we _probably_ want
 `E0592`. To be sure, run `rg E0592` and check, you should see no references.
 
 Next, open `src/{crate}/diagnostics.rs` within the crate where you wish to issue
-the error (e.g., `src/librustc_typeck/diagnostics.rs`). Ideally, you will add
+the error (e.g., `compiler/rustc_typeck/src/diagnostics.rs`). Ideally, you will add
 the code (in its proper numerical order) into the `register_long_diagnostics!`
 macro, sort of like this:
 

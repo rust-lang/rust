@@ -46,7 +46,7 @@ built in a special way because it can use unstable features.
 > NOTE: As of this writing, the crates all live in `src/`, but there is an MCP
 > to move them to a new `compiler/` directory.
 
-The compiler crates all have names starting with `librustc_*`. These are a
+The compiler crates all have names starting with `rustc_*`. These are a
 collection of around 50 interdependent crates ranging in size from tiny to
 huge. There is also the `rustc` crate which is the actual binary (i.e. the
 `main` function); it doesn't actually do anything besides calling the

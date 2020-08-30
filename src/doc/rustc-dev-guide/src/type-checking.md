@@ -4,9 +4,9 @@ The [`rustc_typeck`][typeck] crate contains the source for "type collection"
 and "type checking", as well as a few other bits of related functionality. (It
 draws heavily on the [type inference] and [trait solving].)
 
-[typeck]: https://github.com/rust-lang/rust/tree/master/src/librustc_typeck
-[type inference]: type-inference.html
-[trait solving]: traits/resolution.html
+[typeck]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/index.html
+[type inference]: ./type-inference.md
+[trait solving]: ./traits/resolution.md
 
 ## Type collection
 
@@ -38,7 +38,7 @@ type *checking*).
 
 For more details, see the [`collect`][collect] module.
 
-[queries]: query.html
+[queries]: ./query.md
 [collect]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/collect/
 
 **TODO**: actually talk about type checking...

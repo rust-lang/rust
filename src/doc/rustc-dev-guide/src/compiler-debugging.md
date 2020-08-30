@@ -53,17 +53,17 @@ look like this:
 ```text
 stack backtrace:
    (~~~~ LINES REMOVED BY ME FOR BREVITY ~~~~)
-             at /home/user/rust/src/librustc_typeck/check/cast.rs:110
+             at /home/user/rust/compiler/rustc_typeck/src/check/cast.rs:110
    7: rustc_typeck::check::cast::CastCheck::check
-             at /home/user/rust/src/librustc_typeck/check/cast.rs:572
-             at /home/user/rust/src/librustc_typeck/check/cast.rs:460
-             at /home/user/rust/src/librustc_typeck/check/cast.rs:370
+             at /home/user/rust/compiler/rustc_typeck/src/check/cast.rs:572
+             at /home/user/rust/compiler/rustc_typeck/src/check/cast.rs:460
+             at /home/user/rust/compiler/rustc_typeck/src/check/cast.rs:370
    (~~~~ LINES REMOVED BY ME FOR BREVITY ~~~~)
   33: rustc_driver::driver::compile_input
-             at /home/user/rust/src/librustc_driver/driver.rs:1010
-             at /home/user/rust/src/librustc_driver/driver.rs:212
+             at /home/user/rust/compiler/rustc_driver/src/driver.rs:1010
+             at /home/user/rust/compiler/rustc_driver/src/driver.rs:212
   34: rustc_driver::run_compiler
-             at /home/user/rust/src/librustc_driver/lib.rs:253
+             at /home/user/rust/compiler/rustc_driver/src/lib.rs:253
 ```
 
 ## Getting a backtrace for errors
@@ -123,23 +123,23 @@ note: rustc 1.24.0-dev running on x86_64-unknown-linux-gnu
 note: run with `RUST_BACKTRACE=1` for a backtrace
 
 thread 'rustc' panicked at 'encountered error with `-Z treat_err_as_bug',
-/home/user/rust/src/librustc_errors/lib.rs:411:12
+/home/user/rust/compiler/rustc_errors/src/lib.rs:411:12
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose
 backtrace.
 stack backtrace:
   (~~~ IRRELEVANT PART OF BACKTRACE REMOVED BY ME ~~~)
    7: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'tcx>>
              ::report_selection_error
-             at /home/user/rust/src/librustc_middle/traits/error_reporting.rs:823
+             at /home/user/rust/compiler/rustc_middle/src/traits/error_reporting.rs:823
    8: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'tcx>>
              ::report_fulfillment_errors
-             at /home/user/rust/src/librustc_middle/traits/error_reporting.rs:160
-             at /home/user/rust/src/librustc_middle/traits/error_reporting.rs:112
+             at /home/user/rust/compiler/rustc_middle/src/traits/error_reporting.rs:160
+             at /home/user/rust/compiler/rustc_middle/src/traits/error_reporting.rs:112
    9: rustc_typeck::check::FnCtxt::select_obligations_where_possible
-             at /home/user/rust/src/librustc_typeck/check/mod.rs:2192
+             at /home/user/rust/compiler/rustc_typeck/src/check/mod.rs:2192
   (~~~ IRRELEVANT PART OF BACKTRACE REMOVED BY ME ~~~)
   36: rustc_driver::run_compiler
-             at /home/user/rust/src/librustc_driver/lib.rs:253
+             at /home/user/rust/compiler/rustc_driver/src/lib.rs:253
 $ # Cool, now I have a backtrace for the error
 ```
 
@@ -174,11 +174,11 @@ look at the log output with a text editor.
 So to put it together.
 
 ```bash
-# This puts the output of all debug calls in `librustc_middle/traits` into
+# This puts the output of all debug calls in `rustc_middle/src/traits` into
 # standard error, which might fill your console backscroll.
 $ RUSTC_LOG=rustc_middle::traits rustc +local my-file.rs
 
-# This puts the output of all debug calls in `librustc_middle/traits` in
+# This puts the output of all debug calls in `rustc_middle/src/traits` in
 # `traits-log`, so you can then see it with a text editor.
 $ RUSTC_LOG=rustc_middle::traits rustc +local my-file.rs 2>traits-log
 
@@ -199,7 +199,7 @@ $ RUSTC_LOG=rustc_trans=info rustc +local my-file.rs
 # This will show the output of all `info!` calls made by rustdoc or any rustc library it calls.
 $ RUSTDOC_LOG=info rustdoc +local my-file.rs
 
-# This will only show `debug!` calls made by rustdoc directly, not any `librustc*` crate.
+# This will only show `debug!` calls made by rustdoc directly, not any `rustc*` crate.
 $ RUSTDOC_LOG=rustdoc rustdoc +local my-file.rs
 ```
 

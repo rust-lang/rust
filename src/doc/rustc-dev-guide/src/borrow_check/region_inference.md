@@ -82,7 +82,7 @@ maintain a set storing what elements are present in its value (to make this
 efficient, we give each kind of element an index, the `RegionElementIndex`, and
 use sparse bitsets).
 
-[ri]: https://github.com/rust-lang/rust/tree/master/src/librustc_mir/borrow_check/region_infer/
+[ri]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_mir/src/borrow_check/region_infer/
 
 The kinds of region elements are as follows:
 

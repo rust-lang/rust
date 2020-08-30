@@ -126,7 +126,7 @@ a new unstable feature:
 2. Pick a name for the feature gate (for RFCs, use the name
    in the RFC).
 
-3. Add a feature gate declaration to `librustc_feature/active.rs`
+3. Add a feature gate declaration to `rustc_feature/src/active.rs`
    in the active `declare_features` block:
 
    ```rust,ignore

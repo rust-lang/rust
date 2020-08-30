@@ -102,7 +102,7 @@ Miri, but just use the cached result.
 ## Datastructures
 
 Miri's outside-facing datastructures can be found in
-[librustc_middle/mir/interpret](https://github.com/rust-lang/rust/blob/master/src/librustc_middle/mir/interpret).
+[rustc_middle/src/mir/interpret](https://github.com/rust-lang/rust/blob/master/compiler/rustc_middle/src/mir/interpret).
 This is mainly the error enum and the [`ConstValue`] and [`Scalar`] types. A
 `ConstValue` can be either `Scalar` (a single `Scalar`, i.e., integer or thin
 pointer), `Slice` (to represent byte slices and strings, as needed for pattern
@@ -202,7 +202,7 @@ division on pointer values.
 
 Although the main entry point to constant evaluation is the `tcx.const_eval_*`
 functions, there are additional functions in
-[librustc_mir/const_eval.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/const_eval/index.html)
+[rustc_mir/src/const_eval.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/const_eval/index.html)
 that allow accessing the fields of a `ConstValue` (`ByRef` or otherwise). You should
 never have to access an `Allocation` directly except for translating it to the
 compilation target (at the moment just LLVM).
@@ -213,7 +213,7 @@ function with no arguments, except that constants do not allow local (named)
 variables at the time of writing this guide.
 
 A stack frame is defined by the `Frame` type in
-[librustc_mir/interpret/eval_context.rs](https://github.com/rust-lang/rust/blob/master/src/librustc_mir/interpret/eval_context.rs)
+[rustc_mir/src/interpret/eval_context.rs](https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir/src/interpret/eval_context.rs)
 and contains all the local
 variables memory (`None` at the start of evaluation). Each frame refers to the
 evaluation of either the root constant or subsequent calls to `const fn`. The
@@ -225,7 +225,7 @@ The frames are just a `Vec<Frame>`, there's no way to actually refer to a
 memory that can be referred to are `Allocation`s.
 
 Miri now calls the `step` method (in
-[librustc_mir/interpret/step.rs](https://github.com/rust-lang/rust/blob/master/src/librustc_mir/interpret/step.rs)
+[rustc_mir/src/interpret/step.rs](https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir/src/interpret/step.rs)
 ) until it either returns an error or has no further statements to execute. Each
 statement will now initialize or modify the locals or the virtual memory
 referred to by a local. This might require evaluating other constants or

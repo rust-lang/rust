@@ -63,8 +63,8 @@ before objects are passed on to the linker and some to happen during the
 linking.
 
 This all happens towards the very end of compilation. The code for this can be
-found in [`librustc_codegen_ssa::back`][ssaback] and
-[`librustc_codegen_llvm::back`][llvmback]. Sadly, this piece of code is not
+found in [`rustc_codegen_ssa::back`][ssaback] and
+[`rustc_codegen_llvm::back`][llvmback]. Sadly, this piece of code is not
 really well-separated into LLVM-dependent code; the [`rustc_codegen_ssa`][ssa]
 contains a fair amount of code specific to the LLVM backend.
 

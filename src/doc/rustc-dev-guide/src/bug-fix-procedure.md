@@ -65,7 +65,7 @@ described in more detail below):
 1. Once the change has been in the wild for at least one cycle, we can
    **stabilize the change**, converting those warnings into errors.
 
-Finally, for changes to `librustc_ast` that will affect plugins, the general policy
+Finally, for changes to `rustc_ast` that will affect plugins, the general policy
 is to batch these changes. That is discussed below in more detail.
 
 ### Tracking issue
@@ -120,7 +120,7 @@ future-compatibility warnings. These are a special category of lint warning.
 Adding a new future-compatibility warning can be done as follows.
 
 ```rust
-// 1. Define the lint in `src/librustc/lint/builtin.rs`:
+// 1. Define the lint in `compiler/rustc_middle/src/lint/builtin.rs`:
 declare_lint! {
     pub YOUR_ERROR_HERE,
     Warn,
@@ -137,7 +137,7 @@ impl LintPass for HardwiredLints {
     }
 }
 
-// 3. Register the lint in `src/librustc_lint/lib.rs`:
+// 3. Register the lint in `compiler/rustc_lint/src/lib.rs`:
 store.register_future_incompatible(sess, vec![
     ...,
     FutureIncompatibleInfo {
@@ -235,7 +235,7 @@ automatically generates the lower-case string; so searching for
 #### Remove the lint.
 
 The first reference you will likely find is the lint definition [in
-`librustc/lint/builtin.rs` that resembles this][defsource]:
+`rustc_session/src/lint/builtin.rs` that resembles this][defsource]:
 
 [defsource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc/lint/builtin.rs#L171-L175
 
@@ -254,7 +254,7 @@ the file as [part of a `lint_array!`][lintarraysource]; remove it too,
 [lintarraysource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc/lint/builtin.rs#L252-L290
 
 Next, you see see [a reference to `OVERLAPPING_INHERENT_IMPLS` in
-`librustc_lint/lib.rs`][futuresource]. This defining the lint as a "future
+`rustc_lint/src/lib.rs`][futuresource]. This defining the lint as a "future
 compatibility lint":
 
 ```rust
@@ -268,7 +268,7 @@ Remove this too.
 
 #### Add the lint to the list of removed lists.
 
-In `src/librustc_lint/lib.rs` there is a list of "renamed and removed lints".
+In `compiler/rustc_lint/src/lib.rs` there is a list of "renamed and removed lints".
 You can add this lint to the list:
 
 ```rust

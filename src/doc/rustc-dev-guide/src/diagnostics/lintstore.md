@@ -92,7 +92,7 @@ understanding the code. However, with the current type-erased lint store
 approach, it is beneficial to do so for performance reasons.
 
 New lints being added likely want to join one of the existing declarations like
-`late_lint_mod_passes` in `librustc_lint/lib.rs`, which would then
+`late_lint_mod_passes` in `rustc_lint/src/lib.rs`, which would then
 auto-propagate into the other.
 
 [`LintStore::register_lint`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_lints

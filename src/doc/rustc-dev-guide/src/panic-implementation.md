@@ -24,8 +24,8 @@ unsafe { panic_impl(&pi) }
 
 Actually resolving this goes through several layers of indirection:
 
-1. In `src/librustc_middle/middle/weak_lang_items.rs`, `panic_impl` is declared as 'weak lang item',
-   with the symbol `rust_begin_unwind`. This is used in `librustc_typeck/collect.rs`
+1. In `compiler/rustc_middle/src/middle/weak_lang_items.rs`, `panic_impl` is declared as 'weak lang item',
+   with the symbol `rust_begin_unwind`. This is used in `rustc_typeck/src/collect.rs`
    to set the actual symbol name to `rust_begin_unwind`.
 
    Note that `panic_impl` is declared in an `extern "Rust"` block,
@@ -44,7 +44,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 }
 ```
 
-The special `panic_handler` attribute is resolved via `src/librustc_middle/middle/lang_items`.
+The special `panic_handler` attribute is resolved via `compiler/rustc_middle/src/middle/lang_items`.
 The `extract` function converts the `panic_handler` attribute to a `panic_impl` lang item.
 
 Now, we have a matching `panic_handler` lang item in the `std`. This function goes

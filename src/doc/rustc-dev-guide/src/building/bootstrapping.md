@@ -259,7 +259,7 @@ thread 'main' panicked at 'RUSTC_STAGE was not set: NotPresent', library/core/sr
 
 If `./stageN/bin/rustc` gives an error about environment variables, that
 usually means something is quite wrong -- or you're trying to compile e.g.
-`librustc` or `std` or something that depends on environment variables. In
+`rustc` or `std` or something that depends on environment variables. In
 the unlikely case that you actually need to invoke rustc in such a situation,
 you can find the environment variable values by adding the following flag to
 your `x.py` command: `--on-fail=print-env`.

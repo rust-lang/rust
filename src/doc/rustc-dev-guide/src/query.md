@@ -114,7 +114,7 @@ for external crates, though the plan is that we may eventually have
 one per crate.
 
 These `Providers` structs are ultimately created and populated by
-`librustc_driver`, but it does this by distributing the work
+`rustc_driver`, but it does this by distributing the work
 throughout the other `rustc_*` crates. This is done by invoking
 various [`provide`][provide_fn] functions. These functions tend to look
 something like this:
@@ -159,7 +159,7 @@ they define both a [`provide`][ext_provide] and a
 [`provide_extern`][ext_provide_extern] function that `rustc_driver`
 can invoke.
 
-[rustc_metadata]: https://github.com/rust-lang/rust/tree/master/src/librustc_metadata
+[rustc_metadata]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/index.html
 [ext_provide]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/attributes/fn.provide.html
 [ext_provide_extern]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/attributes/fn.provide_extern.html
 
@@ -173,7 +173,7 @@ Well, defining a query takes place in two steps:
 
 To specify the query name and arguments, you simply add an entry to
 the big macro invocation in
-[`src/librustc_middle/query/mod.rs`][query-mod], which looks something like:
+[`compiler/rustc_middle/src/query/mod.rs`][query-mod], which looks something like:
 
 [query-mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/query/index.html
 

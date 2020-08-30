@@ -90,7 +90,7 @@ things. We only want to do something when we reach a type. That means there may 
 implementations. Such implementations of `TypeFoldable` tend to be pretty tedious to write by hand.
 For this reason, there is a `derive` macro that allows you to `#![derive(TypeFoldable)]`. It is
 defined
-[here](https://github.com/rust-lang/rust/blob/master/src/librustc_macros/src/type_foldable.rs).
+[here](https://github.com/rust-lang/rust/blob/master/compiler/rustc_macros/src/type_foldable.rs).
 
 **`subst`** In the case of substitutions the [actual
 folder](https://github.com/rust-lang/rust/blob/75ff3110ac6d8a0259023b83fd20d7ab295f8dd6/src/librustc_middle/ty/subst.rs#L440-L451)

@@ -91,7 +91,7 @@ should appear in the documentation.
 ### Updating the feature-gate listing
 
 There is a central listing of feature-gates in
-[`src/librustc_feature`]. Search for the `declare_features!`
+[`compiler/rustc_feature`]. Search for the `declare_features!`
 macro. There should be an entry for the feature you are aiming
 to stabilize, something like (this example is taken from
 [rust-lang/rust#32409]:
@@ -140,7 +140,7 @@ Most importantly, remove the code which flags an error if the
 feature-gate is not present (since the feature is now considered
 stable). If the feature can be detected because it employs some
 new syntax, then a common place for that code to be is in the
-same `src/librustc_ast_passes/feature_gate.rs`.
+same `compiler/rustc_ast_passes/src/feature_gate.rs`.
 For example, you might see code like this:
 
 ```rust,ignore
@@ -175,7 +175,7 @@ if something { /* XXX */ }
 ```
 
 [rust-lang/rust#32409]: https://github.com/rust-lang/rust/issues/32409
-[`src/librustc_feature`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/index.html
+[`compiler/rustc_feature`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/index.html
 [The Reference]: https://github.com/rust-lang/reference
 [The Book]: https://github.com/rust-lang/book
 [Rust by Example]: https://github.com/rust-lang/rust-by-example

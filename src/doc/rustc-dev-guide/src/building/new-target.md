@@ -48,7 +48,7 @@ somewhat successfully, you can copy the specification into the
 compiler itself.
 
 You will need to add a line to the big table inside of the
-`supported_targets` macro in the `librustc_target::spec` module. You
+`supported_targets` macro in the `rustc_target::spec` module. You
 will then add a corresponding file for your new target containing a
 `target` function.
 
@@ -94,7 +94,7 @@ cross-compile `rustc`:
 ```
 DESTDIR=/path/to/install/in \
 ./x.py install -i --stage 1 --host aarch64-apple-darwin.json --target aarch64-apple-darwin \
-src/librustc library/std
+compiler/rustc library/std
 ```
 
 If your target specification is already available in the bootstrap

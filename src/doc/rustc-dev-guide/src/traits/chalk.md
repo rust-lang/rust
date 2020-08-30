@@ -38,4 +38,4 @@ implementing them in rustc. We map our struct, trait, and impl declarations
 into logical inference rules in the [lowering module in rustc](./lowering-module.md).
 
 [chalk]: https://github.com/rust-lang/chalk
-[librustc_traits]: https://github.com/rust-lang/rust/tree/master/src/librustc_traits
+[rustc_traits]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_traits
