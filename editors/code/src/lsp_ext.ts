@@ -118,3 +118,14 @@ export interface CommandLinkGroup {
     title?: string;
     commands: CommandLink[];
 }
+
+export interface DocumentationLink {
+    remote: string;
+}
+
+export interface OpenDocsParams {
+    textDocument: lc.TextDocumentIdentifier;
+    position: lc.Position;
+}
+
+export const openDocs = new lc.RequestType<OpenDocsParams, DocumentationLink, void>('rust-analyzer/openDocs');

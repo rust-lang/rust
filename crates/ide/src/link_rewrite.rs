@@ -8,6 +8,16 @@ use pulldown_cmark::{CowStr, Event, LinkType, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};
 use url::Url;
 
+use crate::{FilePosition, Semantics};
+use hir::{get_doc_link, resolve_doc_link};
+use ide_db::{
+    defs::{classify_name, classify_name_ref, Definition},
+    RootDatabase,
+};
+use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+
+pub type DocumentationLink = String;
+
 /// Rewrite documentation links in markdown to point to an online host (e.g. docs.rs)
 pub fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> String {
     let doc = Parser::new_with_broken_link_callback(
@@ -80,6 +90,37 @@ pub fn remove_links(markdown: &str) -> String {
     out
 }
 
+pub fn get_doc_link<T: Resolvable + Clone>(db: &dyn HirDatabase, definition: &T) -> Option<String> {
+    eprintln!("hir::doc_links::get_doc_link");
+    let module_def = definition.clone().try_into_module_def()?;
+
+    get_doc_link_impl(db, &module_def)
+}
+
+// TODO:
+// BUG: For Option
+// Returns https://doc.rust-lang.org/nightly/core/prelude/v1/enum.Option.html#variant.Some
+// Instead of https://doc.rust-lang.org/nightly/core/option/enum.Option.html
+//
+// BUG: For methods
+// import_map.path_of(ns) fails, is not designed to resolve methods
+fn get_doc_link_impl(db: &dyn HirDatabase, moddef: &ModuleDef) -> Option<String> {
+    eprintln!("get_doc_link_impl: {:#?}", moddef);
+    let ns = ItemInNs::Types(moddef.clone().into());
+
+    let module = moddef.module(db)?;
+    let krate = module.krate();
+    let import_map = db.import_map(krate.into());
+    let base = once(krate.display_name(db).unwrap())
+        .chain(import_map.path_of(ns).unwrap().segments.iter().map(|name| format!("{}", name)))
+        .join("/");
+
+    get_doc_url(db, &krate)
+        .and_then(|url| url.join(&base).ok())
+        .and_then(|url| get_symbol_filename(db, &moddef).as_deref().and_then(|f| url.join(f).ok()))
+        .map(|url| url.into_string())
+}
+
 fn rewrite_intra_doc_link(
     db: &RootDatabase,
     def: Definition,
@@ -138,7 +179,34 @@ fn rewrite_url_link(db: &RootDatabase, def: ModuleDef, target: &str) -> Option<S
         .map(|url| url.into_string())
 }
 
-// Rewrites a markdown document, resolving links using `callback` and additionally striping prefixes/suffixes on link titles.
+// FIXME: This should either be moved, or the module should be renamed.
+/// Retrieve a link to documentation for the given symbol.
+pub fn get_doc_url(db: &RootDatabase, position: &FilePosition) -> Option<DocumentationLink> {
+    let sema = Semantics::new(db);
+    let file = sema.parse(position.file_id).syntax().clone();
+    let token = pick_best(file.token_at_offset(position.offset))?;
+    let token = sema.descend_into_macros(token);
+
+    let node = token.parent();
+    let definition = match_ast! {
+        match node {
+            ast::NameRef(name_ref) => classify_name_ref(&sema, &name_ref).map(|d| d.definition(sema.db)),
+            ast::Name(name) => classify_name(&sema, &name).map(|d| d.definition(sema.db)),
+            _ => None,
+        }
+    };
+
+    match definition? {
+        Definition::Macro(t) => get_doc_link(db, &t),
+        Definition::Field(t) => get_doc_link(db, &t),
+        Definition::ModuleDef(t) => get_doc_link(db, &t),
+        Definition::SelfType(t) => get_doc_link(db, &t),
+        Definition::Local(t) => get_doc_link(db, &t),
+        Definition::TypeParam(t) => get_doc_link(db, &t),
+    }
+}
+
+/// Rewrites a markdown document, applying 'callback' to each link.
 fn map_links<'e>(
     events: impl Iterator<Item = Event<'e>>,
     callback: impl Fn(&str, &str) -> (String, String),
@@ -274,4 +342,16 @@ fn get_symbol_filename(db: &RootDatabase, definition: &ModuleDef) -> Option<Stri
         ModuleDef::Const(c) => format!("const.{}.html", c.name(db)?),
         ModuleDef::Static(s) => format!("static.{}.html", s.name(db)?),
     })
+}
+
+fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
+    return tokens.max_by_key(priority);
+    fn priority(n: &SyntaxToken) -> usize {
+        match n.kind() {
+            IDENT | INT_NUMBER => 3,
+            T!['('] | T![')'] => 2,
+            kind if kind.is_trivia() => 0,
+            _ => 1,
+        }
+    }
 }

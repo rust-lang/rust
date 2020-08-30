@@ -347,3 +347,31 @@ pub struct CommandLink {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tooltip: Option<String>,
 }
+
+pub enum OpenDocs {}
+
+impl Request for OpenDocs {
+    type Params = OpenDocsParams;
+    type Result = DocumentationLink;
+    const METHOD: &'static str = "rust-analyzer/openDocs";
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenDocsParams {
+    // TODO: I don't know the difference between these two methods of passing position.
+    #[serde(flatten)]
+    pub position: lsp_types::TextDocumentPositionParams,
+    // pub textDocument: lsp_types::TextDocumentIdentifier,
+    // pub position: lsp_types::Position,
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentationLink {
+    pub remote: String, // TODO: Better API?
+                        // #[serde(skip_serializing_if = "Option::is_none")]
+                        // pub remote: Option<String>,
+                        // #[serde(skip_serializing_if = "Option::is_none")]
+                        // pub local: Option<String>
+}

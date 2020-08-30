@@ -182,6 +182,11 @@
                 "command": "rust-analyzer.toggleInlayHints",
                 "title": "Toggle inlay hints",
                 "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.openDocs",
+                "title": "Open docs under cursor",
+                "category": "Rust Analyzer"
             }
         ],
         "keybindings": [
@@ -1043,6 +1048,10 @@
                 },
                 {
                     "command": "rust-analyzer.toggleInlayHints",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.openDocs",
                     "when": "inRustProject"
                 }
             ]

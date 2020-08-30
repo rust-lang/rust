@@ -382,6 +382,14 @@ impl Analysis {
         self.with_db(|db| hover::hover(db, position, links_in_hover, markdown))
     }
 
+    /// Return URL(s) for the documentation of the symbol under the cursor.
+    pub fn get_doc_url(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Option<link_rewrite::DocumentationLink>> {
+        self.with_db(|db| link_rewrite::get_doc_url(db, &position))
+    }
+
     /// Computes parameter information for the given call expression.
     pub fn call_info(&self, position: FilePosition) -> Cancelable<Option<CallInfo>> {
         self.with_db(|db| call_info::call_info(db, position))

@@ -110,6 +110,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
     ctx.registerCommand('run', commands.run);
     ctx.registerCommand('debug', commands.debug);
     ctx.registerCommand('newDebugConfig', commands.newDebugConfig);
+    ctx.registerCommand('openDocs', commands.openDocs);
 
     defaultOnEnter.dispose();
     ctx.registerCommand('onEnter', commands.onEnter);

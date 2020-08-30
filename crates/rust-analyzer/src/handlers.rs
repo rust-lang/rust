@@ -34,7 +34,7 @@ use crate::{
     config::RustfmtConfig,
     from_json, from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
-    lsp_ext::{self, InlayHint, InlayHintsParams},
+    lsp_ext::{self, DocumentationLink, InlayHint, InlayHintsParams, OpenDocsParams},
     to_proto, LspError, Result,
 };
 
@@ -1308,6 +1308,19 @@ pub(crate) fn handle_semantic_tokens_range(
     let highlights = snap.analysis.highlight_range(frange)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
     Ok(Some(semantic_tokens.into()))
+}
+
+pub(crate) fn handle_open_docs(
+    snap: GlobalStateSnapshot,
+    params: OpenDocsParams,
+) -> Result<DocumentationLink> {
+    let _p = profile::span("handle_open_docs");
+    let position = from_proto::file_position(&snap, params.position)?;
+
+    // FIXME: Propogate or ignore this error instead of panicking.
+    let remote = snap.analysis.get_doc_url(position)?.unwrap();
+
+    Ok(DocumentationLink { remote })
 }
 
 fn implementation_title(count: usize) -> String {
