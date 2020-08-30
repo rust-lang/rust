@@ -261,9 +261,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             ns,
                             impl_,
                         )
-                        .and_then(|item| match item.kind {
-                            ty::AssocKind::Fn => Some("method"),
-                            _ => None,
+                        .map(|item| match item.kind {
+                            ty::AssocKind::Fn => "method",
+                            ty::AssocKind::Const => "associatedconstant",
+                            ty::AssocKind::Type => "associatedtype",
                         })
                         .map(|out| (prim, Some(format!("{}#{}.{}", path, out, item_name))));
                     if let Some(link) = link {
