@@ -288,10 +288,12 @@ impl<T> [T] {
     /// Returns a reference to an element or subslice, without doing bounds
     /// checking.
     ///
-    /// This is generally not recommended, use with caution!
+    /// For a safe alternative see [`get`].
+    ///
+    /// # Safety
+    ///
     /// Calling this method with an out-of-bounds index is *[undefined behavior]*
     /// even if the resulting reference is not used.
-    /// For a safe alternative see [`get`].
     ///
     /// [`get`]: #method.get
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
@@ -320,10 +322,12 @@ impl<T> [T] {
     /// Returns a mutable reference to an element or subslice, without doing
     /// bounds checking.
     ///
-    /// This is generally not recommended, use with caution!
+    /// For a safe alternative see [`get_mut`].
+    ///
+    /// # Safety
+    ///
     /// Calling this method with an out-of-bounds index is *[undefined behavior]*
     /// even if the resulting reference is not used.
-    /// For a safe alternative see [`get_mut`].
     ///
     /// [`get_mut`]: #method.get_mut
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
@@ -1133,20 +1137,20 @@ impl<T> [T] {
     ///
     /// {
     ///    let (left, right) = v.split_at(0);
-    ///    assert!(left == []);
-    ///    assert!(right == [1, 2, 3, 4, 5, 6]);
+    ///    assert_eq!(left, []);
+    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
     ///     let (left, right) = v.split_at(2);
-    ///     assert!(left == [1, 2]);
-    ///     assert!(right == [3, 4, 5, 6]);
+    ///     assert_eq!(left, [1, 2]);
+    ///     assert_eq!(right, [3, 4, 5, 6]);
     /// }
     ///
     /// {
     ///     let (left, right) = v.split_at(6);
-    ///     assert!(left == [1, 2, 3, 4, 5, 6]);
-    ///     assert!(right == []);
+    ///     assert_eq!(left, [1, 2, 3, 4, 5, 6]);
+    ///     assert_eq!(right, []);
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1175,12 +1179,12 @@ impl<T> [T] {
     /// // scoped to restrict the lifetime of the borrows
     /// {
     ///     let (left, right) = v.split_at_mut(2);
-    ///     assert!(left == [1, 0]);
-    ///     assert!(right == [3, 0, 5, 6]);
+    ///     assert_eq!(left, [1, 0]);
+    ///     assert_eq!(right, [3, 0, 5, 6]);
     ///     left[1] = 2;
     ///     right[1] = 4;
     /// }
-    /// assert!(v == [1, 2, 3, 4, 5, 6]);
+    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1197,10 +1201,13 @@ impl<T> [T] {
     /// the index `mid` itself) and the second will contain all
     /// indices from `[mid, len)` (excluding the index `len` itself).
     ///
-    /// This is generally not recommended, use with caution!
-    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
-    /// even if the resulting reference is not used.
     /// For a safe alternative see [`split_at`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting reference is not used. The caller has to ensure that
+    /// `0 <= mid <= self.len()`.
     ///
     /// [`split_at`]: #method.split_at
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
@@ -1214,26 +1221,26 @@ impl<T> [T] {
     ///
     /// unsafe {
     ///    let (left, right) = v.split_at_unchecked(0);
-    ///    assert!(left == []);
-    ///    assert!(right == [1, 2, 3, 4, 5, 6]);
+    ///    assert_eq!(left, []);
+    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// unsafe {
     ///     let (left, right) = v.split_at_unchecked(2);
-    ///     assert!(left == [1, 2]);
-    ///     assert!(right == [3, 4, 5, 6]);
+    ///     assert_eq!(left, [1, 2]);
+    ///     assert_eq!(right, [3, 4, 5, 6]);
     /// }
     ///
     /// unsafe {
     ///     let (left, right) = v.split_at_unchecked(6);
-    ///     assert!(left == [1, 2, 3, 4, 5, 6]);
-    ///     assert!(right == []);
+    ///     assert_eq!(left, [1, 2, 3, 4, 5, 6]);
+    ///     assert_eq!(right, []);
     /// }
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
     #[inline]
     unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
-        // SAFETY: Caller has to check that 0 <= mid < self.len()
+        // SAFETY: Caller has to check that `0 <= mid <= self.len()`
         unsafe { (self.get_unchecked(..mid), self.get_unchecked(mid..)) }
     }
 
@@ -1243,10 +1250,13 @@ impl<T> [T] {
     /// the index `mid` itself) and the second will contain all
     /// indices from `[mid, len)` (excluding the index `len` itself).
     ///
-    /// This is generally not recommended, use with caution!
-    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
-    /// even if the resulting reference is not used.
     /// For a safe alternative see [`split_at_mut`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting reference is not used. The caller has to ensure that
+    /// `0 <= mid <= self.len()`.
     ///
     /// [`split_at_mut`]: #method.split_at_mut
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
@@ -1260,12 +1270,12 @@ impl<T> [T] {
     /// // scoped to restrict the lifetime of the borrows
     /// unsafe {
     ///     let (left, right) = v.split_at_mut_unchecked(2);
-    ///     assert!(left == [1, 0]);
-    ///     assert!(right == [3, 0, 5, 6]);
+    ///     assert_eq!(left, [1, 0]);
+    ///     assert_eq!(right, [3, 0, 5, 6]);
     ///     left[1] = 2;
     ///     right[1] = 4;
     /// }
-    /// assert!(v == [1, 2, 3, 4, 5, 6]);
+    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
     #[inline]
@@ -1273,9 +1283,9 @@ impl<T> [T] {
         let len = self.len();
         let ptr = self.as_mut_ptr();
 
-        // SAFETY: Caller has to check that 0 <= mid < self.len().
+        // SAFETY: Caller has to check that `0 <= mid <= self.len()`.
         //
-        // [ptr; mid] and [mid; len] are not overlapping, so returning a mutable reference
+        // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
         unsafe { (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid)) }
     }
