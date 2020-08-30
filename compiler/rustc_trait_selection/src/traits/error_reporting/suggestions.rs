@@ -7,7 +7,7 @@ use crate::autoderef::Autoderef;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{self, normalize_projection_type};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
@@ -335,7 +335,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         data: ty::TraitPredicate<'tcx>,
         self_ty: Ty<'tcx>,
     ) -> Vec<String> {
-        let mut turbofish_suggestions = FxHashMap::default();
+        let mut turbofish_suggestions = FxHashSet::default();
         self.tcx.for_each_relevant_impl(data.trait_ref.def_id, self_ty, |impl_def_id| {
             self.probe(|_| {
                 let impl_substs = self.fresh_substs_for_item(DUMMY_SP, impl_def_id);
@@ -395,24 +395,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             )
                             && !matches!(trait_ref.self_ty().kind(), ty::Infer(_))
                         {
-                            turbofish_suggestions.insert(trait_ref.self_ty(), eval_result);
+                            turbofish_suggestions.insert(trait_ref.self_ty());
                         }
                     };
                 }
             })
         });
         // Sort types by always suggesting `Vec<_>` and `String` first, as they are the
-        // most likely desired types. Otherwise sort first by `EvaluationResult` and then by their
-        // string representation.
+        // most likely desired types.
         let mut turbofish_suggestions = turbofish_suggestions.into_iter().collect::<Vec<_>>();
         turbofish_suggestions.sort_by(|left, right| {
             let vec_type = self.tcx.get_diagnostic_item(sym::vec_type);
             let string_type = self.tcx.get_diagnostic_item(sym::string_type);
-            match (&left.0.kind(), &right.0.kind()) {
-                (
-                    ty::Adt(ty::AdtDef { did: left, .. }, _),
-                    ty::Adt(ty::AdtDef { did: right, .. }, _),
-                ) if left == right => Ordering::Equal,
+            match (&left.kind(), &right.kind()) {
                 (
                     ty::Adt(ty::AdtDef { did: left, .. }, _),
                     ty::Adt(ty::AdtDef { did: right, .. }, _),
@@ -431,19 +426,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 {
                     Ordering::Greater
                 }
-                _ => {
-                    // We give preferential place in the suggestion list to types that will apply
-                    // without doubt, to push types with abiguities (may or may not apply depending
-                    // on other obligations we don't have access to here) later in the sugg list.
-                    if left.1 == right.1 {
-                        left.0.to_string().cmp(&right.0.to_string())
-                    } else {
-                        left.1.cmp(&right.1)
-                    }
-                }
+                _ => left.to_string().cmp(&right.to_string()),
             }
         });
-        turbofish_suggestions.into_iter().map(|(ty, _)| ty.to_string()).collect()
+        turbofish_suggestions.into_iter().map(|ty| ty.to_string()).collect()
     }
 
     fn suggest_restricting_param_bound(

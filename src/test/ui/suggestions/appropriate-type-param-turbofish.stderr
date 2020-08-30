@@ -30,10 +30,10 @@ LL |         vec!["a", "b", "c"].into_iter().collect::<Vec<_>>();
    |                                                ^^^^^^^^^^
 LL |         vec!["a", "b", "c"].into_iter().collect::<String>();
    |                                                ^^^^^^^^^^
-LL |         vec!["a", "b", "c"].into_iter().collect::<Cow<'_, [_]>>();
-   |                                                ^^^^^^^^^^^^^^^^
-LL |         vec!["a", "b", "c"].into_iter().collect::<Cow<'_, str>>();
-   |                                                ^^^^^^^^^^^^^^^^
+LL |         vec!["a", "b", "c"].into_iter().collect::<Arc<[_]>>();
+   |                                                ^^^^^^^^^^^^
+LL |         vec!["a", "b", "c"].into_iter().collect::<BTreeSet<_>>();
+   |                                                ^^^^^^^^^^^^^^^
      and 10 other candidates
 
 error[E0283]: type annotations needed
@@ -49,10 +49,10 @@ LL |         vec!['a', 'b', 'c'].into_iter().collect::<Vec<_>>();
    |                                                ^^^^^^^^^^
 LL |         vec!['a', 'b', 'c'].into_iter().collect::<String>();
    |                                                ^^^^^^^^^^
-LL |         vec!['a', 'b', 'c'].into_iter().collect::<BinaryHeap<_>>();
-   |                                                ^^^^^^^^^^^^^^^^^
-LL |         vec!['a', 'b', 'c'].into_iter().collect::<Cow<'_, [_]>>();
-   |                                                ^^^^^^^^^^^^^^^^
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<Arc<[_]>>();
+   |                                                ^^^^^^^^^^^^
+LL |         vec!['a', 'b', 'c'].into_iter().collect::<BTreeSet<_>>();
+   |                                                ^^^^^^^^^^^^^^^
      and 10 other candidates
 
 error[E0283]: type annotations needed
@@ -87,10 +87,10 @@ LL |         let _: Vec<_> = vec!["a", "b", "c"].into_iter().collect();
    |              ^^^^^^^^
 LL |         let _: String = vec!["a", "b", "c"].into_iter().collect();
    |              ^^^^^^^^
-LL |         let _: BinaryHeap<_> = vec!["a", "b", "c"].into_iter().collect();
-   |              ^^^^^^^^^^^^^^^
-LL |         let _: Cow<'_, [_]> = vec!["a", "b", "c"].into_iter().collect();
-   |              ^^^^^^^^^^^^^^
+LL |         let _: Arc<[_]> = vec!["a", "b", "c"].into_iter().collect();
+   |              ^^^^^^^^^^
+LL |         let _: BTreeSet<_> = vec!["a", "b", "c"].into_iter().collect();
+   |              ^^^^^^^^^^^^^
      and 10 other candidates
 
 error[E0283]: type annotations needed
@@ -106,10 +106,10 @@ LL |         let _: Vec<_> = vec!['a', 'b', 'c'].into_iter().collect();
    |              ^^^^^^^^
 LL |         let _: String = vec!['a', 'b', 'c'].into_iter().collect();
    |              ^^^^^^^^
-LL |         let _: BinaryHeap<_> = vec!['a', 'b', 'c'].into_iter().collect();
-   |              ^^^^^^^^^^^^^^^
-LL |         let _: Box<[_]> = vec!['a', 'b', 'c'].into_iter().collect();
+LL |         let _: Arc<[_]> = vec!['a', 'b', 'c'].into_iter().collect();
    |              ^^^^^^^^^^
+LL |         let _: BTreeSet<_> = vec!['a', 'b', 'c'].into_iter().collect();
+   |              ^^^^^^^^^^^^^
      and 10 other candidates
 
 error[E0283]: type annotations needed
