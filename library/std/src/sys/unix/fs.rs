@@ -963,7 +963,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     Ok(())
 }
 
-pub fn get_openopetions_as_cint(from: OpenOptions) -> io::Result<libc::c_int> {
+pub fn get_openoptions_as_cint(from: OpenOptions) -> io::Result<libc::c_int> {
     let access_mode = from.get_access_mode()?;
     let creation_mode = from.get_creation_mode()?;
     Ok(creation_mode | access_mode)
