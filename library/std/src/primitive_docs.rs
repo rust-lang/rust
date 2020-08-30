@@ -222,8 +222,8 @@ mod prim_bool {}
 ///
 /// The reason is that, in the first example, there are many possible types for `!` to coerce
 /// to, because the function's return value is polymorphic. However, in the second example, the
-/// other branch returns `0` which has a concrete type that `!` can be coerced to. See issue
-/// [#36375] for more information on this quirk of `!`.
+/// other branch returns a `0` of type `u32`, which is a concrete type that `!` can be coerced to.
+/// See issue [#36375] for more information on this quirk of `!`.
 ///
 /// [#36375]: https://github.com/rust-lang/rust/issues/36375
 ///
