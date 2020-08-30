@@ -13,8 +13,8 @@
 //! ```no_run
 //! use expect_test::expect;
 //!
-//! let expected = expect![["5"]];
 //! let actual = 2 + 2;
+//! let expected = expect![["5"]];
 //! expected.assert_eq(&actual.to_string())
 //! ```
 //!
