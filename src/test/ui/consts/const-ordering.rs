@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(const_ordering)]
-
 use std::cmp::Ordering;
 
 // the following methods of core::cmp::Ordering are const:
