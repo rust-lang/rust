@@ -60,9 +60,10 @@ pub use self::visitor::{BorrowckFlowState, BorrowckResults};
 /// This trait specifies the lattice on which this analysis operates (the domain) as well as its
 /// initial value at the entry point of each basic block.
 pub trait AnalysisDomain<'tcx> {
+    /// The type that holds the dataflow state at any given point in the program.
     type Domain: Clone + JoinSemiLattice;
 
-    /// The direction of this analyis. Either `Forward` or `Backward`.
+    /// The direction of this analysis. Either `Forward` or `Backward`.
     type Direction: Direction = Forward;
 
     /// A descriptive name for this analysis. Used only for debugging.
@@ -71,10 +72,10 @@ pub trait AnalysisDomain<'tcx> {
     /// suitable as part of a filename.
     const NAME: &'static str;
 
+    /// The initial value of the dataflow state upon entry to each basic block.
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain;
 
-    /// Mutates the entry set of the `START_BLOCK` to contain the initial state for dataflow
-    /// analysis.
+    /// Mutates the initial value of the dataflow state upon entry to the `START_BLOCK`.
     ///
     /// For backward analyses, initial state besides the bottom value is not yet supported. Trying
     /// to mutate the initial state will result in a panic.
@@ -86,6 +87,21 @@ pub trait AnalysisDomain<'tcx> {
 }
 
 /// A dataflow problem with an arbitrarily complex transfer function.
+///
+/// # Convergence
+///
+/// When implementing this trait directly (not via [`GenKillAnalysis`]), it's possible to choose a
+/// transfer function such that the analysis does not reach fixpoint. To guarantee convergence,
+/// your transfer functions must maintain the following invariant:
+///
+/// > If the dataflow state **before** some point in the program changes to be greater
+/// than the prior state **before** that point, the dataflow state **after** that point must
+/// also change to be greater than the prior state **after** that point.
+///
+/// This invariant guarantees that the dataflow state at a given point in the program increases
+/// monotonically until fixpoint is reached. Note that this monotonicity requirement only applies
+/// to the same point in the program at different points in time. The dataflow state at a given
+/// point in the program may or may not be greater than the state at any preceding point.
 pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// Updates the current dataflow state with the effect of evaluating a statement.
     fn apply_statement_effect(
