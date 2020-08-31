@@ -269,7 +269,9 @@ impl Instant {
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn duration_since(&self, earlier: Instant) -> Duration {
-        self.0.checked_sub_instant(&earlier.0).expect("supplied instant is later than self")
+        self.0
+            .checked_sub_instant(&earlier.0)
+            .expect("supplied instant is later than self")
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
@@ -309,7 +311,8 @@ impl Instant {
     /// ```
     #[stable(feature = "checked_duration_since", since = "1.39.0")]
     pub fn saturating_duration_since(&self, earlier: Instant) -> Duration {
-        self.checked_duration_since(earlier).unwrap_or(Duration::new(0, 0))
+        self.checked_duration_since(earlier)
+            .unwrap_or(Duration::new(0, 0))
     }
 
     /// Returns the amount of time elapsed since this instant was created.
@@ -362,7 +365,8 @@ impl Add<Duration> for Instant {
     /// This function may panic if the resulting point in time cannot be represented by the
     /// underlying data structure. See [`Instant::checked_add`] for a version without panic.
     fn add(self, other: Duration) -> Instant {
-        self.checked_add(other).expect("overflow when adding duration to instant")
+        self.checked_add(other)
+            .expect("overflow when adding duration to instant")
     }
 }
 
@@ -378,7 +382,8 @@ impl Sub<Duration> for Instant {
     type Output = Instant;
 
     fn sub(self, other: Duration) -> Instant {
-        self.checked_sub(other).expect("overflow when subtracting duration from instant")
+        self.checked_sub(other)
+            .expect("overflow when subtracting duration from instant")
     }
 }
 
@@ -457,11 +462,14 @@ impl SystemTime {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use std::time::SystemTime;
+    /// ```no_run
+    /// use std::thread::sleep;
+    /// use std::time::{Duration, SystemTime};
     ///
     /// let sys_time = SystemTime::now();
-    /// let difference = sys_time.duration_since(sys_time)
+    /// sleep(Duration::from_secs(1));
+    /// let new_sys_time = SystemTime::now();
+    /// let difference = new_sys_time.duration_since(sys_time)
     ///                          .expect("Clock may have gone backwards");
     /// println!("{:?}", difference);
     /// ```
@@ -526,7 +534,8 @@ impl Add<Duration> for SystemTime {
     /// This function may panic if the resulting point in time cannot be represented by the
     /// underlying data structure. See [`SystemTime::checked_add`] for a version without panic.
     fn add(self, dur: Duration) -> SystemTime {
-        self.checked_add(dur).expect("overflow when adding duration to instant")
+        self.checked_add(dur)
+            .expect("overflow when adding duration to instant")
     }
 }
 
@@ -542,7 +551,8 @@ impl Sub<Duration> for SystemTime {
     type Output = SystemTime;
 
     fn sub(self, dur: Duration) -> SystemTime {
-        self.checked_sub(dur).expect("overflow when subtracting duration from instant")
+        self.checked_sub(dur)
+            .expect("overflow when subtracting duration from instant")
     }
 }
 
@@ -640,7 +650,12 @@ mod tests {
             let (a, b) = ($a, $b);
             if a != b {
                 let (a, b) = if a > b { (a, b) } else { (b, a) };
-                assert!(a - Duration::new(0, 1000) <= b, "{:?} is not almost equal to {:?}", a, b);
+                assert!(
+                    a - Duration::new(0, 1000) <= b,
+                    "{:?} is not almost equal to {:?}",
+                    a,
+                    b
+                );
             }
         }};
     }
@@ -671,7 +686,10 @@ mod tests {
 
         let second = Duration::new(1, 0);
         assert_almost_eq!(a - second + second, a);
-        assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
+        assert_almost_eq!(
+            a.checked_sub(second).unwrap().checked_add(second).unwrap(),
+            a
+        );
 
         // checked_add_duration will not panic on overflow
         let mut maybe_t = Some(Instant::now());
@@ -746,7 +764,10 @@ mod tests {
         assert_almost_eq!(a.duration_since(a + second).unwrap_err().duration(), second);
 
         assert_almost_eq!(a - second + second, a);
-        assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
+        assert_almost_eq!(
+            a.checked_sub(second).unwrap().checked_add(second).unwrap(),
+            a
+        );
 
         let one_second_from_epoch = UNIX_EPOCH + Duration::new(1, 0);
         let one_second_from_epoch2 =
