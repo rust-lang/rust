@@ -1014,7 +1014,8 @@ impl<'a> Parser<'a> {
     /// If the following element can't be a tuple (i.e., it's a function definition), then
     /// it's not a tuple struct field), and the contents within the parentheses isn't valid,
     /// so emit a proper diagnostic.
-    pub(crate) fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
+    // Public for rustfmt usage.
+    pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
         maybe_whole!(self, NtVis, |x| x);
 
         self.expected_tokens.push(TokenType::Keyword(kw::Crate));

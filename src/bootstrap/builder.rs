@@ -1041,15 +1041,11 @@ impl<'a> Builder<'a> {
             }
         }
 
-        // FIXME: Don't use LLD with MSVC if we're compiling libtest, since it fails to link it.
-        // See https://github.com/rust-lang/rust/issues/68647.
-        let can_use_lld = mode != Mode::Std;
-
-        if let Some(host_linker) = self.linker(compiler.host, can_use_lld) {
+        if let Some(host_linker) = self.linker(compiler.host, true) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
         }
 
-        if let Some(target_linker) = self.linker(target, can_use_lld) {
+        if let Some(target_linker) = self.linker(target, true) {
             let target = crate::envify(&target.triple);
             cargo.env(&format!("CARGO_TARGET_{}_LINKER", target), target_linker);
         }

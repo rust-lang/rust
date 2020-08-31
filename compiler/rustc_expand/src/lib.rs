@@ -39,11 +39,6 @@ mod tests;
 mod parse {
     #[cfg(test)]
     mod tests;
-    #[cfg(test)]
-    mod lexer {
-        #[cfg(test)]
-        mod tests;
-    }
 }
 #[cfg(test)]
 mod tokenstream {
