@@ -625,8 +625,8 @@ impl<T> MaybeUninit<T> {
     /// // Initialize the `MaybeUninit` using `Cell::set`:
     /// unsafe {
     ///     b.assume_init_ref().set(true);
-    ///  // ^^^^^^^^^^^
-    ///  // Reference to an uninitialized `Cell<bool>`: UB!
+    ///    // ^^^^^^^^^^^^^^^
+    ///    // Reference to an uninitialized `Cell<bool>`: UB!
     /// }
     /// ```
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
@@ -748,7 +748,7 @@ impl<T> MaybeUninit<T> {
     ///     foo.assume_init()
     /// };
     /// ```
-    // FIXME(#53491): We currently rely on the above being incorrect, i.e., we have references
+    // FIXME(#76092): We currently rely on the above being incorrect, i.e., we have references
     // to uninitialized data (e.g., in `libcore/fmt/float.rs`).  We should make
     // a final decision about the rules before stabilization.
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
