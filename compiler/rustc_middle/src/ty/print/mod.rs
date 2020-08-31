@@ -9,8 +9,6 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 mod pretty;
 pub use self::pretty::*;
 
-pub mod obsolete;
-
 // FIXME(eddyb) false positive, the lifetime parameters are used with `P:  Printer<...>`.
 #[allow(unused_lifetimes)]
 pub trait Print<'tcx, P> {
