@@ -272,19 +272,9 @@ impl<'a> TokenTreesReader<'a> {
     }
 
     fn real_token(&mut self) {
-        self.joint_to_prev = Joint;
-        loop {
-            let token = self.string_reader.next_token();
-            match token.kind {
-                token::Whitespace | token::Comment | token::Shebang(_) | token::Unknown(_) => {
-                    self.joint_to_prev = NonJoint;
-                }
-                _ => {
-                    self.token = token;
-                    return;
-                }
-            }
-        }
+        let (joint_to_prev, token) = self.string_reader.next_token();
+        self.joint_to_prev = joint_to_prev;
+        self.token = token;
     }
 }
 
