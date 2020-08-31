@@ -846,7 +846,7 @@ impl<'tcx> LateContext<'tcx> {
                     return Ok(path);
                 }
 
-                path.push(match disambiguated_data.data.get_name() {
+                path.push(match disambiguated_data.data.name() {
                     DefPathDataName::Named(name) => name,
                     DefPathDataName::Anon { namespace } => {
                         Symbol::intern(&format!("{{{{{}}}}}", namespace))

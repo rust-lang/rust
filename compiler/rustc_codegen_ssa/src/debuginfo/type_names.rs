@@ -232,7 +232,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             output.push_str(&tcx.crate_name(def_id.krate).as_str());
             for path_element in tcx.def_path(def_id).data {
                 output.push_str("::");
-                match path_element.data.get_name() {
+                match path_element.data.name() {
                     DefPathDataName::Named(name) => output.push_str(&name.as_str()),
                     DefPathDataName::Anon { namespace } => {
                         write!(output, "{{{{{}}}}}", namespace).unwrap()

@@ -355,7 +355,7 @@ fn compute_codegen_unit_name(
     *cache.entry((cgu_def_id, volatile)).or_insert_with(|| {
         let def_path = tcx.def_path(cgu_def_id);
 
-        let components = def_path.data.iter().map(|part| match part.data.get_name() {
+        let components = def_path.data.iter().map(|part| match part.data.name() {
             DefPathDataName::Named(name) => name,
             DefPathDataName::Anon { namespace } => {
                 Symbol::intern(&format!("{{{{{}}}}}", namespace))

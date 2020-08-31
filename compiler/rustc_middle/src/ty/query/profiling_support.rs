@@ -66,7 +66,7 @@ impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
                 end_index = 3;
             }
             other => {
-                name = match other.get_name() {
+                name = match other.name() {
                     DefPathDataName::Named(name) => {
                         dis = "";
                         end_index = 3;

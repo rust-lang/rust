@@ -1498,7 +1498,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
         // FIXME(eddyb) `name` should never be empty, but it
         // currently is for `extern { ... }` "foreign modules".
-        let name = disambiguated_data.data.get_name();
+        let name = disambiguated_data.data.name();
         if name != DefPathDataName::Named(kw::Invalid) {
             if !self.empty_path {
                 write!(self, "::")?;

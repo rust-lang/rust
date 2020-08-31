@@ -157,7 +157,7 @@ pub struct DisambiguatedDefPathData {
 
 impl DisambiguatedDefPathData {
     pub fn fmt_maybe_verbose(&self, writer: &mut impl Write, verbose: bool) -> fmt::Result {
-        match self.data.get_name() {
+        match self.data.name() {
             DefPathDataName::Named(name) => {
                 if Ident::with_dummy_span(name).is_raw_guess() {
                     writer.write_str("r#")?;

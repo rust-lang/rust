@@ -30,7 +30,7 @@ pub fn item_namespace(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
 
     let namespace_name = match def_key.disambiguated_data.data {
         DefPathData::CrateRoot => cx.tcx.crate_name(def_id.krate),
-        data => match data.get_name() {
+        data => match data.name() {
             DefPathDataName::Named(name) => name,
             DefPathDataName::Anon { namespace } => {
                 Symbol::intern(&format!("{{{{{}}}}}", namespace))
