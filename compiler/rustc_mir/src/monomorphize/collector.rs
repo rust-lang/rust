@@ -191,7 +191,6 @@ use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Local, Location};
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
-use rustc_middle::ty::print::obsolete::DefPathBasedNames;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::config::EntryFnType;
@@ -348,7 +347,7 @@ fn collect_items_rec<'tcx>(
         // We've been here already, no need to search again.
         return;
     }
-    debug!("BEGIN collect_items_rec({})", starting_point.node.to_string(tcx, true));
+    debug!("BEGIN collect_items_rec({})", starting_point.node);
 
     let mut neighbors = Vec::new();
     let recursion_depth_reset;
@@ -397,7 +396,7 @@ fn collect_items_rec<'tcx>(
         recursion_depths.insert(def_id, depth);
     }
 
-    debug!("END collect_items_rec({})", starting_point.node.to_string(tcx, true));
+    debug!("END collect_items_rec({})", starting_point.node);
 }
 
 fn record_accesses<'a, 'tcx: 'a>(
@@ -992,7 +991,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                         let def_id = self.tcx.hir().local_def_id(item.hir_id);
                         debug!(
                             "RootCollector: ADT drop-glue for {}",
-                            def_id_to_string(self.tcx, def_id)
+                            self.tcx.def_path_str(def_id.to_def_id())
                         );
 
                         let ty = Instance::new(def_id.to_def_id(), InternalSubsts::empty())
@@ -1004,14 +1003,14 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
             hir::ItemKind::GlobalAsm(..) => {
                 debug!(
                     "RootCollector: ItemKind::GlobalAsm({})",
-                    def_id_to_string(self.tcx, self.tcx.hir().local_def_id(item.hir_id))
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.hir_id).to_def_id())
                 );
                 self.output.push(dummy_spanned(MonoItem::GlobalAsm(item.hir_id)));
             }
             hir::ItemKind::Static(..) => {
-                let def_id = self.tcx.hir().local_def_id(item.hir_id);
-                debug!("RootCollector: ItemKind::Static({})", def_id_to_string(self.tcx, def_id));
-                self.output.push(dummy_spanned(MonoItem::Static(def_id.to_def_id())));
+                let def_id = self.tcx.hir().local_def_id(item.hir_id).to_def_id();
+                debug!("RootCollector: ItemKind::Static({})", self.tcx.def_path_str(def_id));
+                self.output.push(dummy_spanned(MonoItem::Static(def_id)));
             }
             hir::ItemKind::Const(..) => {
                 // const items only generate mono items if they are
@@ -1134,7 +1133,7 @@ fn create_mono_items_for_default_impls<'tcx>(
 
             debug!(
                 "create_mono_items_for_default_impls(item={})",
-                def_id_to_string(tcx, impl_def_id)
+                tcx.def_path_str(impl_def_id.to_def_id())
             );
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
@@ -1216,13 +1215,6 @@ fn collect_neighbours<'tcx>(
     let body = tcx.instance_mir(instance.def);
 
     MirNeighborCollector { tcx, body: &body, output, instance }.visit_body(&body);
-}
-
-fn def_id_to_string(tcx: TyCtxt<'_>, def_id: LocalDefId) -> String {
-    let mut output = String::new();
-    let printer = DefPathBasedNames::new(tcx, false, false);
-    printer.push_def_path(def_id.to_def_id(), &mut output);
-    output
 }
 
 fn collect_const_value<'tcx>(

@@ -246,7 +246,7 @@ where
 
                 debug!(
                     " - {} [{:?}] [{}] estimated size {}",
-                    mono_item.to_string(tcx, true),
+                    mono_item,
                     linkage,
                     symbol_hash,
                     mono_item.size_estimate(tcx)
@@ -374,7 +374,7 @@ fn collect_and_partition_mono_items<'tcx>(
         let mut item_keys: Vec<_> = items
             .iter()
             .map(|i| {
-                let mut output = i.to_string(tcx, false);
+                let mut output = i.to_string();
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
