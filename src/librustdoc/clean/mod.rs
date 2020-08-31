@@ -170,11 +170,8 @@ impl Clean<ExternalCrate> for CrateNum {
                 for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
                         if attr.has_name(sym::keyword) {
-                            if v.is_doc_keyword() {
-                                keyword = Some(v.to_string());
-                                break;
-                            }
-                            // FIXME: should warn on unknown keywords?
+                            keyword = Some(v.to_string());
+                            break;
                         }
                     }
                 }
