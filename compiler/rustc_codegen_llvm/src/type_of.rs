@@ -51,30 +51,34 @@ fn uncached_llvm_type<'a, 'tcx>(
     }
 
     let name = match layout.ty.kind {
-        ty::Closure(..) |
-        ty::Generator(..) |
-        ty::Adt(..) |
         // FIXME(eddyb) producing readable type names for trait objects can result
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
-        ty::Foreign(..) |
-        ty::Str => {
+        ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Generator(..) | ty::Str
+            if !cx.sess().fewer_names() =>
+        {
             let mut name = layout.ty.to_string();
-            if let (&ty::Adt(def, _), &Variants::Single { index })
-                 = (&layout.ty.kind, &layout.variants)
+            if let (&ty::Adt(def, _), &Variants::Single { index }) =
+                (&layout.ty.kind, &layout.variants)
             {
                 if def.is_enum() && !def.variants.is_empty() {
                     write!(&mut name, "::{}", def.variants[index].ident).unwrap();
                 }
             }
-            if let (&ty::Generator(_, _, _), &Variants::Single { index })
-                 = (&layout.ty.kind, &layout.variants)
+            if let (&ty::Generator(_, _, _), &Variants::Single { index }) =
+                (&layout.ty.kind, &layout.variants)
             {
                 write!(&mut name, "::{}", ty::GeneratorSubsts::variant_name(index)).unwrap();
             }
             Some(name)
         }
-        _ => None
+        ty::Adt(..) => {
+            // If `Some` is returned then a named struct is created in LLVM. Name collisions are
+            // avoided by LLVM (with increasing suffixes). If rustc doesn't generate names then that
+            // can improve perf.
+            Some(String::new())
+        }
+        _ => None,
     };
 
     match layout.fields {
