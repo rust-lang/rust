@@ -144,10 +144,6 @@ fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))
 }
 
-pub fn try_expr_from_text(text: &str) -> Option<ast::Expr> {
-    try_ast_from_text(&format!("const C: () = {};", text))
-}
-
 pub fn condition(expr: ast::Expr, pattern: Option<ast::Pat>) -> ast::Condition {
     match pattern {
         None => ast_from_text(&format!("const _: () = while {} {{}};", expr)),
@@ -330,16 +326,6 @@ fn ast_from_text<N: AstNode>(text: &str) -> N {
     let node = N::cast(node).unwrap();
     assert_eq!(node.syntax().text_range().start(), 0.into());
     node
-}
-
-fn try_ast_from_text<N: AstNode>(text: &str) -> Option<N> {
-    let parse = SourceFile::parse(text);
-    let node = parse.tree().syntax().descendants().find_map(N::cast)?;
-    let node = node.syntax().clone();
-    let node = unroot(node);
-    let node = N::cast(node).unwrap();
-    assert_eq!(node.syntax().text_range().start(), 0.into());
-    Some(node)
 }
 
 fn unroot(n: SyntaxNode) -> SyntaxNode {
