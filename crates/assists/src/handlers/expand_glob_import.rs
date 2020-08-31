@@ -4,7 +4,11 @@ use ide_db::{
     defs::{classify_name_ref, Definition, NameRefClass},
     search::SearchScope,
 };
-use syntax::{algo, ast, AstNode, Direction, SyntaxNode, SyntaxToken, T};
+use syntax::{
+    algo,
+    ast::{self, make},
+    AstNode, Direction, SyntaxNode, SyntaxToken, T,
+};
 
 use crate::{
     assist_context::{AssistBuilder, AssistContext, Assists},
@@ -249,7 +253,10 @@ fn replace_ast(
 
     let new_use_trees: Vec<ast::UseTree> = names_to_import
         .iter()
-        .map(|n| ast::make::use_tree(ast::make::path_from_text(&n.to_string()), None, None, false))
+        .map(|n| {
+            let path = make::path_unqualified(make::path_segment(make::name_ref(&n.to_string())));
+            make::use_tree(path, None, None, false)
+        })
         .collect();
 
     let use_trees = [&existing_use_trees[..], &new_use_trees[..]].concat();
@@ -257,8 +264,8 @@ fn replace_ast(
     match use_trees.as_slice() {
         [name] => {
             if let Some(end_path) = name.path() {
-                let replacement = ast::make::use_tree(
-                    ast::make::path_from_text(&format!("{}::{}", path, end_path)),
+                let replacement = make::use_tree(
+                    make::path_from_text(&format!("{}::{}", path, end_path)),
                     None,
                     None,
                     false,
@@ -273,15 +280,12 @@ fn replace_ast(
         }
         names => {
             let replacement = match parent {
-                Either::Left(_) => ast::make::use_tree(
-                    path,
-                    Some(ast::make::use_tree_list(names.to_owned())),
-                    None,
-                    false,
-                )
-                .syntax()
-                .clone(),
-                Either::Right(_) => ast::make::use_tree_list(names.to_owned()).syntax().clone(),
+                Either::Left(_) => {
+                    make::use_tree(path, Some(make::use_tree_list(names.to_owned())), None, false)
+                        .syntax()
+                        .clone()
+                }
+                Either::Right(_) => make::use_tree_list(names.to_owned()).syntax().clone(),
             };
 
             algo::diff(
