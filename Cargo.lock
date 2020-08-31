@@ -3688,6 +3688,7 @@ dependencies = [
 name = "rustc_macros"
 version = "0.1.0"
 dependencies = [
+ "indexmap",
  "proc-macro2",
  "quote",
  "syn",
