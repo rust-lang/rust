@@ -416,14 +416,12 @@ impl Options {
                     return Err(1);
                 } else if !ret.is_empty() {
                     diag.struct_warn(&format!(
-                        "theme file \"{}\" is missing CSS rules from the \
-                                               default theme",
+                        "theme file \"{}\" is missing CSS rules from the default theme",
                         theme_s
                     ))
                     .warn("the theme may appear incorrect when loaded")
                     .help(&format!(
-                        "to see what rules are missing, call `rustdoc \
-                                        --check-theme \"{}\"`",
+                        "to see what rules are missing, call `rustdoc  --check-theme \"{}\"`",
                         theme_s
                     ))
                     .emit();

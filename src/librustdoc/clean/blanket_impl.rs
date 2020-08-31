@@ -75,8 +75,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     }
                 });
                 debug!(
-                    "get_blanket_impls: found applicable impl: {}\
-                        for trait_ref={:?}, ty={:?}",
+                    "get_blanket_impls: found applicable impl: {} for trait_ref={:?}, ty={:?}",
                     may_apply, trait_ref, ty
                 );
                 if !may_apply {

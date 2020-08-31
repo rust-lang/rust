@@ -210,8 +210,8 @@ pub fn render<T: Print, S: Print>(
             .collect::<String>(),
         filter_crates = if layout.generate_search_filter {
             "<select id=\"crate-search\">\
-            <option value=\"All crates\">All crates</option>\
-        </select>"
+                 <option value=\"All crates\">All crates</option>\
+             </select>"
         } else {
             ""
         },

@@ -153,7 +153,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "passes",
                 "list of passes to also run, you might want to pass it multiple times; a value of \
-                        `list` will print available passes",
+                 `list` will print available passes",
                 "PASSES",
             )
         }),
@@ -183,7 +183,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "html-in-header",
                 "files to include inline in the <head> section of a rendered Markdown file \
-                        or generated documentation",
+                 or generated documentation",
                 "FILES",
             )
         }),
@@ -192,7 +192,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "html-before-content",
                 "files to include inline between <body> and the content of a rendered \
-                        Markdown file or generated documentation",
+                 Markdown file or generated documentation",
                 "FILES",
             )
         }),
@@ -201,7 +201,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "html-after-content",
                 "files to include inline between the content and </body> of a rendered \
-                        Markdown file or generated documentation",
+                 Markdown file or generated documentation",
                 "FILES",
             )
         }),
@@ -210,7 +210,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "markdown-before-content",
                 "files to include inline between <body> and the content of a rendered \
-                        Markdown file or generated documentation",
+                 Markdown file or generated documentation",
                 "FILES",
             )
         }),
@@ -219,7 +219,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "markdown-after-content",
                 "files to include inline between the content and </body> of a rendered \
-                        Markdown file or generated documentation",
+                 Markdown file or generated documentation",
                 "FILES",
             )
         }),
@@ -234,8 +234,8 @@ fn opts() -> Vec<RustcOptGroup> {
                 "e",
                 "extend-css",
                 "To add some CSS rules with a given file to generate doc with your \
-                        own theme. However, your theme might break if the rustdoc's generated HTML \
-                        changes, so be careful!",
+                 own theme. However, your theme might break if the rustdoc's generated HTML \
+                 changes, so be careful!",
                 "PATH",
             )
         }),
@@ -248,7 +248,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "playground-url",
                 "URL to send code snippets to, may be reset by --markdown-playground-url \
-                        or `#![doc(html_playground_url=...)]`",
+                 or `#![doc(html_playground_url=...)]`",
                 "URL",
             )
         }),
@@ -281,7 +281,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "resource-suffix",
                 "suffix to add to CSS and JavaScript files, e.g., \"light.css\" will become \
-                      \"light-suffix.css\"",
+                 \"light-suffix.css\"",
                 "PATH",
             )
         }),
@@ -343,7 +343,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "static-root-path",
                 "Path string to force loading static files from in output pages. \
-                        If not set, uses combinations of '../' to reach the documentation root.",
+                 If not set, uses combinations of '../' to reach the documentation root.",
                 "PATH",
             )
         }),
