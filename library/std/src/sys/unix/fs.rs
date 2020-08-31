@@ -660,6 +660,7 @@ impl OpenOptions {
         let creation_mode = self.get_creation_mode()?;
         Ok(creation_mode | access_mode | self.custom_flags)
     }
+
     fn get_access_mode(&self) -> io::Result<c_int> {
         match (self.read, self.write, self.append) {
             (true, false, false) => Ok(libc::O_RDONLY),
