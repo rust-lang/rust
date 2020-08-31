@@ -129,13 +129,24 @@ macro_rules! acquire {
 /// `Arc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),
 /// so you can call `T`'s methods on a value of type `Arc<T>`. To avoid name
 /// clashes with `T`'s methods, the methods of `Arc<T>` itself are associated
-/// functions, called using function-like syntax:
+/// functions, called using [fully qualified syntax]:
 ///
 /// ```
 /// use std::sync::Arc;
-/// let my_arc = Arc::new(());
 ///
+/// let my_arc = Arc::new(());
 /// Arc::downgrade(&my_arc);
+/// ```
+///
+/// `Arc<T>`'s implementations of traits like `Clone` should also be called using
+/// fully qualified syntax to avoid confusion as to whether the *reference* is being
+/// cloned or the *backing data* (`T`) is being cloned:
+///
+/// ```
+/// use std::sync::Arc;
+///
+/// let my_arc = Arc::new(());
+/// let your_arc = Arc::clone(&my_arc);
 /// ```
 ///
 /// [`Weak<T>`][Weak] does not auto-dereference to `T`, because the inner value may have
@@ -154,6 +165,7 @@ macro_rules! acquire {
 /// [`RefCell<T>`]: core::cell::RefCell
 /// [`std::sync`]: ../../std/sync/index.html
 /// [`Arc::clone(&from)`]: Arc::clone
+/// [fully qualified syntax]: https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#fully-qualified-syntax-for-disambiguation-calling-methods-with-the-same-name
 ///
 /// # Examples
 ///
