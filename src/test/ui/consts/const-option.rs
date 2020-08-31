@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(const_option)]
-
 const X: Option<i32> = Some(32);
 const Y: Option<&i32> = X.as_ref();
 
