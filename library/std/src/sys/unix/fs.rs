@@ -966,7 +966,6 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     Ok(())
 }
 
-
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
     let p = cstr(p)?;
     cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) })?;
