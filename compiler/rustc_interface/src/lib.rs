@@ -4,6 +4,7 @@
 #![feature(nll)]
 #![feature(generator_trait)]
 #![feature(generators)]
+#![feature(once_cell)]
 #![recursion_limit = "256"]
 
 mod callbacks;
