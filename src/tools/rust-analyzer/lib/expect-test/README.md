@@ -1,3 +1,3 @@
-# expect_test
+# expect-test
 
 Minimalistic snapshot testing for Rust.
