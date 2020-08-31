@@ -403,10 +403,6 @@ impl<'a> StripUnconfigured<'a> {
         items.flat_map_in_place(|item| self.configure(item));
     }
 
-    pub fn configure_generic_params(&mut self, params: &mut Vec<ast::GenericParam>) {
-        params.flat_map_in_place(|param| self.configure(param));
-    }
-
     fn configure_variant_data(&mut self, vdata: &mut ast::VariantData) {
         match vdata {
             ast::VariantData::Struct(fields, ..) | ast::VariantData::Tuple(fields, _) => {
@@ -494,6 +490,13 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
         self.configure_expr_kind(&mut expr.kind);
         noop_visit_expr(&mut expr, self);
         Some(expr)
+    }
+
+    fn flat_map_generic_param(
+        &mut self,
+        param: ast::GenericParam,
+    ) -> SmallVec<[ast::GenericParam; 1]> {
+        noop_flat_map_generic_param(configure!(self, param), self)
     }
 
     fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
