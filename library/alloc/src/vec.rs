@@ -3024,7 +3024,10 @@ impl<T> Drain<'_, T> {
     }
 }
 
-/// An iterator produced by calling `drain_filter` on Vec.
+/// An iterator which uses a closure to determine if an element should be removed.
+///
+/// This struct is created by [`Vec::drain_filter`].
+/// See its documentation for more.
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
 pub struct DrainFilter<'a, T, F>
