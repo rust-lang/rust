@@ -867,6 +867,12 @@ pub struct ExternPreludeEntry<'a> {
     pub introduced_by_item: bool,
 }
 
+/// Used for better errors for E0773
+enum BuiltinMacroState {
+    NotYetSeen(SyntaxExtension),
+    AlreadySeen(Span),
+}
+
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
@@ -960,7 +966,7 @@ pub struct Resolver<'a> {
 
     crate_loader: CrateLoader<'a>,
     macro_names: FxHashSet<Ident>,
-    builtin_macros: FxHashMap<Symbol, SyntaxExtension>,
+    builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
     registered_attrs: FxHashSet<Ident>,
     registered_tools: FxHashSet<Ident>,
     macro_use_prelude: FxHashMap<Symbol, &'a NameBinding<'a>>,
