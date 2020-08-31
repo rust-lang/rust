@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 
+#[cfg(test)]
+mod tests;
+
 use crate::fmt::{Formatter, Result, Write};
 use core::str::lossy::{Utf8Lossy, Utf8LossyChunk};
 
@@ -20,27 +23,4 @@ pub fn debug_fmt_bytestring(slice: &[u8], f: &mut Formatter<'_>) -> Result {
         }
     }
     f.write_str("\"")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::fmt::{Debug, Formatter, Result};
-
-    #[test]
-    fn smoke() {
-        struct Helper<'a>(&'a [u8]);
-
-        impl Debug for Helper<'_> {
-            fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-                debug_fmt_bytestring(self.0, f)
-            }
-        }
-
-        let input = b"\xF0hello,\tworld";
-        let expected = r#""\xF0hello,\tworld""#;
-        let output = format!("{:?}", Helper(input));
-
-        assert!(output == expected);
-    }
 }
