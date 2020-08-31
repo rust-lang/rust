@@ -6,7 +6,7 @@ LL |     format!();
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: expected token: `,`
+error: expected `,`, found `1`
   --> $DIR/bad-format-args.rs:3:16
    |
 LL |     format!("" 1);

@@ -161,14 +161,26 @@ fn parse_args<'a>(
     while p.token != token::Eof {
         if !p.eat(&token::Comma) {
             if first {
-                // After `format!(""` we always expect *only* a comma...
-                let mut err = ecx.struct_span_err(p.token.span, "expected token: `,`");
-                err.span_label(p.token.span, "expected `,`");
-                p.maybe_annotate_with_ascription(&mut err, false);
-                return Err(err);
-            } else {
-                // ...after that delegate to `expect` to also include the other expected tokens.
-                let _ = p.expect(&token::Comma)?;
+                p.clear_expected_tokens();
+            }
+
+            // `Parser::expect` tries to recover using the
+            // `Parser::unexpected_try_recover` function. This function is able
+            // to recover if the expected token is a closing delimiter.
+            //
+            // As `,` is not a closing delimiter, it will always return an `Err`
+            // variant.
+            let mut err = p.expect(&token::Comma).unwrap_err();
+
+            match token::TokenKind::Comma.similar_tokens() {
+                Some(tks) if tks.contains(&p.token.kind) => {
+                    // If a similar token is found, then it may be a typo. We
+                    // consider it as a comma, and continue parsing.
+                    err.emit();
+                    p.bump();
+                }
+                // Otherwise stop the parsing and return the error.
+                _ => return Err(err),
             }
         }
         first = false;

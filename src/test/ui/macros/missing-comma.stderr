@@ -1,4 +1,4 @@
-error: expected token: `,`
+error: expected `,`, found `a`
   --> $DIR/missing-comma.rs:19:19
    |
 LL |     println!("{}" a);
