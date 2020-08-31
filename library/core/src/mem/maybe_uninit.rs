@@ -167,7 +167,7 @@ use crate::mem::ManuallyDrop;
 ///
 /// // For each item in the array, drop if we allocated it.
 /// for elem in &mut data[0..data_len] {
-///     unsafe { ptr::drop_in_place(elem.ptr()); }
+///     unsafe { ptr::drop_in_place(elem.as_mut_ptr()); }
 /// }
 /// ```
 ///
