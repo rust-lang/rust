@@ -54,8 +54,7 @@
 //! below for more details.
 //!
 //! [`Some(Item)`]: Some
-//! [`Iterator`]: trait.Iterator.html
-//! [`next`]: trait.Iterator.html#tymethod.next
+//! [`next`]: Iterator::next
 //! [`TryIter`]: ../../std/sync/mpsc/struct.TryIter.html
 //!
 //! # The three forms of iteration
@@ -159,8 +158,7 @@
 //! Let's take a look at that `for` loop again, and what the compiler converts
 //! it into:
 //!
-//! [`IntoIterator`]: trait.IntoIterator.html
-//! [`into_iter`]: trait.IntoIterator.html#tymethod.into_iter
+//! [`into_iter`]: IntoIterator::into_iter
 //!
 //! ```
 //! let values = vec![1, 2, 3, 4, 5];
@@ -222,9 +220,9 @@
 //! across versions of Rust, so you should avoid relying on the exact values
 //! returned by an iterator which panicked.
 //!
-//! [`map`]: trait.Iterator.html#method.map
-//! [`take`]: trait.Iterator.html#method.take
-//! [`filter`]: trait.Iterator.html#method.filter
+//! [`map`]: Iterator::map
+//! [`take`]: Iterator::take
+//! [`filter`]: Iterator::filter
 //!
 //! # Laziness
 //!
@@ -261,13 +259,13 @@
 //! }
 //! ```
 //!
-//! [`map`]: trait.Iterator.html#method.map
-//! [`for_each`]: trait.Iterator.html#method.for_each
+//! [`map`]: Iterator::map
+//! [`for_each`]: Iterator::for_each
 //!
 //! Another common way to evaluate an iterator is to use the [`collect`]
 //! method to produce a new collection.
 //!
-//! [`collect`]: trait.Iterator.html#method.collect
+//! [`collect`]: Iterator::collect
 //!
 //! # Infinity
 //!
@@ -305,8 +303,8 @@
 //! println!("The smallest number one is {}.", least);
 //! ```
 //!
-//! [`take`]: trait.Iterator.html#method.take
-//! [`min`]: trait.Iterator.html#method.min
+//! [`take`]: Iterator::take
+//! [`min`]: Iterator::min
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

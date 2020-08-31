@@ -114,8 +114,9 @@ use crate::raw_vec::RawVec;
 /// assert_eq!(vec, [0, 0, 0, 0, 0]);
 ///
 /// // The following is equivalent, but potentially slower:
-/// let mut vec1 = Vec::with_capacity(5);
-/// vec1.resize(5, 0);
+/// let mut vec = Vec::with_capacity(5);
+/// vec.resize(5, 0);
+/// assert_eq!(vec, [0, 0, 0, 0, 0]);
 /// ```
 ///
 /// Use a `Vec<T>` as an efficient stack:
@@ -1565,7 +1566,7 @@ impl<T: Clone> Vec<T> {
     /// This method requires `T` to implement [`Clone`],
     /// in order to be able to clone the passed value.
     /// If you need more flexibility (or want to rely on [`Default`] instead of
-    /// [`Clone`]), use [`resize_with`].
+    /// [`Clone`]), use [`Vec::resize_with`].
     ///
     /// # Examples
     ///
@@ -1578,8 +1579,6 @@ impl<T: Clone> Vec<T> {
     /// vec.resize(2, 0);
     /// assert_eq!(vec, [1, 2]);
     /// ```
-    ///
-    /// [`resize_with`]: Vec::resize_with
     #[stable(feature = "vec_resize", since = "1.5.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
@@ -1609,7 +1608,7 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, [1, 2, 3, 4]);
     /// ```
     ///
-    /// [`extend`]: #method.extend
+    /// [`extend`]: Vec::extend
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
@@ -3024,7 +3023,10 @@ impl<T> Drain<'_, T> {
     }
 }
 
-/// An iterator produced by calling `drain_filter` on Vec.
+/// An iterator which uses a closure to determine if an element should be removed.
+///
+/// This struct is created by [`Vec::drain_filter`].
+/// See its documentation for more.
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
 pub struct DrainFilter<'a, T, F>
