@@ -1,5 +1,5 @@
 use rustc_hir::def_id::CrateNum;
-use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
+use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::ty::{
     self,
@@ -132,14 +132,8 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             return Ok(self);
         }
 
-        self.path.push_str("::");
+        write!(self.path, "::{}", disambiguated_data.data).unwrap();
 
-        match disambiguated_data.data.get_name() {
-            DefPathDataName::Named(name) => self.path.write_str(&name.as_str()).unwrap(),
-            DefPathDataName::Anon { namespace } => {
-                write!(self.path, "{{{{{}}}}}", namespace).unwrap()
-            }
-        }
         Ok(self)
     }
 

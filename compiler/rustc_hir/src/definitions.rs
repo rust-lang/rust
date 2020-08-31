@@ -15,7 +15,7 @@ use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 
-use std::fmt::Write;
+use std::fmt::{self, Write};
 use std::hash::Hash;
 use tracing::debug;
 
@@ -155,6 +155,23 @@ pub struct DisambiguatedDefPathData {
     pub disambiguator: u32,
 }
 
+impl fmt::Display for DisambiguatedDefPathData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.data.get_name() {
+            DefPathDataName::Named(name) => {
+                if self.disambiguator == 0 {
+                    f.write_str(&name.as_str())
+                } else {
+                    write!(f, "{}#{}", name, self.disambiguator)
+                }
+            }
+            DefPathDataName::Anon { namespace } => {
+                write!(f, "{{{}#{}}}", namespace, self.disambiguator)
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct DefPath {
     /// The path leading from the crate root to the item.
@@ -202,35 +219,7 @@ impl DefPath {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
-            match component.data.get_name() {
-                DefPathDataName::Named(name) => write!(s, "::{}", name).unwrap(),
-                DefPathDataName::Anon { namespace } => {
-                    write!(s, "::{{{}#{}}}", namespace, component.disambiguator).unwrap()
-                }
-            }
-        }
-
-        s
-    }
-
-    /// Returns a filename-friendly string for the `DefPath`, with the
-    /// crate-prefix.
-    pub fn to_string_friendly<F>(&self, crate_imported_name: F) -> String
-    where
-        F: FnOnce(CrateNum) -> Symbol,
-    {
-        let crate_name_str = crate_imported_name(self.krate).as_str();
-        let mut s = String::with_capacity(crate_name_str.len() + self.data.len() * 16);
-
-        write!(s, "::{}", crate_name_str).unwrap();
-
-        for component in &self.data {
-            match component.data.get_name() {
-                DefPathDataName::Named(name) => write!(s, "::{}", name).unwrap(),
-                DefPathDataName::Anon { namespace } => {
-                    write!(s, "{{{}#{}}}", namespace, component.disambiguator).unwrap()
-                }
-            }
+            write!(s, "::{}", component).unwrap();
         }
 
         s
@@ -246,13 +235,9 @@ impl DefPath {
         for component in &self.data {
             s.extend(opt_delimiter);
             opt_delimiter = Some('-');
-            match component.data.get_name() {
-                DefPathDataName::Named(name) => write!(s, "{}", name).unwrap(),
-                DefPathDataName::Anon { namespace } => {
-                    write!(s, "{{{}#{}}}", namespace, component.disambiguator).unwrap()
-                }
-            }
+            write!(s, "{}", component).unwrap();
         }
+
         s
     }
 }
@@ -465,11 +450,13 @@ impl DefPathData {
             ImplTrait => DefPathDataName::Anon { namespace: sym::opaque },
         }
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl fmt::Display for DefPathData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.get_name() {
-            DefPathDataName::Named(name) => name.to_string(),
-            DefPathDataName::Anon { namespace } => format!("{{{{{}}}}}", namespace),
+            DefPathDataName::Named(name) => f.write_str(&name.as_str()),
+            DefPathDataName::Anon { namespace } => write!(f, "{{{{{}}}}}", namespace),
         }
     }
 }
