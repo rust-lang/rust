@@ -2,6 +2,7 @@
 name = "rustdoc-themes"
 version = "0.1.0"
 authors = ["Guillaume Gomez <guillaume1.gomez@gmail.com>"]
+license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [[bin]]

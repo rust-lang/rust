@@ -2,6 +2,7 @@
 name = "expand-yaml-anchors"
 version = "0.1.0"
 authors = ["Pietro Albini <pietro@pietroalbini.org>"]
+license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]

@@ -2,6 +2,7 @@
 name = "rustdoc-tool"
 version = "0.0.0"
 authors = ["The Rust Project Developers"]
+license = "MIT OR Apache-2.0"
 edition = "2018"
 
 # Cargo adds a number of paths to the dylib search path on windows, which results in

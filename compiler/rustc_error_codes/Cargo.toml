@@ -2,4 +2,5 @@
 authors = ["The Rust Project Developers"]
 name = "rustc_error_codes"
 version = "0.0.0"
+license = "MIT OR Apache-2.0"
 edition = "2018"
