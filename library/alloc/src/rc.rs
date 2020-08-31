@@ -230,7 +230,7 @@
 //! [`Cell`]: core::cell::Cell
 //! [`RefCell`]: core::cell::RefCell
 //! [send]: core::marker::Send
-//! [arc]: alloc::sync::Arc
+//! [arc]: crate::sync::Arc
 //! [`Deref`]: core::ops::Deref
 //! [downgrade]: Rc::downgrade
 //! [upgrade]: Weak::upgrade
