@@ -1,7 +1,6 @@
 #[doc(primitive = "bool")]
 #[doc(alias = "true")]
 #[doc(alias = "false")]
-//
 /// The boolean type.
 ///
 /// The `bool` represents a value, which could only be either `true` or `false`. If you cast
