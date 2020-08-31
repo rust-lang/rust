@@ -45,8 +45,8 @@ mod status;
 mod syntax_highlighting;
 mod syntax_tree;
 mod typing;
-mod link_rewrite;
 mod markdown_remove;
+mod doc_links;
 
 use std::sync::Arc;
 
@@ -386,8 +386,8 @@ impl Analysis {
     pub fn get_doc_url(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Option<link_rewrite::DocumentationLink>> {
-        self.with_db(|db| link_rewrite::get_doc_url(db, &position))
+    ) -> Cancelable<Option<doc_links::DocumentationLink>> {
+        self.with_db(|db| doc_links::get_doc_url(db, &position))
     }
 
     /// Computes parameter information for the given call expression.
