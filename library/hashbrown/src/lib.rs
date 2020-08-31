@@ -12,13 +12,7 @@
 #![no_std]
 #![cfg_attr(
     feature = "nightly",
-    feature(
-        test,
-        core_intrinsics,
-        dropck_eyepatch,
-        min_specialization,
-        extend_one,
-    )
+    feature(test, core_intrinsics, dropck_eyepatch, min_specialization, extend_one)
 )]
 #![allow(
     clippy::doc_markdown,
