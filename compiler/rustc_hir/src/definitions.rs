@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
 use std::fmt::{self, Write};
 use std::hash::Hash;
@@ -155,20 +155,29 @@ pub struct DisambiguatedDefPathData {
     pub disambiguator: u32,
 }
 
-impl fmt::Display for DisambiguatedDefPathData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl DisambiguatedDefPathData {
+    pub fn fmt_maybe_verbose(&self, writer: &mut impl Write, verbose: bool) -> fmt::Result {
         match self.data.get_name() {
             DefPathDataName::Named(name) => {
-                if self.disambiguator == 0 {
-                    f.write_str(&name.as_str())
+                if Ident::with_dummy_span(name).is_raw_guess() {
+                    writer.write_str("r#")?;
+                }
+                if self.disambiguator == 0 || !verbose {
+                    writer.write_str(&name.as_str())
                 } else {
-                    write!(f, "{}#{}", name, self.disambiguator)
+                    write!(writer, "{}#{}", name, self.disambiguator)
                 }
             }
             DefPathDataName::Anon { namespace } => {
-                write!(f, "{{{}#{}}}", namespace, self.disambiguator)
+                write!(writer, "{{{}#{}}}", namespace, self.disambiguator)
             }
         }
+    }
+}
+
+impl fmt::Display for DisambiguatedDefPathData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.fmt_maybe_verbose(f, true)
     }
 }
 
@@ -419,6 +428,7 @@ impl Definitions {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum DefPathDataName {
     Named(Symbol),
     Anon { namespace: Symbol },
@@ -434,7 +444,7 @@ impl DefPathData {
         }
     }
 
-    pub fn get_name(&self) -> DefPathDataName {
+    pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
@@ -454,7 +464,7 @@ impl DefPathData {
 
 impl fmt::Display for DefPathData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.get_name() {
+        match self.name() {
             DefPathDataName::Named(name) => f.write_str(&name.as_str()),
             DefPathDataName::Anon { namespace } => write!(f, "{{{{{}}}}}", namespace),
         }

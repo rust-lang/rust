@@ -1496,27 +1496,16 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
             return Ok(self);
         }
 
-        let name = match disambiguated_data.data.get_name() {
-            DefPathDataName::Named(name) => name,
-            DefPathDataName::Anon { namespace } => namespace,
-        };
-
         // FIXME(eddyb) `name` should never be empty, but it
         // currently is for `extern { ... }` "foreign modules".
-        if name != kw::Invalid {
+        let name = disambiguated_data.data.get_name();
+        if name != DefPathDataName::Named(kw::Invalid) {
             if !self.empty_path {
                 write!(self, "::")?;
             }
-            if Ident::with_dummy_span(name).is_raw_guess() {
-                write!(self, "r#")?;
-            }
 
-            match disambiguated_data.data.get_name() {
-                DefPathDataName::Named(name) => self.write_str(&name.as_str())?,
-                DefPathDataName::Anon { namespace } => {
-                    write!(self, "{{{}#{}}}", namespace, disambiguated_data.disambiguator)?
-                }
-            }
+            let verbose = self.tcx.sess.verbose();
+            disambiguated_data.fmt_maybe_verbose(&mut self, verbose)?;
 
             self.empty_path = false;
         }
