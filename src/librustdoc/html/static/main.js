@@ -2740,10 +2740,17 @@ function defocusSearchBar() {
         });
     }
 
+    function enableSearchInput() {
+        if (search_input) {
+            search_input.removeAttribute('disabled');
+        }
+    }
+
     window.addSearchOptions = function(crates) {
         var elem = document.getElementById("crate-search");
 
         if (!elem) {
+            enableSearchInput();
             return;
         }
         var crates_text = [];
@@ -2781,10 +2788,7 @@ function defocusSearchBar() {
                 elem.value = savedCrate;
             }
         }
-
-        if (search_input) {
-            search_input.removeAttribute('disabled');
-        }
+        enableSearchInput();
     };
 
     function buildHelperPopup() {
