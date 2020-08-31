@@ -114,8 +114,9 @@ use crate::raw_vec::RawVec;
 /// assert_eq!(vec, [0, 0, 0, 0, 0]);
 ///
 /// // The following is equivalent, but potentially slower:
-/// let mut vec1 = Vec::with_capacity(5);
-/// vec1.resize(5, 0);
+/// let mut vec = Vec::with_capacity(5);
+/// vec.resize(5, 0);
+/// assert_eq!(vec, [0, 0, 0, 0, 0]);
 /// ```
 ///
 /// Use a `Vec<T>` as an efficient stack:
