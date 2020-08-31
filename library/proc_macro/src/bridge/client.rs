@@ -311,11 +311,13 @@ impl Bridge<'_> {
         HIDE_PANICS_DURING_EXPANSION.call_once(|| {
             let prev = panic::take_hook();
             panic::set_hook(Box::new(move |info| {
-                let hide = BridgeState::with(|state| match state {
-                    BridgeState::NotConnected => false,
-                    BridgeState::Connected(_) | BridgeState::InUse => true,
+                let show = BridgeState::with(|state| match state {
+                    BridgeState::NotConnected => true,
+                    // Something weird is going on, so don't suppress any backtraces
+                    BridgeState::InUse => true,
+                    BridgeState::Connected(bridge) => bridge.force_show_panics,
                 });
-                if !hide {
+                if show {
                     prev(info)
                 }
             }));
