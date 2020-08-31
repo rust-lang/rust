@@ -445,15 +445,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             assert_ne!(bound, provided);
             Err((bound as i32 - provided as i32, Some(err)))
         };
-        let emit_correct =
-            |correct: Result<(), (_, Option<rustc_errors::DiagnosticBuilder<'_>>)>| match correct {
-                Ok(()) => Ok(()),
-                Err((_, None)) => Err(()),
-                Err((_, Some(mut err))) => {
-                    err.emit();
-                    Err(())
-                }
-            };
 
         let mut unexpected_spans = vec![];
 
@@ -501,30 +492,40 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Emit a help message if it's possible that a type could be surrounded in braces
         if let Err((c_mismatch, Some(ref mut _const_err))) = const_count_correct {
-            if let Err((t_mismatch, Some(ref mut type_err))) = type_count_correct {
-                if c_mismatch == -t_mismatch && t_mismatch < 0 {
-                    for i in 0..c_mismatch as usize {
-                        let arg = &args.args[arg_counts.lifetimes + i];
-                        match arg {
-                            GenericArg::Type(hir::Ty {
-                                kind: hir::TyKind::Path { .. }, ..
-                            }) => {}
-                            _ => continue,
-                        }
-                        let suggestions = vec![
-                            (arg.span().shrink_to_lo(), String::from("{ ")),
-                            (arg.span().shrink_to_hi(), String::from(" }")),
-                        ];
-                        type_err.multipart_suggestion(
-                            "If this generic argument was intended as a const parameter, \
-                            try surrounding it with braces:",
-                            suggestions,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+            if let Err((_, Some(ref mut type_err))) = type_count_correct {
+                let possible_matches = args.args[arg_counts.lifetimes..]
+                    .iter()
+                    .filter(|arg| {
+                        matches!(
+                            arg,
+                            GenericArg::Type(hir::Ty { kind: hir::TyKind::Path { .. }, .. })
+                        )
+                    })
+                    .take(c_mismatch.max(0) as usize);
+                for arg in possible_matches {
+                    let suggestions = vec![
+                        (arg.span().shrink_to_lo(), String::from("{ ")),
+                        (arg.span().shrink_to_hi(), String::from(" }")),
+                    ];
+                    type_err.multipart_suggestion(
+                        "If this generic argument was intended as a const parameter, \
+                        try surrounding it with braces:",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             }
         }
+
+        let emit_correct =
+            |correct: Result<(), (_, Option<rustc_errors::DiagnosticBuilder<'_>>)>| match correct {
+                Ok(()) => Ok(()),
+                Err((_, None)) => Err(()),
+                Err((_, Some(mut err))) => {
+                    err.emit();
+                    Err(())
+                }
+            };
 
         let arg_count_correct = emit_correct(lifetime_count_correct)
             .and(emit_correct(const_count_correct))
