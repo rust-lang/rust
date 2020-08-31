@@ -91,7 +91,6 @@ pub fn remove_links(markdown: &str) -> String {
 }
 
 pub fn get_doc_link<T: Resolvable + Clone>(db: &dyn HirDatabase, definition: &T) -> Option<String> {
-    eprintln!("hir::doc_links::get_doc_link");
     let module_def = definition.clone().try_into_module_def()?;
 
     get_doc_link_impl(db, &module_def)
@@ -105,8 +104,31 @@ pub fn get_doc_link<T: Resolvable + Clone>(db: &dyn HirDatabase, definition: &T)
 // BUG: For methods
 // import_map.path_of(ns) fails, is not designed to resolve methods
 fn get_doc_link_impl(db: &dyn HirDatabase, moddef: &ModuleDef) -> Option<String> {
-    eprintln!("get_doc_link_impl: {:#?}", moddef);
-    let ns = ItemInNs::Types(moddef.clone().into());
+    // Get the outermost definition for the moduledef. This is used to resolve the public path to the type,
+    // then we can join the method, field, etc onto it if required.
+    let target_def: ModuleDef = match moddef {
+        ModuleDef::Function(f) => match f.as_assoc_item(db).map(|assoc| assoc.container(db)) {
+            Some(AssocItemContainer::Trait(t)) => t.into(),
+            Some(AssocItemContainer::ImplDef(imp)) => {
+                let resolver = ModuleId::from(imp.module(db)).resolver(db.upcast());
+                let ctx = TyLoweringContext::new(db, &resolver);
+                Adt::from(
+                    Ty::from_hir(
+                        &ctx,
+                        &imp.target_trait(db).unwrap_or_else(|| imp.target_type(db)),
+                    )
+                    .as_adt()
+                    .map(|t| t.0)
+                    .unwrap(),
+                )
+                .into()
+            }
+            None => ModuleDef::Function(*f),
+        },
+        moddef => *moddef,
+    };
+
+    let ns = ItemInNs::Types(target_def.clone().into());
 
     let module = moddef.module(db)?;
     let krate = module.krate();
@@ -117,7 +139,28 @@ fn get_doc_link_impl(db: &dyn HirDatabase, moddef: &ModuleDef) -> Option<String>
 
     get_doc_url(db, &krate)
         .and_then(|url| url.join(&base).ok())
-        .and_then(|url| get_symbol_filename(db, &moddef).as_deref().and_then(|f| url.join(f).ok()))
+        .and_then(|url| {
+            get_symbol_filename(db, &target_def).as_deref().and_then(|f| url.join(f).ok())
+        })
+        .and_then(|url| match moddef {
+            ModuleDef::Function(f) => {
+                get_symbol_fragment(db, &FieldOrAssocItem::AssocItem(AssocItem::Function(*f)))
+                    .as_deref()
+                    .and_then(|f| url.join(f).ok())
+            }
+            ModuleDef::Const(c) => {
+                get_symbol_fragment(db, &FieldOrAssocItem::AssocItem(AssocItem::Const(*c)))
+                    .as_deref()
+                    .and_then(|f| url.join(f).ok())
+            }
+            ModuleDef::TypeAlias(ty) => {
+                get_symbol_fragment(db, &FieldOrAssocItem::AssocItem(AssocItem::TypeAlias(*ty)))
+                    .as_deref()
+                    .and_then(|f| url.join(f).ok())
+            }
+            // TODO:  Field <- this requires passing in a definition or something
+            _ => Some(url),
+        })
         .map(|url| url.into_string())
 }
 
@@ -307,6 +350,12 @@ fn ns_from_intra_spec(s: &str) -> Option<hir::Namespace> {
     .next()
 }
 
+/// Get the root URL for the documentation of a crate.
+///
+/// ```
+/// https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.next
+/// ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/// ```
 fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
     krate
         .get_html_root_url(db)
@@ -323,8 +372,11 @@ fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
 
 /// Get the filename and extension generated for a symbol by rustdoc.
 ///
-/// Example: `struct.Shard.html`
-fn get_symbol_filename(db: &RootDatabase, definition: &ModuleDef) -> Option<String> {
+/// ```
+/// https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.next
+///                                    ^^^^^^^^^^^^^^^^^^^
+/// ```
+fn get_symbol_filename(db: &dyn HirDatabase, definition: &ModuleDef) -> Option<String> {
     Some(match definition {
         ModuleDef::Adt(adt) => match adt {
             Adt::Struct(s) => format!("struct.{}.html", s.name(db)),
@@ -334,13 +386,37 @@ fn get_symbol_filename(db: &RootDatabase, definition: &ModuleDef) -> Option<Stri
         ModuleDef::Module(_) => "index.html".to_string(),
         ModuleDef::Trait(t) => format!("trait.{}.html", t.name(db)),
         ModuleDef::TypeAlias(t) => format!("type.{}.html", t.name(db)),
-        ModuleDef::BuiltinType(t) => format!("primitive.{}.html", t),
+        ModuleDef::BuiltinType(t) => format!("primitive.{}.html", t.as_name()),
         ModuleDef::Function(f) => format!("fn.{}.html", f.name(db)),
         ModuleDef::EnumVariant(ev) => {
             format!("enum.{}.html#variant.{}", ev.parent_enum(db).name(db), ev.name(db))
         }
         ModuleDef::Const(c) => format!("const.{}.html", c.name(db)?),
         ModuleDef::Static(s) => format!("static.{}.html", s.name(db)?),
+    })
+}
+
+enum FieldOrAssocItem {
+    Field(Field),
+    AssocItem(AssocItem),
+}
+
+/// Get the fragment required to link to a specific field, method, associated type, or associated constant.
+///
+/// ```
+/// https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.next
+///                                                       ^^^^^^^^^^^^^^
+/// ```
+fn get_symbol_fragment(db: &dyn HirDatabase, field_or_assoc: &FieldOrAssocItem) -> Option<String> {
+    Some(match field_or_assoc {
+        FieldOrAssocItem::Field(field) => format!("#structfield.{}", field.name(db)),
+        FieldOrAssocItem::AssocItem(assoc) => match assoc {
+            // TODO: Rustdoc sometimes uses tymethod instead of method. This case needs to be investigated.
+            AssocItem::Function(function) => format!("#method.{}", function.name(db)),
+            // TODO: This might be the old method for documenting associated constants, i32::MAX uses a separate page...
+            AssocItem::Const(constant) => format!("#associatedconstant.{}", constant.name(db)?),
+            AssocItem::TypeAlias(ty) => format!("#associatedtype.{}", ty.name(db)),
+        },
     })
 }
 
