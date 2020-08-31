@@ -361,8 +361,9 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// assert_eq!(addr.octets(), [127, 0, 0, 1]);
     /// ```
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn octets(&self) -> [u8; 4] {
+    pub const fn octets(&self) -> [u8; 4] {
         // This returns the order we want because s_addr is stored in big-endian.
         self.inner.s_addr.to_ne_bytes()
     }
@@ -404,8 +405,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_loopback(), true);
     /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_loopback(), false);
     /// ```
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.48.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_loopback(&self) -> bool {
+    pub const fn is_loopback(&self) -> bool {
         self.octets()[0] == 127
     }
 
@@ -433,8 +435,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 168, 0, 2).is_private(), true);
     /// assert_eq!(Ipv4Addr::new(192, 169, 0, 2).is_private(), false);
     /// ```
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.48.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_private(&self) -> bool {
+    pub const fn is_private(&self) -> bool {
         match self.octets() {
             [10, ..] => true,
             [172, b, ..] if b >= 16 && b <= 31 => true,
@@ -459,8 +462,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(169, 254, 10, 65).is_link_local(), true);
     /// assert_eq!(Ipv4Addr::new(16, 89, 10, 65).is_link_local(), false);
     /// ```
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.48.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_link_local(&self) -> bool {
+    pub const fn is_link_local(&self) -> bool {
         match self.octets() {
             [169, 254, ..] => true,
             _ => false,
@@ -573,7 +577,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(100, 127, 255, 255).is_shared(), true);
     /// assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
     /// ```
-    pub fn is_shared(&self) -> bool {
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.48.0")]
+    pub const fn is_shared(&self) -> bool {
         self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
     }
 
@@ -605,7 +610,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 0, 1, 0).is_ietf_protocol_assignment(), false);
     /// assert_eq!(Ipv4Addr::new(191, 255, 255, 255).is_ietf_protocol_assignment(), false);
     /// ```
-    pub fn is_ietf_protocol_assignment(&self) -> bool {
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.48.0")]
+    pub const fn is_ietf_protocol_assignment(&self) -> bool {
         self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
     }
 
@@ -628,7 +634,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(198, 19, 255, 255).is_benchmarking(), true);
     /// assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
     /// ```
-    pub fn is_benchmarking(&self) -> bool {
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.48.0")]
+    pub const fn is_benchmarking(&self) -> bool {
         self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
     }
 
@@ -681,8 +688,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_multicast(), true);
     /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_multicast(), false);
     /// ```
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.48.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_multicast(&self) -> bool {
+    pub const fn is_multicast(&self) -> bool {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
     }
 
@@ -727,8 +735,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_documentation(), true);
     /// assert_eq!(Ipv4Addr::new(193, 34, 17, 19).is_documentation(), false);
     /// ```
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.48.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_documentation(&self) -> bool {
+    pub const fn is_documentation(&self) -> bool {
         match self.octets() {
             [192, 0, 2, _] => true,
             [198, 51, 100, _] => true,
