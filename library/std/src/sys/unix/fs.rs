@@ -655,7 +655,11 @@ impl OpenOptions {
     pub fn mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
     }
-
+    pub fn as_flags(&self) -> io::Result<c_int> {
+        let access_mode = self.get_access_mode()?;
+        let creation_mode = self.get_creation_mode()?;
+        Ok(creation_mode | access_mode | self.custom_flags)
+    }
     fn get_access_mode(&self) -> io::Result<c_int> {
         match (self.read, self.write, self.append) {
             (true, false, false) => Ok(libc::O_RDONLY),
@@ -691,7 +695,6 @@ impl OpenOptions {
         })
     }
 }
-
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
@@ -963,11 +966,6 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     Ok(())
 }
 
-pub fn get_openopetions_as_cint(from: OpenOptions) -> io::Result<libc::c_int> {
-    let access_mode = from.get_access_mode()?;
-    let creation_mode = from.get_creation_mode()?;
-    Ok(creation_mode | access_mode)
-}
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
     let p = cstr(p)?;
