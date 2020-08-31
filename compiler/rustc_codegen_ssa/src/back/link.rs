@@ -1014,86 +1014,7 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
     }
 }
 
-// Because windows-gnu target is meant to be self-contained for pure Rust code it bundles
-// own mingw-w64 libraries. These libraries are usually not compatible with mingw-w64
-// installed in the system. This breaks many cases where Rust is mixed with other languages
-// (e.g. *-sys crates).
-// We prefer system mingw-w64 libraries if they are available to avoid this issue.
-fn get_crt_libs_path(sess: &Session) -> Option<PathBuf> {
-    fn find_exe_in_path<P>(exe_name: P) -> Option<PathBuf>
-    where
-        P: AsRef<Path>,
-    {
-        for dir in env::split_paths(&env::var_os("PATH")?) {
-            let full_path = dir.join(&exe_name);
-            if full_path.is_file() {
-                return Some(fix_windows_verbatim_for_gcc(&full_path));
-            }
-        }
-        None
-    }
-
-    fn probe(sess: &Session) -> Option<PathBuf> {
-        if let (linker, LinkerFlavor::Gcc) = linker_and_flavor(&sess) {
-            let linker_path = if cfg!(windows) && linker.extension().is_none() {
-                linker.with_extension("exe")
-            } else {
-                linker
-            };
-            if let Some(linker_path) = find_exe_in_path(linker_path) {
-                let mingw_arch = match &sess.target.target.arch {
-                    x if x == "x86" => "i686",
-                    x => x,
-                };
-                let mingw_bits = &sess.target.target.target_pointer_width;
-                let mingw_dir = format!("{}-w64-mingw32", mingw_arch);
-                // Here we have path/bin/gcc but we need path/
-                let mut path = linker_path;
-                path.pop();
-                path.pop();
-                // Loosely based on Clang MinGW driver
-                let probe_paths = vec![
-                    path.join(&mingw_dir).join("lib"),                // Typical path
-                    path.join(&mingw_dir).join("sys-root/mingw/lib"), // Rare path
-                    path.join(format!(
-                        "lib/mingw/tools/install/mingw{}/{}/lib",
-                        &mingw_bits, &mingw_dir
-                    )), // Chocolatey is creative
-                ];
-                for probe_path in probe_paths {
-                    if probe_path.join("crt2.o").exists() {
-                        return Some(probe_path);
-                    };
-                }
-            };
-        };
-        None
-    }
-
-    let mut system_library_path = sess.system_library_path.borrow_mut();
-    match &*system_library_path {
-        Some(Some(compiler_libs_path)) => Some(compiler_libs_path.clone()),
-        Some(None) => None,
-        None => {
-            let path = probe(sess);
-            *system_library_path = Some(path.clone());
-            path
-        }
-    }
-}
-
 fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> PathBuf {
-    // prefer system {,dll}crt2.o libs, see get_crt_libs_path comment for more details
-    if sess.opts.cg.link_self_contained.is_none()
-        && sess.target.target.llvm_target.contains("windows-gnu")
-    {
-        if let Some(compiler_libs_path) = get_crt_libs_path(sess) {
-            let file_path = compiler_libs_path.join(name);
-            if file_path.exists() {
-                return file_path;
-            }
-        }
-    }
     let fs = sess.target_filesearch(PathKind::Native);
     let file_path = fs.get_lib_path().join(name);
     if file_path.exists() {
@@ -1286,6 +1207,28 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
     }
 }
 
+// Returns true if linker is located within sysroot
+fn detect_self_contained_mingw(sess: &Session) -> bool {
+    let (linker, _) = linker_and_flavor(&sess);
+    // Assume `-C linker=rust-lld` as self-contained mode
+    if linker == Path::new("rust-lld") {
+        return true;
+    }
+    let linker_with_extension = if cfg!(windows) && linker.extension().is_none() {
+        linker.with_extension("exe")
+    } else {
+        linker
+    };
+    for dir in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {
+        let full_path = dir.join(&linker_with_extension);
+        // If linker comes from sysroot assume self-contained mode
+        if full_path.is_file() && !full_path.starts_with(&sess.sysroot) {
+            return false;
+        }
+    }
+    true
+}
+
 /// Whether we link to our own CRT objects instead of relying on gcc to pull them.
 /// We only provide such support for a very limited number of targets.
 fn crt_objects_fallback(sess: &Session, crate_type: CrateType) -> bool {
@@ -1298,10 +1241,10 @@ fn crt_objects_fallback(sess: &Session, crate_type: CrateType) -> bool {
         // based on host and linker path, for example.
         // (https://github.com/rust-lang/rust/pull/71769#issuecomment-626330237).
         Some(CrtObjectsFallback::Musl) => sess.crt_static(Some(crate_type)),
-        // FIXME: Find some heuristic for "native mingw toolchain is available",
-        // likely based on `get_crt_libs_path` (https://github.com/rust-lang/rust/pull/67429).
         Some(CrtObjectsFallback::Mingw) => {
-            sess.host == sess.target.target && sess.target.target.target_vendor != "uwp"
+            sess.host == sess.target.target
+                && sess.target.target.target_vendor != "uwp"
+                && detect_self_contained_mingw(&sess)
         }
         // FIXME: Figure out cases in which WASM needs to link with a native toolchain.
         Some(CrtObjectsFallback::Wasm) => true,
@@ -1498,16 +1441,6 @@ fn link_local_crate_native_libs_and_dependent_crate_libs<'a, B: ArchiveBuilder<'
 
 /// Add sysroot and other globally set directories to the directory search list.
 fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session, self_contained: bool) {
-    // Prefer system mingw-w64 libs, see get_crt_libs_path comment for more details.
-    if sess.opts.cg.link_self_contained.is_none()
-        && cfg!(windows)
-        && sess.target.target.llvm_target.contains("windows-gnu")
-    {
-        if let Some(compiler_libs_path) = get_crt_libs_path(sess) {
-            cmd.include_path(&compiler_libs_path);
-        }
-    }
-
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
     let lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
