@@ -8,10 +8,8 @@ struct B;
 impl A for B {}
 
 fn test<const T: &'static dyn A>() {
-    //[full]~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]` to be used
-    //[min]~^^ ERROR `&'static (dyn A + 'static)` is forbidden as the type of
-    // a const generic parameter
-    //[min]~| ERROR must be annotated with `#[derive(PartialEq, Eq)]` to be used
+    //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]` to be used
+    //[min]~^^ ERROR `&'static (dyn A + 'static)` is forbidden
     unimplemented!()
 }
 

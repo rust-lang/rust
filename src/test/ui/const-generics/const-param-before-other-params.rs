@@ -4,9 +4,8 @@
 #![cfg_attr(min, feature(min_const_generics))]
 
 fn bar<const X: (), 'a>(_: &'a ()) {
-    //[full]~^ ERROR lifetime parameters must be declared prior to const parameters
-    //[min]~^^ ERROR lifetime parameters must be declared prior to const parameters
-    //[min]~^^^ ERROR `()` is forbidden as the type of a const generic parameter
+    //~^ ERROR lifetime parameters must be declared prior to const parameters
+    //[min]~^^ ERROR `()` is forbidden as the type of a const generic parameter
 }
 
 fn foo<const X: (), T>(_: &T) {}

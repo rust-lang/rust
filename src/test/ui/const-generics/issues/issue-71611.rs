@@ -4,10 +4,8 @@
 #![cfg_attr(min, feature(min_const_generics))]
 
 fn func<A, const F: fn(inner: A)>(outer: A) {
-    //[full]~^ ERROR: using function pointers as const generic parameters is forbidden
-    //[full]~| ERROR: the type of const parameters must not depend on other generic parameters
-    //[min]~^^^ ERROR: using function pointers as const generic parameters is forbidden
-    //[min]~| ERROR: the type of const parameters must not depend on other generic parameters
+    //~^ ERROR: using function pointers as const generic parameters is forbidden
+    //~| ERROR: the type of const parameters must not depend on other generic parameters
     F(outer);
 }
 

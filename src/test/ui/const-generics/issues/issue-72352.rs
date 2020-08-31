@@ -6,8 +6,7 @@
 use std::ffi::{CStr, CString};
 
 unsafe fn unsafely_do_the_thing<const F: fn(&CStr) -> usize>(ptr: *const i8) -> usize {
-    //[full]~^ ERROR: using function pointers as const generic parameters is forbidden
-    //[min]~^^ ERROR: using function pointers as const generic parameters is forbidden
+    //~^ ERROR: using function pointers as const generic parameters is forbidden
     F(CStr::from_ptr(ptr))
 }
 

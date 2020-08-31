@@ -13,10 +13,8 @@ unsafe extern "C" fn pass(args: PassArg) {
 
 impl Test {
     pub fn call_me<Args: Sized, const IDX: usize, const FN: unsafe extern "C" fn(Args)>(&self) {
-        //[full]~^ ERROR: using function pointers as const generic parameters is forbidden
-        //[full]~| ERROR: the type of const parameters must not depend on other generic parameters
-        //[min]~^^^ ERROR: using function pointers as const generic parameters is forbidden
-        //[min]~| ERROR: the type of const parameters must not depend on other generic parameters
+        //~^ ERROR: using function pointers as const generic parameters is forbidden
+        //~| ERROR: the type of const parameters must not depend on other generic parameters
         self.0 = Self::trampiline::<Args, IDX, FN> as _
     }
 
@@ -24,10 +22,8 @@ impl Test {
         Args: Sized,
         const IDX: usize,
         const FN: unsafe extern "C" fn(Args),
-        //[full]~^ ERROR: using function pointers as const generic parameters is forbidden
-        //[full]~| ERROR: the type of const parameters must not depend on other generic parameters
-        //[min]~^^^ ERROR: using function pointers as const generic parameters is forbidden
-        //[min]~| ERROR: the type of const parameters must not depend on other generic parameters
+        //~^ ERROR: using function pointers as const generic parameters is forbidden
+        //~| ERROR: the type of const parameters must not depend on other generic parameters
     >(
         args: Args,
     ) {

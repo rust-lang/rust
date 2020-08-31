@@ -10,15 +10,13 @@ struct Bad<const N: usize, T> {
 }
 
 struct AlsoBad<const N: usize, 'a, T, 'b, const M: usize, U> {
-    //[full]~^ ERROR lifetime parameters must be declared prior
-    //[min]~^^ ERROR lifetime parameters must be declared prior to const parameters
-    //[min]~^^^ ERROR type parameters must be declared prior to const parameters
+    //~^ ERROR lifetime parameters must be declared prior
+    //[min]~^^ ERROR type parameters must be declared prior to const parameters
     a: &'a T,
     b: &'b U,
 }
 
 fn main() {
     let _: AlsoBad<7, 'static, u32, 'static, 17, u16>;
-    //[full]~^ ERROR lifetime provided when a type was expected
-    //[min]~^^ ERROR lifetime provided when a type was expected
+    //~^ ERROR lifetime provided when a type was expected
  }

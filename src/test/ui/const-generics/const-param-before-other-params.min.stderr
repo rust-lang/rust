@@ -5,7 +5,7 @@ LL | fn bar<const X: (), 'a>(_: &'a ()) {
    |       --------------^^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, const X: ()>`
 
 error: type parameters must be declared prior to const parameters
-  --> $DIR/const-param-before-other-params.rs:12:21
+  --> $DIR/const-param-before-other-params.rs:11:21
    |
 LL | fn foo<const X: (), T>(_: &T) {}
    |       --------------^- help: reorder the parameters: lifetimes, then types, then consts: `<T, const X: ()>`
@@ -20,7 +20,7 @@ LL | fn bar<const X: (), 'a>(_: &'a ()) {
    = note: more complex types are supported with `#[feature(const_generics)]`
 
 error: `()` is forbidden as the type of a const generic parameter
-  --> $DIR/const-param-before-other-params.rs:12:17
+  --> $DIR/const-param-before-other-params.rs:11:17
    |
 LL | fn foo<const X: (), T>(_: &T) {}
    |                 ^^

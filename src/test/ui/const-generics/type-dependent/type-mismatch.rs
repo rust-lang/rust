@@ -10,6 +10,5 @@ impl R {
 }
 fn main() {
     assert_eq!(R.method::<1u16>(), 1);
-    //[full]~^ ERROR mismatched types
-    //[min]~^^ ERROR mismatched types
+    //~^ ERROR mismatched types
 }
