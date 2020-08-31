@@ -144,7 +144,7 @@ fn test_header() {
     );
     t(
         "## Foo-bar_baz qux",
-        "<h2 id=\"foo-bar_baz-qux\" class=\"section-header\">
+        "<h2 id=\"foo-bar_baz-qux\" class=\"section-header\">\
          <a href=\"#foo-bar_baz-qux\">Foo-bar_baz qux</a></h2>",
     );
     t(
