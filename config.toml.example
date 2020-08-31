@@ -392,7 +392,7 @@
 # desired in distributions, for example.
 #rpath = true
 
-# Emits extra output from tests so test failures are debuggable just from logfiles.
+# Emits extra output from the tests to debug issues in the test harness itself.
 #verbose-tests = false
 
 # Flag indicating whether tests are compiled with optimizations (the -O flag).
