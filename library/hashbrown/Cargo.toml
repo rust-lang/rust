@@ -10,7 +10,6 @@ keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 exclude = [".travis.yml", "bors.toml", "/ci/*"]
 edition = "2018"
-build = "build.rs"
 
 [dependencies]
 # For the default hasher
@@ -24,9 +23,6 @@ serde = { version = "1.0.25", default-features = false, optional = true }
 core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
 compiler_builtins = { version = "0.1.2", optional = true }
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
-
-[build-dependencies]
-autocfg = "1"
 
 [dev-dependencies]
 lazy_static = "1.2"
