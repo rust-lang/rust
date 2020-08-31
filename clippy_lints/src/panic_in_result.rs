@@ -34,12 +34,15 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResult {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
-        _: FnKind<'tcx>,
+        fn_kind: FnKind<'tcx>,
         _: &'tcx hir::FnDecl<'tcx>,
         body: &'tcx hir::Body<'tcx>,
         span: Span,
         hir_id: hir::HirId,
     ) {
+        if let FnKind::Closure(_) = fn_kind {
+            return;
+        }
         if_chain! {
             if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type));
             then
