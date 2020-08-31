@@ -309,6 +309,9 @@
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
 # compiler.
+#
+# Defaults: the Cargo defaults, 256 with incremental and 16 without
+# https://doc.rust-lang.org/cargo/reference/profiles.html#codegen-units
 #codegen-units = 1
 
 # Sets the number of codegen units to build the standard library with,
