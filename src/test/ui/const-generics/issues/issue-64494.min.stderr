@@ -1,0 +1,28 @@
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/issue-64494.rs:16:38
+   |
+LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
+   |                                      ^^^^^^ non-trivial anonymous constants must not depend on the parameter `T`
+   |
+   = help: it is currently only allowed to use either `T` or `{ T }` as generic constants
+
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/issue-64494.rs:19:38
+   |
+LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
+   |                                      ^^^^^^ non-trivial anonymous constants must not depend on the parameter `T`
+   |
+   = help: it is currently only allowed to use either `T` or `{ T }` as generic constants
+
+error[E0119]: conflicting implementations of trait `MyTrait`:
+  --> $DIR/issue-64494.rs:19:1
+   |
+LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
+   | ------------------------------------ first implementation here
+...
+LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

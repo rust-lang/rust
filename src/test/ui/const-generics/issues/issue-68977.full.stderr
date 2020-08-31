@@ -1,0 +1,10 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-68977.rs:35:44
+   |
+LL |     FxpStorageHelper<INT_BITS, FRAC_BITS>: FxpStorage,
+   |                                            ^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error
+
