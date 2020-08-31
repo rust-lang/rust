@@ -1788,6 +1788,7 @@ pub struct ExpansionConfig<'feat> {
     pub should_test: bool, // If false, strip `#[test]` nodes
     pub keep_macs: bool,
     pub span_debug: bool, // If true, use verbose debugging for `proc_macro::Span`
+    pub proc_macro_backtrace: bool, // If true, show backtraces for proc-macro panics
 }
 
 impl<'feat> ExpansionConfig<'feat> {
@@ -1800,6 +1801,7 @@ impl<'feat> ExpansionConfig<'feat> {
             should_test: false,
             keep_macs: false,
             span_debug: false,
+            proc_macro_backtrace: false,
         }
     }
 

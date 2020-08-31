@@ -220,6 +220,9 @@ pub struct Bridge<'a> {
 
     /// Server-side function that the client uses to make requests.
     dispatch: closure::Closure<'a, Buffer<u8>, Buffer<u8>>,
+
+    /// If 'true', always invoke the default panic hook
+    force_show_panics: bool,
 }
 
 impl<'a> !Sync for Bridge<'a> {}

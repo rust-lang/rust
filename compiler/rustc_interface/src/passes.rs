@@ -291,6 +291,7 @@ fn configure_and_expand_inner<'a>(
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
             span_debug: sess.opts.debugging_opts.span_debug,
+            proc_macro_backtrace: sess.opts.debugging_opts.proc_macro_backtrace,
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
