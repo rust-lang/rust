@@ -21,7 +21,8 @@ use std::mem;
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
-    pub(super) fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
+    // Public for rustfmt usage.
+    pub fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
         Ok(self.parse_stmt_without_recovery().unwrap_or_else(|mut e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
