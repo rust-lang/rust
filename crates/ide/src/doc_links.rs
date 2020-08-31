@@ -100,9 +100,6 @@ pub fn get_doc_link<T: Resolvable + Clone>(db: &dyn HirDatabase, definition: &T)
 // BUG: For Option
 // Returns https://doc.rust-lang.org/nightly/core/prelude/v1/enum.Option.html#variant.Some
 // Instead of https://doc.rust-lang.org/nightly/core/option/enum.Option.html
-//
-// BUG: For methods
-// import_map.path_of(ns) fails, is not designed to resolve methods
 fn get_doc_link_impl(db: &dyn HirDatabase, moddef: &ModuleDef) -> Option<String> {
     // Get the outermost definition for the moduledef. This is used to resolve the public path to the type,
     // then we can join the method, field, etc onto it if required.

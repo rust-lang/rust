@@ -383,7 +383,7 @@ impl Analysis {
     }
 
     /// Return URL(s) for the documentation of the symbol under the cursor.
-    pub fn get_doc_url(
+    pub fn external_docs(
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<doc_links::DocumentationLink>> {
