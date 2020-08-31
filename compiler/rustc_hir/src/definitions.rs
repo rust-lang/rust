@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 
 use std::fmt::Write;
 use std::hash::Hash;
@@ -202,7 +202,12 @@ impl DefPath {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
-            write!(s, "::{}[{}]", component.data.as_symbol(), component.disambiguator).unwrap();
+            match component.data.get_name() {
+                DefPathDataName::Named(name) => write!(s, "::{}", name).unwrap(),
+                DefPathDataName::Anon { namespace } => {
+                    write!(s, "::{{{}#{}}}", namespace, component.disambiguator).unwrap()
+                }
+            }
         }
 
         s
@@ -220,10 +225,11 @@ impl DefPath {
         write!(s, "::{}", crate_name_str).unwrap();
 
         for component in &self.data {
-            if component.disambiguator == 0 {
-                write!(s, "::{}", component.data.as_symbol()).unwrap();
-            } else {
-                write!(s, "{}[{}]", component.data.as_symbol(), component.disambiguator).unwrap();
+            match component.data.get_name() {
+                DefPathDataName::Named(name) => write!(s, "::{}", name).unwrap(),
+                DefPathDataName::Anon { namespace } => {
+                    write!(s, "{{{}#{}}}", namespace, component.disambiguator).unwrap()
+                }
             }
         }
 
@@ -240,10 +246,11 @@ impl DefPath {
         for component in &self.data {
             s.extend(opt_delimiter);
             opt_delimiter = Some('-');
-            if component.disambiguator == 0 {
-                write!(s, "{}", component.data.as_symbol()).unwrap();
-            } else {
-                write!(s, "{}[{}]", component.data.as_symbol(), component.disambiguator).unwrap();
+            match component.data.get_name() {
+                DefPathDataName::Named(name) => write!(s, "{}", name).unwrap(),
+                DefPathDataName::Anon { namespace } => {
+                    write!(s, "{{{}#{}}}", namespace, component.disambiguator).unwrap()
+                }
             }
         }
         s
@@ -427,6 +434,11 @@ impl Definitions {
     }
 }
 
+pub enum DefPathDataName {
+    Named(Symbol),
+    Anon { namespace: Symbol },
+}
+
 impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
@@ -437,22 +449,27 @@ impl DefPathData {
         }
     }
 
-    pub fn as_symbol(&self) -> Symbol {
+    pub fn get_name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => name,
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
+                DefPathDataName::Named(name)
+            }
             // Note that this does not show up in user print-outs.
-            CrateRoot => sym::double_braced_crate,
-            Impl => sym::double_braced_impl,
-            Misc => sym::double_braced_misc,
-            ClosureExpr => sym::double_braced_closure,
-            Ctor => sym::double_braced_constructor,
-            AnonConst => sym::double_braced_constant,
-            ImplTrait => sym::double_braced_opaque,
+            CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
+            Impl => DefPathDataName::Anon { namespace: kw::Impl },
+            Misc => DefPathDataName::Anon { namespace: sym::misc },
+            ClosureExpr => DefPathDataName::Anon { namespace: sym::closure },
+            Ctor => DefPathDataName::Anon { namespace: sym::constructor },
+            AnonConst => DefPathDataName::Anon { namespace: sym::constant },
+            ImplTrait => DefPathDataName::Anon { namespace: sym::opaque },
         }
     }
 
     pub fn to_string(&self) -> String {
-        self.as_symbol().to_string()
+        match self.get_name() {
+            DefPathDataName::Named(name) => name.to_string(),
+            DefPathDataName::Anon { namespace } => format!("{{{{{}}}}}", namespace),
+        }
     }
 }

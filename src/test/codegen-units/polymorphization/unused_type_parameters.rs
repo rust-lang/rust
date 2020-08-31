@@ -64,7 +64,7 @@ mod closures {
         add_one(3)
     }
 
-//~ MONO_ITEM fn closures::unused::<T>::{{closure}}#0
+//~ MONO_ITEM fn closures::unused::<T>::{closure#0}
 //~ MONO_ITEM fn closures::unused::<T>
 
     // Function has an unused type parameter in closure, but not in parent.
@@ -74,7 +74,7 @@ mod closures {
         add_one(3)
     }
 
-//~ MONO_ITEM fn closures::used_parent::<T>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_parent::<T>::{closure#0}
 //~ MONO_ITEM fn closures::used_parent::<u32>
 //~ MONO_ITEM fn closures::used_parent::<u64>
 
@@ -88,8 +88,8 @@ mod closures {
         x()
     }
 
-//~ MONO_ITEM fn closures::used_binding_value::<u32>::{{closure}}#0
-//~ MONO_ITEM fn closures::used_binding_value::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_binding_value::<u32>::{closure#0}
+//~ MONO_ITEM fn closures::used_binding_value::<u64>::{closure#0}
 //~ MONO_ITEM fn closures::used_binding_value::<u32>
 //~ MONO_ITEM fn closures::used_binding_value::<u64>
 
@@ -103,8 +103,8 @@ mod closures {
         x()
     }
 
-//~ MONO_ITEM fn closures::used_binding_type::<u32>::{{closure}}#0
-//~ MONO_ITEM fn closures::used_binding_type::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_binding_type::<u32>::{closure#0}
+//~ MONO_ITEM fn closures::used_binding_type::<u64>::{closure#0}
 //~ MONO_ITEM fn closures::used_binding_type::<u32>
 //~ MONO_ITEM fn closures::used_binding_type::<u64>
 
@@ -114,8 +114,8 @@ mod closures {
         x(t)
     }
 
-//~ MONO_ITEM fn closures::used_argument::<u32>::{{closure}}#0
-//~ MONO_ITEM fn closures::used_argument::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_argument::<u32>::{closure#0}
+//~ MONO_ITEM fn closures::used_argument::<u64>::{closure#0}
 //~ MONO_ITEM fn closures::used_argument::<u32>
 //~ MONO_ITEM fn closures::used_argument::<u64>
 
@@ -126,8 +126,8 @@ mod closures {
         x(t)
     }
 
-//~ MONO_ITEM fn closures::used_argument_closure::<u32>::{{closure}}#0
-//~ MONO_ITEM fn closures::used_argument_closure::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_argument_closure::<u32>::{closure#0}
+//~ MONO_ITEM fn closures::used_argument_closure::<u64>::{closure#0}
 //~ MONO_ITEM fn closures::used_argument_closure::<u32>
 //~ MONO_ITEM fn closures::used_argument_closure::<u64>
 
@@ -138,8 +138,8 @@ mod closures {
         y()
     }
 
-//~ MONO_ITEM fn closures::used_upvar::<u32>::{{closure}}#0
-//~ MONO_ITEM fn closures::used_upvar::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_upvar::<u32>::{closure#0}
+//~ MONO_ITEM fn closures::used_upvar::<u64>::{closure#0}
 //~ MONO_ITEM fn closures::used_upvar::<u32>
 //~ MONO_ITEM fn closures::used_upvar::<u64>
 
@@ -149,8 +149,8 @@ mod closures {
         x()
     }
 
-//~ MONO_ITEM fn closures::used_substs::<u32>::{{closure}}#0
-//~ MONO_ITEM fn closures::used_substs::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_substs::<u32>::{closure#0}
+//~ MONO_ITEM fn closures::used_substs::<u64>::{closure#0}
 //~ MONO_ITEM fn closures::used_substs::<u32>
 //~ MONO_ITEM fn closures::used_substs::<u64>
 }
@@ -210,7 +210,7 @@ mod methods {
             add_one(3)
         }
 
-//~ MONO_ITEM fn methods::Foo::<F>::closure_unused_all::<G>::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<F>::closure_unused_all::<G>::{closure#0}
 //~ MONO_ITEM fn methods::Foo::<F>::closure_unused_all::<G>
 
         // Function uses type parameter from impl and fn in closure.
@@ -224,8 +224,8 @@ mod methods {
             add_one(3)
         }
 
-//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_both::<u32>::{{closure}}#0
-//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_both::<u64>::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_both::<u32>::{closure#0}
+//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_both::<u64>::{closure#0}
 //~ MONO_ITEM fn methods::Foo::<u32>::closure_used_both::<u32>
 //~ MONO_ITEM fn methods::Foo::<u64>::closure_used_both::<u64>
 
@@ -239,8 +239,8 @@ mod methods {
             add_one(3)
         }
 
-//~ MONO_ITEM fn methods::Foo::<F>::closure_used_fn::<u32>::{{closure}}#0
-//~ MONO_ITEM fn methods::Foo::<F>::closure_used_fn::<u64>::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<F>::closure_used_fn::<u32>::{closure#0}
+//~ MONO_ITEM fn methods::Foo::<F>::closure_used_fn::<u64>::{closure#0}
 //~ MONO_ITEM fn methods::Foo::<F>::closure_used_fn::<u32>
 //~ MONO_ITEM fn methods::Foo::<F>::closure_used_fn::<u64>
 
@@ -254,8 +254,8 @@ mod methods {
             add_one(3)
         }
 
-//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_impl::<G>::{{closure}}#0
-//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_impl::<G>::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_impl::<G>::{closure#0}
+//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_impl::<G>::{closure#0}
 //~ MONO_ITEM fn methods::Foo::<u32>::closure_used_impl::<G>
 //~ MONO_ITEM fn methods::Foo::<u64>::closure_used_impl::<G>
 
@@ -265,8 +265,8 @@ mod methods {
             x()
         }
 
-//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_substs::{{closure}}#0
-//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_substs::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_substs::{closure#0}
+//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_substs::{closure#0}
 //~ MONO_ITEM fn methods::Foo::<u32>::closure_used_substs
 //~ MONO_ITEM fn methods::Foo::<u64>::closure_used_substs
     }

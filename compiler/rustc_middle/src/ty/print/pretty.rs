@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::ItemKind;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -1496,9 +1496,13 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
             return Ok(self);
         }
 
+        let name = match disambiguated_data.data.get_name() {
+            DefPathDataName::Named(name) => name,
+            DefPathDataName::Anon { namespace } => namespace,
+        };
+
         // FIXME(eddyb) `name` should never be empty, but it
         // currently is for `extern { ... }` "foreign modules".
-        let name = disambiguated_data.data.as_symbol();
         if name != kw::Invalid {
             if !self.empty_path {
                 write!(self, "::")?;
@@ -1506,15 +1510,12 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
             if Ident::with_dummy_span(name).is_raw_guess() {
                 write!(self, "r#")?;
             }
-            write!(self, "{}", name)?;
 
-            // FIXME(eddyb) this will print e.g. `{{closure}}#3`, but it
-            // might be nicer to use something else, e.g. `{closure#3}`.
-            let dis = disambiguated_data.disambiguator;
-            let print_dis = disambiguated_data.data.get_opt_name().is_none()
-                || dis != 0 && self.tcx.sess.verbose();
-            if print_dis {
-                write!(self, "#{}", dis)?;
+            match disambiguated_data.data.get_name() {
+                DefPathDataName::Named(name) => self.write_str(&name.as_str())?,
+                DefPathDataName::Anon { namespace } => {
+                    write!(self, "{{{}#{}}}", namespace, disambiguated_data.disambiguator)?
+                }
             }
 
             self.empty_path = false;

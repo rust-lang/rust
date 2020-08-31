@@ -10,7 +10,7 @@ note: ...which requires const-evaluating + checking `b`...
 LL | const fn b() -> usize {
    | ^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires const-evaluating + checking `a`, completing the cycle
-note: cycle used when const-evaluating + checking `ARR::{{constant}}#0`
+note: cycle used when const-evaluating + checking `ARR::{constant#0}`
   --> $DIR/infinite-recursion-const-fn.rs:10:18
    |
 LL | const ARR: [i32; a()] = [5; 6];

@@ -26,7 +26,7 @@ use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability;
@@ -846,7 +846,12 @@ impl<'tcx> LateContext<'tcx> {
                     return Ok(path);
                 }
 
-                path.push(disambiguated_data.data.as_symbol());
+                path.push(match disambiguated_data.data.get_name() {
+                    DefPathDataName::Named(name) => name,
+                    DefPathDataName::Anon { namespace } => {
+                        Symbol::intern(&format!("{{{{{}}}}}", namespace))
+                    }
+                });
                 Ok(path)
             }
 

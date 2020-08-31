@@ -1,6 +1,6 @@
-// MIR for `<impl at $DIR/issue-41697.rs:18:1: 22:2>::{{constant}}#0` after SimplifyCfg-promote-consts
+// MIR for `<impl at $DIR/issue-41697.rs:18:1: 22:2>::{constant#0}` after SimplifyCfg-promote-consts
 
-<impl at $DIR/issue-41697.rs:18:1: 22:2>::{{constant}}#0: usize = {
+<impl at $DIR/issue-41697.rs:18:1: 22:2>::{constant#0}: usize = {
     let mut _0: usize;                   // return place in scope 0 at $DIR/issue-41697.rs:18:19: 18:22
     let mut _1: (usize, bool);           // in scope 0 at $DIR/issue-41697.rs:18:19: 18:22
 

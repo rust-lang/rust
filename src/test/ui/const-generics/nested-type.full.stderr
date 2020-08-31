@@ -8,7 +8,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/nested-type.rs:16:5
    |
 LL |     Foo::<17>::value()
-   |     ^^^^^^^^^^^^^^^^^^ calling non-const function `Foo::{{constant}}#0::Foo::<17_usize>::value`
+   |     ^^^^^^^^^^^^^^^^^^ calling non-const function `Foo::{constant#0}::Foo::<17_usize>::value`
 
 error: aborting due to 2 previous errors
 

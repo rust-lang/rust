@@ -16,7 +16,7 @@ note: ...which requires const-evaluating + checking `FOO`...
 LL | const FOO: usize = FOO;
    | ^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires normalizing `FOO`, completing the cycle
-note: cycle used when const-evaluating + checking `main::{{constant}}#0`
+note: cycle used when const-evaluating + checking `main::{constant#0}`
   --> $DIR/issue-17252.rs:4:18
    |
 LL |     let _x: [u8; FOO]; // caused stack overflow prior to fix

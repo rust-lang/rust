@@ -1,6 +1,6 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::CrateNum;
-use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_middle::ich::NodeIdHashingMode;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::print::{PrettyPrinter, Print, Printer};
@@ -316,7 +316,10 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
             self.path.finalize_pending_component();
         }
 
-        self.write_str(&disambiguated_data.data.as_symbol().as_str())?;
+        match disambiguated_data.data.get_name() {
+            DefPathDataName::Named(name) => self.write_str(&name.as_str())?,
+            DefPathDataName::Anon { namespace } => write!(self, "{{{{{}}}}}", namespace)?,
+        }
         Ok(self)
     }
     fn path_generic_args(

@@ -1,15 +1,15 @@
-error[E0391]: cycle detected when simplifying constant for the type system `Foo::bytes::{{constant}}#0`
+error[E0391]: cycle detected when simplifying constant for the type system `Foo::bytes::{constant#0}`
   --> $DIR/const-size_of-cycle.rs:4:17
    |
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires simplifying constant for the type system `Foo::bytes::{{constant}}#0`...
+note: ...which requires simplifying constant for the type system `Foo::bytes::{constant#0}`...
   --> $DIR/const-size_of-cycle.rs:4:17
    |
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires const-evaluating + checking `Foo::bytes::{{constant}}#0`...
+note: ...which requires const-evaluating + checking `Foo::bytes::{constant#0}`...
   --> $DIR/const-size_of-cycle.rs:4:17
    |
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
@@ -26,7 +26,7 @@ LL |     pub fn size_of<T>() -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires computing layout of `Foo`...
    = note: ...which requires normalizing `[u8; _]`...
-   = note: ...which again requires simplifying constant for the type system `Foo::bytes::{{constant}}#0`, completing the cycle
+   = note: ...which again requires simplifying constant for the type system `Foo::bytes::{constant#0}`, completing the cycle
 note: cycle used when checking that `Foo` is well-formed
   --> $DIR/const-size_of-cycle.rs:3:1
    |

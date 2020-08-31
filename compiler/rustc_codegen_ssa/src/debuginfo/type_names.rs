@@ -3,7 +3,10 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::ty::{self, subst::SubstsRef, Ty, TyCtxt};
+
+use std::fmt::Write;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e., calling the function twice with the same type will also do
@@ -229,7 +232,12 @@ pub fn push_debuginfo_type_name<'tcx>(
             output.push_str(&tcx.crate_name(def_id.krate).as_str());
             for path_element in tcx.def_path(def_id).data {
                 output.push_str("::");
-                output.push_str(&path_element.data.as_symbol().as_str());
+                match path_element.data.get_name() {
+                    DefPathDataName::Named(name) => output.push_str(&name.as_str()),
+                    DefPathDataName::Anon { namespace } => {
+                        write!(output, "{{{{{}}}}}", namespace).unwrap()
+                    }
+                }
             }
         } else {
             output.push_str(&tcx.item_name(def_id).as_str());
