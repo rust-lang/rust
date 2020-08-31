@@ -306,16 +306,12 @@
 #
 #debug = false
 
-# This will make your build more parallel; it costs a bit of runtime
-# performance perhaps (less inlining) but it's worth it.
-#
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
 # compiler.
 #
-# Defaults: the Cargo defaults, 256 with incremental and 16 without
-# https://doc.rust-lang.org/cargo/reference/profiles.html#codegen-units
-#codegen-units = 1
+# Uses the Cargo defaults: https://doc.rust-lang.org/cargo/reference/profiles.html#codegen-units
+#codegen-units = if incremental { 256 } else { 16 }
 
 # Sets the number of codegen units to build the standard library with,
 # regardless of what the codegen-unit setting for the rest of the compiler is.
@@ -398,7 +394,7 @@
 # desired in distributions, for example.
 #rpath = true
 
-# Emits extra output from the tests to debug issues in the test harness itself.
+# Prints each test name as it is executed, to help debug issues in the test harness itself.
 #verbose-tests = false
 
 # Flag indicating whether tests are compiled with optimizations (the -O flag).
