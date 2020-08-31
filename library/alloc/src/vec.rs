@@ -1566,7 +1566,7 @@ impl<T: Clone> Vec<T> {
     /// This method requires `T` to implement [`Clone`],
     /// in order to be able to clone the passed value.
     /// If you need more flexibility (or want to rely on [`Default`] instead of
-    /// [`Clone`]), use [`resize_with`].
+    /// [`Clone`]), use [`Vec::resize_with`].
     ///
     /// # Examples
     ///
@@ -1579,8 +1579,6 @@ impl<T: Clone> Vec<T> {
     /// vec.resize(2, 0);
     /// assert_eq!(vec, [1, 2]);
     /// ```
-    ///
-    /// [`resize_with`]: Vec::resize_with
     #[stable(feature = "vec_resize", since = "1.5.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
