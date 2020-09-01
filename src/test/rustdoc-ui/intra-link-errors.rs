@@ -8,6 +8,14 @@
 //~^ ERROR unresolved link
 //~| NOTE no item named `path` is in scope
 
+/// [path::to::nonexistent::macro!]
+//~^ ERROR unresolved link
+//~| NOTE no item named `path` is in scope
+
+/// [type@path::to::nonexistent::type]
+//~^ ERROR unresolved link
+//~| NOTE no item named `path` is in scope
+
 /// [std::io::not::here]
 //~^ ERROR unresolved link
 //~| NOTE the module `io` has no inner item
