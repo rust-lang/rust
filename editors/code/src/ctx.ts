@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient';
+import * as lc from 'vscode-languageclient/node';
 import * as ra from './lsp_ext';
 
 import { Config } from './config';

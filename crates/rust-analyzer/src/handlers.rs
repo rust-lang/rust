@@ -17,8 +17,8 @@ use lsp_types::{
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeActionKind, CodeLens, Command, CompletionItem, Diagnostic, DocumentFormattingParams,
     DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams, HoverContents, Location,
-    Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensEditResult,
-    SemanticTokensEditsParams, SemanticTokensParams, SemanticTokensRangeParams,
+    Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensDeltaParams,
+    SemanticTokensFullDeltaResult, SemanticTokensParams, SemanticTokensRangeParams,
     SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
     TextDocumentIdentifier, Url, WorkspaceEdit,
 };
@@ -1171,11 +1171,11 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     Ok(Some(res))
 }
 
-pub(crate) fn handle_semantic_tokens(
+pub(crate) fn handle_semantic_tokens_full(
     snap: GlobalStateSnapshot,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
-    let _p = profile::span("handle_semantic_tokens");
+    let _p = profile::span("handle_semantic_tokens_full");
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let text = snap.analysis.file_text(file_id)?;
@@ -1190,11 +1190,11 @@ pub(crate) fn handle_semantic_tokens(
     Ok(Some(semantic_tokens.into()))
 }
 
-pub(crate) fn handle_semantic_tokens_edits(
+pub(crate) fn handle_semantic_tokens_full_delta(
     snap: GlobalStateSnapshot,
-    params: SemanticTokensEditsParams,
-) -> Result<Option<SemanticTokensEditResult>> {
-    let _p = profile::span("handle_semantic_tokens_edits");
+    params: SemanticTokensDeltaParams,
+) -> Result<Option<SemanticTokensFullDeltaResult>> {
+    let _p = profile::span("handle_semantic_tokens_full_delta");
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let text = snap.analysis.file_text(file_id)?;
@@ -1209,9 +1209,9 @@ pub(crate) fn handle_semantic_tokens_edits(
 
     if let Some(prev_id) = &cached_tokens.result_id {
         if *prev_id == params.previous_result_id {
-            let edits = to_proto::semantic_token_edits(&cached_tokens, &semantic_tokens);
+            let delta = to_proto::semantic_token_delta(&cached_tokens, &semantic_tokens);
             *cached_tokens = semantic_tokens;
-            return Ok(Some(edits.into()));
+            return Ok(Some(delta.into()));
         }
     }
 

@@ -6,7 +6,7 @@ use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
     DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability, HoverProviderCapability,
     ImplementationProviderCapability, RenameOptions, RenameProviderCapability, SaveOptions,
-    SelectionRangeProviderCapability, SemanticTokensDocumentProvider, SemanticTokensLegend,
+    SelectionRangeProviderCapability, SemanticTokensFullOptions, SemanticTokensLegend,
     SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextDocumentSyncOptions, TypeDefinitionProviderCapability,
     WorkDoneProgressOptions,
@@ -76,10 +76,8 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
                     token_modifiers: semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
                 },
 
-                document_provider: Some(SemanticTokensDocumentProvider::Edits {
-                    edits: Some(true),
-                }),
-                range_provider: Some(true),
+                full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
+                range: Some(true),
                 work_done_progress_options: Default::default(),
             }
             .into(),

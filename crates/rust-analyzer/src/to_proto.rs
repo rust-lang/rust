@@ -334,13 +334,13 @@ pub(crate) fn semantic_tokens(
     builder.build()
 }
 
-pub(crate) fn semantic_token_edits(
+pub(crate) fn semantic_token_delta(
     previous: &lsp_types::SemanticTokens,
     current: &lsp_types::SemanticTokens,
-) -> lsp_types::SemanticTokensEdits {
+) -> lsp_types::SemanticTokensDelta {
     let result_id = current.result_id.clone();
     let edits = semantic_tokens::diff_tokens(&previous.data, &current.data);
-    lsp_types::SemanticTokensEdits { result_id, edits }
+    lsp_types::SemanticTokensDelta { result_id, edits }
 }
 
 fn semantic_token_type_and_modifiers(

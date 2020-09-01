@@ -1,10 +1,7 @@
-import * as lc from 'vscode-languageclient';
+import * as lc from 'vscode-languageclient/node';
 import * as vscode from 'vscode';
 import * as ra from '../src/lsp_ext';
-import * as Is from 'vscode-languageclient/lib/utils/is';
-
-import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
-import { SemanticTokensFeature } from 'vscode-languageclient/lib/semanticTokens.proposed';
+import * as Is from 'vscode-languageclient/lib/common/utils/is';
 import { assert } from './util';
 
 function renderCommand(cmd: ra.CommandLink) {
@@ -57,7 +54,7 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                         return hover;
                     },
                     (error) => {
-                        client.logFailedRequest(lc.HoverRequest.type, error);
+                        client.handleFailedRequest(lc.HoverRequest.type, error, null);
                         return Promise.resolve(null);
                     });
             },
@@ -140,12 +137,6 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
     );
 
     // To turn on all proposed features use: client.registerProposedFeatures();
-    // Here we want to enable CallHierarchyFeature and SemanticTokensFeature
-    // since they are available on stable.
-    // Note that while these features are stable in vscode their LSP protocol
-    // implementations are still in the "proposed" category for 3.16.
-    client.registerFeature(new CallHierarchyFeature(client));
-    client.registerFeature(new SemanticTokensFeature(client));
     client.registerFeature(new ExperimentalFeatures());
 
     return client;

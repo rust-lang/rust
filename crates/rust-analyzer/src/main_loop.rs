@@ -407,9 +407,11 @@ impl GlobalState {
             .on::<lsp_types::request::CallHierarchyOutgoingCalls>(
                 handlers::handle_call_hierarchy_outgoing,
             )?
-            .on::<lsp_types::request::SemanticTokensRequest>(handlers::handle_semantic_tokens)?
-            .on::<lsp_types::request::SemanticTokensEditsRequest>(
-                handlers::handle_semantic_tokens_edits,
+            .on::<lsp_types::request::SemanticTokensFullRequest>(
+                handlers::handle_semantic_tokens_full,
+            )?
+            .on::<lsp_types::request::SemanticTokensFullDeltaRequest>(
+                handlers::handle_semantic_tokens_full_delta,
             )?
             .on::<lsp_types::request::SemanticTokensRangeRequest>(
                 handlers::handle_semantic_tokens_range,
