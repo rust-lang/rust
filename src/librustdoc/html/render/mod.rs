@@ -1061,8 +1061,8 @@ themePicker.onblur = handleThemeButtonsBlur;
 
             let content = format!(
                 "<h1 class='fqn'>\
-     <span class='in-band'>List of all crates</span>\
-</h1><ul class='mod'>{}</ul>",
+                     <span class='in-band'>List of all crates</span>\
+                </h1><ul class='mod'>{}</ul>",
                 krates
                     .iter()
                     .map(|s| {
@@ -1311,15 +1311,16 @@ impl AllTypes {
         write!(
             f,
             "<h1 class='fqn'>\
-        <span class='out-of-band'>\
-            <span id='render-detail'>\
-                <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" title=\"collapse all docs\">\
-                    [<span class='inner'>&#x2212;</span>]\
-                </a>\
-            </span>
-        </span>
-        <span class='in-band'>List of all items</span>\
-    </h1>"
+                 <span class='out-of-band'>\
+                     <span id='render-detail'>\
+                         <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
+                            title=\"collapse all docs\">\
+                             [<span class='inner'>&#x2212;</span>]\
+                         </a>\
+                     </span>
+                 </span>
+                 <span class='in-band'>List of all items</span>\
+             </h1>"
         );
         print_entries(f, &self.structs, "Structs", "structs");
         print_entries(f, &self.enums, "Enums", "enums");
@@ -1349,20 +1350,20 @@ impl Setting {
         match *self {
             Setting::Section { ref description, ref sub_settings } => format!(
                 "<div class='setting-line'>\
-                        <div class='title'>{}</div>\
-                        <div class='sub-settings'>{}</div>
-                    </div>",
+                     <div class='title'>{}</div>\
+                     <div class='sub-settings'>{}</div>
+                 </div>",
                 description,
                 sub_settings.iter().map(|s| s.display()).collect::<String>()
             ),
             Setting::Entry { ref js_data_name, ref description, ref default_value } => format!(
                 "<div class='setting-line'>\
-                        <label class='toggle'>\
-                        <input type='checkbox' id='{}' {}>\
-                        <span class='slider'></span>\
-                        </label>\
-                        <div>{}</div>\
-                    </div>",
+                     <label class='toggle'>\
+                     <input type='checkbox' id='{}' {}>\
+                     <span class='slider'></span>\
+                     </label>\
+                     <div>{}</div>\
+                 </div>",
                 js_data_name,
                 if *default_value { " checked" } else { "" },
                 description,
@@ -1876,30 +1877,29 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
             write!(
                 w,
                 "Non-exhaustive structs could have additional fields added in future. \
-                       Therefore, non-exhaustive structs cannot be constructed in external crates \
-                       using the traditional <code>Struct {{ .. }}</code> syntax; cannot be \
-                       matched against without a wildcard <code>..</code>; and \
-                       struct update syntax will not work."
+                 Therefore, non-exhaustive structs cannot be constructed in external crates \
+                 using the traditional <code>Struct {{ .. }}</code> syntax; cannot be \
+                 matched against without a wildcard <code>..</code>; and \
+                 struct update syntax will not work."
             );
         } else if item.is_enum() {
             write!(
                 w,
                 "Non-exhaustive enums could have additional variants added in future. \
-                       Therefore, when matching against variants of non-exhaustive enums, an \
-                       extra wildcard arm must be added to account for any future variants."
+                 Therefore, when matching against variants of non-exhaustive enums, an \
+                 extra wildcard arm must be added to account for any future variants."
             );
         } else if item.is_variant() {
             write!(
                 w,
                 "Non-exhaustive enum variants could have additional fields added in future. \
-                       Therefore, non-exhaustive enum variants cannot be constructed in external \
-                       crates and cannot be matched against."
+                 Therefore, non-exhaustive enum variants cannot be constructed in external \
+                 crates and cannot be matched against."
             );
         } else {
             write!(
                 w,
-                "This type will require a wildcard arm in any match statements or \
-                       constructors."
+                "This type will require a wildcard arm in any match statements or constructors."
             );
         }
 
@@ -2096,12 +2096,11 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                 let doc_value = myitem.doc_value().unwrap_or("");
                 write!(
                     w,
-                    "\
-                       <tr class='{stab}{add}module-item'>\
-                           <td><a class=\"{class}\" href=\"{href}\" \
-                                  title='{title}'>{name}</a>{unsafety_flag}</td>\
-                           <td class='docblock-short'>{stab_tags}{docs}</td>\
-                       </tr>",
+                    "<tr class='{stab}{add}module-item'>\
+                         <td><a class=\"{class}\" href=\"{href}\" \
+                             title='{title}'>{name}</a>{unsafety_flag}</td>\
+                         <td class='docblock-short'>{stab_tags}{docs}</td>\
+                     </tr>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = stability_tags(myitem),
                     docs = MarkdownSummaryLine(doc_value, &myitem.links()).into_string(),
@@ -2250,8 +2249,7 @@ fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Cons
 
     write!(
         w,
-        "{vis}const \
-               {name}: {typ}",
+        "{vis}const {name}: {typ}",
         vis = it.visibility.print_with_space(),
         name = it.name.as_ref().unwrap(),
         typ = c.type_.print(),
@@ -2285,8 +2283,7 @@ fn item_static(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Static
     render_attributes(w, it, false);
     write!(
         w,
-        "{vis}static {mutability}\
-               {name}: {typ}</pre>",
+        "{vis}static {mutability} {name}: {typ}</pre>",
         vis = it.visibility.print_with_space(),
         mutability = s.mutability.print_with_space(),
         name = it.name.as_ref().unwrap(),
@@ -2312,7 +2309,7 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
     write!(
         w,
         "{vis}{constness}{asyncness}{unsafety}{abi}fn \
-           {name}{generics}{decl}{spotlight}{where_clause}</pre>",
+         {name}{generics}{decl}{spotlight}{where_clause}</pre>",
         vis = it.visibility.print_with_space(),
         constness = f.header.constness.print_with_space(),
         asyncness = f.header.asyncness.print_with_space(),
@@ -2503,10 +2500,9 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
     fn write_small_section_header(w: &mut Buffer, id: &str, title: &str, extra_content: &str) {
         write!(
             w,
-            "
-            <h2 id='{0}' class='small-section-header'>\
-              {1}<a href='#{0}' class='anchor'></a>\
-            </h2>{2}",
+            "<h2 id='{0}' class='small-section-header'>\
+                {1}<a href='#{0}' class='anchor'></a>\
+             </h2>{2}",
             id, title, extra_content
         )
     }
@@ -2835,7 +2831,7 @@ fn render_assoc_item(
         write!(
             w,
             "{}{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
-                   {generics}{decl}{spotlight}{where_clause}",
+             {generics}{decl}{spotlight}{where_clause}",
             if parent == ItemType::Trait { "    " } else { "" },
             meth.visibility.print_with_space(),
             header.constness.print_with_space(),
@@ -2910,9 +2906,9 @@ fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct
                 write!(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
-                           <a href=\"#{id}\" class=\"anchor field\"></a>\
-                           <code>{name}: {ty}</code>\
-                           </span>",
+                         <a href=\"#{id}\" class=\"anchor field\"></a>\
+                         <code>{name}: {ty}</code>\
+                     </span>",
                     item_type = ItemType::StructField,
                     id = id,
                     name = field.name.as_ref().unwrap(),
@@ -2954,9 +2950,9 @@ fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union, 
             write!(
                 w,
                 "<span id=\"{id}\" class=\"{shortty} small-section-header\">\
-                           <a href=\"#{id}\" class=\"anchor field\"></a>\
-                           <code>{name}: {ty}</code>\
-                       </span>",
+                     <a href=\"#{id}\" class=\"anchor field\"></a>\
+                     <code>{name}: {ty}</code>\
+                 </span>",
                 id = id,
                 name = name,
                 shortty = ItemType::StructField,
@@ -3081,9 +3077,9 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, ca
                         write!(
                             w,
                             "<span id=\"{id}\" class=\"variant small-section-header\">\
-                                   <a href=\"#{id}\" class=\"anchor field\"></a>\
-                                   <code>{f}:&nbsp;{t}\
-                                   </code></span>",
+                                 <a href=\"#{id}\" class=\"anchor field\"></a>\
+                                 <code>{f}:&nbsp;{t}</code>\
+                             </span>",
                             id = id,
                             f = field.name.as_ref().unwrap(),
                             t = ty.print()
@@ -3296,23 +3292,19 @@ fn render_assoc_items(
             AssocItemRender::All => {
                 write!(
                     w,
-                    "\
-                    <h2 id='implementations' class='small-section-header'>\
-                      Implementations<a href='#implementations' class='anchor'></a>\
-                    </h2>\
-                "
+                    "<h2 id='implementations' class='small-section-header'>\
+                         Implementations<a href='#implementations' class='anchor'></a>\
+                    </h2>"
                 );
                 RenderMode::Normal
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 write!(
                     w,
-                    "\
-                    <h2 id='deref-methods' class='small-section-header'>\
-                      Methods from {}&lt;Target = {}&gt;\
-                      <a href='#deref-methods' class='anchor'></a>\
-                    </h2>\
-                ",
+                    "<h2 id='deref-methods' class='small-section-header'>\
+                         Methods from {}&lt;Target = {}&gt;\
+                         <a href='#deref-methods' class='anchor'></a>\
+                     </h2>",
                     trait_.print(),
                     type_.print()
                 );
@@ -3359,11 +3351,10 @@ fn render_assoc_items(
         if !impls.is_empty() {
             write!(
                 w,
-                "\
-                <h2 id='trait-implementations' class='small-section-header'>\
-                  Trait Implementations<a href='#trait-implementations' class='anchor'></a>\
-                </h2>\
-                <div id='trait-implementations-list'>{}</div>",
+                "<h2 id='trait-implementations' class='small-section-header'>\
+                     Trait Implementations<a href='#trait-implementations' class='anchor'></a>\
+                 </h2>\
+                 <div id='trait-implementations-list'>{}</div>",
                 impls
             );
         }
@@ -3371,13 +3362,11 @@ fn render_assoc_items(
         if !synthetic.is_empty() {
             write!(
                 w,
-                "\
-                <h2 id='synthetic-implementations' class='small-section-header'>\
-                  Auto Trait Implementations\
-                  <a href='#synthetic-implementations' class='anchor'></a>\
-                </h2>\
-                <div id='synthetic-implementations-list'>\
-            "
+                "<h2 id='synthetic-implementations' class='small-section-header'>\
+                     Auto Trait Implementations\
+                     <a href='#synthetic-implementations' class='anchor'></a>\
+                 </h2>\
+                 <div id='synthetic-implementations-list'>"
             );
             render_impls(cx, w, &synthetic, containing_item, cache);
             write!(w, "</div>");
@@ -3386,13 +3375,11 @@ fn render_assoc_items(
         if !blanket_impl.is_empty() {
             write!(
                 w,
-                "\
-                <h2 id='blanket-implementations' class='small-section-header'>\
-                  Blanket Implementations\
-                  <a href='#blanket-implementations' class='anchor'></a>\
-                </h2>\
-                <div id='blanket-implementations-list'>\
-            "
+                "<h2 id='blanket-implementations' class='small-section-header'>\
+                     Blanket Implementations\
+                     <a href='#blanket-implementations' class='anchor'></a>\
+                 </h2>\
+                 <div id='blanket-implementations-list'>"
             );
             render_impls(cx, w, &blanket_impl, containing_item, cache);
             write!(w, "</div>");
@@ -3473,7 +3460,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> String {
                     if out.is_empty() {
                         out.push_str(&format!(
                             "<h3 class=\"notable\">Notable traits for {}</h3>\
-                                      <code class=\"content\">",
+                             <code class=\"content\">",
                             impl_.for_.print()
                         ));
                         trait_.push_str(&impl_.for_.print().to_string());
@@ -3909,8 +3896,8 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
             write!(
                 buffer,
                 "<div class='block version'>\
-                    <p>Version {}</p>\
-                    </div>",
+                     <p>Version {}</p>\
+                 </div>",
                 Escape(version)
             );
         }
@@ -4185,7 +4172,7 @@ fn sidebar_struct(buf: &mut Buffer, it: &clean::Item, s: &clean::Struct) {
         if let doctree::Plain = s.struct_type {
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
-                                       <div class=\"sidebar-links\">{}</div>",
+                 <div class=\"sidebar-links\">{}</div>",
                 fields
             ));
         }
@@ -4312,8 +4299,8 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             res.sort();
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#foreign-impls\">\
-                    Implementations on Foreign Types</a><div \
-                    class=\"sidebar-links\">{}</div>",
+                    Implementations on Foreign Types</a>\
+                 <div class=\"sidebar-links\">{}</div>",
                 res.into_iter()
                     .map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(&name)))
                     .collect::<Vec<_>>()
