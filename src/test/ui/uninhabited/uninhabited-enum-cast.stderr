@@ -1,9 +1,0 @@
-error[E0605]: non-primitive cast: `E` as `isize`
-  --> $DIR/uninhabited-enum-cast.rs:4:20
-   |
-LL |     println!("{}", (e as isize).to_string());
-   |                    ^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0605`.
