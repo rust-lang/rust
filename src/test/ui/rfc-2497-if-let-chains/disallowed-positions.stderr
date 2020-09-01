@@ -568,10 +568,12 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:56:8
    |
 LL |     if x = let 0 = 0 {}
-   |        ^^^^^^^^^^^^^
-   |        |
-   |        expected `bool`, found `()`
-   |        help: try comparing for equality: `x == let 0 = 0`
+   |        ^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if x == let 0 = 0 {}
+   |          ^^
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:59:8
@@ -754,10 +756,12 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:120:11
    |
 LL |     while x = let 0 = 0 {}
-   |           ^^^^^^^^^^^^^
-   |           |
-   |           expected `bool`, found `()`
-   |           help: try comparing for equality: `x == let 0 = 0`
+   |           ^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     while x == let 0 = 0 {}
+   |             ^^
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:123:11

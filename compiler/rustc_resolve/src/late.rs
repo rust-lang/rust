@@ -378,6 +378,9 @@ struct DiagnosticMetadata<'ast> {
 
     /// Only used for better errors on `let <pat>: <expr, not type>;`.
     current_let_binding: Option<(Span, Option<Span>, Option<Span>)>,
+
+    /// Used to detect possible `if let` written without `let` and to provide structured suggestion.
+    in_if_condition: Option<&'ast Expr>,
 }
 
 struct LateResolutionVisitor<'a, 'b, 'ast> {
@@ -403,7 +406,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
     ///
     /// In particular, rustdoc uses this to avoid giving errors for `cfg()` items.
     /// In most cases this will be `None`, in which case errors will always be reported.
-    /// If it is `Some(_)`, then it will be updated when entering a nested function or trait body.
+    /// If it is `true`, then it will be updated when entering a nested function or trait body.
     in_func_body: bool,
 }
 
@@ -2199,7 +2202,9 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             ExprKind::If(ref cond, ref then, ref opt_else) => {
                 self.with_rib(ValueNS, NormalRibKind, |this| {
+                    let old = this.diagnostic_metadata.in_if_condition.replace(cond);
                     this.visit_expr(cond);
+                    this.diagnostic_metadata.in_if_condition = old;
                     this.visit_block(then);
                 });
                 if let Some(expr) = opt_else {

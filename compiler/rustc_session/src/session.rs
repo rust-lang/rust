@@ -213,6 +213,9 @@ pub struct Session {
 
     known_attrs: Lock<MarkedAttrs>,
     used_attrs: Lock<MarkedAttrs>,
+
+    /// `Span`s for `if` conditions that we have suggested turning into `if let`.
+    pub if_let_suggestions: Lock<FxHashSet<Span>>,
 }
 
 pub struct PerfStats {
@@ -1354,6 +1357,7 @@ pub fn build_session(
         target_features: FxHashSet::default(),
         known_attrs: Lock::new(MarkedAttrs::new()),
         used_attrs: Lock::new(MarkedAttrs::new()),
+        if_let_suggestions: Default::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);
