@@ -55,7 +55,7 @@ impl GenericArg<'tcx> {
     /// that appear in `self`, it does not descend into the fields of
     /// structs or variants. For example:
     ///
-    /// ```notrust
+    /// ```text
     /// isize => { isize }
     /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
     /// [isize] => { [isize], isize }
@@ -80,7 +80,7 @@ impl<'tcx> super::TyS<'tcx> {
     /// that appear in `self`, it does not descend into the fields of
     /// structs or variants. For example:
     ///
-    /// ```notrust
+    /// ```text
     /// isize => { isize }
     /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
     /// [isize] => { [isize], isize }
