@@ -400,6 +400,13 @@ impl Span {
         span.with_lo(span.hi)
     }
 
+    #[inline]
+    /// Returns true if hi == lo
+    pub fn is_empty(&self) -> bool {
+        let span = self.data();
+        span.hi == span.lo
+    }
+
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
         if self.is_dummy() { other } else { self }

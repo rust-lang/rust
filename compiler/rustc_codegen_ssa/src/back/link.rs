@@ -1668,7 +1668,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // FIXME: Order dependent, applies to the following objects. Where should it be placed?
     // Try to strip as much out of the generated object by removing unused
     // sections if possible. See more comments in linker.rs
-    if sess.opts.cg.link_dead_code != Some(true) {
+    if !sess.link_dead_code() {
         let keep_metadata = crate_type == CrateType::Dylib;
         cmd.gc_sections(keep_metadata);
     }

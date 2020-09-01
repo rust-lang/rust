@@ -1024,6 +1024,40 @@ impl Session {
         || self.opts.debugging_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY)
     }
 
+    pub fn link_dead_code(&self) -> bool {
+        match self.opts.cg.link_dead_code {
+            Some(explicitly_set) => explicitly_set,
+            None => {
+                self.opts.debugging_opts.instrument_coverage
+                    && !self.target.target.options.is_like_msvc
+                // Issue #76038: (rustc `-Clink-dead-code` causes MSVC linker to produce invalid
+                // binaries when LLVM InstrProf counters are enabled). As described by this issue,
+                // the "link dead code" option produces incorrect binaries when compiled and linked
+                // under MSVC. The resulting Rust programs typically crash with a segmentation
+                // fault, or produce an empty "*.profraw" file (profiling counter results normally
+                // generated during program exit).
+                //
+                // If not targeting MSVC, `-Z instrument-coverage` implies `-C link-dead-code`, so
+                // unexecuted code is still counted as zero, rather than be optimized out. Note that
+                // instrumenting dead code can be explicitly disabled with:
+                //
+                //     `-Z instrument-coverage -C link-dead-code=no`.
+                //
+                // FIXME(richkadel): Investigate if `instrument-coverage` implementation can inject
+                // [zero counters](https://llvm.org/docs/CoverageMappingFormat.html#counter) in the
+                // coverage map when "dead code" is removed, rather than forcing `link-dead-code`.
+                // This may not be possible, however, if (as it seems to appear) the "dead code"
+                // that would otherwise not be linked is only identified as "dead" by the native
+                // linker. If that's the case, I believe it is too late for the Rust compiler to
+                // leverage any information it might be able to get from the linker regarding what
+                // code is dead, to be able to add those counters.
+                //
+                // On the other hand, if any Rust compiler passes are optimizing out dead code blocks
+                // we should inject "zero" counters for those code regions.
+            }
+        }
+    }
+
     pub fn mark_attr_known(&self, attr: &Attribute) {
         self.known_attrs.lock().mark(attr)
     }
@@ -1429,20 +1463,6 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
                   with `-Cpanic=unwind` on Windows when targeting MSVC. \
                   See issue #61002 <https://github.com/rust-lang/rust/issues/61002> \
                   for more information.",
-        );
-    }
-
-    // FIXME(richkadel): See `src/test/run-make-fulldeps/instrument-coverage/Makefile`. After
-    // compiling with `-Zinstrument-coverage`, the resulting binary generates a segfault during
-    // the program's exit process (likely while attempting to generate the coverage stats in
-    // the "*.profraw" file). An investigation to resolve the problem on Windows is ongoing,
-    // but until this is resolved, the option is disabled on Windows, and the test is skipped
-    // when targeting `MSVC`.
-    if sess.opts.debugging_opts.instrument_coverage && sess.target.target.options.is_like_msvc {
-        sess.warn(
-            "Rust source-based code coverage instrumentation (with `-Z instrument-coverage`) \
-            is not yet supported on Windows when targeting MSVC. The resulting binaries will \
-            still be instrumented for experimentation purposes, but may not execute correctly.",
         );
     }
 

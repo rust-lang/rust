@@ -519,8 +519,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
                 Some(Event::FootnoteReference(ref reference)) => {
                     let entry = self.get_entry(&reference);
                     let reference = format!(
-                        "<sup id=\"fnref{0}\"><a href=\"#fn{0}\">{0}\
-                                             </a></sup>",
+                        "<sup id=\"fnref{0}\"><a href=\"#fn{0}\">{0}</a></sup>",
                         (*entry).1
                     );
                     return Some(Event::Html(reference.into()));

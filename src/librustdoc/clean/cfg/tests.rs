@@ -391,26 +391,25 @@ fn test_render_long_html() {
             (word_cfg("unix") & word_cfg("windows") & word_cfg("debug_assertions"))
                 .render_long_html(),
             "This is supported on <strong>Unix and Windows and debug-assertions enabled\
-                </strong> only."
+             </strong> only."
         );
         assert_eq!(
             (word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions"))
                 .render_long_html(),
             "This is supported on <strong>Unix or Windows or debug-assertions enabled\
-                </strong> only."
+             </strong> only."
         );
         assert_eq!(
             (!(word_cfg("unix") | word_cfg("windows") | word_cfg("debug_assertions")))
                 .render_long_html(),
             "This is supported on <strong>neither Unix nor Windows nor debug-assertions \
-                enabled</strong>."
+             enabled</strong>."
         );
         assert_eq!(
             ((word_cfg("unix") & name_value_cfg("target_arch", "x86_64"))
                 | (word_cfg("windows") & name_value_cfg("target_pointer_width", "64")))
             .render_long_html(),
-            "This is supported on <strong>Unix and x86-64, or Windows and 64-bit</strong> \
-                only."
+            "This is supported on <strong>Unix and x86-64, or Windows and 64-bit</strong> only."
         );
         assert_eq!(
             (!(word_cfg("unix") & word_cfg("windows"))).render_long_html(),
@@ -420,7 +419,7 @@ fn test_render_long_html() {
             ((word_cfg("debug_assertions") | word_cfg("windows")) & word_cfg("unix"))
                 .render_long_html(),
             "This is supported on <strong>(debug-assertions enabled or Windows) and Unix\
-            </strong> only."
+             </strong> only."
         );
         assert_eq!(
             name_value_cfg("target_feature", "sse2").render_long_html(),
@@ -430,7 +429,7 @@ fn test_render_long_html() {
             (name_value_cfg("target_arch", "x86_64") & name_value_cfg("target_feature", "sse2"))
                 .render_long_html(),
             "This is supported on <strong>x86-64 and target feature \
-            <code>sse2</code></strong> only."
+             <code>sse2</code></strong> only."
         );
     })
 }

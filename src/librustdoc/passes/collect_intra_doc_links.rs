@@ -1157,7 +1157,7 @@ fn report_diagnostic(
                 // Print the line containing the `link_range` and manually mark it with '^'s.
                 diag.note(&format!(
                     "the link appears in this line:\n\n{line}\n\
-                         {indicator: <before$}{indicator:^<found$}",
+                     {indicator: <before$}{indicator:^<found$}",
                     line = line,
                     indicator = "",
                     before = link_range.start - last_new_line_offset,

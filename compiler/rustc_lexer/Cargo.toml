@@ -20,4 +20,4 @@ doctest = false
 unicode-xid = "0.2.0"
 
 [dev-dependencies]
-expect-test = "0.1"
+expect-test = "1.0"

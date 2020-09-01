@@ -9,7 +9,7 @@ fn test_html_highlighting() {
         write_code(&mut out, src);
         format!("{}<pre><code>{}</code></pre>\n", STYLE, out)
     };
-    expect_file!["src/librustdoc/html/highlight/fixtures/sample.html"].assert_eq(&html);
+    expect_file!["fixtures/sample.html"].assert_eq(&html);
 }
 
 const STYLE: &str = r#"

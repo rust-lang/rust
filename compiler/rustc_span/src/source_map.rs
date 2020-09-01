@@ -487,6 +487,15 @@ impl SourceMap {
         }
     }
 
+    /// Returns a new `Span` covering the start and end `BytePos`s of the file containing the given
+    /// `pos`. This can be used to quickly determine if another `BytePos` or `Span` is from the same
+    /// file.
+    pub fn lookup_file_span(&self, pos: BytePos) -> Span {
+        let idx = self.lookup_source_file_idx(pos);
+        let SourceFile { start_pos, end_pos, .. } = *(*self.files.borrow().source_files)[idx];
+        Span::with_root_ctxt(start_pos, end_pos)
+    }
+
     /// Returns `Some(span)`, a union of the LHS and RHS span. The LHS must precede the RHS. If
     /// there are gaps between LHS and RHS, the resulting union will cross these gaps.
     /// For this to work,

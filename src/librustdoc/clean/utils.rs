@@ -422,14 +422,13 @@ pub fn name_from_pat(p: &hir::Pat<'_>) -> String {
         PatKind::Ref(ref p, _) => name_from_pat(&**p),
         PatKind::Lit(..) => {
             warn!(
-                "tried to get argument name from PatKind::Lit, \
-                  which is silly in function arguments"
+                "tried to get argument name from PatKind::Lit, which is silly in function arguments"
             );
             "()".to_string()
         }
         PatKind::Range(..) => panic!(
             "tried to get argument name from PatKind::Range, \
-                              which is not allowed in function arguments"
+             which is not allowed in function arguments"
         ),
         PatKind::Slice(ref begin, ref mid, ref end) => {
             let begin = begin.iter().map(|p| name_from_pat(&**p));

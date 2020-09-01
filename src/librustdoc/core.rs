@@ -561,8 +561,7 @@ fn run_global_ctxt(
     if let Some(ref m) = krate.module {
         if let None | Some("") = m.doc_value() {
             let help = "The following guide may be of use:\n\
-                    https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation\
-                    .html";
+                https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation.html";
             tcx.struct_lint_node(
                 rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS,
                 ctxt.as_local_hir_id(m.def_id).unwrap(),
@@ -581,7 +580,7 @@ fn run_global_ctxt(
             .struct_warn(&format!("the `#![doc({})]` attribute is considered deprecated", name));
         msg.warn(
             "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-                for more information",
+             for more information",
         );
 
         if name == "no_default_passes" {
@@ -614,7 +613,7 @@ fn run_global_ctxt(
                     report_deprecated_attr("plugins = \"...\"", diag);
                     eprintln!(
                         "WARNING: `#![doc(plugins = \"...\")]` \
-                            no longer functions; see CVE-2018-1000622"
+                         no longer functions; see CVE-2018-1000622"
                     );
                     continue;
                 }
