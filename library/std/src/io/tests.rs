@@ -1,7 +1,7 @@
 use super::{repeat, Cursor, SeekFrom};
 use crate::cmp::{self, min};
-use crate::io::prelude::*;
 use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{BufRead, BufReader, BufWriter, Read, Result, Seek, Write};
 use crate::ops::Deref;
 
 #[test]
@@ -491,4 +491,55 @@ fn test_write_all_vectored() {
             assert_eq!(&*writer.written, &*wanted);
         }
     }
+}
+
+#[test]
+#[cfg(unix)]
+fn copy_specialization() -> Result<()> {
+    let path = crate::env::temp_dir();
+    let source_path = path.join("copy-spec.source");
+    let sink_path = path.join("copy-spec.sink");
+
+    let result: Result<()> = try {
+        let mut source = crate::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&source_path)?;
+        source.write_all(b"abcdefghiklmnopqr")?;
+        source.seek(SeekFrom::Start(8))?;
+        let mut source = BufReader::with_capacity(8, source.take(5));
+        source.fill_buf()?;
+        assert_eq!(source.buffer(), b"iklmn");
+        source.get_mut().set_limit(6);
+        source.get_mut().get_mut().seek(SeekFrom::Start(1))?; // "bcdefg"
+        let mut source = source.take(10); // "iklmnbcdef"
+
+        let mut sink = crate::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&sink_path)?;
+        sink.write_all(b"000000")?;
+        let mut sink = BufWriter::with_capacity(5, sink);
+        sink.write_all(b"wxyz")?;
+        assert_eq!(sink.buffer(), b"wxyz");
+
+        let copied = crate::io::copy(&mut source, &mut sink)?;
+        assert_eq!(copied, 10);
+        assert_eq!(sink.buffer().len(), 0);
+
+        let mut sink = sink.into_inner()?;
+        sink.seek(SeekFrom::Start(0))?;
+        let mut copied = Vec::new();
+        sink.read_to_end(&mut copied)?;
+        assert_eq!(&copied, b"000000wxyziklmnbcdef");
+    };
+
+    let rm1 = crate::fs::remove_file(source_path);
+    let rm2 = crate::fs::remove_file(sink_path);
+
+    result.and(rm1).and(rm2)
 }
