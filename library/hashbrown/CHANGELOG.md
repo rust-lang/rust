@@ -7,10 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-### Changed
+### Fixed
 - `drain_filter` now removes and yields items that do match the predicate,
   rather than items that don't.  This is a **breaking change** to match the
-  behavior of the `drain_filter` methods in `std`.
+  behavior of the `drain_filter` methods in `std`. (#187)
+
+### Added
+- Added `replace_entry_with` to `OccupiedEntry`, and `and_replace_entry_with` to `Entry`. (#190)
+- Implemented `FusedIterator` and `size_hint` for `DrainFilter`. (#188)
+
+### Changed
+- The minimum Rust version has been bumped to 1.36 (due to `crossbeam` dependency). (#193)
+- `HashMap::with_hasher` and `HashSet::with_hasher` are now `const fn`. (#195)
+- Removed `T: Hash + Eq` and `S: BuildHasher` bounds on `HashSet::new`,
+  `with_capacity`, `with_hasher`, and `with_capacity_and_hasher`.  (#185)
 
 ## [v0.8.2] - 2020-08-08
 
