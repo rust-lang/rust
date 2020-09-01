@@ -22,8 +22,8 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 /// generally, please see the [module-level documentation]. In particular, you
 /// may want to know how to [implement `Iterator`][impl].
 ///
-/// [module-level documentation]: index.html
-/// [impl]: index.html#implementing-iterator
+/// [module-level documentation]: crate::iter
+/// [impl]: crate::iter#implementing-iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
@@ -106,8 +106,6 @@ pub trait Iterator {
     /// implementations may choose to resume iteration, and so calling `next()`
     /// again may or may not eventually start returning [`Some(Item)`] again at some
     /// point.
-    ///
-    /// [`Some(Item)`]: Some
     ///
     /// # Examples
     ///
@@ -212,7 +210,7 @@ pub trait Iterator {
     /// returning the number of times it saw [`Some`]. Note that [`next`] has to be
     /// called at least once even if the iterator does not have any elements.
     ///
-    /// [`next`]: #tymethod.next
+    /// [`next`]: Iterator::next
     ///
     /// # Overflow Behavior
     ///
@@ -449,9 +447,7 @@ pub trait Iterator {
     /// }
     /// ```
     ///
-    /// [`once`]: fn.once.html
-    /// [`Iterator`]: trait.Iterator.html
-    /// [`IntoIterator`]: trait.IntoIterator.html
+    /// [`once`]: crate::iter::once
     /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -496,9 +492,6 @@ pub trait Iterator {
     /// [`Iterator`] itself. For example, slices (`&[T]`) implement
     /// [`IntoIterator`], and so can be passed to `zip()` directly:
     ///
-    /// [`IntoIterator`]: trait.IntoIterator.html
-    /// [`Iterator`]: trait.Iterator.html
-    ///
     /// ```
     /// let s1 = &[1, 2, 3];
     /// let s2 = &[4, 5, 6];
@@ -530,8 +523,8 @@ pub trait Iterator {
     /// assert_eq!((2, 'o'), zipper[2]);
     /// ```
     ///
-    /// [`enumerate`]: #method.enumerate
-    /// [`next`]: #tymethod.next
+    /// [`enumerate`]: Iterator::enumerate
+    /// [`next`]: Iterator::next
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn zip<U>(self, other: U) -> Zip<Self, U::IntoIter>
@@ -734,8 +727,8 @@ pub trait Iterator {
     /// Why `filter_map` and not just [`filter`] and [`map`]? The key is in this
     /// part:
     ///
-    /// [`filter`]: #method.filter
-    /// [`map`]: #method.map
+    /// [`filter`]: Iterator::filter
+    /// [`map`]: Iterator::map
     ///
     /// > If the closure returns [`Some(element)`][`Some`], then that element is returned.
     ///
@@ -767,7 +760,6 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), None);
     /// ```
     ///
-    /// [`Option<T>`]: Option
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>
@@ -802,7 +794,7 @@ pub trait Iterator {
     ///
     /// [`usize`]: type@usize
     /// [`usize::MAX`]: crate::usize::MAX
-    /// [`zip`]: #method.zip
+    /// [`zip`]: Iterator::zip
     ///
     /// # Examples
     ///
@@ -837,8 +829,8 @@ pub trait Iterator {
     /// anything other than fetching the next value) of the [`next`] method
     /// will occur.
     ///
-    /// [`peek`]: crate::iter::Peekable::peek
-    /// [`next`]: #tymethod.next
+    /// [`peek`]: Peekable::peek
+    /// [`next`]: Iterator::next
     ///
     /// # Examples
     ///
@@ -876,7 +868,7 @@ pub trait Iterator {
 
     /// Creates an iterator that [`skip`]s elements based on a predicate.
     ///
-    /// [`skip`]: #method.skip
+    /// [`skip`]: Iterator::skip
     ///
     /// `skip_while()` takes a closure as an argument. It will call this
     /// closure on each element of the iterator, and ignore elements
@@ -1043,8 +1035,8 @@ pub trait Iterator {
     ///
     /// Here's the same example, but with [`take_while`] and [`map`]:
     ///
-    /// [`take_while`]: #method.take_while
-    /// [`map`]: #method.map
+    /// [`take_while`]: Iterator::take_while
+    /// [`map`]: Iterator::map
     ///
     /// ```
     /// let a = [-1i32, 4, 0, 1];
@@ -1104,7 +1096,7 @@ pub trait Iterator {
     /// It is also not specified what this iterator returns after the first` None` is returned.
     /// If you need fused iterator, use [`fuse`].
     ///
-    /// [`fuse`]: #method.fuse
+    /// [`fuse`]: Iterator::fuse
     #[inline]
     #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
     fn map_while<B, P>(self, predicate: P) -> MapWhile<Self, P>
@@ -1190,7 +1182,7 @@ pub trait Iterator {
     /// An iterator adaptor similar to [`fold`] that holds internal state and
     /// produces a new iterator.
     ///
-    /// [`fold`]: #method.fold
+    /// [`fold`]: Iterator::fold
     ///
     /// `scan()` takes two arguments: an initial value which seeds the internal
     /// state, and a closure with two arguments, the first being a mutable
@@ -1246,8 +1238,8 @@ pub trait Iterator {
     /// one item for each element, and `flat_map()`'s closure returns an
     /// iterator for each element.
     ///
-    /// [`map`]: #method.map
-    /// [`flatten`]: #method.flatten
+    /// [`map`]: Iterator::map
+    /// [`flatten`]: Iterator::flatten
     ///
     /// # Examples
     ///
@@ -1333,7 +1325,7 @@ pub trait Iterator {
     /// two-dimensional and not one-dimensional. To get a one-dimensional
     /// structure, you have to `flatten()` again.
     ///
-    /// [`flat_map()`]: #method.flat_map
+    /// [`flat_map()`]: Iterator::flat_map
     #[inline]
     #[stable(feature = "iterator_flatten", since = "1.29.0")]
     fn flatten(self) -> Flatten<Self>
@@ -1349,8 +1341,6 @@ pub trait Iterator {
     /// After an iterator returns [`None`], future calls may or may not yield
     /// [`Some(T)`] again. `fuse()` adapts an iterator, ensuring that after a
     /// [`None`] is given, it will always return [`None`] forever.
-    ///
-    /// [`Some(T)`]: Some
     ///
     /// # Examples
     ///
@@ -1640,7 +1630,7 @@ pub trait Iterator {
     /// assert_eq!(Ok(vec![1, 3]), result);
     /// ```
     ///
-    /// [`iter`]: #tymethod.next
+    /// [`iter`]: Iterator::next
     /// [`String`]: ../../std/string/struct.String.html
     /// [`char`]: type@char
     #[inline]
@@ -1661,8 +1651,8 @@ pub trait Iterator {
     ///
     /// See also [`is_partitioned()`] and [`partition_in_place()`].
     ///
-    /// [`is_partitioned()`]: #method.is_partitioned
-    /// [`partition_in_place()`]: #method.partition_in_place
+    /// [`is_partitioned()`]: Iterator::is_partitioned
+    /// [`partition_in_place()`]: Iterator::partition_in_place
     ///
     /// # Examples
     ///
@@ -1716,8 +1706,8 @@ pub trait Iterator {
     ///
     /// See also [`is_partitioned()`] and [`partition()`].
     ///
-    /// [`is_partitioned()`]: #method.is_partitioned
-    /// [`partition()`]: #method.partition
+    /// [`is_partitioned()`]: Iterator::is_partitioned
+    /// [`partition()`]: Iterator::partition
     ///
     /// # Examples
     ///
@@ -1779,8 +1769,8 @@ pub trait Iterator {
     ///
     /// See also [`partition()`] and [`partition_in_place()`].
     ///
-    /// [`partition()`]: #method.partition
-    /// [`partition_in_place()`]: #method.partition_in_place
+    /// [`partition()`]: Iterator::partition
+    /// [`partition_in_place()`]: Iterator::partition_in_place
     ///
     /// # Examples
     ///
@@ -1879,8 +1869,8 @@ pub trait Iterator {
     /// This can also be thought of as the fallible form of [`for_each()`]
     /// or as the stateless version of [`try_fold()`].
     ///
-    /// [`for_each()`]: #method.for_each
-    /// [`try_fold()`]: #method.try_fold
+    /// [`for_each()`]: Iterator::for_each
+    /// [`try_fold()`]: Iterator::try_fold
     ///
     /// # Examples
     ///
@@ -2006,10 +1996,12 @@ pub trait Iterator {
         accum
     }
 
-    /// The same as [`fold()`](#method.fold), but uses the first element in the
+    /// The same as [`fold()`], but uses the first element in the
     /// iterator as the initial value, folding every subsequent element into it.
     /// If the iterator is empty, return `None`; otherwise, return the result
     /// of the fold.
+    ///
+    /// [`fold()`]: Iterator::fold
     ///
     /// # Example
     ///
@@ -2165,8 +2157,6 @@ pub trait Iterator {
     /// argument is a double reference. You can see this effect in the
     /// examples below, with `&&x`.
     ///
-    /// [`Some(element)`]: Some
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -2311,7 +2301,6 @@ pub trait Iterator {
     /// This function might panic if the iterator has more than `usize::MAX`
     /// non-matching elements.
     ///
-    /// [`Some(index)`]: Some
     /// [`usize::MAX`]: crate::usize::MAX
     ///
     /// # Examples
@@ -2372,8 +2361,6 @@ pub trait Iterator {
     ///
     /// `rposition()` is short-circuiting; in other words, it will stop
     /// processing as soon as it finds a `true`.
-    ///
-    /// [`Some(index)`]: Some
     ///
     /// # Examples
     ///
@@ -2602,8 +2589,6 @@ pub trait Iterator {
     /// This is only possible if the iterator has an end, so `rev()` only
     /// works on [`DoubleEndedIterator`]s.
     ///
-    /// [`DoubleEndedIterator`]: trait.DoubleEndedIterator.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -2634,7 +2619,7 @@ pub trait Iterator {
     ///
     /// This function is, in some sense, the opposite of [`zip`].
     ///
-    /// [`zip`]: #method.zip
+    /// [`zip`]: Iterator::zip
     ///
     /// # Examples
     ///
@@ -2713,7 +2698,7 @@ pub trait Iterator {
     /// This is useful when you have an iterator over `&T`, but you need an
     /// iterator over `T`.
     ///
-    /// [`clone`]: crate::clone::Clone::clone
+    /// [`clone`]: Clone::clone
     ///
     /// # Examples
     ///
@@ -3197,7 +3182,7 @@ pub trait Iterator {
     /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// ```
     ///
-    /// [`is_sorted`]: #method.is_sorted
+    /// [`is_sorted`]: Iterator::is_sorted
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     fn is_sorted_by<F>(mut self, mut compare: F) -> bool
     where
@@ -3226,7 +3211,7 @@ pub trait Iterator {
     /// the elements, as determined by `f`. Apart from that, it's equivalent to [`is_sorted`]; see
     /// its documentation for more information.
     ///
-    /// [`is_sorted`]: #method.is_sorted
+    /// [`is_sorted`]: Iterator::is_sorted
     ///
     /// # Examples
     ///
