@@ -329,9 +329,10 @@ impl<T> Rc<T> {
     /// to upgrade the weak reference before this function returns will result
     /// in a `None` value. However, the weak reference may be cloned freely and
     /// stored for use at a later time.
-    #[inline]
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
+        // Construct the inner in the "uninitialized" state with a single
+        // weak reference.
         let uninit_ptr: NonNull<_> = Box::leak(box RcBox {
             strong: Cell::new(0),
             weak: Cell::new(1),
@@ -343,6 +344,12 @@ impl<T> Rc<T> {
 
         let weak = Weak { ptr: init_ptr };
 
+        // It's important we don't give up ownership of the weak pointer, or
+        // else the memory might be freed by the time `data_fn` returns. If
+        // we really wanted to pass ownership, we could create an additional
+        // weak pointer for ourselves, but this would result in additional
+        // updates to the weak reference count which might not be necessary
+        // otherwise.
         let data = data_fn(&weak);
 
         unsafe {
@@ -355,6 +362,9 @@ impl<T> Rc<T> {
         }
 
         let strong = Rc::from_inner(init_ptr);
+
+        // Strong references should collectively own a shared weak reference,
+        // so don't run the destructor for our old weak reference.
         mem::forget(weak);
         strong
     }
