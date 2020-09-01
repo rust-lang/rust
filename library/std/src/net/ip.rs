@@ -1139,7 +1139,7 @@ impl Ipv6Addr {
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_unspecified(&self) -> bool {
-        matches!(self.segments(), [0, 0, 0, 0, 0, 0, 0, 0])
+        u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED.octets())
     }
 
     /// Returns [`true`] if this is a loopback address (::1).
@@ -1160,7 +1160,7 @@ impl Ipv6Addr {
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_loopback(&self) -> bool {
-        matches!(self.segments(), [0, 0, 0, 0, 0, 0, 0, 1])
+        u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::LOCALHOST.octets())
     }
 
     /// Returns [`true`] if the address appears to be globally routable.
