@@ -49,6 +49,14 @@ mod a {
     pub use self::b::C;
 }
 
+// don't lint on clippy::wildcard_imports for `use` items
+#[allow(clippy::wildcard_imports)]
+pub use std::io::prelude::*;
+
+// don't lint on clippy::enum_glob_use for `use` items
+#[allow(clippy::enum_glob_use)]
+pub use std::cmp::Ordering::*;
+
 fn test_indented_attr() {
     #[allow(clippy::almost_swapped)]
     use std::collections::HashSet;
