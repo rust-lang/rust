@@ -317,12 +317,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 })
             }
             ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(m)),
-            ItemKind::ForeignMod(ref fm) => hir::ItemKind::ForeignMod {
-                abi: fm.abi.map_or(abi::Abi::C, |abi| self.lower_abi(abi)),
-                items: self
-                    .arena
-                    .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
-            },
+            ItemKind::ForeignMod(ref fm) => {
+                if fm.abi.is_none() {
+                    self.maybe_lint_missing_abi(span, id, abi::Abi::C);
+                }
+                hir::ItemKind::ForeignMod {
+                    abi: fm.abi.map_or(abi::Abi::C, |abi| self.lower_abi(abi)),
+                    items: self
+                        .arena
+                        .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
+                }
+            }
             ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
             ItemKind::TyAlias(_, ref gen, _, Some(ref ty)) => {
                 // We lower
