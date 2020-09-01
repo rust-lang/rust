@@ -21,7 +21,7 @@
         "Programming Languages"
     ],
     "engines": {
-        "vscode": "^1.44.1"
+        "vscode": "^1.47.1"
     },
     "enableProposedApi": true,
     "scripts": {
@@ -45,7 +45,7 @@
         "@types/mocha": "^7.0.2",
         "@types/node": "~12.7.0",
         "@types/node-fetch": "^2.5.7",
-        "@types/vscode": "^1.44.1",
+        "@types/vscode": "^1.47.1",
         "@typescript-eslint/eslint-plugin": "^3.4.0",
         "@typescript-eslint/parser": "^3.4.0",
         "eslint": "^7.3.1",
@@ -55,7 +55,7 @@
         "tslib": "^2.0.0",
         "typescript": "^3.9.5",
         "typescript-formatter": "^7.2.2",
-        "vsce": "^1.75.0",
+        "vsce": "^1.79.5",
         "vscode-test": "^1.4.0"
     },
     "activationEvents": [
