@@ -421,12 +421,10 @@ export function gotoLocation(ctx: Ctx): Cmd {
 
 export function openDocs(ctx: Ctx): Cmd {
     return async () => {
-        console.log("running openDocs");
 
         const client = ctx.client;
         const editor = vscode.window.activeTextEditor;
         if (!editor || !client) {
-            console.log("not yet ready");
             return
         };
 
@@ -435,7 +433,9 @@ export function openDocs(ctx: Ctx): Cmd {
 
         const doclink = await client.sendRequest(ra.openDocs, { position, textDocument });
 
-        vscode.commands.executeCommand("vscode.open", vscode.Uri.parse(doclink.remote));
+        if (doclink != null) {
+            vscode.commands.executeCommand("vscode.open", vscode.Uri.parse(doclink));
+        }
     };
 
 }

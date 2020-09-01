@@ -35,7 +35,7 @@ use hir_ty::{
     traits::SolutionVariables,
     ApplicationTy, BoundVar, CallableDefId, Canonical, DebruijnIndex, FnSig, GenericPredicate,
     InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, Ty,
-    TyDefId, TyKind, TypeCtor,
+    TyDefId, TyKind, TypeCtor, TyLoweringContext, TypeCtor,
 };
 use rustc_hash::FxHashSet;
 use stdx::impl_from;
@@ -185,6 +185,25 @@ impl_from!(
     BuiltinType
     for ModuleDef
 );
+
+impl From<MethodOwner> for ModuleDef {
+    fn from(mowner: MethodOwner) -> Self {
+        match mowner {
+            MethodOwner::Trait(t) => t.into(),
+            MethodOwner::Adt(t) => t.into(),
+        }
+    }
+}
+
+impl From<VariantDef> for ModuleDef {
+    fn from(var: VariantDef) -> Self {
+        match var {
+            VariantDef::Struct(t) => Adt::from(t).into(),
+            VariantDef::Union(t) => Adt::from(t).into(),
+            VariantDef::EnumVariant(t) => t.into(),
+        }
+    }
+}
 
 impl ModuleDef {
     pub fn module(self, db: &dyn HirDatabase) -> Option<Module> {
@@ -752,7 +771,34 @@ impl Function {
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
         hir_ty::diagnostics::validate_body(db, self.id.into(), sink)
     }
+
+    pub fn parent_def(self, db: &dyn HirDatabase) -> Option<MethodOwner> {
+        match self.as_assoc_item(db).map(|assoc| assoc.container(db)) {
+            Some(AssocItemContainer::Trait(t)) => Some(t.into()),
+            Some(AssocItemContainer::ImplDef(imp)) => {
+                let resolver = ModuleId::from(imp.module(db)).resolver(db.upcast());
+                let ctx = TyLoweringContext::new(db, &resolver);
+                let adt = Ty::from_hir(
+                    &ctx,
+                    &imp.target_trait(db).unwrap_or_else(|| imp.target_type(db)),
+                )
+                .as_adt()
+                .map(|t| t.0)
+                .unwrap();
+                Some(Adt::from(adt).into())
+            }
+            None => None,
+        }
+    }
 }
+
+#[derive(Debug)]
+pub enum MethodOwner {
+    Trait(Trait),
+    Adt(Adt),
+}
+
+impl_from!(Trait, Adt for MethodOwner);
 
 // Note: logically, this belongs to `hir_ty`, but we are not using it there yet.
 pub enum Access {

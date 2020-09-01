@@ -387,7 +387,7 @@ impl Analysis {
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<doc_links::DocumentationLink>> {
-        self.with_db(|db| doc_links::get_doc_url(db, &position))
+        self.with_db(|db| doc_links::external_docs(db, &position))
     }
 
     /// Computes parameter information for the given call expression.

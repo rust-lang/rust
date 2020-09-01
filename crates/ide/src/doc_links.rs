@@ -2,19 +2,26 @@
 //!
 //! Most of the implementation can be found in [`hir::doc_links`].
 
-use hir::{Adt, Crate, HasAttrs, ModuleDef};
-use ide_db::{defs::Definition, RootDatabase};
-use pulldown_cmark::{CowStr, Event, LinkType, Options, Parser, Tag};
+use std::iter::once;
+
+use itertools::Itertools;
 use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};
+use pulldown_cmark::{CowStr, Event, LinkType, Options, Parser, Tag};
 use url::Url;
 
-use crate::{FilePosition, Semantics};
-use hir::{get_doc_link, resolve_doc_link};
+use ide_db::{defs::Definition, RootDatabase};
+
+use hir::{
+    db::{DefDatabase, HirDatabase},
+    Adt, AsName, AssocItem, Crate, Field, HasAttrs, ItemInNs, ModuleDef,
+};
 use ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
 };
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+
+use crate::{FilePosition, Semantics};
 
 pub type DocumentationLink = String;
 
@@ -100,64 +107,58 @@ pub fn get_doc_link<T: Resolvable + Clone>(db: &dyn HirDatabase, definition: &T)
 // BUG: For Option
 // Returns https://doc.rust-lang.org/nightly/core/prelude/v1/enum.Option.html#variant.Some
 // Instead of https://doc.rust-lang.org/nightly/core/option/enum.Option.html
-fn get_doc_link_impl(db: &dyn HirDatabase, moddef: &ModuleDef) -> Option<String> {
+// This could be worked around by turning the `EnumVariant` into `Enum` before attempting resolution,
+// but it's really just working around the problem. Ideally we need to implement a slightly different
+// version of import map which follows the same process as rustdoc. Otherwise there'll always be some
+// edge cases where we select the wrong import path.
+fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
     // Get the outermost definition for the moduledef. This is used to resolve the public path to the type,
     // then we can join the method, field, etc onto it if required.
-    let target_def: ModuleDef = match moddef {
-        ModuleDef::Function(f) => match f.as_assoc_item(db).map(|assoc| assoc.container(db)) {
-            Some(AssocItemContainer::Trait(t)) => t.into(),
-            Some(AssocItemContainer::ImplDef(imp)) => {
-                let resolver = ModuleId::from(imp.module(db)).resolver(db.upcast());
-                let ctx = TyLoweringContext::new(db, &resolver);
-                Adt::from(
-                    Ty::from_hir(
-                        &ctx,
-                        &imp.target_trait(db).unwrap_or_else(|| imp.target_type(db)),
-                    )
-                    .as_adt()
-                    .map(|t| t.0)
-                    .unwrap(),
-                )
-                .into()
+    let target_def: ModuleDef = match definition {
+        Definition::ModuleDef(moddef) => match moddef {
+            ModuleDef::Function(f) => {
+                f.parent_def(db).map(|mowner| mowner.into()).unwrap_or_else(|| f.clone().into())
             }
-            None => ModuleDef::Function(*f),
+            moddef => moddef,
         },
-        moddef => *moddef,
+        Definition::Field(f) => f.parent_def(db).into(),
+        // FIXME: Handle macros
+        _ => return None,
     };
 
     let ns = ItemInNs::Types(target_def.clone().into());
 
-    let module = moddef.module(db)?;
+    let module = definition.module(db)?;
     let krate = module.krate();
     let import_map = db.import_map(krate.into());
     let base = once(krate.display_name(db).unwrap())
         .chain(import_map.path_of(ns).unwrap().segments.iter().map(|name| format!("{}", name)))
         .join("/");
 
-    get_doc_url(db, &krate)
-        .and_then(|url| url.join(&base).ok())
-        .and_then(|url| {
-            get_symbol_filename(db, &target_def).as_deref().and_then(|f| url.join(f).ok())
-        })
-        .and_then(|url| match moddef {
+    let filename = get_symbol_filename(db, &target_def);
+    let fragment = match definition {
+        Definition::ModuleDef(moddef) => match moddef {
             ModuleDef::Function(f) => {
-                get_symbol_fragment(db, &FieldOrAssocItem::AssocItem(AssocItem::Function(*f)))
-                    .as_deref()
-                    .and_then(|f| url.join(f).ok())
+                get_symbol_fragment(db, &FieldOrAssocItem::AssocItem(AssocItem::Function(f)))
             }
             ModuleDef::Const(c) => {
-                get_symbol_fragment(db, &FieldOrAssocItem::AssocItem(AssocItem::Const(*c)))
-                    .as_deref()
-                    .and_then(|f| url.join(f).ok())
+                get_symbol_fragment(db, &FieldOrAssocItem::AssocItem(AssocItem::Const(c)))
             }
             ModuleDef::TypeAlias(ty) => {
-                get_symbol_fragment(db, &FieldOrAssocItem::AssocItem(AssocItem::TypeAlias(*ty)))
-                    .as_deref()
-                    .and_then(|f| url.join(f).ok())
+                get_symbol_fragment(db, &FieldOrAssocItem::AssocItem(AssocItem::TypeAlias(ty)))
             }
-            // TODO:  Field <- this requires passing in a definition or something
-            _ => Some(url),
-        })
+            _ => None,
+        },
+        Definition::Field(field) => get_symbol_fragment(db, &FieldOrAssocItem::Field(field)),
+        _ => None,
+    };
+
+    get_doc_url(db, &krate)
+        .and_then(|url| url.join(&base).ok())
+        .and_then(|url| filename.as_deref().and_then(|f| url.join(f).ok()))
+        .and_then(
+            |url| if let Some(fragment) = fragment { url.join(&fragment).ok() } else { Some(url) },
+        )
         .map(|url| url.into_string())
 }
 
@@ -219,9 +220,8 @@ fn rewrite_url_link(db: &RootDatabase, def: ModuleDef, target: &str) -> Option<S
         .map(|url| url.into_string())
 }
 
-// FIXME: This should either be moved, or the module should be renamed.
 /// Retrieve a link to documentation for the given symbol.
-pub fn get_doc_url(db: &RootDatabase, position: &FilePosition) -> Option<DocumentationLink> {
+pub fn external_docs(db: &RootDatabase, position: &FilePosition) -> Option<DocumentationLink> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
     let token = pick_best(file.token_at_offset(position.offset))?;
@@ -236,14 +236,7 @@ pub fn get_doc_url(db: &RootDatabase, position: &FilePosition) -> Option<Documen
         }
     };
 
-    match definition? {
-        Definition::Macro(t) => get_doc_link(db, &t),
-        Definition::Field(t) => get_doc_link(db, &t),
-        Definition::ModuleDef(t) => get_doc_link(db, &t),
-        Definition::SelfType(t) => get_doc_link(db, &t),
-        Definition::Local(t) => get_doc_link(db, &t),
-        Definition::TypeParam(t) => get_doc_link(db, &t),
-    }
+    get_doc_link(db, definition?)
 }
 
 /// Rewrites a markdown document, applying 'callback' to each link.
