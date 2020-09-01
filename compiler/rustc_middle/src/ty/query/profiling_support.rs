@@ -4,9 +4,10 @@ use measureme::{StringComponent, StringId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::{DefPathData, DefPathDataName};
+use rustc_hir::definitions::DefPathData;
 use rustc_query_system::query::QueryCache;
 use rustc_query_system::query::QueryState;
+use rustc_span::symbol::Symbol;
 use std::fmt::Debug;
 use std::io::Write;
 
@@ -66,25 +67,17 @@ impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
                 end_index = 3;
             }
             other => {
-                name = match other.name() {
-                    DefPathDataName::Named(name) => {
-                        dis = "";
-                        end_index = 3;
-                        name
-                    }
-                    DefPathDataName::Anon { namespace } => {
-                        write!(
-                            &mut dis_buffer[..],
-                            "[{}]",
-                            def_key.disambiguated_data.disambiguator
-                        )
+                name = Symbol::intern(&other.to_string());
+                if def_key.disambiguated_data.disambiguator == 0 {
+                    dis = "";
+                    end_index = 3;
+                } else {
+                    write!(&mut dis_buffer[..], "[{}]", def_key.disambiguated_data.disambiguator)
                         .unwrap();
-                        let end_of_dis = dis_buffer.iter().position(|&c| c == b']').unwrap();
-                        dis = std::str::from_utf8(&dis_buffer[..end_of_dis + 1]).unwrap();
-                        end_index = 4;
-                        namespace
-                    }
-                };
+                    let end_of_dis = dis_buffer.iter().position(|&c| c == b']').unwrap();
+                    dis = std::str::from_utf8(&dis_buffer[..end_of_dis + 1]).unwrap();
+                    end_index = 4;
+                }
             }
         }
 
