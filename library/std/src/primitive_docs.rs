@@ -222,8 +222,8 @@ mod prim_bool {}
 /// The reason is that, in the first example, there are many possible types that `!` could coerce
 /// to, because many types implement `Add<u32>`. However, in the second example,
 /// the `else` branch returns a `0`, which the compiler infers from the return type to be of type
-/// `u32`. Since `u32` is a concrete type, `!` can and will be coerced to it. See issue [#36375] for more
-/// information on this quirk of `!`.
+/// `u32`. Since `u32` is a concrete type, `!` can and will be coerced to it. See issue [#36375]
+/// for more information on this quirk of `!`.
 ///
 /// [#36375]: https://github.com/rust-lang/rust/issues/36375
 ///
