@@ -327,13 +327,29 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 if er.end != er.start
                                     && scalar.valid_range.end() > scalar.valid_range.start()
                                 {
-                                    // We want `table[e as usize]` to not
+                                    // We want `table[e as usize ± k]` to not
                                     // have bound checks, and this is the most
-                                    // convenient place to put the `assume`.
-                                    let ll_t_in_const =
+                                    // convenient place to put the `assume`s.
+                                    if *scalar.valid_range.start() > 0 {
+                                        let enum_value_lower_bound = bx
+                                            .cx()
+                                            .const_uint_big(ll_t_in, *scalar.valid_range.start());
+                                        let cmp_start = bx.icmp(
+                                            IntPredicate::IntUGE,
+                                            llval,
+                                            enum_value_lower_bound,
+                                        );
+                                        bx.assume(cmp_start);
+                                    }
+
+                                    let enum_value_upper_bound =
                                         bx.cx().const_uint_big(ll_t_in, *scalar.valid_range.end());
-                                    let cmp = bx.icmp(IntPredicate::IntULE, llval, ll_t_in_const);
-                                    bx.assume(cmp);
+                                    let cmp_end = bx.icmp(
+                                        IntPredicate::IntULE,
+                                        llval,
+                                        enum_value_upper_bound,
+                                    );
+                                    bx.assume(cmp_end);
                                 }
                             }
                         }
