@@ -23,7 +23,7 @@ mod map_reduce {
 
     pub type putter<'a> = Box<dyn FnMut(String, String) + 'a>;
 
-    pub type mapper = extern fn(String, putter);
+    pub type mapper = extern "C" fn(String, putter);
 
     enum ctrl_proto { find_reducer(Vec<u8>, Sender<isize>), mapper_done, }
 

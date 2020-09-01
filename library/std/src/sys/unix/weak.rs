@@ -28,7 +28,7 @@ use crate::sync::atomic::{self, AtomicUsize, Ordering};
 
 macro_rules! weak {
     (fn $name:ident($($t:ty),*) -> $ret:ty) => (
-        static $name: crate::sys::weak::Weak<unsafe extern fn($($t),*) -> $ret> =
+        static $name: crate::sys::weak::Weak<unsafe extern "C" fn($($t),*) -> $ret> =
             crate::sys::weak::Weak::new(concat!(stringify!($name), '\0'));
     )
 }

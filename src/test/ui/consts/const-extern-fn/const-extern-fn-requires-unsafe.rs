@@ -1,6 +1,6 @@
 #![feature(const_extern_fn)]
 
-const unsafe extern fn foo() -> usize { 5 }
+const unsafe extern "C" fn foo() -> usize { 5 }
 
 fn main() {
     let a: [u8; foo()];

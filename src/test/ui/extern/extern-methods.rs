@@ -5,7 +5,7 @@
 
 trait A {
     extern "fastcall" fn test1(i: i32);
-    extern fn test2(i: i32);
+    extern "C" fn test2(i: i32);
 }
 
 struct S;
@@ -19,7 +19,7 @@ impl A for S {
     extern "fastcall" fn test1(i: i32) {
         assert_eq!(i, 1);
     }
-    extern fn test2(i: i32) {
+    extern "C" fn test2(i: i32) {
         assert_eq!(i, 2);
     }
 }
