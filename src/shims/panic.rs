@@ -48,7 +48,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Get the raw pointer stored in arg[0] (the panic payload).
         let &[payload] = check_arg_count(args)?;
         let payload = this.read_scalar(payload)?.check_init()?;
-        this.set_panic_payload(payload);
+        let thread = this.active_thread_mut();
+        assert!(
+            thread.panic_payload.is_none(),
+            "the panic runtime should avoid double-panics"
+        );
+        thread.panic_payload = Some(payload);
 
         // Jump to the unwind block to begin unwinding.
         this.unwind_to_block(unwind);
@@ -130,7 +135,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // The Thread's `panic_payload` holds what was passed to `miri_start_panic`.
             // This is exactly the second argument we need to pass to `catch_fn`.
-            let payload = this.take_panic_payload();
+            let payload = this.active_thread_mut().panic_payload.take().unwrap();
 
             // Push the `catch_fn` stackframe.
             let f_instance = this.memory.get_fn(catch_unwind.catch_fn)?.as_instance()?;
