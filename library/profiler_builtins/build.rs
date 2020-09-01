@@ -50,6 +50,11 @@ fn main() {
         cfg.flag("-fno-builtin");
         cfg.flag("-fvisibility=hidden");
         cfg.flag("-fomit-frame-pointer");
+
+        // Suppresses: `warning: .../GCDAProfiling.c... destructor priorities from 0 to 100 are
+        // reserved for the implementation`
+        cfg.flag_if_supported("-Wno-prio-ctor-dtor");
+
         cfg.define("VISIBILITY_HIDDEN", None);
         if !target.contains("windows") {
             cfg.define("COMPILER_RT_HAS_UNAME", Some("1"));
