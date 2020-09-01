@@ -403,8 +403,8 @@ warning: attribute should be applied to a foreign function or static
 LL |     #[link_name = "1900"]
    |     ^^^^^^^^^^^^^^^^^^^^^
 ...
-LL |     extern { }
-   |     ---------- not a foreign function or static
+LL |     extern "C" { }
+   |     -------------- not a foreign function or static
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 help: try `#[link(name = "1900")]` instead

@@ -9,7 +9,7 @@
 
 extern crate linkage1 as other;
 
-extern {
+extern "C" {
     #[linkage = "extern_weak"]
     static foo: *const isize;
     #[linkage = "extern_weak"]

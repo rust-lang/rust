@@ -7,12 +7,12 @@
 
 extern crate fn_abi;
 
-extern {
+extern "C" {
     fn foo();
 }
 
 pub fn main() {
     // Will only type check if the type of _p and the decl of foo use the
     // same ABI
-    let _p: unsafe extern fn() = foo;
+    let _p: unsafe extern "C" fn() = foo;
 }

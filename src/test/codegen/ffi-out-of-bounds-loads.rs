@@ -11,7 +11,7 @@ struct S {
     f3: i32,
 }
 
-extern {
+extern "C" {
     fn foo(s: S);
 }
 

@@ -1,7 +1,7 @@
 error[E0449]: unnecessary visibility qualifier
   --> $DIR/priv-in-bad-locations.rs:1:1
    |
-LL | pub extern {
+LL | pub extern "C" {
    | ^^^ `pub` not permitted here because it's implied
    |
    = note: place qualifiers on individual foreign items instead

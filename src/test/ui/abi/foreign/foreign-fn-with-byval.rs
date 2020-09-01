@@ -11,17 +11,15 @@ pub struct S {
 }
 
 #[link(name = "rust_test_helpers", kind = "static")]
-extern {
+extern "C" {
     pub fn get_x(x: S) -> u64;
     pub fn get_y(x: S) -> u64;
     pub fn get_z(x: S) -> u64;
 }
 
 #[inline(never)]
-fn indirect_call(func: unsafe extern fn(s: S) -> u64, s: S) -> u64 {
-    unsafe {
-        func(s)
-    }
+fn indirect_call(func: unsafe extern "C" fn(s: S) -> u64, s: S) -> u64 {
+    unsafe { func(s) }
 }
 
 fn main() {

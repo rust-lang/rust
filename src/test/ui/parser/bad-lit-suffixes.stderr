@@ -110,5 +110,16 @@ LL |     1.0e10suffix;
    |
    = help: valid suffixes are `f32` and `f64`
 
-error: aborting due to 16 previous errors
+error: extern declarations without an explicit ABI are deprecated
+  --> $DIR/bad-lit-suffixes.rs:5:1
+   |
+LL | / extern
+LL | |     "C"suffix
+LL | | {}
+   | |__^ ABI should be specified here
+   |
+   = note: `#[deny(missing_abi)]` on by default
+   = help: the default ABI is C
+
+error: aborting due to 17 previous errors
 

@@ -2,12 +2,12 @@
 
 #![feature(extern_types)]
 
-extern {
+extern "C" {
     type A;
 }
 
-fn assert_sync<T: ?Sized + Sync>() { }
-fn assert_send<T: ?Sized + Send>() { }
+fn assert_sync<T: ?Sized + Sync>() {}
+fn assert_send<T: ?Sized + Send>() {}
 
 fn main() {
     assert_sync::<A>();

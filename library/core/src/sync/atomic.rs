@@ -809,7 +809,7 @@ impl AtomicBool {
     /// ```ignore (extern-declaration)
     /// # fn main() {
     /// use std::sync::atomic::AtomicBool;
-    /// extern {
+    /// extern "C" {
     ///     fn my_atomic_op(arg: *mut bool);
     /// }
     ///
@@ -2068,7 +2068,7 @@ macro_rules! atomic_int {
             /// # fn main() {
             #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
             ///
-            /// extern {
+            /// extern "C" {
             #[doc = concat!("    fn my_atomic_op(arg: *mut ", stringify!($int_type), ");")]
             /// }
             ///

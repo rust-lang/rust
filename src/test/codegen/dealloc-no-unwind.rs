@@ -8,7 +8,7 @@ struct A;
 
 impl Drop for A {
     fn drop(&mut self) {
-        extern { fn foo(); }
+        extern "C" { fn foo(); }
         unsafe { foo(); }
     }
 }

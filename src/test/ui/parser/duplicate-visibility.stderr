@@ -9,8 +9,8 @@ LL |     pub pub fn foo();
 error: non-item in item list
   --> $DIR/duplicate-visibility.rs:4:9
    |
-LL | extern {
-   |        - item list starts here
+LL | extern "C" {
+   |            - item list starts here
 LL |     pub pub fn foo();
    |         ^^^ non-item starts here
 ...

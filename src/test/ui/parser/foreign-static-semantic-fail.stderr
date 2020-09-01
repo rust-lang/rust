@@ -1,8 +1,8 @@
 error: incorrect `static` inside `extern` block
   --> $DIR/foreign-static-semantic-fail.rs:6:12
    |
-LL | extern {
-   | ------ `extern` blocks define existing foreign statics and statics inside of them cannot have a body
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign statics and statics inside of them cannot have a body
 LL |     static X: u8 = 0;
    |            ^       - the invalid body
    |            |
@@ -13,8 +13,8 @@ LL |     static X: u8 = 0;
 error: incorrect `static` inside `extern` block
   --> $DIR/foreign-static-semantic-fail.rs:7:16
    |
-LL | extern {
-   | ------ `extern` blocks define existing foreign statics and statics inside of them cannot have a body
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign statics and statics inside of them cannot have a body
 LL |     static X: u8 = 0;
 LL |     static mut Y: u8 = 0;
    |                ^       - the invalid body

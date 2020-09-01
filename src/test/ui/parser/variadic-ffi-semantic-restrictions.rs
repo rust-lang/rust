@@ -20,22 +20,22 @@ extern "C" fn f2_3(..., x: isize) {}
 //~^ ERROR only foreign or `unsafe extern "C" functions may be C-variadic
 //~| ERROR `...` must be the last argument of a C-variadic function
 
-extern fn f3_1(x: isize, ...) {}
+extern "C" fn f3_1(x: isize, ...) {}
 //~^ ERROR only foreign or `unsafe extern "C" functions may be C-variadic
 
-extern fn f3_2(...) {}
+extern "C" fn f3_2(...) {}
 //~^ ERROR only foreign or `unsafe extern "C" functions may be C-variadic
 //~| ERROR C-variadic function must be declared with at least one named argument
 
-extern fn f3_3(..., x: isize) {}
+extern "C" fn f3_3(..., x: isize) {}
 //~^ ERROR only foreign or `unsafe extern "C" functions may be C-variadic
 //~| ERROR `...` must be the last argument of a C-variadic function
 
-extern {
+extern "C" {
     fn e_f1(...);
     //~^ ERROR C-variadic function must be declared with at least one named argument
     fn e_f2(..., x: isize);
-    //~^ ERROR `...` must be the last argument of a C-variadic function
+//~^ ERROR `...` must be the last argument of a C-variadic function
 }
 
 struct X;

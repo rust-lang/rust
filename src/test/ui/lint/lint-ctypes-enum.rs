@@ -5,36 +5,57 @@
 
 use std::num;
 
-enum Z { }
-enum U { A }
-enum B { C, D }
-enum T { E, F, G }
+enum Z {}
+enum U {
+    A,
+}
+enum B {
+    C,
+    D,
+}
+enum T {
+    E,
+    F,
+    G,
+}
 
 #[repr(C)]
-enum ReprC { A, B, C }
+enum ReprC {
+    A,
+    B,
+    C,
+}
 
 #[repr(u8)]
-enum U8 { A, B, C }
+enum U8 {
+    A,
+    B,
+    C,
+}
 
 #[repr(isize)]
-enum Isize { A, B, C }
+enum Isize {
+    A,
+    B,
+    C,
+}
 
 #[repr(transparent)]
 struct TransparentStruct<T>(T, std::marker::PhantomData<Z>);
 
 #[repr(transparent)]
 enum TransparentEnum<T> {
-   Variant(T, std::marker::PhantomData<Z>),
+    Variant(T, std::marker::PhantomData<Z>),
 }
 
 #[repr(transparent)]
 union TransparentUnion<T: Copy> {
-   field: T,
+    field: T,
 }
 
 struct Rust<T>(T);
 
-extern {
+extern "C" {
    fn zf(x: Z);
    fn uf(x: U); //~ ERROR `extern` block uses type `U`
    fn bf(x: B); //~ ERROR `extern` block uses type `B`

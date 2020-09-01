@@ -7,7 +7,7 @@ struct Rect {
     a: i32,
     b: i32,
     c: i32,
-    d: i32
+    d: i32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -15,7 +15,7 @@ struct Rect {
 struct BiggerRect {
     s: Rect,
     a: i32,
-    b: i32
+    b: i32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -23,7 +23,7 @@ struct BiggerRect {
 struct FloatRect {
     a: i32,
     b: i32,
-    c: f64
+    c: f64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -33,14 +33,14 @@ struct Huge {
     b: i32,
     c: i32,
     d: i32,
-    e: i32
+    e: i32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
 struct FloatPoint {
     x: f64,
-    y: f64
+    y: f64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -58,13 +58,22 @@ struct IntOdd {
 }
 
 #[link(name = "test", kind = "static")]
-extern {
+extern "C" {
     fn byval_rect(a: i32, b: i32, c: i32, d: i32, e: i32, s: Rect);
 
     fn byval_many_rect(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, s: Rect);
 
-    fn byval_rect_floats(a: f32, b: f32, c: f64, d: f32, e: f32,
-                         f: f32, g: f64, s: Rect, t: FloatRect);
+    fn byval_rect_floats(
+        a: f32,
+        b: f32,
+        c: f64,
+        d: f32,
+        e: f32,
+        f: f32,
+        g: f64,
+        s: Rect,
+        t: FloatRect,
+    );
 
     fn byval_rect_with_float(a: i32, b: i32, c: f32, d: i32, e: i32, f: i32, s: Rect);
 
@@ -107,12 +116,7 @@ fn main() {
         byval_many_rect(1, 2, 3, 4, 5, 6, s);
         byval_rect_floats(1., 2., 3., 4., 5., 6., 7., s, u);
         byval_rect_with_float(1, 2, 3.0, 4, 5, 6, s);
-        byval_rect_with_many_huge(v, v, v, v, v, v, Rect {
-            a: 123,
-            b: 456,
-            c: 789,
-            d: 420
-        });
+        byval_rect_with_many_huge(v, v, v, v, v, v, Rect { a: 123, b: 456, c: 789, d: 420 });
         split_rect(1, 2, s);
         split_rect_floats(1., 2., u);
         split_rect_with_floats(1, 2, 3.0, 4, 5.0, 6, s);

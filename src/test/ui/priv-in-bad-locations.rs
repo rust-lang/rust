@@ -1,4 +1,4 @@
-pub extern { //~ ERROR unnecessary visibility qualifier
+pub extern "C" { //~ ERROR unnecessary visibility qualifier
     pub fn bar();
 }
 

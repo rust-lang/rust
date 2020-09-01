@@ -4,11 +4,12 @@
 // ignore-wasm32-bare no libc to test ffi with
 
 pub struct TwoU16s {
-    one: u16, two: u16
+    one: u16,
+    two: u16,
 }
 
 #[link(name = "rust_test_helpers", kind = "static")]
-extern {
+extern "C" {
     pub fn rust_dbg_extern_return_TwoU16s() -> TwoU16s;
 }
 
