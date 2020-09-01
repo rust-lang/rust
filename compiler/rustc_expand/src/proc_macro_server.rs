@@ -189,7 +189,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             }
 
             OpenDelim(..) | CloseDelim(..) => unreachable!(),
-            Whitespace | Comment | Shebang(..) | Unknown(..) | Eof => unreachable!(),
+            Eof => unreachable!(),
         }
     }
 }
