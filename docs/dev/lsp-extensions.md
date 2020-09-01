@@ -303,7 +303,7 @@ SSR with query `foo($a, $b) ==>> ($a).foo($b)` will transform, eg `foo(y + 5, z)
 
 **Server Capability:** `{ "matchingBrace": boolean }`
 
-This request is send from client to server to handle "Matching Brace" editor action.
+This request is sent from client to server to handle "Matching Brace" editor action.
 
 **Method:** `experimental/matchingBrace`
 
@@ -385,6 +385,17 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
     executableArgs: string[];
 }
 ```
+
+## Open External Documentation
+
+This request is send from client to server to get a URL to documentation for the symbol under the cursor, if available.
+
+**Method** `experimental/externalDocs`
+
+**Request:**: `TextDocumentPositionParams`
+
+**Response** `string | null`
+
 
 ## Analyzer Status
 
