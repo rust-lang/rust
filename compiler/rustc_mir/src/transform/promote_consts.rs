@@ -734,7 +734,14 @@ impl<'tcx> Validator<'_, 'tcx> {
     ) -> Result<(), Unpromotable> {
         let fn_ty = callee.ty(self.body, self.tcx);
 
-        if !self.explicit && self.const_kind.is_none() {
+        // `const` and `static` use the explicit rules for promotion regardless of the `Candidate`,
+        // meaning calls to `const fn` can be promoted.
+        let context_uses_explicit_promotion_rules = matches!(
+            self.const_kind,
+            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const)
+        );
+
+        if !self.explicit && !context_uses_explicit_promotion_rules {
             if let ty::FnDef(def_id, _) = *fn_ty.kind() {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
