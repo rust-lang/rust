@@ -1,8 +1,16 @@
 # MIR Debugging
 
-The `-Zdump-mir` flag can be used to dump a text representation of the MIR. The
-`-Zdump-mir-graphviz` flag can be used to dump a `.dot` file that represents
-MIR as a control-flow graph.
+The `-Zdump-mir` flag can be used to dump a text representation of the MIR.
+The following optional flags, used in combination with `-Zdump-mir`, enable
+additional output formats, including:
+
+* `-Zdump-mir-graphviz` - dumps a `.dot` file that represents MIR as a
+control-flow graph
+* `-Zdump-mir-spanview` - dumps an `.html` file that highlights the source
+spans associated with MIR elements (including mouse-over actions to reveal
+elements obscured by overlaps, and tooltips to view the MIR statements).
+This flag takes an optional value: `statement` (the default), `terminator`, or
+`block`, to generate span highlights with different levels of granulatity.
 
 `-Zdump-mir=F` is a handy compiler options that will let you view the MIR for
 each function at each stage of compilation. `-Zdump-mir` takes a **filter** `F`
