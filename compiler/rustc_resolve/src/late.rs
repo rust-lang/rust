@@ -110,6 +110,9 @@ crate enum RibKind<'a> {
     ItemRibKind(HasGenericParams),
 
     /// We're in a constant item. Can't refer to dynamic stuff.
+    ///
+    /// The `bool` indicates if this constant may reference generic parameters
+    /// and is used to only allow generic parameters to be used in trivial constant expressions.
     ConstantItemRibKind(bool),
 
     /// We passed through a module.
@@ -848,7 +851,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_current_self_item(item, |this| {
             this.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                 let item_def_id = this.r.local_def_id(item.id).to_def_id();
-                this.with_self_rib(Res::SelfTy(None, Some(item_def_id)), |this| {
+                this.with_self_rib(Res::SelfTy(None, Some((item_def_id, false))), |this| {
                     visit::walk_item(this, item);
                 });
             });
@@ -1215,7 +1218,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // Resolve the trait reference, if necessary.
                 this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
                     let item_def_id = this.r.local_def_id(item_id).to_def_id();
-                    this.with_self_rib(Res::SelfTy(trait_id, Some(item_def_id)), |this| {
+                    this.with_self_rib(Res::SelfTy(trait_id, Some((item_def_id, false))), |this| {
                         if let Some(trait_ref) = opt_trait_reference.as_ref() {
                             // Resolve type arguments in the trait path.
                             visit::walk_trait_ref(this, trait_ref);

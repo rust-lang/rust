@@ -1460,7 +1460,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
         let bound = match (&qself_ty.kind(), qself_res) {
-            (_, Res::SelfTy(Some(_), Some(impl_def_id))) => {
+            (_, Res::SelfTy(Some(_), Some((impl_def_id, _)))) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
                 let trait_ref = match tcx.impl_trait_ref(impl_def_id) {
@@ -1917,12 +1917,24 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.prohibit_generics(path.segments);
                 tcx.types.self_param
             }
-            Res::SelfTy(_, Some(def_id)) => {
+            Res::SelfTy(_, Some((def_id, forbid_generic))) => {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments);
                 // Try to evaluate any array length constants.
-                self.normalize_ty(span, tcx.at(span).type_of(def_id))
+                let normalized_ty = self.normalize_ty(span, tcx.at(span).type_of(def_id));
+                if forbid_generic && normalized_ty.needs_subst() {
+                    tcx.sess
+                        .struct_span_err(
+                            path.span,
+                            "generic `Self` types are currently not permitted in anonymous constants"
+                        )
+                        .span_note(tcx.def_span(def_id), "not a concrete type")
+                        .emit();
+                    tcx.ty_error()
+                } else {
+                    normalized_ty
+                }
             }
             Res::Def(DefKind::AssocTy, def_id) => {
                 debug_assert!(path.segments.len() >= 2);
