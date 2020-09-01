@@ -14,11 +14,11 @@ fn float_to_decimal_common_exact<T>(
 where
     T: flt2dec::DecodableFloat,
 {
-    // SAFETY: Possible undefined behavior, see FIXME(#53491)
+    // SAFETY: Possible undefined behavior, see FIXME(#76092)
     unsafe {
         let mut buf = MaybeUninit::<[u8; 1024]>::uninit(); // enough for f32 and f64
         let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 4]>::uninit();
-        // FIXME(#53491): This is calling `get_mut` on an uninitialized
+        // FIXME(#76092): This is calling `assume_init_mut` on an uninitialized
         // `MaybeUninit` (here and elsewhere in this file). Revisit this once
         // we decided whether that is valid or not.
         // We can do this only because we are libstd and coupled to the compiler.
@@ -28,8 +28,8 @@ where
             *num,
             sign,
             precision,
-            buf.get_mut(),
-            parts.get_mut(),
+            buf.assume_init_mut(),
+            parts.assume_init_mut(),
         );
         fmt.pad_formatted_parts(&formatted)
     }
@@ -47,19 +47,19 @@ fn float_to_decimal_common_shortest<T>(
 where
     T: flt2dec::DecodableFloat,
 {
-    // SAFETY: Possible undefined behavior, see FIXME(#53491)
+    // SAFETY: Possible undefined behavior, see FIXME(#76092)
     unsafe {
         // enough for f32 and f64
         let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninit();
         let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 4]>::uninit();
-        // FIXME(#53491)
+        // FIXME(#76092)
         let formatted = flt2dec::to_shortest_str(
             flt2dec::strategy::grisu::format_shortest,
             *num,
             sign,
             precision,
-            buf.get_mut(),
-            parts.get_mut(),
+            buf.assume_init_mut(),
+            parts.assume_init_mut(),
         );
         fmt.pad_formatted_parts(&formatted)
     }
@@ -103,19 +103,19 @@ fn float_to_exponential_common_exact<T>(
 where
     T: flt2dec::DecodableFloat,
 {
-    // SAFETY: Possible undefined behavior, see FIXME(#53491)
+    // SAFETY: Possible undefined behavior, see FIXME(#76092)
     unsafe {
         let mut buf = MaybeUninit::<[u8; 1024]>::uninit(); // enough for f32 and f64
         let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 6]>::uninit();
-        // FIXME(#53491)
+        // FIXME(#76092)
         let formatted = flt2dec::to_exact_exp_str(
             flt2dec::strategy::grisu::format_exact,
             *num,
             sign,
             precision,
             upper,
-            buf.get_mut(),
-            parts.get_mut(),
+            buf.assume_init_mut(),
+            parts.assume_init_mut(),
         );
         fmt.pad_formatted_parts(&formatted)
     }
@@ -133,20 +133,20 @@ fn float_to_exponential_common_shortest<T>(
 where
     T: flt2dec::DecodableFloat,
 {
-    // SAFETY: Possible undefined behavior, see FIXME(#53491)
+    // SAFETY: Possible undefined behavior, see FIXME(#76092)
     unsafe {
         // enough for f32 and f64
         let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninit();
         let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 6]>::uninit();
-        // FIXME(#53491)
+        // FIXME(#76092)
         let formatted = flt2dec::to_shortest_exp_str(
             flt2dec::strategy::grisu::format_shortest,
             *num,
             sign,
             (0, 0),
             upper,
-            buf.get_mut(),
-            parts.get_mut(),
+            buf.assume_init_mut(),
+            parts.assume_init_mut(),
         );
         fmt.pad_formatted_parts(&formatted)
     }

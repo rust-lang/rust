@@ -379,13 +379,13 @@ impl<T> SyncOnceCell<T> {
     /// Safety: The value must be initialized
     unsafe fn get_unchecked(&self) -> &T {
         debug_assert!(self.is_initialized());
-        (&*self.value.get()).get_ref()
+        (&*self.value.get()).assume_init_ref()
     }
 
     /// Safety: The value must be initialized
     unsafe fn get_unchecked_mut(&mut self) -> &mut T {
         debug_assert!(self.is_initialized());
-        (&mut *self.value.get()).get_mut()
+        (&mut *self.value.get()).assume_init_mut()
     }
 }
 
