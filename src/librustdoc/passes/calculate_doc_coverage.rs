@@ -5,7 +5,7 @@ use crate::fold::{self, DocFolder};
 use crate::html::markdown::{find_testable_code, ErrorCodes};
 use crate::passes::doc_test_lints::{should_have_doc_example, Tests};
 use crate::passes::Pass;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::FileName;
 use serde::Serialize;
 
@@ -41,8 +41,11 @@ impl ItemCount {
         has_docs: bool,
         has_doc_example: bool,
         should_have_doc_examples: bool,
+        should_have_docs: bool,
     ) {
-        self.total += 1;
+        if has_docs || should_have_docs {
+            self.total += 1;
+        }
 
         if has_docs {
             self.with_docs += 1;
@@ -229,6 +232,15 @@ impl fold::DocFolder for CoverageCalculator {
             }
             _ => {
                 let has_docs = !i.attrs.doc_strings.is_empty();
+                let should_have_docs = !i.attrs.other_attrs.iter().any(|a| {
+                    a.has_name(sym::allow)
+                        && a.meta_item_list().iter().any(|meta_list_item| {
+                            meta_list_item.iter().any(|li| match li.ident() {
+                                Some(ident) => ident == Ident::from_str("missing_docs"),
+                                _ => false,
+                            })
+                        })
+                });
                 let mut tests = Tests { found_tests: 0 };
 
                 find_testable_code(
@@ -250,7 +262,12 @@ impl fold::DocFolder for CoverageCalculator {
                     has_docs,
                     has_doc_example,
                     should_have_doc_example(&i.inner),
+                    should_have_docs,
                 );
+
+                if !should_have_docs {
+                    return Some(i);
+                }
             }
         }
 
