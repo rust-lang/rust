@@ -1,5 +1,5 @@
-use super::write_code;
 use expect_test::expect_file;
+use crate::html::highlight::write_code;
 
 #[test]
 fn test_html_highlighting() {

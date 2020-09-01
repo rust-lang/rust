@@ -6,16 +6,13 @@ use crate::core::DocContext;
 use crate::fold::{self, DocFolder};
 use crate::passes::Pass;
 
-#[cfg(test)]
-mod tests;
-
 pub const UNINDENT_COMMENTS: Pass = Pass {
     name: "unindent-comments",
     run: unindent_comments,
     description: "removes excess indentation on comments in order for markdown to like it",
 };
 
-pub fn unindent_comments(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
+crate fn unindent_comments(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
     CommentCleaner.fold_crate(krate)
 }
 
@@ -46,7 +43,7 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
     }
 }
 
-fn unindent(s: &str) -> String {
+crate fn unindent(s: &str) -> String {
     let lines = s.lines().collect::<Vec<&str>>();
     let mut saw_first_line = false;
     let mut saw_second_line = false;

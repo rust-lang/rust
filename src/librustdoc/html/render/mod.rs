@@ -27,9 +27,6 @@
 
 pub mod cache;
 
-#[cfg(test)]
-mod tests;
-
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;

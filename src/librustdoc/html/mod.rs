@@ -4,6 +4,6 @@ crate mod highlight;
 crate mod layout;
 pub mod markdown;
 pub mod render;
-crate mod sources;
+pub mod sources;
 crate mod static_files;
-crate mod toc;
+pub mod toc;

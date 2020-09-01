@@ -16,7 +16,7 @@ pub struct Toc {
     /// ### A
     /// ## B
     /// ```
-    entries: Vec<TocEntry>,
+    pub(crate) entries: Vec<TocEntry>,
 }
 
 impl Toc {
@@ -27,11 +27,11 @@ impl Toc {
 
 #[derive(Debug, PartialEq)]
 pub struct TocEntry {
-    level: u32,
-    sec_number: String,
-    name: String,
-    id: String,
-    children: Toc,
+    pub(crate) level: u32,
+    pub(crate) sec_number: String,
+    pub(crate) name: String,
+    pub(crate) id: String,
+    pub(crate) children: Toc,
 }
 
 /// Progressive construction of a table of contents.
@@ -183,6 +183,3 @@ impl Toc {
         v
     }
 }
-
-#[cfg(test)]
-mod tests;

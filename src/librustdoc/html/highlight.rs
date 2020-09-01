@@ -45,7 +45,7 @@ fn write_header(out: &mut String, class: Option<&str>) {
         .unwrap()
 }
 
-fn write_code(out: &mut String, src: &str) {
+crate fn write_code(out: &mut String, src: &str) {
     Classifier::new(src).highlight(&mut |highlight| {
         match highlight {
             Highlight::Token { text, class } => string(out, Escape(text), class),
@@ -343,6 +343,3 @@ fn string<T: Display>(out: &mut String, text: T, klass: Class) {
         klass => write!(out, "<span class=\"{}\">{}</span>", klass.as_html(), text).unwrap(),
     }
 }
-
-#[cfg(test)]
-mod tests;

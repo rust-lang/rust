@@ -5,9 +5,6 @@ use std::path::Path;
 
 use rustc_errors::Handler;
 
-#[cfg(test)]
-mod tests;
-
 #[derive(Debug, Clone, Eq)]
 pub struct CssPath {
     pub name: String,
@@ -43,14 +40,14 @@ impl Hash for CssPath {
 }
 
 impl CssPath {
-    fn new(name: String) -> CssPath {
+    pub fn new(name: String) -> CssPath {
         CssPath { name, children: FxHashSet::default() }
     }
 }
 
 /// All variants contain the position they occur.
 #[derive(Debug, Clone, Copy)]
-enum Events {
+pub enum Events {
     StartLineComment(usize),
     StartComment(usize),
     EndComment(usize),
@@ -59,7 +56,7 @@ enum Events {
 }
 
 impl Events {
-    fn get_pos(&self) -> usize {
+    pub fn get_pos(&self) -> usize {
         match *self {
             Events::StartLineComment(p)
             | Events::StartComment(p)
@@ -69,7 +66,7 @@ impl Events {
         }
     }
 
-    fn is_comment(&self) -> bool {
+    pub fn is_comment(&self) -> bool {
         match *self {
             Events::StartLineComment(_) | Events::StartComment(_) | Events::EndComment(_) => true,
             _ => false,
@@ -88,7 +85,7 @@ fn is_line_comment(pos: usize, v: &[u8], events: &[Events]) -> bool {
     v[pos + 1] == b'/'
 }
 
-fn load_css_events(v: &[u8]) -> Vec<Events> {
+pub fn load_css_events(v: &[u8]) -> Vec<Events> {
     let mut pos = 0;
     let mut events = Vec::with_capacity(100);
 

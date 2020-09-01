@@ -1,4 +1,4 @@
-use super::{Toc, TocBuilder, TocEntry};
+use crate::html::toc::{Toc, TocBuilder, TocEntry};
 
 #[test]
 fn builder_smoke() {

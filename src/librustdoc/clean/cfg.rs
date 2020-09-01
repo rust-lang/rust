@@ -16,9 +16,6 @@ use rustc_span::Span;
 
 use crate::html::escape::Escape;
 
-#[cfg(test)]
-mod tests;
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Cfg {
     /// Accepts all configurations.

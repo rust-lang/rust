@@ -37,7 +37,7 @@ extern crate rustc_mir;
 extern crate rustc_parse;
 extern crate rustc_resolve;
 extern crate rustc_session;
-extern crate rustc_span as rustc_span;
+extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_typeck;
@@ -57,21 +57,24 @@ use rustc_session::{early_error, early_warn};
 #[macro_use]
 mod externalfiles;
 
-mod clean;
+#[cfg(test)]
+mod rustdoc_tests;
+
+crate mod clean;
 mod config;
 mod core;
 mod docfs;
 mod doctree;
 #[macro_use]
 mod error;
-mod doctest;
+crate mod doctest;
 mod fold;
 crate mod formats;
 pub mod html;
 mod json;
 mod markdown;
-mod passes;
-mod theme;
+crate mod passes;
+crate mod theme;
 mod visit_ast;
 mod visit_lib;
 

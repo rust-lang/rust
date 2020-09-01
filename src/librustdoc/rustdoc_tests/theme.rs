@@ -1,4 +1,4 @@
-use super::*;
+use crate::theme::*;
 
 #[test]
 fn test_comments_in_rules() {

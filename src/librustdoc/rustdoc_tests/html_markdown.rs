@@ -1,5 +1,5 @@
-use super::plain_summary_line;
-use super::{ErrorCodes, IdMap, Ignore, LangString, Markdown, MarkdownHtml};
+use crate::html::markdown::plain_summary_line;
+use crate::html::markdown::{ErrorCodes, IdMap, Ignore, LangString, Markdown, MarkdownHtml};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use std::cell::RefCell;
 

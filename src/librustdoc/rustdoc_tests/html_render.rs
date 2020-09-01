@@ -1,4 +1,5 @@
-use super::*;
+use crate::html::render::compare_names;
+use std::cmp::Ordering;
 
 #[test]
 fn test_compare_names() {

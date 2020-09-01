@@ -1,5 +1,5 @@
-use super::{make_test, TestOptions};
 use rustc_span::edition::DEFAULT_EDITION;
+use crate::doctest::{make_test, TestOptions};
 
 #[test]
 fn make_test_basic() {

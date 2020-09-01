@@ -40,9 +40,6 @@ use crate::html::toc::TocBuilder;
 
 use pulldown_cmark::{html, CodeBlockKind, CowStr, Event, Options, Parser, Tag};
 
-#[cfg(test)]
-mod tests;
-
 fn opts() -> Options {
     Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES | Options::ENABLE_STRIKETHROUGH
 }
@@ -678,6 +675,10 @@ impl<'a, 'b> ExtraInfo<'a, 'b> {
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct LangString {
+    #[cfg(test)]
+    // Only making it public when running tests.
+    pub original: String,
+    #[cfg(not(test))]
     original: String,
     pub should_panic: bool,
     pub no_run: bool,
@@ -698,7 +699,7 @@ pub enum Ignore {
 }
 
 impl LangString {
-    fn all_false() -> LangString {
+    pub fn all_false() -> LangString {
         LangString {
             original: String::new(),
             should_panic: false,
@@ -713,7 +714,7 @@ impl LangString {
         }
     }
 
-    fn parse_without_check(
+    pub fn parse_without_check(
         string: &str,
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
@@ -721,7 +722,7 @@ impl LangString {
         Self::parse(string, allow_error_code_check, enable_per_target_ignores, None)
     }
 
-    fn parse(
+    pub fn parse(
         string: &str,
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,

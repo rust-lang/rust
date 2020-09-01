@@ -24,7 +24,7 @@ pub use self::strip_private::STRIP_PRIVATE;
 mod strip_priv_imports;
 pub use self::strip_priv_imports::STRIP_PRIV_IMPORTS;
 
-mod unindent_comments;
+crate mod unindent_comments;
 pub use self::unindent_comments::UNINDENT_COMMENTS;
 
 mod propagate_doc_cfg;

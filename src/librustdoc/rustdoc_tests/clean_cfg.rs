@@ -1,7 +1,7 @@
-use super::*;
+use crate::clean::cfg::Cfg;
 
 use rustc_ast::attr;
-use rustc_ast::Path;
+use rustc_ast::{LitKind, MetaItem, MetaItemKind, NestedMetaItem, Path};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::with_default_session_globals;
 use rustc_span::DUMMY_SP;

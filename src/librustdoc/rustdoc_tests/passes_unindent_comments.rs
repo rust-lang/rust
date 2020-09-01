@@ -1,4 +1,4 @@
-use super::*;
+use crate::passes::unindent_comments::*;
 
 #[test]
 fn should_unindent() {
