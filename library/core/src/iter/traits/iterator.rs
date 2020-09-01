@@ -3,9 +3,8 @@
 // can't split that into multiple files.
 
 use crate::cmp::{self, Ordering};
-use crate::ops::{Add, Try};
+use crate::ops::{Add, Try, ControlFlow};
 
-use super::super::LoopState;
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
@@ -2088,12 +2087,12 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> LoopState<(), ()> {
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<(), ()> {
             move |(), x| {
-                if f(x) { LoopState::Continue(()) } else { LoopState::Break(()) }
+                if f(x) { ControlFlow::Continue(()) } else { ControlFlow::Break(()) }
             }
         }
-        self.try_fold((), check(f)) == LoopState::Continue(())
+        self.try_fold((), check(f)) == ControlFlow::Continue(())
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -2141,13 +2140,13 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> LoopState<(), ()> {
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<(), ()> {
             move |(), x| {
-                if f(x) { LoopState::Break(()) } else { LoopState::Continue(()) }
+                if f(x) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
             }
         }
 
-        self.try_fold((), check(f)) == LoopState::Break(())
+        self.try_fold((), check(f)) == ControlFlow::Break(())
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -2203,9 +2202,9 @@ pub trait Iterator {
         #[inline]
         fn check<T>(
             mut predicate: impl FnMut(&T) -> bool,
-        ) -> impl FnMut((), T) -> LoopState<(), T> {
+        ) -> impl FnMut((), T) -> ControlFlow<(), T> {
             move |(), x| {
-                if predicate(&x) { LoopState::Break(x) } else { LoopState::Continue(()) }
+                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
             }
         }
 
@@ -2235,10 +2234,10 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> Option<B>,
     {
         #[inline]
-        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut((), T) -> LoopState<(), B> {
+        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut((), T) -> ControlFlow<(), B> {
             move |(), x| match f(x) {
-                Some(x) => LoopState::Break(x),
-                None => LoopState::Continue(()),
+                Some(x) => ControlFlow::Break(x),
+                None => ControlFlow::Continue(()),
             }
         }
 
@@ -2274,15 +2273,15 @@ pub trait Iterator {
         R: Try<Ok = bool>,
     {
         #[inline]
-        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> LoopState<(), Result<T, R::Error>>
+        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<(), Result<T, R::Error>>
         where
             F: FnMut(&T) -> R,
             R: Try<Ok = bool>,
         {
             move |(), x| match f(&x).into_result() {
-                Ok(false) => LoopState::Continue(()),
-                Ok(true) => LoopState::Break(Ok(x)),
-                Err(x) => LoopState::Break(Err(x)),
+                Ok(false) => ControlFlow::Continue(()),
+                Ok(true) => ControlFlow::Break(Ok(x)),
+                Err(x) => ControlFlow::Break(Err(x)),
             }
         }
 
@@ -2352,10 +2351,10 @@ pub trait Iterator {
         #[inline]
         fn check<T>(
             mut predicate: impl FnMut(T) -> bool,
-        ) -> impl FnMut(usize, T) -> LoopState<usize, usize> {
+        ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
             // The addition might panic on overflow
             move |i, x| {
-                if predicate(x) { LoopState::Break(i) } else { LoopState::Continue(Add::add(i, 1)) }
+                if predicate(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(Add::add(i, 1)) }
             }
         }
 
@@ -2411,10 +2410,10 @@ pub trait Iterator {
         #[inline]
         fn check<T>(
             mut predicate: impl FnMut(T) -> bool,
-        ) -> impl FnMut(usize, T) -> LoopState<usize, usize> {
+        ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
             move |i, x| {
                 let i = i - 1;
-                if predicate(x) { LoopState::Break(i) } else { LoopState::Continue(i) }
+                if predicate(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(i) }
             }
         }
 

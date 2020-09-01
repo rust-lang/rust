@@ -148,6 +148,7 @@ mod index;
 mod range;
 mod r#try;
 mod unsize;
+mod control_flow;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::arith::{Add, Div, Mul, Neg, Rem, Sub};
@@ -191,3 +192,6 @@ pub use self::unsize::CoerceUnsized;
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 pub use self::unsize::DispatchFromDyn;
+
+#[unstable(feature="control_flow_enum", reason="new API", issue="75744")]
+pub use self::control_flow::ControlFlow;
