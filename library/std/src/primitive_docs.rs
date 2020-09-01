@@ -11,8 +11,8 @@
 /// `bool` implements various traits, such as [`BitAnd`], [`BitOr`], [`Not`], etc.,
 /// which allow us to perform boolean operations using `&`, `|` and `!`.
 ///
-/// `if` always demands a `bool` value. [`assert!`], being an important macro in testing,
-/// checks whether an expression returns `true`.
+/// `if` always demands a `bool` value. [`assert!`], which is an important macro in testing,
+/// checks whether an expression returns `true` and panics if it isn't.
 ///
 /// ```
 /// let bool_val = true & false | false;
