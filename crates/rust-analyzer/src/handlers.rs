@@ -11,6 +11,7 @@ use ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
     RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
 };
+use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
@@ -952,6 +953,52 @@ pub(crate) fn handle_code_lens(
                 }),
         );
     }
+
+    if snap.config.lens.references() {
+        let ref_lenses = snap
+            .analysis
+            .file_structure(file_id)?
+            .into_iter()
+            .filter(|it| match it.kind {
+                SyntaxKind::FN => true,
+                _ => false,
+            })
+            .filter_map(|it| {
+                let position = FilePosition { file_id, offset: it.navigation_range.start() };
+                let scope = None; // all references
+
+                snap.analysis.find_all_refs(position, scope).unwrap_or(None).map(|r| {
+                    let mut lenses = Vec::new();
+                    if r.len() == 1 {
+                        // Only a declaration
+                        return lenses;
+                    }
+
+                    let uri = to_proto::url(&snap, file_id);
+                    let range = to_proto::range(&line_index, it.node_range);
+                    let position = to_proto::position(&line_index, position.offset);
+
+                    if snap.config.lens.method_refs {
+                        let all_locations: Vec<_> = r
+                            .references()
+                            .iter()
+                            .filter_map(|it| to_proto::location(&snap, it.file_range).ok())
+                            .collect();
+                        let title = reference_title(all_locations.len());
+                        let all_refs =
+                            show_references_command(title, &uri, position, all_locations);
+                        lenses.push(CodeLens { range, command: Some(all_refs), data: None });
+                    }
+
+                    lenses
+                })
+            })
+            .flatten()
+            .collect_vec();
+
+        lenses.extend(ref_lenses);
+    }
+
     Ok(Some(lenses))
 }
 
@@ -1245,6 +1292,14 @@ fn implementation_title(count: usize) -> String {
         "1 implementation".into()
     } else {
         format!("{} implementations", count)
+    }
+}
+
+fn reference_title(count: usize) -> String {
+    if count == 1 {
+        "1 reference".into()
+    } else {
+        format!("{} references", count)
     }
 }
 
