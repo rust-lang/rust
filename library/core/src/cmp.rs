@@ -356,8 +356,9 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
+    #[rustc_const_stable(feature = "const_ordering", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reverse(self) -> Ordering {
+    pub const fn reverse(self) -> Ordering {
         match self {
             Less => Greater,
             Equal => Equal,
@@ -394,8 +395,9 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
+    #[rustc_const_stable(feature = "const_ordering", since = "1.48.0")]
     #[stable(feature = "ordering_chaining", since = "1.17.0")]
-    pub fn then(self, other: Ordering) -> Ordering {
+    pub const fn then(self, other: Ordering) -> Ordering {
         match self {
             Equal => other,
             _ => self,
