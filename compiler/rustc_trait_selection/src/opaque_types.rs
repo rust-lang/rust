@@ -1261,7 +1261,8 @@ crate fn required_region_bounds(
                 | ty::PredicateAtom::ClosureKind(..)
                 | ty::PredicateAtom::RegionOutlives(..)
                 | ty::PredicateAtom::ConstEvaluatable(..)
-                | ty::PredicateAtom::ConstEquate(..) => None,
+                | ty::PredicateAtom::ConstEquate(..)
+                | ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
                 ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
                     // Search for a bound of the form `erased_self_ty
                     // : 'a`, but be wary of something like `for<'a>

@@ -49,6 +49,7 @@ fn not_outlives_predicate(p: &ty::Predicate<'tcx>) -> bool {
         | ty::PredicateAtom::ClosureKind(..)
         | ty::PredicateAtom::Subtype(..)
         | ty::PredicateAtom::ConstEvaluatable(..)
-        | ty::PredicateAtom::ConstEquate(..) => true,
+        | ty::PredicateAtom::ConstEquate(..)
+        | ty::PredicateAtom::TypeWellFormedFromEnv(..) => true,
     }
 }

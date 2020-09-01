@@ -1155,6 +1155,11 @@ pub enum PredicateAtom<'tcx> {
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
+
+    /// Represents a type found in the environment that we can use for implied bounds.
+    ///
+    /// Only used for Chalk.
+    TypeWellFormedFromEnv(Ty<'tcx>),
 }
 
 impl<'tcx> PredicateAtom<'tcx> {
@@ -1450,7 +1455,8 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateAtom::ClosureKind(..)
             | PredicateAtom::TypeOutlives(..)
             | PredicateAtom::ConstEvaluatable(..)
-            | PredicateAtom::ConstEquate(..) => None,
+            | PredicateAtom::ConstEquate(..)
+            | PredicateAtom::TypeWellFormedFromEnv(..) => None,
         }
     }
 
@@ -1465,7 +1471,8 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateAtom::ObjectSafe(..)
             | PredicateAtom::ClosureKind(..)
             | PredicateAtom::ConstEvaluatable(..)
-            | PredicateAtom::ConstEquate(..) => None,
+            | PredicateAtom::ConstEquate(..)
+            | PredicateAtom::TypeWellFormedFromEnv(..) => None,
         }
     }
 }
@@ -1738,11 +1745,6 @@ pub struct ParamEnv<'tcx> {
     ///
     /// Note: This is packed, use the reveal() method to access it.
     packed: CopyTaggedPtr<&'tcx List<Predicate<'tcx>>, traits::Reveal, true>,
-
-    /// If this `ParamEnv` comes from a call to `tcx.param_env(def_id)`,
-    /// register that `def_id` (useful for transitioning to the chalk trait
-    /// solver).
-    pub def_id: Option<DefId>,
 }
 
 unsafe impl rustc_data_structures::tagged_ptr::Tag for traits::Reveal {
@@ -1767,7 +1769,6 @@ impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
         f.debug_struct("ParamEnv")
             .field("caller_bounds", &self.caller_bounds())
             .field("reveal", &self.reveal())
-            .field("def_id", &self.def_id)
             .finish()
     }
 }
@@ -1776,23 +1777,16 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.caller_bounds().hash_stable(hcx, hasher);
         self.reveal().hash_stable(hcx, hasher);
-        self.def_id.hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
     fn super_fold_with<F: ty::fold::TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        ParamEnv::new(
-            self.caller_bounds().fold_with(folder),
-            self.reveal().fold_with(folder),
-            self.def_id.fold_with(folder),
-        )
+        ParamEnv::new(self.caller_bounds().fold_with(folder), self.reveal().fold_with(folder))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.caller_bounds().visit_with(visitor)
-            || self.reveal().visit_with(visitor)
-            || self.def_id.visit_with(visitor)
+        self.caller_bounds().visit_with(visitor) || self.reveal().visit_with(visitor)
     }
 }
 
@@ -1803,7 +1797,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// type-checking.
     #[inline]
     pub fn empty() -> Self {
-        Self::new(List::empty(), Reveal::UserFacing, None)
+        Self::new(List::empty(), Reveal::UserFacing)
     }
 
     #[inline]
@@ -1825,17 +1819,13 @@ impl<'tcx> ParamEnv<'tcx> {
     /// or invoke `param_env.with_reveal_all()`.
     #[inline]
     pub fn reveal_all() -> Self {
-        Self::new(List::empty(), Reveal::All, None)
+        Self::new(List::empty(), Reveal::All)
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(
-        caller_bounds: &'tcx List<Predicate<'tcx>>,
-        reveal: Reveal,
-        def_id: Option<DefId>,
-    ) -> Self {
-        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, reveal), def_id }
+    pub fn new(caller_bounds: &'tcx List<Predicate<'tcx>>, reveal: Reveal) -> Self {
+        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, reveal) }
     }
 
     pub fn with_user_facing(mut self) -> Self {
@@ -1857,12 +1847,12 @@ impl<'tcx> ParamEnv<'tcx> {
             return self;
         }
 
-        ParamEnv::new(tcx.normalize_opaque_types(self.caller_bounds()), Reveal::All, self.def_id)
+        ParamEnv::new(tcx.normalize_opaque_types(self.caller_bounds()), Reveal::All)
     }
 
     /// Returns this same environment but with no caller bounds.
     pub fn without_caller_bounds(self) -> Self {
-        Self::new(List::empty(), self.reveal(), self.def_id)
+        Self::new(List::empty(), self.reveal())
     }
 
     /// Creates a suitable environment in which to perform trait

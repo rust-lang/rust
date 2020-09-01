@@ -663,6 +663,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             obligation
                         )
                     }
+
+                    ty::PredicateAtom::TypeWellFormedFromEnv(..) => span_bug!(
+                        span,
+                        "TypeWellFormedFromEnv predicate should only exist in the environment"
+                    ),
                 }
             }
 

@@ -26,7 +26,8 @@ pub fn explicit_outlives_bounds<'tcx>(
             | ty::PredicateAtom::ClosureKind(..)
             | ty::PredicateAtom::TypeOutlives(..)
             | ty::PredicateAtom::ConstEvaluatable(..)
-            | ty::PredicateAtom::ConstEquate(..) => None,
+            | ty::PredicateAtom::ConstEquate(..)
+            | ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
             ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r_a, r_b)) => {
                 Some(OutlivesBound::RegionSubRegion(r_b, r_a))
             }

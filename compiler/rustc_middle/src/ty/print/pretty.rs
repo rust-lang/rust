@@ -2096,6 +2096,11 @@ define_print_and_forward_display! {
                 print(c2),
                 write("`"))
             }
+            ty::PredicateAtom::TypeWellFormedFromEnv(ty) => {
+                p!(write("the type `"),
+                print(ty),
+                write("` is found in the environment"))
+            }
         }
     }
 

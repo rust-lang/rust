@@ -405,6 +405,7 @@ fn trait_predicate_kind<'tcx>(
         | ty::PredicateAtom::ObjectSafe(_)
         | ty::PredicateAtom::ClosureKind(..)
         | ty::PredicateAtom::ConstEvaluatable(..)
-        | ty::PredicateAtom::ConstEquate(..) => None,
+        | ty::PredicateAtom::ConstEquate(..)
+        | ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
     }
 }
