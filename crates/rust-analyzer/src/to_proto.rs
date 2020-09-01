@@ -369,7 +369,7 @@ fn semantic_token_type_and_modifiers(
             mods |= lsp_types::SemanticTokenModifier::STATIC;
             lsp_types::SemanticTokenType::VARIABLE
         }
-        HighlightTag::EnumVariant => semantic_tokens::ENUM_MEMBER,
+        HighlightTag::EnumVariant => lsp_types::SemanticTokenType::ENUM_MEMBER,
         HighlightTag::Macro => lsp_types::SemanticTokenType::MACRO,
         HighlightTag::ValueParam => lsp_types::SemanticTokenType::PARAMETER,
         HighlightTag::Local => lsp_types::SemanticTokenType::VARIABLE,
