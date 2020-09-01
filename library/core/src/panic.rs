@@ -149,7 +149,7 @@ impl fmt::Display for PanicInfo<'_> {
 
 /// A struct containing information about the location of a panic.
 ///
-/// This structure is created by the [`PanicInfo::location`] method of [`PanicInfo`].
+/// This structure is created by [`PanicInfo::location()`].
 ///
 /// # Examples
 ///
