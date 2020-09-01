@@ -223,7 +223,7 @@ fn macro_expand_with_arg(
     let ExpandResult(tt, err) = macro_rules.0.expand(db, lazy_id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
-    if count > 65536 {
+    if count > 262144 {
         return (None, Some(format!("Total tokens count exceed limit : count = {}", count)));
     }
     (Some(Arc::new(tt)), err.map(|e| format!("{:?}", e)))
