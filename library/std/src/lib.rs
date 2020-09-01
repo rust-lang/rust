@@ -239,6 +239,7 @@
 #![feature(const_cstr_unchecked)]
 #![feature(const_fn_transmute)]
 #![feature(const_raw_ptr_deref)]
+#![feature(const_ipv4)]
 #![feature(container_error_extra)]
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
