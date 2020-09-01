@@ -7,7 +7,9 @@
 //! contain owned boxes or implement [`Drop`]), so the compiler considers
 //! them cheap and safe to copy. For other types copies must be made
 //! explicitly, by convention implementing the [`Clone`] trait and calling
-//! the [`Clone::clone`] method.
+//! the [`clone`] method.
+//!
+//! [`clone`]: Clone::clone
 //!
 //! Basic usage example:
 //!
@@ -47,7 +49,9 @@
 /// ## Derivable
 ///
 /// This trait can be used with `#[derive]` if all fields are `Clone`. The `derive`d
-/// implementation of [`Clone::clone`] calls [`Clone::clone`] on each field.
+/// implementation of [`Clone`] calls [`clone`] on each field.
+///
+/// [`clone`]: Clone::clone
 ///
 /// For a generic struct, `#[derive]` implements `Clone` conditionally by adding bound `Clone` on
 /// generic parameters.
