@@ -357,9 +357,7 @@ fn compute_codegen_unit_name(
 
         let components = def_path.data.iter().map(|part| match part.data.name() {
             DefPathDataName::Named(name) => name,
-            DefPathDataName::Anon { namespace } => {
-                Symbol::intern(&format!("{{{{{}}}}}", namespace))
-            }
+            DefPathDataName::Anon { .. } => unreachable!(),
         });
 
         let volatile_suffix = volatile.then_some("volatile");
