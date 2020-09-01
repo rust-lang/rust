@@ -208,6 +208,7 @@ use crate::raw_vec::RawVec;
 /// ```
 ///
 /// - **uninit** represents memory that is not initialized, see [`MaybeUninit`]
+/// - Note, ABI is not stable so the layout is not guaranteed to be the same
 ///
 /// # Guarantees
 ///
