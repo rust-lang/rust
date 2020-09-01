@@ -20,12 +20,9 @@ endif
 -include clear_expected_if_blessed
 
 %: $(SOURCEDIR)/%.rs
-	# Compile the test program with "experimental" coverage instrumentation and generate relevant MIR.
-	#
-	# FIXME(richkadel): `-Zexperimental-coverage` to `-Zinstrument-coverage` once we are
-	# satisfied with the branch-level instrumentation.
+	# Compile the test program with coverage instrumentation and generate relevant MIR.
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
-			-Zexperimental-coverage \
+			-Zinstrument-coverage \
 			-Clink-dead-code=$(LINK_DEAD_CODE) \
 			-Zdump-mir=InstrumentCoverage \
 			-Zdump-mir-dir="$(TMPDIR)"/mir_dump.$@

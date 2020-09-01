@@ -895,11 +895,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         all statements)."),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
-    experimental_coverage: bool = (false, parse_bool, [TRACKED],
-        "enable and extend the `-Z instrument-coverage` function-level coverage \
-        feature, adding additional experimental (likely inaccurate) counters and \
-        code regions (used by `rustc` compiler developers to test new coverage \
-        counter placements) (default: no)"),
     fewer_names: bool = (false, parse_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),

@@ -20,25 +20,29 @@ all: $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
 clear_expected_if_blessed:
 ifdef RUSTC_BLESS_TEST
 	rm -f expected_export_coverage.*.json
-	rm -f typical_show_coverage.*.txt
+	rm -f expected_show_coverage.*.txt
 endif
 
 -include clear_expected_if_blessed
 
 %: $(SOURCEDIR)/%.rs
-	# Compile the test program with "experimental" coverage instrumentation and generate relevant MIR.
-	#
-	# FIXME(richkadel):  `-Zexperimental-coverage` to `-Zinstrument-coverage` once we are
-	# satisfied with the branch-level instrumentation.
+	# Compile the test program with coverage instrumentation and generate relevant MIR.
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
-			-Zexperimental-coverage \
+			-Zinstrument-coverage \
 			-Clink-dead-code=$(LINK_DEAD_CODE)
 
 	# Run it in order to generate some profiling data,
 	# with `LLVM_PROFILE_FILE=<profdata_file>` environment variable set to
 	# output the coverage stats for this run.
 	LLVM_PROFILE_FILE="$(TMPDIR)"/$@.profraw \
-			$(call RUN,$@)
+			$(call RUN,$@) || \
+			( \
+				status=$$?; \
+				grep -q "^\/\/ expect-exit-status-$$status" $(SOURCEDIR)/$@.rs || \
+				( >&2 echo "program exited with an unexpected exit status: $$status"; \
+					false \
+				) \
+			)
 
 	# Postprocess the profiling data so it can be used by the llvm-cov tool
 	"$(LLVM_BIN_DIR)"/llvm-profdata merge --sparse \
@@ -57,11 +61,20 @@ endif
 		> "$(TMPDIR)"/actual_show_coverage.$@.txt
 
 ifdef RUSTC_BLESS_TEST
-	cp "$(TMPDIR)"/actual_show_coverage.$@.txt typical_show_coverage.$@.txt
+	cp "$(TMPDIR)"/actual_show_coverage.$@.txt expected_show_coverage.$@.txt
 else
 	# Compare the show coverage output (`--bless` refreshes `typical` files)
-	$(DIFF) typical_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
-		>&2 echo 'diff failed for `llvm-cov show` on $@ (might not be an error)'
+	# Note `llvm-cov show` output for some programs can vary, but can be ignored
+	# by inserting `// ignore-llvm-cov-show-diffs` at the top of the source file.
+
+	$(DIFF) expected_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
+		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
+			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \
+		) || \
+		( >&2 echo 'diff failed, and not suppressed without `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs'; \
+			false \
+		)
+
 endif
 
 	# Generate a coverage report in JSON, using `llvm-cov export`, and fail if
