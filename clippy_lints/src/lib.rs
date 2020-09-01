@@ -1538,7 +1538,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&manual_async_fn::MANUAL_ASYNC_FN),
         LintId::of(&manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
         LintId::of(&map_clone::MAP_CLONE),
-        LintId::of(&map_err_ignore::MAP_ERR_IGNORE), 
+        LintId::of(&map_err_ignore::MAP_ERR_IGNORE),
         LintId::of(&matches::INFALLIBLE_DESTRUCTURING_MATCH),
         LintId::of(&matches::MATCH_LIKE_MATCHES_MACRO),
         LintId::of(&matches::MATCH_OVERLAPPING_ARM),

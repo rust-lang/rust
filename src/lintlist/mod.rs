@@ -1166,6 +1166,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "entry",
     },
     Lint {
+        name: "map_err_ignore",
+        group: "style",
+        desc: "`map_err` should not ignore the original error",
+        deprecation: None,
+        module: "map_err_ignore",
+    },
+    Lint {
         name: "map_flatten",
         group: "pedantic",
         desc: "using combinations of `flatten` and `map` which can usually be written as a single method call",
