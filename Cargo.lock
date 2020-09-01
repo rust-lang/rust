@@ -3439,7 +3439,6 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
- "lazy_static",
  "libc",
  "rustc_ast",
  "rustc_ast_pretty",

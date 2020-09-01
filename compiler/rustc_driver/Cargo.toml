@@ -8,7 +8,6 @@ edition = "2018"
 crate-type = ["dylib"]
 
 [dependencies]
-lazy_static = "1.0"
 libc = "0.2"
 tracing = { version = "0.1.18", features = ["release_max_level_info"]  }
 tracing-subscriber = { version = "0.2.10", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
