@@ -85,7 +85,7 @@ impl<'tcx> MonoItem<'tcx> {
             .debugging_opts
             .inline_in_all_cgus
             .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
-            && tcx.sess.opts.cg.link_dead_code != Some(true);
+            && !tcx.sess.link_dead_code();
 
         match *self {
             MonoItem::Fn(ref instance) => {
