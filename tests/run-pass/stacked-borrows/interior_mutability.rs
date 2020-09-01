@@ -54,7 +54,7 @@ fn into_interior_mutability() {
     let mut x: MaybeUninit<(Cell<u32>, u32)> = MaybeUninit::uninit();
     x.as_ptr();
     x.write((Cell::new(0), 1));
-    let ptr = unsafe { x.get_ref() };
+    let ptr = unsafe { x.assume_init_ref() };
     assert_eq!(ptr.1, 1);
 }
 
