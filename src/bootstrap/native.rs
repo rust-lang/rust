@@ -56,7 +56,7 @@ pub fn prebuilt_llvm_config(
     let out_dir = builder.llvm_out(target);
 
     let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
-    if !builder.config.build.contains("msvc") || builder.config.ninja {
+    if !builder.config.build.contains("msvc") || builder.ninja() {
         llvm_config_ret_dir.push("build");
     }
     llvm_config_ret_dir.push("bin");
@@ -363,7 +363,7 @@ fn configure_cmake(
     // own build directories.
     cfg.env("DESTDIR", "");
 
-    if builder.config.ninja {
+    if builder.ninja() {
         cfg.generator("Ninja");
     }
     cfg.target(&target.triple).host(&builder.config.build.triple);
@@ -395,7 +395,7 @@ fn configure_cmake(
     // MSVC with CMake uses msbuild by default which doesn't respect these
     // vars that we'd otherwise configure. In that case we just skip this
     // entirely.
-    if target.contains("msvc") && !builder.config.ninja {
+    if target.contains("msvc") && !builder.ninja() {
         return;
     }
 
@@ -405,7 +405,7 @@ fn configure_cmake(
     };
 
     // Handle msvc + ninja + ccache specially (this is what the bots use)
-    if target.contains("msvc") && builder.config.ninja && builder.config.ccache.is_some() {
+    if target.contains("msvc") && builder.ninja() && builder.config.ccache.is_some() {
         let mut wrap_cc = env::current_exe().expect("failed to get cwd");
         wrap_cc.set_file_name("sccache-plus-cl.exe");
 

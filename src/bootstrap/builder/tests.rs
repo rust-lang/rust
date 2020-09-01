@@ -8,7 +8,7 @@ fn configure(host: &[&str], target: &[&str]) -> Config {
     config.save_toolstates = None;
     config.skip_only_host_steps = false;
     config.dry_run = true;
-    config.ninja = false;
+    config.ninja_in_file = false;
     // try to avoid spurious failures in dist where we create/delete each others file
     let dir = config
         .out
