@@ -1,5 +1,6 @@
 #![warn(clippy::drop_ref)]
 #![allow(clippy::toplevel_ref_arg)]
+#![allow(clippy::map_err_ignore)]
 
 use std::mem::drop;
 
