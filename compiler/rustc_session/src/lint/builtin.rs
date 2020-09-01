@@ -544,7 +544,7 @@ declare_lint! {
     Warn,
     "detects a generic constant is used in a type without a emitting a warning",
     @future_incompatible = FutureIncompatibleInfo {
-        reference: "TODO",
+        reference: "issue #76200 <https://github.com/rust-lang/rust/issues/76200>",
         edition: None,
     };
 }
