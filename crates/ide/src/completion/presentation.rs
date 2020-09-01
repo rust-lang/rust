@@ -231,7 +231,7 @@ impl Completions {
                 if let Some(pat) = it.pat() {
                     let name = pat.to_string();
                     let arg = name.trim_start_matches('_');
-                    return Some(add_arg(arg, &param_ty, ctx));
+                    return Some(add_arg(arg, param_ty.ty(), ctx));
                 }
                 None
             })

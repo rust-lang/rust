@@ -708,7 +708,7 @@ impl Function {
         Some(SelfParam { func: self.id })
     }
 
-    pub fn params(self, db: &dyn HirDatabase) -> Vec<Type> {
+    pub fn params(self, db: &dyn HirDatabase) -> Vec<Param> {
         let resolver = self.id.resolver(db.upcast());
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let environment = TraitEnvironment::lower(db, &resolver);
@@ -724,7 +724,7 @@ impl Function {
                         environment: environment.clone(),
                     },
                 };
-                ty
+                Param { ty }
             })
             .collect()
     }
@@ -751,6 +751,16 @@ impl From<Mutability> for Access {
             Mutability::Shared => Access::Shared,
             Mutability::Mut => Access::Exclusive,
         }
+    }
+}
+
+pub struct Param {
+    ty: Type,
+}
+
+impl Param {
+    pub fn ty(&self) -> &Type {
+        &self.ty
     }
 }
 
