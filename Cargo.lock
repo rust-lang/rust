@@ -3513,7 +3513,6 @@ dependencies = [
 name = "rustc_feature"
 version = "0.0.0"
 dependencies = [
- "lazy_static",
  "rustc_data_structures",
  "rustc_span",
 ]
