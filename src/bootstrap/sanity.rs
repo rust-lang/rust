@@ -20,17 +20,17 @@ use build_helper::{output, t};
 use crate::config::Target;
 use crate::Build;
 
-struct Finder {
+pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
     path: OsString,
 }
 
 impl Finder {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { cache: HashMap::new(), path: env::var_os("PATH").unwrap_or_default() }
     }
 
-    fn maybe_have<S: AsRef<OsStr>>(&mut self, cmd: S) -> Option<PathBuf> {
+    pub fn maybe_have<S: AsRef<OsStr>>(&mut self, cmd: S) -> Option<PathBuf> {
         let cmd: OsString = cmd.as_ref().into();
         let path = &self.path;
         self.cache
@@ -54,7 +54,7 @@ impl Finder {
             .clone()
     }
 
-    fn must_have<S: AsRef<OsStr>>(&mut self, cmd: S) -> PathBuf {
+    pub fn must_have<S: AsRef<OsStr>>(&mut self, cmd: S) -> PathBuf {
         self.maybe_have(&cmd).unwrap_or_else(|| {
             panic!("\n\ncouldn't find required command: {:?}\n\n", cmd.as_ref());
         })
@@ -93,38 +93,6 @@ pub fn check(build: &mut Build) {
         .any(|build_llvm_ourselves| build_llvm_ourselves);
     if building_llvm || build.config.sanitizers {
         cmd_finder.must_have("cmake");
-    }
-
-    // Ninja is currently only used for LLVM itself.
-    if building_llvm {
-        if build.config.ninja {
-            // Some Linux distros rename `ninja` to `ninja-build`.
-            // CMake can work with either binary name.
-            if cmd_finder.maybe_have("ninja-build").is_none()
-                && cmd_finder.maybe_have("ninja").is_none()
-            {
-                eprintln!(
-                    "
-Couldn't find required command: ninja
-You should install ninja, or set ninja=false in config.toml
-"
-                );
-                std::process::exit(1);
-            }
-        }
-
-        // If ninja isn't enabled but we're building for MSVC then we try
-        // doubly hard to enable it. It was realized in #43767 that the msbuild
-        // CMake generator for MSVC doesn't respect configuration options like
-        // disabling LLVM assertions, which can often be quite important!
-        //
-        // In these cases we automatically enable Ninja if we find it in the
-        // environment.
-        if !build.config.ninja && build.config.build.contains("msvc") {
-            if cmd_finder.maybe_have("ninja").is_some() {
-                build.config.ninja = true;
-            }
-        }
     }
 
     build.config.python = build
