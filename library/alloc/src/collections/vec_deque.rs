@@ -2231,7 +2231,7 @@ impl<T> VecDeque<T> {
     ///     assert_eq!(slice, &[3, 2, 1] as &[_]);
     /// }
     /// ```
-    #[stable(feature = "deque_make_contiguous", since = "1.47.0")]
+    #[stable(feature = "deque_make_contiguous", since = "1.48.0")]
     pub fn make_contiguous(&mut self) -> &mut [T] {
         if self.is_contiguous() {
             let tail = self.tail;
