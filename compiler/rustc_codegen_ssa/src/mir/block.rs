@@ -1143,7 +1143,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
                 // We store bools as `i8` so we need to truncate to `i1`.
-                llval = base::to_immediate(bx, llval, arg.layout);
+                llval = bx.to_immediate(llval, arg.layout);
             }
         }
 

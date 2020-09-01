@@ -147,8 +147,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}", self, llty);
             // Reconstruct the immediate aggregate.
             let mut llpair = bx.cx().const_undef(llty);
-            let imm_a = base::from_immediate(bx, a);
-            let imm_b = base::from_immediate(bx, b);
+            let imm_a = bx.from_immediate(a);
+            let imm_b = bx.from_immediate(b);
             llpair = bx.insert_value(llpair, imm_a, 0);
             llpair = bx.insert_value(llpair, imm_b, 1);
             llpair
@@ -168,9 +168,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
             // Deconstruct the immediate aggregate.
             let a_llval = bx.extract_value(llval, 0);
-            let a_llval = base::to_immediate_scalar(bx, a_llval, a);
+            let a_llval = bx.to_immediate_scalar(a_llval, a);
             let b_llval = bx.extract_value(llval, 1);
-            let b_llval = base::to_immediate_scalar(bx, b_llval, b);
+            let b_llval = bx.to_immediate_scalar(b_llval, b);
             OperandValue::Pair(a_llval, b_llval)
         } else {
             OperandValue::Immediate(llval)
@@ -220,29 +220,23 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             _ => bug!("OperandRef::extract_field({:?}): not applicable", self),
         };
 
-        // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-        // Bools in union fields needs to be truncated.
-        let to_immediate_or_cast = |bx: &mut Bx, val, ty| {
-            if ty == bx.cx().type_i1() { bx.trunc(val, ty) } else { bx.bitcast(val, ty) }
-        };
-
-        match val {
-            OperandValue::Immediate(ref mut llval) => {
-                *llval = to_immediate_or_cast(bx, *llval, bx.cx().immediate_backend_type(field));
+        match (&mut val, &field.abi) {
+            (OperandValue::Immediate(llval), _) => {
+                // Bools in union fields needs to be truncated.
+                *llval = bx.to_immediate(*llval, field);
+                // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+                *llval = bx.bitcast(*llval, bx.cx().immediate_backend_type(field));
             }
-            OperandValue::Pair(ref mut a, ref mut b) => {
-                *a = to_immediate_or_cast(
-                    bx,
-                    *a,
-                    bx.cx().scalar_pair_element_backend_type(field, 0, true),
-                );
-                *b = to_immediate_or_cast(
-                    bx,
-                    *b,
-                    bx.cx().scalar_pair_element_backend_type(field, 1, true),
-                );
+            (OperandValue::Pair(a, b), Abi::ScalarPair(a_abi, b_abi)) => {
+                // Bools in union fields needs to be truncated.
+                *a = bx.to_immediate_scalar(*a, a_abi);
+                *b = bx.to_immediate_scalar(*b, b_abi);
+                // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+                *a = bx.bitcast(*a, bx.cx().scalar_pair_element_backend_type(field, 0, true));
+                *b = bx.bitcast(*b, bx.cx().scalar_pair_element_backend_type(field, 1, true));
             }
-            OperandValue::Ref(..) => bug!(),
+            (OperandValue::Pair(..), _) => bug!(),
+            (OperandValue::Ref(..), _) => bug!(),
         }
 
         OperandRef { val, layout: field }
@@ -302,7 +296,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 bug!("cannot directly store unsized values");
             }
             OperandValue::Immediate(s) => {
-                let val = base::from_immediate(bx, s);
+                let val = bx.from_immediate(s);
                 bx.store_with_flags(val, dest.llval, dest.align, flags);
             }
             OperandValue::Pair(a, b) => {
@@ -313,12 +307,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 let b_offset = a_scalar.value.size(bx).align_to(b_scalar.value.align(bx).abi);
 
                 let llptr = bx.struct_gep(dest.llval, 0);
-                let val = base::from_immediate(bx, a);
+                let val = bx.from_immediate(a);
                 let align = dest.align;
                 bx.store_with_flags(val, llptr, align, flags);
 
                 let llptr = bx.struct_gep(dest.llval, 1);
-                let val = base::from_immediate(bx, b);
+                let val = bx.from_immediate(b);
                 let align = dest.align.restrict_for_offset(b_offset);
                 bx.store_with_flags(val, llptr, align, flags);
             }

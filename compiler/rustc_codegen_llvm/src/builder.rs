@@ -6,7 +6,6 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use libc::{c_char, c_uint};
-use rustc_codegen_ssa::base::to_immediate;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -367,6 +366,20 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         (self.extract_value(res, 0), self.extract_value(res, 1))
     }
 
+    fn from_immediate(&mut self, val: Self::Value) -> Self::Value {
+        if self.cx().val_ty(val) == self.cx().type_i1() {
+            self.zext(val, self.cx().type_i8())
+        } else {
+            val
+        }
+    }
+    fn to_immediate_scalar(&mut self, val: Self::Value, scalar: &abi::Scalar) -> Self::Value {
+        if scalar.is_bool() {
+            return self.trunc(val, self.cx().type_i1());
+        }
+        val
+    }
+
     fn alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
         let mut bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
@@ -471,7 +484,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 }
                 load
             });
-            OperandValue::Immediate(to_immediate(self, llval, place.layout))
+            OperandValue::Immediate(self.to_immediate(llval, place.layout))
         } else if let abi::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
             let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
 
@@ -479,7 +492,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 let llptr = self.struct_gep(place.llval, i as u64);
                 let load = self.load(llptr, align);
                 scalar_load_metadata(self, load, scalar);
-                if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
+                self.to_immediate_scalar(load, scalar)
             };
 
             OperandValue::Pair(

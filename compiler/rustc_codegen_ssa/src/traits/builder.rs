@@ -13,9 +13,9 @@ use crate::mir::operand::OperandRef;
 use crate::mir::place::PlaceRef;
 use crate::MemFlags;
 
-use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{Align, Size};
+use rustc_target::abi::{Abi, Align, Scalar, Size};
 use rustc_target::spec::HasTargetSpec;
 
 use std::iter::TrustedLen;
@@ -114,6 +114,16 @@ pub trait BuilderMethods<'a, 'tcx>:
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value);
+
+    fn from_immediate(&mut self, val: Self::Value) -> Self::Value;
+    fn to_immediate(&mut self, val: Self::Value, layout: TyAndLayout<'_>) -> Self::Value {
+        if let Abi::Scalar(ref scalar) = layout.abi {
+            self.to_immediate_scalar(val, scalar)
+        } else {
+            val
+        }
+    }
+    fn to_immediate_scalar(&mut self, val: Self::Value, scalar: &Scalar) -> Self::Value;
 
     fn alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
     fn dynamic_alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;

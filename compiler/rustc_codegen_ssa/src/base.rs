@@ -38,7 +38,7 @@ use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::cstore::{self, LinkagePreference};
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
-use rustc_middle::ty::layout::{self, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
@@ -48,7 +48,7 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
 use rustc_span::Span;
 use rustc_symbol_mangling::test as symbol_names_test;
-use rustc_target::abi::{Abi, Align, LayoutOf, Scalar, VariantIdx};
+use rustc_target::abi::{Align, LayoutOf, VariantIdx};
 
 use std::cmp;
 use std::ops::{Deref, DerefMut};
@@ -328,35 +328,6 @@ fn cast_shift_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// 64-bit MinGW) instead of "full SEH".
 pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
-}
-
-pub fn from_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    val: Bx::Value,
-) -> Bx::Value {
-    if bx.cx().val_ty(val) == bx.cx().type_i1() { bx.zext(val, bx.cx().type_i8()) } else { val }
-}
-
-pub fn to_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    val: Bx::Value,
-    layout: layout::TyAndLayout<'_>,
-) -> Bx::Value {
-    if let Abi::Scalar(ref scalar) = layout.abi {
-        return to_immediate_scalar(bx, val, scalar);
-    }
-    val
-}
-
-pub fn to_immediate_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    val: Bx::Value,
-    scalar: &Scalar,
-) -> Bx::Value {
-    if scalar.is_bool() {
-        return bx.trunc(val, bx.cx().type_i1());
-    }
-    val
 }
 
 pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
