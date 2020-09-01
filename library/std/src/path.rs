@@ -535,6 +535,135 @@ impl AsRef<Path> for Component<'_> {
     }
 }
 
+macro_rules! impl_component_cmp {
+    ($other:ty) => {
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialEq<$other> for Component<'_> {
+            #[inline]
+            fn eq(&self, other: &$other) -> bool {
+                <OsStr as PartialEq>::eq(self.as_os_str(), other.as_ref())
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialEq<Component<'_>> for $other {
+            #[inline]
+            fn eq(&self, other: &'_ Component<'_>) -> bool {
+                <OsStr as PartialEq>::eq(self.as_ref(), other.as_os_str())
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialOrd<$other> for Component<'_> {
+            #[inline]
+            fn partial_cmp(&self, other: &$other) -> Option<cmp::Ordering> {
+                <OsStr as PartialOrd>::partial_cmp(self.as_os_str(), other.as_ref())
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialOrd<Component<'_>> for $other {
+            #[inline]
+            fn partial_cmp(&self, other: &Component<'_>) -> Option<cmp::Ordering> {
+                <OsStr as PartialOrd>::partial_cmp(self.as_ref(), other.as_os_str())
+            }
+        }
+    };
+}
+
+impl_component_cmp!(OsStr);
+impl_component_cmp!(&'a OsStr);
+impl_component_cmp!(OsString);
+impl_component_cmp!(Cow<'a, OsStr>);
+impl_component_cmp!(Box<OsStr>);
+
+macro_rules! impl_component_cmp_path {
+    ($other:ty) => {
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialEq<$other> for Component<'_> {
+            #[inline]
+            fn eq(&self, other: &$other) -> bool {
+                <OsStr as PartialEq>::eq(self.as_os_str(), other.as_os_str())
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialEq<Component<'_>> for $other {
+            #[inline]
+            fn eq(&self, other: &'_ Component<'_>) -> bool {
+                <OsStr as PartialEq>::eq(self.as_os_str(), other.as_os_str())
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialOrd<$other> for Component<'_> {
+            #[inline]
+            fn partial_cmp(&self, other: &$other) -> Option<cmp::Ordering> {
+                <OsStr as PartialOrd>::partial_cmp(self.as_os_str(), other.as_os_str())
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialOrd<Component<'_>> for $other {
+            #[inline]
+            fn partial_cmp(&self, other: &Component<'_>) -> Option<cmp::Ordering> {
+                <OsStr as PartialOrd>::partial_cmp(self.as_os_str(), other.as_os_str())
+            }
+        }
+    };
+}
+
+impl_component_cmp_path!(Path);
+impl_component_cmp_path!(&'a Path);
+impl_component_cmp_path!(PathBuf);
+impl_component_cmp_path!(Cow<'a, Path>);
+impl_component_cmp_path!(Box<Path>);
+
+macro_rules! impl_component_cmp_str {
+    ($other:ty) => {
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialEq<$other> for Component<'_> {
+            #[inline]
+            fn eq(&self, other: &$other) -> bool {
+                self.as_os_str() == other
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialEq<Component<'_>> for $other {
+            #[inline]
+            fn eq(&self, other: &Component<'_>) -> bool {
+                self == other.as_os_str()
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialOrd<$other> for Component<'_> {
+            #[inline]
+            fn partial_cmp(&self, other: &$other) -> Option<cmp::Ordering> {
+                let s: &str = other.as_ref();
+                <OsStr as PartialOrd>::partial_cmp(self.as_os_str(), OsStr::new(s))
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialOrd<Component<'_>> for $other {
+            #[inline]
+            fn partial_cmp(&self, other: &Component<'_>) -> Option<cmp::Ordering> {
+                let s: &str = self.as_ref();
+                <OsStr as PartialOrd>::partial_cmp(OsStr::new(s), other.as_os_str())
+            }
+        }
+    };
+}
+
+impl_component_cmp_str!(str);
+impl_component_cmp_str!(String);
+impl_component_cmp_str!(Cow<'a, str>);
+impl_component_cmp_str!(Box<str>);
+impl_component_cmp_str!(Rc<str>);
+impl_component_cmp_str!(Arc<str>);
+
 /// An iterator over the [`Component`]s of a [`Path`].
 ///
 /// This `struct` is created by the [`components`] method on [`Path`].
@@ -2726,6 +2855,61 @@ impl_cmp_os_str!(&'a Path, OsString);
 impl_cmp_os_str!(Cow<'a, Path>, OsStr);
 impl_cmp_os_str!(Cow<'a, Path>, &'b OsStr);
 impl_cmp_os_str!(Cow<'a, Path>, OsString);
+
+macro_rules! impl_cmp_str {
+    ($lhs:ty, $rhs: ty) => {
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+            #[inline]
+            fn eq(&self, other: &$rhs) -> bool {
+                let other: &str = other.as_ref();
+                *self == *OsStr::new(other)
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+            #[inline]
+            fn eq(&self, other: &$lhs) -> bool {
+                let s: &str = self.as_ref();
+                *OsStr::new(s) == *other
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialOrd<$rhs> for $lhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
+                let s: &str = other.as_ref();
+                <OsStr as PartialOrd>::partial_cmp(self.as_os_str(), OsStr::new(s))
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialOrd<$lhs> for $rhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
+                let s: &str = self.as_ref();
+                <OsStr as PartialOrd>::partial_cmp(OsStr::new(s), other.as_os_str())
+            }
+        }
+    };
+}
+
+impl_cmp_str!(PathBuf, str);
+impl_cmp_str!(PathBuf, &'a str);
+impl_cmp_str!(PathBuf, String);
+impl_cmp_str!(PathBuf, Cow<'a, str>);
+impl_cmp_str!(PathBuf, Box<str>);
+impl_cmp_str!(PathBuf, Rc<str>);
+impl_cmp_str!(PathBuf, Arc<str>);
+impl_cmp_str!(Path, str);
+impl_cmp_str!(Path, &'a str);
+impl_cmp_str!(Path, String);
+impl_cmp_str!(Path, Cow<'a, str>);
+impl_cmp_str!(Path, Box<str>);
+impl_cmp_str!(Path, Rc<str>);
+impl_cmp_str!(Path, Arc<str>);
 
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 impl fmt::Display for StripPrefixError {

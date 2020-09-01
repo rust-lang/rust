@@ -1051,6 +1051,57 @@ impl_cmp!(Cow<'a, OsStr>, OsStr);
 impl_cmp!(Cow<'a, OsStr>, &'b OsStr);
 impl_cmp!(Cow<'a, OsStr>, OsString);
 
+macro_rules! impl_cmp_str {
+    ($lhs:ty, $rhs: ty) => {
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+            #[inline]
+            fn eq(&self, other: &$rhs) -> bool {
+                let s: &str = other.as_ref();
+                *self == *OsStr::new(s)
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+            #[inline]
+            fn eq(&self, other: &$lhs) -> bool {
+                let s: &str = self.as_ref();
+                *OsStr::new(s) == *other
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialOrd<$rhs> for $lhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
+                let s: &str = other.as_ref();
+                <OsStr as PartialOrd>::partial_cmp(self.as_ref(), OsStr::new(s))
+            }
+        }
+
+        #[stable(feature = "path_os_str_cmp_str", since = "1.48.0")]
+        impl<'a, 'b> PartialOrd<$lhs> for $rhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
+                let s: &str = self.as_ref();
+                <OsStr as PartialOrd>::partial_cmp(OsStr::new(s), other.as_ref())
+            }
+        }
+    };
+}
+
+impl_cmp_str!(OsString, String);
+impl_cmp_str!(OsString, Cow<'a, str>);
+impl_cmp_str!(OsString, Box<str>);
+impl_cmp_str!(OsString, Rc<str>);
+impl_cmp_str!(OsString, Arc<str>);
+impl_cmp_str!(OsStr, String);
+impl_cmp_str!(OsStr, Cow<'a, str>);
+impl_cmp_str!(OsStr, Box<str>);
+impl_cmp_str!(OsStr, Rc<str>);
+impl_cmp_str!(OsStr, Arc<str>);
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for OsStr {
     #[inline]
