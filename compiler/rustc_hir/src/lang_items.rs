@@ -17,7 +17,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-use lazy_static::lazy_static;
+use std::lazy::SyncLazy;
 
 pub enum LangItemGroup {
     Op,
@@ -117,14 +117,12 @@ macro_rules! language_item_table {
             )*
         }
 
-        lazy_static! {
-            /// A mapping from the name of the lang item to its order and the form it must be of.
-            pub static ref ITEM_REFS: FxHashMap<Symbol, (usize, Target)> = {
-                let mut item_refs = FxHashMap::default();
-                $( item_refs.insert($name, (LangItem::$variant as usize, $target)); )*
-                item_refs
-            };
-        }
+        /// A mapping from the name of the lang item to its order and the form it must be of.
+        pub static ITEM_REFS: SyncLazy<FxHashMap<Symbol, (usize, Target)>> = SyncLazy::new(|| {
+            let mut item_refs = FxHashMap::default();
+            $( item_refs.insert($name, (LangItem::$variant as usize, $target)); )*
+            item_refs
+        });
 
 // End of the macro
     }
