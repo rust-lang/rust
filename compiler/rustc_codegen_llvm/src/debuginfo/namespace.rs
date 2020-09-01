@@ -7,7 +7,7 @@ use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
 use rustc_hir::def_id::DefId;
-use rustc_hir::definitions::{DefPathData, DefPathDataName};
+use rustc_hir::definitions::DefPathData;
 use rustc_span::symbol::Symbol;
 
 pub fn mangled_name_of_instance<'a, 'tcx>(
@@ -30,12 +30,7 @@ pub fn item_namespace(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
 
     let namespace_name = match def_key.disambiguated_data.data {
         DefPathData::CrateRoot => cx.tcx.crate_name(def_id.krate),
-        data => match data.name() {
-            DefPathDataName::Named(name) => name,
-            DefPathDataName::Anon { namespace } => {
-                Symbol::intern(&format!("{{{{{}}}}}", namespace))
-            }
-        },
+        data => Symbol::intern(&data.to_string()),
     };
     let namespace_name = namespace_name.as_str();
 
