@@ -52,15 +52,37 @@ fn rust_files_are_tidy() {
 
 #[test]
 fn check_merge_commits() {
-    let cmd_output =
-        run!("git rev-list --merges --invert-grep --author 'bors\\[bot\\]' HEAD~4.."; echo = false);
-    match cmd_output {
-        Ok(out) => {
-            if !out.is_empty() {
-                panic!("Please rebase your branch on top of master by running `git rebase master`");
-            }
-        }
-        Err(e) => panic!("{}", e),
+    let stdout = run!("git rev-list --merges --invert-grep --author 'bors\\[bot\\]' HEAD~19.."; echo = false)
+        .unwrap();
+    if !stdout.is_empty() {
+        panic!(
+            "
+Merge commits are not allowed in the history.
+
+When updating a pull-request, please rebase your feature branch
+on top of master by running `git rebase master`. If rebase fails,
+you can re-apply your changes like this:
+
+  # Abort in-progress rebase, if any.
+  $ git rebase --abort
+
+  # Make the branch point to the latest commit from master,
+  # while maintaining your local changes uncommited.
+  $ git reset --soft origin/master
+
+  # Commit all changes in a single batch.
+  $ git commit -am'My changes'
+
+  # Push the changes. We did a rebase, so we need `--force` option.
+  # `--force-with-lease` is a more safe (Rusty) version of `--force`.
+  $ git push --force-with-lease
+
+And don't fear to mess something up during a rebase -- you can
+always restore the previous state using `git ref-log`:
+
+https://github.blog/2015-06-08-how-to-undo-almost-anything-with-git/#redo-after-undo-local
+"
+        );
     }
 }
 
