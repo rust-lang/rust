@@ -550,6 +550,8 @@ pub struct Pat {
     pub id: NodeId,
     pub kind: PatKind,
     pub span: Span,
+    /// Whether or not this pattern starts with a leading `|`
+    pub leading_vert: bool,
     pub tokens: Option<TokenStream>,
 }
 
@@ -2140,6 +2142,7 @@ impl Param {
                 id: DUMMY_NODE_ID,
                 kind: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),
                 span,
+                leading_vert: false,
                 tokens: None,
             }),
             span,

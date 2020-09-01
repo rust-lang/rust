@@ -551,6 +551,7 @@ impl MacResult for MacEager {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
                     kind: PatKind::Lit(e),
+                    leading_vert: false,
                     tokens: None,
                 }));
             }
@@ -598,7 +599,13 @@ impl DummyResult {
 
     /// A plain dummy pattern.
     pub fn raw_pat(sp: Span) -> ast::Pat {
-        ast::Pat { id: ast::DUMMY_NODE_ID, kind: PatKind::Wild, span: sp, tokens: None }
+        ast::Pat {
+            id: ast::DUMMY_NODE_ID,
+            kind: PatKind::Wild,
+            span: sp,
+            leading_vert: false,
+            tokens: None,
+        }
     }
 
     /// A plain dummy type.

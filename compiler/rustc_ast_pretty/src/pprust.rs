@@ -2302,6 +2302,11 @@ impl<'a> State<'a> {
     crate fn print_pat(&mut self, pat: &ast::Pat) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
+
+        if pat.leading_vert {
+            self.s.word_space("|");
+        }
+
         /* Pat isn't normalized, but the beauty of it
         is that it doesn't matter */
         match pat.kind {

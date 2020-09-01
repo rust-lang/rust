@@ -45,11 +45,12 @@ impl<'a> Parser<'a> {
     /// Corresponds to `top_pat` in RFC 2535 and allows or-pattern at the top level.
     pub(super) fn parse_top_pat(&mut self, gate_or: GateOr) -> PResult<'a, P<Pat>> {
         // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
-        let gated_leading_vert = self.eat_or_separator(None) && gate_or == GateOr::Yes;
+        let leading_vert = self.eat_or_separator(None);
+        let gated_leading_vert = leading_vert && gate_or == GateOr::Yes;
         let leading_vert_span = self.prev_token.span;
 
         // Parse the possibly-or-pattern.
-        let pat = self.parse_pat_with_or(None, gate_or, RecoverComma::Yes)?;
+        let mut pat = self.parse_pat_with_or(None, gate_or, RecoverComma::Yes)?;
 
         // If we parsed a leading `|` which should be gated,
         // and no other gated or-pattern has been parsed thus far,
@@ -58,6 +59,7 @@ impl<'a> Parser<'a> {
         if gated_leading_vert && self.sess.gated_spans.is_ungated(sym::or_patterns) {
             self.sess.gated_spans.gate(sym::or_patterns, leading_vert_span);
         }
+        pat.leading_vert = leading_vert;
 
         Ok(pat)
     }
@@ -1007,6 +1009,6 @@ impl<'a> Parser<'a> {
     }
 
     fn mk_pat(&self, span: Span, kind: PatKind) -> P<Pat> {
-        P(Pat { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
+        P(Pat { kind, span, id: ast::DUMMY_NODE_ID, leading_vert: false, tokens: None })
     }
 }
