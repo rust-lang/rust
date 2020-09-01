@@ -12,15 +12,7 @@
 #![no_std]
 #![cfg_attr(
     feature = "nightly",
-    feature(
-        alloc_layout_extra,
-        allocator_api,
-        test,
-        core_intrinsics,
-        dropck_eyepatch,
-        min_specialization,
-        extend_one,
-    )
+    feature(test, core_intrinsics, dropck_eyepatch, min_specialization, extend_one)
 )]
 #![allow(
     clippy::doc_markdown,
@@ -35,11 +27,8 @@
 #[macro_use]
 extern crate std;
 
-#[cfg(has_extern_crate_alloc)]
 #[cfg_attr(test, macro_use)]
 extern crate alloc;
-#[cfg(not(has_extern_crate_alloc))]
-extern crate std as alloc;
 
 #[cfg(feature = "nightly")]
 #[cfg(doctest)]
