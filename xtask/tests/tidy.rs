@@ -50,6 +50,20 @@ fn rust_files_are_tidy() {
     tidy_docs.finish();
 }
 
+#[test]
+fn check_merge_commits() {
+    let cmd_output =
+        run!("git rev-list --merges --invert-grep --author 'bors\\[bot\\]' HEAD~4.."; echo = false);
+    match cmd_output {
+        Ok(out) => {
+            if !out.is_empty() {
+                panic!("Please rebase your branch on top of master by running `git rebase master`");
+            }
+        }
+        Err(e) => panic!("{}", e),
+    }
+}
+
 fn deny_clippy(path: &PathBuf, text: &String) {
     if text.contains("[\u{61}llow(clippy") {
         panic!(
