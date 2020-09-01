@@ -1,0 +1,221 @@
+PRINT-DERIVE INPUT (DISPLAY): struct Foo < B >
+{
+    second : bool, third :
+    [u8 ;
+     {
+         #[cfg(not(FALSE))] struct Inner ; match true
+         { false => { } _ => { } } ; 0
+     }], fourth : B,
+}
+PRINT-DERIVE INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+    },
+    Ident {
+        ident: "Foo",
+        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+    },
+    Ident {
+        ident: "B",
+        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "second",
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+            Ident {
+                ident: "bool",
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+            Punct {
+                ch: ',',
+                spacing: Alone,
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+            Ident {
+                ident: "third",
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "u8",
+                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                    },
+                    Punct {
+                        ch: ';',
+                        spacing: Alone,
+                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                    },
+                    Group {
+                        delimiter: Brace,
+                        stream: TokenStream [
+                            Punct {
+                                ch: '#',
+                                spacing: Alone,
+                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                            },
+                            Group {
+                                delimiter: Bracket,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "cfg",
+                                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                    },
+                                    Group {
+                                        delimiter: Parenthesis,
+                                        stream: TokenStream [
+                                            Ident {
+                                                ident: "not",
+                                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                            },
+                                            Group {
+                                                delimiter: Parenthesis,
+                                                stream: TokenStream [
+                                                    Ident {
+                                                        ident: "FALSE",
+                                                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                                    },
+                                                ],
+                                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                            },
+                                        ],
+                                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                    },
+                                ],
+                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                            },
+                            Ident {
+                                ident: "struct",
+                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                            },
+                            Ident {
+                                ident: "Inner",
+                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                            },
+                            Punct {
+                                ch: ';',
+                                spacing: Alone,
+                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                            },
+                            Ident {
+                                ident: "match",
+                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                            },
+                            Ident {
+                                ident: "true",
+                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                            },
+                            Group {
+                                delimiter: Brace,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "false",
+                                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                    },
+                                    Punct {
+                                        ch: '=',
+                                        spacing: Joint,
+                                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                    },
+                                    Punct {
+                                        ch: '>',
+                                        spacing: Alone,
+                                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                    },
+                                    Group {
+                                        delimiter: Brace,
+                                        stream: TokenStream [],
+                                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                    },
+                                    Ident {
+                                        ident: "_",
+                                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                    },
+                                    Punct {
+                                        ch: '=',
+                                        spacing: Joint,
+                                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                    },
+                                    Punct {
+                                        ch: '>',
+                                        spacing: Alone,
+                                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                    },
+                                    Group {
+                                        delimiter: Brace,
+                                        stream: TokenStream [],
+                                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                                    },
+                                ],
+                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                            },
+                            Punct {
+                                ch: ';',
+                                spacing: Alone,
+                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                            },
+                            Literal {
+                                kind: Integer,
+                                symbol: "0",
+                                suffix: None,
+                                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                            },
+                        ],
+                        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+                    },
+                ],
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+            Punct {
+                ch: ',',
+                spacing: Alone,
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+            Ident {
+                ident: "fourth",
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+            Ident {
+                ident: "B",
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+            Punct {
+                ch: ',',
+                spacing: Alone,
+                span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+            },
+        ],
+        span: $DIR/issue-75930-derive-cfg.rs:1:1: 1:1 (#0),
+    },
+]
