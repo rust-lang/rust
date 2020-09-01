@@ -39,6 +39,14 @@ pub(crate) const TRIGGER_CHARS: &str = ".=>";
 //
 // - typing `let =` tries to smartly add `;` if `=` is followed by an existing expression
 // - typing `.` in a chain method call auto-indents
+//
+// VS Code::
+//
+// Add the following to `settings.json`:
+// [source,json]
+// ----
+// "editor.formatOnType": true,
+// ----
 pub(crate) fn on_char_typed(
     db: &RootDatabase,
     position: FilePosition,
