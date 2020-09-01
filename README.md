@@ -211,11 +211,17 @@ fetch snapshots, and an OS that can execute the available snapshot binaries.
 
 Snapshot binaries are currently built and tested on several platforms:
 
-| Platform / Architecture    | x86 | x86_64 |
-|----------------------------|-----|--------|
-| Windows (7, 8, 10, ...)    | ✓   | ✓      |
-| Linux (2.6.18 or later)    | ✓   | ✓      |
-| macOS (10.7 Lion or later) | ✓   | ✓      |
+| Platform / Architecture                     | x86 | x86_64 |
+|---------------------------------------------|-----|--------|
+| Windows (7, 8, 10, ...)                     | ✓   | ✓      |
+| Linux (kernel 2.6.32, glibc 2.11 or later)  | ✓   | ✓      |
+| macOS (10.7 Lion or later)                  | (\*) | ✓      |
+
+(\*): Apple dropped support for running 32-bit binaries starting from macOS 10.15 and iOS 11.
+Due to this decision from Apple, the targets are no longer useful to our users.
+Please read [our blog post][macx32] for more info.
+
+[macx32]: https://blog.rust-lang.org/2020/01/03/reducing-support-for-32-bit-apple-targets.html
 
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.
