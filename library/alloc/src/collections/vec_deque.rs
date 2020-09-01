@@ -47,10 +47,17 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (64 - 1); // Largest possible power of 
 /// push onto the back in this manner, and iterating over `VecDeque` goes front
 /// to back.
 ///
+/// Since `VecDeque` is a ring buffer, its elements are not necessarily contiguous
+/// in memory. If you want to access the elements as a single slice, such as for
+/// efficient sorting, you can use [`make_contiguous`]. It rotates the `VecDeque`
+/// so that its elements do not wrap, and returns a mutable slice to the
+/// now-contiguous element sequence.
+///
 /// [`push_back`]: #method.push_back
 /// [`pop_front`]: #method.pop_front
 /// [`extend`]: #method.extend
 /// [`append`]: #method.append
+/// [`make_contiguous`]: #method.make_contiguous
 #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VecDeque<T> {
@@ -2188,8 +2195,6 @@ impl<T> VecDeque<T> {
     /// Sorting the content of a deque.
     ///
     /// ```
-    /// #![feature(deque_make_contiguous)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::with_capacity(15);
@@ -2210,8 +2215,6 @@ impl<T> VecDeque<T> {
     /// Getting immutable access to the contiguous slice.
     ///
     /// ```rust
-    /// #![feature(deque_make_contiguous)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -2228,7 +2231,7 @@ impl<T> VecDeque<T> {
     ///     assert_eq!(slice, &[3, 2, 1] as &[_]);
     /// }
     /// ```
-    #[unstable(feature = "deque_make_contiguous", issue = "70929")]
+    #[stable(feature = "deque_make_contiguous", since = "1.48.0")]
     pub fn make_contiguous(&mut self) -> &mut [T] {
         if self.is_contiguous() {
             let tail = self.tail;
