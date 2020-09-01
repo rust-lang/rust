@@ -236,9 +236,6 @@ pub struct Evaluator<'mir, 'tcx> {
     pub(crate) argv: Option<Scalar<Tag>>,
     pub(crate) cmd_line: Option<Scalar<Tag>>,
 
-    /// Last OS error location in memory. It is a 32-bit integer.
-    pub(crate) last_error: Option<MPlaceTy<'tcx, Tag>>,
-
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
 
@@ -280,7 +277,6 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             argc: None,
             argv: None,
             cmd_line: None,
-            last_error: None,
             tls: TlsData::default(),
             communicate,
             validate,
