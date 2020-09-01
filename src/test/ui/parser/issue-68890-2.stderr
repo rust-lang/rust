@@ -8,9 +8,13 @@ warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-68890-2.rs:3:14
    |
 LL | type X<'a> = (?'a) +;
-   |              ^^^^^^^ help: use `dyn`: `dyn (?'a) +`
+   |              ^^^^^^^ trait object without `dyn`
    |
    = note: `#[warn(bare_trait_objects)]` on by default
+help: use `dyn`
+   |
+LL | type X<'a> = dyn (?'a) +;
+   |              ^^^
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/issue-68890-2.rs:3:14

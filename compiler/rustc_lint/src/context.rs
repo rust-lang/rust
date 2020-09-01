@@ -500,14 +500,24 @@ pub trait LintContext: Sized {
             match diagnostic {
                 BuiltinLintDiagnostics::Normal => (),
                 BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
-                    let (sugg, app) = match sess.source_map().span_to_snippet(span) {
-                        Ok(s) if is_global => {
-                            (format!("dyn ({})", s), Applicability::MachineApplicable)
-                        }
-                        Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
-                        Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
-                    };
-                    db.span_suggestion(span, "use `dyn`", sugg, app);
+                    db.span_label(span, "trait object without `dyn`");
+                    if is_global {
+                        db.multipart_suggestion(
+                            "use `dyn`",
+                            vec![
+                                (span.shrink_to_lo(), "dyn (".to_string()),
+                                (span.shrink_to_hi(), ")".to_string()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        db.span_suggestion_verbose(
+                            span.shrink_to_lo(),
+                            "use `dyn`",
+                            "dyn ".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 }
                 BuiltinLintDiagnostics::AbsPathWithModule(span) => {
                     let (sugg, app) = match sess.source_map().span_to_snippet(span) {

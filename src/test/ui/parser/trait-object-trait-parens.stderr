@@ -20,21 +20,35 @@ warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/trait-object-trait-parens.rs:8:16
    |
 LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn (Obj) + (?Sized) + (for<'a> Trait<'a>)`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait object without `dyn`
    |
    = note: `#[warn(bare_trait_objects)]` on by default
+help: use `dyn`
+   |
+LL |     let _: Box<dyn (Obj) + (?Sized) + (for<'a> Trait<'a>)>;
+   |                ^^^
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/trait-object-trait-parens.rs:12:16
    |
 LL |     let _: Box<(?Sized) + (for<'a> Trait<'a>) + (Obj)>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn (?Sized) + (for<'a> Trait<'a>) + (Obj)`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait object without `dyn`
+   |
+help: use `dyn`
+   |
+LL |     let _: Box<dyn (?Sized) + (for<'a> Trait<'a>) + (Obj)>;
+   |                ^^^
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/trait-object-trait-parens.rs:16:16
    |
 LL |     let _: Box<(for<'a> Trait<'a>) + (Obj) + (?Sized)>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn (for<'a> Trait<'a>) + (Obj) + (?Sized)`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait object without `dyn`
+   |
+help: use `dyn`
+   |
+LL |     let _: Box<dyn (for<'a> Trait<'a>) + (Obj) + (?Sized)>;
+   |                ^^^
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/trait-object-trait-parens.rs:8:35

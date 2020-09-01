@@ -8,9 +8,13 @@ warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/trait-object-macro-matcher.rs:11:8
    |
 LL |     m!('static);
-   |        ^^^^^^^ help: use `dyn`: `dyn 'static`
+   |        ^^^^^^^ trait object without `dyn`
    |
    = note: `#[warn(bare_trait_objects)]` on by default
+help: use `dyn`
+   |
+LL |     m!(dyn 'static);
+   |        ^^^
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/trait-object-macro-matcher.rs:11:8
