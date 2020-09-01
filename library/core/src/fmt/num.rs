@@ -85,7 +85,10 @@ trait GenericRadix {
         // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
         // valid UTF-8
         let buf = unsafe {
-            str::from_utf8_unchecked(slice::from_raw_parts(MaybeUninit::first_ptr(buf), buf.len()))
+            str::from_utf8_unchecked(slice::from_raw_parts(
+                MaybeUninit::slice_as_ptr(buf),
+                buf.len(),
+            ))
         };
         f.pad_integral(is_nonnegative, Self::PREFIX, buf)
     }
@@ -192,7 +195,7 @@ macro_rules! impl_Display {
             // 2^128 is about 3*10^38, so 39 gives an extra byte of space
             let mut buf = [MaybeUninit::<u8>::uninit(); 39];
             let mut curr = buf.len() as isize;
-            let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
+            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             // SAFETY: Since `d1` and `d2` are always less than or equal to `198`, we
@@ -322,7 +325,7 @@ macro_rules! impl_Exp {
             // that `curr >= 0`.
             let mut buf = [MaybeUninit::<u8>::uninit(); 40];
             let mut curr = buf.len() as isize; //index for buf
-            let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
+            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             // decode 2 chars at a time
@@ -370,7 +373,7 @@ macro_rules! impl_Exp {
 
             // stores 'e' (or 'E') and the up to 2-digit exponent
             let mut exp_buf = [MaybeUninit::<u8>::uninit(); 3];
-            let exp_ptr = MaybeUninit::first_ptr_mut(&mut exp_buf);
+            let exp_ptr = MaybeUninit::slice_as_mut_ptr(&mut exp_buf);
             // SAFETY: In either case, `exp_buf` is written within bounds and `exp_ptr[..len]`
             // is contained within `exp_buf` since `len <= 3`.
             let exp_slice = unsafe {
