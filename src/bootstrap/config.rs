@@ -112,6 +112,7 @@ pub struct Config {
     pub rust_verify_llvm_ir: bool,
     pub rust_thin_lto_import_instr_limit: Option<u32>,
     pub rust_remap_debuginfo: bool,
+    pub rust_new_symbol_mangling: bool,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -410,6 +411,7 @@ struct Rust {
     test_compare_mode: Option<bool>,
     llvm_libunwind: Option<bool>,
     control_flow_guard: Option<bool>,
+    new_symbol_mangling: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -448,6 +450,7 @@ impl Config {
     pub fn default_opts() -> Config {
         let mut config = Config::default();
         config.llvm_optimize = true;
+        config.ninja = true;
         config.llvm_version_check = true;
         config.backtrace = true;
         config.rust_optimize = true;
@@ -525,7 +528,7 @@ impl Config {
 
         let build = toml.build.clone().unwrap_or_default();
         // set by bootstrap.py
-        config.hosts.push(config.build.clone());
+        config.hosts.push(config.build);
         for host in build.host.iter().map(|h| TargetSelection::from_user(h)) {
             if !config.hosts.contains(&host) {
                 config.hosts.push(host);
@@ -637,6 +640,7 @@ impl Config {
             debuginfo_level_tests = rust.debuginfo_level_tests;
             optimize = rust.optimize;
             ignore_git = rust.ignore_git;
+            set(&mut config.rust_new_symbol_mangling, rust.new_symbol_mangling);
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
             set(&mut config.rust_rpath, rust.rpath);
@@ -734,7 +738,7 @@ impl Config {
 
         let with_defaults = |debuginfo_level_specific: Option<u32>| {
             debuginfo_level_specific.or(debuginfo_level).unwrap_or(if debug == Some(true) {
-                2
+                1
             } else {
                 0
             })

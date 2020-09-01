@@ -28,9 +28,6 @@ macro_rules! panic {
 /// Like [`assert!`], this macro has a second form, where a custom
 /// panic message can be provided.
 ///
-/// [`PartialEq`]: cmp/trait.PartialEq.html
-/// [`assert!`]: macro.assert.html
-///
 /// # Examples
 ///
 /// ```
@@ -84,9 +81,6 @@ macro_rules! assert_eq {
 ///
 /// Like [`assert!`], this macro has a second form, where a custom
 /// panic message can be provided.
-///
-/// [`PartialEq`]: cmp/trait.PartialEq.html
-/// [`assert!`]: macro.assert.html
 ///
 /// # Examples
 ///
@@ -158,9 +152,6 @@ macro_rules! assert_ne {
 /// with `debug_assert!` is thus only encouraged after thorough profiling, and
 /// more importantly, only in safe code!
 ///
-/// [`panic!`]: macro.panic.html
-/// [`assert!`]: macro.assert.html
-///
 /// # Examples
 ///
 /// ```
@@ -196,8 +187,6 @@ macro_rules! debug_assert {
 /// expensive to be present in a release build but may be helpful during
 /// development. The result of expanding `debug_assert_eq!` is always type checked.
 ///
-/// [`assert_eq!`]: ../std/macro.assert_eq.html
-///
 /// # Examples
 ///
 /// ```
@@ -222,8 +211,6 @@ macro_rules! debug_assert_eq {
 /// compiler. This makes `debug_assert_ne!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
 /// development. The result of expanding `debug_assert_ne!` is always type checked.
-///
-/// [`assert_ne!`]: ../std/macro.assert_ne.html
 ///
 /// # Examples
 ///
@@ -281,8 +268,6 @@ macro_rules! matches {
 ///
 /// Because of the early return, `try!` can only be used in functions that
 /// return [`Result`].
-///
-/// [`Result`]: ../std/result/enum.Result.html
 ///
 /// # Examples
 ///
@@ -348,16 +333,16 @@ macro_rules! r#try {
 /// This macro accepts a format string, a list of arguments, and a 'writer'. Arguments will be
 /// formatted according to the specified format string and the result will be passed to the writer.
 /// The writer may be any value with a `write_fmt` method; generally this comes from an
-/// implementation of either the [`std::fmt::Write`] or the [`std::io::Write`] trait. The macro
-/// returns whatever the `write_fmt` method returns; commonly a [`std::fmt::Result`], or an
+/// implementation of either the [`fmt::Write`] or the [`io::Write`] trait. The macro
+/// returns whatever the `write_fmt` method returns; commonly a [`fmt::Result`], or an
 /// [`io::Result`].
 ///
 /// See [`std::fmt`] for more information on the format string syntax.
 ///
-/// [`std::fmt`]: ../std/fmt/index.html
-/// [`std::fmt::Write`]: ../std/fmt/trait.Write.html
-/// [`std::io::Write`]: ../std/io/trait.Write.html
-/// [`std::fmt::Result`]: ../std/fmt/type.Result.html
+/// [`std::fmt`]: crate::fmt
+/// [`fmt::Write`]: crate::fmt::Write
+/// [`io::Write`]: ../std/io/trait.Write.html
+/// [`fmt::Result`]: crate::fmt::Result
 /// [`io::Result`]: ../std/io/type.Result.html
 ///
 /// # Examples
@@ -426,9 +411,7 @@ macro_rules! write {
 /// For more information, see [`write!`]. For information on the format string syntax, see
 /// [`std::fmt`].
 ///
-/// [`write!`]: macro.write.html
-/// [`std::fmt`]: ../std/fmt/index.html
-///
+/// [`std::fmt`]: crate::fmt
 ///
 /// # Examples
 ///
@@ -494,15 +477,11 @@ macro_rules! writeln {
 /// The unsafe counterpart of this macro is the [`unreachable_unchecked`] function, which
 /// will cause undefined behavior if the code is reached.
 ///
-/// [`panic!`]: ../std/macro.panic.html
-/// [`unreachable_unchecked`]: ../std/hint/fn.unreachable_unchecked.html
-/// [`std::hint`]: ../std/hint/index.html
+/// [`unreachable_unchecked`]: crate::hint::unreachable_unchecked
 ///
 /// # Panics
 ///
 /// This will always [`panic!`]
-///
-/// [`panic!`]: ../std/macro.panic.html
 ///
 /// # Examples
 ///
@@ -637,8 +616,6 @@ macro_rules! unimplemented {
 /// implemented", `unimplemented!` makes no such claims. Its message is "not implemented".
 /// Also some IDEs will mark `todo!`s.
 ///
-/// [`unimplemented!`]: macro.unimplemented.html
-///
 /// # Panics
 ///
 /// This will always [panic!](macro.panic.html)
@@ -730,8 +707,6 @@ pub(crate) mod builtin {
     /// #[cfg(not(any(feature = "foo", feature = "bar")))]
     /// compile_error!("Either feature \"foo\" or \"bar\" must be enabled for this crate.");
     /// ```
-    ///
-    /// [`panic!`]: ../std/macro.panic.html
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[rustc_builtin_macro]
     #[macro_export]
@@ -769,12 +744,11 @@ pub(crate) mod builtin {
     ///
     /// For more information, see the documentation in [`std::fmt`].
     ///
-    /// [`Display`]: ../std/fmt/trait.Display.html
-    /// [`Debug`]: ../std/fmt/trait.Debug.html
-    /// [`fmt::Arguments`]: ../std/fmt/struct.Arguments.html
-    /// [`std::fmt`]: ../std/fmt/index.html
+    /// [`Display`]: crate::fmt::Display
+    /// [`Debug`]: crate::fmt::Debug
+    /// [`fmt::Arguments`]: crate::fmt::Arguments
+    /// [`std::fmt`]: crate::fmt
     /// [`format!`]: ../std/macro.format.html
-    /// [`write!`]: ../std/macro.write.html
     /// [`println!`]: ../std/macro.println.html
     ///
     /// # Examples
@@ -818,8 +792,6 @@ pub(crate) mod builtin {
     /// will be emitted. To not emit a compile error, use the [`option_env!`]
     /// macro instead.
     ///
-    /// [`option_env!`]: ../std/macro.option_env.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -854,12 +826,10 @@ pub(crate) mod builtin {
     /// expand into an expression of type `Option<&'static str>` whose value is
     /// `Some` of the value of the environment variable. If the environment
     /// variable is not present, then this will expand to `None`. See
-    /// [`Option<T>`][option] for more information on this type.
+    /// [`Option<T>`][Option] for more information on this type.
     ///
     /// A compile time error is never emitted when using this macro regardless
     /// of whether the environment variable is present or not.
-    ///
-    /// [option]: ../std/option/enum.Option.html
     ///
     /// # Examples
     ///
@@ -946,9 +916,6 @@ pub(crate) mod builtin {
     /// but rather the first macro invocation leading up to the invocation
     /// of the `line!` macro.
     ///
-    /// [`column!`]: macro.column.html
-    /// [`file!`]: macro.file.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -976,9 +943,6 @@ pub(crate) mod builtin {
     /// but rather the first macro invocation leading up to the invocation
     /// of the `column!` macro.
     ///
-    /// [`line!`]: macro.line.html
-    /// [`file!`]: macro.file.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -999,14 +963,10 @@ pub(crate) mod builtin {
     /// With [`line!`] and [`column!`], these macros provide debugging information for
     /// developers about the location within the source.
     ///
-    ///
     /// The expanded expression has type `&'static str`, and the returned file
     /// is not the invocation of the `file!` macro itself, but rather the
     /// first macro invocation leading up to the invocation of the `file!`
     /// macro.
-    ///
-    /// [`line!`]: macro.line.html
-    /// [`column!`]: macro.column.html
     ///
     /// # Examples
     ///
@@ -1258,9 +1218,7 @@ pub(crate) mod builtin {
     /// be provided with or without arguments for formatting. See [`std::fmt`]
     /// for syntax for this form.
     ///
-    /// [`panic!`]: macro.panic.html
-    /// [`debug_assert!`]: macro.debug_assert.html
-    /// [`std::fmt`]: ../std/fmt/index.html
+    /// [`std::fmt`]: crate::fmt
     ///
     /// # Examples
     ///

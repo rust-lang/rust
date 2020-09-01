@@ -9,7 +9,7 @@
 //!
 //! # Examples
 //!
-//! You can explicitly create a [`Vec<T>`] with [`new`]:
+//! You can explicitly create a [`Vec`] with [`Vec::new`]:
 //!
 //! ```
 //! let v: Vec<i32> = Vec::new();
@@ -50,12 +50,7 @@
 //! v[1] = v[1] + 5;
 //! ```
 //!
-//! [`Vec<T>`]: ../../std/vec/struct.Vec.html
-//! [`new`]: ../../std/vec/struct.Vec.html#method.new
-//! [`push`]: ../../std/vec/struct.Vec.html#method.push
-//! [`Index`]: ../../std/ops/trait.Index.html
-//! [`IndexMut`]: ../../std/ops/trait.IndexMut.html
-//! [`vec!`]: ../../std/macro.vec.html
+//! [`push`]: Vec::push
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -65,7 +60,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
 use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Index, IndexMut, RangeBounds};
 use core::ptr::{self, NonNull};
@@ -119,8 +114,9 @@ use crate::raw_vec::RawVec;
 /// assert_eq!(vec, [0, 0, 0, 0, 0]);
 ///
 /// // The following is equivalent, but potentially slower:
-/// let mut vec1 = Vec::with_capacity(5);
-/// vec1.resize(5, 0);
+/// let mut vec = Vec::with_capacity(5);
+/// vec.resize(5, 0);
+/// assert_eq!(vec, [0, 0, 0, 0, 0]);
 /// ```
 ///
 /// Use a `Vec<T>` as an efficient stack:
@@ -278,22 +274,18 @@ use crate::raw_vec::RawVec;
 /// `Vec` does not currently guarantee the order in which elements are dropped.
 /// The order has changed in the past and may change again.
 ///
-/// [`vec!`]: ../../std/macro.vec.html
 /// [`get`]: ../../std/vec/struct.Vec.html#method.get
 /// [`get_mut`]: ../../std/vec/struct.Vec.html#method.get_mut
-/// [`Index`]: ../../std/ops/trait.Index.html
-/// [`String`]: ../../std/string/struct.String.html
-/// [`&str`]: ../../std/primitive.str.html
-/// [`Vec::with_capacity`]: ../../std/vec/struct.Vec.html#method.with_capacity
-/// [`Vec::new`]: ../../std/vec/struct.Vec.html#method.new
-/// [`shrink_to_fit`]: ../../std/vec/struct.Vec.html#method.shrink_to_fit
-/// [`capacity`]: ../../std/vec/struct.Vec.html#method.capacity
-/// [`mem::size_of::<T>`]: ../../std/mem/fn.size_of.html
-/// [`len`]: ../../std/vec/struct.Vec.html#method.len
-/// [`push`]: ../../std/vec/struct.Vec.html#method.push
-/// [`insert`]: ../../std/vec/struct.Vec.html#method.insert
-/// [`reserve`]: ../../std/vec/struct.Vec.html#method.reserve
-/// [owned slice]: ../../std/boxed/struct.Box.html
+/// [`String`]: crate::string::String
+/// [`&str`]: type@str
+/// [`shrink_to_fit`]: Vec::shrink_to_fit
+/// [`capacity`]: Vec::capacity
+/// [`mem::size_of::<T>`]: core::mem::size_of
+/// [`len`]: Vec::len
+/// [`push`]: Vec::push
+/// [`insert`]: Vec::insert
+/// [`reserve`]: Vec::reserve
+/// [owned slice]: Box
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "vec_type")]
 pub struct Vec<T> {
@@ -375,7 +367,7 @@ impl<T> Vec<T> {
     /// into a `Vec` with the [`from_raw_parts`] function, allowing
     /// the destructor to perform the cleanup.
     ///
-    /// [`from_raw_parts`]: #method.from_raw_parts
+    /// [`from_raw_parts`]: Vec::from_raw_parts
     ///
     /// # Examples
     ///
@@ -430,8 +422,8 @@ impl<T> Vec<T> {
     /// that nothing else uses the pointer after calling this
     /// function.
     ///
-    /// [`String`]: ../../std/string/struct.String.html
-    /// [`dealloc`]: ../../alloc/alloc/trait.GlobalAlloc.html#tymethod.dealloc
+    /// [`String`]: crate::string::String
+    /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
     ///
     /// # Examples
     ///
@@ -622,7 +614,10 @@ impl<T> Vec<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
-        if self.capacity() != self.len {
+        // The capacity is never less than the length, and there's nothing to do when
+        // they are equal, so we can avoid the panic case in `RawVec::shrink_to_fit`
+        // by only calling it with a greater capacity.
+        if self.capacity() > self.len {
             self.buf.shrink_to_fit(self.len);
         }
     }
@@ -658,7 +653,7 @@ impl<T> Vec<T> {
     ///
     /// Note that this will drop any excess capacity.
     ///
-    /// [owned slice]: ../../std/boxed/struct.Box.html
+    /// [owned slice]: Box
     ///
     /// # Examples
     ///
@@ -729,8 +724,8 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, []);
     /// ```
     ///
-    /// [`clear`]: #method.clear
-    /// [`drain`]: #method.drain
+    /// [`clear`]: Vec::clear
+    /// [`drain`]: Vec::drain
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: usize) {
         // This is safe because:
@@ -809,7 +804,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     ///
-    /// [`as_mut_ptr`]: #method.as_mut_ptr
+    /// [`as_mut_ptr`]: Vec::as_mut_ptr
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[inline]
     pub fn as_ptr(&self) -> *const T {
@@ -865,17 +860,17 @@ impl<T> Vec<T> {
     /// is done using one of the safe operations instead, such as
     /// [`truncate`], [`resize`], [`extend`], or [`clear`].
     ///
-    /// [`truncate`]: #method.truncate
-    /// [`resize`]: #method.resize
-    /// [`extend`]: ../../std/iter/trait.Extend.html#tymethod.extend
-    /// [`clear`]: #method.clear
+    /// [`truncate`]: Vec::truncate
+    /// [`resize`]: Vec::resize
+    /// [`extend`]: Extend::extend
+    /// [`clear`]: Vec::clear
     ///
     /// # Safety
     ///
     /// - `new_len` must be less than or equal to [`capacity()`].
     /// - The elements at `old_len..new_len` must be initialized.
     ///
-    /// [`capacity()`]: #method.capacity
+    /// [`capacity()`]: Vec::capacity
     ///
     /// # Examples
     ///
@@ -1214,8 +1209,6 @@ impl<T> Vec<T> {
     /// Removes the last element from a vector and returns it, or [`None`] if it
     /// is empty.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    ///
     /// # Examples
     ///
     /// ```
@@ -1462,9 +1455,9 @@ impl<T> Vec<T> {
     /// If `new_len` is less than `len`, the `Vec` is simply truncated.
     ///
     /// This method uses a closure to create new values on every push. If
-    /// you'd rather [`Clone`] a given value, use [`resize`]. If you want
-    /// to use the [`Default`] trait to generate values, you can pass
-    /// [`Default::default()`] as the second argument.
+    /// you'd rather [`Clone`] a given value, use [`Vec::resize`]. If you
+    /// want to use the [`Default`] trait to generate values, you can
+    /// pass [`Default::default`] as the second argument.
     ///
     /// # Examples
     ///
@@ -1478,9 +1471,6 @@ impl<T> Vec<T> {
     /// vec.resize_with(4, || { p *= 2; p });
     /// assert_eq!(vec, [2, 4, 8, 16]);
     /// ```
-    ///
-    /// [`resize`]: #method.resize
-    /// [`Clone`]: ../../std/clone/trait.Clone.html
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
     pub fn resize_with<F>(&mut self, new_len: usize, f: F)
     where
@@ -1510,20 +1500,59 @@ impl<T> Vec<T> {
     /// Simple usage:
     ///
     /// ```
-    /// #![feature(vec_leak)]
-    ///
     /// let x = vec![1, 2, 3];
-    /// let static_ref: &'static mut [usize] = Vec::leak(x);
+    /// let static_ref: &'static mut [usize] = x.leak();
     /// static_ref[0] += 1;
     /// assert_eq!(static_ref, &[2, 2, 3]);
     /// ```
-    #[unstable(feature = "vec_leak", issue = "62195")]
+    #[stable(feature = "vec_leak", since = "1.47.0")]
     #[inline]
-    pub fn leak<'a>(vec: Vec<T>) -> &'a mut [T]
+    pub fn leak<'a>(self) -> &'a mut [T]
     where
         T: 'a, // Technically not needed, but kept to be explicit.
     {
-        Box::leak(vec.into_boxed_slice())
+        Box::leak(self.into_boxed_slice())
+    }
+
+    /// Returns the remaining spare capacity of the vector as a slice of
+    /// `MaybeUninit<T>`.
+    ///
+    /// The returned slice can be used to fill the vector with data (e.g. by
+    /// reading from a file) before marking the data as initialized using the
+    /// [`set_len`] method.
+    ///
+    /// [`set_len`]: Vec::set_len
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_spare_capacity, maybe_uninit_extra)]
+    ///
+    /// // Allocate vector big enough for 10 elements.
+    /// let mut v = Vec::with_capacity(10);
+    ///
+    /// // Fill in the first 3 elements.
+    /// let uninit = v.spare_capacity_mut();
+    /// uninit[0].write(0);
+    /// uninit[1].write(1);
+    /// uninit[2].write(2);
+    ///
+    /// // Mark the first 3 elements of the vector as being initialized.
+    /// unsafe {
+    ///     v.set_len(3);
+    /// }
+    ///
+    /// assert_eq!(&v, &[0, 1, 2]);
+    /// ```
+    #[unstable(feature = "vec_spare_capacity", issue = "75017")]
+    #[inline]
+    pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {
+        unsafe {
+            slice::from_raw_parts_mut(
+                self.as_mut_ptr().add(self.len) as *mut MaybeUninit<T>,
+                self.buf.capacity() - self.len,
+            )
+        }
     }
 }
 
@@ -1537,7 +1566,7 @@ impl<T: Clone> Vec<T> {
     /// This method requires `T` to implement [`Clone`],
     /// in order to be able to clone the passed value.
     /// If you need more flexibility (or want to rely on [`Default`] instead of
-    /// [`Clone`]), use [`resize_with`].
+    /// [`Clone`]), use [`Vec::resize_with`].
     ///
     /// # Examples
     ///
@@ -1550,10 +1579,6 @@ impl<T: Clone> Vec<T> {
     /// vec.resize(2, 0);
     /// assert_eq!(vec, [1, 2]);
     /// ```
-    ///
-    /// [`Clone`]: ../../std/clone/trait.Clone.html
-    /// [`Default`]: ../../std/default/trait.Default.html
-    /// [`resize_with`]: #method.resize_with
     #[stable(feature = "vec_resize", since = "1.5.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
@@ -1583,7 +1608,7 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, [1, 2, 3, 4]);
     /// ```
     ///
-    /// [`extend`]: #method.extend
+    /// [`extend`]: Vec::extend
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
@@ -1615,10 +1640,7 @@ impl<T: Default> Vec<T> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     ///
-    /// [`resize`]: #method.resize
-    /// [`Default::default()`]: ../../std/default/trait.Default.html#tymethod.default
-    /// [`Default`]: ../../std/default/trait.Default.html
-    /// [`Clone`]: ../../std/clone/trait.Clone.html
+    /// [`resize`]: Vec::resize
     #[unstable(feature = "vec_resize_default", issue = "41758")]
     #[rustc_deprecated(
         reason = "This is moving towards being removed in favor \
@@ -2230,7 +2252,7 @@ impl<T> Vec<T> {
     /// with the given `replace_with` iterator and yields the removed items.
     /// `replace_with` does not need to be the same length as `range`.
     ///
-    /// The element range is removed even if the iterator is not consumed until the end.
+    /// `range` is removed even if the iterator is not consumed until the end.
     ///
     /// It is unspecified how many elements are removed from the vector
     /// if the `Splice` value is leaked.
@@ -2298,7 +2320,6 @@ impl<T> Vec<T> {
     ///
     /// Note that `drain_filter` also lets you mutate every element in the filter closure,
     /// regardless of whether you choose to keep or remove it.
-    ///
     ///
     /// # Examples
     ///
@@ -2581,9 +2602,6 @@ where
 ///
 /// This `struct` is created by the `into_iter` method on [`Vec`] (provided
 /// by the [`IntoIterator`] trait).
-///
-/// [`Vec`]: struct.Vec.html
-/// [`IntoIterator`]: ../../std/iter/trait.IntoIterator.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     buf: NonNull<T>,
@@ -2763,10 +2781,7 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
 
 /// A draining iterator for `Vec<T>`.
 ///
-/// This `struct` is created by the [`drain`] method on [`Vec`].
-///
-/// [`drain`]: struct.Vec.html#method.drain
-/// [`Vec`]: struct.Vec.html
+/// This `struct` is created by [`Vec::drain`].
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     /// Index of tail to preserve
@@ -2894,11 +2909,8 @@ impl<T> FusedIterator for Drain<'_, T> {}
 
 /// A splicing iterator for `Vec`.
 ///
-/// This struct is created by the [`splice()`] method on [`Vec`]. See its
-/// documentation for more.
-///
-/// [`splice()`]: struct.Vec.html#method.splice
-/// [`Vec`]: struct.Vec.html
+/// This struct is created by [`Vec::splice()`].
+/// See its documentation for more.
 #[derive(Debug)]
 #[stable(feature = "vec_splice", since = "1.21.0")]
 pub struct Splice<'a, I: Iterator + 'a> {
@@ -3011,7 +3023,10 @@ impl<T> Drain<'_, T> {
     }
 }
 
-/// An iterator produced by calling `drain_filter` on Vec.
+/// An iterator which uses a closure to determine if an element should be removed.
+///
+/// This struct is created by [`Vec::drain_filter`].
+/// See its documentation for more.
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
 pub struct DrainFilter<'a, T, F>

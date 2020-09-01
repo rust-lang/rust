@@ -28,11 +28,14 @@ All contributors are expected to follow the [Rust Code of Conduct].
 
 ## Getting started
 
-High level approach:
+**Note: If this is your first time contributing to Clippy, you should
+first read the [Basics docs](doc/basics.md).**
+
+### High level approach
 
 1. Find something to fix/improve
 2. Change code (likely some file in `clippy_lints/src/`)
-3. Follow the instructions in the [docs for writing lints](doc/adding_lints.md) such as running the `setup-toolchain.sh` script
+3. Follow the instructions in the [Basics docs](doc/basics.md) to get set up
 4. Run `cargo test` in the root directory and wiggle code until it passes
 5. Open a PR (also can be done after 2. if you run into problems)
 
@@ -95,16 +98,16 @@ quick read.
 
 ## Getting code-completion for rustc internals to work
 
-Unfortunately, [`rust-analyzer`][ra_homepage] does not (yet?) understand how Clippy uses compiler-internals 
-using `extern crate` and it also needs to be able to read the source files of the rustc-compiler which are not 
-available via a `rustup` component at the time of writing.  
-To work around this, you need to have a copy of the [rustc-repo][rustc_repo] available which can be obtained via  
-`git clone https://github.com/rust-lang/rust/`.  
-Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies 
-which rust-analyzer will be able to understand.  
-Run `cargo dev ra-setup --repo-path <repo-path>` where `<repo-path>` is an absolute path to the rustc repo 
-you just cloned.  
-The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to 
+Unfortunately, [`rust-analyzer`][ra_homepage] does not (yet?) understand how Clippy uses compiler-internals
+using `extern crate` and it also needs to be able to read the source files of the rustc-compiler which are not
+available via a `rustup` component at the time of writing.
+To work around this, you need to have a copy of the [rustc-repo][rustc_repo] available which can be obtained via
+`git clone https://github.com/rust-lang/rust/`.
+Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies
+which rust-analyzer will be able to understand.
+Run `cargo dev ra-setup --repo-path <repo-path>` where `<repo-path>` is an absolute path to the rustc repo
+you just cloned.
+The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
 Clippys `Cargo.toml`s and should allow rust-analyzer to understand most of the types that Clippy uses.
 Just make sure to remove the dependencies again before finally making a pull request!
 
@@ -186,6 +189,35 @@ Clippy in the `rust-lang/rust` repository.
 For general information about `subtree`s in the Rust repository see [Rust's
 `CONTRIBUTING.md`][subtree].
 
+### Patching git-subtree to work with big repos
+
+Currently there's a bug in `git-subtree` that prevents it from working properly
+with the [`rust-lang/rust`] repo. There's an open PR to fix that, but it's stale.
+Before continuing with the following steps, we need to manually apply that fix to
+our local copy of `git-subtree`.
+
+You can get the patched version of `git-subtree` from [here][gitgitgadget-pr].
+Put this file under `/usr/lib/git-core` (taking a backup of the previous file)
+and make sure it has the proper permissions:
+
+```bash
+sudo cp --backup /path/to/patched/git-subtree.sh /usr/lib/git-core/git-subtree
+sudo chmod --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subtree
+sudo chown --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subtree
+```
+
+_Note:_ The first time running `git subtree push` a cache has to be built. This
+involves going through the complete Clippy history once. For this you have to
+increase the stack limit though, which you can do with `ulimit -s 60000`.
+Make sure to run the `ulimit` command from the same session you call git subtree.
+
+_Note:_ If you are a Debian user, `dash` is the shell used by default for scripts instead of `sh`.
+This shell has a hardcoded recursion limit set to 1000. In order to make this process work,
+you need to force the script to run `bash` instead. You can do this by editing the first
+line of the `git-subtree` script and changing `sh` to `bash`.
+
+### Performing the sync
+
 Here is a TL;DR version of the sync process (all of the following commands have
 to be run inside the `rust` directory):
 
@@ -195,6 +227,7 @@ to be run inside the `rust` directory):
     # Make sure to change `your-github-name` to your github name in the following command
     git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy sync-from-rust
     ```
+
     _Note:_ This will directly push to the remote repository. You can also push
     to your local copy by replacing the remote address with `/path/to/rust-clippy`
     directory.
@@ -210,14 +243,30 @@ to be run inside the `rust` directory):
 3. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
    accelerate the process ping the `@rust-lang/clippy` team in your PR and/or
    ~~annoy~~ ask them in the [Discord] channel.)
-4. Sync the `rust-lang/rust-clippy` master to the rust-copy of Clippy:
+   
+### Syncing back changes in Clippy to [`rust-lang/rust`]
+
+To avoid flooding the [`rust-lang/rust`] PR queue, changes in Clippy's repo are synced back
+in a bi-weekly basis if there's no urgent changes. This is done starting on the day of
+the Rust stable release and then every other week. That way we guarantee that
+every feature in Clippy is available for 2 weeks in nightly, before it can get to beta.
+For reference, the first sync following this cadence was performed the 2020-08-27.
+
+All of the following commands have to be run inside the `rust` directory.
+
+1. Make sure Clippy itself is up-to-date by following the steps outlined in the previous
+section if necessary.
+
+2. Sync the `rust-lang/rust-clippy` master to the rust-copy of Clippy:
     ```bash
     git checkout -b sync-from-clippy
     git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy master
     ```
-5. Open a PR to [`rust-lang/rust`]
+3. Open a PR to [`rust-lang/rust`]
 
-Also, you may want to define remotes, so you don't have to type out the remote
+### Defining remotes
+
+You may want to define remotes, so you don't have to type out the remote
 addresses on every sync. You can do this with the following commands (these
 commands still have to be run inside the `rust` directory):
 
@@ -237,12 +286,6 @@ You can then sync with the remote names from above, e.g.:
 ```bash
 $ git subtree push -P src/tools/clippy clippy-local sync-from-rust
 ```
-
-_Note:_ The first time running `git subtree push` a cache has to be built. This
-involves going through the complete Clippy history once. For this you have to
-increase the stack limit though, which you can do with `ulimit -s 60000`. For
-this to work, you will need the fix of `git subtree` available
-[here][gitgitgadget-pr].
 
 [gitgitgadget-pr]: https://github.com/gitgitgadget/git/pull/493
 [subtree]: https://rustc-dev-guide.rust-lang.org/contributing.html#external-dependencies-subtree

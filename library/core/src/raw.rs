@@ -26,7 +26,7 @@
 /// [`std::mem::transmute`][transmute]. Similarly, the only way to create a true
 /// trait object from a `TraitObject` value is with `transmute`.
 ///
-/// [transmute]: ../intrinsics/fn.transmute.html
+/// [transmute]: crate::intrinsics::transmute
 ///
 /// Synthesizing a trait object with mismatched types—one where the
 /// vtable does not correspond to the type of the value to which the

@@ -1,0 +1,32 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/issue-66971.rs:15:11: 15:11
+      let _1: ();                          // in scope 0 at $DIR/issue-66971.rs:16:5: 16:23
+      let mut _2: ((), u8, u8);            // in scope 0 at $DIR/issue-66971.rs:16:12: 16:22
+      let mut _3: ();                      // in scope 0 at $DIR/issue-66971.rs:16:13: 16:15
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/issue-66971.rs:16:5: 16:23
+          StorageLive(_2);                 // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
+          StorageLive(_3);                 // scope 0 at $DIR/issue-66971.rs:16:13: 16:15
+-         (_2.0: ()) = move _3;            // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
++         (_2.0: ()) = const ();           // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
+          (_2.1: u8) = const 0_u8;         // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
+          (_2.2: u8) = const 0_u8;         // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
+          StorageDead(_3);                 // scope 0 at $DIR/issue-66971.rs:16:21: 16:22
+          _1 = encode(move _2) -> bb1;     // scope 0 at $DIR/issue-66971.rs:16:5: 16:23
+                                           // mir::Constant
+                                           // + span: $DIR/issue-66971.rs:16:5: 16:11
+                                           // + literal: Const { ty: fn(((), u8, u8)) {encode}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          StorageDead(_2);                 // scope 0 at $DIR/issue-66971.rs:16:22: 16:23
+          StorageDead(_1);                 // scope 0 at $DIR/issue-66971.rs:16:23: 16:24
+          _0 = const ();                   // scope 0 at $DIR/issue-66971.rs:15:11: 17:2
+          return;                          // scope 0 at $DIR/issue-66971.rs:17:2: 17:2
+      }
+  }
+  

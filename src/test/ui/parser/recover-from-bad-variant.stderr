@@ -18,6 +18,13 @@ LL |     Foo { a: usize, b: usize },
 LL |         Enum::Foo(a, b) => {}
    |         ^^^^^^^^^^^^^^^ help: use struct pattern syntax instead: `Enum::Foo { a, b }`
 
-error: aborting due to 2 previous errors
+error[E0769]: tuple variant `Enum::Bar` written as struct variant
+  --> $DIR/recover-from-bad-variant.rs:12:9
+   |
+LL |         Enum::Bar { a, b } => {}
+   |         ^^^^^^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `Enum::Bar(a, b)`
 
-For more information about this error, try `rustc --explain E0532`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0532, E0769.
+For more information about an error, try `rustc --explain E0532`.

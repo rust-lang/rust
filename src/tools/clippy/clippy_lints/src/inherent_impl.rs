@@ -81,9 +81,9 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
                             cx,
                             MULTIPLE_INHERENT_IMPL,
                             *additional_span,
-                            "Multiple implementations of this structure",
+                            "multiple implementations of this structure",
                             |diag| {
-                                diag.span_note(*initial_span, "First implementation here");
+                                diag.span_note(*initial_span, "first implementation here");
                             },
                         )
                     })

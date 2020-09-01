@@ -25,14 +25,14 @@
    25|      2|    }
    26|      2|}
   ------------------
-  | main[317d481089b8c8fe]::wrap_with::<main[317d481089b8c8fe]::main::{closure#0}, &str>:
+  | testprog[317d481089b8c8fe]::wrap_with::<testprog[317d481089b8c8fe]::main::{closure#0}, &str>:
   |   22|      1|{
   |   23|      1|    if should_wrap {
   |   24|      1|        wrapper(&inner)
   |   25|      1|    }
   |   26|      1|}
   ------------------
-  | main[317d481089b8c8fe]::wrap_with::<main[317d481089b8c8fe]::main::{closure#1}, &str>:
+  | testprog[317d481089b8c8fe]::wrap_with::<testprog[317d481089b8c8fe]::main::{closure#1}, &str>:
   |   22|      1|{
   |   23|      1|    if should_wrap {
   |   24|      1|        wrapper(&inner)

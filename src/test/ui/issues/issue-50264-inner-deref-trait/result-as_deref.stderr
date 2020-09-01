@@ -1,5 +1,5 @@
 error[E0599]: no method named `as_deref` found for enum `std::result::Result<{integer}, _>` in the current scope
-  --> $DIR/result-as_deref.rs:4:27
+  --> $DIR/result-as_deref.rs:2:27
    |
 LL |     let _result = &Ok(42).as_deref();
    |                           ^^^^^^^^ help: there is an associated function with a similar name: `as_ref`

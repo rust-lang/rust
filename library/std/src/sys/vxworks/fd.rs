@@ -53,7 +53,7 @@ impl FileDesc {
     }
 
     #[inline]
-    fn is_read_vectored(&self) -> bool {
+    pub fn is_read_vectored(&self) -> bool {
         true
     }
 

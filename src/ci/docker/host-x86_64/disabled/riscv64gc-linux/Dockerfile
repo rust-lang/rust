@@ -20,6 +20,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     libc6-dev \
     libc6-dev-riscv64-cross \
     make \
+    ninja-build \
     patch \
     python3 \
     qemu-system-misc \
@@ -97,6 +98,6 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS --qemu-riscv64-rootfs=/tmp/rootfs
-ENV SCRIPT python3 ../x.py test --target riscv64gc-unknown-linux-gnu
+ENV SCRIPT python3 ../x.py --stage 2 test --target riscv64gc-unknown-linux-gnu
 
 ENV NO_CHANGE_USER=1

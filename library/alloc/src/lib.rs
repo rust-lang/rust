@@ -50,11 +50,11 @@
 //! The [`alloc`](alloc/index.html) module defines the low-level interface to the
 //! default global allocator. It is not compatible with the libc allocator API.
 //!
-//! [`Arc`]: sync/index.html
-//! [`Box`]: boxed/index.html
-//! [`Cell`]: ../core/cell/index.html
-//! [`Rc`]: rc/index.html
-//! [`RefCell`]: ../core/cell/index.html
+//! [`Arc`]: sync
+//! [`Box`]: boxed
+//! [`Cell`]: core::cell
+//! [`Rc`]: rc
+//! [`RefCell`]: core::cell
 
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
@@ -69,17 +69,18 @@
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
-#![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(test))]
 #![feature(allocator_api)]
+#![feature(array_chunks)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(btree_drain_filter)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
@@ -93,6 +94,7 @@
 #![feature(container_error_extra)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
+#![feature(exclusive_range_pattern)]
 #![feature(extend_one)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
@@ -101,18 +103,22 @@
 #![feature(lang_items)]
 #![feature(layout_for_ptr)]
 #![feature(libc)]
+#![feature(map_first_last)]
+#![feature(map_into_keys_values)]
 #![feature(negative_impls)]
 #![feature(new_uninit)]
 #![feature(nll)]
+#![feature(nonnull_slice_from_raw_parts)]
 #![feature(optin_builtin_traits)]
 #![feature(or_patterns)]
 #![feature(pattern)]
 #![feature(ptr_internals)]
-#![feature(ptr_offset_from)]
 #![feature(raw_ref_op)]
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]
 #![feature(min_specialization)]
+#![feature(slice_ptr_get)]
+#![feature(slice_ptr_len)]
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(str_internals)]
@@ -129,7 +135,6 @@
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
 #![feature(associated_type_bounds)]
-
 // Allow testing this library
 
 #[cfg(test)]

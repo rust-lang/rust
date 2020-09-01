@@ -118,14 +118,13 @@
 //! described in [rust-lang/unsafe-code-guidelines#198][ucg#198].
 //!
 //! [ucg#198]: https://github.com/rust-lang/unsafe-code-guidelines/issues/198
-//! [dereferencing]: ../../std/ops/trait.Deref.html
-//! [`Box`]: struct.Box.html
-//! [`Box<T>`]: struct.Box.html
-//! [`Box::<T>::from_raw(value)`]: struct.Box.html#method.from_raw
-//! [`Box::<T>::into_raw`]: struct.Box.html#method.into_raw
-//! [`Global`]: ../alloc/struct.Global.html
-//! [`Layout`]: ../alloc/struct.Layout.html
-//! [`Layout::for_value(&*value)`]: ../alloc/struct.Layout.html#method.for_value
+//! [dereferencing]: core::ops::Deref
+//! [`Box<T>`]: Box
+//! [`Box::<T>::from_raw(value)`]: Box::from_raw
+//! [`Box::<T>::into_raw`]: Box::into_raw
+//! [`Global`]: crate::alloc::Global
+//! [`Layout`]: crate::alloc::Layout
+//! [`Layout::for_value(&*value)`]: crate::alloc::Layout::for_value
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -143,10 +142,10 @@ use core::ops::{
     CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Generator, GeneratorState, Receiver,
 };
 use core::pin::Pin;
-use core::ptr::{self, NonNull, Unique};
+use core::ptr::{self, Unique};
 use core::task::{Context, Poll};
 
-use crate::alloc::{self, AllocInit, AllocRef, Global};
+use crate::alloc::{self, AllocRef, Global};
 use crate::borrow::Cow;
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
@@ -197,11 +196,7 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        let ptr = Global
-            .alloc(layout, AllocInit::Uninitialized)
-            .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-            .ptr
-            .cast();
+        let ptr = Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast();
         unsafe { Box::from_raw(ptr.as_ptr()) }
     }
 
@@ -227,9 +222,8 @@ impl<T> Box<T> {
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
         let ptr = Global
-            .alloc(layout, AllocInit::Zeroed)
+            .alloc_zeroed(layout)
             .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-            .ptr
             .cast();
         unsafe { Box::from_raw(ptr.as_ptr()) }
     }
@@ -245,7 +239,6 @@ impl<T> Box<T> {
     /// Converts a `Box<T>` into a `Box<[T]>`
     ///
     /// This conversion does not allocate on the heap and happens in place.
-    ///
     #[unstable(feature = "box_into_boxed_slice", issue = "71582")]
     pub fn into_boxed_slice(boxed: Box<T>) -> Box<[T]> {
         // *mut T and *mut [T; 1] have the same size and alignment
@@ -277,6 +270,29 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         unsafe { RawVec::with_capacity(len).into_box(len) }
+    }
+
+    /// Constructs a new boxed slice with uninitialized contents, with the memory
+    /// being filled with `0` bytes.
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
+    /// of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let values = Box::<[u32]>::new_zeroed_slice(3);
+    /// let values = unsafe { values.assume_init() };
+    ///
+    /// assert_eq!(*values, [0, 0, 0])
+    /// ```
+    ///
+    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
+        unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
     }
 }
 
@@ -391,9 +407,8 @@ impl<T: ?Sized> Box<T> {
     /// }
     /// ```
     ///
-    /// [memory layout]: index.html#memory-layout
-    /// [`Layout`]: ../alloc/struct.Layout.html
-    /// [`Box::into_raw`]: struct.Box.html#method.into_raw
+    /// [memory layout]: self#memory-layout
+    /// [`Layout`]: crate::Layout
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
@@ -438,8 +453,7 @@ impl<T: ?Sized> Box<T> {
     /// }
     /// ```
     ///
-    /// [memory layout]: index.html#memory-layout
-    /// [`Box::from_raw`]: struct.Box.html#method.from_raw
+    /// [memory layout]: self#memory-layout
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
@@ -449,50 +463,6 @@ impl<T: ?Sized> Box<T> {
         // so all raw pointer methods go through `leak` which creates a (unique)
         // mutable reference. Turning *that* to a raw pointer behaves correctly.
         Box::leak(b) as *mut T
-    }
-
-    /// Consumes the `Box`, returning the wrapped pointer as `NonNull<T>`.
-    ///
-    /// After calling this function, the caller is responsible for the
-    /// memory previously managed by the `Box`. In particular, the
-    /// caller should properly destroy `T` and release the memory. The
-    /// easiest way to do so is to convert the `NonNull<T>` pointer
-    /// into a raw pointer and back into a `Box` with the [`Box::from_raw`]
-    /// function.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_raw_non_null(b)`
-    /// instead of `b.into_raw_non_null()`. This
-    /// is so that there is no conflict with a method on the inner type.
-    ///
-    /// [`Box::from_raw`]: struct.Box.html#method.from_raw
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(box_into_raw_non_null)]
-    /// #![allow(deprecated)]
-    ///
-    /// let x = Box::new(5);
-    /// let ptr = Box::into_raw_non_null(x);
-    ///
-    /// // Clean up the memory by converting the NonNull pointer back
-    /// // into a Box and letting the Box be dropped.
-    /// let x = unsafe { Box::from_raw(ptr.as_ptr()) };
-    /// ```
-    #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
-    #[rustc_deprecated(
-        since = "1.44.0",
-        reason = "use `Box::leak(b).into()` or `NonNull::from(Box::leak(b))` instead"
-    )]
-    #[inline]
-    pub fn into_raw_non_null(b: Box<T>) -> NonNull<T> {
-        // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
-        // raw pointer for the type system. Turning it directly into a raw pointer would not be
-        // recognized as "releasing" the unique pointer to permit aliased raw accesses,
-        // so all raw pointer methods go through `leak` which creates a (unique)
-        // mutable reference. Turning *that* to a raw pointer behaves correctly.
-        Box::leak(b).into()
     }
 
     #[unstable(
@@ -526,8 +496,6 @@ impl<T: ?Sized> Box<T> {
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::leak(b)` instead of `b.leak()`. This
     /// is so that there is no conflict with a method on the inner type.
-    ///
-    /// [`Box::from_raw`]: struct.Box.html#method.from_raw
     ///
     /// # Examples
     ///

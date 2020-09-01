@@ -1,13 +1,12 @@
 //! checks for attributes
 
-use crate::reexport::Name;
 use crate::utils::{
     first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_help,
     span_lint_and_sugg, span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
-use rustc_ast::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
@@ -286,14 +285,14 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                     },
                     _ => {},
                 }
-                if items.is_empty() || !attr.check_name(sym!(deprecated)) {
+                if items.is_empty() || !attr.has_name(sym!(deprecated)) {
                     return;
                 }
                 for item in items {
                     if_chain! {
                         if let NestedMetaItem::MetaItem(mi) = &item;
                         if let MetaItemKind::NameValue(lit) = &mi.kind;
-                        if mi.check_name(sym!(since));
+                        if mi.has_name(sym!(since));
                         then {
                             check_semver(cx, item.span(), lit);
                         }
@@ -309,7 +308,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
         }
         match item.kind {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
-                let skip_unused_imports = item.attrs.iter().any(|attr| attr.check_name(sym!(macro_use)));
+                let skip_unused_imports = item.attrs.iter().any(|attr| attr.has_name(sym!(macro_use)));
 
                 for attr in item.attrs {
                     if in_external_macro(cx.sess(), attr.span) {
@@ -517,14 +516,14 @@ fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>
     }
 }
 
-fn check_attrs(cx: &LateContext<'_>, span: Span, name: Name, attrs: &[Attribute]) {
+fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribute]) {
     if span.from_expansion() {
         return;
     }
 
     for attr in attrs {
         if let Some(values) = attr.meta_item_list() {
-            if values.len() != 1 || !attr.check_name(sym!(inline)) {
+            if values.len() != 1 || !attr.has_name(sym!(inline)) {
                 continue;
             }
             if is_word(&values[0], sym!(always)) {
@@ -558,7 +557,7 @@ fn check_semver(cx: &LateContext<'_>, span: Span, lit: &Lit) {
 
 fn is_word(nmi: &NestedMetaItem, expected: Symbol) -> bool {
     if let NestedMetaItem::MetaItem(mi) = &nmi {
-        mi.is_word() && mi.check_name(expected)
+        mi.is_word() && mi.has_name(expected)
     } else {
         false
     }
@@ -571,7 +570,7 @@ declare_lint_pass!(EarlyAttributes => [
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::ast::Item) {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
         check_empty_line_after_outer_attr(cx, item);
     }
 
@@ -581,7 +580,7 @@ impl EarlyLintPass for EarlyAttributes {
     }
 }
 
-fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::ast::Item) {
+fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
     for attr in &item.attrs {
         let attr_item = if let AttrKind::Normal(ref attr) = attr.kind {
             attr
@@ -606,7 +605,7 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::as
                         cx,
                         EMPTY_LINE_AFTER_OUTER_ATTR,
                         begin_of_attr_to_item,
-                        "Found an empty line after an outer attribute. \
+                        "found an empty line after an outer attribute. \
                         Perhaps you forgot to add a `!` to make it an inner attribute?",
                     );
                 }
@@ -618,15 +617,15 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::as
 fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute) {
     if_chain! {
         // check cfg_attr
-        if attr.check_name(sym!(cfg_attr));
+        if attr.has_name(sym!(cfg_attr));
         if let Some(items) = attr.meta_item_list();
         if items.len() == 2;
         // check for `rustfmt`
         if let Some(feature_item) = items[0].meta_item();
-        if feature_item.check_name(sym!(rustfmt));
+        if feature_item.has_name(sym!(rustfmt));
         // check for `rustfmt_skip` and `rustfmt::skip`
         if let Some(skip_item) = &items[1].meta_item();
-        if skip_item.check_name(sym!(rustfmt_skip)) ||
+        if skip_item.has_name(sym!(rustfmt_skip)) ||
             skip_item.path.segments.last().expect("empty path in attribute").ident.name == sym!(skip);
         // Only lint outer attributes, because custom inner attributes are unstable
         // Tracking issue: https://github.com/rust-lang/rust/issues/54726
@@ -685,7 +684,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
     }
 
     if_chain! {
-        if attr.check_name(sym!(cfg));
+        if attr.has_name(sym!(cfg));
         if let Some(list) = attr.meta_item_list();
         let mismatched = find_mismatched_target_os(&list);
         if !mismatched.is_empty();

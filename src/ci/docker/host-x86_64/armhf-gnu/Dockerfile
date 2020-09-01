@@ -14,6 +14,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
       libc6-dev \
       libc6-dev-armhf-cross \
       make \
+      ninja-build \
       python3 \
       qemu-system-arm \
       xz-utils
@@ -78,6 +79,6 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS --qemu-armhf-rootfs=/tmp/rootfs
-ENV SCRIPT python3 ../x.py test --target arm-unknown-linux-gnueabihf
+ENV SCRIPT python3 ../x.py --stage 2 test --target arm-unknown-linux-gnueabihf
 
 ENV NO_CHANGE_USER=1

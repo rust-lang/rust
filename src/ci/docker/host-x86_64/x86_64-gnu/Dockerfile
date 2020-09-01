@@ -3,6 +3,7 @@ FROM ubuntu:19.10
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
+  ninja-build \
   file \
   curl \
   ca-certificates \
@@ -23,4 +24,4 @@ ENV RUST_CONFIGURE_ARGS \
  --enable-sanitizers \
  --enable-profiler \
  --enable-compiler-docs
-ENV SCRIPT python3 ../x.py test
+ENV SCRIPT python3 ../x.py --stage 2 test

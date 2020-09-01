@@ -29,92 +29,6 @@ impl fmt::Display for AllocErr {
     }
 }
 
-/// A desired initial state for allocated memory.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[unstable(feature = "allocator_api", issue = "32838")]
-pub enum AllocInit {
-    /// The contents of the new memory are uninitialized.
-    Uninitialized,
-    /// The new memory is guaranteed to be zeroed.
-    Zeroed,
-}
-
-impl AllocInit {
-    /// Initialize the specified memory block.
-    ///
-    /// This behaves like calling [`AllocInit::init_offset(memory, 0)`][off].
-    ///
-    /// [off]: AllocInit::init_offset
-    ///
-    /// # Safety
-    ///
-    /// * `memory.ptr` must be [valid] for writes of `memory.size` bytes.
-    ///
-    /// [valid]: ../../core/ptr/index.html#safety
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn init(self, memory: MemoryBlock) {
-        // SAFETY: the safety contract for `init_offset` must be
-        // upheld by the caller.
-        unsafe { self.init_offset(memory, 0) }
-    }
-
-    /// Initialize the memory block like specified by `init` at the specified `offset`.
-    ///
-    /// This is a no-op for [`AllocInit::Uninitialized`][] and writes zeroes for
-    /// [`AllocInit::Zeroed`][] at `ptr + offset` until `ptr + layout.size()`.
-    ///
-    /// # Safety
-    ///
-    /// * `memory.ptr` must be [valid] for writes of `memory.size` bytes.
-    /// * `offset` must be smaller than or equal to `memory.size`
-    ///
-    /// [valid]: ../../core/ptr/index.html#safety
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn init_offset(self, memory: MemoryBlock, offset: usize) {
-        debug_assert!(
-            offset <= memory.size,
-            "`offset` must be smaller than or equal to `memory.size`"
-        );
-        match self {
-            AllocInit::Uninitialized => (),
-            AllocInit::Zeroed => {
-                // SAFETY: the caller must guarantee that `offset` is smaller than or equal to `memory.size`,
-                // so the memory from `memory.ptr + offset` of length `memory.size - offset`
-                // is guaranteed to be contaned in `memory` and thus valid for writes.
-                unsafe { memory.ptr.as_ptr().add(offset).write_bytes(0, memory.size - offset) }
-            }
-        }
-    }
-}
-
-/// Represents a block of allocated memory returned by an allocator.
-#[derive(Debug, Copy, Clone)]
-#[unstable(feature = "allocator_api", issue = "32838")]
-pub struct MemoryBlock {
-    pub ptr: NonNull<u8>,
-    pub size: usize,
-}
-
-/// A placement constraint when growing or shrinking an existing allocation.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[unstable(feature = "allocator_api", issue = "32838")]
-pub enum ReallocPlacement {
-    /// The allocator is allowed to move the allocation to a different memory address.
-    // FIXME(wg-allocators#46): Add a section to the module documentation "What is a legal
-    //                          allocator" and link it at "valid location".
-    ///
-    /// If the allocation _does_ move, it's the responsibility of the allocator
-    /// to also move the data from the previous location to the new location.
-    MayMove,
-    /// The address of the new memory must not change.
-    ///
-    /// If the allocation would have to be moved to a new location to fit, the
-    /// reallocation request will fail.
-    InPlace,
-}
-
 /// An implementation of `AllocRef` can allocate, grow, shrink, and deallocate arbitrary blocks of
 /// data described via [`Layout`][].
 ///
@@ -175,12 +89,12 @@ pub enum ReallocPlacement {
 pub unsafe trait AllocRef {
     /// Attempts to allocate a block of memory.
     ///
-    /// On success, returns a [`MemoryBlock`][] meeting the size and alignment guarantees of `layout`.
+    /// On success, returns a [`NonNull<[u8]>`] meeting the size and alignment guarantees of `layout`.
     ///
-    /// The returned block may have a larger size than specified by `layout.size()` and is
-    /// initialized as specified by [`init`], all the way up to the returned size of the block.
+    /// The returned block may have a larger size than specified by `layout.size()`, and may or may
+    /// not have its contents initialized.
     ///
-    /// [`init`]: AllocInit
+    /// [`NonNull<[u8]>`]: NonNull
     ///
     /// # Errors
     ///
@@ -195,7 +109,29 @@ pub unsafe trait AllocRef {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr>;
+    fn alloc(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr>;
+
+    /// Behaves like `alloc`, but also ensures that the returned memory is zero-initialized.
+    ///
+    /// # Errors
+    ///
+    /// Returning `Err` indicates that either memory is exhausted or `layout` does not meet
+    /// allocator's size or alignment constraints.
+    ///
+    /// Implementations are encouraged to return `Err` on memory exhaustion rather than panicking or
+    /// aborting, but this is not a strict requirement. (Specifically: it is *legal* to implement
+    /// this trait atop an underlying native allocation library that aborts on memory exhaustion.)
+    ///
+    /// Clients wishing to abort computation in response to an allocation error are encouraged to
+    /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+        let ptr = self.alloc(layout)?;
+        // SAFETY: `alloc` returns a valid memory block
+        unsafe { ptr.as_non_null_ptr().as_ptr().write_bytes(0, ptr.len()) }
+        Ok(ptr)
+    }
 
     /// Deallocates the memory referenced by `ptr`.
     ///
@@ -210,44 +146,25 @@ pub unsafe trait AllocRef {
 
     /// Attempts to extend the memory block.
     ///
-    /// Returns a new [`MemoryBlock`][] containing a pointer and the actual size of the allocated
-    /// memory. The pointer is suitable for holding data described by a new layout with `layout`’s
-    /// alignment and a size given by `new_size`. To accomplish this, the allocator may extend the
-    /// allocation referenced by `ptr` to fit the new layout. If the [`placement`] is
-    /// [`InPlace`], the returned pointer is guaranteed to be the same as the passed `ptr`.
+    /// Returns a new [`NonNull<[u8]>`] containing a pointer and the actual size of the allocated
+    /// memory. The pointer is suitable for holding data described by `new_layout`. To accomplish
+    /// this, the allocator may extend the allocation referenced by `ptr` to fit the new layout.
     ///
-    /// If [`MayMove`] is used then ownership of the memory block referenced by `ptr`
-    /// is transferred to this allocator. The memory may or may not be freed, and should be
-    /// considered unusable (unless of course it is transferred back to the caller again via the
-    /// return value of this method).
+    /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
+    /// transferred to this allocator. The memory may or may not have been freed, and should be
+    /// considered unusable unless it was transferred back to the caller again via the return value
+    /// of this method.
     ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
     /// this allocator, and the contents of the memory block are unaltered.
     ///
-    /// The memory block will contain the following contents after a successful call to `grow`:
-    ///   * Bytes `0..layout.size()` are preserved from the original allocation.
-    ///   * Bytes `layout.size()..old_size` will either be preserved or initialized according to
-    ///     [`init`], depending on the allocator implementation. `old_size` refers to the size of
-    ///     the `MemoryBlock` prior to the `grow` call, which may be larger than the size
-    ///     that was originally requested when it was allocated.
-    ///   * Bytes `old_size..new_size` are initialized according to [`init`]. `new_size` refers to
-    ///     the size of the `MemoryBlock` returned by the `grow` call.
-    ///
-    /// [`InPlace`]: ReallocPlacement::InPlace
-    /// [`MayMove`]: ReallocPlacement::MayMove
-    /// [`placement`]: ReallocPlacement
-    /// [`init`]: AllocInit
+    /// [`NonNull<[u8]>`]: NonNull
     ///
     /// # Safety
     ///
-    /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator,
-    /// * `layout` must [*fit*] that block of memory (The `new_size` argument need not fit it.),
-    // We can't require that `new_size` is strictly greater than `memory.size` because of ZSTs.
-    // An alternative would be
-    // * `new_size must be strictly greater than `memory.size` or both are zero
-    /// * `new_size` must be greater than or equal to `layout.size()`, and
-    /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`, must not overflow
-    ///   (i.e., the rounded value must be less than or equal to `usize::MAX`).
+    /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator.
+    /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit it.).
+    /// * `new_layout.size()` must be greater than or equal to `old_layout.size()`.
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
@@ -268,74 +185,111 @@ pub unsafe trait AllocRef {
     unsafe fn grow(
         &mut self,
         ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
-        placement: ReallocPlacement,
-        init: AllocInit,
-    ) -> Result<MemoryBlock, AllocErr> {
-        match placement {
-            ReallocPlacement::InPlace => Err(AllocErr),
-            ReallocPlacement::MayMove => {
-                let size = layout.size();
-                debug_assert!(
-                    new_size >= size,
-                    "`new_size` must be greater than or equal to `layout.size()`"
-                );
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocErr> {
+        debug_assert!(
+            new_layout.size() >= old_layout.size(),
+            "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
+        );
 
-                if new_size == size {
-                    return Ok(MemoryBlock { ptr, size });
-                }
+        let new_ptr = self.alloc(new_layout)?;
 
-                let new_layout =
-                    // SAFETY: the caller must ensure that the `new_size` does not overflow.
-                    // `layout.align()` comes from a `Layout` and is thus guaranteed to be valid for a Layout.
-                    // The caller must ensure that `new_size` is greater than zero.
-                    unsafe { Layout::from_size_align_unchecked(new_size, layout.align()) };
-                let new_memory = self.alloc(new_layout, init)?;
-
-                // SAFETY: because `new_size` must be greater than or equal to `size`, both the old and new
-                // memory allocation are valid for reads and writes for `size` bytes. Also, because the old
-                // allocation wasn't yet deallocated, it cannot overlap `new_memory`. Thus, the call to
-                // `copy_nonoverlapping` is safe.
-                // The safety contract for `dealloc` must be upheld by the caller.
-                unsafe {
-                    ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), size);
-                    self.dealloc(ptr, layout);
-                    Ok(new_memory)
-                }
-            }
+        // SAFETY: because `new_layout.size()` must be greater than or equal to
+        // `old_layout.size()`, both the old and new memory allocation are valid for reads and
+        // writes for `old_layout.size()` bytes. Also, because the old allocation wasn't yet
+        // deallocated, it cannot overlap `new_ptr`. Thus, the call to `copy_nonoverlapping` is
+        // safe. The safety contract for `dealloc` must be upheld by the caller.
+        unsafe {
+            ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_layout.size());
+            self.dealloc(ptr, old_layout);
         }
+
+        Ok(new_ptr)
+    }
+
+    /// Behaves like `grow`, but also ensures that the new contents are set to zero before being
+    /// returned.
+    ///
+    /// The memory block will contain the following contents after a successful call to
+    /// `grow_zeroed`:
+    ///   * Bytes `0..old_layout.size()` are preserved from the original allocation.
+    ///   * Bytes `old_layout.size()..old_size` will either be preserved or zeroed, depending on
+    ///     the allocator implementation. `old_size` refers to the size of the memory block prior
+    ///     to the `grow_zeroed` call, which may be larger than the size that was originally
+    ///     requested when it was allocated.
+    ///   * Bytes `old_size..new_size` are zeroed. `new_size` refers to the size of the memory
+    ///     block returned by the `grow_zeroed` call.
+    ///
+    /// # Safety
+    ///
+    /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator.
+    /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit it.).
+    /// * `new_layout.size()` must be greater than or equal to `old_layout.size()`.
+    ///
+    /// [*currently allocated*]: #currently-allocated-memory
+    /// [*fit*]: #memory-fitting
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if the new layout does not meet the allocator's size and alignment
+    /// constraints of the allocator, or if growing otherwise fails.
+    ///
+    /// Implementations are encouraged to return `Err` on memory exhaustion rather than panicking or
+    /// aborting, but this is not a strict requirement. (Specifically: it is *legal* to implement
+    /// this trait atop an underlying native allocation library that aborts on memory exhaustion.)
+    ///
+    /// Clients wishing to abort computation in response to an allocation error are encouraged to
+    /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    unsafe fn grow_zeroed(
+        &mut self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocErr> {
+        debug_assert!(
+            new_layout.size() >= old_layout.size(),
+            "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
+        );
+
+        let new_ptr = self.alloc_zeroed(new_layout)?;
+
+        // SAFETY: because `new_layout.size()` must be greater than or equal to
+        // `old_layout.size()`, both the old and new memory allocation are valid for reads and
+        // writes for `old_layout.size()` bytes. Also, because the old allocation wasn't yet
+        // deallocated, it cannot overlap `new_ptr`. Thus, the call to `copy_nonoverlapping` is
+        // safe. The safety contract for `dealloc` must be upheld by the caller.
+        unsafe {
+            ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_layout.size());
+            self.dealloc(ptr, old_layout);
+        }
+
+        Ok(new_ptr)
     }
 
     /// Attempts to shrink the memory block.
     ///
-    /// Returns a new [`MemoryBlock`][] containing a pointer and the actual size of the allocated
-    /// memory. The pointer is suitable for holding data described by a new layout with `layout`’s
-    /// alignment and a size given by `new_size`. To accomplish this, the allocator may shrink the
-    /// allocation referenced by `ptr` to fit the new layout. If the [`placement`] is
-    /// [`InPlace`], the returned pointer is guaranteed to be the same as the passed `ptr`.
+    /// Returns a new [`NonNull<[u8]>`] containing a pointer and the actual size of the allocated
+    /// memory. The pointer is suitable for holding data described by `new_layout`. To accomplish
+    /// this, the allocator may shrink the allocation referenced by `ptr` to fit the new layout.
     ///
     /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
     /// transferred to this allocator. The memory may or may not have been freed, and should be
-    /// considered unusable unless it was transferred back to the caller again via the
-    /// return value of this method.
+    /// considered unusable unless it was transferred back to the caller again via the return value
+    /// of this method.
     ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
     /// this allocator, and the contents of the memory block are unaltered.
     ///
-    /// The behavior of how the allocator tries to shrink the memory is specified by [`placement`].
-    ///
-    /// [`InPlace`]: ReallocPlacement::InPlace
-    /// [`placement`]: ReallocPlacement
+    /// [`NonNull<[u8]>`]: NonNull
     ///
     /// # Safety
     ///
-    /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator,
-    /// * `layout` must [*fit*] that block of memory (The `new_size` argument need not fit it.), and
-    // We can't require that `new_size` is strictly smaller than `memory.size` because of ZSTs.
-    // An alternative would be
-    // * `new_size must be strictly smaller than `memory.size` or both are zero
-    /// * `new_size` must be smaller than or equal to `layout.size()`.
+    /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator.
+    /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit it.).
+    /// * `new_layout.size()` must be smaller than or equal to `old_layout.size()`.
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
@@ -356,42 +310,27 @@ pub unsafe trait AllocRef {
     unsafe fn shrink(
         &mut self,
         ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
-        placement: ReallocPlacement,
-    ) -> Result<MemoryBlock, AllocErr> {
-        match placement {
-            ReallocPlacement::InPlace => Err(AllocErr),
-            ReallocPlacement::MayMove => {
-                let size = layout.size();
-                debug_assert!(
-                    new_size <= size,
-                    "`new_size` must be smaller than or equal to `layout.size()`"
-                );
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocErr> {
+        debug_assert!(
+            new_layout.size() <= old_layout.size(),
+            "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
+        );
 
-                if new_size == size {
-                    return Ok(MemoryBlock { ptr, size });
-                }
+        let new_ptr = self.alloc(new_layout)?;
 
-                let new_layout =
-                // SAFETY: the caller must ensure that the `new_size` does not overflow.
-                // `layout.align()` comes from a `Layout` and is thus guaranteed to be valid for a Layout.
-                // The caller must ensure that `new_size` is greater than zero.
-                    unsafe { Layout::from_size_align_unchecked(new_size, layout.align()) };
-                let new_memory = self.alloc(new_layout, AllocInit::Uninitialized)?;
-
-                // SAFETY: because `new_size` must be lower than or equal to `size`, both the old and new
-                // memory allocation are valid for reads and writes for `new_size` bytes. Also, because the
-                // old allocation wasn't yet deallocated, it cannot overlap `new_memory`. Thus, the call to
-                // `copy_nonoverlapping` is safe.
-                // The safety contract for `dealloc` must be upheld by the caller.
-                unsafe {
-                    ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), new_size);
-                    self.dealloc(ptr, layout);
-                    Ok(new_memory)
-                }
-            }
+        // SAFETY: because `new_layout.size()` must be lower than or equal to
+        // `old_layout.size()`, both the old and new memory allocation are valid for reads and
+        // writes for `new_layout.size()` bytes. Also, because the old allocation wasn't yet
+        // deallocated, it cannot overlap `new_ptr`. Thus, the call to `copy_nonoverlapping` is
+        // safe. The safety contract for `dealloc` must be upheld by the caller.
+        unsafe {
+            ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_layout.size());
+            self.dealloc(ptr, old_layout);
         }
+
+        Ok(new_ptr)
     }
 
     /// Creates a "by reference" adaptor for this instance of `AllocRef`.
@@ -409,8 +348,13 @@ where
     A: AllocRef + ?Sized,
 {
     #[inline]
-    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr> {
-        (**self).alloc(layout, init)
+    fn alloc(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+        (**self).alloc(layout)
+    }
+
+    #[inline]
+    fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+        (**self).alloc_zeroed(layout)
     }
 
     #[inline]
@@ -423,24 +367,32 @@ where
     unsafe fn grow(
         &mut self,
         ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
-        placement: ReallocPlacement,
-        init: AllocInit,
-    ) -> Result<MemoryBlock, AllocErr> {
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocErr> {
         // SAFETY: the safety contract must be upheld by the caller
-        unsafe { (**self).grow(ptr, layout, new_size, placement, init) }
+        unsafe { (**self).grow(ptr, old_layout, new_layout) }
+    }
+
+    #[inline]
+    unsafe fn grow_zeroed(
+        &mut self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocErr> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).grow_zeroed(ptr, old_layout, new_layout) }
     }
 
     #[inline]
     unsafe fn shrink(
         &mut self,
         ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
-        placement: ReallocPlacement,
-    ) -> Result<MemoryBlock, AllocErr> {
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocErr> {
         // SAFETY: the safety contract must be upheld by the caller
-        unsafe { (**self).shrink(ptr, layout, new_size, placement) }
+        unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }

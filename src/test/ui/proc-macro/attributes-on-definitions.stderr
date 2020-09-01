@@ -1,4 +1,4 @@
-warning: use of deprecated item 'attributes_on_definitions::with_attrs': test
+warning: use of deprecated macro `attributes_on_definitions::with_attrs`: test
   --> $DIR/attributes-on-definitions.rs:8:1
    |
 LL | attributes_on_definitions::with_attrs!();

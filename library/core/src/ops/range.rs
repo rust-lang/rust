@@ -35,9 +35,8 @@ use crate::hash::Hash;
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
-/// [`IntoIterator`]: ../iter/trait.Iterator.html
-/// [`Iterator`]: ../iter/trait.IntoIterator.html
-/// [slicing index]: ../slice/trait.SliceIndex.html
+/// [slicing index]: crate::slice::SliceIndex
+#[lang = "RangeFull"]
 #[doc(alias = "..")]
 #[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -70,6 +69,7 @@ impl fmt::Debug for RangeFull {
 /// assert_eq!(arr[1.. 3], [  1,2    ]);  // Range
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
+#[lang = "Range"]
 #[doc(alias = "..")]
 #[derive(Clone, Default, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -125,8 +125,6 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_is_empty)]
-    ///
     /// assert!(!(3..5).is_empty());
     /// assert!( (3..3).is_empty());
     /// assert!( (3..2).is_empty());
@@ -135,13 +133,11 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// The range is empty if either side is incomparable:
     ///
     /// ```
-    /// #![feature(range_is_empty)]
-    ///
     /// assert!(!(3.0..5.0).is_empty());
     /// assert!( (3.0..f32::NAN).is_empty());
     /// assert!( (f32::NAN..5.0).is_empty());
     /// ```
-    #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
+    #[stable(feature = "range_is_empty", since = "1.47.0")]
     pub fn is_empty(&self) -> bool {
         !(self.start < self.end)
     }
@@ -176,8 +172,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// assert_eq!(arr[1.. 3], [  1,2    ]);
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
-///
-/// [`Iterator`]: ../iter/trait.IntoIterator.html
+#[lang = "RangeFrom"]
 #[doc(alias = "..")]
 #[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -257,9 +252,8 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
-/// [`IntoIterator`]: ../iter/trait.Iterator.html
-/// [`Iterator`]: ../iter/trait.IntoIterator.html
-/// [slicing index]: ../slice/trait.SliceIndex.html
+/// [slicing index]: crate::slice::SliceIndex
+#[lang = "RangeTo"]
 #[doc(alias = "..")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -311,8 +305,8 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// iteration has finished are **unspecified** other than that [`.is_empty()`]
 /// will return `true` once no more values will be produced.
 ///
-/// [fused]: ../iter/trait.FusedIterator.html
-/// [`.is_empty()`]: #method.is_empty
+/// [fused]: crate::iter::FusedIterator
+/// [`.is_empty()`]: RangeInclusive::is_empty
 ///
 /// # Examples
 ///
@@ -328,6 +322,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// assert_eq!(arr[1.. 3], [  1,2    ]);
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);  // RangeInclusive
 /// ```
+#[lang = "RangeInclusive"]
 #[doc(alias = "..=")]
 #[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -359,6 +354,7 @@ impl<Idx> RangeInclusive<Idx> {
     ///
     /// assert_eq!(3..=5, RangeInclusive::new(3, 5));
     /// ```
+    #[lang = "range_inclusive_new"]
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     #[rustc_promotable]
@@ -377,8 +373,8 @@ impl<Idx> RangeInclusive<Idx> {
     /// Note: the value returned by this method is unspecified after the range
     /// has been iterated to exhaustion.
     ///
-    /// [`end()`]: #method.end
-    /// [`is_empty()`]: #method.is_empty
+    /// [`end()`]: RangeInclusive::end
+    /// [`is_empty()`]: RangeInclusive::is_empty
     ///
     /// # Examples
     ///
@@ -402,8 +398,8 @@ impl<Idx> RangeInclusive<Idx> {
     /// Note: the value returned by this method is unspecified after the range
     /// has been iterated to exhaustion.
     ///
-    /// [`start()`]: #method.start
-    /// [`is_empty()`]: #method.is_empty
+    /// [`start()`]: RangeInclusive::start
+    /// [`is_empty()`]: RangeInclusive::is_empty
     ///
     /// # Examples
     ///
@@ -481,8 +477,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_is_empty)]
-    ///
     /// assert!(!(3..=5).is_empty());
     /// assert!(!(3..=3).is_empty());
     /// assert!( (3..=2).is_empty());
@@ -491,8 +485,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// The range is empty if either side is incomparable:
     ///
     /// ```
-    /// #![feature(range_is_empty)]
-    ///
     /// assert!(!(3.0..=5.0).is_empty());
     /// assert!( (3.0..=f32::NAN).is_empty());
     /// assert!( (f32::NAN..=5.0).is_empty());
@@ -501,14 +493,12 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// This method returns `true` after iteration has finished:
     ///
     /// ```
-    /// #![feature(range_is_empty)]
-    ///
     /// let mut r = 3..=5;
     /// for _ in r.by_ref() {}
     /// // Precise field values are unspecified here
     /// assert!(r.is_empty());
     /// ```
-    #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
+    #[stable(feature = "range_is_empty", since = "1.47.0")]
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.exhausted || !(self.start <= self.end)
@@ -552,9 +542,8 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
-/// [`IntoIterator`]: ../iter/trait.Iterator.html
-/// [`Iterator`]: ../iter/trait.IntoIterator.html
-/// [slicing index]: ../slice/trait.SliceIndex.html
+/// [slicing index]: crate::slice::SliceIndex
+#[lang = "RangeToInclusive"]
 #[doc(alias = "..=")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "inclusive_range", since = "1.26.0")]

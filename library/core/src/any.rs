@@ -73,7 +73,7 @@ use crate::intrinsics;
 /// Most types implement `Any`. However, any type which contains a non-`'static` reference does not.
 /// See the [module-level documentation][mod] for more details.
 ///
-/// [mod]: index.html
+/// [mod]: crate::any
 // This trait is not unsafe, though we rely on the specifics of it's sole impl's
 // `type_id` function in unsafe code (e.g., `downcast`). Normally, that would be
 // a problem, but because the only impl of `Any` is a blanket implementation, no
@@ -435,7 +435,7 @@ impl TypeId {
     /// assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_type_id", issue = "41875")]
+    #[rustc_const_stable(feature = "const_type_id", since = "1.46.0")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId { t: intrinsics::type_id::<T>() }
     }

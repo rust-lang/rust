@@ -32,3 +32,12 @@ pub const unsafe fn bar2_gated() -> u32 { 42 }
 
 // @has 'foo/fn.bar_not_gated.html' '//pre' 'pub unsafe fn bar_not_gated() -> u32'
 pub const unsafe fn bar_not_gated() -> u32 { 42 }
+
+pub struct Foo;
+
+impl Foo {
+    // @has 'foo/struct.Foo.html' '//h4[@id="method.gated"]/code' 'pub unsafe fn gated() -> u32'
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature="foo", issue = "none")]
+    pub const unsafe fn gated() -> u32 { 42 }
+}

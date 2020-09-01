@@ -12,9 +12,9 @@
 //! to solve the [shortest path problem][sssp] on a [directed graph][dir_graph].
 //! It shows how to use [`BinaryHeap`] with custom types.
 //!
-//! [dijkstra]: http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
-//! [sssp]: http://en.wikipedia.org/wiki/Shortest_path_problem
-//! [dir_graph]: http://en.wikipedia.org/wiki/Directed_graph
+//! [dijkstra]: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
+//! [sssp]: https://en.wikipedia.org/wiki/Shortest_path_problem
+//! [dir_graph]: https://en.wikipedia.org/wiki/Directed_graph
 //! [`BinaryHeap`]: struct.BinaryHeap.html
 //!
 //! ```

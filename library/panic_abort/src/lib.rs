@@ -17,6 +17,7 @@
 #![feature(panic_runtime)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
+#![feature(asm)]
 
 use core::any::Any;
 
@@ -26,16 +27,7 @@ pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Sen
     unreachable!()
 }
 
-// "Leak" the payload and shim to the relevant abort on the platform in
-// question.
-//
-// For Unix we just use `abort` from libc as it'll trigger debuggers, core
-// dumps, etc, as one might expect. On Windows, however, the best option we have
-// is the `__fastfail` intrinsics, but that's unfortunately not defined in LLVM,
-// and the `RaiseFailFastException` function isn't available until Windows 7
-// which would break compat with XP. For now just use `intrinsics::abort` which
-// will kill us with an illegal instruction, which will do a good enough job for
-// now hopefully.
+// "Leak" the payload and shim to the relevant abort on the platform in question.
 #[rustc_std_internal_symbol]
 pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
     abort();
@@ -54,6 +46,32 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
                     pub fn __rust_abort() -> !;
                 }
                 __rust_abort();
+            }
+        } else if #[cfg(windows)] {
+            // On Windows, use the processor-specific __fastfail mechanism. In Windows 8
+            // and later, this will terminate the process immediately without running any
+            // in-process exception handlers. In earlier versions of Windows, this
+            // sequence of instructions will be treated as an access violation,
+            // terminating the process but without necessarily bypassing all exception
+            // handlers.
+            //
+            // https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
+            //
+            // Note: this is the same implementation as in libstd's `abort_internal`
+            unsafe fn abort() -> ! {
+                const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
+                cfg_if::cfg_if! {
+                    if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+                        asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
+                    } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
+                        asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
+                    } else if #[cfg(target_arch = "aarch64")] {
+                        asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
+                    } else {
+                        core::intrinsics::abort();
+                    }
+                }
+                core::intrinsics::unreachable();
             }
         } else {
             unsafe fn abort() -> ! {
@@ -109,6 +127,17 @@ pub mod personalities {
     ) -> u32 {
         1 // `ExceptionContinueSearch`
     }
+
+    // Similar to above, this corresponds to the `eh_catch_typeinfo` lang item
+    // that's only used on Emscripten currently.
+    //
+    // Since panics don't generate exceptions and foreign exceptions are
+    // currently UB with -C panic=abort (although this may be subject to
+    // change), any catch_unwind calls will never use this typeinfo.
+    #[rustc_std_internal_symbol]
+    #[allow(non_upper_case_globals)]
+    #[cfg(target_os = "emscripten")]
+    static rust_eh_catch_typeinfo: [usize; 2] = [0; 2];
 
     // These two are called by our startup objects on i686-pc-windows-gnu, but
     // they don't need to do anything so the bodies are nops.

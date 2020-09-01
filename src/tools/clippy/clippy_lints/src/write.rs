@@ -237,7 +237,7 @@ impl EarlyLintPass for Write {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &MacCall) {
         if mac.path == sym!(println) {
             span_lint(cx, PRINT_STDOUT, mac.span(), "use of `println!`");
-            if let (Some(fmt_str), _) = self.check_tts(cx, &mac.args.inner_tokens(), false) {
+            if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
                 if fmt_str.symbol == Symbol::intern("") {
                     span_lint_and_sugg(
                         cx,
@@ -252,7 +252,7 @@ impl EarlyLintPass for Write {
             }
         } else if mac.path == sym!(print) {
             span_lint(cx, PRINT_STDOUT, mac.span(), "use of `print!`");
-            if let (Some(fmt_str), _) = self.check_tts(cx, &mac.args.inner_tokens(), false) {
+            if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
                 if check_newlines(&fmt_str) {
                     span_lint_and_then(
                         cx,
@@ -273,7 +273,7 @@ impl EarlyLintPass for Write {
                 }
             }
         } else if mac.path == sym!(write) {
-            if let (Some(fmt_str), _) = self.check_tts(cx, &mac.args.inner_tokens(), true) {
+            if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), true) {
                 if check_newlines(&fmt_str) {
                     span_lint_and_then(
                         cx,
@@ -294,16 +294,17 @@ impl EarlyLintPass for Write {
                 }
             }
         } else if mac.path == sym!(writeln) {
-            if let (Some(fmt_str), expr) = self.check_tts(cx, &mac.args.inner_tokens(), true) {
+            if let (Some(fmt_str), expr) = self.check_tts(cx, mac.args.inner_tokens(), true) {
                 if fmt_str.symbol == Symbol::intern("") {
                     let mut applicability = Applicability::MachineApplicable;
-                    let suggestion = expr.map_or_else(
-                        || {
-                            applicability = Applicability::HasPlaceholders;
-                            Cow::Borrowed("v")
-                        },
-                        |e| snippet_with_applicability(cx, e.span, "v", &mut Applicability::MachineApplicable),
-                    );
+                    // FIXME: remove this `#[allow(...)]` once the issue #5822 gets fixed
+                    #[allow(clippy::option_if_let_else)]
+                    let suggestion = if let Some(e) = expr {
+                        snippet_with_applicability(cx, e.span, "v", &mut applicability)
+                    } else {
+                        applicability = Applicability::HasPlaceholders;
+                        Cow::Borrowed("v")
+                    };
 
                     span_lint_and_sugg(
                         cx,
@@ -364,17 +365,11 @@ impl Write {
     /// (Some("string to write: {}"), Some(buf))
     /// ```
     #[allow(clippy::too_many_lines)]
-    fn check_tts<'a>(
-        &self,
-        cx: &EarlyContext<'a>,
-        tts: &TokenStream,
-        is_write: bool,
-    ) -> (Option<StrLit>, Option<Expr>) {
+    fn check_tts<'a>(&self, cx: &EarlyContext<'a>, tts: TokenStream, is_write: bool) -> (Option<StrLit>, Option<Expr>) {
         use rustc_parse_format::{
             AlignUnknown, ArgumentImplicitlyIs, ArgumentIs, ArgumentNamed, CountImplied, FormatSpec, ParseMode, Parser,
             Piece,
         };
-        let tts = tts.clone();
 
         let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, false, None);
         let mut expr: Option<Expr> = None;

@@ -133,13 +133,7 @@
 //! // `consume_and_return_x` can no longer be invoked at this point
 //! ```
 //!
-//! [`Fn`]: trait.Fn.html
-//! [`FnMut`]: trait.FnMut.html
-//! [`FnOnce`]: trait.FnOnce.html
-//! [`Add`]: trait.Add.html
-//! [`Sub`]: trait.Sub.html
-//! [`Mul`]: trait.Mul.html
-//! [`clone`]: ../clone/trait.Clone.html#tymethod.clone
+//! [`clone`]: Clone::clone
 //! [operator precedence]: ../../reference/expressions.html#expression-precedence
 
 #![stable(feature = "rust1", since = "1.0.0")]

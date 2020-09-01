@@ -1,5 +1,8 @@
 //! Buffering wrappers for I/O traits
 
+#[cfg(test)]
+mod tests;
+
 use crate::io::prelude::*;
 
 use crate::cmp;
@@ -21,17 +24,16 @@ use crate::memchr;
 /// *repeated* read calls to the same file or network socket. It does not
 /// help when reading very large amounts at once, or reading just one or a few
 /// times. It also provides no advantage when reading from a source that is
-/// already in memory, like a `Vec<u8>`.
+/// already in memory, like a [`Vec`]`<u8>`.
 ///
 /// When the `BufReader<R>` is dropped, the contents of its buffer will be
 /// discarded. Creating multiple instances of a `BufReader<R>` on the same
 /// stream can cause data loss. Reading from the underlying reader after
-/// unwrapping the `BufReader<R>` with `BufReader::into_inner` can also cause
+/// unwrapping the `BufReader<R>` with [`BufReader::into_inner`] can also cause
 /// data loss.
 ///
-/// [`Read`]: ../../std/io/trait.Read.html
-/// [`TcpStream::read`]: ../../std/net/struct.TcpStream.html#method.read
-/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+/// [`TcpStream::read`]: Read::read
+/// [`TcpStream`]: crate::net::TcpStream
 ///
 /// # Examples
 ///
@@ -155,7 +157,9 @@ impl<R> BufReader<R> {
 
     /// Returns a reference to the internally buffered data.
     ///
-    /// Unlike `fill_buf`, this will not attempt to fill the buffer if it is empty.
+    /// Unlike [`fill_buf`], this will not attempt to fill the buffer if it is empty.
+    ///
+    /// [`fill_buf`]: BufRead::fill_buf
     ///
     /// # Examples
     ///
@@ -338,27 +342,26 @@ where
 impl<R: Seek> Seek for BufReader<R> {
     /// Seek to an offset, in bytes, in the underlying reader.
     ///
-    /// The position used for seeking with `SeekFrom::Current(_)` is the
+    /// The position used for seeking with [`SeekFrom::Current`]`(_)` is the
     /// position the underlying reader would be at if the `BufReader<R>` had no
     /// internal buffer.
     ///
     /// Seeking always discards the internal buffer, even if the seek position
     /// would otherwise fall within it. This guarantees that calling
-    /// `.into_inner()` immediately after a seek yields the underlying reader
+    /// [`BufReader::into_inner()`] immediately after a seek yields the underlying reader
     /// at the same position.
     ///
     /// To seek without discarding the internal buffer, use [`BufReader::seek_relative`].
     ///
     /// See [`std::io::Seek`] for more details.
     ///
-    /// Note: In the edge case where you're seeking with `SeekFrom::Current(n)`
+    /// Note: In the edge case where you're seeking with [`SeekFrom::Current`]`(n)`
     /// where `n` minus the internal buffer length overflows an `i64`, two
     /// seeks will be performed instead of one. If the second seek returns
-    /// `Err`, the underlying reader will be left at the same position it would
-    /// have if you called `seek` with `SeekFrom::Current(0)`.
+    /// [`Err`], the underlying reader will be left at the same position it would
+    /// have if you called `seek` with [`SeekFrom::Current`]`(0)`.
     ///
-    /// [`BufReader::seek_relative`]: struct.BufReader.html#method.seek_relative
-    /// [`std::io::Seek`]: trait.Seek.html
+    /// [`std::io::Seek`]: Seek
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         let result: u64;
         if let SeekFrom::Current(n) = pos {
@@ -397,7 +400,7 @@ impl<R: Seek> Seek for BufReader<R> {
 /// *repeated* write calls to the same file or network socket. It does not
 /// help when writing very large amounts at once, or writing just one or a few
 /// times. It also provides no advantage when writing to a destination that is
-/// in memory, like a `Vec<u8>`.
+/// in memory, like a [`Vec`]<u8>`.
 ///
 /// It is critical to call [`flush`] before `BufWriter<W>` is dropped. Though
 /// dropping will attempt to flush the contents of the buffer, any errors
@@ -441,10 +444,9 @@ impl<R: Seek> Seek for BufReader<R> {
 /// together by the buffer and will all be written out in one system call when
 /// the `stream` is flushed.
 ///
-/// [`Write`]: ../../std/io/trait.Write.html
-/// [`TcpStream::write`]: ../../std/net/struct.TcpStream.html#method.write
-/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
-/// [`flush`]: #method.flush
+/// [`TcpStream::write`]: Write::write
+/// [`TcpStream`]: crate::net::TcpStream
+/// [`flush`]: Write::flush
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
     inner: Option<W>,
@@ -455,7 +457,7 @@ pub struct BufWriter<W: Write> {
     panicked: bool,
 }
 
-/// An error returned by `into_inner` which combines an error that
+/// An error returned by [`BufWriter::into_inner`] which combines an error that
 /// happened while writing out the buffer, and the buffered writer object
 /// which may be used to recover from the condition.
 ///
@@ -518,33 +520,81 @@ impl<W: Write> BufWriter<W> {
         BufWriter { inner: Some(inner), buf: Vec::with_capacity(capacity), panicked: false }
     }
 
+    /// Send data in our local buffer into the inner writer, looping as
+    /// necessary until either it's all been sent or an error occurs.
+    ///
+    /// Because all the data in the buffer has been reported to our owner as
+    /// "successfully written" (by returning nonzero success values from
+    /// `write`), any 0-length writes from `inner` must be reported as i/o
+    /// errors from this method.
     fn flush_buf(&mut self) -> io::Result<()> {
-        let mut written = 0;
-        let len = self.buf.len();
-        let mut ret = Ok(());
-        while written < len {
+        /// Helper struct to ensure the buffer is updated after all the writes
+        /// are complete. It tracks the number of written bytes and drains them
+        /// all from the front of the buffer when dropped.
+        struct BufGuard<'a> {
+            buffer: &'a mut Vec<u8>,
+            written: usize,
+        }
+
+        impl<'a> BufGuard<'a> {
+            fn new(buffer: &'a mut Vec<u8>) -> Self {
+                Self { buffer, written: 0 }
+            }
+
+            /// The unwritten part of the buffer
+            fn remaining(&self) -> &[u8] {
+                &self.buffer[self.written..]
+            }
+
+            /// Flag some bytes as removed from the front of the buffer
+            fn consume(&mut self, amt: usize) {
+                self.written += amt;
+            }
+
+            /// true if all of the bytes have been written
+            fn done(&self) -> bool {
+                self.written >= self.buffer.len()
+            }
+        }
+
+        impl Drop for BufGuard<'_> {
+            fn drop(&mut self) {
+                if self.written > 0 {
+                    self.buffer.drain(..self.written);
+                }
+            }
+        }
+
+        let mut guard = BufGuard::new(&mut self.buf);
+        let inner = self.inner.as_mut().unwrap();
+        while !guard.done() {
             self.panicked = true;
-            let r = self.inner.as_mut().unwrap().write(&self.buf[written..]);
+            let r = inner.write(guard.remaining());
             self.panicked = false;
 
             match r {
                 Ok(0) => {
-                    ret =
-                        Err(Error::new(ErrorKind::WriteZero, "failed to write the buffered data"));
-                    break;
+                    return Err(Error::new(
+                        ErrorKind::WriteZero,
+                        "failed to write the buffered data",
+                    ));
                 }
-                Ok(n) => written += n,
+                Ok(n) => guard.consume(n),
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
-                Err(e) => {
-                    ret = Err(e);
-                    break;
-                }
+                Err(e) => return Err(e),
             }
         }
-        if written > 0 {
-            self.buf.drain(..written);
-        }
-        ret
+        Ok(())
+    }
+
+    /// Buffer some data without flushing it, regardless of the size of the
+    /// data. Writes as much as possible without exceeding capacity. Returns
+    /// the number of bytes written.
+    fn write_to_buf(&mut self, buf: &[u8]) -> usize {
+        let available = self.buf.capacity() - self.buf.len();
+        let amt_to_buffer = available.min(buf.len());
+        self.buf.extend_from_slice(&buf[..amt_to_buffer]);
+        amt_to_buffer
     }
 
     /// Gets a reference to the underlying writer.
@@ -629,7 +679,7 @@ impl<W: Write> BufWriter<W> {
     ///
     /// # Errors
     ///
-    /// An `Err` will be returned if an error occurs while flushing the buffer.
+    /// An [`Err`] will be returned if an error occurs while flushing the buffer.
     ///
     /// # Examples
     ///
@@ -657,13 +707,35 @@ impl<W: Write> Write for BufWriter<W> {
         if self.buf.len() + buf.len() > self.buf.capacity() {
             self.flush_buf()?;
         }
+        // FIXME: Why no len > capacity? Why not buffer len == capacity? #72919
         if buf.len() >= self.buf.capacity() {
             self.panicked = true;
             let r = self.get_mut().write(buf);
             self.panicked = false;
             r
         } else {
-            self.buf.write(buf)
+            self.buf.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        // Normally, `write_all` just calls `write` in a loop. We can do better
+        // by calling `self.get_mut().write_all()` directly, which avoids
+        // round trips through the buffer in the event of a series of partial
+        // writes in some circumstances.
+        if self.buf.len() + buf.len() > self.buf.capacity() {
+            self.flush_buf()?;
+        }
+        // FIXME: Why no len > capacity? Why not buffer len == capacity? #72919
+        if buf.len() >= self.buf.capacity() {
+            self.panicked = true;
+            let r = self.get_mut().write_all(buf);
+            self.panicked = false;
+            r
+        } else {
+            self.buf.extend_from_slice(buf);
+            Ok(())
         }
     }
 
@@ -672,13 +744,15 @@ impl<W: Write> Write for BufWriter<W> {
         if self.buf.len() + total_len > self.buf.capacity() {
             self.flush_buf()?;
         }
+        // FIXME: Why no len > capacity? Why not buffer len == capacity? #72919
         if total_len >= self.buf.capacity() {
             self.panicked = true;
             let r = self.get_mut().write_vectored(bufs);
             self.panicked = false;
             r
         } else {
-            self.buf.write_vectored(bufs)
+            bufs.iter().for_each(|b| self.buf.extend_from_slice(b));
+            Ok(total_len)
         }
     }
 
@@ -710,7 +784,8 @@ impl<W: Write + Seek> Seek for BufWriter<W> {
     ///
     /// Seeking always writes out the internal buffer before seeking.
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        self.flush_buf().and_then(|_| self.get_mut().seek(pos))
+        self.flush_buf()?;
+        self.get_mut().seek(pos)
     }
 }
 
@@ -725,7 +800,8 @@ impl<W: Write> Drop for BufWriter<W> {
 }
 
 impl<W> IntoInnerError<W> {
-    /// Returns the error which caused the call to `into_inner()` to fail.
+    /// Returns the error which caused the call to [`BufWriter::into_inner()`]
+    /// to fail.
     ///
     /// This error was returned when attempting to write the internal buffer.
     ///
@@ -816,19 +892,285 @@ impl<W> fmt::Display for IntoInnerError<W> {
     }
 }
 
+/// Private helper struct for implementing the line-buffered writing logic.
+/// This shim temporarily wraps a BufWriter, and uses its internals to
+/// implement a line-buffered writer (specifically by using the internal
+/// methods like write_to_buf and flush_buf). In this way, a more
+/// efficient abstraction can be created than one that only had access to
+/// `write` and `flush`, without needlessly duplicating a lot of the
+/// implementation details of BufWriter. This also allows existing
+/// `BufWriters` to be temporarily given line-buffering logic; this is what
+/// enables Stdout to be alternately in line-buffered or block-buffered mode.
+#[derive(Debug)]
+pub(super) struct LineWriterShim<'a, W: Write> {
+    buffer: &'a mut BufWriter<W>,
+}
+
+impl<'a, W: Write> LineWriterShim<'a, W> {
+    pub fn new(buffer: &'a mut BufWriter<W>) -> Self {
+        Self { buffer }
+    }
+
+    /// Get a mutable reference to the inner writer (that is, the writer
+    /// wrapped by the BufWriter). Be careful with this writer, as writes to
+    /// it will bypass the buffer.
+    fn inner_mut(&mut self) -> &mut W {
+        self.buffer.get_mut()
+    }
+
+    /// Get the content currently buffered in self.buffer
+    fn buffered(&self) -> &[u8] {
+        self.buffer.buffer()
+    }
+
+    /// Flush the buffer iff the last byte is a newline (indicating that an
+    /// earlier write only succeeded partially, and we want to retry flushing
+    /// the buffered line before continuing with a subsequent write)
+    fn flush_if_completed_line(&mut self) -> io::Result<()> {
+        match self.buffered().last().copied() {
+            Some(b'\n') => self.buffer.flush_buf(),
+            _ => Ok(()),
+        }
+    }
+}
+
+impl<'a, W: Write> Write for LineWriterShim<'a, W> {
+    /// Write some data into this BufReader with line buffering. This means
+    /// that, if any newlines are present in the data, the data up to the last
+    /// newline is sent directly to the underlying writer, and data after it
+    /// is buffered. Returns the number of bytes written.
+    ///
+    /// This function operates on a "best effort basis"; in keeping with the
+    /// convention of `Write::write`, it makes at most one attempt to write
+    /// new data to the underlying writer. If that write only reports a partial
+    /// success, the remaining data will be buffered.
+    ///
+    /// Because this function attempts to send completed lines to the underlying
+    /// writer, it will also flush the existing buffer if it ends with a
+    /// newline, even if the incoming data does not contain any newlines.
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let newline_idx = match memchr::memrchr(b'\n', buf) {
+            // If there are no new newlines (that is, if this write is less than
+            // one line), just do a regular buffered write (which may flush if
+            // we exceed the inner buffer's size)
+            None => {
+                self.flush_if_completed_line()?;
+                return self.buffer.write(buf);
+            }
+            // Otherwise, arrange for the lines to be written directly to the
+            // inner writer.
+            Some(newline_idx) => newline_idx + 1,
+        };
+
+        // Flush existing content to prepare for our write. We have to do this
+        // before attempting to write `buf` in order to maintain consistency;
+        // if we add `buf` to the buffer then try to flush it all at once,
+        // we're obligated to return Ok(), which would mean suppressing any
+        // errors that occur during flush.
+        self.buffer.flush_buf()?;
+
+        // This is what we're going to try to write directly to the inner
+        // writer. The rest will be buffered, if nothing goes wrong.
+        let lines = &buf[..newline_idx];
+
+        // Write `lines` directly to the inner writer. In keeping with the
+        // `write` convention, make at most one attempt to add new (unbuffered)
+        // data. Because this write doesn't touch the BufWriter state directly,
+        // and the buffer is known to be empty, we don't need to worry about
+        // self.buffer.panicked here.
+        let flushed = self.inner_mut().write(lines)?;
+
+        // If buffer returns Ok(0), propagate that to the caller without
+        // doing additional buffering; otherwise we're just guaranteeing
+        // an "ErrorKind::WriteZero" later.
+        if flushed == 0 {
+            return Ok(0);
+        }
+
+        // Now that the write has succeeded, buffer the rest (or as much of
+        // the rest as possible). If there were any unwritten newlines, we
+        // only buffer out to the last unwritten newline that fits in the
+        // buffer; this helps prevent flushing partial lines on subsequent
+        // calls to LineWriterShim::write.
+
+        // Handle the cases in order of most-common to least-common, under
+        // the presumption that most writes succeed in totality, and that most
+        // writes are smaller than the buffer.
+        // - Is this a partial line (ie, no newlines left in the unwritten tail)
+        // - If not, does the data out to the last unwritten newline fit in
+        //   the buffer?
+        // - If not, scan for the last newline that *does* fit in the buffer
+        let tail = if flushed >= newline_idx {
+            &buf[flushed..]
+        } else if newline_idx - flushed <= self.buffer.capacity() {
+            &buf[flushed..newline_idx]
+        } else {
+            let scan_area = &buf[flushed..];
+            let scan_area = &scan_area[..self.buffer.capacity()];
+            match memchr::memrchr(b'\n', scan_area) {
+                Some(newline_idx) => &scan_area[..newline_idx + 1],
+                None => scan_area,
+            }
+        };
+
+        let buffered = self.buffer.write_to_buf(tail);
+        Ok(flushed + buffered)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.buffer.flush()
+    }
+
+    /// Write some vectored data into this BufReader with line buffering. This
+    /// means that, if any newlines are present in the data, the data up to
+    /// and including the buffer containing the last newline is sent directly
+    /// to the inner writer, and the data after it is buffered. Returns the
+    /// number of bytes written.
+    ///
+    /// This function operates on a "best effort basis"; in keeping with the
+    /// convention of `Write::write`, it makes at most one attempt to write
+    /// new data to the underlying writer.
+    ///
+    /// Because this function attempts to send completed lines to the underlying
+    /// writer, it will also flush the existing buffer if it contains any
+    /// newlines.
+    ///
+    /// Because sorting through an array of `IoSlice` can be a bit convoluted,
+    /// This method differs from write in the following ways:
+    ///
+    /// - It attempts to write the full content of all the buffers up to and
+    ///   including the one containing the last newline. This means that it
+    ///   may attempt to write a partial line, that buffer has data past the
+    ///   newline.
+    /// - If the write only reports partial success, it does not attempt to
+    ///   find the precise location of the written bytes and buffer the rest.
+    ///
+    /// If the underlying vector doesn't support vectored writing, we instead
+    /// simply write the first non-empty buffer with `write`. This way, we
+    /// get the benefits of more granular partial-line handling without losing
+    /// anything in efficiency
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        // If there's no specialized behavior for write_vectored, just use
+        // write. This has the benefit of more granular partial-line handling.
+        if !self.is_write_vectored() {
+            return match bufs.iter().find(|buf| !buf.is_empty()) {
+                Some(buf) => self.write(buf),
+                None => Ok(0),
+            };
+        }
+
+        // Find the buffer containing the last newline
+        let last_newline_buf_idx = bufs
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(i, buf)| memchr::memchr(b'\n', buf).map(|_| i));
+
+        // If there are no new newlines (that is, if this write is less than
+        // one line), just do a regular buffered write
+        let last_newline_buf_idx = match last_newline_buf_idx {
+            // No newlines; just do a normal buffered write
+            None => {
+                self.flush_if_completed_line()?;
+                return self.buffer.write_vectored(bufs);
+            }
+            Some(i) => i,
+        };
+
+        // Flush existing content to prepare for our write
+        self.buffer.flush_buf()?;
+
+        // This is what we're going to try to write directly to the inner
+        // writer. The rest will be buffered, if nothing goes wrong.
+        let (lines, tail) = bufs.split_at(last_newline_buf_idx + 1);
+
+        // Write `lines` directly to the inner writer. In keeping with the
+        // `write` convention, make at most one attempt to add new (unbuffered)
+        // data. Because this write doesn't touch the BufWriter state directly,
+        // and the buffer is known to be empty, we don't need to worry about
+        // self.panicked here.
+        let flushed = self.inner_mut().write_vectored(lines)?;
+
+        // If inner returns Ok(0), propagate that to the caller without
+        // doing additional buffering; otherwise we're just guaranteeing
+        // an "ErrorKind::WriteZero" later.
+        if flushed == 0 {
+            return Ok(0);
+        }
+
+        // Don't try to reconstruct the exact amount written; just bail
+        // in the event of a partial write
+        let lines_len = lines.iter().map(|buf| buf.len()).sum();
+        if flushed < lines_len {
+            return Ok(flushed);
+        }
+
+        // Now that the write has succeeded, buffer the rest (or as much of the
+        // rest as possible)
+        let buffered: usize = tail
+            .iter()
+            .filter(|buf| !buf.is_empty())
+            .map(|buf| self.buffer.write_to_buf(buf))
+            .take_while(|&n| n > 0)
+            .sum();
+
+        Ok(flushed + buffered)
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        self.buffer.is_write_vectored()
+    }
+
+    /// Write some data into this BufReader with line buffering. This means
+    /// that, if any newlines are present in the data, the data up to the last
+    /// newline is sent directly to the underlying writer, and data after it
+    /// is buffered.
+    ///
+    /// Because this function attempts to send completed lines to the underlying
+    /// writer, it will also flush the existing buffer if it contains any
+    /// newlines, even if the incoming data does not contain any newlines.
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        match memchr::memrchr(b'\n', buf) {
+            // If there are no new newlines (that is, if this write is less than
+            // one line), just do a regular buffered write (which may flush if
+            // we exceed the inner buffer's size)
+            None => {
+                self.flush_if_completed_line()?;
+                self.buffer.write_all(buf)
+            }
+            Some(newline_idx) => {
+                let (lines, tail) = buf.split_at(newline_idx + 1);
+
+                if self.buffered().is_empty() {
+                    self.inner_mut().write_all(lines)?;
+                } else {
+                    // If there is any buffered data, we add the incoming lines
+                    // to that buffer before flushing, which saves us at least
+                    // one write call. We can't really do this with `write`,
+                    // since we can't do this *and* not suppress errors *and*
+                    // report a consistent state to the caller in a return
+                    // value, but here in write_all it's fine.
+                    self.buffer.write_all(lines)?;
+                    self.buffer.flush_buf()?;
+                }
+
+                self.buffer.write_all(tail)
+            }
+        }
+    }
+}
+
 /// Wraps a writer and buffers output to it, flushing whenever a newline
 /// (`0x0a`, `'\n'`) is detected.
 ///
-/// The [`BufWriter`][bufwriter] struct wraps a writer and buffers its output.
+/// The [`BufWriter`] struct wraps a writer and buffers its output.
 /// But it only does this batched write when it goes out of scope, or when the
 /// internal buffer is full. Sometimes, you'd prefer to write each line as it's
 /// completed, rather than the entire buffer at once. Enter `LineWriter`. It
 /// does exactly that.
 ///
-/// Like [`BufWriter`][bufwriter], a `LineWriter`’s buffer will also be flushed when the
+/// Like [`BufWriter`], a `LineWriter`’s buffer will also be flushed when the
 /// `LineWriter` goes out of scope or when its internal buffer is full.
-///
-/// [bufwriter]: struct.BufWriter.html
 ///
 /// If there's still a partial line in the buffer when the `LineWriter` is
 /// dropped, it will flush those contents.
@@ -883,7 +1225,6 @@ impl<W> fmt::Display for IntoInnerError<W> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LineWriter<W: Write> {
     inner: BufWriter<W>,
-    need_flush: bool,
 }
 
 impl<W: Write> LineWriter<W> {
@@ -924,7 +1265,7 @@ impl<W: Write> LineWriter<W> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize, inner: W) -> LineWriter<W> {
-        LineWriter { inner: BufWriter::with_capacity(capacity, inner), need_flush: false }
+        LineWriter { inner: BufWriter::with_capacity(capacity, inner) }
     }
 
     /// Gets a reference to the underlying writer.
@@ -979,7 +1320,7 @@ impl<W: Write> LineWriter<W> {
     ///
     /// # Errors
     ///
-    /// An `Err` will be returned if an error occurs while flushing the buffer.
+    /// An [`Err`] will be returned if an error occurs while flushing the buffer.
     ///
     /// # Examples
     ///
@@ -998,110 +1339,40 @@ impl<W: Write> LineWriter<W> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> Result<W, IntoInnerError<LineWriter<W>>> {
-        self.inner.into_inner().map_err(|IntoInnerError(buf, e)| {
-            IntoInnerError(LineWriter { inner: buf, need_flush: false }, e)
-        })
+        self.inner
+            .into_inner()
+            .map_err(|IntoInnerError(buf, e)| IntoInnerError(LineWriter { inner: buf }, e))
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Write for LineWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if self.need_flush {
-            self.flush()?;
-        }
-
-        // Find the last newline character in the buffer provided. If found then
-        // we're going to write all the data up to that point and then flush,
-        // otherwise we just write the whole block to the underlying writer.
-        let i = match memchr::memrchr(b'\n', buf) {
-            Some(i) => i,
-            None => return self.inner.write(buf),
-        };
-
-        // Ok, we're going to write a partial amount of the data given first
-        // followed by flushing the newline. After we've successfully written
-        // some data then we *must* report that we wrote that data, so future
-        // errors are ignored. We set our internal `need_flush` flag, though, in
-        // case flushing fails and we need to try it first next time.
-        let n = self.inner.write(&buf[..=i])?;
-        self.need_flush = true;
-        if self.flush().is_err() || n != i + 1 {
-            return Ok(n);
-        }
-
-        // At this point we successfully wrote `i + 1` bytes and flushed it out,
-        // meaning that the entire line is now flushed out on the screen. While
-        // we can attempt to finish writing the rest of the data provided.
-        // Remember though that we ignore errors here as we've successfully
-        // written data, so we need to report that.
-        match self.inner.write(&buf[i + 1..]) {
-            Ok(i) => Ok(n + i),
-            Err(_) => Ok(n),
-        }
-    }
-
-    // Vectored writes are very similar to the writes above, but adjusted for
-    // the list of buffers that we have to write.
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        if self.need_flush {
-            self.flush()?;
-        }
-
-        // Find the last newline, and failing that write the whole buffer
-        let last_newline = bufs.iter().enumerate().rev().find_map(|(i, buf)| {
-            let pos = memchr::memrchr(b'\n', buf)?;
-            Some((i, pos))
-        });
-        let (i, j) = match last_newline {
-            Some(pair) => pair,
-            None => return self.inner.write_vectored(bufs),
-        };
-        let (prefix, suffix) = bufs.split_at(i);
-        let (buf, suffix) = suffix.split_at(1);
-        let buf = &buf[0];
-
-        // Write everything up to the last newline, flushing afterwards. Note
-        // that only if we finished our entire `write_vectored` do we try the
-        // subsequent
-        // `write`
-        let mut n = 0;
-        let prefix_amt = prefix.iter().map(|i| i.len()).sum();
-        if prefix_amt > 0 {
-            n += self.inner.write_vectored(prefix)?;
-            self.need_flush = true;
-        }
-        if n == prefix_amt {
-            match self.inner.write(&buf[..=j]) {
-                Ok(m) => n += m,
-                Err(e) if n == 0 => return Err(e),
-                Err(_) => return Ok(n),
-            }
-            self.need_flush = true;
-        }
-        if self.flush().is_err() || n != j + 1 + prefix_amt {
-            return Ok(n);
-        }
-
-        // ... and now write out everything remaining
-        match self.inner.write(&buf[j + 1..]) {
-            Ok(i) => n += i,
-            Err(_) => return Ok(n),
-        }
-
-        if suffix.iter().map(|s| s.len()).sum::<usize>() == 0 {
-            return Ok(n);
-        }
-        match self.inner.write_vectored(suffix) {
-            Ok(i) => Ok(n + i),
-            Err(_) => Ok(n),
-        }
+        LineWriterShim::new(&mut self.inner).write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.inner.flush()?;
-        self.need_flush = false;
-        Ok(())
+        self.inner.flush()
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        LineWriterShim::new(&mut self.inner).write_vectored(bufs)
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        LineWriterShim::new(&mut self.inner).write_all(buf)
+    }
+
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        LineWriterShim::new(&mut self.inner).write_all_vectored(bufs)
+    }
+
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        LineWriterShim::new(&mut self.inner).write_fmt(fmt)
     }
 }
 
@@ -1118,586 +1389,5 @@ where
                 &format_args!("{}/{}", self.inner.buf.len(), self.inner.buf.capacity()),
             )
             .finish()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::io::prelude::*;
-    use crate::io::{self, BufReader, BufWriter, IoSlice, LineWriter, SeekFrom};
-    use crate::sync::atomic::{AtomicUsize, Ordering};
-    use crate::thread;
-
-    /// A dummy reader intended at testing short-reads propagation.
-    pub struct ShortReader {
-        lengths: Vec<usize>,
-    }
-
-    impl Read for ShortReader {
-        fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-            if self.lengths.is_empty() { Ok(0) } else { Ok(self.lengths.remove(0)) }
-        }
-    }
-
-    #[test]
-    fn test_buffered_reader() {
-        let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
-        let mut reader = BufReader::with_capacity(2, inner);
-
-        let mut buf = [0, 0, 0];
-        let nread = reader.read(&mut buf);
-        assert_eq!(nread.unwrap(), 3);
-        assert_eq!(buf, [5, 6, 7]);
-        assert_eq!(reader.buffer(), []);
-
-        let mut buf = [0, 0];
-        let nread = reader.read(&mut buf);
-        assert_eq!(nread.unwrap(), 2);
-        assert_eq!(buf, [0, 1]);
-        assert_eq!(reader.buffer(), []);
-
-        let mut buf = [0];
-        let nread = reader.read(&mut buf);
-        assert_eq!(nread.unwrap(), 1);
-        assert_eq!(buf, [2]);
-        assert_eq!(reader.buffer(), [3]);
-
-        let mut buf = [0, 0, 0];
-        let nread = reader.read(&mut buf);
-        assert_eq!(nread.unwrap(), 1);
-        assert_eq!(buf, [3, 0, 0]);
-        assert_eq!(reader.buffer(), []);
-
-        let nread = reader.read(&mut buf);
-        assert_eq!(nread.unwrap(), 1);
-        assert_eq!(buf, [4, 0, 0]);
-        assert_eq!(reader.buffer(), []);
-
-        assert_eq!(reader.read(&mut buf).unwrap(), 0);
-    }
-
-    #[test]
-    fn test_buffered_reader_seek() {
-        let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
-        let mut reader = BufReader::with_capacity(2, io::Cursor::new(inner));
-
-        assert_eq!(reader.seek(SeekFrom::Start(3)).ok(), Some(3));
-        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
-        assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(3));
-        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
-        assert_eq!(reader.seek(SeekFrom::Current(1)).ok(), Some(4));
-        assert_eq!(reader.fill_buf().ok(), Some(&[1, 2][..]));
-        reader.consume(1);
-        assert_eq!(reader.seek(SeekFrom::Current(-2)).ok(), Some(3));
-    }
-
-    #[test]
-    fn test_buffered_reader_seek_relative() {
-        let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
-        let mut reader = BufReader::with_capacity(2, io::Cursor::new(inner));
-
-        assert!(reader.seek_relative(3).is_ok());
-        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
-        assert!(reader.seek_relative(0).is_ok());
-        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
-        assert!(reader.seek_relative(1).is_ok());
-        assert_eq!(reader.fill_buf().ok(), Some(&[1][..]));
-        assert!(reader.seek_relative(-1).is_ok());
-        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
-        assert!(reader.seek_relative(2).is_ok());
-        assert_eq!(reader.fill_buf().ok(), Some(&[2, 3][..]));
-    }
-
-    #[test]
-    fn test_buffered_reader_invalidated_after_read() {
-        let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
-        let mut reader = BufReader::with_capacity(3, io::Cursor::new(inner));
-
-        assert_eq!(reader.fill_buf().ok(), Some(&[5, 6, 7][..]));
-        reader.consume(3);
-
-        let mut buffer = [0, 0, 0, 0, 0];
-        assert_eq!(reader.read(&mut buffer).ok(), Some(5));
-        assert_eq!(buffer, [0, 1, 2, 3, 4]);
-
-        assert!(reader.seek_relative(-2).is_ok());
-        let mut buffer = [0, 0];
-        assert_eq!(reader.read(&mut buffer).ok(), Some(2));
-        assert_eq!(buffer, [3, 4]);
-    }
-
-    #[test]
-    fn test_buffered_reader_invalidated_after_seek() {
-        let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
-        let mut reader = BufReader::with_capacity(3, io::Cursor::new(inner));
-
-        assert_eq!(reader.fill_buf().ok(), Some(&[5, 6, 7][..]));
-        reader.consume(3);
-
-        assert!(reader.seek(SeekFrom::Current(5)).is_ok());
-
-        assert!(reader.seek_relative(-2).is_ok());
-        let mut buffer = [0, 0];
-        assert_eq!(reader.read(&mut buffer).ok(), Some(2));
-        assert_eq!(buffer, [3, 4]);
-    }
-
-    #[test]
-    fn test_buffered_reader_seek_underflow() {
-        // gimmick reader that yields its position modulo 256 for each byte
-        struct PositionReader {
-            pos: u64,
-        }
-        impl Read for PositionReader {
-            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-                let len = buf.len();
-                for x in buf {
-                    *x = self.pos as u8;
-                    self.pos = self.pos.wrapping_add(1);
-                }
-                Ok(len)
-            }
-        }
-        impl Seek for PositionReader {
-            fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-                match pos {
-                    SeekFrom::Start(n) => {
-                        self.pos = n;
-                    }
-                    SeekFrom::Current(n) => {
-                        self.pos = self.pos.wrapping_add(n as u64);
-                    }
-                    SeekFrom::End(n) => {
-                        self.pos = u64::MAX.wrapping_add(n as u64);
-                    }
-                }
-                Ok(self.pos)
-            }
-        }
-
-        let mut reader = BufReader::with_capacity(5, PositionReader { pos: 0 });
-        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1, 2, 3, 4][..]));
-        assert_eq!(reader.seek(SeekFrom::End(-5)).ok(), Some(u64::MAX - 5));
-        assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
-        // the following seek will require two underlying seeks
-        let expected = 9223372036854775802;
-        assert_eq!(reader.seek(SeekFrom::Current(i64::MIN)).ok(), Some(expected));
-        assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
-        // seeking to 0 should empty the buffer.
-        assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(expected));
-        assert_eq!(reader.get_ref().pos, expected);
-    }
-
-    #[test]
-    fn test_buffered_reader_seek_underflow_discard_buffer_between_seeks() {
-        // gimmick reader that returns Err after first seek
-        struct ErrAfterFirstSeekReader {
-            first_seek: bool,
-        }
-        impl Read for ErrAfterFirstSeekReader {
-            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-                for x in &mut *buf {
-                    *x = 0;
-                }
-                Ok(buf.len())
-            }
-        }
-        impl Seek for ErrAfterFirstSeekReader {
-            fn seek(&mut self, _: SeekFrom) -> io::Result<u64> {
-                if self.first_seek {
-                    self.first_seek = false;
-                    Ok(0)
-                } else {
-                    Err(io::Error::new(io::ErrorKind::Other, "oh no!"))
-                }
-            }
-        }
-
-        let mut reader = BufReader::with_capacity(5, ErrAfterFirstSeekReader { first_seek: true });
-        assert_eq!(reader.fill_buf().ok(), Some(&[0, 0, 0, 0, 0][..]));
-
-        // The following seek will require two underlying seeks.  The first will
-        // succeed but the second will fail.  This should still invalidate the
-        // buffer.
-        assert!(reader.seek(SeekFrom::Current(i64::MIN)).is_err());
-        assert_eq!(reader.buffer().len(), 0);
-    }
-
-    #[test]
-    fn test_buffered_writer() {
-        let inner = Vec::new();
-        let mut writer = BufWriter::with_capacity(2, inner);
-
-        writer.write(&[0, 1]).unwrap();
-        assert_eq!(writer.buffer(), []);
-        assert_eq!(*writer.get_ref(), [0, 1]);
-
-        writer.write(&[2]).unwrap();
-        assert_eq!(writer.buffer(), [2]);
-        assert_eq!(*writer.get_ref(), [0, 1]);
-
-        writer.write(&[3]).unwrap();
-        assert_eq!(writer.buffer(), [2, 3]);
-        assert_eq!(*writer.get_ref(), [0, 1]);
-
-        writer.flush().unwrap();
-        assert_eq!(writer.buffer(), []);
-        assert_eq!(*writer.get_ref(), [0, 1, 2, 3]);
-
-        writer.write(&[4]).unwrap();
-        writer.write(&[5]).unwrap();
-        assert_eq!(writer.buffer(), [4, 5]);
-        assert_eq!(*writer.get_ref(), [0, 1, 2, 3]);
-
-        writer.write(&[6]).unwrap();
-        assert_eq!(writer.buffer(), [6]);
-        assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5]);
-
-        writer.write(&[7, 8]).unwrap();
-        assert_eq!(writer.buffer(), []);
-        assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8]);
-
-        writer.write(&[9, 10, 11]).unwrap();
-        assert_eq!(writer.buffer(), []);
-        assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-
-        writer.flush().unwrap();
-        assert_eq!(writer.buffer(), []);
-        assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-    }
-
-    #[test]
-    fn test_buffered_writer_inner_flushes() {
-        let mut w = BufWriter::with_capacity(3, Vec::new());
-        w.write(&[0, 1]).unwrap();
-        assert_eq!(*w.get_ref(), []);
-        let w = w.into_inner().unwrap();
-        assert_eq!(w, [0, 1]);
-    }
-
-    #[test]
-    fn test_buffered_writer_seek() {
-        let mut w = BufWriter::with_capacity(3, io::Cursor::new(Vec::new()));
-        w.write_all(&[0, 1, 2, 3, 4, 5]).unwrap();
-        w.write_all(&[6, 7]).unwrap();
-        assert_eq!(w.seek(SeekFrom::Current(0)).ok(), Some(8));
-        assert_eq!(&w.get_ref().get_ref()[..], &[0, 1, 2, 3, 4, 5, 6, 7][..]);
-        assert_eq!(w.seek(SeekFrom::Start(2)).ok(), Some(2));
-        w.write_all(&[8, 9]).unwrap();
-        assert_eq!(&w.into_inner().unwrap().into_inner()[..], &[0, 1, 8, 9, 4, 5, 6, 7]);
-    }
-
-    #[test]
-    fn test_read_until() {
-        let inner: &[u8] = &[0, 1, 2, 1, 0];
-        let mut reader = BufReader::with_capacity(2, inner);
-        let mut v = Vec::new();
-        reader.read_until(0, &mut v).unwrap();
-        assert_eq!(v, [0]);
-        v.truncate(0);
-        reader.read_until(2, &mut v).unwrap();
-        assert_eq!(v, [1, 2]);
-        v.truncate(0);
-        reader.read_until(1, &mut v).unwrap();
-        assert_eq!(v, [1]);
-        v.truncate(0);
-        reader.read_until(8, &mut v).unwrap();
-        assert_eq!(v, [0]);
-        v.truncate(0);
-        reader.read_until(9, &mut v).unwrap();
-        assert_eq!(v, []);
-    }
-
-    #[test]
-    fn test_line_buffer_fail_flush() {
-        // Issue #32085
-        struct FailFlushWriter<'a>(&'a mut Vec<u8>);
-
-        impl Write for FailFlushWriter<'_> {
-            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-                self.0.extend_from_slice(buf);
-                Ok(buf.len())
-            }
-            fn flush(&mut self) -> io::Result<()> {
-                Err(io::Error::new(io::ErrorKind::Other, "flush failed"))
-            }
-        }
-
-        let mut buf = Vec::new();
-        {
-            let mut writer = LineWriter::new(FailFlushWriter(&mut buf));
-            let to_write = b"abc\ndef";
-            if let Ok(written) = writer.write(to_write) {
-                assert!(written < to_write.len(), "didn't flush on new line");
-                // PASS
-                return;
-            }
-        }
-        assert!(buf.is_empty(), "write returned an error but wrote data");
-    }
-
-    #[test]
-    fn test_line_buffer() {
-        let mut writer = LineWriter::new(Vec::new());
-        writer.write(&[0]).unwrap();
-        assert_eq!(*writer.get_ref(), []);
-        writer.write(&[1]).unwrap();
-        assert_eq!(*writer.get_ref(), []);
-        writer.flush().unwrap();
-        assert_eq!(*writer.get_ref(), [0, 1]);
-        writer.write(&[0, b'\n', 1, b'\n', 2]).unwrap();
-        assert_eq!(*writer.get_ref(), [0, 1, 0, b'\n', 1, b'\n']);
-        writer.flush().unwrap();
-        assert_eq!(*writer.get_ref(), [0, 1, 0, b'\n', 1, b'\n', 2]);
-        writer.write(&[3, b'\n']).unwrap();
-        assert_eq!(*writer.get_ref(), [0, 1, 0, b'\n', 1, b'\n', 2, 3, b'\n']);
-    }
-
-    #[test]
-    fn test_read_line() {
-        let in_buf: &[u8] = b"a\nb\nc";
-        let mut reader = BufReader::with_capacity(2, in_buf);
-        let mut s = String::new();
-        reader.read_line(&mut s).unwrap();
-        assert_eq!(s, "a\n");
-        s.truncate(0);
-        reader.read_line(&mut s).unwrap();
-        assert_eq!(s, "b\n");
-        s.truncate(0);
-        reader.read_line(&mut s).unwrap();
-        assert_eq!(s, "c");
-        s.truncate(0);
-        reader.read_line(&mut s).unwrap();
-        assert_eq!(s, "");
-    }
-
-    #[test]
-    fn test_lines() {
-        let in_buf: &[u8] = b"a\nb\nc";
-        let reader = BufReader::with_capacity(2, in_buf);
-        let mut it = reader.lines();
-        assert_eq!(it.next().unwrap().unwrap(), "a".to_string());
-        assert_eq!(it.next().unwrap().unwrap(), "b".to_string());
-        assert_eq!(it.next().unwrap().unwrap(), "c".to_string());
-        assert!(it.next().is_none());
-    }
-
-    #[test]
-    fn test_short_reads() {
-        let inner = ShortReader { lengths: vec![0, 1, 2, 0, 1, 0] };
-        let mut reader = BufReader::new(inner);
-        let mut buf = [0, 0];
-        assert_eq!(reader.read(&mut buf).unwrap(), 0);
-        assert_eq!(reader.read(&mut buf).unwrap(), 1);
-        assert_eq!(reader.read(&mut buf).unwrap(), 2);
-        assert_eq!(reader.read(&mut buf).unwrap(), 0);
-        assert_eq!(reader.read(&mut buf).unwrap(), 1);
-        assert_eq!(reader.read(&mut buf).unwrap(), 0);
-        assert_eq!(reader.read(&mut buf).unwrap(), 0);
-    }
-
-    #[test]
-    #[should_panic]
-    fn dont_panic_in_drop_on_panicked_flush() {
-        struct FailFlushWriter;
-
-        impl Write for FailFlushWriter {
-            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-                Ok(buf.len())
-            }
-            fn flush(&mut self) -> io::Result<()> {
-                Err(io::Error::last_os_error())
-            }
-        }
-
-        let writer = FailFlushWriter;
-        let _writer = BufWriter::new(writer);
-
-        // If writer panics *again* due to the flush error then the process will
-        // abort.
-        panic!();
-    }
-
-    #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
-    fn panic_in_write_doesnt_flush_in_drop() {
-        static WRITES: AtomicUsize = AtomicUsize::new(0);
-
-        struct PanicWriter;
-
-        impl Write for PanicWriter {
-            fn write(&mut self, _: &[u8]) -> io::Result<usize> {
-                WRITES.fetch_add(1, Ordering::SeqCst);
-                panic!();
-            }
-            fn flush(&mut self) -> io::Result<()> {
-                Ok(())
-            }
-        }
-
-        thread::spawn(|| {
-            let mut writer = BufWriter::new(PanicWriter);
-            let _ = writer.write(b"hello world");
-            let _ = writer.flush();
-        })
-        .join()
-        .unwrap_err();
-
-        assert_eq!(WRITES.load(Ordering::SeqCst), 1);
-    }
-
-    #[bench]
-    fn bench_buffered_reader(b: &mut test::Bencher) {
-        b.iter(|| BufReader::new(io::empty()));
-    }
-
-    #[bench]
-    fn bench_buffered_writer(b: &mut test::Bencher) {
-        b.iter(|| BufWriter::new(io::sink()));
-    }
-
-    struct AcceptOneThenFail {
-        written: bool,
-        flushed: bool,
-    }
-
-    impl Write for AcceptOneThenFail {
-        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-            if !self.written {
-                assert_eq!(data, b"a\nb\n");
-                self.written = true;
-                Ok(data.len())
-            } else {
-                Err(io::Error::new(io::ErrorKind::NotFound, "test"))
-            }
-        }
-
-        fn flush(&mut self) -> io::Result<()> {
-            assert!(self.written);
-            assert!(!self.flushed);
-            self.flushed = true;
-            Err(io::Error::new(io::ErrorKind::Other, "test"))
-        }
-    }
-
-    #[test]
-    fn erroneous_flush_retried() {
-        let a = AcceptOneThenFail { written: false, flushed: false };
-
-        let mut l = LineWriter::new(a);
-        assert_eq!(l.write(b"a\nb\na").unwrap(), 4);
-        assert!(l.get_ref().written);
-        assert!(l.get_ref().flushed);
-        l.get_mut().flushed = false;
-
-        assert_eq!(l.write(b"a").unwrap_err().kind(), io::ErrorKind::Other)
-    }
-
-    #[test]
-    fn line_vectored() {
-        let mut a = LineWriter::new(Vec::new());
-        assert_eq!(
-            a.write_vectored(&[
-                IoSlice::new(&[]),
-                IoSlice::new(b"\n"),
-                IoSlice::new(&[]),
-                IoSlice::new(b"a"),
-            ])
-            .unwrap(),
-            2,
-        );
-        assert_eq!(a.get_ref(), b"\n");
-
-        assert_eq!(
-            a.write_vectored(&[
-                IoSlice::new(&[]),
-                IoSlice::new(b"b"),
-                IoSlice::new(&[]),
-                IoSlice::new(b"a"),
-                IoSlice::new(&[]),
-                IoSlice::new(b"c"),
-            ])
-            .unwrap(),
-            3,
-        );
-        assert_eq!(a.get_ref(), b"\n");
-        a.flush().unwrap();
-        assert_eq!(a.get_ref(), b"\nabac");
-        assert_eq!(a.write_vectored(&[]).unwrap(), 0);
-        assert_eq!(
-            a.write_vectored(&[
-                IoSlice::new(&[]),
-                IoSlice::new(&[]),
-                IoSlice::new(&[]),
-                IoSlice::new(&[]),
-            ])
-            .unwrap(),
-            0,
-        );
-        assert_eq!(a.write_vectored(&[IoSlice::new(b"a\nb"),]).unwrap(), 3);
-        assert_eq!(a.get_ref(), b"\nabaca\n");
-    }
-
-    #[test]
-    fn line_vectored_partial_and_errors() {
-        enum Call {
-            Write { inputs: Vec<&'static [u8]>, output: io::Result<usize> },
-            Flush { output: io::Result<()> },
-        }
-        struct Writer {
-            calls: Vec<Call>,
-        }
-
-        impl Write for Writer {
-            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-                self.write_vectored(&[IoSlice::new(buf)])
-            }
-
-            fn write_vectored(&mut self, buf: &[IoSlice<'_>]) -> io::Result<usize> {
-                match self.calls.pop().unwrap() {
-                    Call::Write { inputs, output } => {
-                        assert_eq!(inputs, buf.iter().map(|b| &**b).collect::<Vec<_>>());
-                        output
-                    }
-                    _ => panic!("unexpected call to write"),
-                }
-            }
-
-            fn flush(&mut self) -> io::Result<()> {
-                match self.calls.pop().unwrap() {
-                    Call::Flush { output } => output,
-                    _ => panic!("unexpected call to flush"),
-                }
-            }
-        }
-
-        impl Drop for Writer {
-            fn drop(&mut self) {
-                if !thread::panicking() {
-                    assert_eq!(self.calls.len(), 0);
-                }
-            }
-        }
-
-        // partial writes keep going
-        let mut a = LineWriter::new(Writer { calls: Vec::new() });
-        a.write_vectored(&[IoSlice::new(&[]), IoSlice::new(b"abc")]).unwrap();
-        a.get_mut().calls.push(Call::Flush { output: Ok(()) });
-        a.get_mut().calls.push(Call::Write { inputs: vec![b"bcx\n"], output: Ok(4) });
-        a.get_mut().calls.push(Call::Write { inputs: vec![b"abcx\n"], output: Ok(1) });
-        a.write_vectored(&[IoSlice::new(b"x"), IoSlice::new(b"\n")]).unwrap();
-        a.get_mut().calls.push(Call::Flush { output: Ok(()) });
-        a.flush().unwrap();
-
-        // erroneous writes stop and don't write more
-        a.get_mut().calls.push(Call::Write { inputs: vec![b"x\n"], output: Err(err()) });
-        assert_eq!(a.write_vectored(&[IoSlice::new(b"x"), IoSlice::new(b"\na")]).unwrap(), 2);
-        a.get_mut().calls.push(Call::Flush { output: Ok(()) });
-        a.get_mut().calls.push(Call::Write { inputs: vec![b"x\n"], output: Ok(2) });
-        a.flush().unwrap();
-
-        fn err() -> io::Error {
-            io::Error::new(io::ErrorKind::Other, "x")
-        }
     }
 }

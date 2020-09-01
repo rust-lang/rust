@@ -28,45 +28,15 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     let mut new_items = Vec::new();
 
     for &cnum in cx.tcx.crates().iter() {
-        for &did in cx.tcx.all_trait_implementations(cnum).iter() {
-            inline::build_impl(cx, did, None, &mut new_items);
+        for &(did, _) in cx.tcx.all_trait_implementations(cnum).iter() {
+            cx.tcx.sess.time("build_extern_trait_impl", || {
+                inline::build_impl(cx, did, None, &mut new_items);
+            });
         }
     }
 
     // Also try to inline primitive impls from other crates.
-    let lang_items = cx.tcx.lang_items();
-    let primitive_impls = [
-        lang_items.isize_impl(),
-        lang_items.i8_impl(),
-        lang_items.i16_impl(),
-        lang_items.i32_impl(),
-        lang_items.i64_impl(),
-        lang_items.i128_impl(),
-        lang_items.usize_impl(),
-        lang_items.u8_impl(),
-        lang_items.u16_impl(),
-        lang_items.u32_impl(),
-        lang_items.u64_impl(),
-        lang_items.u128_impl(),
-        lang_items.f32_impl(),
-        lang_items.f64_impl(),
-        lang_items.f32_runtime_impl(),
-        lang_items.f64_runtime_impl(),
-        lang_items.bool_impl(),
-        lang_items.char_impl(),
-        lang_items.str_impl(),
-        lang_items.slice_impl(),
-        lang_items.slice_u8_impl(),
-        lang_items.str_alloc_impl(),
-        lang_items.slice_alloc_impl(),
-        lang_items.slice_u8_alloc_impl(),
-        lang_items.const_ptr_impl(),
-        lang_items.mut_ptr_impl(),
-        lang_items.const_slice_ptr_impl(),
-        lang_items.mut_slice_ptr_impl(),
-    ];
-
-    for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {
+    for &def_id in PrimitiveType::all_impls(cx.tcx).values().flatten() {
         if !def_id.is_local() {
             inline::build_impl(cx, def_id, None, &mut new_items);
 
@@ -119,7 +89,9 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     for &trait_did in cx.tcx.all_traits(LOCAL_CRATE).iter() {
         for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
             let impl_did = cx.tcx.hir().local_def_id(impl_node);
-            inline::build_impl(cx, impl_did.to_def_id(), None, &mut new_items);
+            cx.tcx.sess.time("build_local_trait_impl", || {
+                inline::build_impl(cx, impl_did.to_def_id(), None, &mut new_items);
+            });
         }
     }
 

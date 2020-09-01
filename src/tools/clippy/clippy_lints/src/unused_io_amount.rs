@@ -1,4 +1,4 @@
-use crate::utils::{is_try, match_qpath, match_trait_method, paths, span_lint};
+use crate::utils::{is_try, match_trait_method, paths, span_lint};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -42,10 +42,11 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
         match expr.kind {
             hir::ExprKind::Match(ref res, _, _) if is_try(expr).is_some() => {
                 if let hir::ExprKind::Call(ref func, ref args) = res.kind {
-                    if let hir::ExprKind::Path(ref path) = func.kind {
-                        if match_qpath(path, &paths::TRY_INTO_RESULT) && args.len() == 1 {
-                            check_method_call(cx, &args[0], expr);
-                        }
+                    if matches!(
+                        func.kind,
+                        hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryIntoResult, _))
+                    ) {
+                        check_method_call(cx, &args[0], expr);
                     }
                 } else {
                     check_method_call(cx, res, expr);

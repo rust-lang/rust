@@ -61,14 +61,14 @@ impl<'tcx> LateLintPass<'tcx> for DefaultTraitAccess {
                                 cx,
                                 DEFAULT_TRAIT_ACCESS,
                                 expr.span,
-                                &format!("Calling `{}` is more clear than this expression", replacement),
+                                &format!("calling `{}` is more clear than this expression", replacement),
                                 "try",
                                 replacement,
                                 Applicability::Unspecified, // First resolve the TODO above
                             );
                          }
                     },
-                    QPath::TypeRelative(..) => {},
+                    QPath::TypeRelative(..) | QPath::LangItem(..) => {},
                 }
             }
         }

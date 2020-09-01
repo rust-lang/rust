@@ -24,7 +24,6 @@
 #![feature(decl_macro)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
-#![feature(inner_deref)]
 #![feature(negative_impls)]
 #![feature(optin_builtin_traits)]
 #![feature(restricted_std)]
@@ -452,7 +451,7 @@ impl SourceFile {
     /// Also note that even if `is_real` returns `true`, if `--remap-path-prefix` was passed on
     /// the command line, the path as given may not actually be valid.
     ///
-    /// [`is_real`]: #method.is_real
+    /// [`is_real`]: Self::is_real
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn path(&self) -> PathBuf {
         PathBuf::from(self.0.path())
@@ -849,7 +848,7 @@ impl Ident {
     /// Creates a new `Ident` with the given `string` as well as the specified
     /// `span`.
     /// The `string` argument must be a valid identifier permitted by the
-    /// language, otherwise the function will panic.
+    /// language (including keywords, e.g. `self` or `fn`). Otherwise, the function will panic.
     ///
     /// Note that `span`, currently in rustc, configures the hygiene information
     /// for this identifier.
@@ -871,7 +870,10 @@ impl Ident {
     }
 
     /// Same as `Ident::new`, but creates a raw identifier (`r#ident`).
-    #[unstable(feature = "proc_macro_raw_ident", issue = "54723")]
+    /// The `string` argument be a valid identifier permitted by the language
+    /// (including keywords, e.g. `fn`). Keywords which are usable in path segments
+    /// (e.g. `self`, `super`) are not supported, and will cause a panic.
+    #[stable(feature = "proc_macro_raw_ident", since = "1.47.0")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
         Ident(bridge::client::Ident::new(string, span.0, true))
     }

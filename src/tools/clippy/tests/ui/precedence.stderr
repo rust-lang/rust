@@ -54,5 +54,23 @@ error: unary minus has lower precedence than method call
 LL |     -1f32.abs();
    |     ^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1f32.abs())`
 
-error: aborting due to 9 previous errors
+error: unary minus has lower precedence than method call
+  --> $DIR/precedence.rs:52:13
+   |
+LL |     let _ = -1.0_f64.cos().cos();
+   |             ^^^^^^^^^^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1.0_f64.cos().cos())`
+
+error: unary minus has lower precedence than method call
+  --> $DIR/precedence.rs:53:13
+   |
+LL |     let _ = -1.0_f64.cos().sin();
+   |             ^^^^^^^^^^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1.0_f64.cos().sin())`
+
+error: unary minus has lower precedence than method call
+  --> $DIR/precedence.rs:54:13
+   |
+LL |     let _ = -1.0_f64.sin().cos();
+   |             ^^^^^^^^^^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1.0_f64.sin().cos())`
+
+error: aborting due to 12 previous errors
 

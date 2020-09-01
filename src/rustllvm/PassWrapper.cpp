@@ -311,7 +311,6 @@ static Optional<CodeModel::Model> fromRust(LLVMRustCodeModel Model) {
 }
 
 enum class LLVMRustCodeGenOptLevel {
-  Other,
   None,
   Less,
   Default,
@@ -597,7 +596,6 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
 }
 
 enum class LLVMRustFileType {
-  Other,
   AssemblyFile,
   ObjectFile,
 };

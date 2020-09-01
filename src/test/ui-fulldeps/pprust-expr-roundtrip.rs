@@ -33,7 +33,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Spanned, DUMMY_SP, FileName};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::Ident;
-use rustc_ast::ast::*;
+use rustc_ast::*;
 use rustc_ast::mut_visit::{self, MutVisitor, visit_clobber};
 use rustc_ast::ptr::P;
 
@@ -164,6 +164,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                     id: DUMMY_NODE_ID,
                     kind: PatKind::Wild,
                     span: DUMMY_SP,
+                    tokens: None,
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Let(pat.clone(), e)))
             },
@@ -208,7 +209,7 @@ impl MutVisitor for AddParens {
 }
 
 fn main() {
-    rustc_ast::with_default_session_globals(|| run());
+    rustc_span::with_default_session_globals(|| run());
 }
 
 fn run() {

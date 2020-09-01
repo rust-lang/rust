@@ -2,10 +2,7 @@ error[E0412]: cannot find type `B` in this scope
  --> $DIR/ui-testing-optout.rs:4:10
   |
 4 | type A = B;
-  | ---------^-
-  | |        |
-  | |        help: a type alias with a similar name exists: `A`
-  | similarly named type alias `A` defined here
+  |          ^ not found in this scope
 
 error[E0412]: cannot find type `D` in this scope
  --> $DIR/ui-testing-optout.rs:7:10

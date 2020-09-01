@@ -62,8 +62,11 @@ pre {
 	background-color: #14191f;
 }
 
-.logo-container > img {
-	filter: drop-shadow(0 0 5px #fff);
+.logo-container.rust-logo > img {
+	filter: drop-shadow(1px 0 0px #fff)
+		drop-shadow(0 1px 0 #fff)
+		drop-shadow(-1px 0 0 #fff)
+		drop-shadow(0 -1px 0 #fff);
 }
 
 /* Improve the scrollbar display on firefox */
@@ -197,9 +200,8 @@ pre {
 	color: #a37acc;
 }
 
-pre.rust .comment, pre.rust .doccomment {
-	color: #788797;
-}
+pre.rust .comment { color: #788797; }
+pre.rust .doccomment { color: #a1ac88; }
 
 nav:not(.sidebar) {
 	border-bottom-color: #424c57;
@@ -390,7 +392,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: transparent #314559 transparent transparent;
 }
 
-.important-traits-tooltiptext {
+.notable-traits-tooltiptext {
 	background-color: #314559;
 	border-color: #5c6773;
 }
@@ -490,9 +492,10 @@ kbd {
 	box-shadow-color: #c6cbd1;
 }
 
-#theme-picker, #settings-menu {
+#theme-picker, #settings-menu, .help-button {
 	border-color: #5c6773;
 	background-color: #0f1419;
+	color: #fff;
 }
 
 #theme-picker > img, #settings-menu > img {
@@ -500,7 +503,8 @@ kbd {
 }
 
 #theme-picker:hover, #theme-picker:focus,
-#settings-menu:hover, #settings-menu:focus {
+#settings-menu:hover, #settings-menu:focus,
+.help-button:hover, .help-button:focus {
 	border-color: #e0e0e0;
 }
 
@@ -510,11 +514,11 @@ kbd {
 }
 
 #theme-choices > button:not(:first-child) {
-	border-top-color: #c5c5c5;
+	border-top-color: #5c6773;
 }
 
 #theme-choices > button:hover, #theme-choices > button:focus {
-	background-color: rgba(70, 70, 70, 0.33);
+	background-color: rgba(110, 110, 110, 0.33);
 }
 
 @media (max-width: 700px) {

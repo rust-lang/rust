@@ -13,5 +13,5 @@ impl Foo {
 
 fn main() {
     Foo
-    .foo(); //~ ERROR use of deprecated item
+    .foo(); //~ ERROR use of deprecated
 }

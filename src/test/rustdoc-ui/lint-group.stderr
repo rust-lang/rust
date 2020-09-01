@@ -39,7 +39,7 @@ note: the lint level is defined here
    |
 LL | #![deny(rustdoc)]
    |         ^^^^^^^
-   = note: `#[deny(intra_doc_link_resolution_failure)]` implied by `#[deny(rustdoc)]`
+   = note: `#[deny(broken_intra_doc_links)]` implied by `#[deny(rustdoc)]`
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: aborting due to 3 previous errors

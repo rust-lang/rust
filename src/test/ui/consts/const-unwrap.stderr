@@ -1,0 +1,20 @@
+error: any use of this value will cause an error
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL |             None => panic!("called `Option::unwrap()` on a `None` value"),
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     |
+   |                     the evaluated program panicked at 'called `Option::unwrap()` on a `None` value', $DIR/const-unwrap.rs:9:38
+   |                     inside `std::option::Option::<i32>::unwrap` at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+   |                     inside `BAR` at $DIR/const-unwrap.rs:9:18
+   | 
+  ::: $DIR/const-unwrap.rs:9:1
+   |
+LL | const BAR: i32 = Option::<i32>::None.unwrap();
+   | ----------------------------------------------
+   |
+   = note: `#[deny(const_err)]` on by default
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

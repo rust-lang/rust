@@ -3,91 +3,46 @@
 #include "llvm/ProfileData/Coverage/CoverageMappingWriter.h"
 #include "llvm/ProfileData/InstrProf.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/Support/LEB128.h"
 
 #include <iostream>
 
 using namespace llvm;
 
-extern "C" SmallVectorTemplateBase<coverage::CounterExpression>
-    *LLVMRustCoverageSmallVectorCounterExpressionCreate() {
-  return new SmallVector<coverage::CounterExpression, 32>();
-}
-
-extern "C" void LLVMRustCoverageSmallVectorCounterExpressionDispose(
-    SmallVectorTemplateBase<coverage::CounterExpression> *Vector) {
-  delete Vector;
-}
-
-extern "C" void LLVMRustCoverageSmallVectorCounterExpressionAdd(
-    SmallVectorTemplateBase<coverage::CounterExpression> *Expressions,
-    coverage::CounterExpression::ExprKind Kind,
-    unsigned LeftIndex,
-    unsigned RightIndex) {
-  auto LHS = coverage::Counter::getCounter(LeftIndex);
-  auto RHS = coverage::Counter::getCounter(RightIndex);
-  Expressions->push_back(coverage::CounterExpression { Kind, LHS, RHS });
-}
-
-extern "C" SmallVectorTemplateBase<coverage::CounterMappingRegion>
-    *LLVMRustCoverageSmallVectorCounterMappingRegionCreate() {
-  return new SmallVector<coverage::CounterMappingRegion, 32>();
-}
-
-extern "C" void LLVMRustCoverageSmallVectorCounterMappingRegionDispose(
-    SmallVectorTemplateBase<coverage::CounterMappingRegion> *Vector) {
-  delete Vector;
-}
-
-extern "C" void LLVMRustCoverageSmallVectorCounterMappingRegionAdd(
-    SmallVectorTemplateBase<coverage::CounterMappingRegion> *MappingRegions,
-    unsigned Index,
-    unsigned FileID,
-    unsigned LineStart,
-    unsigned ColumnStart,
-    unsigned LineEnd,
-    unsigned ColumnEnd) {
-  auto Counter = coverage::Counter::getCounter(Index);
-  MappingRegions->push_back(coverage::CounterMappingRegion::makeRegion(
-           Counter, FileID, LineStart,
-           ColumnStart, LineEnd, ColumnEnd));
-
-  // FIXME(richkadel): As applicable, implement additional CounterMappingRegion types using the
-  // static method alternatives to `coverage::CounterMappingRegion::makeRegion`:
-  //
-  //   makeExpansion(unsigned FileID, unsigned ExpandedFileID, unsigned LineStart,
-  //                 unsigned ColumnStart, unsigned LineEnd, unsigned ColumnEnd) {
-  //   makeSkipped(unsigned FileID, unsigned LineStart, unsigned ColumnStart,
-  //               unsigned LineEnd, unsigned ColumnEnd) {
-  //   makeGapRegion(Counter Count, unsigned FileID, unsigned LineStart,
-  //                 unsigned ColumnStart, unsigned LineEnd, unsigned ColumnEnd) {
-}
-
 extern "C" void LLVMRustCoverageWriteFilenamesSectionToBuffer(
     const char* const Filenames[],
     size_t FilenamesLen,
     RustStringRef BufferOut) {
-  SmallVector<StringRef,32> FilenameRefs;
-  for (size_t i = 0; i < FilenamesLen; i++) {
-    FilenameRefs.push_back(StringRef(Filenames[i]));
-  }
-  auto FilenamesWriter = coverage::CoverageFilenamesSectionWriter(
-    makeArrayRef(FilenameRefs));
+  // LLVM 11's CoverageFilenamesSectionWriter uses its new `Version4` format,
+  // so we're manually writing the `Version3` format ourselves.
   RawRustStringOstream OS(BufferOut);
-  FilenamesWriter.write(OS);
+  encodeULEB128(FilenamesLen, OS);
+  for (size_t i = 0; i < FilenamesLen; i++) {
+    StringRef Filename(Filenames[i]);
+    encodeULEB128(Filename.size(), OS);
+    OS << Filename;
+  }
 }
 
 extern "C" void LLVMRustCoverageWriteMappingToBuffer(
     const unsigned *VirtualFileMappingIDs,
     unsigned NumVirtualFileMappingIDs,
-    const SmallVectorImpl<coverage::CounterExpression> *Expressions,
-    SmallVectorImpl<coverage::CounterMappingRegion> *MappingRegions,
+    const coverage::CounterExpression *Expressions,
+    unsigned NumExpressions,
+    coverage::CounterMappingRegion *MappingRegions,
+    unsigned NumMappingRegions,
     RustStringRef BufferOut) {
   auto CoverageMappingWriter = coverage::CoverageMappingWriter(
-    makeArrayRef(VirtualFileMappingIDs, NumVirtualFileMappingIDs),
-    makeArrayRef(*Expressions),
-    MutableArrayRef<coverage::CounterMappingRegion> { *MappingRegions });
+      makeArrayRef(VirtualFileMappingIDs, NumVirtualFileMappingIDs),
+      makeArrayRef(Expressions, NumExpressions),
+      makeMutableArrayRef(MappingRegions, NumMappingRegions));
   RawRustStringOstream OS(BufferOut);
   CoverageMappingWriter.write(OS);
+}
+
+extern "C" LLVMValueRef LLVMRustCoverageCreatePGOFuncNameVar(LLVMValueRef F, const char *FuncName) {
+  StringRef FuncNameRef(FuncName);
+  return wrap(createPGOFuncNameVar(*cast<Function>(unwrap(F)), FuncNameRef));
 }
 
 extern "C" uint64_t LLVMRustCoverageComputeHash(const char *Name) {
@@ -111,5 +66,5 @@ extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
 }
 
 extern "C" uint32_t LLVMRustCoverageMappingVersion() {
-  return coverage::CovMapVersion::CurrentVersion;
+  return coverage::CovMapVersion::Version3;
 }

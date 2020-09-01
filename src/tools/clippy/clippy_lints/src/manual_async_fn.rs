@@ -4,8 +4,8 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    AsyncGeneratorKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericBound, HirId, IsAsync,
-    ItemKind, TraitRef, Ty, TyKind, TypeBindingKind,
+    AsyncGeneratorKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound, HirId,
+    IsAsync, ItemKind, LifetimeName, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -27,8 +27,6 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```rust
-    /// use std::future::Future;
-    ///
     /// async fn foo() -> i32 { 42 }
     /// ```
     pub MANUAL_ASYNC_FN,
@@ -53,8 +51,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
             if let IsAsync::NotAsync = header.asyncness;
             // Check that this function returns `impl Future`
             if let FnRetTy::Return(ret_ty) = decl.output;
-            if let Some(trait_ref) = future_trait_ref(cx, ret_ty);
+            if let Some((trait_ref, output_lifetimes)) = future_trait_ref(cx, ret_ty);
             if let Some(output) = future_output_ty(trait_ref);
+            if captures_all_lifetimes(decl.inputs, &output_lifetimes);
             // Check that the body of the function consists of one async block
             if let ExprKind::Block(block, _) = body.value.kind;
             if block.stmts.is_empty();
@@ -97,16 +96,35 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
     }
 }
 
-fn future_trait_ref<'tcx>(cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) -> Option<&'tcx TraitRef<'tcx>> {
+fn future_trait_ref<'tcx>(
+    cx: &LateContext<'tcx>,
+    ty: &'tcx Ty<'tcx>,
+) -> Option<(&'tcx TraitRef<'tcx>, Vec<LifetimeName>)> {
     if_chain! {
-        if let TyKind::OpaqueDef(item_id, _) = ty.kind;
+        if let TyKind::OpaqueDef(item_id, bounds) = ty.kind;
         let item = cx.tcx.hir().item(item_id.id);
         if let ItemKind::OpaqueTy(opaque) = &item.kind;
-        if opaque.bounds.len() == 1;
-        if let GenericBound::Trait(poly, _) = &opaque.bounds[0];
-        if poly.trait_ref.trait_def_id() == cx.tcx.lang_items().future_trait();
+        if let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {
+            if let GenericBound::Trait(poly, _) = bound {
+                Some(&poly.trait_ref)
+            } else {
+                None
+            }
+        });
+        if trait_ref.trait_def_id() == cx.tcx.lang_items().future_trait();
         then {
-            return Some(&poly.trait_ref);
+            let output_lifetimes = bounds
+                .iter()
+                .filter_map(|bound| {
+                    if let GenericArg::Lifetime(lt) = bound {
+                        Some(lt.name)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            return Some((trait_ref, output_lifetimes));
         }
     }
 
@@ -127,6 +145,29 @@ fn future_output_ty<'tcx>(trait_ref: &'tcx TraitRef<'tcx>) -> Option<&'tcx Ty<'t
     }
 
     None
+}
+
+fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) -> bool {
+    let input_lifetimes: Vec<LifetimeName> = inputs
+        .iter()
+        .filter_map(|ty| {
+            if let TyKind::Rptr(lt, _) = ty.kind {
+                Some(lt.name)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // The lint should trigger in one of these cases:
+    // - There are no input lifetimes
+    // - There's only one output lifetime bound using `+ '_`
+    // - All input lifetimes are explicitly bound to the output
+    input_lifetimes.is_empty()
+        || (output_lifetimes.len() == 1 && matches!(output_lifetimes[0], LifetimeName::Underscore))
+        || input_lifetimes
+            .iter()
+            .all(|in_lt| output_lifetimes.iter().any(|out_lt| in_lt == out_lt))
 }
 
 fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> Option<&'tcx Body<'tcx>> {

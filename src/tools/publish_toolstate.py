@@ -31,10 +31,7 @@ MAINTAINERS = {
     'nomicon': {'frewsxcv', 'Gankra'},
     'reference': {'steveklabnik', 'Havvy', 'matthewjasper', 'ehuss'},
     'rust-by-example': {'steveklabnik', 'marioidival'},
-    'embedded-book': {
-        'adamgreig', 'andre-richter', 'jamesmunns', 'korken89',
-        'ryankurte', 'thejpster', 'therealprof',
-    },
+    'embedded-book': {'adamgreig', 'andre-richter', 'jamesmunns', 'therealprof'},
     'edition-guide': {'ehuss', 'steveklabnik'},
     'rustc-dev-guide': {'mark-i-m', 'spastorino', 'amanjeev', 'JohnTitor'},
 }
@@ -42,7 +39,7 @@ MAINTAINERS = {
 LABELS = {
     'miri': ['A-miri', 'C-bug'],
     'rls': ['A-rls', 'C-bug'],
-    'rustfmt': ['C-bug'],
+    'rustfmt': ['A-rustfmt', 'C-bug'],
     'book': ['C-bug'],
     'nomicon': ['C-bug'],
     'reference': ['C-bug'],
@@ -278,7 +275,12 @@ def update_latest(
         return message
 
 
-if __name__ == '__main__':
+# Warning: Do not try to add a function containing the body of this try block.
+# There are variables declared within that are implicitly global; it is unknown
+# which ones precisely but at least this is true for `github_token`.
+try:
+    if __name__ != '__main__':
+        exit(0)
     repo = os.environ.get('TOOLSTATE_VALIDATE_MAINTAINERS_REPO')
     if repo:
         github_token = os.environ.get('TOOLSTATE_REPO_ACCESS_TOKEN')
@@ -345,3 +347,6 @@ if __name__ == '__main__':
         }
     ))
     response.read()
+except urllib2.HTTPError as e:
+    print("HTTPError: %s\n%s" % (e, e.read()))
+    raise

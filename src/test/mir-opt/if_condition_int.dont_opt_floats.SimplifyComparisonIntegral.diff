@@ -1,0 +1,37 @@
+- // MIR for `dont_opt_floats` before SimplifyComparisonIntegral
++ // MIR for `dont_opt_floats` after SimplifyComparisonIntegral
+  
+  fn dont_opt_floats(_1: f32) -> i32 {
+      debug a => _1;                       // in scope 0 at $DIR/if-condition-int.rs:52:20: 52:21
+      let mut _0: i32;                     // return place in scope 0 at $DIR/if-condition-int.rs:52:31: 52:34
+      let mut _2: bool;                    // in scope 0 at $DIR/if-condition-int.rs:53:8: 53:18
+      let mut _3: f32;                     // in scope 0 at $DIR/if-condition-int.rs:53:8: 53:9
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/if-condition-int.rs:53:8: 53:18
+          StorageLive(_3);                 // scope 0 at $DIR/if-condition-int.rs:53:8: 53:9
+          _3 = _1;                         // scope 0 at $DIR/if-condition-int.rs:53:8: 53:9
+          _2 = Eq(move _3, const -42f32);  // scope 0 at $DIR/if-condition-int.rs:53:8: 53:18
+                                           // mir::Constant
+                                           // + span: $DIR/if-condition-int.rs:53:13: 53:18
+                                           // + literal: Const { ty: f32, val: Value(Scalar(0xc2280000)) }
+          StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:53:17: 53:18
+          switchInt(_2) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/if-condition-int.rs:53:5: 53:35
+      }
+  
+      bb1: {
+          _0 = const 1_i32;                // scope 0 at $DIR/if-condition-int.rs:53:32: 53:33
+          goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:53:5: 53:35
+      }
+  
+      bb2: {
+          _0 = const 0_i32;                // scope 0 at $DIR/if-condition-int.rs:53:21: 53:22
+          goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:53:5: 53:35
+      }
+  
+      bb3: {
+          StorageDead(_2);                 // scope 0 at $DIR/if-condition-int.rs:54:1: 54:2
+          return;                          // scope 0 at $DIR/if-condition-int.rs:54:2: 54:2
+      }
+  }
+  

@@ -514,6 +514,8 @@ class StdHashMapSyntheticProvider:
         # type: (int) -> SBValue
         pairs_start = self.data_ptr.GetValueAsUnsigned()
         idx = self.valid_indices[index]
+        if self.new_layout:
+            idx = -(idx + 1)
         address = pairs_start + idx * self.pair_type_size
         element = self.data_ptr.CreateValueFromAddress("[%s]" % index, address, self.pair_type)
         if self.show_values:
@@ -529,9 +531,14 @@ class StdHashMapSyntheticProvider:
         ctrl = table.GetChildMemberWithName("ctrl").GetChildAtIndex(0)
 
         self.size = table.GetChildMemberWithName("items").GetValueAsUnsigned()
-        self.data_ptr = table.GetChildMemberWithName("data").GetChildAtIndex(0)
-        self.pair_type = self.data_ptr.Dereference().GetType()
+        self.pair_type = table.type.template_args[0]
         self.pair_type_size = self.pair_type.GetByteSize()
+
+        self.new_layout = not table.GetChildMemberWithName("data").IsValid()
+        if self.new_layout:
+            self.data_ptr = ctrl.Cast(self.pair_type.GetPointerType())
+        else:
+            self.data_ptr = table.GetChildMemberWithName("data").GetChildAtIndex(0)
 
         u8_type = self.valobj.GetTarget().GetBasicType(eBasicTypeUnsignedChar)
         u8_type_size = self.valobj.GetTarget().GetBasicType(eBasicTypeUnsignedChar).GetByteSize()

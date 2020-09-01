@@ -216,17 +216,14 @@
 //! [`?`] can only be used in functions that return [`Result`] because of the
 //! early return of [`Err`] that it provides.
 //!
-//! [`expect`]: enum.Result.html#method.expect
+//! [`expect`]: Result::expect
 //! [`Write`]: ../../std/io/trait.Write.html
 //! [`write_all`]: ../../std/io/trait.Write.html#method.write_all
 //! [`io::Result`]: ../../std/io/type.Result.html
-//! [`?`]: ../../std/macro.try.html
-//! [`Result`]: enum.Result.html
-//! [`Ok(T)`]: enum.Result.html#variant.Ok
-//! [`Err(E)`]: enum.Result.html#variant.Err
+//! [`?`]: crate::ops::Try
+//! [`Ok(T)`]: Ok
+//! [`Err(E)`]: Err
 //! [`io::Error`]: ../../std/io/struct.Error.html
-//! [`Ok`]: enum.Result.html#variant.Ok
-//! [`Err`]: enum.Result.html#variant.Err
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -237,19 +234,18 @@ use crate::{convert, fmt};
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
 /// See the [`std::result`](index.html) module documentation for details.
-///
-/// [`Ok`]: enum.Result.html#variant.Ok
-/// [`Err`]: enum.Result.html#variant.Err
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
 #[rustc_diagnostic_item = "result_type"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Result<T, E> {
     /// Contains the success value
+    #[lang = "Ok"]
     #[stable(feature = "rust1", since = "1.0.0")]
     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
 
     /// Contains the error value
+    #[lang = "Err"]
     #[stable(feature = "rust1", since = "1.0.0")]
     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
 }
@@ -264,8 +260,6 @@ impl<T, E> Result<T, E> {
     /////////////////////////////////////////////////////////////////////////
 
     /// Returns `true` if the result is [`Ok`].
-    ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
     ///
     /// # Examples
     ///
@@ -287,8 +281,6 @@ impl<T, E> Result<T, E> {
     }
 
     /// Returns `true` if the result is [`Err`].
-    ///
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -376,7 +368,7 @@ impl<T, E> Result<T, E> {
     /// Converts `self` into an [`Option<T>`], consuming `self`,
     /// and discarding the error, if any.
     ///
-    /// [`Option<T>`]: ../../std/option/enum.Option.html
+    /// [`Option<T>`]: Option
     ///
     /// # Examples
     ///
@@ -403,7 +395,7 @@ impl<T, E> Result<T, E> {
     /// Converts `self` into an [`Option<E>`], consuming `self`,
     /// and discarding the success value, if any.
     ///
-    /// [`Option<E>`]: ../../std/option/enum.Option.html
+    /// [`Option<E>`]: Option
     ///
     /// # Examples
     ///
@@ -495,9 +487,6 @@ impl<T, E> Result<T, E> {
     ///
     /// This function can be used to compose the results of two functions.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
-    ///
     /// # Examples
     ///
     /// Print the numbers on each line of a string multiplied by two.
@@ -528,9 +517,7 @@ impl<T, E> Result<T, E> {
     /// the result of a function call, it is recommended to use [`map_or_else`],
     /// which is lazily evaluated.
     ///
-    /// [`map_or_else`]: #method.map_or_else
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
+    /// [`map_or_else`]: Result::map_or_else
     ///
     /// # Examples
     ///
@@ -557,8 +544,6 @@ impl<T, E> Result<T, E> {
     /// This function can be used to unpack a successful result
     /// while handling an error.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -588,8 +573,6 @@ impl<T, E> Result<T, E> {
     /// This function can be used to pass through a successful result while handling
     /// an error.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -669,8 +652,6 @@ impl<T, E> Result<T, E> {
 
     /// Returns `res` if the result is [`Ok`], otherwise returns the [`Err`] value of `self`.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -704,8 +685,6 @@ impl<T, E> Result<T, E> {
 
     /// Calls `op` if the result is [`Ok`], otherwise returns the [`Err`] value of `self`.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// This function can be used for control flow based on `Result` values.
     ///
@@ -737,9 +716,7 @@ impl<T, E> Result<T, E> {
     /// result of a function call, it is recommended to use [`or_else`], which is
     /// lazily evaluated.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
-    /// [`or_else`]: #method.or_else
+    /// [`or_else`]: Result::or_else
     ///
     /// # Examples
     ///
@@ -775,8 +752,6 @@ impl<T, E> Result<T, E> {
     ///
     /// This function can be used for control flow based on result values.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -806,9 +781,7 @@ impl<T, E> Result<T, E> {
     /// the result of a function call, it is recommended to use [`unwrap_or_else`],
     /// which is lazily evaluated.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
-    /// [`unwrap_or_else`]: #method.unwrap_or_else
+    /// [`unwrap_or_else`]: Result::unwrap_or_else
     ///
     /// # Examples
     ///
@@ -833,7 +806,6 @@ impl<T, E> Result<T, E> {
 
     /// Returns the contained [`Ok`] value or computes it from a closure.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
     ///
     /// # Examples
     ///
@@ -943,8 +915,6 @@ impl<T, E: fmt::Debug> Result<T, E> {
     /// Panics if the value is an [`Err`], with a panic message including the
     /// passed message, and the content of the [`Err`].
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -971,17 +941,15 @@ impl<T, E: fmt::Debug> Result<T, E> {
     /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
     /// [`unwrap_or_default`].
     ///
-    /// [`unwrap_or`]: #method.unwrap_or
-    /// [`unwrap_or_else`]: #method.unwrap_or_else
-    /// [`unwrap_or_default`]: #method.unwrap_or_default
+    /// [`unwrap_or`]: Result::unwrap_or
+    /// [`unwrap_or_else`]: Result::unwrap_or_else
+    /// [`unwrap_or_default`]: Result::unwrap_or_default
     ///
     /// # Panics
     ///
     /// Panics if the value is an [`Err`], with a panic message provided by the
     /// [`Err`]'s value.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -1015,8 +983,6 @@ impl<T: fmt::Debug, E> Result<T, E> {
     /// Panics if the value is an [`Ok`], with a panic message including the
     /// passed message, and the content of the [`Ok`].
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -1043,8 +1009,6 @@ impl<T: fmt::Debug, E> Result<T, E> {
     /// Panics if the value is an [`Ok`], with a custom panic message provided
     /// by the [`Ok`]'s value.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     ///
     /// # Examples
@@ -1093,10 +1057,8 @@ impl<T: Default, E> Result<T, E> {
     /// assert_eq!(0, bad_year);
     /// ```
     ///
-    /// [`parse`]: ../../std/primitive.str.html#method.parse
-    /// [`FromStr`]: ../../std/str/trait.FromStr.html
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
+    /// [`parse`]: str::parse
+    /// [`FromStr`]: crate::str::FromStr
     #[inline]
     #[stable(feature = "result_unwrap_or_default", since = "1.16.0")]
     pub fn unwrap_or_default(self) -> T {
@@ -1117,9 +1079,7 @@ impl<T, E: Into<!>> Result<T, E> {
     /// to compile if the error type of the `Result` is later changed
     /// to an error that can actually occur.
     ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
-    /// [`unwrap`]: enum.Result.html#method.unwrap
+    /// [`unwrap`]: Result::unwrap
     ///
     /// # Examples
     ///
@@ -1145,7 +1105,6 @@ impl<T, E: Into<!>> Result<T, E> {
     }
 }
 
-#[unstable(feature = "inner_deref", issue = "50264")]
 impl<T: Deref, E> Result<T, E> {
     /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&<T as Deref>::Target, &E>`.
     ///
@@ -1155,7 +1114,6 @@ impl<T: Deref, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(inner_deref)]
     /// let x: Result<String, u32> = Ok("hello".to_string());
     /// let y: Result<&str, &u32> = Ok("hello");
     /// assert_eq!(x.as_deref(), y);
@@ -1164,23 +1122,12 @@ impl<T: Deref, E> Result<T, E> {
     /// let y: Result<&str, &u32> = Err(&42);
     /// assert_eq!(x.as_deref(), y);
     /// ```
+    #[stable(feature = "inner_deref", since = "1.47.0")]
     pub fn as_deref(&self) -> Result<&T::Target, &E> {
         self.as_ref().map(|t| t.deref())
     }
 }
 
-#[unstable(feature = "inner_deref", issue = "50264")]
-impl<T, E: Deref> Result<T, E> {
-    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&T, &<E as Deref>::Target>`.
-    ///
-    /// Coerces the [`Err`] variant of the original [`Result`] via [`Deref`](crate::ops::Deref)
-    /// and returns the new [`Result`].
-    pub fn as_deref_err(&self) -> Result<&T, &E::Target> {
-        self.as_ref().map_err(|e| e.deref())
-    }
-}
-
-#[unstable(feature = "inner_deref", issue = "50264")]
 impl<T: DerefMut, E> Result<T, E> {
     /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut <T as DerefMut>::Target, &mut E>`.
     ///
@@ -1190,7 +1137,6 @@ impl<T: DerefMut, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(inner_deref)]
     /// let mut s = "HELLO".to_string();
     /// let mut x: Result<String, u32> = Ok("hello".to_string());
     /// let y: Result<&mut str, &mut u32> = Ok(&mut s);
@@ -1201,19 +1147,9 @@ impl<T: DerefMut, E> Result<T, E> {
     /// let y: Result<&mut str, &mut u32> = Err(&mut i);
     /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
     /// ```
+    #[stable(feature = "inner_deref", since = "1.47.0")]
     pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E> {
         self.as_mut().map(|t| t.deref_mut())
-    }
-}
-
-#[unstable(feature = "inner_deref", issue = "50264")]
-impl<T, E: DerefMut> Result<T, E> {
-    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut T, &mut <E as DerefMut>::Target>`.
-    ///
-    /// Coerces the [`Err`] variant of the original [`Result`] via [`DerefMut`](crate::ops::DerefMut)
-    /// and returns the new [`Result`].
-    pub fn as_deref_mut_err(&mut self) -> Result<&mut T, &mut E::Target> {
-        self.as_mut().map_err(|e| e.deref_mut())
     }
 }
 
@@ -1365,10 +1301,6 @@ impl<'a, T, E> IntoIterator for &'a mut Result<T, E> {
 /// The iterator yields one value if the result is [`Ok`], otherwise none.
 ///
 /// Created by [`Result::iter`].
-///
-/// [`Ok`]: enum.Result.html#variant.Ok
-/// [`Result`]: enum.Result.html
-/// [`Result::iter`]: enum.Result.html#method.iter
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
@@ -1418,10 +1350,6 @@ impl<T> Clone for Iter<'_, T> {
 /// An iterator over a mutable reference to the [`Ok`] variant of a [`Result`].
 ///
 /// Created by [`Result::iter_mut`].
-///
-/// [`Ok`]: enum.Result.html#variant.Ok
-/// [`Result`]: enum.Result.html
-/// [`Result::iter_mut`]: enum.Result.html#method.iter_mut
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
@@ -1467,10 +1395,7 @@ unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 /// This struct is created by the [`into_iter`] method on
 /// [`Result`] (provided by the [`IntoIterator`] trait).
 ///
-/// [`Ok`]: enum.Result.html#variant.Ok
-/// [`Result`]: enum.Result.html
-/// [`into_iter`]: ../iter/trait.IntoIterator.html#tymethod.into_iter
-/// [`IntoIterator`]: ../iter/trait.IntoIterator.html
+/// [`into_iter`]: IntoIterator::into_iter
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {

@@ -8,11 +8,14 @@ IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
-if isMacOS; then
-    curl -f "${MIRRORS_BASE}/clang%2Bllvm-9.0.0-x86_64-darwin-apple.tar.xz" | tar xJf -
+# Update both macOS's and Windows's tarballs when bumping the version here.
+LLVM_VERSION="10.0.0"
 
-    ciCommandSetEnv CC "$(pwd)/clang+llvm-9.0.0-x86_64-darwin-apple/bin/clang"
-    ciCommandSetEnv CXX "$(pwd)/clang+llvm-9.0.0-x86_64-darwin-apple/bin/clang++"
+if isMacOS; then
+    curl -f "${MIRRORS_BASE}/clang%2Bllvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz" | tar xJf -
+
+    ciCommandSetEnv CC "$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin/clang"
+    ciCommandSetEnv CXX "$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin/clang++"
 
     # macOS 10.15 onwards doesn't have libraries in /usr/include anymore: those
     # are now located deep into the filesystem, under Xcode's own files. The
@@ -33,8 +36,10 @@ elif isWindows && [[ ${CUSTOM_MINGW-0} -ne 1 ]]; then
     #
     # Note that the LLVM installer is an NSIS installer
     #
-    # Original downloaded here came from
-    # http://releases.llvm.org/9.0.0/LLVM-9.0.0-win64.exe
+    # Original downloaded here came from:
+    #
+    #   https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.0/LLVM-10.0.0-win64.exe
+    #
     # That installer was run through `wine ./installer.exe /S /NCRC` on Linux
     # and then the resulting installation directory (found in
     # `$HOME/.wine/drive_c/Program Files/LLVM`) was packaged up into a tarball.
@@ -45,7 +50,7 @@ elif isWindows && [[ ${CUSTOM_MINGW-0} -ne 1 ]]; then
 
     mkdir -p citools
     cd citools
-    curl -f "${MIRRORS_BASE}/LLVM-9.0.0-win64.tar.gz" | tar xzf -
+    curl -f "${MIRRORS_BASE}/LLVM-${LLVM_VERSION}-win64.tar.gz" | tar xzf -
     ciCommandSetEnv RUST_CONFIGURE_ARGS \
         "${RUST_CONFIGURE_ARGS} --set llvm.clang-cl=$(pwd)/clang-rust/bin/clang-cl.exe"
 fi

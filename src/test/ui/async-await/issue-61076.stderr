@@ -1,5 +1,5 @@
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
-  --> $DIR/issue-61076.rs:22:5
+  --> $DIR/issue-61076.rs:42:5
    |
 LL |     foo()?;
    |     ^^^^^^
@@ -11,7 +11,7 @@ LL |     foo()?;
    = note: required by `std::ops::Try::into_result`
 
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
-  --> $DIR/issue-61076.rs:28:5
+  --> $DIR/issue-61076.rs:56:5
    |
 LL |     t?;
    |     ^^
@@ -22,6 +22,56 @@ LL |     t?;
    = help: the trait `std::ops::Try` is not implemented for `T`
    = note: required by `std::ops::Try::into_result`
 
-error: aborting due to 2 previous errors
+error[E0609]: no field `0` on type `impl std::future::Future`
+  --> $DIR/issue-61076.rs:58:26
+   |
+LL |     let _: i32 = tuple().0;
+   |                          ^
+   |
+help: consider awaiting before field access
+   |
+LL |     let _: i32 = tuple().await.0;
+   |                         ^^^^^^
 
-For more information about this error, try `rustc --explain E0277`.
+error[E0609]: no field `a` on type `impl std::future::Future`
+  --> $DIR/issue-61076.rs:60:28
+   |
+LL |     let _: i32 = struct_().a;
+   |                            ^
+   |
+help: consider awaiting before field access
+   |
+LL |     let _: i32 = struct_().await.a;
+   |                           ^^^^^^
+
+error[E0599]: no method named `method` found for opaque type `impl std::future::Future` in the current scope
+  --> $DIR/issue-61076.rs:62:15
+   |
+LL |     struct_().method();
+   |               ^^^^^^ method not found in `impl std::future::Future`
+   |
+help: consider awaiting before this method call
+   |
+LL |     struct_().await.method();
+   |               ^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-61076.rs:69:9
+   |
+LL | async fn tuple() -> Tuple {
+   |                     ----- the `Output` of this `async fn`'s expected opaque type
+...
+LL |         Tuple(_) => {}
+   |         ^^^^^^^^ expected opaque type, found struct `Tuple`
+   |
+   = note: expected opaque type `impl std::future::Future`
+                   found struct `Tuple`
+help: consider awaiting on the future
+   |
+LL |     match tuple().await {
+   |                  ^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0599, E0609.
+For more information about an error, try `rustc --explain E0277`.

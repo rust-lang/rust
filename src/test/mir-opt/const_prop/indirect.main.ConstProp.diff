@@ -1,0 +1,39 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/indirect.rs:4:11: 4:11
+      let _1: u8;                          // in scope 0 at $DIR/indirect.rs:5:9: 5:10
+      let mut _2: u8;                      // in scope 0 at $DIR/indirect.rs:5:13: 5:25
+      let mut _3: (u8, bool);              // in scope 0 at $DIR/indirect.rs:5:13: 5:29
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/indirect.rs:5:9: 5:10
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/indirect.rs:5:9: 5:10
+          StorageLive(_2);                 // scope 0 at $DIR/indirect.rs:5:13: 5:25
+-         _2 = const 2_u32 as u8 (Misc);   // scope 0 at $DIR/indirect.rs:5:13: 5:25
+-         _3 = CheckedAdd(_2, const 1_u8); // scope 0 at $DIR/indirect.rs:5:13: 5:29
+-         assert(!move (_3.1: bool), "attempt to compute `{} + {}` which would overflow", move _2, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:5:13: 5:29
++         _2 = const 2_u8;                 // scope 0 at $DIR/indirect.rs:5:13: 5:25
++         _3 = const (3_u8, false);        // scope 0 at $DIR/indirect.rs:5:13: 5:29
++                                          // ty::Const
++                                          // + ty: (u8, bool)
++                                          // + val: Value(ByRef { alloc: Allocation { bytes: [3, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, offset: Size { raw: 0 } })
++                                          // mir::Constant
++                                          // + span: $DIR/indirect.rs:5:13: 5:29
++                                          // + literal: Const { ty: (u8, bool), val: Value(ByRef { alloc: Allocation { bytes: [3, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
++         assert(!const false, "attempt to compute `{} + {}` which would overflow", const 2_u8, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:5:13: 5:29
+      }
+  
+      bb1: {
+-         _1 = move (_3.0: u8);            // scope 0 at $DIR/indirect.rs:5:13: 5:29
++         _1 = const 3_u8;                 // scope 0 at $DIR/indirect.rs:5:13: 5:29
+          StorageDead(_2);                 // scope 0 at $DIR/indirect.rs:5:28: 5:29
+          _0 = const ();                   // scope 0 at $DIR/indirect.rs:4:11: 6:2
+          StorageDead(_1);                 // scope 0 at $DIR/indirect.rs:6:1: 6:2
+          return;                          // scope 0 at $DIR/indirect.rs:6:2: 6:2
+      }
+  }
+  

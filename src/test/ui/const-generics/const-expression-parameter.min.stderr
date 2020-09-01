@@ -1,0 +1,8 @@
+error: expected one of `,` or `>`, found `+`
+  --> $DIR/const-expression-parameter.rs:16:22
+   |
+LL |     i32_identity::<1 + 2>();
+   |                      ^ expected one of `,` or `>`
+
+error: aborting due to previous error
+

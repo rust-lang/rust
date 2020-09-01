@@ -2,7 +2,7 @@ warning: private type `m1::Priv` in public interface (error E0446)
   --> $DIR/issue-30079.rs:6:9
    |
 LL |         pub fn f(_: Priv) {}
-   |         ^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(private_in_public)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

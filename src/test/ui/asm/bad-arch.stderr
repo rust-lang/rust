@@ -1,0 +1,8 @@
+error[E0472]: asm! is unsupported on this target
+  --> $DIR/bad-arch.rs:16:9
+   |
+LL |         asm!("");
+   |         ^^^^^^^^^
+
+error: aborting due to previous error
+

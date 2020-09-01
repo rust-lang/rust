@@ -49,10 +49,8 @@
 # dynamic version to be available.
 #static-libstdcpp = false
 
-# Tell the LLVM build system to use Ninja instead of the platform default for
-# the generated build system. This can sometimes be faster than make, for
-# example.
-#ninja = false
+# Whether to use Ninja to build LLVM. This runs much faster than make.
+#ninja = true
 
 # LLVM targets to build support for.
 # Note: this is NOT related to Rust compilation targets. However, as Rust is
@@ -341,7 +339,10 @@
 # Debuginfo for tests run with compiletest is not controlled by this option
 # and needs to be enabled separately with `debuginfo-level-tests`.
 #
-# Defaults to 2 if debug is true
+# Note that debuginfo-level = 2 generates several gigabytes of debuginfo
+# and will slow down the linking process significantly.
+#
+# Defaults to 1 if debug is true
 #debuginfo-level = 0
 
 # Debuginfo level for the compiler.
@@ -430,7 +431,7 @@
 #
 # LLD will not be used if we're cross linking or running tests.
 #
-# Explicitly setting the linker for a target will override this option.
+# Explicitly setting the linker for a target will override this option when targeting MSVC.
 #use-lld = false
 
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
@@ -472,6 +473,10 @@
 # This only applies from stage 1 onwards, and only for Windows targets.
 #control-flow-guard = false
 
+# Enable symbol-mangling-version v0. This can be helpful when profiling rustc,
+# as generics will be preserved in symbols (rather than erased into opaque T).
+#new-symbol-mangling = false
+
 # =============================================================================
 # Options for specific targets
 #
@@ -500,7 +505,7 @@
 # Linker to be used to link Rust code. Note that the
 # default value is platform specific, and if not specified it may also depend on
 # what platform is crossing to what platform.
-# Setting this will override the `use-lld` option for Rust code.
+# Setting this will override the `use-lld` option for Rust code when targeting MSVC.
 #linker = "cc"
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link

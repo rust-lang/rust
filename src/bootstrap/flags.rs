@@ -385,7 +385,7 @@ Arguments:
         ./x.py test src/test/ui --bless
         ./x.py test src/test/ui --compare-mode nll
 
-    Note that `test src/test/* --stage N` does NOT depend on `build src/rustc --stage N`;
+    Note that `test src/test/* --stage N` does NOT depend on `build compiler/rustc --stage N`;
     just like `build library/std --stage N` it tests the compiler produced by the previous
     stage.
 
@@ -425,7 +425,7 @@ Arguments:
     This subcommand accepts a number of paths to tools to build and run. For
     example:
 
-        ./x.py run src/tool/expand-yaml-anchors
+        ./x.py run src/tools/expand-yaml-anchors
 
     At least a tool needs to be called.",
                 );
@@ -505,14 +505,11 @@ Arguments:
 
         if let Subcommand::Check { .. } = &cmd {
             if matches.opt_str("stage").is_some() {
-                println!("{}", "--stage not supported for x.py check, always treated as stage 0");
+                println!("--stage not supported for x.py check, always treated as stage 0");
                 process::exit(1);
             }
             if matches.opt_str("keep-stage").is_some() {
-                println!(
-                    "{}",
-                    "--keep-stage not supported for x.py check, only one stage available"
-                );
+                println!("--keep-stage not supported for x.py check, only one stage available");
                 process::exit(1);
             }
         }

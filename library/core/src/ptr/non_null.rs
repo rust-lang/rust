@@ -3,10 +3,10 @@ use crate::convert::From;
 use crate::fmt;
 use crate::hash;
 use crate::marker::Unsize;
-use crate::mem;
+use crate::mem::{self, MaybeUninit};
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr::Unique;
-use crate::slice::SliceIndex;
+use crate::slice::{self, SliceIndex};
 
 /// `*mut T` but non-zero and covariant.
 ///
@@ -34,8 +34,8 @@ use crate::slice::SliceIndex;
 /// it is your responsibility to ensure that `as_mut` is never called, and `as_ptr`
 /// is never used for mutation.
 ///
-/// [`PhantomData`]: ../marker/struct.PhantomData.html
-/// [`UnsafeCell<T>`]: ../cell/struct.UnsafeCell.html
+/// [`PhantomData`]: crate::marker::PhantomData
+/// [`UnsafeCell<T>`]: crate::cell::UnsafeCell
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
@@ -76,6 +76,70 @@ impl<T: Sized> NonNull<T> {
             NonNull::new_unchecked(ptr)
         }
     }
+
+    /// Returns a shared references to the value. In contrast to [`as_ref`], this does not require
+    /// that the value has to be initialized.
+    ///
+    /// For the mutable counterpart see [`as_uninit_mut`].
+    ///
+    /// [`as_ref`]: NonNull::as_ref
+    /// [`as_uninit_mut`]: NonNull::as_uninit_mut
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    ///
+    /// * The pointer must be properly aligned.
+    ///
+    /// * It must be "dereferencable" in the sense defined in [the module documentation].
+    ///
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
+    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
+    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   not get mutated (except inside `UnsafeCell`).
+    ///
+    /// This applies even if the result of this method is unused!
+    ///
+    /// [the module documentation]: crate::ptr#safety
+    #[inline]
+    #[unstable(feature = "ptr_as_uninit", issue = "75402")]
+    pub unsafe fn as_uninit_ref(&self) -> &MaybeUninit<T> {
+        // SAFETY: the caller must guarantee that `self` meets all the
+        // requirements for a reference.
+        unsafe { &*self.cast().as_ptr() }
+    }
+
+    /// Returns a unique references to the value. In contrast to [`as_mut`], this does not require
+    /// that the value has to be initialized.
+    ///
+    /// For the shared counterpart see [`as_uninit_ref`].
+    ///
+    /// [`as_mut`]: NonNull::as_mut
+    /// [`as_uninit_ref`]: NonNull::as_uninit_ref
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    ///
+    /// * The pointer must be properly aligned.
+    ///
+    /// * It must be "dereferencable" in the sense defined in [the module documentation].
+    ///
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
+    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
+    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   not get accessed (read or written) through any other pointer.
+    ///
+    /// This applies even if the result of this method is unused!
+    ///
+    /// [the module documentation]: crate::ptr#safety
+    #[inline]
+    #[unstable(feature = "ptr_as_uninit", issue = "75402")]
+    pub unsafe fn as_uninit_mut(&mut self) -> &mut MaybeUninit<T> {
+        // SAFETY: the caller must guarantee that `self` meets all the
+        // requirements for a reference.
+        unsafe { &mut *self.cast().as_ptr() }
+    }
 }
 
 impl<T: ?Sized> NonNull<T> {
@@ -112,11 +176,34 @@ impl<T: ?Sized> NonNull<T> {
         self.pointer as *mut T
     }
 
-    /// Dereferences the content.
+    /// Returns a shared reference to the value. If the value may be uninitialized, [`as_uninit_ref`]
+    /// must be used instead.
     ///
-    /// The resulting lifetime is bound to self so this behaves "as if"
-    /// it were actually an instance of T that is getting borrowed. If a longer
-    /// (unbound) lifetime is needed, use `&*my_ptr.as_ptr()`.
+    /// For the mutable counterpart see [`as_mut`].
+    ///
+    /// [`as_uninit_ref`]: NonNull::as_uninit_ref
+    /// [`as_mut`]: NonNull::as_mut
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    ///
+    /// * The pointer must be properly aligned.
+    ///
+    /// * It must be "dereferencable" in the sense defined in [the module documentation].
+    ///
+    /// * The pointer must point to an initialized instance of `T`.
+    ///
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
+    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
+    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   not get mutated (except inside `UnsafeCell`).
+    ///
+    /// This applies even if the result of this method is unused!
+    /// (The part about being initialized is not yet fully decided, but until
+    /// it is, the only safe approach is to ensure that they are indeed initialized.)
+    ///
+    /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub unsafe fn as_ref(&self) -> &T {
@@ -125,11 +212,34 @@ impl<T: ?Sized> NonNull<T> {
         unsafe { &*self.as_ptr() }
     }
 
-    /// Mutably dereferences the content.
+    /// Returns a unique reference to the value. If the value may be uninitialized, [`as_uninit_mut`]
+    /// must be used instead.
     ///
-    /// The resulting lifetime is bound to self so this behaves "as if"
-    /// it were actually an instance of T that is getting borrowed. If a longer
-    /// (unbound) lifetime is needed, use `&mut *my_ptr.as_ptr()`.
+    /// For the shared counterpart see [`as_ref`].
+    ///
+    /// [`as_uninit_mut`]: NonNull::as_uninit_mut
+    /// [`as_ref`]: NonNull::as_ref
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    ///
+    /// * The pointer must be properly aligned.
+    ///
+    /// * It must be "dereferencable" in the sense defined in [the module documentation].
+    ///
+    /// * The pointer must point to an initialized instance of `T`.
+    ///
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
+    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
+    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   not get accessed (read or written) through any other pointer.
+    ///
+    /// This applies even if the result of this method is unused!
+    /// (The part about being initialized is not yet fully decided, but until
+    /// it is, the only safe approach is to ensure that they are indeed initialized.)
+    ///
+    /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub unsafe fn as_mut(&mut self) -> &mut T {
@@ -155,8 +265,6 @@ impl<T> NonNull<[T]> {
     ///
     /// This function is safe, but dereferencing the return value is unsafe.
     /// See the documentation of [`slice::from_raw_parts`] for slice safety requirements.
-    ///
-    /// [`slice::from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
     ///
     /// # Examples
     ///
@@ -222,6 +330,131 @@ impl<T> NonNull<[T]> {
     pub const fn as_non_null_ptr(self) -> NonNull<T> {
         // SAFETY: We know `self` is non-null.
         unsafe { NonNull::new_unchecked(self.as_ptr().as_mut_ptr()) }
+    }
+
+    /// Returns a raw pointer to the slice's buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_ptr_get, nonnull_slice_from_raw_parts)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
+    /// assert_eq!(slice.as_mut_ptr(), 1 as *mut i8);
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
+    pub const fn as_mut_ptr(self) -> *mut T {
+        self.as_non_null_ptr().as_ptr()
+    }
+
+    /// Returns a shared reference to a slice of possibly uninitialized values. In contrast to
+    /// [`as_ref`], this does not require that the value has to be initialized.
+    ///
+    /// For the mutable counterpart see [`as_uninit_slice_mut`].
+    ///
+    /// [`as_ref`]: NonNull::as_ref
+    /// [`as_uninit_slice_mut`]: NonNull::as_uninit_slice_mut
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    ///
+    /// * The pointer must be [valid] for reads for `ptr.len() * mem::size_of::<T>()` many bytes,
+    ///   and it must be properly aligned. This means in particular:
+    ///
+    ///     * The entire memory range of this slice must be contained within a single allocated object!
+    ///       Slices can never span across multiple allocated objects.
+    ///
+    ///     * The pointer must be aligned even for zero-length slices. One
+    ///       reason for this is that enum layout optimizations may rely on references
+    ///       (including slices of any length) being aligned and non-null to distinguish
+    ///       them from other data. You can obtain a pointer that is usable as `data`
+    ///       for zero-length slices using [`NonNull::dangling()`].
+    ///
+    /// * The total size `ptr.len() * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
+    ///   See the safety documentation of [`pointer::offset`].
+    ///
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
+    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
+    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   not get mutated (except inside `UnsafeCell`).
+    ///
+    /// This applies even if the result of this method is unused!
+    ///
+    /// See also [`slice::from_raw_parts`].
+    ///
+    /// [valid]: crate::ptr#safety
+    /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
+    #[inline]
+    #[unstable(feature = "ptr_as_uninit", issue = "75402")]
+    pub unsafe fn as_uninit_slice(&self) -> &[MaybeUninit<T>] {
+        // SAFETY: the caller must uphold the safety contract for `as_uninit_slice`.
+        unsafe { slice::from_raw_parts(self.cast().as_ptr(), self.len()) }
+    }
+
+    /// Returns a unique reference to a slice of possibly uninitialized values. In contrast to
+    /// [`as_mut`], this does not require that the value has to be initialized.
+    ///
+    /// For the shared counterpart see [`as_uninit_slice`].
+    ///
+    /// [`as_mut`]: NonNull::as_mut
+    /// [`as_uninit_slice`]: NonNull::as_uninit_slice
+    ///
+    /// # Safety
+    ///
+    /// When calling this method, you have to ensure that all of the following is true:
+    ///
+    /// * The pointer must be [valid] for reads and writes for `ptr.len() * mem::size_of::<T>()`
+    ///   many bytes, and it must be properly aligned. This means in particular:
+    ///
+    ///     * The entire memory range of this slice must be contained within a single allocated object!
+    ///       Slices can never span across multiple allocated objects.
+    ///
+    ///     * The pointer must be aligned even for zero-length slices. One
+    ///       reason for this is that enum layout optimizations may rely on references
+    ///       (including slices of any length) being aligned and non-null to distinguish
+    ///       them from other data. You can obtain a pointer that is usable as `data`
+    ///       for zero-length slices using [`NonNull::dangling()`].
+    ///
+    /// * The total size `ptr.len() * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
+    ///   See the safety documentation of [`pointer::offset`].
+    ///
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
+    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
+    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   not get accessed (read or written) through any other pointer.
+    ///
+    /// This applies even if the result of this method is unused!
+    ///
+    /// See also [`slice::from_raw_parts_mut`].
+    ///
+    /// [valid]: crate::ptr#safety
+    /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(allocator_api, ptr_as_uninit)]
+    ///
+    /// use std::alloc::{AllocRef, Layout, Global};
+    /// use std::mem::MaybeUninit;
+    /// use std::ptr::NonNull;
+    ///
+    /// let memory: NonNull<[u8]> = Global.alloc(Layout::new::<[u8; 32]>())?;
+    /// // This is safe as `memory` is valid for reads and writes for `memory.len()` many bytes.
+    /// // Note that calling `memory.as_mut()` is not allowed here as the content may be uninitialized.
+    /// # #[allow(unused_variables)]
+    /// let slice: &mut [MaybeUninit<u8>] = unsafe { memory.as_uninit_slice_mut() };
+    /// # Ok::<_, std::alloc::AllocErr>(())
+    /// ```
+    #[inline]
+    #[unstable(feature = "ptr_as_uninit", issue = "75402")]
+    pub unsafe fn as_uninit_slice_mut(&self) -> &mut [MaybeUninit<T>] {
+        // SAFETY: the caller must uphold the safety contract for `as_uninit_slice_mut`.
+        unsafe { slice::from_raw_parts_mut(self.cast().as_ptr(), self.len()) }
     }
 
     /// Returns a raw pointer to an element or subslice, without doing bounds

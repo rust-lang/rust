@@ -18,10 +18,8 @@ LL |     generic::<Option<T>>();
 note: `generic` defined here
   --> $DIR/issue-8727.rs:6:1
    |
-LL | / fn generic<T>() {
-LL | |     generic::<Option<T>>();
-LL | | }
-   | |_^
+LL | fn generic<T>() {
+   | ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

@@ -10,8 +10,6 @@ use crate::sys::vxworks::ext::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 /// Unix-specific extensions to the [`process::Command`] builder.
-///
-/// [`process::Command`]: ../../../../std/process/struct.Command.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait CommandExt {
     /// Sets the child process's user ID. This translates to a
@@ -65,7 +63,7 @@ pub trait CommandExt {
     /// This method is stable and usable, but it should be unsafe. To fix
     /// that, it got deprecated in favor of the unsafe [`pre_exec`].
     ///
-    /// [`pre_exec`]: #tymethod.pre_exec
+    /// [`pre_exec`]: CommandExt::pre_exec
     #[stable(feature = "process_exec", since = "1.15.0")]
     #[rustc_deprecated(since = "1.37.0", reason = "should be unsafe, use `pre_exec` instead")]
     fn before_exec<F>(&mut self, f: F) -> &mut process::Command
@@ -94,7 +92,6 @@ pub trait CommandExt {
     /// a new child. Like spawn, however, the default behavior for the stdio
     /// descriptors will be to inherited from the current process.
     ///
-    /// [`process::exit`]: ../../../process/fn.exit.html
     ///
     /// # Notes
     ///
@@ -151,8 +148,6 @@ impl CommandExt for process::Command {
 }
 
 /// Unix-specific extensions to [`process::ExitStatus`].
-///
-/// [`process::ExitStatus`]: ../../../../std/process/struct.ExitStatus.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExitStatusExt {
     /// Creates a new `ExitStatus` from the raw underlying `i32` return value of

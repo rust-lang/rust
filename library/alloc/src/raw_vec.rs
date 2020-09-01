@@ -1,24 +1,27 @@
 #![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
 #![doc(hidden)]
 
-use core::alloc::{LayoutErr, MemoryBlock};
+use core::alloc::LayoutErr;
 use core::cmp;
+use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
 use core::ptr::{NonNull, Unique};
 use core::slice;
 
-use crate::alloc::{
-    handle_alloc_error,
-    AllocInit::{self, *},
-    AllocRef, Global, Layout,
-    ReallocPlacement::{self, *},
-};
+use crate::alloc::{handle_alloc_error, AllocRef, Global, Layout};
 use crate::boxed::Box;
 use crate::collections::TryReserveError::{self, *};
 
 #[cfg(test)]
 mod tests;
+
+enum AllocInit {
+    /// The contents of the new memory are uninitialized.
+    Uninitialized,
+    /// The new memory is guaranteed to be zeroed.
+    Zeroed,
+}
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
 /// a buffer of memory on the heap without having to worry about all the corner cases
@@ -156,14 +159,14 @@ impl<T, A: AllocRef> RawVec<T, A> {
     /// allocator for the returned `RawVec`.
     #[inline]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
-        Self::allocate_in(capacity, Uninitialized, alloc)
+        Self::allocate_in(capacity, AllocInit::Uninitialized, alloc)
     }
 
     /// Like `with_capacity_zeroed`, but parameterized over the choice
     /// of allocator for the returned `RawVec`.
     #[inline]
     pub fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {
-        Self::allocate_in(capacity, Zeroed, alloc)
+        Self::allocate_in(capacity, AllocInit::Zeroed, alloc)
     }
 
     fn allocate_in(capacity: usize, init: AllocInit, mut alloc: A) -> Self {
@@ -180,14 +183,18 @@ impl<T, A: AllocRef> RawVec<T, A> {
                 Ok(_) => {}
                 Err(_) => capacity_overflow(),
             }
-            let memory = match alloc.alloc(layout, init) {
-                Ok(memory) => memory,
+            let result = match init {
+                AllocInit::Uninitialized => alloc.alloc(layout),
+                AllocInit::Zeroed => alloc.alloc_zeroed(layout),
+            };
+            let ptr = match result {
+                Ok(ptr) => ptr,
                 Err(_) => handle_alloc_error(layout),
             };
 
             Self {
-                ptr: unsafe { Unique::new_unchecked(memory.ptr.cast().as_ptr()) },
-                cap: Self::capacity_from_bytes(memory.size),
+                ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
+                cap: Self::capacity_from_bytes(ptr.len()),
                 alloc,
             }
         }
@@ -197,13 +204,15 @@ impl<T, A: AllocRef> RawVec<T, A> {
     ///
     /// # Safety
     ///
-    /// The `ptr` must be allocated (via the given allocator `a`), and with the given `capacity`.
+    /// The `ptr` must be allocated (via the given allocator `alloc`), and with the given
+    /// `capacity`.
     /// The `capacity` cannot exceed `isize::MAX` for sized types. (only a concern on 32-bit
     /// systems). ZST vectors may have a capacity up to `usize::MAX`.
-    /// If the `ptr` and `capacity` come from a `RawVec` created via `a`, then this is guaranteed.
+    /// If the `ptr` and `capacity` come from a `RawVec` created via `alloc`, then this is
+    /// guaranteed.
     #[inline]
-    pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, a: A) -> Self {
-        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc: a }
+    pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
+        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc }
     }
 
     /// Gets a raw pointer to the start of the allocation. Note that this is
@@ -358,7 +367,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     pub fn shrink_to_fit(&mut self, amount: usize) {
-        match self.shrink(amount, MayMove) {
+        match self.shrink(amount) {
             Err(CapacityOverflow) => capacity_overflow(),
             Err(AllocError { layout, .. }) => handle_alloc_error(layout),
             Ok(()) => { /* yay */ }
@@ -378,9 +387,9 @@ impl<T, A: AllocRef> RawVec<T, A> {
         excess / mem::size_of::<T>()
     }
 
-    fn set_memory(&mut self, memory: MemoryBlock) {
-        self.ptr = unsafe { Unique::new_unchecked(memory.ptr.cast().as_ptr()) };
-        self.cap = Self::capacity_from_bytes(memory.size);
+    fn set_ptr(&mut self, ptr: NonNull<[u8]>) {
+        self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
+        self.cap = Self::capacity_from_bytes(ptr.len());
     }
 
     // This method is usually instantiated many times. So we want it to be as
@@ -426,8 +435,8 @@ impl<T, A: AllocRef> RawVec<T, A> {
         let new_layout = Layout::array::<T>(cap);
 
         // `finish_grow` is non-generic over `T`.
-        let memory = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        self.set_memory(memory);
+        let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
+        self.set_ptr(ptr);
         Ok(())
     }
 
@@ -445,30 +454,25 @@ impl<T, A: AllocRef> RawVec<T, A> {
         let new_layout = Layout::array::<T>(cap);
 
         // `finish_grow` is non-generic over `T`.
-        let memory = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        self.set_memory(memory);
+        let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
+        self.set_ptr(ptr);
         Ok(())
     }
 
-    fn shrink(
-        &mut self,
-        amount: usize,
-        placement: ReallocPlacement,
-    ) -> Result<(), TryReserveError> {
+    fn shrink(&mut self, amount: usize) -> Result<(), TryReserveError> {
         assert!(amount <= self.capacity(), "Tried to shrink to a larger capacity");
 
         let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
         let new_size = amount * mem::size_of::<T>();
 
-        let memory = unsafe {
-            self.alloc.shrink(ptr, layout, new_size, placement).map_err(|_| {
-                TryReserveError::AllocError {
-                    layout: Layout::from_size_align_unchecked(new_size, layout.align()),
-                    non_exhaustive: (),
-                }
+        let ptr = unsafe {
+            let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+            self.alloc.shrink(ptr, layout, new_layout).map_err(|_| TryReserveError::AllocError {
+                layout: new_layout,
+                non_exhaustive: (),
             })?
         };
-        self.set_memory(memory);
+        self.set_ptr(ptr);
         Ok(())
     }
 }
@@ -481,7 +485,7 @@ fn finish_grow<A>(
     new_layout: Result<Layout, LayoutErr>,
     current_memory: Option<(NonNull<u8>, Layout)>,
     alloc: &mut A,
-) -> Result<MemoryBlock, TryReserveError>
+) -> Result<NonNull<[u8]>, TryReserveError>
 where
     A: AllocRef,
 {
@@ -492,13 +496,16 @@ where
 
     let memory = if let Some((ptr, old_layout)) = current_memory {
         debug_assert_eq!(old_layout.align(), new_layout.align());
-        unsafe { alloc.grow(ptr, old_layout, new_layout.size(), MayMove, Uninitialized) }
+        unsafe {
+            // The allocator checks for alignment equality
+            intrinsics::assume(old_layout.align() == new_layout.align());
+            alloc.grow(ptr, old_layout, new_layout)
+        }
     } else {
-        alloc.alloc(new_layout, Uninitialized)
-    }
-    .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?;
+        alloc.alloc(new_layout)
+    };
 
-    Ok(memory)
+    memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })
 }
 
 unsafe impl<#[may_dangle] T, A: AllocRef> Drop for RawVec<T, A> {

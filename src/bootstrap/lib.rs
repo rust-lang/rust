@@ -323,10 +323,7 @@ pub enum Mode {
 
 impl Mode {
     pub fn is_tool(&self) -> bool {
-        match self {
-            Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd => true,
-            _ => false,
-        }
+        matches!(self, Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd)
     }
 }
 
@@ -857,6 +854,10 @@ impl Build {
         if let Some(linker) = self.config.target_config.get(&target).and_then(|c| c.linker.as_ref())
         {
             Some(linker)
+        } else if target.contains("vxworks") {
+            // need to use CXX compiler as linker to resolve the exception functions
+            // that are only existed in CXX libraries
+            Some(self.cxx[&target].path())
         } else if target != self.config.build
             && util::use_host_linker(target)
             && !target.contains("msvc")

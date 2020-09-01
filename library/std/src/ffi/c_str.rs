@@ -1,3 +1,8 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
+#[cfg(test)]
+mod tests;
+
 use crate::ascii;
 use crate::borrow::{Borrow, Cow};
 use crate::cmp::Ordering;
@@ -35,23 +40,23 @@ use crate::sys;
 /// example, you can build a `CString` straight out of a [`String`] or
 /// a [`&str`], since both implement that trait).
 ///
-/// The [`new`] method will actually check that the provided `&[u8]`
+/// The [`CString::new`] method will actually check that the provided `&[u8]`
 /// does not have 0 bytes in the middle, and return an error if it
 /// finds one.
 ///
 /// # Extracting a raw pointer to the whole C string
 ///
-/// `CString` implements a [`as_ptr`] method through the [`Deref`]
+/// `CString` implements a [`as_ptr`][`CStr::as_ptr`] method through the [`Deref`]
 /// trait. This method will give you a `*const c_char` which you can
 /// feed directly to extern functions that expect a nul-terminated
-/// string, like C's `strdup()`. Notice that [`as_ptr`] returns a
+/// string, like C's `strdup()`. Notice that [`as_ptr`][`CStr::as_ptr`] returns a
 /// read-only pointer; if the C code writes to it, that causes
 /// undefined behavior.
 ///
 /// # Extracting a slice of the whole C string
 ///
 /// Alternatively, you can obtain a `&[`[`u8`]`]` slice from a
-/// `CString` with the [`as_bytes`] method. Slices produced in this
+/// `CString` with the [`CString::as_bytes`] method. Slices produced in this
 /// way do *not* contain the trailing nul terminator. This is useful
 /// when you will be calling an extern function that takes a `*const
 /// u8` argument which is not necessarily nul-terminated, plus another
@@ -60,7 +65,7 @@ use crate::sys;
 /// [`len`][slice.len] method.
 ///
 /// If you need a `&[`[`u8`]`]` slice *with* the nul terminator, you
-/// can use [`as_bytes_with_nul`] instead.
+/// can use [`CString::as_bytes_with_nul`] instead.
 ///
 /// Once you have the kind of slice you need (with or without a nul
 /// terminator), you can call the slice's own
@@ -68,20 +73,11 @@ use crate::sys;
 /// extern functions. See the documentation for that function for a
 /// discussion on ensuring the lifetime of the raw pointer.
 ///
-/// [`Into`]: ../convert/trait.Into.html
-/// [`Vec`]: ../vec/struct.Vec.html
-/// [`String`]: ../string/struct.String.html
-/// [`&str`]: ../primitive.str.html
-/// [`u8`]: ../primitive.u8.html
-/// [`new`]: #method.new
-/// [`as_bytes`]: #method.as_bytes
-/// [`as_bytes_with_nul`]: #method.as_bytes_with_nul
-/// [`as_ptr`]: #method.as_ptr
+/// [`&str`]: prim@str
 /// [slice.as_ptr]: ../primitive.slice.html#method.as_ptr
 /// [slice.len]: ../primitive.slice.html#method.len
-/// [`Deref`]: ../ops/trait.Deref.html
-/// [`CStr`]: struct.CStr.html
-/// [`&CStr`]: struct.CStr.html
+/// [`Deref`]: ops::Deref
+/// [`&CStr`]: CStr
 ///
 /// # Examples
 ///
@@ -113,7 +109,6 @@ use crate::sys;
 /// documentation of `CString` before use, as improper ownership management
 /// of `CString` instances can lead to invalid memory accesses, memory leaks,
 /// and other memory errors.
-
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
@@ -137,8 +132,8 @@ pub struct CString {
 ///
 /// Note that this structure is **not** `repr(C)` and is not recommended to be
 /// placed in the signatures of FFI functions. Instead, safe wrappers of FFI
-/// functions may leverage the unsafe [`from_ptr`] constructor to provide a safe
-/// interface to other consumers.
+/// functions may leverage the unsafe [`CStr::from_ptr`] constructor to provide
+/// a safe interface to other consumers.
 ///
 /// # Examples
 ///
@@ -189,11 +184,7 @@ pub struct CString {
 /// println!("string: {}", my_string_safe());
 /// ```
 ///
-/// [`u8`]: ../primitive.u8.html
-/// [`&str`]: ../primitive.str.html
-/// [`String`]: ../string/struct.String.html
-/// [`CString`]: struct.CString.html
-/// [`from_ptr`]: #method.from_ptr
+/// [`&str`]: prim@str
 #[derive(Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
@@ -218,9 +209,6 @@ pub struct CStr {
 /// This error is created by the [`new`][`CString::new`] method on
 /// [`CString`]. See its documentation for more.
 ///
-/// [`CString`]: struct.CString.html
-/// [`CString::new`]: struct.CString.html#method.new
-///
 /// # Examples
 ///
 /// ```
@@ -237,11 +225,8 @@ pub struct NulError(usize, Vec<u8>);
 /// The slice used to create a [`CStr`] must have one and only one nul byte,
 /// positioned at the end.
 ///
-/// This error is created by the [`from_bytes_with_nul`] method on [`CStr`].
+/// This error is created by the [`CStr::from_bytes_with_nul`] method.
 /// See its documentation for more.
-///
-/// [`CStr`]: struct.CStr.html
-/// [`from_bytes_with_nul`]: struct.CStr.html#method.from_bytes_with_nul
 ///
 /// # Examples
 ///
@@ -261,11 +246,8 @@ pub struct FromBytesWithNulError {
 /// The vector used to create a [`CString`] must have one and only one nul byte,
 /// positioned at the end.
 ///
-/// This error is created by the [`from_vec_with_nul`] method on [`CString`].
+/// This error is created by the [`CString::from_vec_with_nul`] method.
 /// See its documentation for more.
-///
-/// [`CString`]: struct.CString.html
-/// [`from_vec_with_nul`]: struct.CString.html#method.from_vec_with_nul
 ///
 /// # Examples
 ///
@@ -316,8 +298,6 @@ impl FromVecWithNulError {
     ///
     /// assert_eq!(&bytes[..], value.unwrap_err().as_bytes());
     /// ```
-    ///
-    /// [`CString`]: struct.CString.html
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes[..]
     }
@@ -343,8 +323,6 @@ impl FromVecWithNulError {
     ///
     /// assert_eq!(bytes, value.unwrap_err().into_bytes());
     /// ```
-    ///
-    /// [`CString`]: struct.CString.html
     pub fn into_bytes(self) -> Vec<u8> {
         self.bytes
     }
@@ -352,17 +330,12 @@ impl FromVecWithNulError {
 
 /// An error indicating invalid UTF-8 when converting a [`CString`] into a [`String`].
 ///
-/// `CString` is just a wrapper over a buffer of bytes with a nul
-/// terminator; [`into_string`][`CString::into_string`] performs UTF-8
-/// validation on those bytes and may return this error.
+/// `CString` is just a wrapper over a buffer of bytes with a nul terminator;
+/// [`CString::into_string`] performs UTF-8 validation on those bytes and may
+/// return this error.
 ///
-/// This `struct` is created by the
-/// [`into_string`][`CString::into_string`] method on [`CString`]. See
+/// This `struct` is created by [`CString::into_string()`]. See
 /// its documentation for more.
-///
-/// [`String`]: ../string/struct.String.html
-/// [`CString`]: struct.CString.html
-/// [`CString::into_string`]: struct.CString.html#method.into_string
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstring_into", since = "1.7.0")]
 pub struct IntoStringError {
@@ -398,8 +371,6 @@ impl CString {
     /// This function will return an error if the supplied bytes contain an
     /// internal 0 byte. The [`NulError`] returned will contain the bytes as well as
     /// the position of the nul byte.
-    ///
-    /// [`NulError`]: struct.NulError.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<CString, NulError> {
         trait SpecIntoVec {
@@ -439,11 +410,9 @@ impl CString {
     /// Creates a C-compatible string by consuming a byte vector,
     /// without checking for interior 0 bytes.
     ///
-    /// This method is equivalent to [`new`] except that no runtime assertion
-    /// is made that `v` contains no 0 bytes, and it requires an actual
-    /// byte vector, not anything that can be converted to one with Into.
-    ///
-    /// [`new`]: #method.new
+    /// This method is equivalent to [`CString::new`] except that no runtime
+    /// assertion is made that `v` contains no 0 bytes, and it requires an
+    /// actual byte vector, not anything that can be converted to one with Into.
     ///
     /// # Examples
     ///
@@ -462,21 +431,22 @@ impl CString {
         CString { inner: v.into_boxed_slice() }
     }
 
-    /// Retakes ownership of a `CString` that was transferred to C via [`into_raw`].
+    /// Retakes ownership of a `CString` that was transferred to C via
+    /// [`CString::into_raw`].
     ///
     /// Additionally, the length of the string will be recalculated from the pointer.
     ///
     /// # Safety
     ///
     /// This should only ever be called with a pointer that was earlier
-    /// obtained by calling [`into_raw`] on a `CString`. Other usage (e.g., trying to take
+    /// obtained by calling [`CString::into_raw`]. Other usage (e.g., trying to take
     /// ownership of a string that was allocated by foreign code) is likely to lead
     /// to undefined behavior or allocator corruption.
     ///
     /// It should be noted that the length isn't just "recomputed," but that
     /// the recomputed length must match the original length from the
-    /// [`into_raw`] call. This means the [`into_raw`]/`from_raw` methods
-    /// should not be used when passing the string to C functions that can
+    /// [`CString::into_raw`] call. This means the [`CString::into_raw`]/`from_raw`
+    /// methods should not be used when passing the string to C functions that can
     /// modify the string's length.
     ///
     /// > **Note:** If you need to borrow a string that was allocated by
@@ -484,9 +454,6 @@ impl CString {
     /// > a string that was allocated by foreign code, you will need to
     /// > make your own provisions for freeing it appropriately, likely
     /// > with the foreign code's API to do that.
-    ///
-    /// [`into_raw`]: #method.into_raw
-    /// [`CStr`]: struct.CStr.html
     ///
     /// # Examples
     ///
@@ -510,26 +477,31 @@ impl CString {
     /// ```
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
-        let len = sys::strlen(ptr) + 1; // Including the NUL byte
-        let slice = slice::from_raw_parts_mut(ptr, len as usize);
-        CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
+        // SAFETY: This is called with a pointer that was obtained from a call
+        // to `CString::into_raw` and the length has not been modified. As such,
+        // we know there is a NUL byte (and only one) at the end and that the
+        // information about the size of the allocation is correct on Rust's
+        // side.
+        unsafe {
+            let len = sys::strlen(ptr) + 1; // Including the NUL byte
+            let slice = slice::from_raw_parts_mut(ptr, len as usize);
+            CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
+        }
     }
 
     /// Consumes the `CString` and transfers ownership of the string to a C caller.
     ///
     /// The pointer which this function returns must be returned to Rust and reconstituted using
-    /// [`from_raw`] to be properly deallocated. Specifically, one
+    /// [`CString::from_raw`] to be properly deallocated. Specifically, one
     /// should *not* use the standard C `free()` function to deallocate
     /// this string.
     ///
-    /// Failure to call [`from_raw`] will lead to a memory leak.
+    /// Failure to call [`CString::from_raw`] will lead to a memory leak.
     ///
     /// The C side must **not** modify the length of the string (by writing a
     /// `NULL` somewhere inside the string or removing the final one) before
-    /// it makes it back into Rust using [`from_raw`]. See the safety section
-    /// in [`from_raw`].
-    ///
-    /// [`from_raw`]: #method.from_raw
+    /// it makes it back into Rust using [`CString::from_raw`]. See the safety section
+    /// in [`CString::from_raw`].
     ///
     /// # Examples
     ///
@@ -559,8 +531,6 @@ impl CString {
     /// Converts the `CString` into a [`String`] if it contains valid UTF-8 data.
     ///
     /// On failure, ownership of the original `CString` is returned.
-    ///
-    /// [`String`]: ../string/struct.String.html
     ///
     /// # Examples
     ///
@@ -608,10 +578,8 @@ impl CString {
         vec
     }
 
-    /// Equivalent to the [`into_bytes`] function except that the returned vector
-    /// includes the trailing nul terminator.
-    ///
-    /// [`into_bytes`]: #method.into_bytes
+    /// Equivalent to [`CString::into_bytes()`] except that the
+    /// returned vector includes the trailing nul terminator.
     ///
     /// # Examples
     ///
@@ -632,9 +600,7 @@ impl CString {
     /// The returned slice does **not** contain the trailing nul
     /// terminator, and it is guaranteed to not have any interior nul
     /// bytes. If you need the nul terminator, use
-    /// [`as_bytes_with_nul`] instead.
-    ///
-    /// [`as_bytes_with_nul`]: #method.as_bytes_with_nul
+    /// [`CString::as_bytes_with_nul`] instead.
     ///
     /// # Examples
     ///
@@ -651,10 +617,8 @@ impl CString {
         &self.inner[..self.inner.len() - 1]
     }
 
-    /// Equivalent to the [`as_bytes`] function except that the returned slice
-    /// includes the trailing nul terminator.
-    ///
-    /// [`as_bytes`]: #method.as_bytes
+    /// Equivalent to [`CString::as_bytes()`] except that the
+    /// returned slice includes the trailing nul terminator.
     ///
     /// # Examples
     ///
@@ -672,8 +636,6 @@ impl CString {
     }
 
     /// Extracts a [`CStr`] slice containing the entire string.
-    ///
-    /// [`CStr`]: struct.CStr.html
     ///
     /// # Examples
     ///
@@ -693,8 +655,6 @@ impl CString {
 
     /// Converts this `CString` into a boxed [`CStr`].
     ///
-    /// [`CStr`]: struct.CStr.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -711,8 +671,6 @@ impl CString {
     }
 
     /// Bypass "move out of struct which implements [`Drop`] trait" restriction.
-    ///
-    /// [`Drop`]: ../ops/trait.Drop.html
     fn into_inner(self) -> Box<[u8]> {
         // Rationale: `mem::forget(self)` invalidates the previous call to `ptr::read(&self.inner)`
         // so we use `ManuallyDrop` to ensure `self` is not dropped.
@@ -722,12 +680,12 @@ impl CString {
         unsafe { ptr::read(&this.inner) }
     }
 
-    /// Converts a `Vec` of `u8` to a `CString` without checking the invariants
-    /// on the given `Vec`.
+    /// Converts a [`Vec`]`<u8>` to a [`CString`] without checking the
+    /// invariants on the given [`Vec`].
     ///
     /// # Safety
     ///
-    /// The given `Vec` **must** have one nul byte as its last element.
+    /// The given [`Vec`] **must** have one nul byte as its last element.
     /// This means it cannot be empty nor have any other nul byte anywhere else.
     ///
     /// # Example
@@ -745,10 +703,10 @@ impl CString {
         Self { inner: v.into_boxed_slice() }
     }
 
-    /// Attempts to converts a `Vec` of `u8` to a `CString`.
+    /// Attempts to converts a [`Vec`]`<u8>` to a [`CString`].
     ///
     /// Runtime checks are present to ensure there is only one nul byte in the
-    /// `Vec`, its last element.
+    /// [`Vec`], its last element.
     ///
     /// # Errors
     ///
@@ -757,8 +715,8 @@ impl CString {
     ///
     /// # Examples
     ///
-    /// A successful conversion will produce the same result as [`new`] when
-    /// called without the ending nul byte.
+    /// A successful conversion will produce the same result as [`CString::new`]
+    /// when called without the ending nul byte.
     ///
     /// ```
     /// #![feature(cstring_from_vec_with_nul)]
@@ -770,7 +728,7 @@ impl CString {
     /// );
     /// ```
     ///
-    /// A incorrectly formatted vector will produce an error.
+    /// A incorrectly formatted [`Vec`] will produce an error.
     ///
     /// ```
     /// #![feature(cstring_from_vec_with_nul)]
@@ -780,8 +738,6 @@ impl CString {
     /// // No nul byte
     /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"abc".to_vec()).unwrap_err();
     /// ```
-    ///
-    /// [`new`]: #method.new
     #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
     pub fn from_vec_with_nul(v: Vec<u8>) -> Result<Self, FromVecWithNulError> {
         let nul_pos = memchr::memchr(0, &v);
@@ -838,9 +794,6 @@ impl From<CString> for Vec<u8> {
     /// Converts a [`CString`] into a [`Vec`]`<u8>`.
     ///
     /// The conversion consumes the [`CString`], and removes the terminating NUL byte.
-    ///
-    /// [`Vec`]: ../vec/struct.Vec.html
-    /// [`CString`]: ../ffi/struct.CString.html
     #[inline]
     fn from(s: CString) -> Vec<u8> {
         s.into_bytes()
@@ -913,9 +866,6 @@ impl From<Cow<'_, CStr>> for Box<CStr> {
 #[stable(feature = "c_string_from_box", since = "1.18.0")]
 impl From<Box<CStr>> for CString {
     /// Converts a [`Box`]`<CStr>` into a [`CString`] without copying or allocating.
-    ///
-    /// [`Box`]: ../boxed/struct.Box.html
-    /// [`CString`]: ../ffi/struct.CString.html
     #[inline]
     fn from(s: Box<CStr>) -> CString {
         s.into_c_string()
@@ -926,10 +876,6 @@ impl From<Box<CStr>> for CString {
 impl From<Vec<NonZeroU8>> for CString {
     /// Converts a [`Vec`]`<`[`NonZeroU8`]`>` into a [`CString`] without
     /// copying nor checking for inner null bytes.
-    ///
-    /// [`CString`]: ../ffi/struct.CString.html
-    /// [`NonZeroU8`]: ../num/struct.NonZeroU8.html
-    /// [`Vec`]: ../vec/struct.Vec.html
     #[inline]
     fn from(v: Vec<NonZeroU8>) -> CString {
         unsafe {
@@ -959,9 +905,6 @@ impl Clone for Box<CStr> {
 #[stable(feature = "box_from_c_string", since = "1.20.0")]
 impl From<CString> for Box<CStr> {
     /// Converts a [`CString`] into a [`Box`]`<CStr>` without copying or allocating.
-    ///
-    /// [`CString`]: ../ffi/struct.CString.html
-    /// [`Box`]: ../boxed/struct.Box.html
     #[inline]
     fn from(s: CString) -> Box<CStr> {
         s.into_boxed_c_str()
@@ -995,9 +938,6 @@ impl<'a> From<&'a CString> for Cow<'a, CStr> {
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Arc<CStr> {
     /// Converts a [`CString`] into a [`Arc`]`<CStr>` without copying or allocating.
-    ///
-    /// [`CString`]: ../ffi/struct.CString.html
-    /// [`Arc`]: ../sync/struct.Arc.html
     #[inline]
     fn from(s: CString) -> Arc<CStr> {
         let arc: Arc<[u8]> = Arc::from(s.into_inner());
@@ -1017,9 +957,6 @@ impl From<&CStr> for Arc<CStr> {
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Rc<CStr> {
     /// Converts a [`CString`] into a [`Rc`]`<CStr>` without copying or allocating.
-    ///
-    /// [`CString`]: ../ffi/struct.CString.html
-    /// [`Rc`]: ../rc/struct.Rc.html
     #[inline]
     fn from(s: CString) -> Rc<CStr> {
         let rc: Rc<[u8]> = Rc::from(s.into_inner());
@@ -1047,8 +984,6 @@ impl Default for Box<CStr> {
 impl NulError {
     /// Returns the position of the nul byte in the slice that caused
     /// [`CString::new`] to fail.
-    ///
-    /// [`CString::new`]: struct.CString.html#method.new
     ///
     /// # Examples
     ///
@@ -1101,9 +1036,6 @@ impl fmt::Display for NulError {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<NulError> for io::Error {
     /// Converts a [`NulError`] into a [`io::Error`].
-    ///
-    /// [`NulError`]: ../ffi/struct.NulError.html
-    /// [`io::Error`]: ../io/struct.Error.html
     fn from(_: NulError) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidInput, "data provided contains a nul byte")
     }
@@ -1154,8 +1086,6 @@ impl fmt::Display for FromVecWithNulError {
 impl IntoStringError {
     /// Consumes this error, returning original [`CString`] which generated the
     /// error.
-    ///
-    /// [`CString`]: struct.CString.html
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_cstring(self) -> CString {
         self.inner
@@ -1228,9 +1158,21 @@ impl CStr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
-        let len = sys::strlen(ptr);
-        let ptr = ptr as *const u8;
-        CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
+        // SAFETY: The caller has provided a pointer that points to a valid C
+        // string with a NUL terminator of size less than `isize::MAX`, whose
+        // content remain valid and doesn't change for the lifetime of the
+        // returned `CStr`.
+        //
+        // Thus computing the length is fine (a NUL byte exists), the call to
+        // from_raw_parts is safe because we know the length is at most `isize::MAX`, meaning
+        // the call to `from_bytes_with_nul_unchecked` is correct.
+        //
+        // The cast from c_char to u8 is ok because a c_char is always one byte.
+        unsafe {
+            let len = sys::strlen(ptr);
+            let ptr = ptr as *const u8;
+            CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
+        }
     }
 
     /// Creates a C string wrapper from a byte slice.
@@ -1299,7 +1241,12 @@ impl CStr {
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     #[rustc_const_unstable(feature = "const_cstr_unchecked", issue = "none")]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-        &*(bytes as *const [u8] as *const CStr)
+        // SAFETY: Casting to CStr is safe because its internal representation
+        // is a [u8] too (safe only inside std).
+        // Dereferencing the obtained pointer is safe because it comes from a
+        // reference. Making a reference is then safe because its lifetime
+        // is bound by the lifetime of the given `bytes`.
+        unsafe { &*(bytes as *const [u8] as *const CStr) }
     }
 
     /// Returns the inner pointer to this C string.
@@ -1330,7 +1277,8 @@ impl CStr {
     ///
     /// This happens because the pointer returned by `as_ptr` does not carry any
     /// lifetime information and the [`CString`] is deallocated immediately after
-    /// the `CString::new("Hello").expect("CString::new failed").as_ptr()` expression is evaluated.
+    /// the `CString::new("Hello").expect("CString::new failed").as_ptr()`
+    /// expression is evaluated.
     /// To fix the problem, bind the `CString` to a local variable:
     ///
     /// ```no_run
@@ -1345,10 +1293,8 @@ impl CStr {
     /// }
     /// ```
     ///
-    /// This way, the lifetime of the `CString` in `hello` encompasses
+    /// This way, the lifetime of the [`CString`] in `hello` encompasses
     /// the lifetime of `ptr` and the `unsafe` block.
-    ///
-    /// [`CString`]: struct.CString.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_as_ptr", since = "1.32.0")]
@@ -1382,14 +1328,12 @@ impl CStr {
 
     /// Converts this C string to a byte slice containing the trailing 0 byte.
     ///
-    /// This function is the equivalent of [`to_bytes`] except that it will retain
-    /// the trailing nul terminator instead of chopping it off.
+    /// This function is the equivalent of [`CStr::to_bytes`] except that it
+    /// will retain the trailing nul terminator instead of chopping it off.
     ///
     /// > **Note**: This method is currently implemented as a 0-cost cast, but
     /// > it is planned to alter its definition in the future to perform the
     /// > length calculation whenever this method is called.
-    ///
-    /// [`to_bytes`]: #method.to_bytes
     ///
     /// # Examples
     ///
@@ -1411,7 +1355,7 @@ impl CStr {
     /// function will return the corresponding [`&str`] slice. Otherwise,
     /// it will return an error with details of where UTF-8 validation failed.
     ///
-    /// [`&str`]: ../primitive.str.html
+    /// [`&str`]: prim@str
     ///
     /// # Examples
     ///
@@ -1439,12 +1383,10 @@ impl CStr {
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD] and return a
     /// [`Cow`]`::`[`Owned`]`(`[`String`]`)` with the result.
     ///
-    /// [`Cow`]: ../borrow/enum.Cow.html
-    /// [`Borrowed`]: ../borrow/enum.Cow.html#variant.Borrowed
-    /// [`Owned`]: ../borrow/enum.Cow.html#variant.Owned
-    /// [`str`]: ../primitive.str.html
-    /// [`String`]: ../string/struct.String.html
-    /// [U+FFFD]: ../char/constant.REPLACEMENT_CHARACTER.html
+    /// [`str`]: prim@str
+    /// [`Borrowed`]: Cow::Borrowed
+    /// [`Owned`]: Cow::Owned
+    /// [U+FFFD]: crate::char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
@@ -1478,9 +1420,6 @@ impl CStr {
     }
 
     /// Converts a [`Box`]`<CStr>` into a [`CString`] without copying or allocating.
-    ///
-    /// [`Box`]: ../boxed/struct.Box.html
-    /// [`CString`]: struct.CString.html
     ///
     /// # Examples
     ///
@@ -1585,204 +1524,5 @@ impl AsRef<CStr> for CString {
     #[inline]
     fn as_ref(&self) -> &CStr {
         self
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::borrow::Cow::{Borrowed, Owned};
-    use crate::collections::hash_map::DefaultHasher;
-    use crate::hash::{Hash, Hasher};
-    use crate::os::raw::c_char;
-    use crate::rc::Rc;
-    use crate::sync::Arc;
-
-    #[test]
-    fn c_to_rust() {
-        let data = b"123\0";
-        let ptr = data.as_ptr() as *const c_char;
-        unsafe {
-            assert_eq!(CStr::from_ptr(ptr).to_bytes(), b"123");
-            assert_eq!(CStr::from_ptr(ptr).to_bytes_with_nul(), b"123\0");
-        }
-    }
-
-    #[test]
-    fn simple() {
-        let s = CString::new("1234").unwrap();
-        assert_eq!(s.as_bytes(), b"1234");
-        assert_eq!(s.as_bytes_with_nul(), b"1234\0");
-    }
-
-    #[test]
-    fn build_with_zero1() {
-        assert!(CString::new(&b"\0"[..]).is_err());
-    }
-    #[test]
-    fn build_with_zero2() {
-        assert!(CString::new(vec![0]).is_err());
-    }
-
-    #[test]
-    fn build_with_zero3() {
-        unsafe {
-            let s = CString::from_vec_unchecked(vec![0]);
-            assert_eq!(s.as_bytes(), b"\0");
-        }
-    }
-
-    #[test]
-    fn formatted() {
-        let s = CString::new(&b"abc\x01\x02\n\xE2\x80\xA6\xFF"[..]).unwrap();
-        assert_eq!(format!("{:?}", s), r#""abc\x01\x02\n\xe2\x80\xa6\xff""#);
-    }
-
-    #[test]
-    fn borrowed() {
-        unsafe {
-            let s = CStr::from_ptr(b"12\0".as_ptr() as *const _);
-            assert_eq!(s.to_bytes(), b"12");
-            assert_eq!(s.to_bytes_with_nul(), b"12\0");
-        }
-    }
-
-    #[test]
-    fn to_str() {
-        let data = b"123\xE2\x80\xA6\0";
-        let ptr = data.as_ptr() as *const c_char;
-        unsafe {
-            assert_eq!(CStr::from_ptr(ptr).to_str(), Ok("123…"));
-            assert_eq!(CStr::from_ptr(ptr).to_string_lossy(), Borrowed("123…"));
-        }
-        let data = b"123\xE2\0";
-        let ptr = data.as_ptr() as *const c_char;
-        unsafe {
-            assert!(CStr::from_ptr(ptr).to_str().is_err());
-            assert_eq!(CStr::from_ptr(ptr).to_string_lossy(), Owned::<str>(format!("123\u{FFFD}")));
-        }
-    }
-
-    #[test]
-    fn to_owned() {
-        let data = b"123\0";
-        let ptr = data.as_ptr() as *const c_char;
-
-        let owned = unsafe { CStr::from_ptr(ptr).to_owned() };
-        assert_eq!(owned.as_bytes_with_nul(), data);
-    }
-
-    #[test]
-    fn equal_hash() {
-        let data = b"123\xE2\xFA\xA6\0";
-        let ptr = data.as_ptr() as *const c_char;
-        let cstr: &'static CStr = unsafe { CStr::from_ptr(ptr) };
-
-        let mut s = DefaultHasher::new();
-        cstr.hash(&mut s);
-        let cstr_hash = s.finish();
-        let mut s = DefaultHasher::new();
-        CString::new(&data[..data.len() - 1]).unwrap().hash(&mut s);
-        let cstring_hash = s.finish();
-
-        assert_eq!(cstr_hash, cstring_hash);
-    }
-
-    #[test]
-    fn from_bytes_with_nul() {
-        let data = b"123\0";
-        let cstr = CStr::from_bytes_with_nul(data);
-        assert_eq!(cstr.map(CStr::to_bytes), Ok(&b"123"[..]));
-        let cstr = CStr::from_bytes_with_nul(data);
-        assert_eq!(cstr.map(CStr::to_bytes_with_nul), Ok(&b"123\0"[..]));
-
-        unsafe {
-            let cstr = CStr::from_bytes_with_nul(data);
-            let cstr_unchecked = CStr::from_bytes_with_nul_unchecked(data);
-            assert_eq!(cstr, Ok(cstr_unchecked));
-        }
-    }
-
-    #[test]
-    fn from_bytes_with_nul_unterminated() {
-        let data = b"123";
-        let cstr = CStr::from_bytes_with_nul(data);
-        assert!(cstr.is_err());
-    }
-
-    #[test]
-    fn from_bytes_with_nul_interior() {
-        let data = b"1\023\0";
-        let cstr = CStr::from_bytes_with_nul(data);
-        assert!(cstr.is_err());
-    }
-
-    #[test]
-    fn into_boxed() {
-        let orig: &[u8] = b"Hello, world!\0";
-        let cstr = CStr::from_bytes_with_nul(orig).unwrap();
-        let boxed: Box<CStr> = Box::from(cstr);
-        let cstring = cstr.to_owned().into_boxed_c_str().into_c_string();
-        assert_eq!(cstr, &*boxed);
-        assert_eq!(&*boxed, &*cstring);
-        assert_eq!(&*cstring, cstr);
-    }
-
-    #[test]
-    fn boxed_default() {
-        let boxed = <Box<CStr>>::default();
-        assert_eq!(boxed.to_bytes_with_nul(), &[0]);
-    }
-
-    #[test]
-    fn test_c_str_clone_into() {
-        let mut c_string = CString::new("lorem").unwrap();
-        let c_ptr = c_string.as_ptr();
-        let c_str = CStr::from_bytes_with_nul(b"ipsum\0").unwrap();
-        c_str.clone_into(&mut c_string);
-        assert_eq!(c_str, c_string.as_c_str());
-        // The exact same size shouldn't have needed to move its allocation
-        assert_eq!(c_ptr, c_string.as_ptr());
-    }
-
-    #[test]
-    fn into_rc() {
-        let orig: &[u8] = b"Hello, world!\0";
-        let cstr = CStr::from_bytes_with_nul(orig).unwrap();
-        let rc: Rc<CStr> = Rc::from(cstr);
-        let arc: Arc<CStr> = Arc::from(cstr);
-
-        assert_eq!(&*rc, cstr);
-        assert_eq!(&*arc, cstr);
-
-        let rc2: Rc<CStr> = Rc::from(cstr.to_owned());
-        let arc2: Arc<CStr> = Arc::from(cstr.to_owned());
-
-        assert_eq!(&*rc2, cstr);
-        assert_eq!(&*arc2, cstr);
-    }
-
-    #[test]
-    fn cstr_const_constructor() {
-        const CSTR: &CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"Hello, world!\0") };
-
-        assert_eq!(CSTR.to_str().unwrap(), "Hello, world!");
-    }
-
-    #[test]
-    fn cstr_index_from() {
-        let original = b"Hello, world!\0";
-        let cstr = CStr::from_bytes_with_nul(original).unwrap();
-        let result = CStr::from_bytes_with_nul(&original[7..]).unwrap();
-
-        assert_eq!(&cstr[7..], result);
-    }
-
-    #[test]
-    #[should_panic]
-    fn cstr_index_from_empty() {
-        let original = b"Hello, world!\0";
-        let cstr = CStr::from_bytes_with_nul(original).unwrap();
-        let _ = &cstr[original.len()..];
     }
 }

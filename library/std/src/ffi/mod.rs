@@ -88,7 +88,7 @@
 //! [`env::var_os()`] is used to query environment variables; it
 //! returns an [`Option`]`<`[`OsString`]`>`. If the environment variable
 //! exists you will get a [`Some`]`(os_string)`, which you can *then* try to
-//! convert to a Rust string. This yields a [`Result<>`], so that
+//! convert to a Rust string. This yields a [`Result`], so that
 //! your code can detect errors in case the environment variable did
 //! not in fact contain valid Unicode data.
 //!
@@ -124,34 +124,22 @@
 //! method is an [`OsString`] which can be round-tripped to a Windows
 //! string losslessly.
 //!
-//! [`String`]: ../string/struct.String.html
-//! [`str`]: ../primitive.str.html
-//! [`char`]: ../primitive.char.html
-//! [`u8`]: ../primitive.u8.html
-//! [`u16`]: ../primitive.u16.html
 //! [Unicode scalar value]: http://www.unicode.org/glossary/#unicode_scalar_value
 //! [Unicode code point]: http://www.unicode.org/glossary/#code_point
-//! [`CString`]: struct.CString.html
-//! [`CStr`]: struct.CStr.html
-//! [`OsString`]: struct.OsString.html
-//! [`OsStr`]: struct.OsStr.html
-//! [`env::set_var()`]: ../env/fn.set_var.html
-//! [`env::var_os()`]: ../env/fn.var_os.html
-//! [`Result<>`]: ../result/enum.Result.html
-//! [unix.OsStringExt]: ../os/unix/ffi/trait.OsStringExt.html
-//! [`from_vec`]: ../os/unix/ffi/trait.OsStringExt.html#tymethod.from_vec
-//! [`into_vec`]: ../os/unix/ffi/trait.OsStringExt.html#tymethod.into_vec
-//! [unix.OsStrExt]: ../os/unix/ffi/trait.OsStrExt.html
-//! [`from_bytes`]: ../os/unix/ffi/trait.OsStrExt.html#tymethod.from_bytes
-//! [`as_bytes`]: ../os/unix/ffi/trait.OsStrExt.html#tymethod.as_bytes
-//! [`OsStrExt`]: ../os/unix/ffi/trait.OsStrExt.html
-//! [windows.OsStrExt]: ../os/windows/ffi/trait.OsStrExt.html
-//! [`encode_wide`]: ../os/windows/ffi/trait.OsStrExt.html#tymethod.encode_wide
-//! [`collect`]: ../iter/trait.Iterator.html#method.collect
-//! [windows.OsStringExt]: ../os/windows/ffi/trait.OsStringExt.html
-//! [`from_wide`]: ../os/windows/ffi/trait.OsStringExt.html#tymethod.from_wide
-//! [`Option`]: ../option/enum.Option.html
-//! [`Some`]: ../option/enum.Option.html#variant.Some
+//! [`env::set_var()`]: crate::env::set_var
+//! [`env::var_os()`]: crate::env::var_os
+//! [unix.OsStringExt]: crate::os::unix::ffi::OsStringExt
+//! [`from_vec`]: crate::os::unix::ffi::OsStringExt::from_vec
+//! [`into_vec`]: crate::os::unix::ffi::OsStringExt::into_vec
+//! [unix.OsStrExt]: crate::os::unix::ffi::OsStrExt
+//! [`from_bytes`]: crate::os::unix::ffi::OsStrExt::from_bytes
+//! [`as_bytes`]: crate::os::unix::ffi::OsStrExt::as_bytes
+//! [`OsStrExt`]: crate::os::unix::ffi::OsStrExt
+//! [windows.OsStrExt]: crate::os::windows::ffi::OsStrExt
+//! [`encode_wide`]: crate::os::windows::ffi::OsStrExt::encode_wide
+//! [`collect`]: crate::iter::Iterator::collect
+//! [windows.OsStringExt]: crate::os::windows::ffi::OsStringExt
+//! [`from_wide`]: crate::os::windows::ffi::OsStringExt::from_wide
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

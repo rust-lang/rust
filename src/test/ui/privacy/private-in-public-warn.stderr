@@ -52,7 +52,7 @@ error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:27:9
    |
 LL |         fn f1(arg: Priv) {}
-   |         ^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
@@ -61,7 +61,7 @@ error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:29:9
    |
 LL |         fn f2() -> Priv { panic!() }
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
@@ -148,7 +148,7 @@ error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:61:9
    |
 LL |         fn f<T: PrivTr>(arg: T) {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
@@ -193,7 +193,7 @@ error: private trait `traits_where::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:83:9
    |
 LL |         fn f<T>(arg: T) where T: PrivTr {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
@@ -265,7 +265,7 @@ error: private type `aliases_pub::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:206:9
    |
 LL |         pub fn f(arg: Priv) {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>

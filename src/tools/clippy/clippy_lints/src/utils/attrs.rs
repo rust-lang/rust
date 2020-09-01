@@ -1,5 +1,4 @@
 use rustc_ast::ast;
-use rustc_ast::expand::is_proc_macro_attr;
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use std::str::FromStr;
@@ -76,12 +75,12 @@ pub fn get_attr<'a>(
                 })
                 .map_or_else(
                     || {
-                        sess.span_err(attr_segments[1].ident.span, "Usage of unknown attribute");
+                        sess.span_err(attr_segments[1].ident.span, "usage of unknown attribute");
                         false
                     },
                     |deprecation_status| {
                         let mut diag =
-                            sess.struct_span_err(attr_segments[1].ident.span, "Usage of deprecated attribute");
+                            sess.struct_span_err(attr_segments[1].ident.span, "usage of deprecated attribute");
                         match *deprecation_status {
                             DeprecationStatus::Deprecated => {
                                 diag.emit();
@@ -126,6 +125,6 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
 
 /// Return true if the attributes contain any of `proc_macro`,
 /// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
-pub fn is_proc_macro(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(is_proc_macro_attr)
+pub fn is_proc_macro(sess: &Session, attrs: &[ast::Attribute]) -> bool {
+    attrs.iter().any(|attr| sess.is_proc_macro_attr(attr))
 }

@@ -1,13 +1,11 @@
 error[E0446]: private type `foo::Bar` in public interface
   --> $DIR/E0446.rs:4:5
    |
-LL |       struct Bar(u32);
-   |       - `foo::Bar` declared as private
+LL |     struct Bar(u32);
+   |     - `foo::Bar` declared as private
 LL | 
-LL | /     pub fn bar() -> Bar {
-LL | |         Bar(0)
-LL | |     }
-   | |_____^ can't leak private type
+LL |     pub fn bar() -> Bar {
+   |     ^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: aborting due to previous error
 

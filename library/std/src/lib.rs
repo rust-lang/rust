@@ -22,7 +22,7 @@
 //! * [`std::*` modules](#modules)
 //! * [Primitive types](#primitives)
 //! * [Standard macros](#macros)
-//! * [The Rust Prelude](prelude/index.html)
+//! * [The Rust Prelude]
 //!
 //! If this is your first time, the documentation for the standard library is
 //! written to be casually perused. Clicking on interesting things should
@@ -63,8 +63,8 @@
 //! So for example there is a [page for the primitive type
 //! `i32`](primitive.i32.html) that lists all the methods that can be called on
 //! 32-bit integers (very useful), and there is a [page for the module
-//! `std::i32`](i32/index.html) that documents the constant values [`MIN`] and
-//! [`MAX`](i32/constant.MAX.html) (rarely useful).
+//! `std::i32`] that documents the constant values [`MIN`] and [`MAX`] (rarely
+//! useful).
 //!
 //! Note the documentation for the primitives [`str`] and [`[T]`][slice] (also
 //! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
@@ -152,48 +152,36 @@
 //! contains further primitive shared memory types, including [`atomic`] and
 //! [`mpsc`], which contains the channel types for message passing.
 //!
-//! [I/O]: io/index.html
-//! [`MIN`]: i32/constant.MIN.html
-//! [TCP]: net/struct.TcpStream.html
-//! [The Rust Prelude]: prelude/index.html
-//! [UDP]: net/struct.UdpSocket.html
-//! [`Arc`]: sync/struct.Arc.html
-//! [owned slice]: boxed/index.html
-//! [`Cell`]: cell/struct.Cell.html
-//! [`FromStr`]: str/trait.FromStr.html
-//! [`HashMap<K, V>`]: collections/struct.HashMap.html
-//! [`Iterator`]: iter/trait.Iterator.html
-//! [`Mutex`]: sync/struct.Mutex.html
-//! [`Option<T>`]: option/enum.Option.html
-//! [`Rc`]: rc/struct.Rc.html
-//! [`RefCell`]: cell/struct.RefCell.html
-//! [`Result<T, E>`]: result/enum.Result.html
-//! [`String`]: string/struct.String.html
-//! [`Vec<T>`]: vec/struct.Vec.html
-//! [array]: primitive.array.html
-//! [slice]: primitive.slice.html
-//! [`atomic`]: sync/atomic/index.html
-//! [`collections`]: collections/index.html
+//! [I/O]: io
+//! [`MIN`]: i32::MIN
+//! [`MAX`]: i32::MAX
+//! [page for the module `std::i32`]: crate::i32
+//! [TCP]: net::TcpStream
+//! [The Rust Prelude]: prelude
+//! [UDP]: net::UdpSocket
+//! [`Arc`]: sync::Arc
+//! [owned slice]: boxed
+//! [`Cell`]: cell::Cell
+//! [`FromStr`]: str::FromStr
+//! [`HashMap<K, V>`]: collections::HashMap
+//! [`Mutex`]: sync::Mutex
+//! [`Option<T>`]: option::Option
+//! [`Rc`]: rc::Rc
+//! [`RefCell`]: cell::RefCell
+//! [`Result<T, E>`]: result::Result
+//! [`Vec<T>`]: vec::Vec
+//! [`atomic`]: sync::atomic
 //! [`for`]: ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
-//! [`format!`]: macro.format.html
-//! [`fs`]: fs/index.html
-//! [`io`]: io/index.html
-//! [`iter`]: iter/index.html
-//! [`mpsc`]: sync/mpsc/index.html
-//! [`net`]: net/index.html
-//! [`option`]: option/index.html
-//! [`result`]: result/index.html
-//! [`std::cmp`]: cmp/index.html
-//! [`std::slice`]: slice/index.html
-//! [`str`]: primitive.str.html
-//! [`sync`]: sync/index.html
-//! [`thread`]: thread/index.html
+//! [`str`]: prim@str
+//! [`mpsc`]: sync::mpsc
+//! [`std::cmp`]: cmp
+//! [`std::slice`]: slice
 //! [`use std::env`]: env/index.html
 //! [`use`]: ../book/ch07-02-defining-modules-to-control-scope-and-privacy.html
 //! [crates.io]: https://crates.io
 //! [deref-coercions]: ../book/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
-//! [files]: fs/struct.File.html
-//! [multithreading]: thread/index.html
+//! [files]: fs::File
+//! [multithreading]: thread
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/ch03-02-data-types.html
 //! [rust-discord]: https://discord.gg/rust-lang
@@ -212,7 +200,6 @@
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
-#![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
 // Tell the compiler to link to either panic_abort or panic_unwind
@@ -222,7 +209,7 @@
 #![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
-    feature(slice_index_methods, coerce_unsized, sgx_platform, ptr_wrapping_offset_from)
+    feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
 #![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"), feature(fixed_size_array))]
 // std is implemented with unstable features, many of which are internal
@@ -250,6 +237,7 @@
 #![feature(clamp)]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
+#![feature(const_fn_transmute)]
 #![feature(const_raw_ptr_deref)]
 #![feature(container_error_extra)]
 #![feature(core_intrinsics)]
@@ -259,7 +247,7 @@
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
 #![feature(doc_masked)]
-#![cfg_attr(not(bootstrap), feature(doc_spotlight))]
+#![feature(doc_spotlight)]
 #![feature(dropck_eyepatch)]
 #![feature(duration_constants)]
 #![feature(exact_size_is_empty)]
@@ -292,6 +280,7 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(nll)]
+#![feature(nonnull_slice_from_raw_parts)]
 #![feature(once_cell)]
 #![feature(optin_builtin_traits)]
 #![feature(or_patterns)]
@@ -309,6 +298,8 @@
 #![feature(shrink_to)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
+#![feature(slice_ptr_get)]
+#![feature(slice_ptr_len)]
 #![feature(slice_strip)]
 #![feature(staged_api)]
 #![feature(std_internals)]
@@ -510,6 +501,10 @@ mod panicking;
 // The runtime entry point and a few unstable public functions used by the
 // compiler
 pub mod rt;
+
+#[path = "../../backtrace/src/lib.rs"]
+#[allow(dead_code, unused_attributes)]
+mod backtrace_rs;
 
 // Pull in the `std_detect` crate directly into libstd. The contents of
 // `std_detect` are in a different repository: rust-lang/stdarch.

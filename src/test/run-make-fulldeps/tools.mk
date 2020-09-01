@@ -51,6 +51,7 @@ ifdef IS_MSVC
 STATICLIB = $(TMPDIR)/$(1).lib
 STATICLIB_GLOB = $(1)*.lib
 else
+IMPLIB = $(TMPDIR)/lib$(1).dll.a
 STATICLIB = $(TMPDIR)/lib$(1).a
 STATICLIB_GLOB = lib$(1)*.a
 endif

@@ -1,4 +1,4 @@
-const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ is unsafe
+const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } }
 //~^ dereferencing raw pointers in constant functions
 
 const unsafe fn bad_const_unsafe_deref_raw(x: *mut usize) -> usize { *x }

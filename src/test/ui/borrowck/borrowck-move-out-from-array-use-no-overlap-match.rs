@@ -15,7 +15,7 @@ fn move_out_from_begin_and_one_from_end() {
         [_, _, _x] => {}
     }
     match a {
-        //~^ ERROR use of moved value
+        //~^ ERROR use of partially moved value
         [.., ref _y, _] => {}
     }
 }
@@ -26,7 +26,7 @@ fn move_out_from_begin_field_and_end_field() {
         [_, _, (_x, _)] => {}
     }
     match a {
-        //~^ ERROR use of moved value
+        //~^ ERROR use of partially moved value
         [.., (_, ref _y)] => {}
     }
 }
@@ -39,7 +39,7 @@ fn move_out_by_const_index_and_subslice() {
         [_x, _, _] => {}
     }
     match a {
-        //~^ ERROR use of moved value
+        //~^ ERROR use of partially moved value
         [_, ref _y @ ..] => {}
     }
 }
@@ -50,7 +50,7 @@ fn move_out_by_const_index_end_and_subslice() {
         [.., _x] => {}
     }
     match a {
-        //~^ ERROR use of moved value
+        //~^ ERROR use of partially moved value
         [ref _y @ .., _] => {}
     }
 }
@@ -61,7 +61,7 @@ fn move_out_by_const_index_field_and_subslice() {
         [(_x, _), _, _] => {}
     }
     match a {
-        //~^ ERROR use of moved value
+        //~^ ERROR use of partially moved value
         [_, ref _y @ ..] => {}
     }
 }
@@ -72,7 +72,7 @@ fn move_out_by_const_index_end_field_and_subslice() {
         [.., (_x, _)] => {}
     }
     match a {
-        //~^ ERROR use of moved value
+        //~^ ERROR use of partially moved value
         [ref _y @ .., _] => {}
     }
 }
@@ -83,7 +83,7 @@ fn move_out_by_const_subslice_and_index_field() {
         [_, _y @ ..] => {}
     }
     match a {
-        //~^ ERROR use of moved value
+        //~^ ERROR use of partially moved value
         [(ref _x, _), _, _] => {}
     }
 }
@@ -94,7 +94,7 @@ fn move_out_by_const_subslice_and_end_index_field() {
         [_y @ .., _] => {}
     }
     match a {
-        //~^ ERROR use of moved value
+        //~^ ERROR use of partially moved value
         [.., (ref _x, _)] => {}
     }
 }
@@ -107,7 +107,7 @@ fn move_out_by_subslice_and_subslice() {
         [x @ .., _, _] => {}
     }
     match a {
-        //~^ ERROR use of moved value
+        //~^ ERROR use of partially moved value
         [_, ref _y @ ..] => {}
     }
 }

@@ -24,7 +24,6 @@ use crate::intrinsics;
 /// Otherwise, consider using the [`unreachable!`] macro, which does not allow
 /// optimizations but will panic when executed.
 ///
-/// [`unreachable!`]: ../macro.unreachable.html
 ///
 /// # Example
 ///
@@ -61,7 +60,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// **Note**: On platforms that do not support receiving spin-loop hints this function does not
 /// do anything at all.
 ///
-/// [`core::sync::atomic::spin_loop_hint`]: ../sync/atomic/fn.spin_loop_hint.html
+/// [`core::sync::atomic::spin_loop_hint`]: crate::sync::atomic::spin_loop_hint
 #[inline]
 #[unstable(feature = "renamed_spin_loop", issue = "55002")]
 pub fn spin_loop() {
@@ -102,7 +101,7 @@ pub fn spin_loop() {
 /// [`std::convert::identity`]: https://doc.rust-lang.org/core/convert/fn.identity.html
 ///
 /// Unlike [`std::convert::identity`], a Rust compiler is encouraged to assume that `black_box` can
-/// use `x` in any possible valid way that Rust code is allowed to without introducing undefined
+/// use `dummy` in any possible valid way that Rust code is allowed to without introducing undefined
 /// behavior in the calling code. This property makes `black_box` useful for writing code in which
 /// certain optimizations are not desired, such as benchmarks.
 ///
@@ -119,9 +118,11 @@ pub fn black_box<T>(dummy: T) -> T {
     // box. This isn't the greatest implementation since it probably deoptimizes
     // more than we want, but it's so far good enough.
 
+    #[cfg(not(miri))] // This is just a hint, so it is fine to skip in Miri.
     // SAFETY: the inline assembly is a no-op.
     unsafe {
         llvm_asm!("" : : "r"(&dummy));
-        dummy
     }
+
+    dummy
 }

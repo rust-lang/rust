@@ -6,6 +6,7 @@ use crate::cmp::{self, Ordering};
 use crate::ops::{Add, Try};
 
 use super::super::LoopState;
+use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Product, Sum, Zip};
@@ -129,6 +130,7 @@ pub trait Iterator {
     /// assert_eq!(None, iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
+    #[lang = "next"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next(&mut self) -> Option<Self::Item>;
 
@@ -1543,11 +1545,10 @@ pub trait Iterator {
     /// collection into another. You take a collection, call [`iter`] on it,
     /// do a bunch of transformations, and then `collect()` at the end.
     ///
-    /// One of the keys to `collect()`'s power is that many things you might
-    /// not think of as 'collections' actually are. For example, a [`String`]
-    /// is a collection of [`char`]s. And a collection of
-    /// [`Result<T, E>`][`Result`] can be thought of as single
-    /// [`Result`]`<Collection<T>, E>`. See the examples below for more.
+    /// `collect()` can also create instances of types that are not typical
+    /// collections. For example, a [`String`] can be built from [`char`]s,
+    /// and an iterator of [`Result<T, E>`][`Result`] items can be collected
+    /// into `Result<Collection<T>, E>`. See the examples below for more.
     ///
     /// Because `collect()` is so general, it can cause problems with type
     /// inference. As such, `collect()` is one of the few times you'll see
@@ -3244,6 +3245,17 @@ pub trait Iterator {
         K: PartialOrd,
     {
         self.map(f).is_sorted()
+    }
+
+    /// See [TrustedRandomAccess]
+    #[inline]
+    #[doc(hidden)]
+    #[unstable(feature = "trusted_random_access", issue = "none")]
+    unsafe fn get_unchecked(&mut self, _idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        unreachable!("Always specialized");
     }
 }
 

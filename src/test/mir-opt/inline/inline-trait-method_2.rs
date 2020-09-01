@@ -1,6 +1,6 @@
 // compile-flags: -Z span_free_formats -Z mir-opt-level=3
 
-// EMIT_MIR rustc.test2.Inline.after.mir
+// EMIT_MIR inline_trait_method_2.test2.Inline.after.mir
 fn test2(x: &dyn X) -> bool {
     test(x)
 }

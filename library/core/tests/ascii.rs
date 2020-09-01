@@ -361,10 +361,8 @@ fn test_is_ascii_align_size_thoroughly() {
         repeat(b0).take(l).chain(repeat(b1).take(l)).collect()
     }
 
-    // Miri is too slow for much of this, and in miri `align_offset` always
-    // returns `usize::max_value()` anyway (at the moment), so we just test
-    // lightly.
-    let iter = if cfg!(miri) { 0..5 } else { 0..100 };
+    // Miri is too slow
+    let iter = if cfg!(miri) { 0..20 } else { 0..100 };
 
     for i in iter {
         #[cfg(not(miri))]
@@ -379,7 +377,7 @@ fn test_is_ascii_align_size_thoroughly() {
         ];
 
         #[cfg(miri)]
-        let cases = &[repeat_concat(b'a', 0x80u8, i)];
+        let cases = &[b"a".repeat(i), b"\x80".repeat(i), repeat_concat(b'a', 0x80u8, i)];
 
         for case in cases {
             for pos in 0..=case.len() {

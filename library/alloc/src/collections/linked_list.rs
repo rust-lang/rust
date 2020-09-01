@@ -7,8 +7,8 @@
 //! array-based containers are generally faster,
 //! more memory efficient, and make better use of CPU cache.
 //!
-//! [`Vec`]: ../../vec/struct.Vec.html
-//! [`VecDeque`]: ../vec_deque/struct.VecDeque.html
+//! [`Vec`]: crate::vec::Vec
+//! [`VecDeque`]: super::vec_deque::VecDeque
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -50,11 +50,8 @@ struct Node<T> {
 
 /// An iterator over the elements of a `LinkedList`.
 ///
-/// This `struct` is created by the [`iter`] method on [`LinkedList`]. See its
+/// This `struct` is created by [`LinkedList::iter()`]. See its
 /// documentation for more.
-///
-/// [`iter`]: struct.LinkedList.html#method.iter
-/// [`LinkedList`]: struct.LinkedList.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     head: Option<NonNull<Node<T>>>,
@@ -80,11 +77,8 @@ impl<T> Clone for Iter<'_, T> {
 
 /// A mutable iterator over the elements of a `LinkedList`.
 ///
-/// This `struct` is created by the [`iter_mut`] method on [`LinkedList`]. See its
+/// This `struct` is created by [`LinkedList::iter_mut()`]. See its
 /// documentation for more.
-///
-/// [`iter_mut`]: struct.LinkedList.html#method.iter_mut
-/// [`LinkedList`]: struct.LinkedList.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     // We do *not* exclusively own the entire list here, references to node's `element`
@@ -109,7 +103,6 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: struct.LinkedList.html#method.into_iter
-/// [`LinkedList`]: struct.LinkedList.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
@@ -1110,31 +1103,16 @@ impl<T> IterMut<'_, T> {
     /// Inserts the given element just after the element most recently returned by `.next()`.
     /// The inserted element does not appear in the iteration.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(linked_list_extras)]
-    ///
-    /// use std::collections::LinkedList;
-    ///
-    /// let mut list: LinkedList<_> = vec![1, 3, 4].into_iter().collect();
-    ///
-    /// {
-    ///     let mut it = list.iter_mut();
-    ///     assert_eq!(it.next().unwrap(), &1);
-    ///     // insert `2` after `1`
-    ///     it.insert_next(2);
-    /// }
-    /// {
-    ///     let vec: Vec<_> = list.into_iter().collect();
-    ///     assert_eq!(vec, [1, 2, 3, 4]);
-    /// }
-    /// ```
+    /// This method will be removed soon.
     #[inline]
     #[unstable(
         feature = "linked_list_extras",
         reason = "this is probably better handled by a cursor type -- we'll see",
         issue = "27794"
+    )]
+    #[rustc_deprecated(
+        reason = "Deprecated in favor of CursorMut methods. This method will be removed soon.",
+        since = "1.47.0"
     )]
     pub fn insert_next(&mut self, element: T) {
         match self.head {
@@ -1163,26 +1141,16 @@ impl<T> IterMut<'_, T> {
 
     /// Provides a reference to the next element, without changing the iterator.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(linked_list_extras)]
-    ///
-    /// use std::collections::LinkedList;
-    ///
-    /// let mut list: LinkedList<_> = vec![1, 2, 3].into_iter().collect();
-    ///
-    /// let mut it = list.iter_mut();
-    /// assert_eq!(it.next().unwrap(), &1);
-    /// assert_eq!(it.peek_next().unwrap(), &2);
-    /// // We just peeked at 2, so it was not consumed from the iterator.
-    /// assert_eq!(it.next().unwrap(), &2);
-    /// ```
+    /// This method will be removed soon.
     #[inline]
     #[unstable(
         feature = "linked_list_extras",
         reason = "this is probably better handled by a cursor type -- we'll see",
         issue = "27794"
+    )]
+    #[rustc_deprecated(
+        reason = "Deprecated in favor of CursorMut methods. This method will be removed soon.",
+        since = "1.47.0"
     )]
     pub fn peek_next(&mut self) -> Option<&mut T> {
         if self.len == 0 {

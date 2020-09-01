@@ -89,7 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Index(ref array, ref index) = &expr.kind {
             let ty = cx.typeck_results().expr_ty(array);
-            if let Some(range) = higher::range(cx, index) {
+            if let Some(range) = higher::range(index) {
                 // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.kind {
                     let size: u128 = if let Some(size) = s.try_eval_usize(cx.tcx, cx.param_env) {

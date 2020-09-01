@@ -30,12 +30,10 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 /// nanosecond-level precision, APIs binding a system timeout will typically round up
 /// the number of nanoseconds.
 ///
-/// `Duration`s implement many common traits, including [`Add`], [`Sub`], and other
-/// [`ops`] traits. It implements `Default` by returning a zero-length `Duration`.
+/// [`Duration`]s implement many common traits, including [`Add`], [`Sub`], and other
+/// [`ops`] traits. It implements [`Default`] by returning a zero-length `Duration`.
 ///
-/// [`Add`]: ../../std/ops/trait.Add.html
-/// [`Sub`]: ../../std/ops/trait.Sub.html
-/// [`ops`]: ../../std/ops/index.html
+/// [`ops`]: crate::ops
 ///
 /// # Examples
 ///
@@ -293,7 +291,7 @@ impl Duration {
     ///            + duration.subsec_nanos() as f64 * 1e-9);
     /// ```
     ///
-    /// [`subsec_nanos`]: #method.subsec_nanos
+    /// [`subsec_nanos`]: Duration::subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
     #[rustc_const_stable(feature = "duration", since = "1.32.0")]
     #[inline]
@@ -421,8 +419,6 @@ impl Duration {
     /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
     /// if overflow occurred.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -456,8 +452,6 @@ impl Duration {
 
     /// Checked `Duration` subtraction. Computes `self - other`, returning [`None`]
     /// if the result would be negative or if overflow occurred.
-    ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -494,8 +488,6 @@ impl Duration {
     /// Checked `Duration` multiplication. Computes `self * other`, returning
     /// [`None`] if overflow occurred.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -525,8 +517,6 @@ impl Duration {
 
     /// Checked `Duration` division. Computes `self / other`, returning [`None`]
     /// if `other == 0`.
-    ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///

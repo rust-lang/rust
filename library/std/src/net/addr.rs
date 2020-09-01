@@ -1,3 +1,6 @@
+#[cfg(all(test, not(target_os = "emscripten")))]
+mod tests;
+
 use crate::cmp::Ordering;
 use crate::convert::TryInto;
 use crate::fmt;
@@ -22,9 +25,7 @@ use crate::vec;
 /// The size of a `SocketAddr` instance may vary depending on the target operating
 /// system.
 ///
-/// [IP address]: ../../std/net/enum.IpAddr.html
-/// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
-/// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
+/// [IP address]: IpAddr
 ///
 /// # Examples
 ///
@@ -37,7 +38,7 @@ use crate::vec;
 /// assert_eq!(socket.port(), 8080);
 /// assert_eq!(socket.is_ipv4(), true);
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SocketAddr {
     /// An IPv4 socket address.
@@ -50,7 +51,7 @@ pub enum SocketAddr {
 
 /// An IPv4 socket address.
 ///
-/// IPv4 socket addresses consist of an [IPv4 address] and a 16-bit port number, as
+/// IPv4 socket addresses consist of an [`IPv4` address] and a 16-bit port number, as
 /// stated in [IETF RFC 793].
 ///
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
@@ -59,8 +60,7 @@ pub enum SocketAddr {
 /// system.
 ///
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
-/// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
-/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+/// [`IPv4` address]: Ipv4Addr
 ///
 /// # Examples
 ///
@@ -81,7 +81,7 @@ pub struct SocketAddrV4 {
 
 /// An IPv6 socket address.
 ///
-/// IPv6 socket addresses consist of an [Ipv6 address], a 16-bit port number, as well
+/// IPv6 socket addresses consist of an [`IPv6` address], a 16-bit port number, as well
 /// as fields containing the traffic class, the flow label, and a scope identifier
 /// (see [IETF RFC 2553, Section 3.3] for more details).
 ///
@@ -91,8 +91,7 @@ pub struct SocketAddrV4 {
 /// system.
 ///
 /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
-/// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
-/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+/// [`IPv6` address]: Ipv6Addr
 ///
 /// # Examples
 ///
@@ -114,7 +113,7 @@ pub struct SocketAddrV6 {
 impl SocketAddr {
     /// Creates a new socket address from an [IP address] and a port number.
     ///
-    /// [IP address]: ../../std/net/enum.IpAddr.html
+    /// [IP address]: IpAddr
     ///
     /// # Examples
     ///
@@ -210,12 +209,12 @@ impl SocketAddr {
     }
 
     /// Returns [`true`] if the [IP address] in this `SocketAddr` is an
-    /// [IPv4 address], and [`false`] otherwise.
+    /// [`IPv4` address], and [`false`] otherwise.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
+    /// [IP address]: IpAddr
+    /// [`IPv4` address]: IpAddr::V4
     /// [`false`]: ../../std/primitive.bool.html
-    /// [IP address]: ../../std/net/enum.IpAddr.html
-    /// [IPv4 address]: ../../std/net/enum.IpAddr.html#variant.V4
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -232,12 +231,12 @@ impl SocketAddr {
     }
 
     /// Returns [`true`] if the [IP address] in this `SocketAddr` is an
-    /// [IPv6 address], and [`false`] otherwise.
+    /// [`IPv6` address], and [`false`] otherwise.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
+    /// [IP address]: IpAddr
+    /// [`IPv6` address]: IpAddr::V6
     /// [`false`]: ../../std/primitive.bool.html
-    /// [IP address]: ../../std/net/enum.IpAddr.html
-    /// [IPv6 address]: ../../std/net/enum.IpAddr.html#variant.V6
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -255,9 +254,9 @@ impl SocketAddr {
 }
 
 impl SocketAddrV4 {
-    /// Creates a new socket address from an [IPv4 address] and a port number.
+    /// Creates a new socket address from an [`IPv4` address] and a port number.
     ///
-    /// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
+    /// [`IPv4` address]: Ipv4Addr
     ///
     /// # Examples
     ///
@@ -272,7 +271,7 @@ impl SocketAddrV4 {
             inner: c::sockaddr_in {
                 sin_family: c::AF_INET as c::sa_family_t,
                 sin_port: htons(port),
-                sin_addr: *ip.as_inner(),
+                sin_addr: ip.into_inner(),
                 ..unsafe { mem::zeroed() }
             },
         }
@@ -290,6 +289,8 @@ impl SocketAddrV4 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ip(&self) -> &Ipv4Addr {
+        // SAFETY: `Ipv4Addr` is `#[repr(C)] struct { _: in_addr; }`.
+        // It is safe to cast from `&in_addr` to `&Ipv4Addr`.
         unsafe { &*(&self.inner.sin_addr as *const c::in_addr as *const Ipv4Addr) }
     }
 
@@ -306,7 +307,7 @@ impl SocketAddrV4 {
     /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_ip(&mut self, new_ip: Ipv4Addr) {
-        self.inner.sin_addr = *new_ip.as_inner()
+        self.inner.sin_addr = new_ip.into_inner()
     }
 
     /// Returns the port number associated with this socket address.
@@ -342,14 +343,14 @@ impl SocketAddrV4 {
 }
 
 impl SocketAddrV6 {
-    /// Creates a new socket address from an [IPv6 address], a 16-bit port number,
+    /// Creates a new socket address from an [`IPv6` address], a 16-bit port number,
     /// and the `flowinfo` and `scope_id` fields.
     ///
     /// For more information on the meaning and layout of the `flowinfo` and `scope_id`
     /// parameters, see [IETF RFC 2553, Section 3.3].
     ///
     /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
-    /// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
+    /// [`IPv6` address]: Ipv6Addr
     ///
     /// # Examples
     ///
@@ -461,9 +462,7 @@ impl SocketAddrV6 {
 
     /// Changes the flow information associated with this socket address.
     ///
-    /// See the [`flowinfo`] method's documentation for more details.
-    ///
-    /// [`flowinfo`]: #method.flowinfo
+    /// See [`SocketAddrV6::flowinfo`]'s documentation for more details.
     ///
     /// # Examples
     ///
@@ -501,9 +500,7 @@ impl SocketAddrV6 {
 
     /// Changes the scope ID associated with this socket address.
     ///
-    /// See the [`scope_id`] method's documentation for more details.
-    ///
-    /// [`scope_id`]: #method.scope_id
+    /// See [`SocketAddrV6::scope_id`]'s documentation for more details.
     ///
     /// # Examples
     ///
@@ -535,9 +532,6 @@ impl FromInner<c::sockaddr_in6> for SocketAddrV6 {
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<SocketAddrV4> for SocketAddr {
     /// Converts a [`SocketAddrV4`] into a [`SocketAddr::V4`].
-    ///
-    /// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
-    /// [`SocketAddr::V4`]: ../../std/net/enum.SocketAddr.html#variant.V4
     fn from(sock4: SocketAddrV4) -> SocketAddr {
         SocketAddr::V4(sock4)
     }
@@ -546,9 +540,6 @@ impl From<SocketAddrV4> for SocketAddr {
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<SocketAddrV6> for SocketAddr {
     /// Converts a [`SocketAddrV6`] into a [`SocketAddr::V6`].
-    ///
-    /// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
-    /// [`SocketAddr::V6`]: ../../std/net/enum.SocketAddr.html#variant.V6
     fn from(sock6: SocketAddrV6) -> SocketAddr {
         SocketAddr::V6(sock6)
     }
@@ -562,13 +553,6 @@ impl<I: Into<IpAddr>> From<(I, u16)> for SocketAddr {
     /// and creates a [`SocketAddr::V6`] for a [`IpAddr::V6`].
     ///
     /// `u16` is treated as port of the newly created [`SocketAddr`].
-    ///
-    /// [`IpAddr`]: ../../std/net/enum.IpAddr.html
-    /// [`IpAddr::V4`]: ../../std/net/enum.IpAddr.html#variant.V4
-    /// [`IpAddr::V6`]: ../../std/net/enum.IpAddr.html#variant.V6
-    /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
-    /// [`SocketAddr::V4`]: ../../std/net/enum.SocketAddr.html#variant.V4
-    /// [`SocketAddr::V6`]: ../../std/net/enum.SocketAddr.html#variant.V6
     fn from(pieces: (I, u16)) -> SocketAddr {
         SocketAddr::new(pieces.0.into(), pieces.1)
     }
@@ -594,6 +578,13 @@ impl fmt::Display for SocketAddr {
             SocketAddr::V4(ref a) => a.fmt(f),
             SocketAddr::V6(ref a) => a.fmt(f),
         }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for SocketAddr {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, fmt)
     }
 }
 
@@ -778,18 +769,11 @@ impl hash::Hash for SocketAddrV6 {
 /// Addresses returned by the operating system that are not IP addresses are
 /// silently ignored.
 ///
-/// [`FromStr`]: ../../std/str/trait.FromStr.html
-/// [`IpAddr`]: ../../std/net/enum.IpAddr.html
-/// [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
-/// [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
-/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
-/// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
-/// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
-/// [`&str`]: ../../std/primitive.str.html
-/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
-/// [`to_socket_addrs`]: #tymethod.to_socket_addrs
-/// [`UdpSocket`]: ../../std/net/struct.UdpSocket.html
-/// [`u16`]: ../../std/primitive.u16.html
+/// [`FromStr`]: crate::str::FromStr
+/// [`&str`]: str
+/// [`TcpStream`]: crate::net::TcpStream
+/// [`to_socket_addrs`]: ToSocketAddrs::to_socket_addrs
+/// [`UdpSocket`]: crate::net::UdpSocket
 ///
 /// # Examples
 ///
@@ -860,7 +844,7 @@ impl hash::Hash for SocketAddrV6 {
 /// let stream = TcpStream::connect((Ipv4Addr::new(127, 0, 0, 1), 443));
 /// ```
 ///
-/// [`TcpStream::connect`]: ../../std/net/struct.TcpStream.html#method.connect
+/// [`TcpStream::connect`]: crate::net::TcpStream::connect
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToSocketAddrs {
     /// Returned iterator over socket addresses which this type may correspond
@@ -1008,238 +992,5 @@ impl ToSocketAddrs for String {
     type Iter = vec::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
         (&**self).to_socket_addrs()
-    }
-}
-
-#[cfg(all(test, not(target_os = "emscripten")))]
-mod tests {
-    use crate::net::test::{sa4, sa6, tsa};
-    use crate::net::*;
-
-    #[test]
-    fn to_socket_addr_ipaddr_u16() {
-        let a = Ipv4Addr::new(77, 88, 21, 11);
-        let p = 12345;
-        let e = SocketAddr::V4(SocketAddrV4::new(a, p));
-        assert_eq!(Ok(vec![e]), tsa((a, p)));
-    }
-
-    #[test]
-    fn to_socket_addr_str_u16() {
-        let a = sa4(Ipv4Addr::new(77, 88, 21, 11), 24352);
-        assert_eq!(Ok(vec![a]), tsa(("77.88.21.11", 24352)));
-
-        let a = sa6(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 53);
-        assert_eq!(Ok(vec![a]), tsa(("2a02:6b8:0:1::1", 53)));
-
-        let a = sa4(Ipv4Addr::new(127, 0, 0, 1), 23924);
-        #[cfg(not(target_env = "sgx"))]
-        assert!(tsa(("localhost", 23924)).unwrap().contains(&a));
-        #[cfg(target_env = "sgx")]
-        let _ = a;
-    }
-
-    #[test]
-    fn to_socket_addr_str() {
-        let a = sa4(Ipv4Addr::new(77, 88, 21, 11), 24352);
-        assert_eq!(Ok(vec![a]), tsa("77.88.21.11:24352"));
-
-        let a = sa6(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 53);
-        assert_eq!(Ok(vec![a]), tsa("[2a02:6b8:0:1::1]:53"));
-
-        let a = sa4(Ipv4Addr::new(127, 0, 0, 1), 23924);
-        #[cfg(not(target_env = "sgx"))]
-        assert!(tsa("localhost:23924").unwrap().contains(&a));
-        #[cfg(target_env = "sgx")]
-        let _ = a;
-    }
-
-    #[test]
-    fn to_socket_addr_string() {
-        let a = sa4(Ipv4Addr::new(77, 88, 21, 11), 24352);
-        assert_eq!(Ok(vec![a]), tsa(&*format!("{}:{}", "77.88.21.11", "24352")));
-        assert_eq!(Ok(vec![a]), tsa(&format!("{}:{}", "77.88.21.11", "24352")));
-        assert_eq!(Ok(vec![a]), tsa(format!("{}:{}", "77.88.21.11", "24352")));
-
-        let s = format!("{}:{}", "77.88.21.11", "24352");
-        assert_eq!(Ok(vec![a]), tsa(s));
-        // s has been moved into the tsa call
-    }
-
-    #[test]
-    fn bind_udp_socket_bad() {
-        // rust-lang/rust#53957: This is a regression test for a parsing problem
-        // discovered as part of issue rust-lang/rust#23076, where we were
-        // incorrectly parsing invalid input and then that would result in a
-        // successful `UdpSocket` binding when we would expect failure.
-        //
-        // At one time, this test was written as a call to `tsa` with
-        // INPUT_23076. However, that structure yields an unreliable test,
-        // because it ends up passing junk input to the DNS server, and some DNS
-        // servers will respond with `Ok` to such input, with the ip address of
-        // the DNS server itself.
-        //
-        // This form of the test is more robust: even when the DNS server
-        // returns its own address, it is still an error to bind a UDP socket to
-        // a non-local address, and so we still get an error here in that case.
-
-        const INPUT_23076: &'static str = "1200::AB00:1234::2552:7777:1313:34300";
-
-        assert!(crate::net::UdpSocket::bind(INPUT_23076).is_err())
-    }
-
-    #[test]
-    fn set_ip() {
-        fn ip4(low: u8) -> Ipv4Addr {
-            Ipv4Addr::new(77, 88, 21, low)
-        }
-        fn ip6(low: u16) -> Ipv6Addr {
-            Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, low)
-        }
-
-        let mut v4 = SocketAddrV4::new(ip4(11), 80);
-        assert_eq!(v4.ip(), &ip4(11));
-        v4.set_ip(ip4(12));
-        assert_eq!(v4.ip(), &ip4(12));
-
-        let mut addr = SocketAddr::V4(v4);
-        assert_eq!(addr.ip(), IpAddr::V4(ip4(12)));
-        addr.set_ip(IpAddr::V4(ip4(13)));
-        assert_eq!(addr.ip(), IpAddr::V4(ip4(13)));
-        addr.set_ip(IpAddr::V6(ip6(14)));
-        assert_eq!(addr.ip(), IpAddr::V6(ip6(14)));
-
-        let mut v6 = SocketAddrV6::new(ip6(1), 80, 0, 0);
-        assert_eq!(v6.ip(), &ip6(1));
-        v6.set_ip(ip6(2));
-        assert_eq!(v6.ip(), &ip6(2));
-
-        let mut addr = SocketAddr::V6(v6);
-        assert_eq!(addr.ip(), IpAddr::V6(ip6(2)));
-        addr.set_ip(IpAddr::V6(ip6(3)));
-        assert_eq!(addr.ip(), IpAddr::V6(ip6(3)));
-        addr.set_ip(IpAddr::V4(ip4(4)));
-        assert_eq!(addr.ip(), IpAddr::V4(ip4(4)));
-    }
-
-    #[test]
-    fn set_port() {
-        let mut v4 = SocketAddrV4::new(Ipv4Addr::new(77, 88, 21, 11), 80);
-        assert_eq!(v4.port(), 80);
-        v4.set_port(443);
-        assert_eq!(v4.port(), 443);
-
-        let mut addr = SocketAddr::V4(v4);
-        assert_eq!(addr.port(), 443);
-        addr.set_port(8080);
-        assert_eq!(addr.port(), 8080);
-
-        let mut v6 = SocketAddrV6::new(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 80, 0, 0);
-        assert_eq!(v6.port(), 80);
-        v6.set_port(443);
-        assert_eq!(v6.port(), 443);
-
-        let mut addr = SocketAddr::V6(v6);
-        assert_eq!(addr.port(), 443);
-        addr.set_port(8080);
-        assert_eq!(addr.port(), 8080);
-    }
-
-    #[test]
-    fn set_flowinfo() {
-        let mut v6 = SocketAddrV6::new(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 80, 10, 0);
-        assert_eq!(v6.flowinfo(), 10);
-        v6.set_flowinfo(20);
-        assert_eq!(v6.flowinfo(), 20);
-    }
-
-    #[test]
-    fn set_scope_id() {
-        let mut v6 = SocketAddrV6::new(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 80, 0, 10);
-        assert_eq!(v6.scope_id(), 10);
-        v6.set_scope_id(20);
-        assert_eq!(v6.scope_id(), 20);
-    }
-
-    #[test]
-    fn is_v4() {
-        let v4 = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(77, 88, 21, 11), 80));
-        assert!(v4.is_ipv4());
-        assert!(!v4.is_ipv6());
-    }
-
-    #[test]
-    fn is_v6() {
-        let v6 = SocketAddr::V6(SocketAddrV6::new(
-            Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1),
-            80,
-            10,
-            0,
-        ));
-        assert!(!v6.is_ipv4());
-        assert!(v6.is_ipv6());
-    }
-
-    #[test]
-    fn socket_v4_to_str() {
-        let socket = SocketAddrV4::new(Ipv4Addr::new(192, 168, 0, 1), 8080);
-
-        assert_eq!(format!("{}", socket), "192.168.0.1:8080");
-        assert_eq!(format!("{:<20}", socket), "192.168.0.1:8080    ");
-        assert_eq!(format!("{:>20}", socket), "    192.168.0.1:8080");
-        assert_eq!(format!("{:^20}", socket), "  192.168.0.1:8080  ");
-        assert_eq!(format!("{:.10}", socket), "192.168.0.");
-    }
-
-    #[test]
-    fn socket_v6_to_str() {
-        let socket: SocketAddrV6 = "[2a02:6b8:0:1::1]:53".parse().unwrap();
-
-        assert_eq!(format!("{}", socket), "[2a02:6b8:0:1::1]:53");
-        assert_eq!(format!("{:<24}", socket), "[2a02:6b8:0:1::1]:53    ");
-        assert_eq!(format!("{:>24}", socket), "    [2a02:6b8:0:1::1]:53");
-        assert_eq!(format!("{:^24}", socket), "  [2a02:6b8:0:1::1]:53  ");
-        assert_eq!(format!("{:.15}", socket), "[2a02:6b8:0:1::");
-    }
-
-    #[test]
-    fn compare() {
-        let v4_1 = "224.120.45.1:23456".parse::<SocketAddrV4>().unwrap();
-        let v4_2 = "224.210.103.5:12345".parse::<SocketAddrV4>().unwrap();
-        let v4_3 = "224.210.103.5:23456".parse::<SocketAddrV4>().unwrap();
-        let v6_1 = "[2001:db8:f00::1002]:23456".parse::<SocketAddrV6>().unwrap();
-        let v6_2 = "[2001:db8:f00::2001]:12345".parse::<SocketAddrV6>().unwrap();
-        let v6_3 = "[2001:db8:f00::2001]:23456".parse::<SocketAddrV6>().unwrap();
-
-        // equality
-        assert_eq!(v4_1, v4_1);
-        assert_eq!(v6_1, v6_1);
-        assert_eq!(SocketAddr::V4(v4_1), SocketAddr::V4(v4_1));
-        assert_eq!(SocketAddr::V6(v6_1), SocketAddr::V6(v6_1));
-        assert!(v4_1 != v4_2);
-        assert!(v6_1 != v6_2);
-
-        // compare different addresses
-        assert!(v4_1 < v4_2);
-        assert!(v6_1 < v6_2);
-        assert!(v4_2 > v4_1);
-        assert!(v6_2 > v6_1);
-
-        // compare the same address with different ports
-        assert!(v4_2 < v4_3);
-        assert!(v6_2 < v6_3);
-        assert!(v4_3 > v4_2);
-        assert!(v6_3 > v6_2);
-
-        // compare different addresses with the same port
-        assert!(v4_1 < v4_3);
-        assert!(v6_1 < v6_3);
-        assert!(v4_3 > v4_1);
-        assert!(v6_3 > v6_1);
-
-        // compare with an inferred right-hand side
-        assert_eq!(v4_1, "224.120.45.1:23456".parse().unwrap());
-        assert_eq!(v6_1, "[2001:db8:f00::1002]:23456".parse().unwrap());
-        assert_eq!(SocketAddr::V4(v4_1), "224.120.45.1:23456".parse().unwrap());
     }
 }

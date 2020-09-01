@@ -1,0 +1,8 @@
+error: using raw pointers as const generic parameters is forbidden
+  --> $DIR/raw-ptr-const-param.rs:7:23
+   |
+LL | struct Const<const P: *const u32>;
+   |                       ^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -12,6 +12,9 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
+#[cfg(test)]
+mod tests;
+
 use crate::cmp;
 use crate::error::Error;
 use crate::fmt;
@@ -97,7 +100,6 @@ pub use core::time::Duration;
 /// [clock_time_get (Monotonic Clock)]: https://nuxi.nl/cloudabi/#clock_time_get
 ///
 /// **Disclaimer:** These system calls might change over time.
-///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct Instant(time::Instant);
@@ -124,11 +126,6 @@ pub struct Instant(time::Instant);
 ///
 /// The size of a `SystemTime` struct may vary depending on the target operating
 /// system.
-///
-/// [`Instant`]: ../../std/time/struct.Instant.html
-/// [`Result`]: ../../std/result/enum.Result.html
-/// [`Duration`]: ../../std/time/struct.Duration.html
-/// [`UNIX_EPOCH`]: ../../std/time/constant.UNIX_EPOCH.html
 ///
 /// Example:
 ///
@@ -165,7 +162,7 @@ pub struct Instant(time::Instant);
 /// | DARWIN    | [gettimeofday]                                                       |
 /// | VXWorks   | [clock_gettime (Realtime Clock)]                                     |
 /// | WASI      | [__wasi_clock_time_get (Realtime Clock)]                             |
-/// | Windows   | [GetSystemTimeAsFileTime]                                            |
+/// | Windows   | [GetSystemTimePreciseAsFileTime] / [GetSystemTimeAsFileTime]         |
 ///
 /// [clock_time_get (Realtime Clock)]: https://nuxi.nl/cloudabi/#clock_time_get
 /// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
@@ -173,10 +170,10 @@ pub struct Instant(time::Instant);
 /// [gettimeofday]: http://man7.org/linux/man-pages/man2/gettimeofday.2.html
 /// [clock_gettime (Realtime Clock)]: https://linux.die.net/man/3/clock_gettime
 /// [__wasi_clock_time_get (Realtime Clock)]: https://github.com/WebAssembly/WASI/blob/master/phases/snapshot/docs.md#clock_time_get
+/// [GetSystemTimePreciseAsFileTime]: https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
 /// [GetSystemTimeAsFileTime]: https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimeasfiletime
 ///
 /// **Disclaimer:** These system calls might change over time.
-///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct SystemTime(time::SystemTime);
@@ -366,9 +363,7 @@ impl Add<Duration> for Instant {
     /// # Panics
     ///
     /// This function may panic if the resulting point in time cannot be represented by the
-    /// underlying data structure. See [`checked_add`] for a version without panic.
-    ///
-    /// [`checked_add`]: ../../std/time/struct.Instant.html#method.checked_add
+    /// underlying data structure. See [`Instant::checked_add`] for a version without panic.
     fn add(self, other: Duration) -> Instant {
         self.checked_add(other).expect("overflow when adding duration to instant")
     }
@@ -463,11 +458,6 @@ impl SystemTime {
     /// Returns an [`Err`] if `earlier` is later than `self`, and the error
     /// contains how far from `self` the time is.
     ///
-    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`Duration`]: ../../std/time/struct.Duration.html
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`Instant`]: ../../std/time/struct.Instant.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -496,11 +486,6 @@ impl SystemTime {
     ///
     /// Returns an [`Err`] if `self` is later than the current system time, and
     /// the error contains how far from the current system time `self` is.
-    ///
-    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`Duration`]: ../../std/time/struct.Duration.html
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`Instant`]: ../../std/time/struct.Instant.html
     ///
     /// # Examples
     ///
@@ -542,9 +527,7 @@ impl Add<Duration> for SystemTime {
     /// # Panics
     ///
     /// This function may panic if the resulting point in time cannot be represented by the
-    /// underlying data structure. See [`checked_add`] for a version without panic.
-    ///
-    /// [`checked_add`]: ../../std/time/struct.SystemTime.html#method.checked_add
+    /// underlying data structure. See [`SystemTime::checked_add`] for a version without panic.
     fn add(self, dur: Duration) -> SystemTime {
         self.checked_add(dur).expect("overflow when adding duration to instant")
     }
@@ -589,8 +572,6 @@ impl fmt::Debug for SystemTime {
 /// measurement lies, and using `UNIX_EPOCH + duration` can be used to create a
 /// [`SystemTime`] instance to represent another fixed point in time.
 ///
-/// [`SystemTime`]: ../../std/time/struct.SystemTime.html
-///
 /// # Examples
 ///
 /// ```no_run
@@ -608,13 +589,9 @@ impl SystemTimeError {
     /// Returns the positive duration which represents how far forward the
     /// second system time was from the first.
     ///
-    /// A `SystemTimeError` is returned from the [`duration_since`] and [`elapsed`]
-    /// methods of [`SystemTime`] whenever the second system time represents a point later
-    /// in time than the `self` of the method call.
-    ///
-    /// [`duration_since`]: ../../std/time/struct.SystemTime.html#method.duration_since
-    /// [`elapsed`]: ../../std/time/struct.SystemTime.html#method.elapsed
-    /// [`SystemTime`]: ../../std/time/struct.SystemTime.html
+    /// A `SystemTimeError` is returned from the [`SystemTime::duration_since`]
+    /// and [`SystemTime::elapsed`] methods whenever the second system time
+    /// represents a point later in time than the `self` of the method call.
     ///
     /// # Examples
     ///
@@ -654,174 +631,5 @@ impl fmt::Display for SystemTimeError {
 impl FromInner<time::SystemTime> for SystemTime {
     fn from_inner(time: time::SystemTime) -> SystemTime {
         SystemTime(time)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{Duration, Instant, SystemTime, UNIX_EPOCH};
-
-    macro_rules! assert_almost_eq {
-        ($a:expr, $b:expr) => {{
-            let (a, b) = ($a, $b);
-            if a != b {
-                let (a, b) = if a > b { (a, b) } else { (b, a) };
-                assert!(a - Duration::new(0, 1000) <= b, "{:?} is not almost equal to {:?}", a, b);
-            }
-        }};
-    }
-
-    #[test]
-    fn instant_monotonic() {
-        let a = Instant::now();
-        let b = Instant::now();
-        assert!(b >= a);
-    }
-
-    #[test]
-    fn instant_elapsed() {
-        let a = Instant::now();
-        a.elapsed();
-    }
-
-    #[test]
-    fn instant_math() {
-        let a = Instant::now();
-        let b = Instant::now();
-        println!("a: {:?}", a);
-        println!("b: {:?}", b);
-        let dur = b.duration_since(a);
-        println!("dur: {:?}", dur);
-        assert_almost_eq!(b - dur, a);
-        assert_almost_eq!(a + dur, b);
-
-        let second = Duration::new(1, 0);
-        assert_almost_eq!(a - second + second, a);
-        assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
-
-        // checked_add_duration will not panic on overflow
-        let mut maybe_t = Some(Instant::now());
-        let max_duration = Duration::from_secs(u64::MAX);
-        // in case `Instant` can store `>= now + max_duration`.
-        for _ in 0..2 {
-            maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));
-        }
-        assert_eq!(maybe_t, None);
-
-        // checked_add_duration calculates the right time and will work for another year
-        let year = Duration::from_secs(60 * 60 * 24 * 365);
-        assert_eq!(a + year, a.checked_add(year).unwrap());
-    }
-
-    #[test]
-    fn instant_math_is_associative() {
-        let now = Instant::now();
-        let offset = Duration::from_millis(5);
-        // Changing the order of instant math shouldn't change the results,
-        // especially when the expression reduces to X + identity.
-        assert_eq!((now + offset) - now, (now - now) + offset);
-    }
-
-    #[test]
-    #[should_panic]
-    fn instant_duration_since_panic() {
-        let a = Instant::now();
-        (a - Duration::new(1, 0)).duration_since(a);
-    }
-
-    #[test]
-    fn instant_checked_duration_since_nopanic() {
-        let now = Instant::now();
-        let earlier = now - Duration::new(1, 0);
-        let later = now + Duration::new(1, 0);
-        assert_eq!(earlier.checked_duration_since(now), None);
-        assert_eq!(later.checked_duration_since(now), Some(Duration::new(1, 0)));
-        assert_eq!(now.checked_duration_since(now), Some(Duration::new(0, 0)));
-    }
-
-    #[test]
-    fn instant_saturating_duration_since_nopanic() {
-        let a = Instant::now();
-        let ret = (a - Duration::new(1, 0)).saturating_duration_since(a);
-        assert_eq!(ret, Duration::new(0, 0));
-    }
-
-    #[test]
-    fn system_time_math() {
-        let a = SystemTime::now();
-        let b = SystemTime::now();
-        match b.duration_since(a) {
-            Ok(dur) if dur == Duration::new(0, 0) => {
-                assert_almost_eq!(a, b);
-            }
-            Ok(dur) => {
-                assert!(b > a);
-                assert_almost_eq!(b - dur, a);
-                assert_almost_eq!(a + dur, b);
-            }
-            Err(dur) => {
-                let dur = dur.duration();
-                assert!(a > b);
-                assert_almost_eq!(b + dur, a);
-                assert_almost_eq!(a - dur, b);
-            }
-        }
-
-        let second = Duration::new(1, 0);
-        assert_almost_eq!(a.duration_since(a - second).unwrap(), second);
-        assert_almost_eq!(a.duration_since(a + second).unwrap_err().duration(), second);
-
-        assert_almost_eq!(a - second + second, a);
-        assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
-
-        let one_second_from_epoch = UNIX_EPOCH + Duration::new(1, 0);
-        let one_second_from_epoch2 =
-            UNIX_EPOCH + Duration::new(0, 500_000_000) + Duration::new(0, 500_000_000);
-        assert_eq!(one_second_from_epoch, one_second_from_epoch2);
-
-        // checked_add_duration will not panic on overflow
-        let mut maybe_t = Some(SystemTime::UNIX_EPOCH);
-        let max_duration = Duration::from_secs(u64::MAX);
-        // in case `SystemTime` can store `>= UNIX_EPOCH + max_duration`.
-        for _ in 0..2 {
-            maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));
-        }
-        assert_eq!(maybe_t, None);
-
-        // checked_add_duration calculates the right time and will work for another year
-        let year = Duration::from_secs(60 * 60 * 24 * 365);
-        assert_eq!(a + year, a.checked_add(year).unwrap());
-    }
-
-    #[test]
-    fn system_time_elapsed() {
-        let a = SystemTime::now();
-        drop(a.elapsed());
-    }
-
-    #[test]
-    fn since_epoch() {
-        let ts = SystemTime::now();
-        let a = ts.duration_since(UNIX_EPOCH + Duration::new(1, 0)).unwrap();
-        let b = ts.duration_since(UNIX_EPOCH).unwrap();
-        assert!(b > a);
-        assert_eq!(b - a, Duration::new(1, 0));
-
-        let thirty_years = Duration::new(1, 0) * 60 * 60 * 24 * 365 * 30;
-
-        // Right now for CI this test is run in an emulator, and apparently the
-        // aarch64 emulator's sense of time is that we're still living in the
-        // 70s. This is also true for riscv (also qemu)
-        //
-        // Otherwise let's assume that we're all running computers later than
-        // 2000.
-        if !cfg!(target_arch = "aarch64") && !cfg!(target_arch = "riscv64") {
-            assert!(a > thirty_years);
-        }
-
-        // let's assume that we're all running computers earlier than 2090.
-        // Should give us ~70 years to fix this!
-        let hundred_twenty_years = thirty_years * 4;
-        assert!(a < hundred_twenty_years);
     }
 }

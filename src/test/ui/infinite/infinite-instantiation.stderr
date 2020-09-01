@@ -7,13 +7,8 @@ LL |         function(counter - 1, t.to_option());
 note: `function` defined here
   --> $DIR/infinite-instantiation.rs:19:1
    |
-LL | / fn function<T:ToOpt + Clone>(counter: usize, t: T) {
-LL | |     if counter > 0 {
-LL | |         function(counter - 1, t.to_option());
-LL | |
-LL | |     }
-LL | | }
-   | |_^
+LL | fn function<T:ToOpt + Clone>(counter: usize, t: T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

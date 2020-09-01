@@ -9,8 +9,8 @@ endif
 BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py
 
 all:
-	$(Q)$(BOOTSTRAP) build $(BOOTSTRAP_ARGS)
-	$(Q)$(BOOTSTRAP) doc $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) build --stage 2 $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc --stage 2 $(BOOTSTRAP_ARGS)
 
 help:
 	$(Q)echo 'Welcome to the rustbuild build system!'
@@ -31,17 +31,17 @@ rustc-stage2:
 
 docs: doc
 doc:
-	$(Q)$(BOOTSTRAP) doc $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc --stage 2 $(BOOTSTRAP_ARGS)
 nomicon:
-	$(Q)$(BOOTSTRAP) doc src/doc/nomicon $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc --stage 2 src/doc/nomicon $(BOOTSTRAP_ARGS)
 book:
-	$(Q)$(BOOTSTRAP) doc src/doc/book $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc --stage 2 src/doc/book $(BOOTSTRAP_ARGS)
 standalone-docs:
-	$(Q)$(BOOTSTRAP) doc src/doc $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc --stage 2 src/doc $(BOOTSTRAP_ARGS)
 check:
-	$(Q)$(BOOTSTRAP) test $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) test --stage 2 $(BOOTSTRAP_ARGS)
 check-aux:
-	$(Q)$(BOOTSTRAP) test \
+	$(Q)$(BOOTSTRAP) test --stage 2 \
 		src/tools/cargo \
 		src/tools/cargotest \
 		$(BOOTSTRAP_ARGS)
@@ -51,18 +51,18 @@ dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 distcheck:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
-	$(Q)$(BOOTSTRAP) test distcheck $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) test --stage 2 distcheck $(BOOTSTRAP_ARGS)
 install:
 	$(Q)$(BOOTSTRAP) install $(BOOTSTRAP_ARGS)
 tidy:
-	$(Q)$(BOOTSTRAP) test src/tools/tidy $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) test --stage 2 src/tools/tidy $(BOOTSTRAP_ARGS)
 prepare:
-	$(Q)$(BOOTSTRAP) build nonexistent/path/to/trigger/cargo/metadata
+	$(Q)$(BOOTSTRAP) build --stage 2 nonexistent/path/to/trigger/cargo/metadata
 
 check-stage2-T-arm-linux-androideabi-H-x86_64-unknown-linux-gnu:
-	$(Q)$(BOOTSTRAP) test --target arm-linux-androideabi
+	$(Q)$(BOOTSTRAP) test --stage 2 --target arm-linux-androideabi
 check-stage2-T-x86_64-unknown-linux-musl-H-x86_64-unknown-linux-gnu:
-	$(Q)$(BOOTSTRAP) test --target x86_64-unknown-linux-musl
+	$(Q)$(BOOTSTRAP) test --stage 2 --target x86_64-unknown-linux-musl
 
 TESTS_IN_2 := \
 	src/test/ui \
@@ -70,18 +70,18 @@ TESTS_IN_2 := \
 	src/tools/linkchecker
 
 ci-subset-1:
-	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2:%=--exclude %)
+	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_2:%=--exclude %)
 ci-subset-2:
-	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2)
+	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_2)
 
 TESTS_IN_MINGW_2 := \
 	src/test/ui \
 	src/test/compile-fail
 
 ci-mingw-subset-1:
-	$(Q)$(BOOTSTRAP) test $(TESTS_IN_MINGW_2:%=--exclude %)
+	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_MINGW_2:%=--exclude %)
 ci-mingw-subset-2:
-	$(Q)$(BOOTSTRAP) test $(TESTS_IN_MINGW_2)
+	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_MINGW_2)
 
 
 .PHONY: dist

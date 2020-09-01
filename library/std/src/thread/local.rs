@@ -2,6 +2,12 @@
 
 #![unstable(feature = "thread_local_internals", issue = "none")]
 
+#[cfg(all(test, not(target_os = "emscripten")))]
+mod tests;
+
+#[cfg(test)]
+mod dynamic_tests;
+
 use crate::error::Error;
 use crate::fmt;
 
@@ -71,9 +77,7 @@ use crate::fmt;
 ///    not guard typically have a synthetic limit after which point no more
 ///    destructors are run.
 ///
-/// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
-/// [`thread_local!`]: ../../std/macro.thread_local.html
-/// [`Drop`]: ../../std/ops/trait.Drop.html
+/// [`with`]: LocalKey::with
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LocalKey<T: 'static> {
     // This outer `LocalKey<T>` type is what's going to be stored in statics,
@@ -118,10 +122,10 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// # fn main() {}
 /// ```
 ///
-/// See [LocalKey documentation][`std::thread::LocalKey`] for more
+/// See [`LocalKey` documentation][`std::thread::LocalKey`] for more
 /// information.
 ///
-/// [`std::thread::LocalKey`]: ../std/thread/struct.LocalKey.html
+/// [`std::thread::LocalKey`]: crate::thread::LocalKey
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(thread_local_internals)]
@@ -172,7 +176,11 @@ macro_rules! __thread_local_inner {
                 static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                     $crate::thread::__OsLocalKeyInner::new();
 
-                __KEY.get(__init)
+                // FIXME: remove the #[allow(...)] marker when macros don't
+                // raise warning for missing/extraneous unsafe blocks anymore.
+                // See https://github.com/rust-lang/rust/issues/74838.
+                #[allow(unused_unsafe)]
+                unsafe { __KEY.get(__init) }
             }
 
             unsafe {
@@ -543,205 +551,5 @@ pub mod os {
         key.os.set(1 as *mut u8);
         drop(ptr);
         key.os.set(ptr::null_mut());
-    }
-}
-
-#[cfg(all(test, not(target_os = "emscripten")))]
-mod tests {
-    use crate::cell::{Cell, UnsafeCell};
-    use crate::sync::mpsc::{channel, Sender};
-    use crate::thread;
-
-    struct Foo(Sender<()>);
-
-    impl Drop for Foo {
-        fn drop(&mut self) {
-            let Foo(ref s) = *self;
-            s.send(()).unwrap();
-        }
-    }
-
-    #[test]
-    fn smoke_no_dtor() {
-        thread_local!(static FOO: Cell<i32> = Cell::new(1));
-
-        FOO.with(|f| {
-            assert_eq!(f.get(), 1);
-            f.set(2);
-        });
-        let (tx, rx) = channel();
-        let _t = thread::spawn(move || {
-            FOO.with(|f| {
-                assert_eq!(f.get(), 1);
-            });
-            tx.send(()).unwrap();
-        });
-        rx.recv().unwrap();
-
-        FOO.with(|f| {
-            assert_eq!(f.get(), 2);
-        });
-    }
-
-    #[test]
-    fn states() {
-        struct Foo;
-        impl Drop for Foo {
-            fn drop(&mut self) {
-                assert!(FOO.try_with(|_| ()).is_err());
-            }
-        }
-        thread_local!(static FOO: Foo = Foo);
-
-        thread::spawn(|| {
-            assert!(FOO.try_with(|_| ()).is_ok());
-        })
-        .join()
-        .ok()
-        .expect("thread panicked");
-    }
-
-    #[test]
-    fn smoke_dtor() {
-        thread_local!(static FOO: UnsafeCell<Option<Foo>> = UnsafeCell::new(None));
-
-        let (tx, rx) = channel();
-        let _t = thread::spawn(move || unsafe {
-            let mut tx = Some(tx);
-            FOO.with(|f| {
-                *f.get() = Some(Foo(tx.take().unwrap()));
-            });
-        });
-        rx.recv().unwrap();
-    }
-
-    #[test]
-    fn circular() {
-        struct S1;
-        struct S2;
-        thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));
-        thread_local!(static K2: UnsafeCell<Option<S2>> = UnsafeCell::new(None));
-        static mut HITS: u32 = 0;
-
-        impl Drop for S1 {
-            fn drop(&mut self) {
-                unsafe {
-                    HITS += 1;
-                    if K2.try_with(|_| ()).is_err() {
-                        assert_eq!(HITS, 3);
-                    } else {
-                        if HITS == 1 {
-                            K2.with(|s| *s.get() = Some(S2));
-                        } else {
-                            assert_eq!(HITS, 3);
-                        }
-                    }
-                }
-            }
-        }
-        impl Drop for S2 {
-            fn drop(&mut self) {
-                unsafe {
-                    HITS += 1;
-                    assert!(K1.try_with(|_| ()).is_ok());
-                    assert_eq!(HITS, 2);
-                    K1.with(|s| *s.get() = Some(S1));
-                }
-            }
-        }
-
-        thread::spawn(move || {
-            drop(S1);
-        })
-        .join()
-        .ok()
-        .expect("thread panicked");
-    }
-
-    #[test]
-    fn self_referential() {
-        struct S1;
-        thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));
-
-        impl Drop for S1 {
-            fn drop(&mut self) {
-                assert!(K1.try_with(|_| ()).is_err());
-            }
-        }
-
-        thread::spawn(move || unsafe {
-            K1.with(|s| *s.get() = Some(S1));
-        })
-        .join()
-        .ok()
-        .expect("thread panicked");
-    }
-
-    // Note that this test will deadlock if TLS destructors aren't run (this
-    // requires the destructor to be run to pass the test).
-    #[test]
-    fn dtors_in_dtors_in_dtors() {
-        struct S1(Sender<()>);
-        thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));
-        thread_local!(static K2: UnsafeCell<Option<Foo>> = UnsafeCell::new(None));
-
-        impl Drop for S1 {
-            fn drop(&mut self) {
-                let S1(ref tx) = *self;
-                unsafe {
-                    let _ = K2.try_with(|s| *s.get() = Some(Foo(tx.clone())));
-                }
-            }
-        }
-
-        let (tx, rx) = channel();
-        let _t = thread::spawn(move || unsafe {
-            let mut tx = Some(tx);
-            K1.with(|s| *s.get() = Some(S1(tx.take().unwrap())));
-        });
-        rx.recv().unwrap();
-    }
-}
-
-#[cfg(test)]
-mod dynamic_tests {
-    use crate::cell::RefCell;
-    use crate::collections::HashMap;
-
-    #[test]
-    fn smoke() {
-        fn square(i: i32) -> i32 {
-            i * i
-        }
-        thread_local!(static FOO: i32 = square(3));
-
-        FOO.with(|f| {
-            assert_eq!(*f, 9);
-        });
-    }
-
-    #[test]
-    fn hashmap() {
-        fn map() -> RefCell<HashMap<i32, i32>> {
-            let mut m = HashMap::new();
-            m.insert(1, 2);
-            RefCell::new(m)
-        }
-        thread_local!(static FOO: RefCell<HashMap<i32, i32>> = map());
-
-        FOO.with(|map| {
-            assert_eq!(map.borrow()[&1], 2);
-        });
-    }
-
-    #[test]
-    fn refcell_vec() {
-        thread_local!(static FOO: RefCell<Vec<u32>> = RefCell::new(vec![1, 2, 3]));
-
-        FOO.with(|vec| {
-            assert_eq!(vec.borrow().len(), 3);
-            vec.borrow_mut().push(4);
-            assert_eq!(vec.borrow()[3], 4);
-        });
     }
 }

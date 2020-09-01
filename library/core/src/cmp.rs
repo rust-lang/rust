@@ -17,21 +17,15 @@
 //!
 //! For more details, see the respective documentation of each item in the list.
 //!
-//! [`Eq`]: trait.Eq.html
-//! [`PartialEq`]: trait.PartialEq.html
-//! [`Ord`]: trait.Ord.html
-//! [`PartialOrd`]: trait.PartialOrd.html
-//! [`Ordering`]: enum.Ordering.html
-//! [`Reverse`]: struct.Reverse.html
-//! [`max`]: fn.max.html
-//! [`min`]: fn.min.html
+//! [`max`]: Ord::max
+//! [`min`]: Ord::min
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use self::Ordering::*;
 
 /// Trait for equality comparisons which are [partial equivalence
-/// relations](http://en.wikipedia.org/wiki/Partial_equivalence_relation).
+/// relations](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
 ///
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
@@ -511,7 +505,7 @@ impl<T: Ord> Ord for Reverse<T> {
 ///
 /// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
 /// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
-/// When `derive`d on enums, variants are ordered by their top-to-bottom declaration order.
+/// When `derive`d on enums, variants are ordered by their top-to-bottom discriminant order.
 ///
 /// ## How can I implement `Ord`?
 ///
@@ -700,7 +694,7 @@ impl PartialOrd for Ordering {
 ///
 /// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
 /// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
-/// When `derive`d on enums, variants are ordered by their top-to-bottom declaration order.
+/// When `derive`d on enums, variants are ordered by their top-to-bottom discriminant order.
 ///
 /// ## How can I implement `PartialOrd`?
 ///

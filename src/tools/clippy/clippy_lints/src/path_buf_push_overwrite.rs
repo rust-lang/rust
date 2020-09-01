@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for PathBufPushOverwrite {
                     cx,
                     PATH_BUF_PUSH_OVERWRITE,
                     lit.span,
-                    "Calling `push` with '/' or '\\' (file system root) will overwrite the previous path definition",
+                    "calling `push` with '/' or '\\' (file system root) will overwrite the previous path definition",
                     "try",
                     format!("\"{}\"", pushed_path_lit.trim_start_matches(|c| c == '/' || c == '\\')),
                     Applicability::MachineApplicable,

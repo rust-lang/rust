@@ -2,6 +2,7 @@
 // assembly-output: emit-asm
 // compile-flags: --target nvptx64-nvidia-cuda
 // compile-flags: --crate-type cdylib
+// needs-llvm-components: nvptx
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]

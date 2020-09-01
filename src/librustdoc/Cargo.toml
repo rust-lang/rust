@@ -5,7 +5,6 @@ version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "rustdoc"
 path = "lib.rs"
 
 [dependencies]
@@ -14,5 +13,9 @@ minifier = "0.0.33"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+smallvec = "1.0"
 tempfile = "3"
 itertools = "0.8"
+
+[dev-dependencies]
+expect-test = "1.0"

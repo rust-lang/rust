@@ -145,7 +145,7 @@ pub use crate::intrinsics::transmute;
 #[rustc_const_stable(feature = "const_forget", since = "1.46.0")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const fn forget<T>(t: T) {
-    ManuallyDrop::new(t);
+    let _ = ManuallyDrop::new(t);
 }
 
 /// Like [`forget`], but also accepts unsized values.
@@ -332,7 +332,8 @@ pub const fn size_of<T>() -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
+#[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
+pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
     intrinsics::size_of_val(val)
 }
 
@@ -466,9 +467,10 @@ pub const fn align_of<T>() -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
 #[allow(deprecated)]
-pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
-    min_align_of_val(val)
+pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
+    intrinsics::min_align_of_val(val)
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
@@ -668,6 +670,9 @@ pub unsafe fn uninitialized<T>() -> T {
 
 /// Swaps the values at two mutable locations, without deinitializing either one.
 ///
+/// * If you want to swap with a default or dummy value, see [`take`].
+/// * If you want to swap with a passed value, returning the old value, see [`replace`].
+///
 /// # Examples
 ///
 /// ```
@@ -681,6 +686,9 @@ pub unsafe fn uninitialized<T>() -> T {
 /// assert_eq!(42, x);
 /// assert_eq!(5, y);
 /// ```
+///
+/// [`replace`]: fn.replace.html
+/// [`take`]: fn.take.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
@@ -692,6 +700,9 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 }
 
 /// Replaces `dest` with the default value of `T`, returning the previous `dest` value.
+///
+/// * If you want to replace the values of two variables, see [`swap`].
+/// * If you want to replace with a passed value instead of the default value, see [`replace`].
 ///
 /// # Examples
 ///
@@ -745,6 +756,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// ```
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
+/// [`replace`]: fn.replace.html
+/// [`swap`]: fn.swap.html
 #[inline]
 #[stable(feature = "mem_take", since = "1.40.0")]
 pub fn take<T: Default>(dest: &mut T) -> T {
@@ -754,6 +767,9 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 /// Moves `src` into the referenced `dest`, returning the previous `dest` value.
 ///
 /// Neither value is dropped.
+///
+/// * If you want to replace the values of two variables, see [`swap`].
+/// * If you want to replace with a default value, see [`take`].
 ///
 /// # Examples
 ///
@@ -808,6 +824,8 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 /// ```
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
+/// [`swap`]: fn.swap.html
+/// [`take`]: fn.take.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]

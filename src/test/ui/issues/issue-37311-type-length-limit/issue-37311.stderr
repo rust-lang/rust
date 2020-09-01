@@ -1,10 +1,8 @@
 error: reached the type-length limit while instantiating `<(&(&(&(&(&(&(&(&(&(&(&(&(&(&(&(...))))))))))))))) as Foo>::recurse`
   --> $DIR/issue-37311.rs:15:5
    |
-LL | /     fn recurse(&self) {
-LL | |         (self, self).recurse();
-LL | |     }
-   | |_____^
+LL |     fn recurse(&self) {
+   |     ^^^^^^^^^^^^^^^^^
    |
    = note: consider adding a `#![type_length_limit="2097149"]` attribute to your crate
 

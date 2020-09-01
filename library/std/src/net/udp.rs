@@ -1,3 +1,6 @@
+#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten", target_env = "sgx"))))]
+mod tests;
+
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
@@ -19,15 +22,15 @@ use crate::time::Duration;
 /// an unordered, unreliable protocol; refer to [`TcpListener`] and [`TcpStream`] for TCP
 /// primitives.
 ///
-/// [`bind`]: #method.bind
-/// [`connect`]: #method.connect
+/// [`bind`]: UdpSocket::bind
+/// [`connect`]: UdpSocket::connect
 /// [IETF RFC 768]: https://tools.ietf.org/html/rfc768
-/// [`recv`]: #method.recv
-/// [received from]: #method.recv_from
-/// [`send`]: #method.send
-/// [sent to]: #method.send_to
-/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
-/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+/// [`recv`]: UdpSocket::recv
+/// [received from]: UdpSocket::recv_from
+/// [`send`]: UdpSocket::send
+/// [sent to]: UdpSocket::send_to
+/// [`TcpListener`]: crate::net::TcpListener
+/// [`TcpStream`]: crate::net::TcpStream
 ///
 /// # Examples
 ///
@@ -64,8 +67,6 @@ impl UdpSocket {
     /// each of the addresses until one succeeds and returns the socket. If none
     /// of the addresses succeed in creating a socket, the error returned from
     /// the last attempt (the last address) is returned.
-    ///
-    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
     /// # Examples
     ///
@@ -160,8 +161,6 @@ impl UdpSocket {
     ///
     /// See issue #34202 for more details.
     ///
-    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
-    ///
     /// # Examples
     ///
     /// ```no_run
@@ -193,7 +192,7 @@ impl UdpSocket {
     ///
     /// If the socket isn't connected, it will return a [`NotConnected`] error.
     ///
-    /// [`NotConnected`]: ../../std/io/enum.ErrorKind.html#variant.NotConnected
+    /// [`NotConnected`]: io::ErrorKind::NotConnected
     ///
     /// ```no_run
     /// use std::net::UdpSocket;
@@ -254,12 +253,9 @@ impl UdpSocket {
     /// a result of setting this option. For example Unix typically returns an
     /// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
-    /// [`Duration`]: ../../std/time/struct.Duration.html
-    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
-    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
+    /// [`read`]: io::Read::read
+    /// [`WouldBlock`]: io::ErrorKind::WouldBlock
+    /// [`TimedOut`]: io::ErrorKind::TimedOut
     ///
     /// # Examples
     ///
@@ -300,12 +296,9 @@ impl UdpSocket {
     /// as a result of setting this option. For example Unix typically returns
     /// an error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
-    /// [`Duration`]: ../../std/time/struct.Duration.html
-    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
-    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
+    /// [`write`]: io::Write::write
+    /// [`WouldBlock`]: io::ErrorKind::WouldBlock
+    /// [`TimedOut`]: io::ErrorKind::TimedOut
     ///
     /// # Examples
     ///
@@ -338,8 +331,7 @@ impl UdpSocket {
     ///
     /// If the timeout is [`None`], then [`read`] calls will block indefinitely.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`read`]: io::Read::read
     ///
     /// # Examples
     ///
@@ -359,8 +351,7 @@ impl UdpSocket {
     ///
     /// If the timeout is [`None`], then [`write`] calls will block indefinitely.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`write`]: io::Write::write
     ///
     /// # Examples
     ///
@@ -396,10 +387,7 @@ impl UdpSocket {
 
     /// Gets the value of the `SO_BROADCAST` option for this socket.
     ///
-    /// For more information about this option, see
-    /// [`set_broadcast`][link].
-    ///
-    /// [link]: #method.set_broadcast
+    /// For more information about this option, see [`UdpSocket::set_broadcast`].
     ///
     /// # Examples
     ///
@@ -435,10 +423,7 @@ impl UdpSocket {
 
     /// Gets the value of the `IP_MULTICAST_LOOP` option for this socket.
     ///
-    /// For more information about this option, see
-    /// [`set_multicast_loop_v4`][link].
-    ///
-    /// [link]: #method.set_multicast_loop_v4
+    /// For more information about this option, see [`UdpSocket::set_multicast_loop_v4`].
     ///
     /// # Examples
     ///
@@ -477,10 +462,7 @@ impl UdpSocket {
 
     /// Gets the value of the `IP_MULTICAST_TTL` option for this socket.
     ///
-    /// For more information about this option, see
-    /// [`set_multicast_ttl_v4`][link].
-    ///
-    /// [link]: #method.set_multicast_ttl_v4
+    /// For more information about this option, see [`UdpSocket::set_multicast_ttl_v4`].
     ///
     /// # Examples
     ///
@@ -516,10 +498,7 @@ impl UdpSocket {
 
     /// Gets the value of the `IPV6_MULTICAST_LOOP` option for this socket.
     ///
-    /// For more information about this option, see
-    /// [`set_multicast_loop_v6`][link].
-    ///
-    /// [link]: #method.set_multicast_loop_v6
+    /// For more information about this option, see [`UdpSocket::set_multicast_loop_v6`].
     ///
     /// # Examples
     ///
@@ -555,9 +534,7 @@ impl UdpSocket {
 
     /// Gets the value of the `IP_TTL` option for this socket.
     ///
-    /// For more information about this option, see [`set_ttl`][link].
-    ///
-    /// [link]: #method.set_ttl
+    /// For more information about this option, see [`UdpSocket::set_ttl`].
     ///
     /// # Examples
     ///
@@ -597,10 +574,7 @@ impl UdpSocket {
 
     /// Executes an operation of the `IP_DROP_MEMBERSHIP` type.
     ///
-    /// For more information about this option, see
-    /// [`join_multicast_v4`][link].
-    ///
-    /// [link]: #method.join_multicast_v4
+    /// For more information about this option, see [`UdpSocket::join_multicast_v4`].
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         self.0.leave_multicast_v4(multiaddr, interface)
@@ -608,10 +582,7 @@ impl UdpSocket {
 
     /// Executes an operation of the `IPV6_DROP_MEMBERSHIP` type.
     ///
-    /// For more information about this option, see
-    /// [`join_multicast_v6`][link].
-    ///
-    /// [link]: #method.join_multicast_v6
+    /// For more information about this option, see [`UdpSocket::join_multicast_v6`].
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         self.0.leave_multicast_v6(multiaddr, interface)
@@ -675,10 +646,8 @@ impl UdpSocket {
 
     /// Sends data on the socket to the remote address to which it is connected.
     ///
-    /// The [`connect`] method will connect this socket to a remote address. This
+    /// [`UdpSocket::connect`] will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
-    ///
-    /// [`connect`]: #method.connect
     ///
     /// # Examples
     ///
@@ -701,10 +670,8 @@ impl UdpSocket {
     /// hold the message bytes. If a message is too long to fit in the supplied buffer,
     /// excess bytes may be discarded.
     ///
-    /// The [`connect`] method will connect this socket to a remote address. This
+    /// [`UdpSocket::connect`] will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
-    ///
-    /// [`connect`]: #method.connect
     ///
     /// # Examples
     ///
@@ -738,10 +705,8 @@ impl UdpSocket {
     /// Do not use this function to implement busy waiting, instead use `libc::poll` to
     /// synchronize IO events on one or more sockets.
     ///
-    /// The [`connect`] method will connect this socket to a remote address. This
+    /// [`UdpSocket::connect`] will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
-    ///
-    /// [`connect`]: #method.connect
     ///
     /// # Errors
     ///
@@ -778,8 +743,6 @@ impl UdpSocket {
     /// On Unix platforms, calling this method corresponds to calling `fcntl`
     /// `FIONBIO`. On Windows calling this method corresponds to calling
     /// `ioctlsocket` `FIONBIO`.
-    ///
-    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     ///
     /// # Examples
     ///
@@ -836,382 +799,5 @@ impl IntoInner<net_imp::UdpSocket> for UdpSocket {
 impl fmt::Debug for UdpSocket {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
-    }
-}
-
-#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten", target_env = "sgx"))))]
-mod tests {
-    use crate::io::ErrorKind;
-    use crate::net::test::{next_test_ip4, next_test_ip6};
-    use crate::net::*;
-    use crate::sync::mpsc::channel;
-    use crate::sys_common::AsInner;
-    use crate::thread;
-    use crate::time::{Duration, Instant};
-
-    fn each_ip(f: &mut dyn FnMut(SocketAddr, SocketAddr)) {
-        f(next_test_ip4(), next_test_ip4());
-        f(next_test_ip6(), next_test_ip6());
-    }
-
-    macro_rules! t {
-        ($e:expr) => {
-            match $e {
-                Ok(t) => t,
-                Err(e) => panic!("received error for `{}`: {}", stringify!($e), e),
-            }
-        };
-    }
-
-    #[test]
-    fn bind_error() {
-        match UdpSocket::bind("1.1.1.1:9999") {
-            Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind(), ErrorKind::AddrNotAvailable),
-        }
-    }
-
-    #[test]
-    fn socket_smoke_test_ip4() {
-        each_ip(&mut |server_ip, client_ip| {
-            let (tx1, rx1) = channel();
-            let (tx2, rx2) = channel();
-
-            let _t = thread::spawn(move || {
-                let client = t!(UdpSocket::bind(&client_ip));
-                rx1.recv().unwrap();
-                t!(client.send_to(&[99], &server_ip));
-                tx2.send(()).unwrap();
-            });
-
-            let server = t!(UdpSocket::bind(&server_ip));
-            tx1.send(()).unwrap();
-            let mut buf = [0];
-            let (nread, src) = t!(server.recv_from(&mut buf));
-            assert_eq!(nread, 1);
-            assert_eq!(buf[0], 99);
-            assert_eq!(src, client_ip);
-            rx2.recv().unwrap();
-        })
-    }
-
-    #[test]
-    fn socket_name() {
-        each_ip(&mut |addr, _| {
-            let server = t!(UdpSocket::bind(&addr));
-            assert_eq!(addr, t!(server.local_addr()));
-        })
-    }
-
-    #[test]
-    fn socket_peer() {
-        each_ip(&mut |addr1, addr2| {
-            let server = t!(UdpSocket::bind(&addr1));
-            assert_eq!(server.peer_addr().unwrap_err().kind(), ErrorKind::NotConnected);
-            t!(server.connect(&addr2));
-            assert_eq!(addr2, t!(server.peer_addr()));
-        })
-    }
-
-    #[test]
-    fn udp_clone_smoke() {
-        each_ip(&mut |addr1, addr2| {
-            let sock1 = t!(UdpSocket::bind(&addr1));
-            let sock2 = t!(UdpSocket::bind(&addr2));
-
-            let _t = thread::spawn(move || {
-                let mut buf = [0, 0];
-                assert_eq!(sock2.recv_from(&mut buf).unwrap(), (1, addr1));
-                assert_eq!(buf[0], 1);
-                t!(sock2.send_to(&[2], &addr1));
-            });
-
-            let sock3 = t!(sock1.try_clone());
-
-            let (tx1, rx1) = channel();
-            let (tx2, rx2) = channel();
-            let _t = thread::spawn(move || {
-                rx1.recv().unwrap();
-                t!(sock3.send_to(&[1], &addr2));
-                tx2.send(()).unwrap();
-            });
-            tx1.send(()).unwrap();
-            let mut buf = [0, 0];
-            assert_eq!(sock1.recv_from(&mut buf).unwrap(), (1, addr2));
-            rx2.recv().unwrap();
-        })
-    }
-
-    #[test]
-    fn udp_clone_two_read() {
-        each_ip(&mut |addr1, addr2| {
-            let sock1 = t!(UdpSocket::bind(&addr1));
-            let sock2 = t!(UdpSocket::bind(&addr2));
-            let (tx1, rx) = channel();
-            let tx2 = tx1.clone();
-
-            let _t = thread::spawn(move || {
-                t!(sock2.send_to(&[1], &addr1));
-                rx.recv().unwrap();
-                t!(sock2.send_to(&[2], &addr1));
-                rx.recv().unwrap();
-            });
-
-            let sock3 = t!(sock1.try_clone());
-
-            let (done, rx) = channel();
-            let _t = thread::spawn(move || {
-                let mut buf = [0, 0];
-                t!(sock3.recv_from(&mut buf));
-                tx2.send(()).unwrap();
-                done.send(()).unwrap();
-            });
-            let mut buf = [0, 0];
-            t!(sock1.recv_from(&mut buf));
-            tx1.send(()).unwrap();
-
-            rx.recv().unwrap();
-        })
-    }
-
-    #[test]
-    fn udp_clone_two_write() {
-        each_ip(&mut |addr1, addr2| {
-            let sock1 = t!(UdpSocket::bind(&addr1));
-            let sock2 = t!(UdpSocket::bind(&addr2));
-
-            let (tx, rx) = channel();
-            let (serv_tx, serv_rx) = channel();
-
-            let _t = thread::spawn(move || {
-                let mut buf = [0, 1];
-                rx.recv().unwrap();
-                t!(sock2.recv_from(&mut buf));
-                serv_tx.send(()).unwrap();
-            });
-
-            let sock3 = t!(sock1.try_clone());
-
-            let (done, rx) = channel();
-            let tx2 = tx.clone();
-            let _t = thread::spawn(move || {
-                match sock3.send_to(&[1], &addr2) {
-                    Ok(..) => {
-                        let _ = tx2.send(());
-                    }
-                    Err(..) => {}
-                }
-                done.send(()).unwrap();
-            });
-            match sock1.send_to(&[2], &addr2) {
-                Ok(..) => {
-                    let _ = tx.send(());
-                }
-                Err(..) => {}
-            }
-            drop(tx);
-
-            rx.recv().unwrap();
-            serv_rx.recv().unwrap();
-        })
-    }
-
-    #[test]
-    fn debug() {
-        let name = if cfg!(windows) { "socket" } else { "fd" };
-        let socket_addr = next_test_ip4();
-
-        let udpsock = t!(UdpSocket::bind(&socket_addr));
-        let udpsock_inner = udpsock.0.socket().as_inner();
-        let compare =
-            format!("UdpSocket {{ addr: {:?}, {}: {:?} }}", socket_addr, name, udpsock_inner);
-        assert_eq!(format!("{:?}", udpsock), compare);
-    }
-
-    // FIXME: re-enabled openbsd/netbsd tests once their socket timeout code
-    //        no longer has rounding errors.
-    // VxWorks ignores SO_SNDTIMEO.
-    #[cfg_attr(any(target_os = "netbsd", target_os = "openbsd", target_os = "vxworks"), ignore)]
-    #[test]
-    fn timeouts() {
-        let addr = next_test_ip4();
-
-        let stream = t!(UdpSocket::bind(&addr));
-        let dur = Duration::new(15410, 0);
-
-        assert_eq!(None, t!(stream.read_timeout()));
-
-        t!(stream.set_read_timeout(Some(dur)));
-        assert_eq!(Some(dur), t!(stream.read_timeout()));
-
-        assert_eq!(None, t!(stream.write_timeout()));
-
-        t!(stream.set_write_timeout(Some(dur)));
-        assert_eq!(Some(dur), t!(stream.write_timeout()));
-
-        t!(stream.set_read_timeout(None));
-        assert_eq!(None, t!(stream.read_timeout()));
-
-        t!(stream.set_write_timeout(None));
-        assert_eq!(None, t!(stream.write_timeout()));
-    }
-
-    #[test]
-    fn test_read_timeout() {
-        let addr = next_test_ip4();
-
-        let stream = t!(UdpSocket::bind(&addr));
-        t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
-
-        let mut buf = [0; 10];
-
-        let start = Instant::now();
-        loop {
-            let kind = stream.recv_from(&mut buf).err().expect("expected error").kind();
-            if kind != ErrorKind::Interrupted {
-                assert!(
-                    kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
-                    "unexpected_error: {:?}",
-                    kind
-                );
-                break;
-            }
-        }
-        assert!(start.elapsed() > Duration::from_millis(400));
-    }
-
-    #[test]
-    fn test_read_with_timeout() {
-        let addr = next_test_ip4();
-
-        let stream = t!(UdpSocket::bind(&addr));
-        t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
-
-        t!(stream.send_to(b"hello world", &addr));
-
-        let mut buf = [0; 11];
-        t!(stream.recv_from(&mut buf));
-        assert_eq!(b"hello world", &buf[..]);
-
-        let start = Instant::now();
-        loop {
-            let kind = stream.recv_from(&mut buf).err().expect("expected error").kind();
-            if kind != ErrorKind::Interrupted {
-                assert!(
-                    kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
-                    "unexpected_error: {:?}",
-                    kind
-                );
-                break;
-            }
-        }
-        assert!(start.elapsed() > Duration::from_millis(400));
-    }
-
-    // Ensure the `set_read_timeout` and `set_write_timeout` calls return errors
-    // when passed zero Durations
-    #[test]
-    fn test_timeout_zero_duration() {
-        let addr = next_test_ip4();
-
-        let socket = t!(UdpSocket::bind(&addr));
-
-        let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
-        let err = result.unwrap_err();
-        assert_eq!(err.kind(), ErrorKind::InvalidInput);
-
-        let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
-        let err = result.unwrap_err();
-        assert_eq!(err.kind(), ErrorKind::InvalidInput);
-    }
-
-    #[test]
-    fn connect_send_recv() {
-        let addr = next_test_ip4();
-
-        let socket = t!(UdpSocket::bind(&addr));
-        t!(socket.connect(addr));
-
-        t!(socket.send(b"hello world"));
-
-        let mut buf = [0; 11];
-        t!(socket.recv(&mut buf));
-        assert_eq!(b"hello world", &buf[..]);
-    }
-
-    #[test]
-    fn connect_send_peek_recv() {
-        each_ip(&mut |addr, _| {
-            let socket = t!(UdpSocket::bind(&addr));
-            t!(socket.connect(addr));
-
-            t!(socket.send(b"hello world"));
-
-            for _ in 1..3 {
-                let mut buf = [0; 11];
-                let size = t!(socket.peek(&mut buf));
-                assert_eq!(b"hello world", &buf[..]);
-                assert_eq!(size, 11);
-            }
-
-            let mut buf = [0; 11];
-            let size = t!(socket.recv(&mut buf));
-            assert_eq!(b"hello world", &buf[..]);
-            assert_eq!(size, 11);
-        })
-    }
-
-    #[test]
-    fn peek_from() {
-        each_ip(&mut |addr, _| {
-            let socket = t!(UdpSocket::bind(&addr));
-            t!(socket.send_to(b"hello world", &addr));
-
-            for _ in 1..3 {
-                let mut buf = [0; 11];
-                let (size, _) = t!(socket.peek_from(&mut buf));
-                assert_eq!(b"hello world", &buf[..]);
-                assert_eq!(size, 11);
-            }
-
-            let mut buf = [0; 11];
-            let (size, _) = t!(socket.recv_from(&mut buf));
-            assert_eq!(b"hello world", &buf[..]);
-            assert_eq!(size, 11);
-        })
-    }
-
-    #[test]
-    fn ttl() {
-        let ttl = 100;
-
-        let addr = next_test_ip4();
-
-        let stream = t!(UdpSocket::bind(&addr));
-
-        t!(stream.set_ttl(ttl));
-        assert_eq!(ttl, t!(stream.ttl()));
-    }
-
-    #[test]
-    fn set_nonblocking() {
-        each_ip(&mut |addr, _| {
-            let socket = t!(UdpSocket::bind(&addr));
-
-            t!(socket.set_nonblocking(true));
-            t!(socket.set_nonblocking(false));
-
-            t!(socket.connect(addr));
-
-            t!(socket.set_nonblocking(false));
-            t!(socket.set_nonblocking(true));
-
-            let mut buf = [0];
-            match socket.recv(&mut buf) {
-                Ok(_) => panic!("expected error"),
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
-                Err(e) => panic!("unexpected error {}", e),
-            }
-        })
     }
 }

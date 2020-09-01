@@ -1,0 +1,33 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_mir"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+either = "1.5.0"
+rustc_graphviz = { path = "../rustc_graphviz" }
+itertools = "0.8"
+tracing = "0.1"
+log_settings = "0.1.1"
+polonius-engine = "0.12.0"
+rustc_middle = { path = "../rustc_middle" }
+rustc_attr = { path = "../rustc_attr" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_infer = { path = "../rustc_infer" }
+rustc_lexer = { path = "../rustc_lexer" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_session = { path = "../rustc_session" }
+rustc_target = { path = "../rustc_target" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_span = { path = "../rustc_span" }
+rustc_apfloat = { path = "../rustc_apfloat" }
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }

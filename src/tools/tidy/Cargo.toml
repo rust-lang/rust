@@ -5,7 +5,7 @@ authors = ["Alex Crichton <alex@alexcrichton.com>"]
 edition = "2018"
 
 [dependencies]
-cargo_metadata = "0.9.1"
+cargo_metadata = "0.11"
 regex = "1"
 lazy_static = "1"
 walkdir = "2"

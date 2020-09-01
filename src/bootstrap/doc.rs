@@ -96,7 +96,7 @@ fn is_explicit_request(builder: &Builder<'_>, path: &str) -> bool {
         .paths
         .iter()
         .map(components_simplified)
-        .any(|requested| requested.iter().copied().eq(path.split("/")))
+        .any(|requested| requested.iter().copied().eq(path.split('/')))
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -460,7 +460,7 @@ impl Step for Std {
         // open the corresponding rendered docs.
         for path in builder.paths.iter().map(components_simplified) {
             if path.get(0) == Some(&"library") {
-                let requested_crate = &path[1][3..];
+                let requested_crate = &path[1];
                 if krates.contains(&requested_crate) {
                     let index = out.join(requested_crate).join("index.html");
                     open(builder, &index);
@@ -693,6 +693,8 @@ impl Step for UnstableBookGen {
         builder.create_dir(&out);
         builder.remove_dir(&out);
         let mut cmd = builder.tool_cmd(Tool::UnstableBookGen);
+        cmd.arg(builder.src.join("library"));
+        cmd.arg(builder.src.join("compiler"));
         cmd.arg(builder.src.join("src"));
         cmd.arg(out);
 

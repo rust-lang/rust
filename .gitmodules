@@ -37,10 +37,13 @@
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/10.0-2020-05-05
+	branch = rustc/11.0-2020-08-20
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git
 [submodule "src/tools/rust-analyzer"]
 	path = src/tools/rust-analyzer
 	url = https://github.com/rust-analyzer/rust-analyzer.git
+[submodule "library/backtrace"]
+	path = library/backtrace
+	url = https://github.com/rust-lang/backtrace-rs.git

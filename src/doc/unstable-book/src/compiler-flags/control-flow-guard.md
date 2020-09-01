@@ -6,7 +6,7 @@ The tracking issue for this feature is: [#68793](https://github.com/rust-lang/ru
 
 The rustc flag `-Z control-flow-guard` enables the Windows [Control Flow Guard](https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard) (CFG) platform security feature.
 
-CFG is an exploit mitigation designed to enforce control-flow integrity for software running on supported Windows platforms (Windows 8.1 onwards). Specifically, CFG uses runtime checks to validate the target address of every indirect call/jump before allowing the call to complete. 
+CFG is an exploit mitigation designed to enforce control-flow integrity for software running on supported [Windows platforms (Windows 8.1 onwards)](https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard). Specifically, CFG uses runtime checks to validate the target address of every indirect call/jump before allowing the call to complete. 
 
 During compilation, the compiler identifies all indirect calls/jumps and adds CFG checks. It also emits metadata containing the relative addresses of all address-taken functions. At runtime, if the binary is run on a CFG-aware operating system, the loader uses the CFG metadata to generate a bitmap of the address space and marks those addresses that contain valid targets. On each indirect call, the inserted check determines whether the target address is marked in this bitmap. If the target is not valid, the process is terminated.
 
@@ -19,8 +19,9 @@ CFG functionality is completely implemented in the LLVM backend and is supported
 
 ## When to use Control Flow Guard
 
-The primary motivation for enabling CFG in Rust is to enhance security when linking against non-Rust code, especially C/C++ code. To achieve full CFG protection, all indirect calls (including any from Rust code) must have the appropriate CFG checks, as added by this flag. CFG can also improve security for Rust code that uses the `unsafe` keyword
+The primary motivation for enabling CFG in Rust is to enhance security when linking against non-Rust code, especially C/C++ code. To achieve full CFG protection, all indirect calls (including any from Rust code) must have the appropriate CFG checks, as added by this flag. CFG can also improve security for Rust code that uses the `unsafe` keyword.
 
+Another motivation behind CFG is to harden programs against [return-oriented programming (ROP)](https://en.wikipedia.org/wiki/Return-oriented_programming) attacks. CFG disallows an attacker from taking advantage of the program's own instructions while redirecting control flow in unexpected ways.
 
 ## Overhead of Control Flow Guard
 

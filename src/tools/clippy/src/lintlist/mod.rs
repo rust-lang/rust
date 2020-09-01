@@ -361,6 +361,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "derive",
     },
     Lint {
+        name: "derive_ord_xor_partial_ord",
+        group: "correctness",
+        desc: "deriving `Ord` but implementing `PartialOrd` explicitly",
+        deprecation: None,
+        module: "derive",
+    },
+    Lint {
         name: "diverging_sub_expression",
         group: "complexity",
         desc: "whether an expression contains a diverging sub expression",
@@ -405,7 +412,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "drop_bounds",
         group: "correctness",
-        desc: "Bounds of the form `T: Drop` are useless",
+        desc: "bounds of the form `T: Drop` are useless",
         deprecation: None,
         module: "drop_bounds",
     },
@@ -653,6 +660,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "using `==` or `!=` on float constants instead of comparing difference with an epsilon",
         deprecation: None,
         module: "misc",
+    },
+    Lint {
+        name: "float_equality_without_abs",
+        group: "correctness",
+        desc: "float equality check without `.abs()`",
+        deprecation: None,
+        module: "float_equality_without_abs",
     },
     Lint {
         name: "fn_address_comparisons",
@@ -1030,7 +1044,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block",
         deprecation: None,
-        module: "let_and_return",
+        module: "returns",
     },
     Lint {
         name: "let_underscore_lock",
@@ -1451,6 +1465,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "use of naive `<slice>.filter(|&x| x == y).count()` to count byte values",
         deprecation: None,
         module: "bytecount",
+    },
+    Lint {
+        name: "needless_arbitrary_self_type",
+        group: "complexity",
+        desc: "type of `self` parameter is already by default `Self`",
+        deprecation: None,
+        module: "needless_arbitrary_self_type",
     },
     Lint {
         name: "needless_bool",
@@ -1929,11 +1950,25 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "copies",
     },
     Lint {
+        name: "same_item_push",
+        group: "style",
+        desc: "the same item is pushed inside of a for loop",
+        deprecation: None,
+        module: "loops",
+    },
+    Lint {
         name: "search_is_some",
         group: "complexity",
         desc: "using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`",
         deprecation: None,
         module: "methods",
+    },
+    Lint {
+        name: "self_assignment",
+        group: "correctness",
+        desc: "explicit self-assignment",
+        deprecation: None,
+        module: "self_assignment",
     },
     Lint {
         name: "serde_api_misuse",
@@ -1992,6 +2027,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "single_char_push_str",
+        group: "style",
+        desc: "`push_str()` used with a single-character string literal as parameter",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "single_component_path_imports",
         group: "style",
         desc: "imports with single component path are redundant",
@@ -2025,6 +2067,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "slow vector initialization",
         deprecation: None,
         module: "slow_vector_initialization",
+    },
+    Lint {
+        name: "stable_sort_primitive",
+        group: "perf",
+        desc: "use of sort() when sort_unstable() is equivalent",
+        deprecation: None,
+        module: "stable_sort_primitive",
     },
     Lint {
         name: "string_add",
@@ -2139,6 +2188,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "to_digit_is_some",
     },
     Lint {
+        name: "to_string_in_display",
+        group: "correctness",
+        desc: "`to_string` method used while implementing `Display` trait",
+        deprecation: None,
+        module: "to_string_in_display",
+    },
+    Lint {
         name: "todo",
         group: "restriction",
         desc: "`todo!` should not be present in production code",
@@ -2165,6 +2221,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "an entire binding declared as `ref`, in a function argument or a `let` statement",
         deprecation: None,
         module: "misc",
+    },
+    Lint {
+        name: "trait_duplication_in_bounds",
+        group: "pedantic",
+        desc: "Check if the same trait bounds are specified twice during a function declaration",
+        deprecation: None,
+        module: "trait_bounds",
     },
     Lint {
         name: "transmute_bytes_to_str",
@@ -2212,6 +2275,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         name: "transmute_ptr_to_ref",
         group: "complexity",
         desc: "transmutes from a pointer to a reference type",
+        deprecation: None,
+        module: "transmute",
+    },
+    Lint {
+        name: "transmutes_expressible_as_ptr_casts",
+        group: "complexity",
+        desc: "transmutes that could be a pointer cast",
         deprecation: None,
         module: "transmute",
     },
@@ -2328,6 +2398,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "unnecessary_lazy_evaluations",
+        group: "style",
+        desc: "using unnecessary lazy evaluation, which can be replaced with simpler eager evaluation",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "unnecessary_mut_passed",
         group: "style",
         desc: "an argument passed as a mutable reference although the callee only demands an immutable reference",
@@ -2437,7 +2514,14 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "needless unit expression",
         deprecation: None,
-        module: "returns",
+        module: "unused_unit",
+    },
+    Lint {
+        name: "unwrap_in_result",
+        group: "restriction",
+        desc: "functions of type `Result<..>` or `Option`<...> that contain `expect()` or `unwrap()`",
+        deprecation: None,
+        module: "unwrap_in_result",
     },
     Lint {
         name: "unwrap_used",
@@ -2456,7 +2540,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "use_self",
         group: "nursery",
-        desc: "Unnecessary structure name repetition whereas `Self` is applicable",
+        desc: "unnecessary structure name repetition whereas `Self` is applicable",
         deprecation: None,
         module: "use_self",
     },

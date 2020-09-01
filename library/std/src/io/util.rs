@@ -1,5 +1,8 @@
 #![allow(missing_copy_implementations)]
 
+#[cfg(test)]
+mod tests;
+
 use crate::fmt;
 use crate::io::{self, BufRead, ErrorKind, Initializer, IoSlice, IoSliceMut, Read, Write};
 use crate::mem::MaybeUninit;
@@ -16,13 +19,16 @@ use crate::mem::MaybeUninit;
 /// If you’re wanting to copy the contents of one file to another and you’re
 /// working with filesystem paths, see the [`fs::copy`] function.
 ///
-/// [`fs::copy`]: ../fs/fn.copy.html
+/// [`fs::copy`]: crate::fs::copy
 ///
 /// # Errors
 ///
-/// This function will return an error immediately if any call to `read` or
-/// `write` returns an error. All instances of `ErrorKind::Interrupted` are
+/// This function will return an error immediately if any call to [`read`] or
+/// [`write`] returns an error. All instances of [`ErrorKind::Interrupted`] are
 /// handled by this function and the underlying operation is retried.
+///
+/// [`read`]: Read::read
+/// [`write`]: Write::write
 ///
 /// # Examples
 ///
@@ -46,34 +52,32 @@ where
     W: Write,
 {
     let mut buf = MaybeUninit::<[u8; super::DEFAULT_BUF_SIZE]>::uninit();
-    // FIXME(#53491): This is calling `get_mut` and `get_ref` on an uninitialized
+    // FIXME(#76092): This is calling `get_mut` and `get_ref` on an uninitialized
     // `MaybeUninit`. Revisit this once we decided whether that is valid or not.
     // This is still technically undefined behavior due to creating a reference
     // to uninitialized data, but within libstd we can rely on more guarantees
     // than if this code were in an external lib.
     unsafe {
-        reader.initializer().initialize(buf.get_mut());
+        reader.initializer().initialize(buf.assume_init_mut());
     }
 
     let mut written = 0;
     loop {
-        let len = match reader.read(unsafe { buf.get_mut() }) {
+        let len = match reader.read(unsafe { buf.assume_init_mut() }) {
             Ok(0) => return Ok(written),
             Ok(len) => len,
             Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         };
-        writer.write_all(unsafe { &buf.get_ref()[..len] })?;
+        writer.write_all(unsafe { &buf.assume_init_ref()[..len] })?;
         written += len as u64;
     }
 }
 
 /// A reader which is always at EOF.
 ///
-/// This struct is generally created by calling [`empty`]. Please see
-/// the documentation of [`empty()`][`empty`] for more details.
-///
-/// [`empty`]: fn.empty.html
+/// This struct is generally created by calling [`empty()`]. Please see
+/// the documentation of [`empty()`] for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Empty {
     _priv: (),
@@ -82,8 +86,6 @@ pub struct Empty {
 /// Constructs a new handle to an empty reader.
 ///
 /// All reads from the returned reader will return [`Ok`]`(0)`.
-///
-/// [`Ok`]: ../result/enum.Result.html#variant.Ok
 ///
 /// # Examples
 ///
@@ -132,10 +134,8 @@ impl fmt::Debug for Empty {
 
 /// A reader which yields one byte over and over and over and over and over and...
 ///
-/// This struct is generally created by calling [`repeat`][repeat]. Please
-/// see the documentation of `repeat()` for more details.
-///
-/// [repeat]: fn.repeat.html
+/// This struct is generally created by calling [`repeat()`]. Please
+/// see the documentation of [`repeat()`] for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat {
     byte: u8,
@@ -199,10 +199,8 @@ impl fmt::Debug for Repeat {
 
 /// A writer which will move data into the void.
 ///
-/// This struct is generally created by calling [`sink`][sink]. Please
-/// see the documentation of `sink()` for more details.
-///
-/// [sink]: fn.sink.html
+/// This struct is generally created by calling [`sink`]. Please
+/// see the documentation of [`sink()`] for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Sink {
     _priv: (),
@@ -210,8 +208,10 @@ pub struct Sink {
 
 /// Creates an instance of a writer which will successfully consume all data.
 ///
-/// All calls to `write` on the returned instance will return `Ok(buf.len())`
+/// All calls to [`write`] on the returned instance will return `Ok(buf.len())`
 /// and the contents of the buffer will not be inspected.
+///
+/// [`write`]: Write::write
 ///
 /// # Examples
 ///
@@ -255,54 +255,5 @@ impl Write for Sink {
 impl fmt::Debug for Sink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Sink { .. }")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::io::prelude::*;
-    use crate::io::{copy, empty, repeat, sink};
-
-    #[test]
-    fn copy_copies() {
-        let mut r = repeat(0).take(4);
-        let mut w = sink();
-        assert_eq!(copy(&mut r, &mut w).unwrap(), 4);
-
-        let mut r = repeat(0).take(1 << 17);
-        assert_eq!(copy(&mut r as &mut dyn Read, &mut w as &mut dyn Write).unwrap(), 1 << 17);
-    }
-
-    #[test]
-    fn sink_sinks() {
-        let mut s = sink();
-        assert_eq!(s.write(&[]).unwrap(), 0);
-        assert_eq!(s.write(&[0]).unwrap(), 1);
-        assert_eq!(s.write(&[0; 1024]).unwrap(), 1024);
-        assert_eq!(s.by_ref().write(&[0; 1024]).unwrap(), 1024);
-    }
-
-    #[test]
-    fn empty_reads() {
-        let mut e = empty();
-        assert_eq!(e.read(&mut []).unwrap(), 0);
-        assert_eq!(e.read(&mut [0]).unwrap(), 0);
-        assert_eq!(e.read(&mut [0; 1024]).unwrap(), 0);
-        assert_eq!(e.by_ref().read(&mut [0; 1024]).unwrap(), 0);
-    }
-
-    #[test]
-    fn repeat_repeats() {
-        let mut r = repeat(4);
-        let mut b = [0; 1024];
-        assert_eq!(r.read(&mut b).unwrap(), 1024);
-        assert!(b.iter().all(|b| *b == 4));
-    }
-
-    #[test]
-    fn take_some_bytes() {
-        assert_eq!(repeat(4).take(100).bytes().count(), 100);
-        assert_eq!(repeat(4).take(100).bytes().next().unwrap().unwrap(), 4);
-        assert_eq!(repeat(1).take(10).chain(repeat(2).take(10)).bytes().count(), 20);
     }
 }

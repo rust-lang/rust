@@ -30,6 +30,7 @@
     <Expand>
       <Item Name="[size]">base.table.items</Item>
       <Item Name="[capacity]">base.table.items + base.table.growth_left</Item>
+      <Item Name="[state]">base.hash_builder</Item>
 
       <CustomListItems>
         <Variable Name="i" InitialValue="0" />
@@ -40,7 +41,7 @@
           <If Condition="(base.table.ctrl.pointer[i] &amp; 0x80) == 0">
             <!-- Bucket is populated -->
             <Exec>n--</Exec>
-            <Item Name="{base.table.data.pointer[i].__0}">base.table.data.pointer[i].__1</Item>
+            <Item Name="{static_cast&lt;tuple&lt;$T1, $T2&gt;*&gt;(base.table.ctrl.pointer)[-(i + 1)].__0}">static_cast&lt;tuple&lt;$T1, $T2&gt;*&gt;(base.table.ctrl.pointer)[-(i + 1)].__1</Item>
           </If>
           <Exec>i++</Exec>
         </Loop>
@@ -53,6 +54,7 @@
     <Expand>
       <Item Name="[size]">map.base.table.items</Item>
       <Item Name="[capacity]">map.base.table.items + map.base.table.growth_left</Item>
+      <Item Name="[state]">map.base.hash_builder</Item>
 
       <CustomListItems>
         <Variable Name="i" InitialValue="0" />
@@ -63,36 +65,7 @@
           <If Condition="(map.base.table.ctrl.pointer[i] &amp; 0x80) == 0">
             <!-- Bucket is populated -->
             <Exec>n--</Exec>
-            <Item>map.base.table.data.pointer[i].__0</Item>
-          </If>
-          <Exec>i++</Exec>
-        </Loop>
-      </CustomListItems>
-    </Expand>
-  </Type>
-
-  <Type Name="hashbrown::raw::RawTable&lt;*&gt;">
-    <!-- RawTable has a nice and simple layout.
-      items                     Number of *populated* values in the RawTable (less than the size of ctrl.pointer / data.pointer)
-      growth_left               Remaining capacity before growth
-      ctrl.pointer[i] & 0x80    Indicates the bucket is empty / should be skipped / doesn't count towards items.
-      data.pointer[i]           The (K,V) tuple, if not empty.
-    -->
-    <DisplayString>{{ size={items} }}</DisplayString>
-    <Expand>
-      <Item Name="[size]">items</Item>
-      <Item Name="[capacity]">items + growth_left</Item>
-
-      <CustomListItems>
-        <Variable Name="i" InitialValue="0" />
-        <Variable Name="n" InitialValue="items" />
-        <Size>items</Size>
-        <Loop>
-          <Break Condition="n == 0" />
-          <If Condition="(ctrl.pointer[i] &amp; 0x80) == 0">
-            <!-- Bucket is populated -->
-            <Exec>n--</Exec>
-            <Item>data.pointer[i]</Item>
+            <Item>static_cast&lt;$T1*&gt;(map.base.table.ctrl.pointer)[-(i + 1)]</Item>
           </If>
           <Exec>i++</Exec>
         </Loop>

@@ -10,7 +10,7 @@ fn foo(node: Box<List>) -> isize {
         Some(right) => consume(right),
         None => 0
     };
-    consume(node) + r //~ ERROR use of moved value: `node`
+    consume(node) + r //~ ERROR use of partially moved value: `node`
 }
 
 fn consume(v: Box<List>) -> isize {

@@ -5,8 +5,8 @@
 #![allow(clippy::similar_names, clippy::wildcard_imports, clippy::enum_glob_use)]
 
 use crate::utils::{both, over};
-use rustc_ast::ast::{self, *};
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, *};
 use rustc_span::symbol::Ident;
 use std::mem;
 
@@ -506,7 +506,7 @@ pub fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
     use AttrKind::*;
     l.style == r.style
         && match (&l.kind, &r.kind) {
-            (DocComment(l), DocComment(r)) => l == r,
+            (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
             (Normal(l), Normal(r)) => eq_path(&l.path, &r.path) && eq_mac_args(&l.args, &r.args),
             _ => false,
         }
