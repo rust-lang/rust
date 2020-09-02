@@ -955,48 +955,18 @@ pub(crate) fn handle_code_lens(
     }
 
     if snap.config.lens.references() {
-        let ref_lenses = snap
-            .analysis
-            .file_structure(file_id)?
-            .into_iter()
-            .filter(|it| match it.kind {
-                SyntaxKind::FN => true,
-                _ => false,
-            })
-            .filter_map(|it| {
-                let position = FilePosition { file_id, offset: it.navigation_range.start() };
-                let scope = None; // all references
+        lenses.extend(snap.analysis.find_all_methods(file_id)?.into_iter().map(|it| {
+            let range = to_proto::range(&line_index, it.range);
+            let position = to_proto::position(&line_index, it.range.start());
+            let lens_params =
+                lsp_types::TextDocumentPositionParams::new(params.text_document.clone(), position);
 
-                snap.analysis.find_all_refs(position, scope).unwrap_or(None).map(|r| {
-                    let mut lenses = Vec::new();
-                    if r.len() == 1 {
-                        // Only a declaration
-                        return lenses;
-                    }
-
-                    let uri = to_proto::url(&snap, file_id);
-                    let range = to_proto::range(&line_index, it.node_range);
-                    let position = to_proto::position(&line_index, position.offset);
-
-                    if snap.config.lens.method_refs {
-                        let all_locations: Vec<_> = r
-                            .references()
-                            .iter()
-                            .filter_map(|it| to_proto::location(&snap, it.file_range).ok())
-                            .collect();
-                        let title = reference_title(all_locations.len());
-                        let all_refs =
-                            show_references_command(title, &uri, position, all_locations);
-                        lenses.push(CodeLens { range, command: Some(all_refs), data: None });
-                    }
-
-                    lenses
-                })
-            })
-            .flatten()
-            .collect_vec();
-
-        lenses.extend(ref_lenses);
+            CodeLens {
+                range,
+                command: None,
+                data: Some(to_value(CodeLensResolveData::References(lens_params)).unwrap()),
+            }
+        }));
     }
 
     Ok(Some(lenses))
@@ -1006,6 +976,7 @@ pub(crate) fn handle_code_lens(
 #[serde(rename_all = "camelCase")]
 enum CodeLensResolveData {
     Impls(lsp_types::request::GotoImplementationParams),
+    References(lsp_types::TextDocumentPositionParams),
 }
 
 pub(crate) fn handle_code_lens_resolve(
@@ -1035,6 +1006,33 @@ pub(crate) fn handle_code_lens_resolve(
                 code_lens.range.start,
                 locations,
             );
+            Ok(CodeLens { range: code_lens.range, command: Some(cmd), data: None })
+        }
+        Some(CodeLensResolveData::References(doc_position)) => {
+            let position = from_proto::file_position(&snap, doc_position.clone())?;
+            let locations = snap
+                .analysis
+                .find_all_refs(position, None)
+                .unwrap_or(None)
+                .map(|r| {
+                    r.references()
+                        .iter()
+                        .filter_map(|it| to_proto::location(&snap, it.file_range).ok())
+                        .collect_vec()
+                })
+                .unwrap_or_default();
+
+            let cmd = if locations.is_empty() {
+                Command { title: "No references".into(), command: "".into(), arguments: None }
+            } else {
+                show_references_command(
+                    reference_title(locations.len()),
+                    &doc_position.text_document.uri,
+                    code_lens.range.start,
+                    locations,
+                )
+            };
+
             Ok(CodeLens { range: code_lens.range, command: Some(cmd), data: None })
         }
         None => Ok(CodeLens {

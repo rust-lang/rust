@@ -56,7 +56,7 @@ use ide_db::{
     symbol_index::{self, FileSymbol},
     LineIndexDatabase,
 };
-use syntax::{SourceFile, TextRange, TextSize};
+use syntax::{SourceFile, SyntaxKind, TextRange, TextSize};
 
 use crate::display::ToNav;
 
@@ -367,6 +367,21 @@ impl Analysis {
         self.with_db(|db| {
             references::find_all_refs(&Semantics::new(db), position, search_scope).map(|it| it.info)
         })
+    }
+
+    /// Finds all methods and free functions for the file.
+    pub fn find_all_methods(&self, file_id: FileId) -> Cancelable<Vec<FileRange>> {
+        let res = self
+            .file_structure(file_id)?
+            .into_iter()
+            .filter(|it| match it.kind {
+                SyntaxKind::FN => true,
+                _ => false,
+            })
+            .filter_map(|it| Some(FileRange { file_id, range: it.navigation_range }))
+            .collect();
+
+        Ok(res)
     }
 
     /// Returns a short text describing element at position.
