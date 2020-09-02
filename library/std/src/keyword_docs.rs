@@ -115,7 +115,7 @@ mod break_keyword {}
 /// let foo = 123 + THING;
 /// ```
 ///
-/// Constants must be explicitly typed; unlike with `let`, you can't ignore its type and let the
+/// Constants must be explicitly typed; unlike with `let`, you can't ignore their type and let the
 /// compiler figure it out. Any constant value can be defined in a `const`, which in practice happens
 /// to be most things that would be reasonable to have in a constant (barring `const fn`s). For
 /// example, you can't have a [`File`] as a `const`.
@@ -143,7 +143,7 @@ mod break_keyword {}
 /// accesses share. This means that, unlike with constants, they can't have destructors, and act as
 /// a single value across the entire codebase.
 ///
-/// Constants, as with statics, should always be in `SCREAMING_SNAKE_CASE`.
+/// Constants, like statics, should always be in `SCREAMING_SNAKE_CASE`.
 ///
 /// The `const` keyword is also used in raw pointers in combination with `mut`, as seen in `*const
 /// T` and `*mut T`. More about that usage can be read at the Rust docs for the [pointer primitive].
