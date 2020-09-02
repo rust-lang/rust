@@ -155,6 +155,7 @@ mod handlers {
     mod remove_unused_param;
     mod reorder_fields;
     mod replace_if_let_with_match;
+    mod replace_impl_trait_with_generic;
     mod replace_let_with_if_let;
     mod replace_qualified_name_with_use;
     mod replace_unwrap_with_match;
@@ -202,6 +203,7 @@ mod handlers {
             remove_unused_param::remove_unused_param,
             reorder_fields::reorder_fields,
             replace_if_let_with_match::replace_if_let_with_match,
+            replace_impl_trait_with_generic::replace_impl_trait_with_generic,
             replace_let_with_if_let::replace_let_with_if_let,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             replace_unwrap_with_match::replace_unwrap_with_match,

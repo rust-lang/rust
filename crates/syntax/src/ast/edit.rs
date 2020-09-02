@@ -459,6 +459,72 @@ impl ast::MatchArmList {
     }
 }
 
+impl ast::GenericParamList {
+    #[must_use]
+    pub fn append_params(&self, params: impl IntoIterator<Item = ast::GenericParam>) -> Self {
+        let mut res = self.clone();
+        params.into_iter().for_each(|it| res = res.append_param(it));
+        res
+    }
+
+    #[must_use]
+    pub fn append_param(&self, item: ast::GenericParam) -> Self {
+        let is_multiline = self.syntax().text().contains_char('\n');
+        let ws;
+        let space = if is_multiline {
+            ws = tokens::WsBuilder::new(&format!(
+                "\n{}    ",
+                leading_indent(self.syntax()).unwrap_or_default()
+            ));
+            ws.ws()
+        } else {
+            tokens::single_space()
+        };
+
+        let mut to_insert: ArrayVec<[SyntaxElement; 4]> = ArrayVec::new();
+        to_insert.push(space.into());
+        to_insert.push(item.syntax().clone().into());
+        to_insert.push(make::token(T![,]).into());
+
+        macro_rules! after_l_angle {
+            () => {{
+                let anchor = match self.l_angle_token() {
+                    Some(it) => it.into(),
+                    None => return self.clone(),
+                };
+                InsertPosition::After(anchor)
+            }};
+        }
+
+        macro_rules! after_field {
+            ($anchor:expr) => {
+                if let Some(comma) = $anchor
+                    .syntax()
+                    .siblings_with_tokens(Direction::Next)
+                    .find(|it| it.kind() == T![,])
+                {
+                    InsertPosition::After(comma)
+                } else {
+                    to_insert.insert(0, make::token(T![,]).into());
+                    InsertPosition::After($anchor.syntax().clone().into())
+                }
+            };
+        };
+
+        if !is_multiline {
+            // don't insert comma before angle
+            to_insert.pop();
+        }
+
+        let position = match self.generic_params().last() {
+            Some(it) => after_field!(it),
+            None => after_l_angle!(),
+        };
+
+        self.insert_children(position, to_insert)
+    }
+}
+
 #[must_use]
 pub fn remove_attrs_and_docs<N: ast::AttrsOwner>(node: &N) -> N {
     N::cast(remove_attrs_and_docs_inner(node.syntax().clone())).unwrap()
