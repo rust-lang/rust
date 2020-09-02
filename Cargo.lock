@@ -335,9 +335,9 @@ dependencies = [
 
 [[package]]
 name = "expect-test"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a3cb2ab12988de61df699d210428f3a0e26907b9d0978cf2c12e65ee90adb1d"
+checksum = "ceb96f3eaa0d4e8769c52dacfd4eb60183b817ed2f176171b3c691d5022b0f2e"
 dependencies = [
  "difference",
  "once_cell",
@@ -635,9 +635,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.5.1"
+version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86b45e59b16c76b11bf9738fd5d38879d3bd28ad292d7b313608becb17ae2df9"
+checksum = "4e47a3566dd4fd4eec714ae6ceabdee0caec795be835c223d92c2d40f1e8cf1c"
 dependencies = [
  "autocfg",
  "hashbrown",
