@@ -449,6 +449,7 @@ pub trait Iterator {
     /// }
     /// ```
     ///
+    /// [`once`]: crate::iter::once
     /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
