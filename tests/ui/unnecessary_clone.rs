@@ -90,3 +90,21 @@ mod many_derefs {
         let _ = &encoded.clone();
     }
 }
+
+mod issue2076 {
+    use std::rc::Rc;
+
+    macro_rules! try_opt {
+        ($expr: expr) => {
+            match $expr {
+                Some(value) => value,
+                None => return None,
+            }
+        };
+    }
+
+    fn func() -> Option<Rc<u8>> {
+        let rc = Rc::new(42);
+        Some(try_opt!(Some(rc)).clone())
+    }
+}

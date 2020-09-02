@@ -662,6 +662,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "misc",
     },
     Lint {
+        name: "float_equality_without_abs",
+        group: "correctness",
+        desc: "float equality check without `.abs()`",
+        deprecation: None,
+        module: "float_equality_without_abs",
+    },
+    Lint {
         name: "fn_address_comparisons",
         group: "correctness",
         desc: "comparison with an address of a function item",
@@ -2183,7 +2190,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "to_string_in_display",
         group: "correctness",
-        desc: "to_string method used while implementing Display trait",
+        desc: "`to_string` method used while implementing `Display` trait",
         deprecation: None,
         module: "to_string_in_display",
     },
@@ -2508,6 +2515,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "needless unit expression",
         deprecation: None,
         module: "unused_unit",
+    },
+    Lint {
+        name: "unwrap_in_result",
+        group: "restriction",
+        desc: "functions of type `Result<..>` or `Option`<...> that contain `expect()` or `unwrap()`",
+        deprecation: None,
+        module: "unwrap_in_result",
     },
     Lint {
         name: "unwrap_used",

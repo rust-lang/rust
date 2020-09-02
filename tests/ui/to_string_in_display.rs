@@ -44,6 +44,20 @@ impl fmt::Display for C {
     }
 }
 
+enum D {
+    E(String),
+    F,
+}
+
+impl std::fmt::Display for D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::E(string) => write!(f, "E {}", string.to_string()),
+            Self::F => write!(f, "F"),
+        }
+    }
+}
+
 fn main() {
     let a = A;
     a.to_string();

@@ -15,11 +15,11 @@ use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Ty, TyS};
+use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, SymbolStr};
@@ -27,12 +27,12 @@ use rustc_span::symbol::{sym, SymbolStr};
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro, is_copy,
-    is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
-    match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls, method_chain_args, paths,
-    remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
-    span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then, sugg, walk_ptrs_ty,
-    walk_ptrs_ty_depth, SpanlessEq,
+    contains_ty, get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro,
+    is_copy, is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats,
+    last_path_segment, match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls,
+    method_chain_args, paths, remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability,
+    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
+    span_lint_and_then, sugg, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -724,6 +724,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
+    /// In an impl block:
     /// ```rust
     /// # struct Foo;
     /// # struct NotAFoo;
@@ -736,23 +737,38 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// # struct Foo;
-    /// # struct FooError;
+    /// struct Bar(Foo);
     /// impl Foo {
-    ///     // Good. Return type contains `Self`
-    ///     fn new() -> Result<Foo, FooError> {
-    ///         # Ok(Foo)
+    ///     // Bad. The type name must contain `Self`
+    ///     fn new() -> Bar {
+    /// # Bar(Foo)
     ///     }
     /// }
     /// ```
     ///
     /// ```rust
     /// # struct Foo;
-    /// struct Bar(Foo);
+    /// # struct FooError;
     /// impl Foo {
-    ///     // Bad. The type name must contain `Self`.
-    ///     fn new() -> Bar {
-    ///         # Bar(Foo)
+    ///     // Good. Return type contains `Self`
+    ///     fn new() -> Result<Foo, FooError> {
+    /// # Ok(Foo)
     ///     }
+    /// }
+    /// ```
+    ///
+    /// Or in a trait definition:
+    /// ```rust
+    /// pub trait Trait {
+    ///     // Bad. The type name must contain `Self`
+    ///     fn new();
+    /// }
+    /// ```
+    ///
+    /// ```rust
+    /// pub trait Trait {
+    ///     // Good. Return type contains `Self`
+    ///     fn new() -> Self;
     /// }
     /// ```
     pub NEW_RET_NO_SELF,
@@ -1631,19 +1647,16 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             }
         }
 
+        // if this impl block implements a trait, lint in trait definition instead
+        if let hir::ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
+            return;
+        }
+
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
             let ret_ty = return_ty(cx, impl_item.hir_id);
 
-            let contains_self_ty = |ty: Ty<'tcx>| {
-                ty.walk().any(|inner| match inner.unpack() {
-                    GenericArgKind::Type(inner_ty) => TyS::same_type(self_ty, inner_ty),
-
-                    GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
-                })
-            };
-
             // walk the return type and check for Self (this does not check associated types)
-            if contains_self_ty(ret_ty) {
+            if contains_ty(ret_ty, self_ty) {
                 return;
             }
 
@@ -1653,7 +1666,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 for &(predicate, _span) in cx.tcx.predicates_of(def_id).predicates {
                     if let ty::PredicateAtom::Projection(projection_predicate) = predicate.skip_binders() {
                         // walk the associated type and check for Self
-                        if contains_self_ty(projection_predicate.ty) {
+                        if contains_ty(projection_predicate.ty, self_ty) {
                             return;
                         }
                     }
@@ -1665,6 +1678,26 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     cx,
                     NEW_RET_NO_SELF,
                     impl_item.span,
+                    "methods called `new` usually return `Self`",
+                );
+            }
+        }
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
+        if_chain! {
+            if !in_external_macro(cx.tcx.sess, item.span);
+            if item.ident.name == sym!(new);
+            if let TraitItemKind::Fn(_, _) = item.kind;
+            let ret_ty = return_ty(cx, item.hir_id);
+            let self_ty = TraitRef::identity(cx.tcx, item.hir_id.owner.to_def_id()).self_ty();
+            if !contains_ty(ret_ty, self_ty);
+
+            then {
+                span_lint(
+                    cx,
+                    NEW_RET_NO_SELF,
+                    item.span,
                     "methods called `new` usually return `Self`",
                 );
             }
@@ -2150,18 +2183,15 @@ fn lint_clone_on_ref_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::
             return;
         };
 
+        let snippet = snippet_with_macro_callsite(cx, arg.span, "_");
+
         span_lint_and_sugg(
             cx,
             CLONE_ON_REF_PTR,
             expr.span,
             "using `.clone()` on a ref-counted pointer",
             "try this",
-            format!(
-                "{}::<{}>::clone(&{})",
-                caller_type,
-                subst.type_at(0),
-                snippet(cx, arg.span, "_")
-            ),
+            format!("{}::<{}>::clone(&{})", caller_type, subst.type_at(0), snippet),
             Applicability::Unspecified, // Sometimes unnecessary ::<_> after Rc/Arc/Weak
         );
     }
@@ -3421,7 +3451,12 @@ fn lint_option_as_ref_deref<'tcx>(
     ];
 
     let is_deref = match map_args[1].kind {
-        hir::ExprKind::Path(ref expr_qpath) => deref_aliases.iter().any(|path| match_qpath(expr_qpath, path)),
+        hir::ExprKind::Path(ref expr_qpath) => cx
+            .qpath_res(expr_qpath, map_args[1].hir_id)
+            .opt_def_id()
+            .map_or(false, |fun_def_id| {
+                deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
+            }),
         hir::ExprKind::Closure(_, _, body_id, _, _) => {
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
