@@ -92,8 +92,6 @@ impl<'a> PanicInfo<'a> {
     /// If the `panic!` macro from the `core` crate (not from `std`)
     /// was used with a formatting string and some additional arguments,
     /// returns that message ready to be used for example with [`fmt::write`]
-    ///
-    /// [`fmt::write`]: ../fmt/fn.write.html
     #[unstable(feature = "panic_info_message", issue = "66745")]
     pub fn message(&self) -> Option<&fmt::Arguments<'_>> {
         self.message
@@ -104,8 +102,6 @@ impl<'a> PanicInfo<'a> {
     ///
     /// This method will currently always return [`Some`], but this may change
     /// in future versions.
-    ///
-    /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
     ///
     /// # Examples
     ///
@@ -153,10 +149,7 @@ impl fmt::Display for PanicInfo<'_> {
 
 /// A struct containing information about the location of a panic.
 ///
-/// This structure is created by the [`location`] method of [`PanicInfo`].
-///
-/// [`location`]: ../../std/panic/struct.PanicInfo.html#method.location
-/// [`PanicInfo`]: ../../std/panic/struct.PanicInfo.html
+/// This structure is created by [`PanicInfo::location()`].
 ///
 /// # Examples
 ///
