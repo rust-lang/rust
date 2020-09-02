@@ -217,7 +217,7 @@ impl<T> Box<T> {
     /// assert_eq!(*zero, 0)
     /// ```
     ///
-    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
@@ -289,7 +289,7 @@ impl<T> Box<[T]> {
     /// assert_eq!(*values, [0, 0, 0])
     /// ```
     ///
-    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
@@ -307,7 +307,7 @@ impl<T> Box<mem::MaybeUninit<T>> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
-    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::assume_init
     ///
     /// # Examples
     ///
@@ -343,7 +343,7 @@ impl<T> Box<[mem::MaybeUninit<T>]> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
-    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::assume_init
     ///
     /// # Examples
     ///
