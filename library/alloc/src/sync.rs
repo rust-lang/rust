@@ -443,7 +443,7 @@ impl<T> Arc<T> {
     /// assert_eq!(*zero, 0)
     /// ```
     ///
-    /// [zeroed]: mem::MaybeUninit::zeroed
+    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
@@ -550,7 +550,7 @@ impl<T> Arc<[T]> {
     /// assert_eq!(*values, [0, 0, 0])
     /// ```
     ///
-    /// [zeroed]: mem::MaybeUninit::zeroed
+    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         unsafe {
@@ -577,7 +577,7 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
-    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::method.assume_init
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
     ///
     /// # Examples
     ///
@@ -616,7 +616,7 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
-    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::method.assume_init
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
     ///
     /// # Examples
     ///
