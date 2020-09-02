@@ -1,0 +1,30 @@
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/issue-75777.rs:13:14
+   |
+LL |     Box::new(move |_| fut)
+   |              ^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 11:11...
+  --> $DIR/issue-75777.rs:11:11
+   |
+LL | fn inject<'a, Env: 'a, A: 'a + Send>(v: A) -> Box<dyn FnOnce(&'a Env) -> BoxFuture<'a, A>> {
+   |           ^^
+note: ...so that the types are compatible
+  --> $DIR/issue-75777.rs:13:14
+   |
+LL |     Box::new(move |_| fut)
+   |              ^^^^^^^^^^^^
+   = note: expected `std::pin::Pin<std::boxed::Box<dyn std::future::Future<Output = A> + std::marker::Send>>`
+              found `std::pin::Pin<std::boxed::Box<(dyn std::future::Future<Output = A> + std::marker::Send + 'a)>>`
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...so that the expression is assignable
+  --> $DIR/issue-75777.rs:13:5
+   |
+LL |     Box::new(move |_| fut)
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected `std::boxed::Box<(dyn std::ops::FnOnce(&'a Env) -> std::pin::Pin<std::boxed::Box<(dyn std::future::Future<Output = A> + std::marker::Send + 'a)>> + 'static)>`
+              found `std::boxed::Box<dyn std::ops::FnOnce(&'a Env) -> std::pin::Pin<std::boxed::Box<(dyn std::future::Future<Output = A> + std::marker::Send + 'a)>>>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.
