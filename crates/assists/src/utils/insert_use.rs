@@ -114,8 +114,7 @@ pub fn try_merge_trees(
     let lhs_tl = lhs.use_tree_list()?;
     let rhs_tl = rhs.use_tree_list()?;
 
-    // if we are only allowed to merge the last level check if the paths are only one level deep
-    // FIXME: This shouldn't work yet i think
+    // if we are only allowed to merge the last level check if the split off paths are only one level deep
     if merge_behaviour == MergeBehaviour::Last && use_tree_list_is_nested(&lhs_tl)
         || use_tree_list_is_nested(&rhs_tl)
     {
@@ -463,11 +462,66 @@ use std::io;",
     }
 
     #[test]
-    fn merges_groups2() {
+    fn merges_groups_full() {
         check_full(
             "std::io",
             r"use std::fmt::{Result, Display};",
             r"use std::{fmt::{Result, Display}, io};",
+        )
+    }
+
+    #[test]
+    fn merges_groups_long_full() {
+        check_full(
+            "std::foo::bar::Baz",
+            r"use std::foo::bar::Qux;",
+            r"use std::foo::bar::{Baz, Qux};",
+        )
+    }
+
+    #[test]
+    fn merges_groups_long_last() {
+        check_last(
+            "std::foo::bar::Baz",
+            r"use std::foo::bar::Qux;",
+            r"use std::foo::bar::{Baz, Qux};",
+        )
+    }
+
+    #[test]
+    fn merges_groups_long_full_list() {
+        check_full(
+            "std::foo::bar::Baz",
+            r"use std::foo::bar::{Qux, Quux};",
+            r"use std::foo::bar::{Baz, Quux, Qux};",
+        )
+    }
+
+    #[test]
+    fn merges_groups_long_last_list() {
+        check_last(
+            "std::foo::bar::Baz",
+            r"use std::foo::bar::{Qux, Quux};",
+            r"use std::foo::bar::{Baz, Quux, Qux};",
+        )
+    }
+
+    #[test]
+    fn merges_groups_long_full_nested() {
+        check_full(
+            "std::foo::bar::Baz",
+            r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
+            r"use std::foo::bar::{Baz, quux::{Fez, Fizz}, Qux};",
+        )
+    }
+
+    #[test]
+    fn merges_groups_long_last_nested() {
+        check_last(
+            "std::foo::bar::Baz",
+            r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
+            r"use std::foo::bar::Baz;
+use std::foo::bar::{quux::{Fez, Fizz}, Qux};",
         )
     }
 
@@ -477,6 +531,17 @@ use std::io;",
             "std::io",
             r"pub use std::fmt::{Result, Display};",
             r"pub use std::fmt::{Result, Display};
+use std::io;",
+        )
+    }
+
+    // should this be a thing?
+    #[test]
+    fn split_merge() {
+        check_last(
+            "std::fmt::Result",
+            r"use std::{fmt, io};",
+            r"use std::fmt::Result;
 use std::io;",
         )
     }
