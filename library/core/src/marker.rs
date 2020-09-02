@@ -433,7 +433,7 @@ pub macro Copy($item:item) {
 /// [`sync::Mutex`][mutex] and [`sync::RwLock`][rwlock]. These types
 /// ensure that any mutation cannot cause data races, hence the types
 /// are `Sync`. Likewise, [`sync::Arc`][arc] provides a thread-safe
-/// analogue of [`Rc`].
+/// analogue of [`Rc`][rc].
 ///
 /// Any types with interior mutability must also use the
 /// [`cell::UnsafeCell`][unsafecell] wrapper around the value(s) which
