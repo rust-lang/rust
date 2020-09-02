@@ -1234,6 +1234,10 @@ impl<'a> Parser<'a> {
                 *t == token::OpenDelim(token::Brace) || *t == token::BinOp(token::Star)
             })
     }
+
+    pub fn clear_expected_tokens(&mut self) {
+        self.expected_tokens.clear();
+    }
 }
 
 crate fn make_unclosed_delims_error(
