@@ -22,8 +22,8 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 /// generally, please see the [module-level documentation]. In particular, you
 /// may want to know how to [implement `Iterator`][impl].
 ///
-/// [module-level documentation]: crate::iter
-/// [impl]: crate::iter#implementing-iterator
+/// [module-level documentation]: self
+/// [impl]: self#implementing-iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
@@ -106,6 +106,8 @@ pub trait Iterator {
     /// implementations may choose to resume iteration, and so calling `next()`
     /// again may or may not eventually start returning [`Some(Item)`] again at some
     /// point.
+    ///
+    /// [`Some(Item)`]: Some
     ///
     /// # Examples
     ///
@@ -447,7 +449,6 @@ pub trait Iterator {
     /// }
     /// ```
     ///
-    /// [`once`]: crate::iter::once
     /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2157,6 +2158,8 @@ pub trait Iterator {
     /// argument is a double reference. You can see this effect in the
     /// examples below, with `&&x`.
     ///
+    /// [`Some(element)`]: Some
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -2301,6 +2304,7 @@ pub trait Iterator {
     /// This function might panic if the iterator has more than `usize::MAX`
     /// non-matching elements.
     ///
+    /// [`Some(index)`]: Some
     /// [`usize::MAX`]: crate::usize::MAX
     ///
     /// # Examples
@@ -2361,6 +2365,8 @@ pub trait Iterator {
     ///
     /// `rposition()` is short-circuiting; in other words, it will stop
     /// processing as soon as it finds a `true`.
+    ///
+    /// [`Some(index)`]: Some
     ///
     /// # Examples
     ///
