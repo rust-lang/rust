@@ -43,7 +43,7 @@ use crate::{
 };
 
 pub use autoderef::autoderef;
-pub use infer::{unify, InferTy, InferenceResult};
+pub use infer::{InferTy, InferenceResult};
 pub use lower::CallableDefId;
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, ImplTraitLoweringMode, TyDefId,

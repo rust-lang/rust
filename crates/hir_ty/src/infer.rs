@@ -55,7 +55,7 @@ macro_rules! ty_app {
     };
 }
 
-pub mod unify;
+mod unify;
 mod path;
 mod expr;
 mod pat;
