@@ -12,6 +12,7 @@ use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::marker::Unsize;
+use crate::mem::MaybeUninit;
 use crate::slice::{Iter, IterMut};
 
 mod iter;
@@ -389,7 +390,6 @@ impl<T, const N: usize> [T; N] {
     where
         F: FnMut(T) -> U,
     {
-        use crate::mem::MaybeUninit;
         struct Guard<T, const N: usize> {
             dst: *mut T,
             initialized: usize,
@@ -415,11 +415,84 @@ impl<T, const N: usize> [T; N] {
             dst.write(f(src));
             guard.initialized += 1;
         }
-        // FIXME: Convert to crate::mem::transmute once it works with generics.
-        // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
         crate::mem::forget(guard);
         // SAFETY: At this point we've properly initialized the whole array
         // and we just need to cast it to the correct type.
-        unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
+        unsafe { assume_init_array(dst) }
+    }
+
+    /// Maps an `[&T; N]` or `[&mut T; N]` to a `[T; N]` by copying the contents of the array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_methods)]
+    ///
+    /// let x = 12;
+    /// let ref_array = [&x, &2, &3];
+    /// let copied = ref_array.copied();
+    /// assert_eq!(copied, [12, 2, 3]);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(array_methods)]
+    ///
+    /// let mut x = 12;
+    /// let ref_array = [&mut x, &mut 2, &mut 3];
+    /// let copied = ref_array.copied();
+    /// assert_eq!(copied, [12, 2, 3]);
+    ///
+    /// *ref_array[0] += 1;
+    /// let copied_again = ref_array.copied();
+    /// assert_eq!(copied_again, [13, 2, 3]);
+    /// ```
+    #[unstable(feature = "array_methods", issue = "76118")]
+    pub fn copied(&self) -> [<T as Reference>::Pointee; N]
+        where T: Reference<Pointee: Copy>
+    {
+        // No guard needed here because these are all bitwise copies, which cannot fail.
+        // (And things that are `Copy` can't be `Drop` anyway.)
+        let mut dst = MaybeUninit::uninit_array::<N>();
+        for i in 0..N {
+            dst[i].write(self[i].copy());
+        }
+
+        // SAFETY: all N elements were initialized above
+        unsafe { assume_init_array(dst) }
+    }
+}
+
+/// A convenience wrapper around `transmute` for better readability in the other methods.
+///
+/// Safety:
+/// - Requires that all N elements of the array have been initialized
+unsafe fn assume_init_array<T, const N: usize>(a: [MaybeUninit<T>; N]) -> [T; N] {
+    // FIXME: Convert to crate::mem::transmute once it works with generics.
+    // unsafe { crate::mem::transmute(a) }
+    unsafe { crate::mem::transmute_copy(&a) }
+}
+
+// This allows us to implement methods like `copied` and `cloned` above
+// without needing to add support for 2 new interent impl blocks.
+use temporary_hacks::Reference;
+mod temporary_hacks {
+    #[unstable(feature = "temporary_hacks", issue = "none")]
+    pub trait Reference {
+        #[unstable(feature = "temporary_hacks", issue = "none")]
+        type Pointee;
+        #[unstable(feature = "temporary_hacks", issue = "none")]
+        fn copy(&self) -> Self::Pointee where Self::Pointee: Copy;
+    }
+
+    #[unstable(feature = "temporary_hacks", issue = "none")]
+    impl<T> Reference for &T {
+        type Pointee = T;
+        fn copy(&self) -> T where T: Copy { **self }
+    }
+
+    #[unstable(feature = "temporary_hacks", issue = "none")]
+    impl<T> Reference for &mut T {
+        type Pointee = T;
+        fn copy(&self) -> T where T: Copy { **self }
     }
 }
