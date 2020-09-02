@@ -10,7 +10,7 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::util::classify;
-use rustc_ast::{AttrStyle, AttrVec, Attribute, MacCall, MacStmtStyle};
+use rustc_ast::{AttrStyle, AttrVec, Attribute, MacCall, MacCallStmt, MacStmtStyle};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
 
         let kind = if delim == token::Brace || self.token == token::Semi || self.token == token::Eof
         {
-            StmtKind::MacCall(P((mac, style, attrs)))
+            StmtKind::MacCall(P(MacCallStmt { mac, style, attrs }))
         } else {
             // Since none of the above applied, this is an expression statement macro.
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac), AttrVec::new());

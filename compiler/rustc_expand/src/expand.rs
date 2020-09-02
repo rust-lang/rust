@@ -13,7 +13,7 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrItem, Block, LitKind, NodeId, PatKind, Path};
-use rustc_ast::{ItemKind, MacArgs, MacStmtStyle, StmtKind};
+use rustc_ast::{ItemKind, MacArgs, MacCallStmt, MacStmtStyle, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -1363,7 +1363,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         if let StmtKind::MacCall(mac) = stmt.kind {
-            let (mac, style, attrs) = mac.into_inner();
+            let MacCallStmt { mac, style, attrs } = mac.into_inner();
             self.check_attributes(&attrs);
             let mut placeholder =
                 self.collect_bang(mac, stmt.span, AstFragmentKind::Stmts).make_stmts();

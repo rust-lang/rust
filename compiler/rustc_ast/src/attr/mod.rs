@@ -16,7 +16,6 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
 use std::iter;
-use std::ops::DerefMut;
 
 pub struct MarkedAttrs(GrowableBitSet<AttrId>);
 
@@ -634,10 +633,7 @@ impl HasAttrs for StmtKind {
             StmtKind::Local(ref local) => local.attrs(),
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.attrs(),
             StmtKind::Empty | StmtKind::Item(..) => &[],
-            StmtKind::MacCall(ref mac) => {
-                let (_, _, ref attrs) = **mac;
-                attrs.attrs()
-            }
+            StmtKind::MacCall(ref mac) => mac.attrs.attrs(),
         }
     }
 
@@ -647,8 +643,7 @@ impl HasAttrs for StmtKind {
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
             StmtKind::Empty | StmtKind::Item(..) => {}
             StmtKind::MacCall(mac) => {
-                let (_mac, _style, attrs) = mac.deref_mut();
-                attrs.visit_attrs(f);
+                mac.attrs.visit_attrs(f);
             }
         }
     }
