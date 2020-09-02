@@ -34,14 +34,15 @@ pub(crate) fn insert_use_statement(
     insert_use(position.clone(), make::path_from_text(path_to_import), Some(MergeBehaviour::Full));
 }
 
+/// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
 pub fn insert_use(
     where_: SyntaxNode,
     path: ast::Path,
-    merge_behaviour: Option<MergeBehaviour>,
+    merge: Option<MergeBehaviour>,
 ) -> SyntaxNode {
     let use_item = make::use_(make::use_tree(path.clone(), None, None, false));
     // merge into existing imports if possible
-    if let Some(mb) = merge_behaviour {
+    if let Some(mb) = merge {
         for existing_use in where_.children().filter_map(ast::Use::cast) {
             if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
                 let to_delete: SyntaxElement = existing_use.syntax().clone().into();
@@ -59,17 +60,24 @@ pub fn insert_use(
     let to_insert: Vec<SyntaxElement> = {
         let mut buf = Vec::new();
 
-        if add_blank == AddBlankLine::Before {
-            buf.push(make::tokens::single_newline().into());
+        match add_blank {
+            AddBlankLine::Before => buf.push(make::tokens::single_newline().into()),
+            AddBlankLine::BeforeTwice => {
+                buf.push(make::tokens::single_newline().into());
+                buf.push(make::tokens::single_newline().into());
+            }
+            _ => (),
         }
 
         buf.push(use_item.syntax().clone().into());
 
-        if add_blank == AddBlankLine::After {
-            buf.push(make::tokens::single_newline().into());
-        } else if add_blank == AddBlankLine::AfterTwice {
-            buf.push(make::tokens::single_newline().into());
-            buf.push(make::tokens::single_newline().into());
+        match add_blank {
+            AddBlankLine::After => buf.push(make::tokens::single_newline().into()),
+            AddBlankLine::AfterTwice => {
+                buf.push(make::tokens::single_newline().into());
+                buf.push(make::tokens::single_newline().into());
+            }
+            _ => (),
         }
 
         buf
@@ -83,8 +91,8 @@ fn try_merge_imports(
     new: &ast::Use,
     merge_behaviour: MergeBehaviour,
 ) -> Option<ast::Use> {
-    // dont merge into re-exports
-    if old.visibility().map(|vis| vis.pub_token()).is_some() {
+    // don't merge into re-exports
+    if old.visibility().and_then(|vis| vis.pub_token()).is_some() {
         return None;
     }
     let old_tree = old.use_tree()?;
@@ -115,8 +123,8 @@ pub fn try_merge_trees(
     let rhs_tl = rhs.use_tree_list()?;
 
     // if we are only allowed to merge the last level check if the split off paths are only one level deep
-    if merge_behaviour == MergeBehaviour::Last && use_tree_list_is_nested(&lhs_tl)
-        || use_tree_list_is_nested(&rhs_tl)
+    if merge_behaviour == MergeBehaviour::Last
+        && (use_tree_list_is_nested(&lhs_tl) || use_tree_list_is_nested(&rhs_tl))
     {
         return None;
     }
@@ -124,18 +132,15 @@ pub fn try_merge_trees(
     let should_insert_comma = lhs_tl
         .r_curly_token()
         .and_then(|it| skip_trivia_token(it.prev_token()?, Direction::Prev))
-        .map(|it| it.kind() != T![,])
-        .unwrap_or(true);
+        .map(|it| it.kind())
+        != Some(T![,]);
     let mut to_insert: Vec<SyntaxElement> = Vec::new();
     if should_insert_comma {
         to_insert.push(make::token(T![,]).into());
         to_insert.push(make::tokens::single_space().into());
     }
     to_insert.extend(
-        rhs_tl
-            .syntax()
-            .children_with_tokens()
-            .filter(|it| it.kind() != T!['{'] && it.kind() != T!['}']),
+        rhs_tl.syntax().children_with_tokens().filter(|it| !matches!(it.kind(), T!['{'] | T!['}'])),
     );
     let pos = InsertPosition::Before(lhs_tl.r_curly_token()?.into());
     let use_tree_list = lhs_tl.insert_children(pos, to_insert);
@@ -225,6 +230,7 @@ fn segment_iter(path: &ast::Path) -> impl Iterator<Item = ast::PathSegment> + Cl
 #[derive(PartialEq, Eq)]
 enum AddBlankLine {
     Before,
+    BeforeTwice,
     After,
     AfterTwice,
 }
@@ -278,7 +284,9 @@ fn find_insert_position(
                     }
                     // there is no such group, so append after the last one
                     None => match last {
-                        Some(node) => (InsertPosition::After(node.into()), AddBlankLine::Before),
+                        Some(node) => {
+                            (InsertPosition::After(node.into()), AddBlankLine::BeforeTwice)
+                        }
                         // there are no imports in this file at all
                         None => (InsertPosition::First, AddBlankLine::AfterTwice),
                     },
@@ -297,12 +305,14 @@ mod tests {
     #[test]
     fn insert_start() {
         check_none(
-            "std::bar::A",
-            r"use std::bar::B;
+            "std::bar::AA",
+            r"
+use std::bar::B;
 use std::bar::D;
 use std::bar::F;
 use std::bar::G;",
-            r"use std::bar::A;
+            r"
+use std::bar::AA;
 use std::bar::B;
 use std::bar::D;
 use std::bar::F;
@@ -313,14 +323,16 @@ use std::bar::G;",
     #[test]
     fn insert_middle() {
         check_none(
-            "std::bar::E",
-            r"use std::bar::A;
+            "std::bar::EE",
+            r"
+use std::bar::A;
 use std::bar::D;
 use std::bar::F;
 use std::bar::G;",
-            r"use std::bar::A;
+            r"
+use std::bar::A;
 use std::bar::D;
-use std::bar::E;
+use std::bar::EE;
 use std::bar::F;
 use std::bar::G;",
         )
@@ -329,29 +341,33 @@ use std::bar::G;",
     #[test]
     fn insert_end() {
         check_none(
-            "std::bar::Z",
-            r"use std::bar::A;
+            "std::bar::ZZ",
+            r"
+use std::bar::A;
 use std::bar::D;
 use std::bar::F;
 use std::bar::G;",
-            r"use std::bar::A;
+            r"
+use std::bar::A;
 use std::bar::D;
 use std::bar::F;
 use std::bar::G;
-use std::bar::Z;",
+use std::bar::ZZ;",
         )
     }
 
     #[test]
-    fn insert_middle_pnested() {
+    fn insert_middle_nested() {
         check_none(
-            "std::bar::E",
-            r"use std::bar::A;
+            "std::bar::EE",
+            r"
+use std::bar::A;
 use std::bar::{D, Z}; // example of weird imports due to user
 use std::bar::F;
 use std::bar::G;",
-            r"use std::bar::A;
-use std::bar::E;
+            r"
+use std::bar::A;
+use std::bar::EE;
 use std::bar::{D, Z}; // example of weird imports due to user
 use std::bar::F;
 use std::bar::G;",
@@ -361,17 +377,19 @@ use std::bar::G;",
     #[test]
     fn insert_middle_groups() {
         check_none(
-            "foo::bar::G",
-            r"use std::bar::A;
+            "foo::bar::GG",
+            r"
+use std::bar::A;
 use std::bar::D;
 
 use foo::bar::F;
 use foo::bar::H;",
-            r"use std::bar::A;
+            r"
+use std::bar::A;
 use std::bar::D;
 
 use foo::bar::F;
-use foo::bar::G;
+use foo::bar::GG;
 use foo::bar::H;",
         )
     }
@@ -379,17 +397,19 @@ use foo::bar::H;",
     #[test]
     fn insert_first_matching_group() {
         check_none(
-            "foo::bar::G",
-            r"use foo::bar::A;
+            "foo::bar::GG",
+            r"
+use foo::bar::A;
 use foo::bar::D;
 
 use std;
 
 use foo::bar::F;
 use foo::bar::H;",
-            r"use foo::bar::A;
+            r"
+use foo::bar::A;
 use foo::bar::D;
-use foo::bar::G;
+use foo::bar::GG;
 
 use std;
 
@@ -399,15 +419,32 @@ use foo::bar::H;",
     }
 
     #[test]
-    fn insert_missing_group() {
+    fn insert_missing_group_std() {
         check_none(
             "std::fmt",
-            r"use foo::bar::A;
+            r"
+use foo::bar::A;
 use foo::bar::D;",
-            r"use std::fmt;
+            r"
+use std::fmt;
 
 use foo::bar::A;
 use foo::bar::D;",
+        )
+    }
+
+    #[test]
+    fn insert_missing_group_self() {
+        check_none(
+            "self::fmt",
+            r"
+use foo::bar::A;
+use foo::bar::D;",
+            r"
+use foo::bar::A;
+use foo::bar::D;
+
+use self::fmt;",
         )
     }
 
@@ -436,23 +473,12 @@ fn main() {}",
     }
 
     #[test]
-    fn adds_std_group() {
-        check_full(
-            "std::fmt::Debug",
-            r"use stdx;",
-            r"use std::fmt::Debug;
-
-use stdx;",
-        )
-    }
-
-    #[test]
-    fn merges_groups() {
+    fn merge_groups() {
         check_last("std::io", r"use std::fmt;", r"use std::{fmt, io};")
     }
 
     #[test]
-    fn merges_groups_last() {
+    fn merge_groups_last() {
         check_last(
             "std::io",
             r"use std::fmt::{Result, Display};",
@@ -462,7 +488,7 @@ use std::io;",
     }
 
     #[test]
-    fn merges_groups_full() {
+    fn merge_groups_full() {
         check_full(
             "std::io",
             r"use std::fmt::{Result, Display};",
@@ -471,7 +497,7 @@ use std::io;",
     }
 
     #[test]
-    fn merges_groups_long_full() {
+    fn merge_groups_long_full() {
         check_full(
             "std::foo::bar::Baz",
             r"use std::foo::bar::Qux;",
@@ -480,7 +506,7 @@ use std::io;",
     }
 
     #[test]
-    fn merges_groups_long_last() {
+    fn merge_groups_long_last() {
         check_last(
             "std::foo::bar::Baz",
             r"use std::foo::bar::Qux;",
@@ -489,7 +515,7 @@ use std::io;",
     }
 
     #[test]
-    fn merges_groups_long_full_list() {
+    fn merge_groups_long_full_list() {
         check_full(
             "std::foo::bar::Baz",
             r"use std::foo::bar::{Qux, Quux};",
@@ -498,7 +524,7 @@ use std::io;",
     }
 
     #[test]
-    fn merges_groups_long_last_list() {
+    fn merge_groups_long_last_list() {
         check_last(
             "std::foo::bar::Baz",
             r"use std::foo::bar::{Qux, Quux};",
@@ -507,7 +533,7 @@ use std::io;",
     }
 
     #[test]
-    fn merges_groups_long_full_nested() {
+    fn merge_groups_long_full_nested() {
         check_full(
             "std::foo::bar::Baz",
             r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
@@ -516,7 +542,7 @@ use std::io;",
     }
 
     #[test]
-    fn merges_groups_long_last_nested() {
+    fn merge_groups_long_last_nested() {
         check_last(
             "std::foo::bar::Baz",
             r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
@@ -526,7 +552,7 @@ use std::foo::bar::{quux::{Fez, Fizz}, Qux};",
     }
 
     #[test]
-    fn skip_merges_groups_pub() {
+    fn merge_groups_skip_pub() {
         check_full(
             "std::io",
             r"pub use std::fmt::{Result, Display};",
@@ -535,20 +561,29 @@ use std::io;",
         )
     }
 
-    // should this be a thing?
     #[test]
-    fn split_merge() {
+    #[ignore] // FIXME: Support this
+    fn split_out_merge() {
         check_last(
             "std::fmt::Result",
             r"use std::{fmt, io};",
-            r"use std::fmt::Result;
+            r"use std::{self, fmt::Result};
 use std::io;",
         )
     }
 
     #[test]
-    fn merges_groups_self() {
+    fn merge_groups_self() {
         check_full("std::fmt::Debug", r"use std::fmt;", r"use std::fmt::{self, Debug};")
+    }
+
+    #[test]
+    fn merge_self_glob() {
+        check_full(
+            "token::TokenKind",
+            r"use token::TokenKind::*;",
+            r"use token::TokenKind::{self::*, self};",
+        )
     }
 
     fn check(
