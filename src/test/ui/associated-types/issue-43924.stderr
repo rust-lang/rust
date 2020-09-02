@@ -1,12 +1,12 @@
-error[E0277]: the trait bound `(dyn std::string::ToString + 'static): std::default::Default` is not satisfied
+error[E0277]: the trait bound `(dyn ToString + 'static): Default` is not satisfied
   --> $DIR/issue-43924.rs:7:15
    |
 LL | trait Foo<T: Default + ToString> {
    | -------------------------------- required by `Foo`
 LL |     type Out: Default + ToString + ?Sized = dyn ToString;
-   |               ^^^^^^^ the trait `std::default::Default` is not implemented for `(dyn std::string::ToString + 'static)`
+   |               ^^^^^^^ the trait `Default` is not implemented for `(dyn ToString + 'static)`
 
-error[E0277]: the trait bound `(dyn std::string::ToString + 'static): std::default::Default` is not satisfied
+error[E0277]: the trait bound `(dyn ToString + 'static): Default` is not satisfied
   --> $DIR/issue-43924.rs:10:6
    |
 LL | trait Foo<T: Default + ToString> {
@@ -15,9 +15,9 @@ LL |     type Out: Default + ToString + ?Sized = dyn ToString;
    |               ------- required by this bound in `Foo`
 ...
 LL | impl Foo<u32> for () {}
-   |      ^^^^^^^^ the trait `std::default::Default` is not implemented for `(dyn std::string::ToString + 'static)`
+   |      ^^^^^^^^ the trait `Default` is not implemented for `(dyn ToString + 'static)`
 
-error[E0277]: the trait bound `(dyn std::string::ToString + 'static): std::default::Default` is not satisfied
+error[E0277]: the trait bound `(dyn ToString + 'static): Default` is not satisfied
   --> $DIR/issue-43924.rs:11:6
    |
 LL | trait Foo<T: Default + ToString> {
@@ -26,7 +26,7 @@ LL |     type Out: Default + ToString + ?Sized = dyn ToString;
    |               ------- required by this bound in `Foo`
 ...
 LL | impl Foo<u64> for () {}
-   |      ^^^^^^^^ the trait `std::default::Default` is not implemented for `(dyn std::string::ToString + 'static)`
+   |      ^^^^^^^^ the trait `Default` is not implemented for `(dyn ToString + 'static)`
 
 error: aborting due to 3 previous errors
 

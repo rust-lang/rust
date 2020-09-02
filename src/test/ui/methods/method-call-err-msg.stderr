@@ -38,17 +38,17 @@ LL | pub struct Foo;
    | ---------------
    | |
    | method `take` not found for this
-   | doesn't satisfy `Foo: std::iter::Iterator`
+   | doesn't satisfy `Foo: Iterator`
 ...
 LL |      .take()
    |       ^^^^ method not found in `Foo`
    |
    = note: the method `take` exists but the following trait bounds were not satisfied:
-           `Foo: std::iter::Iterator`
-           which is required by `&mut Foo: std::iter::Iterator`
+           `Foo: Iterator`
+           which is required by `&mut Foo: Iterator`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `take`, perhaps you need to implement it:
-           candidate #1: `std::iter::Iterator`
+           candidate #1: `Iterator`
 
 error[E0061]: this function takes 3 arguments but 0 arguments were supplied
   --> $DIR/method-call-err-msg.rs:21:7

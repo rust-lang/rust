@@ -2,7 +2,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized5.rs:4:9
    |
 LL | struct S1<X: ?Sized> {
-   |           - this type parameter needs to be `std::marker::Sized`
+   |           - this type parameter needs to be `Sized`
 LL |     f1: X,
    |         ^ doesn't have a size known at compile-time
    |
@@ -21,7 +21,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized5.rs:10:8
    |
 LL | struct S2<X: ?Sized> {
-   |           - this type parameter needs to be `std::marker::Sized`
+   |           - this type parameter needs to be `Sized`
 LL |     f: isize,
 LL |     g: X,
    |        ^ doesn't have a size known at compile-time
@@ -43,7 +43,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL |     f: str,
    |        ^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -61,7 +61,7 @@ error[E0277]: the size for values of type `[u8]` cannot be known at compilation 
 LL |     f: [u8],
    |        ^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = help: the trait `Sized` is not implemented for `[u8]`
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -77,7 +77,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized5.rs:25:8
    |
 LL | enum E<X: ?Sized> {
-   |        - this type parameter needs to be `std::marker::Sized`
+   |        - this type parameter needs to be `Sized`
 LL |     V1(X, isize),
    |        ^ doesn't have a size known at compile-time
    |
@@ -96,7 +96,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized5.rs:29:12
    |
 LL | enum F<X: ?Sized> {
-   |        - this type parameter needs to be `std::marker::Sized`
+   |        - this type parameter needs to be `Sized`
 LL |     V2{f1: X, f: isize},
    |            ^ doesn't have a size known at compile-time
    |

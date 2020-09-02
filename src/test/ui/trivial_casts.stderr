@@ -72,7 +72,7 @@ LL |     let _ = x as *mut [u32];
    |
    = help: cast can be replaced by coercion; this might require a temporary variable
 
-error: trivial cast: `std::boxed::Box<[u32; 3]>` as `std::boxed::Box<[u32]>`
+error: trivial cast: `Box<[u32; 3]>` as `Box<[u32]>`
   --> $DIR/trivial_casts.rs:45:13
    |
 LL |     let _ = x as Box<[u32]>;
@@ -112,7 +112,7 @@ LL |     let _ = x as *mut dyn Foo;
    |
    = help: cast can be replaced by coercion; this might require a temporary variable
 
-error: trivial cast: `std::boxed::Box<Bar>` as `std::boxed::Box<dyn Foo>`
+error: trivial cast: `Box<Bar>` as `Box<dyn Foo>`
   --> $DIR/trivial_casts.rs:64:13
    |
 LL |     let _ = x as Box<dyn Foo>;
@@ -120,7 +120,7 @@ LL |     let _ = x as Box<dyn Foo>;
    |
    = help: cast can be replaced by coercion; this might require a temporary variable
 
-error: trivial cast: `&fn(i32) {main::baz}` as `&dyn std::ops::Fn(i32)`
+error: trivial cast: `&fn(i32) {baz}` as `&dyn Fn(i32)`
   --> $DIR/trivial_casts.rs:70:13
    |
 LL |     let _ = &baz as &dyn Fn(i32);
@@ -128,7 +128,7 @@ LL |     let _ = &baz as &dyn Fn(i32);
    |
    = help: cast can be replaced by coercion; this might require a temporary variable
 
-error: trivial cast: `&[closure@$DIR/trivial_casts.rs:72:13: 72:25]` as `&dyn std::ops::Fn(i32)`
+error: trivial cast: `&[closure@$DIR/trivial_casts.rs:72:13: 72:25]` as `&dyn Fn(i32)`
   --> $DIR/trivial_casts.rs:73:13
    |
 LL |     let _ = &x as &dyn Fn(i32);

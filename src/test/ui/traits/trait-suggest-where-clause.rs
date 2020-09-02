@@ -13,15 +13,15 @@ fn check<T: Iterator, U: ?Sized>() {
     // ... even if T occurs as a type parameter
 
     <u64 as From<T>>::from;
-    //~^ ERROR `u64: std::convert::From<T>` is not satisfied
+    //~^ ERROR `u64: From<T>` is not satisfied
 
     <u64 as From<<T as Iterator>::Item>>::from;
-    //~^ ERROR `u64: std::convert::From<<T as std::iter::Iterator>::Item>` is not satisfied
+    //~^ ERROR `u64: From<<T as Iterator>::Item>` is not satisfied
 
     // ... but not if there are inference variables
 
     <Misc<_> as From<T>>::from;
-    //~^ ERROR `Misc<_>: std::convert::From<T>` is not satisfied
+    //~^ ERROR `Misc<_>: From<T>` is not satisfied
 
     // ... and also not if the error is not related to the type
 

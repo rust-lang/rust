@@ -6,7 +6,7 @@ LL | |     bar: &'a T::Item
 LL | | }
    | |_^
    |
-   = note: <T as std::iter::Iterator>::Item: 'a
+   = note: <T as Iterator>::Item: 'a
 
 error: aborting due to previous error
 

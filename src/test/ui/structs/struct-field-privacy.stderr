@@ -22,7 +22,7 @@ error[E0616]: field `b` of struct `xc::B` is private
 LL |     e.b;
    |       ^ private field
 
-error[E0616]: field `1` of struct `inner::Z` is private
+error[E0616]: field `1` of struct `Z` is private
   --> $DIR/struct-field-privacy.rs:35:7
    |
 LL |     z.1;

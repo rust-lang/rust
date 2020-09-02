@@ -9,8 +9,8 @@ LL |     fn foo() {}
 LL |     let b: Box<dyn Foo> = Box::new(Bar);
    |                           ^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Foo>>` for `std::boxed::Box<Bar>`
-   = note: required by cast to type `std::boxed::Box<dyn Foo>`
+   = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn Foo>>` for `Box<Bar>`
+   = note: required by cast to type `Box<dyn Foo>`
 help: consider turning `foo` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
    |
 LL |     fn foo() where Self: Sized {}

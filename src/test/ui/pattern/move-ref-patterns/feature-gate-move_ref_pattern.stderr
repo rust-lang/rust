@@ -49,7 +49,7 @@ LL |     let (a, mut b) = &tup;
    |             -----    ^^^^
    |             |
    |             data moved here
-   |             move occurs because `b` has type `main::X`, which does not implement the `Copy` trait
+   |             move occurs because `b` has type `X`, which does not implement the `Copy` trait
 
 error[E0507]: cannot move out of a mutable reference
   --> $DIR/feature-gate-move_ref_pattern.rs:20:22
@@ -58,7 +58,7 @@ LL |     let (mut a, b) = &mut tup;
    |          -----       ^^^^^^^^
    |          |
    |          data moved here
-   |          move occurs because `a` has type `main::X`, which does not implement the `Copy` trait
+   |          move occurs because `a` has type `X`, which does not implement the `Copy` trait
 
 error: aborting due to 6 previous errors
 

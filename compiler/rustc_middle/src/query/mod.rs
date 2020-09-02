@@ -1255,6 +1255,11 @@ rustc_queries! {
             storage(ArenaCacheSelector<'tcx>)
             desc { "calculating the visible parent map" }
         }
+        query trimmed_def_paths(_: CrateNum)
+            -> FxHashMap<DefId, Symbol> {
+            storage(ArenaCacheSelector<'tcx>)
+            desc { "calculating trimmed def paths" }
+        }
         query missing_extern_crate_item(_: CrateNum) -> bool {
             eval_always
             desc { "seeing if we're missing an `extern crate` item for this crate" }

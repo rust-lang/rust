@@ -6,7 +6,7 @@ LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
    |                    |
    |                    first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Trait + std::marker::Sized {}`
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Trait + Sized {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
@@ -18,9 +18,9 @@ LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
   ::: $SRC_DIR/alloc/src/vec.rs:LL:COL
    |
 LL | pub struct Vec<T> {
-   |                - required by this bound in `std::vec::Vec`
+   |                - required by this bound in `Vec`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `dyn Trait`
+   = help: the trait `Sized` is not implemented for `dyn Trait`
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
   --> $DIR/bad-sized.rs:4:37
@@ -28,8 +28,8 @@ error[E0277]: the size for values of type `dyn Trait` cannot be known at compila
 LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
    |                                     ^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `dyn Trait`
-   = note: required by `std::vec::Vec::<T>::new`
+   = help: the trait `Sized` is not implemented for `dyn Trait`
+   = note: required by `Vec::<T>::new`
 
 error: aborting due to 3 previous errors
 

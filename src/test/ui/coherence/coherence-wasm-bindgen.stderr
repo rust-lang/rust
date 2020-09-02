@@ -1,4 +1,4 @@
-error: conflicting implementations of trait `IntoWasmAbi` for type `&dyn std::ops::Fn(&_) -> _`:
+error: conflicting implementations of trait `IntoWasmAbi` for type `&dyn Fn(&_) -> _`:
   --> $DIR/coherence-wasm-bindgen.rs:28:1
    |
 LL | / impl<'a, 'b, A, R> IntoWasmAbi for &'a (dyn Fn(A) -> R + 'b)
@@ -16,7 +16,7 @@ LL | |     R: ReturnWasmAbi,
 ...  |
 LL | |
 LL | | }
-   | |_^ conflicting implementation for `&dyn std::ops::Fn(&_) -> _`
+   | |_^ conflicting implementation for `&dyn Fn(&_) -> _`
    |
 note: the lint level is defined here
   --> $DIR/coherence-wasm-bindgen.rs:10:9

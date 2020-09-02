@@ -9,8 +9,8 @@ LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
    |
 help: consider further restricting `Self`
    |
-LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: std::marker::Sized {
-   |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: Sized {
+   |                                                           ^^^^^^^^^^^^^
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait From<Src: ?Sized> {

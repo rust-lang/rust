@@ -13,9 +13,9 @@ fn main () {
     // external crate struct
     let k = B {
         aa: 20,
-        //~^ ERROR struct `xc::B` has no field named `aa`
+        //~^ ERROR struct `B` has no field named `aa`
         bb: 20,
-        //~^ ERROR struct `xc::B` has no field named `bb`
+        //~^ ERROR struct `B` has no field named `bb`
     };
     // local crate struct
     let l = A {

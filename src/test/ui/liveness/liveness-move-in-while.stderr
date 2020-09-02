@@ -22,7 +22,7 @@ error[E0382]: borrow of moved value: `y`
   --> $DIR/liveness-move-in-while.rs:7:24
    |
 LL |     let y: Box<isize> = box 42;
-   |         - move occurs because `y` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |         - move occurs because `y` has type `Box<isize>`, which does not implement the `Copy` trait
 ...
 LL |         println!("{}", y);
    |                        ^ value borrowed here after move

@@ -2,7 +2,7 @@ error[E0382]: use of moved value
   --> $DIR/borrowck-move-and-move.rs:14:13
    |
 LL |     let a @ b = U;
-   |         ----^   - move occurs because value has type `main::U`, which does not implement the `Copy` trait
+   |         ----^   - move occurs because value has type `U`, which does not implement the `Copy` trait
    |         |   |
    |         |   value used here after move
    |         value moved here
@@ -11,7 +11,7 @@ error[E0382]: use of moved value
   --> $DIR/borrowck-move-and-move.rs:16:17
    |
 LL |     let a @ (b, c) = (U, U);
-   |         --------^-   ------ move occurs because value has type `(main::U, main::U)`, which does not implement the `Copy` trait
+   |         --------^-   ------ move occurs because value has type `(U, U)`, which does not implement the `Copy` trait
    |         |       |
    |         |       value used here after move
    |         value moved here
@@ -20,7 +20,7 @@ error[E0382]: use of moved value
   --> $DIR/borrowck-move-and-move.rs:18:17
    |
 LL |     let a @ (b, c) = (u(), u());
-   |         --------^-   ---------- move occurs because value has type `(main::U, main::U)`, which does not implement the `Copy` trait
+   |         --------^-   ---------- move occurs because value has type `(U, U)`, which does not implement the `Copy` trait
    |         |       |
    |         |       value used here after move
    |         value moved here
@@ -29,7 +29,7 @@ error[E0382]: use of moved value
   --> $DIR/borrowck-move-and-move.rs:21:16
    |
 LL |     match Ok(U) {
-   |           ----- move occurs because value has type `std::result::Result<main::U, main::U>`, which does not implement the `Copy` trait
+   |           ----- move occurs because value has type `std::result::Result<U, U>`, which does not implement the `Copy` trait
 LL |         a @ Ok(b) | a @ Err(b) => {}
    |         -------^-
    |         |      |
@@ -40,7 +40,7 @@ error[E0382]: use of moved value
   --> $DIR/borrowck-move-and-move.rs:21:29
    |
 LL |     match Ok(U) {
-   |           ----- move occurs because value has type `std::result::Result<main::U, main::U>`, which does not implement the `Copy` trait
+   |           ----- move occurs because value has type `std::result::Result<U, U>`, which does not implement the `Copy` trait
 LL |         a @ Ok(b) | a @ Err(b) => {}
    |                     --------^-
    |                     |       |
@@ -51,7 +51,7 @@ error[E0382]: use of moved value
   --> $DIR/borrowck-move-and-move.rs:28:22
    |
 LL |     match [u(), u(), u(), u()] {
-   |           -------------------- move occurs because value has type `[main::U; 4]`, which does not implement the `Copy` trait
+   |           -------------------- move occurs because value has type `[U; 4]`, which does not implement the `Copy` trait
 LL |         xs @ [a, .., b] => {}
    |         -------------^-
    |         |            |
@@ -62,7 +62,7 @@ error[E0382]: use of moved value
   --> $DIR/borrowck-move-and-move.rs:32:18
    |
 LL |     match [u(), u(), u(), u()] {
-   |           -------------------- move occurs because value has type `[main::U; 4]`, which does not implement the `Copy` trait
+   |           -------------------- move occurs because value has type `[U; 4]`, which does not implement the `Copy` trait
 LL |         xs @ [_, ys @ .., _] => {}
    |         ---------^^^^^^^----
    |         |        |
@@ -77,7 +77,7 @@ LL |     fn fun(a @ b: U) {}
    |            |   |
    |            |   value used here after move
    |            value moved here
-   |            move occurs because value has type `main::U`, which does not implement the `Copy` trait
+   |            move occurs because value has type `U`, which does not implement the `Copy` trait
 
 error: aborting due to 8 previous errors
 

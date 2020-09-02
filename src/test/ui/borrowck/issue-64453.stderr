@@ -2,7 +2,7 @@ error[E0507]: cannot move out of static item `settings_dir`
   --> $DIR/issue-64453.rs:14:37
    |
 LL |     let settings_data = from_string(settings_dir);
-   |                                     ^^^^^^^^^^^^ move occurs because `settings_dir` has type `std::string::String`, which does not implement the `Copy` trait
+   |                                     ^^^^^^^^^^^^ move occurs because `settings_dir` has type `String`, which does not implement the `Copy` trait
 
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
   --> $DIR/issue-64453.rs:4:31

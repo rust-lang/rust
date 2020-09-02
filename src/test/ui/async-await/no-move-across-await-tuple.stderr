@@ -7,7 +7,7 @@ LL |     nothing().await;
 LL |     x.1
    |     ^^^ value used here after move
    |
-   = note: move occurs because `x.1` has type `std::vec::Vec<usize>`, which does not implement the `Copy` trait
+   = note: move occurs because `x.1` has type `Vec<usize>`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

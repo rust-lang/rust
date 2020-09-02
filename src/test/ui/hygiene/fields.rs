@@ -15,8 +15,8 @@ mod foo {
         let s = S { x: 0 }; //~ ERROR type `foo::S` is private
         let _ = s.x; //~ ERROR type `foo::S` is private
 
-        let t = T(0); //~ ERROR type `foo::T` is private
-        let _ = t.0; //~ ERROR type `foo::T` is private
+        let t = T(0); //~ ERROR type `T` is private
+        let _ = t.0; //~ ERROR type `T` is private
 
         let s = $S { $x: 0, x: 1 };
         assert_eq!((s.$x, s.x), (0, 1));

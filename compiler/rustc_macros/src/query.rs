@@ -392,7 +392,7 @@ fn add_query_description_impl(
             #tcx: TyCtxt<'tcx>,
             #key: #arg,
         ) -> Cow<'static, str> {
-            format!(#desc).into()
+            ::rustc_middle::ty::print::with_no_trimmed_paths(|| format!(#desc).into())
         }
     };
 

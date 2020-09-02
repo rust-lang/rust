@@ -7,18 +7,18 @@ LL | fn is_sync<T: Sync>() {}
 LL |     is_sync::<MyNotSync>();
    |               ^^^^^^^^^ `MyNotSync` cannot be shared between threads safely
    |
-   = help: the trait `std::marker::Sync` is not implemented for `MyNotSync`
+   = help: the trait `Sync` is not implemented for `MyNotSync`
 
-error[E0277]: `std::cell::UnsafeCell<u8>` cannot be shared between threads safely
+error[E0277]: `UnsafeCell<u8>` cannot be shared between threads safely
   --> $DIR/typeck-default-trait-impl-negation-sync.rs:36:5
    |
 LL | fn is_sync<T: Sync>() {}
    |               ---- required by this bound in `is_sync`
 ...
 LL |     is_sync::<MyTypeWUnsafe>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::UnsafeCell<u8>` cannot be shared between threads safely
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `UnsafeCell<u8>` cannot be shared between threads safely
    |
-   = help: within `MyTypeWUnsafe`, the trait `std::marker::Sync` is not implemented for `std::cell::UnsafeCell<u8>`
+   = help: within `MyTypeWUnsafe`, the trait `Sync` is not implemented for `UnsafeCell<u8>`
    = note: required because it appears within the type `MyTypeWUnsafe`
 
 error[E0277]: `Managed` cannot be shared between threads safely
@@ -30,7 +30,7 @@ LL | fn is_sync<T: Sync>() {}
 LL |     is_sync::<MyTypeManaged>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ `Managed` cannot be shared between threads safely
    |
-   = help: within `MyTypeManaged`, the trait `std::marker::Sync` is not implemented for `Managed`
+   = help: within `MyTypeManaged`, the trait `Sync` is not implemented for `Managed`
    = note: required because it appears within the type `MyTypeManaged`
 
 error: aborting due to 3 previous errors

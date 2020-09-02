@@ -1,7 +1,7 @@
 - // MIR for `foo` before MatchBranchSimplification
 + // MIR for `foo` after MatchBranchSimplification
   
-  fn foo(_1: std::option::Option<()>) -> () {
+  fn foo(_1: Option<()>) -> () {
       debug bar => _1;                     // in scope 0 at $DIR/matches_reduce_branches.rs:5:8: 5:11
       let mut _0: ();                      // return place in scope 0 at $DIR/matches_reduce_branches.rs:5:25: 5:25
       let mut _2: bool;                    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

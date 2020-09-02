@@ -11,7 +11,7 @@ error[E0507]: cannot move out of `ss.r` which is behind a mutable reference
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL |     ss.r
-   |     ^^^^ move occurs because `ss.r` has type `std::boxed::Box<dyn SomeTrait>`, which does not implement the `Copy` trait
+   |     ^^^^ move occurs because `ss.r` has type `Box<dyn SomeTrait>`, which does not implement the `Copy` trait
 
 error[E0621]: explicit lifetime required in the type of `ss`
   --> $DIR/object-lifetime-default-from-box-error.rs:31:5

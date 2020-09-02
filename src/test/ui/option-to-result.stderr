@@ -5,26 +5,26 @@ LL | fn test_result() -> Result<(),()> {
    |                     ------------- expected `()` because of this
 LL |     let a:Option<()> = Some(());
 LL |     a?;
-   |      ^ the trait `std::convert::From<std::option::NoneError>` is not implemented for `()`
+   |      ^ the trait `From<NoneError>` is not implemented for `()`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = note: required by `std::convert::From::from`
+   = note: required by `from`
 help: consider converting the `Option<T>` into a `Result<T, _>` using `Option::ok_or` or `Option::ok_or_else`
    |
 LL |     a.ok_or_else(|| /* error value */)?;
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: `?` couldn't convert the error to `std::option::NoneError`
+error[E0277]: `?` couldn't convert the error to `NoneError`
   --> $DIR/option-to-result.rs:11:6
    |
 LL | fn test_option() -> Option<i32>{
-   |                     ----------- expected `std::option::NoneError` because of this
+   |                     ----------- expected `NoneError` because of this
 LL |     let a:Result<i32, i32> = Ok(5);
 LL |     a?;
-   |      ^ the trait `std::convert::From<i32>` is not implemented for `std::option::NoneError`
+   |      ^ the trait `From<i32>` is not implemented for `NoneError`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = note: required by `std::convert::From::from`
+   = note: required by `from`
 help: consider converting the `Result<T, _>` into an `Option<T>` using `Result::ok`
    |
 LL |     a.ok()?;

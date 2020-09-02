@@ -1,7 +1,7 @@
 - // MIR for `map` before SimplifyLocals
 + // MIR for `map` after SimplifyLocals
   
-  fn map(_1: std::option::Option<std::boxed::Box<()>>) -> std::option::Option<std::boxed::Box<()>> {
+  fn map(_1: Option<Box<()>>) -> Option<Box<()>> {
       debug x => _1;                       // in scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:1:8: 1:9
       let mut _0: std::option::Option<std::boxed::Box<()>>; // return place in scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:1:31: 1:46
 -     let mut _2: isize;                   // in scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:9: 3:13

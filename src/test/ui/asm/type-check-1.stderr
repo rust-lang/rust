@@ -16,7 +16,7 @@ error[E0277]: the size for values of type `[u64]` cannot be known at compilation
 LL |         asm!("{}", in(reg) v[..]);
    |                            ^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[u64]`
+   = help: the trait `Sized` is not implemented for `[u64]`
    = note: all inline asm arguments must have a statically known size
 
 error[E0277]: the size for values of type `[u64]` cannot be known at compilation time
@@ -25,7 +25,7 @@ error[E0277]: the size for values of type `[u64]` cannot be known at compilation
 LL |         asm!("{}", out(reg) v[..]);
    |                             ^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[u64]`
+   = help: the trait `Sized` is not implemented for `[u64]`
    = note: all inline asm arguments must have a statically known size
 
 error[E0277]: the size for values of type `[u64]` cannot be known at compilation time
@@ -34,7 +34,7 @@ error[E0277]: the size for values of type `[u64]` cannot be known at compilation
 LL |         asm!("{}", inout(reg) v[..]);
    |                               ^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[u64]`
+   = help: the trait `Sized` is not implemented for `[u64]`
    = note: all inline asm arguments must have a statically known size
 
 error: aborting due to 5 previous errors

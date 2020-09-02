@@ -6,7 +6,7 @@ LL |     _parse: <ParseQuery as Query<RootDatabase>>::Data,
    |
    = note: required because of the requirements on the impl of `Query<RootDatabase>` for `ParseQuery`
 
-error[E0275]: overflow evaluating the requirement `Runtime<RootDatabase>: std::panic::RefUnwindSafe`
+error[E0275]: overflow evaluating the requirement `Runtime<RootDatabase>: RefUnwindSafe`
   --> $DIR/cycle-cache-err-60010.rs:31:20
    |
 LL | trait Database {

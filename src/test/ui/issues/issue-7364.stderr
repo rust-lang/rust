@@ -12,15 +12,15 @@ LL | static boxed: Box<RefCell<isize>> = box RefCell::new(0);
    |
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0277]: `std::cell::RefCell<isize>` cannot be shared between threads safely
+error[E0277]: `RefCell<isize>` cannot be shared between threads safely
   --> $DIR/issue-7364.rs:6:1
    |
 LL | static boxed: Box<RefCell<isize>> = box RefCell::new(0);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::RefCell<isize>` cannot be shared between threads safely
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `RefCell<isize>` cannot be shared between threads safely
    |
-   = help: the trait `std::marker::Sync` is not implemented for `std::cell::RefCell<isize>`
-   = note: required because of the requirements on the impl of `std::marker::Sync` for `std::ptr::Unique<std::cell::RefCell<isize>>`
-   = note: required because it appears within the type `std::boxed::Box<std::cell::RefCell<isize>>`
+   = help: the trait `Sync` is not implemented for `RefCell<isize>`
+   = note: required because of the requirements on the impl of `Sync` for `Unique<RefCell<isize>>`
+   = note: required because it appears within the type `Box<RefCell<isize>>`
    = note: shared static variables must have a type that implements `Sync`
 
 error: aborting due to 3 previous errors

@@ -15,7 +15,7 @@ LL |     for &a in &f.a {
    |         --    ^^^^
    |         ||
    |         |data moved here
-   |         |move occurs because `a` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |         |move occurs because `a` has type `Box<isize>`, which does not implement the `Copy` trait
    |         help: consider removing the `&`: `a`
 
 error[E0507]: cannot move out of a shared reference
@@ -25,7 +25,7 @@ LL |     for &a in x.iter() {
    |         --    ^^^^^^^^
    |         ||
    |         |data moved here
-   |         |move occurs because `a` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+   |         |move occurs because `a` has type `Box<i32>`, which does not implement the `Copy` trait
    |         help: consider removing the `&`: `a`
 
 error: aborting due to 3 previous errors

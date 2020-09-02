@@ -8,6 +8,6 @@ mod sub {
 
 fn main() {
     let s = sub::S::new();
-    let v = s.len; //~ ERROR field `len` of struct `sub::S` is private
-    s.len = v; //~ ERROR field `len` of struct `sub::S` is private
+    let v = s.len; //~ ERROR field `len` of struct `S` is private
+    s.len = v; //~ ERROR field `len` of struct `S` is private
 }

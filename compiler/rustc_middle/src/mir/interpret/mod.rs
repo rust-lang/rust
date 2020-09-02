@@ -108,6 +108,7 @@ use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::{Endian, Size};
 
@@ -145,7 +146,7 @@ pub struct GlobalId<'tcx> {
 
 impl GlobalId<'tcx> {
     pub fn display(self, tcx: TyCtxt<'tcx>) -> String {
-        let instance_name = tcx.def_path_str(self.instance.def.def_id());
+        let instance_name = with_no_trimmed_paths(|| tcx.def_path_str(self.instance.def.def_id()));
         if let Some(promoted) = self.promoted {
             format!("{}::{:?}", instance_name, promoted)
         } else {

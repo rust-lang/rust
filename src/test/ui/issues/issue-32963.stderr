@@ -6,7 +6,7 @@ LL |     size_of_copy::<dyn Misc + Copy>();
    |                        |
    |                        first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Misc + std::marker::Copy {}`
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Misc + Copy {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
@@ -17,17 +17,17 @@ LL |     size_of_copy::<dyn Misc + Copy>();
    |                        |
    |                        first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Misc + std::marker::Copy {}`
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Misc + Copy {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0277]: the trait bound `dyn Misc: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `dyn Misc: Copy` is not satisfied
   --> $DIR/issue-32963.rs:8:5
    |
 LL | fn size_of_copy<T: Copy+?Sized>() -> usize { mem::size_of::<T>() }
    |                    ---- required by this bound in `size_of_copy`
 ...
 LL |     size_of_copy::<dyn Misc + Copy>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `dyn Misc`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `dyn Misc`
 
 error: aborting due to 3 previous errors
 

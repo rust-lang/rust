@@ -1,10 +1,10 @@
-error[E0277]: the trait bound `bool: std::ops::Try` is not satisfied
+error[E0277]: the trait bound `bool: Try` is not satisfied
   --> $DIR/try-block-in-while.rs:6:15
    |
 LL |     while try { false } {}
-   |               ^^^^^^^^^ the trait `std::ops::Try` is not implemented for `bool`
+   |               ^^^^^^^^^ the trait `Try` is not implemented for `bool`
    |
-   = note: required by `std::ops::Try::from_ok`
+   = note: required by `from_ok`
 
 error: aborting due to previous error
 

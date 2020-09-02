@@ -5,7 +5,7 @@ LL |   fn b<C,D>(&self, x: C) -> C;
    |   ---------------------------- definition of `b` from trait
 ...
 LL |     fn b<F: Sync, G>(&self, _x: F) -> F { panic!() }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `F: std::marker::Sync`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `F: Sync`
 
 error: aborting due to previous error
 

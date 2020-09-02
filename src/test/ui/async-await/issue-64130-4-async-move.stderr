@@ -11,9 +11,9 @@ LL | |                 let _x = get().await;
 ...  |
 LL | |         }
 LL | |     }
-   | |_____- this returned value is of type `impl std::future::Future`
+   | |_____- this returned value is of type `impl Future`
    |
-   = help: the trait `std::marker::Sync` is not implemented for `(dyn std::any::Any + std::marker::Send + 'static)`
+   = help: the trait `Sync` is not implemented for `(dyn Any + Send + 'static)`
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-4-async-move.rs:21:26
    |

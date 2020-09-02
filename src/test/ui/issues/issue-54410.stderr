@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `[i8]` cannot be known at compilation 
 LL |     pub static mut symbol: [i8];
    |                            ^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[i8]`
+   = help: the trait `Sized` is not implemented for `[i8]`
 
 error: aborting due to previous error
 

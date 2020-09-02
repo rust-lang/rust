@@ -112,7 +112,7 @@ LL |         Either::One(_t) => (),
    |                     data moved here
    |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of index of `std::vec::Vec<X>`
+error[E0507]: cannot move out of index of `Vec<X>`
   --> $DIR/simple.rs:102:17
    |
 LL |     let X(_t) = vs[0];
@@ -121,7 +121,7 @@ LL |     let X(_t) = vs[0];
    |           data moved here
    |           move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of index of `std::vec::Vec<Either>`
+error[E0507]: cannot move out of index of `Vec<Either>`
   --> $DIR/simple.rs:106:30
    |
 LL |     if let Either::One(_t) = vr[0] { }
@@ -130,7 +130,7 @@ LL |     if let Either::One(_t) = vr[0] { }
    |                        data moved here
    |                        move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of index of `std::vec::Vec<Either>`
+error[E0507]: cannot move out of index of `Vec<Either>`
   --> $DIR/simple.rs:110:33
    |
 LL |     while let Either::One(_t) = vr[0] { }
@@ -139,7 +139,7 @@ LL |     while let Either::One(_t) = vr[0] { }
    |                           data moved here
    |                           move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of index of `std::vec::Vec<Either>`
+error[E0507]: cannot move out of index of `Vec<Either>`
   --> $DIR/simple.rs:114:11
    |
 LL |     match vr[0] {
@@ -151,7 +151,7 @@ LL |         Either::One(_t)
    |                     data moved here
    |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of index of `std::vec::Vec<Either>`
+error[E0507]: cannot move out of index of `Vec<Either>`
   --> $DIR/simple.rs:121:11
    |
 LL |     match vr[0] {
@@ -163,7 +163,7 @@ LL |         Either::One(_t) => (),
    |                     data moved here
    |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of index of `std::vec::Vec<X>`
+error[E0507]: cannot move out of index of `Vec<X>`
   --> $DIR/simple.rs:130:17
    |
 LL |     let X(_t) = vsm[0];
@@ -172,7 +172,7 @@ LL |     let X(_t) = vsm[0];
    |           data moved here
    |           move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of index of `std::vec::Vec<Either>`
+error[E0507]: cannot move out of index of `Vec<Either>`
   --> $DIR/simple.rs:134:30
    |
 LL |     if let Either::One(_t) = vrm[0] { }
@@ -181,7 +181,7 @@ LL |     if let Either::One(_t) = vrm[0] { }
    |                        data moved here
    |                        move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of index of `std::vec::Vec<Either>`
+error[E0507]: cannot move out of index of `Vec<Either>`
   --> $DIR/simple.rs:138:33
    |
 LL |     while let Either::One(_t) = vrm[0] { }
@@ -190,7 +190,7 @@ LL |     while let Either::One(_t) = vrm[0] { }
    |                           data moved here
    |                           move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of index of `std::vec::Vec<Either>`
+error[E0507]: cannot move out of index of `Vec<Either>`
   --> $DIR/simple.rs:142:11
    |
 LL |     match vrm[0] {
@@ -202,7 +202,7 @@ LL |         Either::One(_t)
    |                     data moved here
    |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of index of `std::vec::Vec<Either>`
+error[E0507]: cannot move out of index of `Vec<Either>`
   --> $DIR/simple.rs:149:11
    |
 LL |     match vrm[0] {
@@ -214,7 +214,7 @@ LL |         Either::One(_t) => (),
    |                     data moved here
    |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of index of `std::vec::Vec<Either>`
+error[E0507]: cannot move out of index of `Vec<Either>`
   --> $DIR/simple.rs:157:11
    |
 LL |     match vrm[0] {

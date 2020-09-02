@@ -34,7 +34,7 @@ use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};
 use rustc_session::config::nightly_options;
-use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest};
+use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
 use rustc_session::getopts;
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::{config, DiagnosticOutput, Session};
@@ -159,7 +159,10 @@ pub fn run_compiler(
         None => return Ok(()),
     };
 
-    let sopts = config::build_session_options(&matches);
+    let sopts = config::Options {
+        trimmed_def_paths: TrimmedDefPaths::GoodPath,
+        ..config::build_session_options(&matches)
+    };
     let cfg = interface::parse_cfgspecs(matches.opt_strs("cfg"));
 
     let mut dummy_config = |sopts, cfg, diagnostic_output| {

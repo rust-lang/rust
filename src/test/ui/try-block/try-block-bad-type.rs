@@ -14,7 +14,7 @@ pub fn main() {
 
     let res: Result<i32, i32> = try { }; //~ ERROR type mismatch
 
-    let res: () = try { }; //~ the trait bound `(): std::ops::Try` is not satisfied
+    let res: () = try { }; //~ the trait bound `(): Try` is not satisfied
 
-    let res: i32 = try { 5 }; //~ ERROR the trait bound `i32: std::ops::Try` is not satisfied
+    let res: i32 = try { 5 }; //~ ERROR the trait bound `i32: Try` is not satisfied
 }

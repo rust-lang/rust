@@ -1,21 +1,21 @@
-error[E0277]: the trait bound `f64: trait_bounds_on_structs_and_enums_xc::Trait` is not satisfied
+error[E0277]: the trait bound `f64: Trait` is not satisfied
   --> $DIR/trait-bounds-on-structs-and-enums-xc1.rs:12:14
    |
 LL |     let bar: Bar<f64> = return;
-   |              ^^^^^^^^ the trait `trait_bounds_on_structs_and_enums_xc::Trait` is not implemented for `f64`
+   |              ^^^^^^^^ the trait `Trait` is not implemented for `f64`
    | 
   ::: $DIR/auxiliary/trait_bounds_on_structs_and_enums_xc.rs:9:16
    |
 LL | pub enum Bar<T:Trait> {
-   |                ----- required by this bound in `trait_bounds_on_structs_and_enums_xc::Bar`
+   |                ----- required by this bound in `Bar`
 
-error[E0277]: the trait bound `{integer}: trait_bounds_on_structs_and_enums_xc::Trait` is not satisfied
+error[E0277]: the trait bound `{integer}: Trait` is not satisfied
   --> $DIR/trait-bounds-on-structs-and-enums-xc1.rs:8:15
    |
 LL |     let foo = Foo {
-   |               ^^^ the trait `trait_bounds_on_structs_and_enums_xc::Trait` is not implemented for `{integer}`
+   |               ^^^ the trait `Trait` is not implemented for `{integer}`
    |
-   = note: required by `trait_bounds_on_structs_and_enums_xc::Foo`
+   = note: required by `Foo`
 
 error: aborting due to 2 previous errors
 

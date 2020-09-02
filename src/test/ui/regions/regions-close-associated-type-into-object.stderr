@@ -14,7 +14,7 @@ LL |     Box::new(item)
    |     ^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `<T as Iter>::Item: 'static`...
-   = note: ...so that the type `std::boxed::Box<<T as Iter>::Item>` will meet its required lifetime bounds
+   = note: ...so that the type `Box<<T as Iter>::Item>` will meet its required lifetime bounds
 
 error[E0309]: the associated type `<T as Iter>::Item` may not live long enough
   --> $DIR/regions-close-associated-type-into-object.rs:28:5
@@ -32,7 +32,7 @@ LL |     Box::new(item)
    |     ^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `<T as Iter>::Item: 'a`...
-   = note: ...so that the type `std::boxed::Box<<T as Iter>::Item>` will meet its required lifetime bounds
+   = note: ...so that the type `Box<<T as Iter>::Item>` will meet its required lifetime bounds
 
 error: aborting due to 4 previous errors
 

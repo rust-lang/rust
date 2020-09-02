@@ -6,7 +6,7 @@ LL |         let _a = x;
 LL |         drop(x);
    |              ^ value used here after move
    |
-   = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+   = note: move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

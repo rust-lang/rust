@@ -9,7 +9,7 @@ pub fn ret_closure() -> A {
 
 extern "C" {
     pub fn a(_: A);
-//~^ ERROR `extern` block uses type `impl std::ops::Fn<()>`, which is not FFI-safe
+//~^ ERROR `extern` block uses type `impl Fn<()>`, which is not FFI-safe
 }
 
 fn main() {}

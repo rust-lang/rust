@@ -11,10 +11,10 @@ fn send<T: Send>(_: T) {}
 
 fn main() {
     send(before());
-    //~^ ERROR `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
+    //~^ ERROR `Rc<Cell<i32>>` cannot be sent between threads safely
 
     send(after());
-    //~^ ERROR `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
+    //~^ ERROR `Rc<Cell<i32>>` cannot be sent between threads safely
 }
 
 // Deferred path, main has to wait until typeck finishes,

@@ -90,8 +90,8 @@ LL |             fn weigh_banana(count: *const Banana) -> u64;
 LL |             fn weigh_banana(count: *const Banana) -> u64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
-   = note: expected `unsafe extern "C" fn(*const banana::one::Banana) -> u64`
-              found `unsafe extern "C" fn(*const banana::three::Banana) -> u64`
+   = note: expected `unsafe extern "C" fn(*const one::Banana) -> u64`
+              found `unsafe extern "C" fn(*const three::Banana) -> u64`
 
 warning: `draw_point` redeclared with a different signature
   --> $DIR/clashing-extern-fn.rs:171:13
@@ -126,7 +126,7 @@ LL |             fn transparent_incorrect() -> T;
 LL |             fn transparent_incorrect() -> isize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
-   = note: expected `unsafe extern "C" fn() -> transparent::T`
+   = note: expected `unsafe extern "C" fn() -> T`
               found `unsafe extern "C" fn() -> isize`
 
 warning: `missing_return_type` redeclared with a different signature
@@ -150,7 +150,7 @@ LL |             fn non_zero_usize() -> core::num::NonZeroUsize;
 LL |             fn non_zero_usize() -> usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
-   = note: expected `unsafe extern "C" fn() -> std::num::NonZeroUsize`
+   = note: expected `unsafe extern "C" fn() -> NonZeroUsize`
               found `unsafe extern "C" fn() -> usize`
 
 warning: `non_null_ptr` redeclared with a different signature
@@ -162,7 +162,7 @@ LL |             fn non_null_ptr() -> core::ptr::NonNull<usize>;
 LL |             fn non_null_ptr() -> *const usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
-   = note: expected `unsafe extern "C" fn() -> std::ptr::NonNull<usize>`
+   = note: expected `unsafe extern "C" fn() -> NonNull<usize>`
               found `unsafe extern "C" fn() -> *const usize`
 
 warning: `option_non_zero_usize_incorrect` redeclared with a different signature

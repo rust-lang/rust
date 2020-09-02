@@ -4,7 +4,7 @@ error: OK
 LL |     #[rustc_then_this_would_need(typeck)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `x::x` to `typeck`
+error: no path from `x` to `typeck`
   --> $DIR/dep-graph-caller-callee.rs:31:5
    |
 LL |     #[rustc_then_this_would_need(typeck)]

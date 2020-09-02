@@ -10,7 +10,7 @@ error[E0277]: cannot add `u8` to `i8`
 LL |     = [0; (i8::MAX + 1u8) as usize];
    |                    ^ no implementation for `i8 + u8`
    |
-   = help: the trait `std::ops::Add<u8>` is not implemented for `i8`
+   = help: the trait `Add<u8>` is not implemented for `i8`
 
 error: aborting due to 2 previous errors
 

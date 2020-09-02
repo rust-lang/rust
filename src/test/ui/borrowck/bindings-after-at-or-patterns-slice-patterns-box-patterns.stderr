@@ -20,7 +20,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:22:5
    |
 LL | fn bindings_after_at_slice_patterns_move_binding(x: [String; 4]) {
-   |                                                  - move occurs because `x` has type `[std::string::String; 4]`, which does not implement the `Copy` trait
+   |                                                  - move occurs because `x` has type `[String; 4]`, which does not implement the `Copy` trait
 LL |     match x {
 LL |         a @ [.., _] => (),
    |         ----------- value moved here
@@ -68,7 +68,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:80:5
    |
 LL | fn bindings_after_at_or_patterns_move(x: Option<Test>) {
-   |                                       - move occurs because `x` has type `std::option::Option<Test>`, which does not implement the `Copy` trait
+   |                                       - move occurs because `x` has type `Option<Test>`, which does not implement the `Copy` trait
 LL |     match x {
 LL |         foo @ Some(Test::Foo | Test::Bar) => (),
    |         ---------------------------------
@@ -119,7 +119,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:138:5
    |
 LL | fn bindings_after_at_slice_patterns_or_patterns_moves(x: [Option<Test>; 4]) {
-   |                                                       - move occurs because `x` has type `[std::option::Option<Test>; 4]`, which does not implement the `Copy` trait
+   |                                                       - move occurs because `x` has type `[Option<Test>; 4]`, which does not implement the `Copy` trait
 LL |     match x {
 LL |         a @ [.., Some(Test::Foo | Test::Bar)] => (),
    |         -------------------------------------

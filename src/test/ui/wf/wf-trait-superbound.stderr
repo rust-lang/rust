@@ -1,16 +1,16 @@
-error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/wf-trait-superbound.rs:9:21
    |
 LL | trait ExtraCopy<T:Copy> { }
    |                   ---- required by this bound in `ExtraCopy`
 LL | 
 LL | trait SomeTrait<T>: ExtraCopy<T> {
-   |                     ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |                     ^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |
-LL | trait SomeTrait<T: std::marker::Copy>: ExtraCopy<T> {
-   |                  ^^^^^^^^^^^^^^^^^^^
+LL | trait SomeTrait<T: Copy>: ExtraCopy<T> {
+   |                  ^^^^^^
 
 error: aborting due to previous error
 

@@ -2,23 +2,23 @@ error[E0308]: mismatched types
   --> $DIR/issue-13466.rs:8:9
    |
 LL |     let _x: usize = match Some(1) {
-   |                           ------- this expression has type `std::option::Option<{integer}>`
+   |                           ------- this expression has type `Option<{integer}>`
 LL |         Ok(u) => u,
-   |         ^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`
+   |         ^^^^^ expected enum `Option`, found enum `std::result::Result`
    |
-   = note: expected enum `std::option::Option<{integer}>`
+   = note: expected enum `Option<{integer}>`
               found enum `std::result::Result<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-13466.rs:14:9
    |
 LL |     let _x: usize = match Some(1) {
-   |                           ------- this expression has type `std::option::Option<{integer}>`
+   |                           ------- this expression has type `Option<{integer}>`
 ...
 LL |         Err(e) => panic!(e)
-   |         ^^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`
+   |         ^^^^^^ expected enum `Option`, found enum `std::result::Result`
    |
-   = note: expected enum `std::option::Option<{integer}>`
+   = note: expected enum `Option<{integer}>`
               found enum `std::result::Result<_, _>`
 
 error: aborting due to 2 previous errors

@@ -10,6 +10,7 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::Reveal;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
 use rustc_target::abi::{Abi, LayoutOf};
@@ -33,7 +34,8 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
 
-    let name = ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()));
+    let name =
+        with_no_trimmed_paths(|| ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id())));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
 
@@ -290,7 +292,7 @@ pub fn const_eval_raw_provider<'tcx>(
         // The next two lines concatenated contain some discussion:
         // https://rust-lang.zulipchat.com/#narrow/stream/146212-t-compiler.2Fconst-eval/
         // subject/anon_const_instance_printing/near/135980032
-        let instance = key.value.instance.to_string();
+        let instance = with_no_trimmed_paths(|| key.value.instance.to_string());
         trace!("const eval: {:?} ({})", key, instance);
     }
 

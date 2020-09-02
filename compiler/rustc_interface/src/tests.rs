@@ -518,6 +518,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(time_llvm_passes, true);
     untracked!(time_passes, true);
     untracked!(trace_macros, true);
+    untracked!(trim_diagnostic_paths, false);
     untracked!(ui_testing, true);
     untracked!(unpretty, Some("expanded".to_string()));
     untracked!(unstable_options, true);

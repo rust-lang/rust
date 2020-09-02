@@ -1,26 +1,26 @@
-error[E0596]: cannot borrow data in an index of `std::collections::HashMap<&str, std::string::String>` as mutable
+error[E0596]: cannot borrow data in an index of `HashMap<&str, String>` as mutable
   --> $DIR/index-mut-help.rs:11:5
    |
 LL |     map["peter"].clear();
    |     ^^^^^^^^^^^^ cannot borrow as mutable
    |
-   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `std::collections::HashMap<&str, std::string::String>`
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<&str, String>`
 
-error[E0594]: cannot assign to data in an index of `std::collections::HashMap<&str, std::string::String>`
+error[E0594]: cannot assign to data in an index of `HashMap<&str, String>`
   --> $DIR/index-mut-help.rs:12:5
    |
 LL |     map["peter"] = "0".to_string();
    |     ^^^^^^^^^^^^ cannot assign
    |
-   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `std::collections::HashMap<&str, std::string::String>`
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<&str, String>`
 
-error[E0596]: cannot borrow data in an index of `std::collections::HashMap<&str, std::string::String>` as mutable
+error[E0596]: cannot borrow data in an index of `HashMap<&str, String>` as mutable
   --> $DIR/index-mut-help.rs:13:13
    |
 LL |     let _ = &mut map["peter"];
    |             ^^^^^^^^^^^^^^^^^ cannot borrow as mutable
    |
-   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `std::collections::HashMap<&str, std::string::String>`
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<&str, String>`
 
 error: aborting due to 3 previous errors
 

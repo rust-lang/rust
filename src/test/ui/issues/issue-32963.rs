@@ -8,5 +8,5 @@ fn main() {
     size_of_copy::<dyn Misc + Copy>();
     //~^ ERROR only auto traits can be used as additional traits in a trait object
     //~| ERROR only auto traits can be used as additional traits in a trait object
-    //~| ERROR the trait bound `dyn Misc: std::marker::Copy` is not satisfied
+    //~| ERROR the trait bound `dyn Misc: Copy` is not satisfied
 }

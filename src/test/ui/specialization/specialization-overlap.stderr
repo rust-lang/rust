@@ -7,13 +7,13 @@ LL | #![feature(specialization)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
 
-error[E0119]: conflicting implementations of trait `Foo` for type `std::vec::Vec<_>`:
+error[E0119]: conflicting implementations of trait `Foo` for type `Vec<_>`:
   --> $DIR/specialization-overlap.rs:5:1
    |
 LL | impl<T: Clone> Foo for T {}
    | ------------------------ first implementation here
 LL | impl<T> Foo for Vec<T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `std::vec::Vec<_>`
+   | ^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Vec<_>`
 
 error[E0119]: conflicting implementations of trait `Bar` for type `(u8, u8)`:
   --> $DIR/specialization-overlap.rs:9:1

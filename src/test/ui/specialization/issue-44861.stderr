@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `(): std::ops::CoerceUnsized<*const [u8]>` is not satisfied
+error[E0277]: the trait bound `(): CoerceUnsized<*const [u8]>` is not satisfied
   --> $DIR/issue-44861.rs:21:5
    |
 LL |     type Data2: CoerceUnsized<*const [u8]>;
    |     --------------------------------------- required by `Smartass::Data2`
 ...
 LL |     default type Data2 = ();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::ops::CoerceUnsized<*const [u8]>` is not implemented for `()`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `CoerceUnsized<*const [u8]>` is not implemented for `()`
 
 error: aborting due to previous error
 

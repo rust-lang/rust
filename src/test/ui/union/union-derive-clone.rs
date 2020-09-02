@@ -2,7 +2,7 @@
 
 use std::mem::ManuallyDrop;
 
-#[derive(Clone)] //~ ERROR the trait bound `U1: std::marker::Copy` is not satisfied
+#[derive(Clone)] //~ ERROR the trait bound `U1: Copy` is not satisfied
 union U1 {
     a: u8,
 }

@@ -5,7 +5,7 @@ LL |             None => panic!("called `Option::unwrap()` on a `None` value"),
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                     |
    |                     the evaluated program panicked at 'called `Option::unwrap()` on a `None` value', $DIR/const-unwrap.rs:9:38
-   |                     inside `std::option::Option::<i32>::unwrap` at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+   |                     inside `Option::<i32>::unwrap` at $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |                     inside `BAR` at $DIR/const-unwrap.rs:9:18
    | 
   ::: $DIR/const-unwrap.rs:9:1

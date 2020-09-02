@@ -16,7 +16,7 @@ LL |     type U: PartialEq<T>;
 LL |     default type U = &'static B;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `&'static B == B`
    |
-   = help: the trait `std::cmp::PartialEq<B>` is not implemented for `&'static B`
+   = help: the trait `PartialEq<B>` is not implemented for `&'static B`
 
 error: aborting due to previous error; 1 warning emitted
 

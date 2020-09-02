@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `X: std::cmp::Ord` is not satisfied
+error[E0277]: the trait bound `X: Ord` is not satisfied
   --> $DIR/issue-20162.rs:5:7
    |
 LL |     b.sort();
-   |       ^^^^ the trait `std::cmp::Ord` is not implemented for `X`
+   |       ^^^^ the trait `Ord` is not implemented for `X`
 
 error: aborting due to previous error
 

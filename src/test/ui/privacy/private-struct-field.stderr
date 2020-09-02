@@ -1,4 +1,4 @@
-error[E0616]: field `meows` of struct `cat::Cat` is private
+error[E0616]: field `meows` of struct `Cat` is private
   --> $DIR/private-struct-field.rs:13:21
    |
 LL |     assert_eq!(nyan.meows, 52);
