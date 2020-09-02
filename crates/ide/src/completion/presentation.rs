@@ -225,7 +225,7 @@ impl Completions {
             .flat_map(|(it, param_ty)| {
                 if let Some(pat) = it.pat() {
                     let name = pat.to_string();
-                    let arg = name.trim_start_matches('_');
+                    let arg = name.trim_start_matches("mut ").trim_start_matches('_');
                     return Some(add_arg(arg, param_ty.ty(), ctx));
                 }
                 None
@@ -956,6 +956,27 @@ fn main() {
     let x = Foo {};
     let y = Bar {};
     y.apply_foo(${1:&x})$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn trim_mut_keyword_in_func_completion() {
+        check_edit(
+            "take_mutably",
+            r#"
+fn take_mutably(mut x: &i32) {}
+
+fn main() {
+    take_m<|>
+}
+"#,
+            r#"
+fn take_mutably(mut x: &i32) {}
+
+fn main() {
+    take_mutably(${1:x})$0
 }
 "#,
         );
