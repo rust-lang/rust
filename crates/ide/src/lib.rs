@@ -38,6 +38,7 @@ mod join_lines;
 mod matching_brace;
 mod parent_module;
 mod references;
+mod fn_references;
 mod runnables;
 mod status;
 mod syntax_highlighting;
@@ -56,7 +57,7 @@ use ide_db::{
     symbol_index::{self, FileSymbol},
     LineIndexDatabase,
 };
-use syntax::{SourceFile, SyntaxKind, TextRange, TextSize};
+use syntax::{SourceFile, TextRange, TextSize};
 
 use crate::display::ToNav;
 
@@ -369,19 +370,9 @@ impl Analysis {
         })
     }
 
-    /// Finds all methods and free functions for the file.
+    /// Finds all methods and free functions for the file. Does not return tests!
     pub fn find_all_methods(&self, file_id: FileId) -> Cancelable<Vec<FileRange>> {
-        let res = self
-            .file_structure(file_id)?
-            .into_iter()
-            .filter(|it| match it.kind {
-                SyntaxKind::FN => true,
-                _ => false,
-            })
-            .filter_map(|it| Some(FileRange { file_id, range: it.navigation_range }))
-            .collect();
-
-        Ok(res)
+        self.with_db(|db| fn_references::find_all_methods(db, file_id))
     }
 
     /// Returns a short text describing element at position.
