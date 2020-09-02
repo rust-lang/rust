@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use rustc_ast::{ast, token::DelimToken, visit};
+use rustc_ast::{ast, attr::HasAttrs, token::DelimToken, visit};
 use rustc_span::{symbol, BytePos, Pos, Span};
 
 use crate::attr::*;
@@ -16,6 +16,7 @@ use crate::items::{
     StaticParts, StructParts,
 };
 use crate::macros::{macro_style, rewrite_macro, rewrite_macro_def, MacroPosition};
+use crate::modules::Module;
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::skip::{is_skip_attr, SkipContext};
@@ -938,10 +939,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
     }
 
-    pub(crate) fn format_separate_mod(&mut self, m: &ast::Mod, end_pos: BytePos) {
+    pub(crate) fn format_separate_mod(&mut self, m: &Module<'_>, end_pos: BytePos) {
         self.block_indent = Indent::empty();
-        self.walk_mod_items(m);
-        self.format_missing_with_indent(end_pos);
+        if self.visit_attrs(m.attrs(), ast::AttrStyle::Inner) {
+            self.push_skipped_with_span(m.attrs(), m.as_ref().inner, m.as_ref().inner);
+        } else {
+            self.walk_mod_items(m.as_ref());
+            self.format_missing_with_indent(end_pos);
+        }
     }
 
     pub(crate) fn skip_empty_lines(&mut self, end_pos: BytePos) {
