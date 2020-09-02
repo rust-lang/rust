@@ -3078,6 +3078,7 @@ pub trait Iterator {
     /// assert_eq!([1].iter().lt([1].iter()), false);
     /// assert_eq!([1].iter().lt([1, 2].iter()), true);
     /// assert_eq!([1, 2].iter().lt([1].iter()), false);
+    /// assert_eq!([1, 2].iter().lt([1, 2].iter()), false);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn lt<I>(self, other: I) -> bool
@@ -3098,6 +3099,7 @@ pub trait Iterator {
     /// assert_eq!([1].iter().le([1].iter()), true);
     /// assert_eq!([1].iter().le([1, 2].iter()), true);
     /// assert_eq!([1, 2].iter().le([1].iter()), false);
+    /// assert_eq!([1, 2].iter().le([1, 2].iter()), true);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn le<I>(self, other: I) -> bool
@@ -3118,6 +3120,7 @@ pub trait Iterator {
     /// assert_eq!([1].iter().gt([1].iter()), false);
     /// assert_eq!([1].iter().gt([1, 2].iter()), false);
     /// assert_eq!([1, 2].iter().gt([1].iter()), true);
+    /// assert_eq!([1, 2].iter().gt([1, 2].iter()), false);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn gt<I>(self, other: I) -> bool
@@ -3138,6 +3141,7 @@ pub trait Iterator {
     /// assert_eq!([1].iter().ge([1].iter()), true);
     /// assert_eq!([1].iter().ge([1, 2].iter()), false);
     /// assert_eq!([1, 2].iter().ge([1].iter()), true);
+    /// assert_eq!([1, 2].iter().ge([1, 2].iter()), true);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn ge<I>(self, other: I) -> bool
