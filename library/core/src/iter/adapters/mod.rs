@@ -1,7 +1,7 @@
 use crate::cmp;
 use crate::fmt;
 use crate::intrinsics;
-use crate::ops::{Add, AddAssign, Try, ControlFlow};
+use crate::ops::{Add, AddAssign, ControlFlow, Try};
 
 use super::from_fn;
 use super::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedLen};

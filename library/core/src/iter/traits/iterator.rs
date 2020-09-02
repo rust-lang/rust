@@ -3,7 +3,7 @@
 // can't split that into multiple files.
 
 use crate::cmp::{self, Ordering};
-use crate::ops::{Add, Try, ControlFlow};
+use crate::ops::{Add, ControlFlow, Try};
 
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
@@ -2234,7 +2234,9 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> Option<B>,
     {
         #[inline]
-        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut((), T) -> ControlFlow<(), B> {
+        fn check<T, B>(
+            mut f: impl FnMut(T) -> Option<B>,
+        ) -> impl FnMut((), T) -> ControlFlow<(), B> {
             move |(), x| match f(x) {
                 Some(x) => ControlFlow::Break(x),
                 None => ControlFlow::Continue(()),
@@ -2354,7 +2356,11 @@ pub trait Iterator {
         ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
             // The addition might panic on overflow
             move |i, x| {
-                if predicate(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(Add::add(i, 1)) }
+                if predicate(x) {
+                    ControlFlow::Break(i)
+                } else {
+                    ControlFlow::Continue(Add::add(i, 1))
+                }
             }
         }
 

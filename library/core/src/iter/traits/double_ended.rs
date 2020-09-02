@@ -1,4 +1,4 @@
-use crate::ops::{Try, ControlFlow};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator able to yield elements from both ends.
 ///

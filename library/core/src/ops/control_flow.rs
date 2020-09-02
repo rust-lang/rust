@@ -1,7 +1,7 @@
 use crate::ops::Try;
 
 /// Used to make try_fold closures more like normal loops
-#[unstable(feature="control_flow_enum", reason="new API", issue="75744")]
+#[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ControlFlow<C, B> {
     /// Continue in the loop, using the given value for the next iteration
@@ -10,7 +10,7 @@ pub enum ControlFlow<C, B> {
     Break(B),
 }
 
-#[unstable(feature="control_flow_enum", reason="new API", issue="75744")]
+#[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
 impl<C, B> Try for ControlFlow<C, B> {
     type Ok = C;
     type Error = B;
@@ -35,7 +35,7 @@ impl<C, B> ControlFlow<C, B> {
     /// Converts the `ControlFlow` into an `Option` which is `Some` if the
     /// `ControlFlow` was `Break` and `None` otherwise.
     #[inline]
-    #[unstable(feature="control_flow_enum", reason="new API", issue="75744")]
+    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
     pub fn break_value(self) -> Option<B> {
         match self {
             ControlFlow::Continue(..) => None,
@@ -46,7 +46,7 @@ impl<C, B> ControlFlow<C, B> {
 
 impl<R: Try> ControlFlow<R::Ok, R> {
     /// Create a `ControlFlow` from any type implementing `Try`.
-    #[unstable(feature="control_flow_enum", reason="new API", issue="75744")]
+    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
     #[inline]
     pub fn from_try(r: R) -> Self {
         match Try::into_result(r) {
@@ -56,7 +56,7 @@ impl<R: Try> ControlFlow<R::Ok, R> {
     }
 
     /// Convert a `ControlFlow` into any type implementing `Try`;
-    #[unstable(feature="control_flow_enum", reason="new API", issue="75744")]
+    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
     #[inline]
     pub fn into_try(self) -> R {
         match self {
