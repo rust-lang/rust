@@ -55,8 +55,8 @@ impl<'tcx> LateLintPass<'tcx> for DefaultTraitAccess {
                         // TODO: Work out a way to put "whatever the imported way of referencing
                         // this type in this file" rather than a fully-qualified type.
                         let expr_ty = cx.typeck_results().expr_ty(expr);
-                        if let ty::Adt(..) = expr_ty.kind {
-                            let replacement = format!("{}::default()", expr_ty);
+                        if let ty::Adt(def, ..) = expr_ty.kind {
+                            let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did));
                             span_lint_and_sugg(
                                 cx,
                                 DEFAULT_TRAIT_ACCESS,

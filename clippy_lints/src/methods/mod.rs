@@ -1324,20 +1324,20 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns when using push_str with a single-character string literal,
-    /// and push with a char would work fine.
+    /// **What it does:** Warns when using `push_str` with a single-character string literal,
+    /// and `push` with a `char` would work fine.
     ///
-    /// **Why is this bad?** It's less clear that we are pushing a single character
+    /// **Why is this bad?** It's less clear that we are pushing a single character.
     ///
     /// **Known problems:** None
     ///
     /// **Example:**
-    /// ```
+    /// ```rust
     /// let mut string = String::new();
     /// string.push_str("R");
     /// ```
     /// Could be written as
-    /// ```
+    /// ```rust
     /// let mut string = String::new();
     /// string.push('R');
     /// ```
