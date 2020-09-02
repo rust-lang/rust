@@ -135,7 +135,7 @@
 //! methods like `nth` and `fold` if an iterator can compute them more efficiently without calling
 //! `next`.
 //!
-//! # for Loops and IntoIterator
+//! # `for` loops and `IntoIterator`
 //!
 //! Rust's `for` loop syntax is actually sugar for iterators. Here's a basic
 //! example of `for`:

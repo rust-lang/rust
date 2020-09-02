@@ -922,9 +922,13 @@ impl Stmt {
     pub fn add_trailing_semicolon(mut self) -> Self {
         self.kind = match self.kind {
             StmtKind::Expr(expr) => StmtKind::Semi(expr),
-            StmtKind::MacCall(mac) => StmtKind::MacCall(
-                mac.map(|(mac, _style, attrs)| (mac, MacStmtStyle::Semicolon, attrs)),
-            ),
+            StmtKind::MacCall(mac) => {
+                StmtKind::MacCall(mac.map(|MacCallStmt { mac, style: _, attrs }| MacCallStmt {
+                    mac,
+                    style: MacStmtStyle::Semicolon,
+                    attrs,
+                }))
+            }
             kind => kind,
         };
         self
@@ -958,7 +962,14 @@ pub enum StmtKind {
     /// Just a trailing semi-colon.
     Empty,
     /// Macro.
-    MacCall(P<(MacCall, MacStmtStyle, AttrVec)>),
+    MacCall(P<MacCallStmt>),
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct MacCallStmt {
+    pub mac: MacCall,
+    pub style: MacStmtStyle,
+    pub attrs: AttrVec,
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug)]

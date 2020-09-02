@@ -1305,7 +1305,7 @@ pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
         StmtKind::Semi(expr) => vis.filter_map_expr(expr).into_iter().map(StmtKind::Semi).collect(),
         StmtKind::Empty => smallvec![StmtKind::Empty],
         StmtKind::MacCall(mut mac) => {
-            let (mac_, _semi, attrs) = mac.deref_mut();
+            let MacCallStmt { mac: mac_, style: _, attrs } = mac.deref_mut();
             vis.visit_mac(mac_);
             visit_thin_attrs(attrs, vis);
             smallvec![StmtKind::MacCall(mac)]

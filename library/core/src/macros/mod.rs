@@ -242,7 +242,7 @@ macro_rules! debug_assert_ne {
 #[macro_export]
 #[stable(feature = "matches_macro", since = "1.42.0")]
 macro_rules! matches {
-    ($expression:expr, $( $pattern:pat )|+ $( if $guard: expr )?) => {
+    ($expression:expr, $( $pattern:pat )|+ $( if $guard: expr )? $(,)?) => {
         match $expression {
             $( $pattern )|+ $( if $guard )? => true,
             _ => false

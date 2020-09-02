@@ -51,7 +51,7 @@ warning: missing documentation for a function
 
 ## missing_doc_code_examples
 
-This lint is **allowed by default**. It detects when a documentation block
+This lint is **allowed by default** and is **nightly-only**. It detects when a documentation block
 is missing a code example. For example:
 
 ```rust
