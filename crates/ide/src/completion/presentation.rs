@@ -192,20 +192,15 @@ impl Completions {
         local_name: Option<String>,
     ) {
         fn add_arg(arg: &str, ty: &Type, ctx: &CompletionContext) -> String {
-            let mut prefix = "";
             if let Some(derefed_ty) = ty.remove_ref() {
-                ctx.scope.process_all_names(&mut |name, scope| {
-                    if prefix != "" {
-                        return;
+                for (name, local) in ctx.locals.iter() {
+                    if name == arg && local.can_unify(derefed_ty.clone(), ctx.db) {
+                        return (if ty.is_mutable_reference() { "&mut " } else { "&" }).to_string()
+                            + &arg.to_string();
                     }
-                    if let ScopeDef::Local(local) = scope {
-                        if name.to_string() == arg && local.can_unify(derefed_ty.clone(), ctx.db) {
-                            prefix = if ty.is_mutable_reference() { "&mut " } else { "&" };
-                        }
-                    }
-                });
+                }
             }
-            prefix.to_string() + arg
+            arg.to_string()
         };
         let name = local_name.unwrap_or_else(|| func.name(ctx.db).to_string());
         let ast_node = func.source(ctx.db).value;
