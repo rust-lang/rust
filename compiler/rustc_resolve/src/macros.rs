@@ -3,7 +3,7 @@
 
 use crate::imports::ImportResolver;
 use crate::Namespace::*;
-use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy};
+use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BuiltinMacroState, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::{self as ast, NodeId};
@@ -11,6 +11,7 @@ use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::struct_span_err;
 use rustc_expand::base::{Indeterminate, InvocationRes, ResolverExpand, SyntaxExtension};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
@@ -166,7 +167,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
     }
 
     fn register_builtin_macro(&mut self, ident: Ident, ext: SyntaxExtension) {
-        if self.builtin_macros.insert(ident.name, ext).is_some() {
+        if self.builtin_macros.insert(ident.name, BuiltinMacroState::NotYetSeen(ext)).is_some() {
             self.session
                 .span_err(ident.span, &format!("built-in macro `{}` was already defined", ident));
         }
@@ -1076,10 +1077,23 @@ impl<'a> Resolver<'a> {
 
         if result.is_builtin {
             // The macro was marked with `#[rustc_builtin_macro]`.
-            if let Some(ext) = self.builtin_macros.remove(&item.ident.name) {
+            if let Some(builtin_macro) = self.builtin_macros.get_mut(&item.ident.name) {
                 // The macro is a built-in, replace its expander function
                 // while still taking everything else from the source code.
-                result.kind = ext.kind;
+                // If we already loaded this builtin macro, give a better error message than 'no such builtin macro'.
+                match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(item.span)) {
+                    BuiltinMacroState::NotYetSeen(ext) => result.kind = ext.kind,
+                    BuiltinMacroState::AlreadySeen(span) => {
+                        struct_span_err!(
+                            self.session,
+                            item.span,
+                            E0773,
+                            "attempted to define built-in macro more than once"
+                        )
+                        .span_note(span, "previously defined here")
+                        .emit();
+                    }
+                }
             } else {
                 let msg = format!("cannot find a built-in macro with name `{}`", item.ident);
                 self.session.span_err(item.span, &msg);
