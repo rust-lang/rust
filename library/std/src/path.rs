@@ -214,7 +214,7 @@ impl<'a> Prefix<'a> {
     /// assert!(!Disk(b'C').is_verbatim());
     /// ```
     #[inline]
-    #[rustc_const_stable(feature = "const_ip", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_path_prefix", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn is_verbatim(&self) -> bool {
         use self::Prefix::*;
