@@ -9,6 +9,7 @@ mod alignment;
 pub mod collect_writes;
 mod graphviz;
 pub(crate) mod pretty;
+pub(crate) mod spanview;
 
 pub use self::aggregate::expand_aggregate;
 pub use self::alignment::is_disaligned;

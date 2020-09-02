@@ -163,6 +163,21 @@ pub enum LtoCli {
     Unspecified,
 }
 
+/// The different settings that the `-Z dump_mir_spanview` flag can have. `Statement` generates a
+/// document highlighting each span of every statement (including terminators). `Terminator` and
+/// `Block` highlight a single span per `BasicBlock`: the span of the block's `Terminator`, or a
+/// computed span for the block, representing the entire range, covering the block's terminator and
+/// all of its statements.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum MirSpanview {
+    /// Default `-Z dump_mir_spanview` or `-Z dump_mir_spanview=statement`
+    Statement,
+    /// `-Z dump_mir_spanview=terminator`
+    Terminator,
+    /// `-Z dump_mir_spanview=block`
+    Block,
+}
+
 #[derive(Clone, PartialEq, Hash)]
 pub enum LinkerPluginLto {
     LinkerPlugin(PathBuf),

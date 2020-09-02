@@ -255,6 +255,7 @@ macro_rules! options {
         pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
         pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavor::one_of();
         pub const parse_optimization_fuel: &str = "crate=integer";
+        pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
         pub const parse_unpretty: &str = "`string` or `string=string`";
         pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
         pub const parse_lto: &str =
@@ -549,6 +550,36 @@ macro_rules! options {
                 }
                 _ => false,
             }
+        }
+
+        fn parse_mir_spanview(slot: &mut Option<MirSpanview>, v: Option<&str>) -> bool {
+            if v.is_some() {
+                let mut bool_arg = None;
+                if parse_opt_bool(&mut bool_arg, v) {
+                    *slot = if bool_arg.unwrap() {
+                        Some(MirSpanview::Statement)
+                    } else {
+                        None
+                    };
+                    return true
+                }
+            }
+
+            let v = match v {
+                None => {
+                    *slot = Some(MirSpanview::Statement);
+                    return true;
+                }
+                Some(v) => v,
+            };
+
+            *slot = Some(match v.trim_end_matches("s") {
+                "statement" | "stmt" => MirSpanview::Statement,
+                "terminator" | "term" => MirSpanview::Terminator,
+                "block" | "basicblock" => MirSpanview::Block,
+                _ => return false,
+            });
+            true
         }
 
         fn parse_treat_err_as_bug(slot: &mut Option<usize>, v: Option<&str>) -> bool {
@@ -849,6 +880,11 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "exclude the pass number when dumping MIR (used in tests) (default: no)"),
     dump_mir_graphviz: bool = (false, parse_bool, [UNTRACKED],
         "in addition to `.mir` files, create graphviz `.dot` files (default: no)"),
+    dump_mir_spanview: Option<MirSpanview> = (None, parse_mir_spanview, [UNTRACKED],
+        "in addition to `.mir` files, create `.html` files to view spans for \
+        all `statement`s (including terminators), only `terminator` spans, or \
+        computed `block` spans (one span encompassing a block's terminator and \
+        all statements)."),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
     fewer_names: bool = (false, parse_bool, [TRACKED],
