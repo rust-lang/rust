@@ -745,6 +745,9 @@ impl Ipv4Addr {
     ///
     /// a.b.c.d becomes ::a.b.c.d
     ///
+    /// This isn't typically the method you want; these addresses don't typically
+    /// function on modern systems. Use `to_ipv6_mapped` instead.
+    ///
     /// [`IPv6` address]: Ipv6Addr
     ///
     /// # Examples
