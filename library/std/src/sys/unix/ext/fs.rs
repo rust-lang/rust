@@ -8,6 +8,9 @@ use crate::path::Path;
 use crate::sys;
 use crate::sys::platform::fs::MetadataExt as UnixMetadataExt;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
+// Used for `File::read` on intra-doc links
+#[allow(unused_imports)]
+use io::{Read, Write};
 
 /// Unix-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
@@ -24,7 +27,7 @@ pub trait FileExt {
     /// Note that similar to [`File::read`], it is not an error to return with a
     /// short read.
     ///
-    /// [`File::read`]: ../../../../std/fs/struct.File.html#method.read
+    /// [`File::read`]: fs::File::read
     ///
     /// # Examples
     ///
@@ -127,7 +130,7 @@ pub trait FileExt {
     /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
     ///
-    /// [`File::write`]: ../../../../std/fs/struct.File.html#method.write
+    /// [`File::write`]: fs::File::write
     ///
     /// # Examples
     ///

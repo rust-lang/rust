@@ -152,7 +152,7 @@ macro_rules! acquire {
 /// [upgrade]: Weak::upgrade
 /// [`RefCell<T>`]: core::cell::RefCell
 /// [`std::sync`]: ../../std/sync/index.html
-/// [`Arc::clone(&from)`]: #method.clone
+/// [`Arc::clone(&from)`]: Arc::clone
 ///
 /// # Examples
 ///
@@ -201,7 +201,7 @@ macro_rules! acquire {
 /// See the [`rc` documentation][rc_examples] for more examples of reference
 /// counting in general.
 ///
-/// [rc_examples]: ../../std/rc/index.html#examples
+/// [rc_examples]: crate::rc#examples
 #[cfg_attr(not(test), rustc_diagnostic_item = "Arc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
@@ -443,7 +443,7 @@ impl<T> Arc<T> {
     /// assert_eq!(*zero, 0)
     /// ```
     ///
-    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
@@ -550,7 +550,7 @@ impl<T> Arc<[T]> {
     /// assert_eq!(*values, [0, 0, 0])
     /// ```
     ///
-    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         unsafe {
@@ -577,7 +577,7 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
-    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::method.assume_init
     ///
     /// # Examples
     ///
@@ -616,7 +616,7 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
-    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::method.assume_init
     ///
     /// # Examples
     ///

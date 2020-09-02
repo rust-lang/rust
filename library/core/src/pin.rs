@@ -661,7 +661,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     ///
-    /// [`pin` module]: ../../std/pin/index.html#projections-and-structural-pinning
+    /// [`pin` module]: self#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
     pub unsafe fn map_unchecked<U, F>(self, func: F) -> Pin<&'a U>
     where
@@ -692,7 +692,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// the `Pin` itself. This method allows turning the `Pin` into a reference
     /// with the same lifetime as the original `Pin`.
     ///
-    /// ["pinning projections"]: ../../std/pin/index.html#projections-and-structural-pinning
+    /// ["pinning projections"]: self#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn get_ref(self) -> &'a T {
@@ -756,7 +756,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     ///
-    /// [`pin` module]: ../../std/pin/index.html#projections-and-structural-pinning
+    /// [`pin` module]: self#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
     pub unsafe fn map_unchecked_mut<U, F>(self, func: F) -> Pin<&'a mut U>
     where
