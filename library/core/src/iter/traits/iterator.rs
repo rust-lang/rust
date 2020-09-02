@@ -22,8 +22,8 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 /// generally, please see the [module-level documentation]. In particular, you
 /// may want to know how to [implement `Iterator`][impl].
 ///
-/// [module-level documentation]: self
-/// [impl]: self#implementing-iterator
+/// [module-level documentation]: crate::iter
+/// [impl]: crate::iter#implementing-iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
