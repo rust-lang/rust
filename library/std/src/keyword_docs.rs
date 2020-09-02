@@ -146,7 +146,7 @@ mod break_keyword {}
 /// Constants, like statics, should always be in `SCREAMING_SNAKE_CASE`.
 ///
 /// The `const` keyword is also used in raw pointers in combination with `mut`, as seen in `*const
-/// T` and `*mut T`. More about that usage can be read at the Rust docs for the [pointer primitive].
+/// T` and `*mut T`. More about `const` as used in raw pointers can be read at the Rust docs for the [pointer primitive].
 ///
 /// For more detail on `const`, see the [Rust Book] or the [Reference].
 ///
