@@ -34,6 +34,7 @@ use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
+use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -935,7 +936,7 @@ pub struct GlobalCtxt<'tcx> {
 
     /// A map from `DefPathHash` -> `DefId`. Includes `DefId`s from the local crate
     /// as well as all upstream crates. Only populated in incremental mode.
-    pub def_path_hash_to_def_id: Option<FxHashMap<DefPathHash, DefId>>,
+    pub def_path_hash_to_def_id: Option<UnhashMap<DefPathHash, DefId>>,
 
     pub queries: query::Queries<'tcx>,
 
@@ -1104,7 +1105,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let def_path_hash_to_def_id = if s.opts.build_dep_graph() {
             let capacity = definitions.def_path_table().num_def_ids()
                 + crates.iter().map(|cnum| cstore.num_def_ids(*cnum)).sum::<usize>();
-            let mut map = FxHashMap::with_capacity_and_hasher(capacity, Default::default());
+            let mut map = UnhashMap::with_capacity_and_hasher(capacity, Default::default());
 
             map.extend(definitions.def_path_table().all_def_path_hashes_and_def_ids(LOCAL_CRATE));
             for cnum in &crates {

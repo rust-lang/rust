@@ -103,6 +103,7 @@ pub use atomic_ref::AtomicRef;
 pub mod frozen;
 pub mod tagged_ptr;
 pub mod temp_dir;
+pub mod unhash;
 
 pub struct OnDrop<F: Fn()>(pub F);
 

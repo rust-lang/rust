@@ -3,9 +3,10 @@ use rustc_serialize::{
     opaque::{self, EncodeResult},
     Decodable, Encodable,
 };
+use std::hash::{Hash, Hasher};
 use std::mem;
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy)]
 pub struct Fingerprint(u64, u64);
 
 impl Fingerprint {
@@ -73,6 +74,33 @@ impl Fingerprint {
 impl ::std::fmt::Display for Fingerprint {
     fn fmt(&self, formatter: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         write!(formatter, "{:x}-{:x}", self.0, self.1)
+    }
+}
+
+impl Hash for Fingerprint {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_fingerprint(self);
+    }
+}
+
+trait FingerprintHasher {
+    fn write_fingerprint(&mut self, fingerprint: &Fingerprint);
+}
+
+impl<H: Hasher> FingerprintHasher for H {
+    #[inline]
+    default fn write_fingerprint(&mut self, fingerprint: &Fingerprint) {
+        self.write_u64(fingerprint.0);
+        self.write_u64(fingerprint.1);
+    }
+}
+
+impl FingerprintHasher for crate::unhash::Unhasher {
+    #[inline]
+    fn write_fingerprint(&mut self, fingerprint: &Fingerprint) {
+        // `Unhasher` only wants a single `u64`
+        self.write_u64(fingerprint.0);
     }
 }
 
