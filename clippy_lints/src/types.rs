@@ -31,8 +31,8 @@ use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_type_diagnostic_item,
     last_path_segment, match_def_path, match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral,
-    qpath_res, sext, snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
-    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, trim_multiline, unsext,
+    qpath_res, reindent_multiline, sext, snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -802,7 +802,45 @@ impl<'tcx> LateLintPass<'tcx> for UnitArg {
     }
 }
 
-#[allow(clippy::too_many_lines)]
+fn fmt_stmts_and_call(
+    cx: &LateContext<'_>,
+    call_expr: &Expr<'_>,
+    call_snippet: &str,
+    args_snippets: &[impl AsRef<str>],
+    non_empty_block_args_snippets: &[impl AsRef<str>],
+) -> String {
+    let call_expr_indent = indent_of(cx, call_expr.span).unwrap_or(0);
+    let call_snippet_with_replacements = args_snippets
+        .iter()
+        .fold(call_snippet.to_owned(), |acc, arg| acc.replacen(arg.as_ref(), "()", 1));
+
+    let mut stmts_and_call = non_empty_block_args_snippets
+        .iter()
+        .map(|it| it.as_ref().to_owned())
+        .collect::<Vec<_>>();
+    stmts_and_call.push(call_snippet_with_replacements);
+    stmts_and_call = stmts_and_call
+        .into_iter()
+        .map(|v| reindent_multiline(v.into(), true, Some(call_expr_indent)).into_owned())
+        .collect();
+
+    let mut stmts_and_call_snippet = stmts_and_call.join(&format!("{}{}", ";\n", " ".repeat(call_expr_indent)));
+    // expr is not in a block statement or result expression position, wrap in a block
+    let parent_node = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(call_expr.hir_id));
+    if !matches!(parent_node, Some(Node::Block(_))) && !matches!(parent_node, Some(Node::Stmt(_))) {
+        let block_indent = call_expr_indent + 4;
+        stmts_and_call_snippet =
+            reindent_multiline(stmts_and_call_snippet.into(), true, Some(block_indent)).into_owned();
+        stmts_and_call_snippet = format!(
+            "{{\n{}{}\n{}}}",
+            " ".repeat(block_indent),
+            &stmts_and_call_snippet,
+            " ".repeat(call_expr_indent)
+        );
+    }
+    stmts_and_call_snippet
+}
+
 fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Expr<'_>]) {
     let mut applicability = Applicability::MachineApplicable;
     let (singular, plural) = if args_to_recover.len() > 1 {
@@ -857,37 +895,15 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                 .filter(|arg| !is_empty_block(arg))
                 .filter_map(|arg| snippet_opt(cx, arg.span))
                 .collect();
-            let indent = indent_of(cx, expr.span).unwrap_or(0);
 
-            if let Some(expr_str) = snippet_opt(cx, expr.span) {
-                let expr_with_replacements = arg_snippets
-                    .iter()
-                    .fold(expr_str, |acc, arg| acc.replacen(arg, "()", 1));
-
-                // expr is not in a block statement or result expression position, wrap in a block
-                let parent_node = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(expr.hir_id));
-                let wrap_in_block =
-                    !matches!(parent_node, Some(Node::Block(_))) && !matches!(parent_node, Some(Node::Stmt(_)));
-
-                let stmts_indent = if wrap_in_block { indent + 4 } else { indent };
-                let mut stmts_and_call = arg_snippets_without_empty_blocks.clone();
-                stmts_and_call.push(expr_with_replacements);
-                let mut stmts_and_call_str = stmts_and_call
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, v)| {
-                        let with_indent_prefix = if i > 0 { " ".repeat(stmts_indent) + &v } else { v };
-                        trim_multiline(with_indent_prefix.into(), true, Some(stmts_indent)).into_owned()
-                    })
-                    .collect::<Vec<String>>()
-                    .join(";\n");
-
-                if wrap_in_block {
-                    stmts_and_call_str = " ".repeat(stmts_indent) + &stmts_and_call_str;
-                    stmts_and_call_str = format!("{{\n{}\n{}}}", &stmts_and_call_str, " ".repeat(indent));
-                }
-
-                let sugg = stmts_and_call_str;
+            if let Some(call_snippet) = snippet_opt(cx, expr.span) {
+                let sugg = fmt_stmts_and_call(
+                    cx,
+                    expr,
+                    &call_snippet,
+                    &arg_snippets,
+                    &arg_snippets_without_empty_blocks,
+                );
 
                 if arg_snippets_without_empty_blocks.is_empty() {
                     db.multipart_suggestion(
