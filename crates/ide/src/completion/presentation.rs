@@ -194,7 +194,7 @@ impl Completions {
         fn add_arg(arg: &str, ty: &Type, ctx: &CompletionContext) -> String {
             if let Some(derefed_ty) = ty.remove_ref() {
                 for (name, local) in ctx.locals.iter() {
-                    if name == arg && local.can_unify(derefed_ty.clone(), ctx.db) {
+                    if name == arg && local.ty(ctx.db) == derefed_ty {
                         return (if ty.is_mutable_reference() { "&mut " } else { "&" }).to_string()
                             + &arg.to_string();
                     }

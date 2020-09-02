@@ -26,9 +26,6 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::infer::infer_query)]
     fn infer_query(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 
-    #[salsa::invoke(crate::infer::can_unify)]
-    fn can_unify(&self, def: DefWithBodyId, ty1: Ty, ty2: Ty) -> bool;
-
     #[salsa::invoke(crate::lower::ty_query)]
     #[salsa::cycle(crate::lower::ty_recover)]
     fn ty(&self, def: TyDefId) -> Binders<Ty>;

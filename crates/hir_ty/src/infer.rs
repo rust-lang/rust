@@ -78,19 +78,6 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
     Arc::new(ctx.resolve_all())
 }
 
-pub(crate) fn can_unify(db: &dyn HirDatabase, def: DefWithBodyId, ty1: Ty, ty2: Ty) -> bool {
-    let resolver = def.resolver(db.upcast());
-    let mut ctx = InferenceContext::new(db, def, resolver);
-
-    let ty1 = ctx.canonicalizer().canonicalize_ty(ty1).value;
-    let ty2 = ctx.canonicalizer().canonicalize_ty(ty2).value;
-    let mut kinds = Vec::from(ty1.kinds.to_vec());
-    kinds.extend_from_slice(ty2.kinds.as_ref());
-    let tys = crate::Canonical::new((ty1.value, ty2.value), kinds);
-
-    unify(&tys).is_some()
-}
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 enum ExprOrPatId {
     ExprId(ExprId),

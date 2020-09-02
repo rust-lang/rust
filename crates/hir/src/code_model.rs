@@ -1118,12 +1118,6 @@ impl Local {
             ast.map_left(|it| it.cast().unwrap().to_node(&root)).map_right(|it| it.to_node(&root))
         })
     }
-
-    pub fn can_unify(self, other: Type, db: &dyn HirDatabase) -> bool {
-        let def = DefWithBodyId::from(self.parent);
-        let infer = db.infer(def);
-        db.can_unify(def, infer[self.pat_id].clone(), other.ty.value)
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
