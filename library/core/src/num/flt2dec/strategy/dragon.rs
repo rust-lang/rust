@@ -5,6 +5,7 @@
 //!   quickly and accurately. SIGPLAN Not. 31, 5 (May. 1996), 108-116.
 
 use crate::cmp::Ordering;
+use crate::mem::MaybeUninit;
 
 use crate::num::bignum::Big32x40 as Big;
 use crate::num::bignum::Digit32 as Digit;
@@ -97,7 +98,10 @@ fn div_rem_upto_16<'a>(
 }
 
 /// The shortest mode implementation for Dragon.
-pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp*/ i16) {
+pub fn format_shortest<'a>(
+    d: &Decoded,
+    buf: &'a mut [MaybeUninit<u8>],
+) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
     // the number `v` to format is known to be:
     // - equal to `mant * 2^exp`;
     // - preceded by `(mant - 2 * minus) * 2^exp` in the original type; and
@@ -186,7 +190,7 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
         // generate one digit: `d[n] = floor(mant / scale) < 10`.
         let (d, _) = div_rem_upto_16(&mut mant, &scale, &scale2, &scale4, &scale8);
         debug_assert!(d < 10);
-        buf[i] = b'0' + d;
+        buf[i] = MaybeUninit::new(b'0' + d);
         i += 1;
 
         // this is a simplified description of the modified Dragon algorithm.
@@ -241,18 +245,24 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
         // if rounding up changes the length, the exponent should also change.
         // it seems that this condition is very hard to satisfy (possibly impossible),
         // but we are just being safe and consistent here.
-        if let Some(c) = round_up(buf, i) {
-            buf[i] = c;
+        // SAFETY: we initialized that memory above.
+        if let Some(c) = round_up(unsafe { MaybeUninit::slice_get_mut(&mut buf[..i]) }) {
+            buf[i] = MaybeUninit::new(c);
             i += 1;
             k += 1;
         }
     }
 
-    (i, k)
+    // SAFETY: we initialized that memory above.
+    (unsafe { MaybeUninit::slice_get_ref(&buf[..i]) }, k)
 }
 
 /// The exact and fixed mode implementation for Dragon.
-pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usize, /*exp*/ i16) {
+pub fn format_exact<'a>(
+    d: &Decoded,
+    buf: &'a mut [MaybeUninit<u8>],
+    limit: i16,
+) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
     assert!(d.mant > 0);
     assert!(d.minus > 0);
     assert!(d.plus > 0);
@@ -319,9 +329,10 @@ pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usi
                 // following digits are all zeroes, we stop here
                 // do *not* try to perform rounding! rather, fill remaining digits.
                 for c in &mut buf[i..len] {
-                    *c = b'0';
+                    *c = MaybeUninit::new(b'0');
                 }
-                return (len, k);
+                // SAFETY: we initialized that memory above.
+                return (unsafe { MaybeUninit::slice_get_ref(&buf[..len]) }, k);
             }
 
             let mut d = 0;
@@ -343,7 +354,7 @@ pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usi
             }
             debug_assert!(mant < scale);
             debug_assert!(d < 10);
-            buf[i] = b'0' + d;
+            buf[i] = MaybeUninit::new(b'0' + d);
             mant.mul_small(10);
         }
     }
@@ -353,21 +364,25 @@ pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usi
     // round to even (i.e., avoid rounding up when the prior digit is even).
     let order = mant.cmp(scale.mul_small(5));
     if order == Ordering::Greater
-        || (order == Ordering::Equal && (len == 0 || buf[len - 1] & 1 == 1))
+        || (order == Ordering::Equal
+            // SAFETY: `buf[len-1]` is initialized.
+            && (len == 0 || unsafe { buf[len - 1].assume_init() } & 1 == 1))
     {
         // if rounding up changes the length, the exponent should also change.
         // but we've been requested a fixed number of digits, so do not alter the buffer...
-        if let Some(c) = round_up(buf, len) {
+        // SAFETY: we initialized that memory above.
+        if let Some(c) = round_up(unsafe { MaybeUninit::slice_get_mut(&mut buf[..len]) }) {
             // ...unless we've been requested the fixed precision instead.
             // we also need to check that, if the original buffer was empty,
             // the additional digit can only be added when `k == limit` (edge case).
             k += 1;
             if k > limit && len < buf.len() {
-                buf[len] = c;
+                buf[len] = MaybeUninit::new(c);
                 len += 1;
             }
         }
     }
 
-    (len, k)
+    // SAFETY: we initialized that memory above.
+    (unsafe { MaybeUninit::slice_get_ref(&buf[..len]) }, k)
 }

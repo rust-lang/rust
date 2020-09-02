@@ -5,6 +5,7 @@
 //! [^1]: Florian Loitsch. 2010. Printing floating-point numbers quickly and
 //!   accurately with integers. SIGPLAN Not. 45, 6 (June 2010), 233-243.
 
+use crate::mem::MaybeUninit;
 use crate::num::diy_float::Fp;
 use crate::num::flt2dec::{round_up, Decoded, MAX_SIG_DIGITS};
 
@@ -161,10 +162,10 @@ pub fn max_pow10_no_more_than(x: u32) -> (u8, u32) {
 /// The shortest mode implementation for Grisu.
 ///
 /// It returns `None` when it would return an inexact representation otherwise.
-pub fn format_shortest_opt(
+pub fn format_shortest_opt<'a>(
     d: &Decoded,
-    buf: &mut [u8],
-) -> Option<(/*#digits*/ usize, /*exp*/ i16)> {
+    buf: &'a mut [MaybeUninit<u8>],
+) -> Option<(/*digits*/ &'a [u8], /*exp*/ i16)> {
     assert!(d.mant > 0);
     assert!(d.minus > 0);
     assert!(d.plus > 0);
@@ -266,14 +267,23 @@ pub fn format_shortest_opt(
         let q = remainder / ten_kappa;
         let r = remainder % ten_kappa;
         debug_assert!(q < 10);
-        buf[i] = b'0' + q as u8;
+        buf[i] = MaybeUninit::new(b'0' + q as u8);
         i += 1;
 
         let plus1rem = ((r as u64) << e) + plus1frac; // == (plus1 % 10^kappa) * 2^e
         if plus1rem < delta1 {
             // `plus1 % 10^kappa < delta1 = plus1 - minus1`; we've found the correct `kappa`.
             let ten_kappa = (ten_kappa as u64) << e; // scale 10^kappa back to the shared exponent
-            return round_and_weed(&mut buf[..i], exp, plus1rem, delta1, plus1 - v.f, ten_kappa, 1);
+            return round_and_weed(
+                // SAFETY: we initialized that memory above.
+                unsafe { MaybeUninit::slice_get_mut(&mut buf[..i]) },
+                exp,
+                plus1rem,
+                delta1,
+                plus1 - v.f,
+                ten_kappa,
+                1,
+            );
         }
 
         // break the loop when we have rendered all integral digits.
@@ -310,13 +320,14 @@ pub fn format_shortest_opt(
         let q = remainder >> e;
         let r = remainder & ((1 << e) - 1);
         debug_assert!(q < 10);
-        buf[i] = b'0' + q as u8;
+        buf[i] = MaybeUninit::new(b'0' + q as u8);
         i += 1;
 
         if r < threshold {
             let ten_kappa = 1 << e; // implicit divisor
             return round_and_weed(
-                &mut buf[..i],
+                // SAFETY: we initialized that memory above.
+                unsafe { MaybeUninit::slice_get_mut(&mut buf[..i]) },
                 exp,
                 r,
                 threshold,
@@ -355,7 +366,7 @@ pub fn format_shortest_opt(
         plus1v: u64,
         ten_kappa: u64,
         ulp: u64,
-    ) -> Option<(usize, i16)> {
+    ) -> Option<(&[u8], i16)> {
         assert!(!buf.is_empty());
 
         // produce two approximations to `v` (actually `plus1 - v`) within 1.5 ulps.
@@ -437,20 +448,22 @@ pub fn format_shortest_opt(
         // this is too liberal, though, so we reject any `w(n)` not between `plus0` and `minus0`,
         // i.e., `plus1 - plus1w(n) <= minus0` or `plus1 - plus1w(n) >= plus0`. we utilize the facts
         // that `threshold = plus1 - minus1` and `plus1 - plus0 = minus0 - minus1 = 2 ulp`.
-        if 2 * ulp <= plus1w && plus1w <= threshold - 4 * ulp {
-            Some((buf.len(), exp))
-        } else {
-            None
-        }
+        if 2 * ulp <= plus1w && plus1w <= threshold - 4 * ulp { Some((buf, exp)) } else { None }
     }
 }
 
 /// The shortest mode implementation for Grisu with Dragon fallback.
 ///
 /// This should be used for most cases.
-pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp*/ i16) {
+pub fn format_shortest<'a>(
+    d: &Decoded,
+    buf: &'a mut [MaybeUninit<u8>],
+) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
     use crate::num::flt2dec::strategy::dragon::format_shortest as fallback;
-    match format_shortest_opt(d, buf) {
+    // SAFETY: The borrow checker is not smart enough to let us use `buf`
+    // in the second branch, so we launder the lifetime here. But we only re-use
+    // `buf` if `format_shortest_opt` returned `None` so this is okay.
+    match format_shortest_opt(d, unsafe { &mut *(buf as *mut _) }) {
         Some(ret) => ret,
         None => fallback(d, buf),
     }
@@ -459,11 +472,11 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
 /// The exact and fixed mode implementation for Grisu.
 ///
 /// It returns `None` when it would return an inexact representation otherwise.
-pub fn format_exact_opt(
+pub fn format_exact_opt<'a>(
     d: &Decoded,
-    buf: &mut [u8],
+    buf: &'a mut [MaybeUninit<u8>],
     limit: i16,
-) -> Option<(/*#digits*/ usize, /*exp*/ i16)> {
+) -> Option<(/*digits*/ &'a [u8], /*exp*/ i16)> {
     assert!(d.mant > 0);
     assert!(d.mant < (1 << 61)); // we need at least three bits of additional precision
     assert!(!buf.is_empty());
@@ -510,7 +523,11 @@ pub fn format_exact_opt(
         // thus we are being sloppy here and widen the error range by a factor of 10.
         // this will increase the false negative rate, but only very, *very* slightly;
         // it can only matter noticeably when the mantissa is bigger than 60 bits.
-        return possibly_round(buf, 0, exp, limit, v.f / 10, (max_ten_kappa as u64) << e, err << e);
+        //
+        // SAFETY: `len=0`, so the obligation of having initialized this memory is trivial.
+        return unsafe {
+            possibly_round(buf, 0, exp, limit, v.f / 10, (max_ten_kappa as u64) << e, err << e)
+        };
     } else if ((exp as i32 - limit as i32) as usize) < buf.len() {
         (exp - limit) as usize
     } else {
@@ -534,13 +551,16 @@ pub fn format_exact_opt(
         let q = remainder / ten_kappa;
         let r = remainder % ten_kappa;
         debug_assert!(q < 10);
-        buf[i] = b'0' + q as u8;
+        buf[i] = MaybeUninit::new(b'0' + q as u8);
         i += 1;
 
         // is the buffer full? run the rounding pass with the remainder.
         if i == len {
             let vrem = ((r as u64) << e) + vfrac; // == (v % 10^kappa) * 2^e
-            return possibly_round(buf, len, exp, limit, vrem, (ten_kappa as u64) << e, err << e);
+            // SAFETY: we have initialized `len` many bytes.
+            return unsafe {
+                possibly_round(buf, len, exp, limit, vrem, (ten_kappa as u64) << e, err << e)
+            };
         }
 
         // break the loop when we have rendered all integral digits.
@@ -585,12 +605,13 @@ pub fn format_exact_opt(
         let q = remainder >> e;
         let r = remainder & ((1 << e) - 1);
         debug_assert!(q < 10);
-        buf[i] = b'0' + q as u8;
+        buf[i] = MaybeUninit::new(b'0' + q as u8);
         i += 1;
 
         // is the buffer full? run the rounding pass with the remainder.
         if i == len {
-            return possibly_round(buf, len, exp, limit, r, 1 << e, err);
+            // SAFETY: we have initialized `len` many bytes.
+            return unsafe { possibly_round(buf, len, exp, limit, r, 1 << e, err) };
         }
 
         // restore invariants
@@ -610,15 +631,17 @@ pub fn format_exact_opt(
     // - `remainder = (v % 10^kappa) * k`
     // - `ten_kappa = 10^kappa * k`
     // - `ulp = 2^-e * k`
-    fn possibly_round(
-        buf: &mut [u8],
+    //
+    // SAFETY: the first `len` bytes of `buf` must be initialized.
+    unsafe fn possibly_round(
+        buf: &mut [MaybeUninit<u8>],
         mut len: usize,
         mut exp: i16,
         limit: i16,
         remainder: u64,
         ten_kappa: u64,
         ulp: u64,
-    ) -> Option<(usize, i16)> {
+    ) -> Option<(&[u8], i16)> {
         debug_assert!(remainder < ten_kappa);
 
         //           10^kappa
@@ -677,7 +700,8 @@ pub fn format_exact_opt(
         // we've already verified that `ulp < 10^kappa / 2`, so as long as
         // `10^kappa` did not overflow after all, the second check is fine.
         if ten_kappa - remainder > remainder && ten_kappa - 2 * remainder >= 2 * ulp {
-            return Some((len, exp));
+            // SAFETY: our caller initialized that memory.
+            return Some((unsafe { MaybeUninit::slice_get_ref(&buf[..len]) }, exp));
         }
 
         //   :<------- remainder ------>|   :
@@ -698,17 +722,19 @@ pub fn format_exact_opt(
         // as `10^kappa` is never zero). also note that `remainder - ulp <= 10^kappa`,
         // so the second check does not overflow.
         if remainder > ulp && ten_kappa - (remainder - ulp) <= remainder - ulp {
-            if let Some(c) = round_up(buf, len) {
+            // SAFETY: our caller must have initialized that memory.
+            if let Some(c) = round_up(unsafe { MaybeUninit::slice_get_mut(&mut buf[..len]) }) {
                 // only add an additional digit when we've been requested the fixed precision.
                 // we also need to check that, if the original buffer was empty,
                 // the additional digit can only be added when `exp == limit` (edge case).
                 exp += 1;
                 if exp > limit && len < buf.len() {
-                    buf[len] = c;
+                    buf[len] = MaybeUninit::new(c);
                     len += 1;
                 }
             }
-            return Some((len, exp));
+            // SAFETY: we and our caller initialized that memory.
+            return Some((unsafe { MaybeUninit::slice_get_ref(&buf[..len]) }, exp));
         }
 
         // otherwise we are doomed (i.e., some values between `v - 1 ulp` and `v + 1 ulp` are
@@ -720,9 +746,16 @@ pub fn format_exact_opt(
 /// The exact and fixed mode implementation for Grisu with Dragon fallback.
 ///
 /// This should be used for most cases.
-pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usize, /*exp*/ i16) {
+pub fn format_exact<'a>(
+    d: &Decoded,
+    buf: &'a mut [MaybeUninit<u8>],
+    limit: i16,
+) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
     use crate::num::flt2dec::strategy::dragon::format_exact as fallback;
-    match format_exact_opt(d, buf, limit) {
+    // SAFETY: The borrow checker is not smart enough to let us use `buf`
+    // in the second branch, so we launder the lifetime here. But we only re-use
+    // `buf` if `format_exact_opt` returned `None` so this is okay.
+    match format_exact_opt(d, unsafe { &mut *(buf as *mut _) }, limit) {
         Some(ret) => ret,
         None => fallback(d, buf, limit),
     }

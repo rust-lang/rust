@@ -124,6 +124,8 @@ functions.
 
 pub use self::decoder::{decode, DecodableFloat, Decoded, FullDecoded};
 
+use crate::mem::MaybeUninit;
+
 pub mod decoder;
 pub mod estimator;
 
@@ -140,23 +142,23 @@ pub mod strategy {
 /// The exact formula is `ceil(# bits in mantissa * log_10 2 + 1)`.
 pub const MAX_SIG_DIGITS: usize = 17;
 
-/// When `d[..n]` contains decimal digits, increase the last digit and propagate carry.
-/// Returns a next digit when it causes the length change.
+/// When `d` contains decimal digits, increase the last digit and propagate carry.
+/// Returns a next digit when it causes the length to change.
 #[doc(hidden)]
-pub fn round_up(d: &mut [u8], n: usize) -> Option<u8> {
-    match d[..n].iter().rposition(|&c| c != b'9') {
+pub fn round_up(d: &mut [u8]) -> Option<u8> {
+    match d.iter().rposition(|&c| c != b'9') {
         Some(i) => {
             // d[i+1..n] is all nines
             d[i] += 1;
-            for j in i + 1..n {
+            for j in i + 1..d.len() {
                 d[j] = b'0';
             }
             None
         }
-        None if n > 0 => {
+        None if d.len() > 0 => {
             // 999..999 rounds to 1000..000 with an increased exponent
             d[0] = b'1';
-            for j in 1..n {
+            for j in 1..d.len() {
                 d[j] = b'0';
             }
             Some(b'0')
@@ -281,7 +283,7 @@ fn digits_to_dec_str<'a>(
     buf: &'a [u8],
     exp: i16,
     frac_digits: usize,
-    parts: &'a mut [Part<'a>],
+    parts: &'a mut [MaybeUninit<Part<'a>>],
 ) -> &'a [Part<'a>] {
     assert!(!buf.is_empty());
     assert!(buf[0] > b'0');
@@ -303,38 +305,44 @@ fn digits_to_dec_str<'a>(
     if exp <= 0 {
         // the decimal point is before rendered digits: [0.][000...000][1234][____]
         let minus_exp = -(exp as i32) as usize;
-        parts[0] = Part::Copy(b"0.");
-        parts[1] = Part::Zero(minus_exp);
-        parts[2] = Part::Copy(buf);
+        parts[0] = MaybeUninit::new(Part::Copy(b"0."));
+        parts[1] = MaybeUninit::new(Part::Zero(minus_exp));
+        parts[2] = MaybeUninit::new(Part::Copy(buf));
         if frac_digits > buf.len() && frac_digits - buf.len() > minus_exp {
-            parts[3] = Part::Zero((frac_digits - buf.len()) - minus_exp);
-            &parts[..4]
+            parts[3] = MaybeUninit::new(Part::Zero((frac_digits - buf.len()) - minus_exp));
+            // SAFETY: we just initialized the elements `..4`.
+            unsafe { MaybeUninit::slice_get_ref(&parts[..4]) }
         } else {
-            &parts[..3]
+            // SAFETY: we just initialized the elements `..3`.
+            unsafe { MaybeUninit::slice_get_ref(&parts[..3]) }
         }
     } else {
         let exp = exp as usize;
         if exp < buf.len() {
             // the decimal point is inside rendered digits: [12][.][34][____]
-            parts[0] = Part::Copy(&buf[..exp]);
-            parts[1] = Part::Copy(b".");
-            parts[2] = Part::Copy(&buf[exp..]);
+            parts[0] = MaybeUninit::new(Part::Copy(&buf[..exp]));
+            parts[1] = MaybeUninit::new(Part::Copy(b"."));
+            parts[2] = MaybeUninit::new(Part::Copy(&buf[exp..]));
             if frac_digits > buf.len() - exp {
-                parts[3] = Part::Zero(frac_digits - (buf.len() - exp));
-                &parts[..4]
+                parts[3] = MaybeUninit::new(Part::Zero(frac_digits - (buf.len() - exp)));
+                // SAFETY: we just initialized the elements `..4`.
+                unsafe { MaybeUninit::slice_get_ref(&parts[..4]) }
             } else {
-                &parts[..3]
+                // SAFETY: we just initialized the elements `..3`.
+                unsafe { MaybeUninit::slice_get_ref(&parts[..3]) }
             }
         } else {
             // the decimal point is after rendered digits: [1234][____0000] or [1234][__][.][__].
-            parts[0] = Part::Copy(buf);
-            parts[1] = Part::Zero(exp - buf.len());
+            parts[0] = MaybeUninit::new(Part::Copy(buf));
+            parts[1] = MaybeUninit::new(Part::Zero(exp - buf.len()));
             if frac_digits > 0 {
-                parts[2] = Part::Copy(b".");
-                parts[3] = Part::Zero(frac_digits);
-                &parts[..4]
+                parts[2] = MaybeUninit::new(Part::Copy(b"."));
+                parts[3] = MaybeUninit::new(Part::Zero(frac_digits));
+                // SAFETY: we just initialized the elements `..4`.
+                unsafe { MaybeUninit::slice_get_ref(&parts[..4]) }
             } else {
-                &parts[..2]
+                // SAFETY: we just initialized the elements `..2`.
+                unsafe { MaybeUninit::slice_get_ref(&parts[..2]) }
             }
         }
     }
@@ -354,7 +362,7 @@ fn digits_to_exp_str<'a>(
     exp: i16,
     min_ndigits: usize,
     upper: bool,
-    parts: &'a mut [Part<'a>],
+    parts: &'a mut [MaybeUninit<Part<'a>>],
 ) -> &'a [Part<'a>] {
     assert!(!buf.is_empty());
     assert!(buf[0] > b'0');
@@ -362,15 +370,15 @@ fn digits_to_exp_str<'a>(
 
     let mut n = 0;
 
-    parts[n] = Part::Copy(&buf[..1]);
+    parts[n] = MaybeUninit::new(Part::Copy(&buf[..1]));
     n += 1;
 
     if buf.len() > 1 || min_ndigits > 1 {
-        parts[n] = Part::Copy(b".");
-        parts[n + 1] = Part::Copy(&buf[1..]);
+        parts[n] = MaybeUninit::new(Part::Copy(b"."));
+        parts[n + 1] = MaybeUninit::new(Part::Copy(&buf[1..]));
         n += 2;
         if min_ndigits > buf.len() {
-            parts[n] = Part::Zero(min_ndigits - buf.len());
+            parts[n] = MaybeUninit::new(Part::Zero(min_ndigits - buf.len()));
             n += 1;
         }
     }
@@ -378,13 +386,14 @@ fn digits_to_exp_str<'a>(
     // 0.1234 x 10^exp = 1.234 x 10^(exp-1)
     let exp = exp as i32 - 1; // avoid underflow when exp is i16::MIN
     if exp < 0 {
-        parts[n] = Part::Copy(if upper { b"E-" } else { b"e-" });
-        parts[n + 1] = Part::Num(-exp as u16);
+        parts[n] = MaybeUninit::new(Part::Copy(if upper { b"E-" } else { b"e-" }));
+        parts[n + 1] = MaybeUninit::new(Part::Num(-exp as u16));
     } else {
-        parts[n] = Part::Copy(if upper { b"E" } else { b"e" });
-        parts[n + 1] = Part::Num(exp as u16);
+        parts[n] = MaybeUninit::new(Part::Copy(if upper { b"E" } else { b"e" }));
+        parts[n + 1] = MaybeUninit::new(Part::Num(exp as u16));
     }
-    &parts[..n + 2]
+    // SAFETY: we just initialized the elements `..n + 2`.
+    unsafe { MaybeUninit::slice_get_ref(&parts[..n + 2]) }
 }
 
 /// Sign formatting options.
@@ -446,6 +455,7 @@ fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static
 /// (which can be an empty string if no sign is rendered).
 ///
 /// `format_shortest` should be the underlying digit-generation function.
+/// It should return the part of the buffer that it initialized.
 /// You probably would want `strategy::grisu::format_shortest` for this.
 ///
 /// `frac_digits` can be less than the number of actual fractional digits in `v`;
@@ -461,12 +471,12 @@ pub fn to_shortest_str<'a, T, F>(
     v: T,
     sign: Sign,
     frac_digits: usize,
-    buf: &'a mut [u8],
-    parts: &'a mut [Part<'a>],
+    buf: &'a mut [MaybeUninit<u8>],
+    parts: &'a mut [MaybeUninit<Part<'a>>],
 ) -> Formatted<'a>
 where
     T: DecodableFloat,
-    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    F: FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     assert!(parts.len() >= 4);
     assert!(buf.len() >= MAX_SIG_DIGITS);
@@ -475,27 +485,31 @@ where
     let sign = determine_sign(sign, &full_decoded, negative);
     match full_decoded {
         FullDecoded::Nan => {
-            parts[0] = Part::Copy(b"NaN");
-            Formatted { sign, parts: &parts[..1] }
+            parts[0] = MaybeUninit::new(Part::Copy(b"NaN"));
+            // SAFETY: we just initialized the elements `..1`.
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
         }
         FullDecoded::Infinite => {
-            parts[0] = Part::Copy(b"inf");
-            Formatted { sign, parts: &parts[..1] }
+            parts[0] = MaybeUninit::new(Part::Copy(b"inf"));
+            // SAFETY: we just initialized the elements `..1`.
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
         }
         FullDecoded::Zero => {
             if frac_digits > 0 {
                 // [0.][0000]
-                parts[0] = Part::Copy(b"0.");
-                parts[1] = Part::Zero(frac_digits);
-                Formatted { sign, parts: &parts[..2] }
+                parts[0] = MaybeUninit::new(Part::Copy(b"0."));
+                parts[1] = MaybeUninit::new(Part::Zero(frac_digits));
+                // SAFETY: we just initialized the elements `..2`.
+                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..2]) } }
             } else {
-                parts[0] = Part::Copy(b"0");
-                Formatted { sign, parts: &parts[..1] }
+                parts[0] = MaybeUninit::new(Part::Copy(b"0"));
+                // SAFETY: we just initialized the elements `..1`.
+                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
             }
         }
         FullDecoded::Finite(ref decoded) => {
-            let (len, exp) = format_shortest(decoded, buf);
-            Formatted { sign, parts: digits_to_dec_str(&buf[..len], exp, frac_digits, parts) }
+            let (buf, exp) = format_shortest(decoded, buf);
+            Formatted { sign, parts: digits_to_dec_str(buf, exp, frac_digits, parts) }
         }
     }
 }
@@ -509,6 +523,7 @@ where
 /// an empty string if no sign is rendered).
 ///
 /// `format_shortest` should be the underlying digit-generation function.
+/// It should return the part of the buffer that it initialized.
 /// You probably would want `strategy::grisu::format_shortest` for this.
 ///
 /// The `dec_bounds` is a tuple `(lo, hi)` such that the number is formatted
@@ -525,12 +540,12 @@ pub fn to_shortest_exp_str<'a, T, F>(
     sign: Sign,
     dec_bounds: (i16, i16),
     upper: bool,
-    buf: &'a mut [u8],
-    parts: &'a mut [Part<'a>],
+    buf: &'a mut [MaybeUninit<u8>],
+    parts: &'a mut [MaybeUninit<Part<'a>>],
 ) -> Formatted<'a>
 where
     T: DecodableFloat,
-    F: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    F: FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     assert!(parts.len() >= 6);
     assert!(buf.len() >= MAX_SIG_DIGITS);
@@ -540,28 +555,31 @@ where
     let sign = determine_sign(sign, &full_decoded, negative);
     match full_decoded {
         FullDecoded::Nan => {
-            parts[0] = Part::Copy(b"NaN");
-            Formatted { sign, parts: &parts[..1] }
+            parts[0] = MaybeUninit::new(Part::Copy(b"NaN"));
+            // SAFETY: we just initialized the elements `..1`.
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
         }
         FullDecoded::Infinite => {
-            parts[0] = Part::Copy(b"inf");
-            Formatted { sign, parts: &parts[..1] }
+            parts[0] = MaybeUninit::new(Part::Copy(b"inf"));
+            // SAFETY: we just initialized the elements `..1`.
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
         }
         FullDecoded::Zero => {
             parts[0] = if dec_bounds.0 <= 0 && 0 < dec_bounds.1 {
-                Part::Copy(b"0")
+                MaybeUninit::new(Part::Copy(b"0"))
             } else {
-                Part::Copy(if upper { b"0E0" } else { b"0e0" })
+                MaybeUninit::new(Part::Copy(if upper { b"0E0" } else { b"0e0" }))
             };
-            Formatted { sign, parts: &parts[..1] }
+            // SAFETY: we just initialized the elements `..1`.
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
         }
         FullDecoded::Finite(ref decoded) => {
-            let (len, exp) = format_shortest(decoded, buf);
+            let (buf, exp) = format_shortest(decoded, buf);
             let vis_exp = exp as i32 - 1;
             let parts = if dec_bounds.0 as i32 <= vis_exp && vis_exp < dec_bounds.1 as i32 {
-                digits_to_dec_str(&buf[..len], exp, 0, parts)
+                digits_to_dec_str(buf, exp, 0, parts)
             } else {
-                digits_to_exp_str(&buf[..len], exp, 0, upper, parts)
+                digits_to_exp_str(buf, exp, 0, upper, parts)
             };
             Formatted { sign, parts }
         }
@@ -600,6 +618,7 @@ fn estimate_max_buf_len(exp: i16) -> usize {
 /// an empty string if no sign is rendered).
 ///
 /// `format_exact` should be the underlying digit-generation function.
+/// It should return the part of the buffer that it initialized.
 /// You probably would want `strategy::grisu::format_exact` for this.
 ///
 /// The byte buffer should be at least `ndigits` bytes long unless `ndigits` is
@@ -613,12 +632,12 @@ pub fn to_exact_exp_str<'a, T, F>(
     sign: Sign,
     ndigits: usize,
     upper: bool,
-    buf: &'a mut [u8],
-    parts: &'a mut [Part<'a>],
+    buf: &'a mut [MaybeUninit<u8>],
+    parts: &'a mut [MaybeUninit<Part<'a>>],
 ) -> Formatted<'a>
 where
     T: DecodableFloat,
-    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+    F: FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
     assert!(parts.len() >= 6);
     assert!(ndigits > 0);
@@ -627,23 +646,27 @@ where
     let sign = determine_sign(sign, &full_decoded, negative);
     match full_decoded {
         FullDecoded::Nan => {
-            parts[0] = Part::Copy(b"NaN");
-            Formatted { sign, parts: &parts[..1] }
+            parts[0] = MaybeUninit::new(Part::Copy(b"NaN"));
+            // SAFETY: we just initialized the elements `..1`.
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
         }
         FullDecoded::Infinite => {
-            parts[0] = Part::Copy(b"inf");
-            Formatted { sign, parts: &parts[..1] }
+            parts[0] = MaybeUninit::new(Part::Copy(b"inf"));
+            // SAFETY: we just initialized the elements `..1`.
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
         }
         FullDecoded::Zero => {
             if ndigits > 1 {
                 // [0.][0000][e0]
-                parts[0] = Part::Copy(b"0.");
-                parts[1] = Part::Zero(ndigits - 1);
-                parts[2] = Part::Copy(if upper { b"E0" } else { b"e0" });
-                Formatted { sign, parts: &parts[..3] }
+                parts[0] = MaybeUninit::new(Part::Copy(b"0."));
+                parts[1] = MaybeUninit::new(Part::Zero(ndigits - 1));
+                parts[2] = MaybeUninit::new(Part::Copy(if upper { b"E0" } else { b"e0" }));
+                // SAFETY: we just initialized the elements `..3`.
+                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..3]) } }
             } else {
-                parts[0] = Part::Copy(if upper { b"0E0" } else { b"0e0" });
-                Formatted { sign, parts: &parts[..1] }
+                parts[0] = MaybeUninit::new(Part::Copy(if upper { b"0E0" } else { b"0e0" }));
+                // SAFETY: we just initialized the elements `..1`.
+                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -651,8 +674,8 @@ where
             assert!(buf.len() >= ndigits || buf.len() >= maxlen);
 
             let trunc = if ndigits < maxlen { ndigits } else { maxlen };
-            let (len, exp) = format_exact(decoded, &mut buf[..trunc], i16::MIN);
-            Formatted { sign, parts: digits_to_exp_str(&buf[..len], exp, ndigits, upper, parts) }
+            let (buf, exp) = format_exact(decoded, &mut buf[..trunc], i16::MIN);
+            Formatted { sign, parts: digits_to_exp_str(buf, exp, ndigits, upper, parts) }
         }
     }
 }
@@ -665,6 +688,7 @@ where
 /// (which can be an empty string if no sign is rendered).
 ///
 /// `format_exact` should be the underlying digit-generation function.
+/// It should return the part of the buffer that it initialized.
 /// You probably would want `strategy::grisu::format_exact` for this.
 ///
 /// The byte buffer should be enough for the output unless `frac_digits` is
@@ -677,12 +701,12 @@ pub fn to_exact_fixed_str<'a, T, F>(
     v: T,
     sign: Sign,
     frac_digits: usize,
-    buf: &'a mut [u8],
-    parts: &'a mut [Part<'a>],
+    buf: &'a mut [MaybeUninit<u8>],
+    parts: &'a mut [MaybeUninit<Part<'a>>],
 ) -> Formatted<'a>
 where
     T: DecodableFloat,
-    F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16),
+    F: FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
     assert!(parts.len() >= 4);
 
@@ -690,22 +714,26 @@ where
     let sign = determine_sign(sign, &full_decoded, negative);
     match full_decoded {
         FullDecoded::Nan => {
-            parts[0] = Part::Copy(b"NaN");
-            Formatted { sign, parts: &parts[..1] }
+            parts[0] = MaybeUninit::new(Part::Copy(b"NaN"));
+            // SAFETY: we just initialized the elements `..1`.
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
         }
         FullDecoded::Infinite => {
-            parts[0] = Part::Copy(b"inf");
-            Formatted { sign, parts: &parts[..1] }
+            parts[0] = MaybeUninit::new(Part::Copy(b"inf"));
+            // SAFETY: we just initialized the elements `..1`.
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
         }
         FullDecoded::Zero => {
             if frac_digits > 0 {
                 // [0.][0000]
-                parts[0] = Part::Copy(b"0.");
-                parts[1] = Part::Zero(frac_digits);
-                Formatted { sign, parts: &parts[..2] }
+                parts[0] = MaybeUninit::new(Part::Copy(b"0."));
+                parts[1] = MaybeUninit::new(Part::Zero(frac_digits));
+                // SAFETY: we just initialized the elements `..2`.
+                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..2]) } }
             } else {
-                parts[0] = Part::Copy(b"0");
-                Formatted { sign, parts: &parts[..1] }
+                parts[0] = MaybeUninit::new(Part::Copy(b"0"));
+                // SAFETY: we just initialized the elements `..1`.
+                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -716,23 +744,25 @@ where
             // `format_exact` will end rendering digits much earlier in this case,
             // because we are strictly limited by `maxlen`.
             let limit = if frac_digits < 0x8000 { -(frac_digits as i16) } else { i16::MIN };
-            let (len, exp) = format_exact(decoded, &mut buf[..maxlen], limit);
+            let (buf, exp) = format_exact(decoded, &mut buf[..maxlen], limit);
             if exp <= limit {
                 // the restriction couldn't been met, so this should render like zero no matter
                 // `exp` was. this does not include the case that the restriction has been met
                 // only after the final rounding-up; it's a regular case with `exp = limit + 1`.
-                debug_assert_eq!(len, 0);
+                debug_assert_eq!(buf.len(), 0);
                 if frac_digits > 0 {
                     // [0.][0000]
-                    parts[0] = Part::Copy(b"0.");
-                    parts[1] = Part::Zero(frac_digits);
-                    Formatted { sign, parts: &parts[..2] }
+                    parts[0] = MaybeUninit::new(Part::Copy(b"0."));
+                    parts[1] = MaybeUninit::new(Part::Zero(frac_digits));
+                    // SAFETY: we just initialized the elements `..2`.
+                    Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..2]) } }
                 } else {
-                    parts[0] = Part::Copy(b"0");
-                    Formatted { sign, parts: &parts[..1] }
+                    parts[0] = MaybeUninit::new(Part::Copy(b"0"));
+                    // SAFETY: we just initialized the elements `..1`.
+                    Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
                 }
             } else {
-                Formatted { sign, parts: digits_to_dec_str(&buf[..len], exp, frac_digits, parts) }
+                Formatted { sign, parts: digits_to_dec_str(buf, exp, frac_digits, parts) }
             }
         }
     }
