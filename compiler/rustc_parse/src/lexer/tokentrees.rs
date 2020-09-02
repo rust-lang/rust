@@ -16,7 +16,6 @@ impl<'a> StringReader<'a> {
         let mut tt_reader = TokenTreesReader {
             string_reader: self,
             token: Token::dummy(),
-            joint_to_prev: Joint,
             open_braces: Vec::new(),
             unmatched_braces: Vec::new(),
             matching_delim_spans: Vec::new(),
@@ -32,7 +31,6 @@ impl<'a> StringReader<'a> {
 struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
     token: Token,
-    joint_to_prev: IsJoint,
     /// Stack of open delimiters and their spans. Used for error message.
     open_braces: Vec<(token::DelimToken, Span)>,
     unmatched_braces: Vec<UnmatchedBrace>,
@@ -53,7 +51,7 @@ impl<'a> TokenTreesReader<'a> {
     fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
         let mut buf = TokenStreamBuilder::default();
 
-        self.real_token();
+        self.bump();
         while self.token != token::Eof {
             buf.push(self.parse_token_tree()?);
         }
@@ -126,7 +124,7 @@ impl<'a> TokenTreesReader<'a> {
 
                 // Parse the open delimiter.
                 self.open_braces.push((delim, self.token.span));
-                self.real_token();
+                self.bump();
 
                 // Parse the token trees within the delimiters.
                 // We stop at any delimiter so we can try to recover if the user
@@ -171,7 +169,7 @@ impl<'a> TokenTreesReader<'a> {
                             ));
                         }
                         // Parse the closing delimiter.
-                        self.real_token();
+                        self.bump();
                     }
                     // Incorrect delimiter.
                     token::CloseDelim(other) => {
@@ -217,7 +215,7 @@ impl<'a> TokenTreesReader<'a> {
                         //     bar(baz(
                         // }  // Incorrect delimiter but matches the earlier `{`
                         if !self.open_braces.iter().any(|&(b, _)| b == other) {
-                            self.real_token();
+                            self.bump();
                         }
                     }
                     token::Eof => {
@@ -264,27 +262,19 @@ impl<'a> TokenTreesReader<'a> {
             }
             _ => {
                 let tt = TokenTree::Token(self.token.take());
-                self.real_token();
-                let is_joint = self.joint_to_prev == Joint && self.token.is_op();
-                Ok((tt, if is_joint { Joint } else { NonJoint }))
+                let mut is_joint = self.bump();
+                if !self.token.is_op() {
+                    is_joint = NonJoint;
+                }
+                Ok((tt, is_joint))
             }
         }
     }
 
-    fn real_token(&mut self) {
-        self.joint_to_prev = Joint;
-        loop {
-            let token = self.string_reader.next_token();
-            match token.kind {
-                token::Whitespace | token::Comment | token::Shebang(_) | token::Unknown(_) => {
-                    self.joint_to_prev = NonJoint;
-                }
-                _ => {
-                    self.token = token;
-                    return;
-                }
-            }
-        }
+    fn bump(&mut self) -> IsJoint {
+        let (joint_to_prev, token) = self.string_reader.next_token();
+        self.token = token;
+        joint_to_prev
     }
 }
 
