@@ -23,6 +23,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use self::Ordering::*;
+use crate::convert::TryFrom;
 use crate::ops;
 
 /// Trait for equality comparisons which are [partial equivalence
@@ -680,16 +681,76 @@ impl PartialOrd for Ordering {
     }
 }
 
+/// An `UnequalOrdering` is an [`Ordering`] which is either `Less` or `Greater`.
+/// It can be obtained from an [`Ordering`] using [`TryFrom`] or [`TryInto`].
+/// It can be converted back to an [`Ordering`] using [`From`] or [`Into`].
+///
+/// # Examples
+///
+/// ```
+/// #![feature(try_trait)]
+///
+/// use std::cmp::{Ordering, UnequalOrdering};
+/// use std::convert::{TryFrom, TryInto};
+///
+/// assert_eq!(Ordering::Less.try_into(), Ok(UnequalOrdering::Less));
+/// assert_eq!(Ordering::Greater.try_into(), Ok(UnequalOrdering::Greater));
+/// assert!(UnequalOrdering::try_from(Ordering::Equal).is_err());
+///
+/// assert_eq!(Ordering::from(UnequalOrdering::Less), Ordering::Less);
+/// assert_eq!(Ordering::from(UnequalOrdering::Greater), Ordering::Greater);
+/// ```
+///
+/// [`TryFrom`]: crate::convert::TryFrom
+/// [`TryInto`]: crate::convert::TryInto
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[unstable(feature = "try_trait", issue = "42327")]
+pub enum UnequalOrdering {
+    /// An ordering where a compared value is less than another.
+    Less = -1,
+    /// An ordering where a compared value is greater than another.
+    Greater = 1,
+}
+
+/// The error type returned when conversion of [`Ordering::Equal`] into
+/// [`UnequalOrdering`] fails.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[unstable(feature = "try_trait", issue = "42327")]
+pub struct EqualOrderingError;
+
+#[unstable(feature = "try_trait", issue = "42327")]
+impl TryFrom<Ordering> for UnequalOrdering {
+    type Error = EqualOrderingError;
+
+    fn try_from(value: Ordering) -> Result<Self, EqualOrderingError> {
+        match value {
+            Less => Ok(UnequalOrdering::Less),
+            Equal => Err(EqualOrderingError),
+            Greater => Ok(UnequalOrdering::Greater),
+        }
+    }
+}
+
+#[unstable(feature = "try_trait", issue = "42327")]
+impl From<UnequalOrdering> for Ordering {
+    fn from(value: UnequalOrdering) -> Self {
+        match value {
+            UnequalOrdering::Less => Less,
+            UnequalOrdering::Greater => Greater,
+        }
+    }
+}
+
 #[unstable(feature = "try_trait", issue = "42327")]
 impl ops::Try for Ordering {
     type Ok = ();
-    type Error = Self;
+    type Error = UnequalOrdering;
 
     #[inline]
-    fn into_result(self) -> Result<(), Self> {
-        match self {
-            Equal => Ok(()),
-            _ => Err(self),
+    fn into_result(self) -> Result<(), UnequalOrdering> {
+        match UnequalOrdering::try_from(self) {
+            Ok(unequal_ordering) => Err(unequal_ordering),
+            Err(_) => Ok(()),
         }
     }
 
@@ -699,8 +760,8 @@ impl ops::Try for Ordering {
     }
 
     #[inline]
-    fn from_error(v: Self) -> Self {
-        v
+    fn from_error(v: UnequalOrdering) -> Self {
+        Self::from(v)
     }
 }
 
