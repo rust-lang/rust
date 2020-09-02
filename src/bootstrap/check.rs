@@ -160,12 +160,12 @@ macro_rules! tool_check_step {
                     &[],
                 );
 
-                println!(
+                builder.info(&format!(
                     "Checking {} artifacts ({} -> {})",
                     stringify!($name).to_lowercase(),
                     &compiler.host.triple,
                     target.triple
-                );
+                ));
                 run_cargo(
                     builder,
                     cargo,
