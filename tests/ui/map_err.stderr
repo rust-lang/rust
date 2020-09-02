@@ -1,10 +1,11 @@
-error: `map_err` has thrown away the original error
+error: `map_else(|_|...` ignores the original error
   --> $DIR/map_err.rs:21:32
    |
 LL |     println!("{:?}", x.map_err(|_| Errors::Ignored));
-   |                                ^^^ help: Allow the error enum to encapsulate the original error: `|e| Errors::Ignored(e)`
+   |                                ^^^
    |
    = note: `-D clippy::map-err-ignore` implied by `-D warnings`
+   = help: Consider wrapping the error in an enum variant
 
 error: aborting due to previous error
 

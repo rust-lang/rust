@@ -1,6 +1,6 @@
-use crate::utils::span_lint_and_sugg;
-use rustc_errors::Applicability;
-use rustc_hir::{CaptureBy, Expr, ExprKind, PatKind, QPath};
+use crate::utils::span_lint_and_help;
+
+use rustc_hir::{CaptureBy, Expr, ExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -12,33 +12,58 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    ///
+    /// Before:
     /// ```rust
+    /// use std::convert::TryFrom;
+    ///
+    /// #[derive(Debug)]
     /// enum Errors {
-    ///    Ignore
-    ///}
-    ///fn main() -> Result<(), Errors> {
+    ///     Ignored
+    /// }
     ///
-    ///    let x = u32::try_from(-123_i32);
+    /// fn divisible_by_3(inp: i32) -> Result<u32, Errors> {
+    ///     let i = u32::try_from(inp).map_err(|_| Errors::Ignored)?;
     ///
-    ///    println!("{:?}", x.map_err(|_| Errors::Ignore));
+    ///     Ok(i)
+    /// }
+    ///  ```
     ///
-    ///    Ok(())
-    ///}
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// enum Errors {
-    ///    WithContext(TryFromIntError)
-    ///}
-    ///fn main() -> Result<(), Errors> {
+    ///  After:
+    ///  ```rust
+    /// use std::convert::TryFrom;
+    /// use std::num::TryFromIntError;
+    /// use std::fmt;
+    /// use std::error::Error;
     ///
-    ///    let x = u32::try_from(-123_i32);
+    /// #[derive(Debug)]
+    /// enum ParseError {
+    ///     Indivisible {
+    ///         source: TryFromIntError,
+    ///         input: String,
+    ///     }
+    /// }
     ///
-    ///    println!("{:?}", x.map_err(|e| Errors::WithContext(e)));
+    /// impl fmt::Display for ParseError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         match &self {
+    ///             ParseError::Indivisible{source: _, input} => write!(f, "Error: {}", input)
+    ///         }
+    ///     }
+    /// }
     ///
-    ///    Ok(())
-    ///}
+    /// impl Error for ParseError {}
+    ///
+    /// impl ParseError {
+    ///     fn new(source: TryFromIntError, input: String) -> ParseError {
+    ///         ParseError::Indivisible{source, input}
+    ///     }
+    /// }
+    ///
+    /// fn divisible_by_3(inp: i32) -> Result<u32, ParseError> {
+    ///     let i = u32::try_from(inp).map_err(|e| ParseError::new(e, e.to_string()))?;
+    ///
+    ///     Ok(i)
+    /// }
     /// ```
     pub MAP_ERR_IGNORE,
     style,
@@ -69,44 +94,16 @@ impl<'tcx> LateLintPass<'tcx> for MapErrIgnore {
                         if closure_body.params.len() == 1 {
                             // make sure that parameter is the wild token (`_`)
                             if let PatKind::Wild = closure_body.params[0].pat.kind {
-                                // Check the value of the closure to see if we can build the enum we are throwing away
-                                // the error for make sure this is a Path
-                                if let ExprKind::Path(q_path) = &closure_body.value.kind {
-                                    // this should be a resolved path, only keep the path field
-                                    if let QPath::Resolved(_, path) = q_path {
-                                        // finally get the idents for each path segment collect them as a string and
-                                        // join them with the path separator ("::"")
-                                        let closure_fold: String = path
-                                            .segments
-                                            .iter()
-                                            .map(|x| x.ident.as_str().to_string())
-                                            .collect::<Vec<String>>()
-                                            .join("::");
-                                        //Span the body of the closure (the |...| bit) and suggest the fix by taking
-                                        // the error and encapsulating it in the enum
-                                        span_lint_and_sugg(
-                                            cx,
-                                            MAP_ERR_IGNORE,
-                                            body_span,
-                                            "`map_err` has thrown away the original error",
-                                            "Allow the error enum to encapsulate the original error",
-                                            format!("|e| {}(e)", closure_fold),
-                                            Applicability::HasPlaceholders,
-                                        );
-                                    }
-                                } else {
-                                    //If we cannot build the enum in a human readable way just suggest not throwing way
-                                    // the error
-                                    span_lint_and_sugg(
-                                        cx,
-                                        MAP_ERR_IGNORE,
-                                        body_span,
-                                        "`map_err` has thrown away the original error",
-                                        "Allow the error enum to encapsulate the original error",
-                                        "|e|".to_string(),
-                                        Applicability::HasPlaceholders,
-                                    );
-                                }
+                                // span the area of the closure capture and warn that the
+                                // original error will be thrown away
+                                span_lint_and_help(
+                                    cx,
+                                    MAP_ERR_IGNORE,
+                                    body_span,
+                                    "`map_else(|_|...` ignores the original error",
+                                    None,
+                                    "Consider wrapping the error in an enum variant",
+                                );
                             }
                         }
                     }
