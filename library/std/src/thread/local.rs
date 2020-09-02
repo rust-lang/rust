@@ -424,10 +424,9 @@ pub mod fast {
         // thread_local's, or it is being recursively initialized.
         //
         // Macos: Inlining this function can cause two `tlv_get_addr` calls to
-        // be performed for every call to `Key::get`. The #[cold] hint makes
-        // that less likely.
+        // be performed for every call to `Key::get`.
         // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
-        #[cold]
+        #[inline(never)]
         unsafe fn try_initialize<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
             if !mem::needs_drop::<T>() || self.try_register_dtor() {
                 Some(self.inner.initialize(init))
