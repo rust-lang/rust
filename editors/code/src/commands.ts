@@ -63,7 +63,7 @@ export function memoryUsage(ctx: Ctx): Cmd {
         provideTextDocumentContent(_uri: vscode.Uri): vscode.ProviderResult<string> {
             if (!vscode.window.activeTextEditor) return '';
 
-            return ctx.client.sendRequest(ra.memoryUsage, null).then((mem) => {
+            return ctx.client.sendRequest(ra.memoryUsage, null).then((mem: any) => {
                 return 'Per-query memory usage:\n' + mem + '\n(note: database has been cleared)';
             });
         }
@@ -121,7 +121,7 @@ export function joinLines(ctx: Ctx): Cmd {
             textDocument: { uri: editor.document.uri.toString() },
         });
         editor.edit((builder) => {
-            client.protocol2CodeConverter.asTextEdits(items).forEach((edit) => {
+            client.protocol2CodeConverter.asTextEdits(items).forEach((edit: any) => {
                 builder.replace(edit.range, edit.newText);
             });
         });
@@ -140,8 +140,8 @@ export function onEnter(ctx: Ctx): Cmd {
             position: client.code2ProtocolConverter.asPosition(
                 editor.selection.active,
             ),
-        }).catch(_error => {
-            // client.logFailedRequest(OnEnterRequest.type, error);
+        }).catch((_error: any) => {
+            // client.handleFailedRequest(OnEnterRequest.type, error, null);
             return null;
         });
         if (!lcEdits) return false;

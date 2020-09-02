@@ -24,6 +24,7 @@ macro_rules! define_semantic_token_types {
             SemanticTokenType::CLASS,
             SemanticTokenType::INTERFACE,
             SemanticTokenType::ENUM,
+            SemanticTokenType::ENUM_MEMBER,
             SemanticTokenType::TYPE_PARAMETER,
             SemanticTokenType::FUNCTION,
             SemanticTokenType::MEMBER,
@@ -31,7 +32,6 @@ macro_rules! define_semantic_token_types {
             SemanticTokenType::MACRO,
             SemanticTokenType::VARIABLE,
             SemanticTokenType::PARAMETER,
-            SemanticTokenType::LABEL,
             $($ident),*
         ];
     };
@@ -41,7 +41,6 @@ define_semantic_token_types![
     (ATTRIBUTE, "attribute"),
     (BOOLEAN, "boolean"),
     (BUILTIN_TYPE, "builtinType"),
-    (ENUM_MEMBER, "enumMember"),
     (ESCAPE_SEQUENCE, "escapeSequence"),
     (FORMAT_SPECIFIER, "formatSpecifier"),
     (GENERIC, "generic"),

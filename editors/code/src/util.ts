@@ -1,4 +1,4 @@
-import * as lc from "vscode-languageclient";
+import * as lc from "vscode-languageclient/node";
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
 import { spawnSync } from "child_process";
