@@ -2014,7 +2014,7 @@ impl<T, I: SliceIndex<[T]>> IndexMut<I> for Vec<T> {
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
-        <Self as SpecFrom<T, I::IntoIter>>::from_iter(iter.into_iter())
+        <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
     }
 }
 
@@ -2096,18 +2096,39 @@ impl<T> Extend<T> for Vec<T> {
     }
 }
 
-// Specialization trait used for Vec::from_iter
-trait SpecFrom<T, I> {
+/// Specialization trait used for Vec::from_iter
+///
+/// ## The delegation graph:
+///
+/// ```text
+/// +-------------+
+/// |FromIterator |
+/// +-+-----------+
+///   |
+///   v
+/// +-+-------------------------------+  +---------------------+
+/// |SpecFromIter                  +---->+SpecFromIterNested   |
+/// |where I:                      |  |  |where I:             |
+/// |  Iterator (default)----------+  |  |  Iterator (default) |
+/// |  vec::IntoIter               |  |  |  TrustedLen         |
+/// |  SourceIterMarker---fallback-+  |  |                     |
+/// |  slice::Iter                    |  |                     |
+/// |  Iterator<Item = &Clone>        |  +---------------------+
+/// +---------------------------------+
+///
+/// ```
+trait SpecFromIter<T, I> {
     fn from_iter(iter: I) -> Self;
 }
 
-// Another specialization trait for Vec::from_iter
-// necessary to manually prioritize overlapping specializations
-trait SpecFromNested<T, I> {
+/// Another specialization trait for Vec::from_iter
+/// necessary to manually prioritize overlapping specializations
+/// see [`SpecFromIter`] for details.
+trait SpecFromIterNested<T, I> {
     fn from_iter(iter: I) -> Self;
 }
 
-impl<T, I> SpecFromNested<T, I> for Vec<T>
+impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
@@ -2136,7 +2157,7 @@ where
     }
 }
 
-impl<T, I> SpecFromNested<T, I> for Vec<T>
+impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: TrustedLen<Item = T>,
 {
@@ -2149,12 +2170,12 @@ where
     }
 }
 
-impl<T, I> SpecFrom<T, I> for Vec<T>
+impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
     default fn from_iter(iterator: I) -> Self {
-        SpecFromNested::from_iter(iterator)
+        SpecFromIterNested::from_iter(iterator)
     }
 }
 
@@ -2182,18 +2203,21 @@ impl<T> Drop for InPlaceDrop<T> {
     }
 }
 
-impl<T> SpecFrom<T, IntoIter<T>> for Vec<T> {
+impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
     fn from_iter(iterator: IntoIter<T>) -> Self {
         // A common case is passing a vector into a function which immediately
         // re-collects into a vector. We can short circuit this if the IntoIter
         // has not been advanced at all.
-        // We can also reuse the memory and move the data to the front if
-        // allocating a new vector and moving to it would result in the same capacity
-        let non_zero_offset = iterator.buf.as_ptr() as *const _ != iterator.ptr;
-        if !non_zero_offset || iterator.len() >= iterator.cap / 2 {
+        // When it has been advanced We can also reuse the memory and move the data to the front.
+        // But we only do so when the resulting Vec wouldn't have more unused capacity
+        // than creating it through the generic FromIterator implementation would. That limitation
+        // is not strictly necessary as Vec's allocation behavior is intentionally unspecified.
+        // But it is a conservative choice.
+        let has_advanced = iterator.buf.as_ptr() as *const _ != iterator.ptr;
+        if !has_advanced || iterator.len() >= iterator.cap / 2 {
             unsafe {
                 let it = ManuallyDrop::new(iterator);
-                if non_zero_offset {
+                if has_advanced {
                     ptr::copy(it.ptr, it.buf.as_ptr(), it.len());
                 }
                 return Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap);
@@ -2224,6 +2248,12 @@ fn write_in_place_with_drop<T>(
     }
 }
 
+/// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
+/// source allocation, i.e. executing the pipeline in place.
+///
+/// The SourceIter parent trait is necessary for the specializing function to access the allocation
+/// which is to be reused. But it is not sufficient for the specialization to be valid. See
+/// additional bounds on the impl.
 #[rustc_unsafe_specialization_marker]
 trait SourceIterMarker: SourceIter<Source: AsIntoIter> {}
 
@@ -2235,7 +2265,7 @@ trait SourceIterMarker: SourceIter<Source: AsIntoIter> {}
 // several other specializations already depend on.
 impl<T> SourceIterMarker for T where T: SourceIter<Source: AsIntoIter> + InPlaceIterable {}
 
-impl<T, I> SpecFrom<T, I> for Vec<T>
+impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
     I: Iterator<Item = T> + SourceIterMarker,
 {
@@ -2251,7 +2281,8 @@ where
             || mem::align_of::<T>()
                 != mem::align_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
         {
-            return SpecFromNested::from_iter(iterator);
+            // fallback to more generic implementations
+            return SpecFromIterNested::from_iter(iterator);
         }
 
         let (src_buf, dst_buf, dst_end, cap) = unsafe {
@@ -2277,9 +2308,9 @@ where
         debug_assert!(dst as *const _ <= src.ptr, "InPlaceIterable contract violation");
 
         // drop any remaining values at the tail of the source
-        src.drop_in_place();
+        src.drop_remaining();
         // but prevent drop of the allocation itself once IntoIter goes out of scope
-        src.forget_in_place();
+        src.forget_allocation();
 
         let vec = unsafe {
             let len = dst.offset_from(dst_buf) as usize;
@@ -2290,17 +2321,17 @@ where
     }
 }
 
-impl<'a, T: 'a, I> SpecFrom<&'a T, I> for Vec<T>
+impl<'a, T: 'a, I> SpecFromIter<&'a T, I> for Vec<T>
 where
     I: Iterator<Item = &'a T>,
     T: Clone,
 {
     default fn from_iter(iterator: I) -> Self {
-        SpecFrom::from_iter(iterator.cloned())
+        SpecFromIter::from_iter(iterator.cloned())
     }
 }
 
-impl<'a, T: 'a> SpecFrom<&'a T, slice::Iter<'a, T>> for Vec<T>
+impl<'a, T: 'a> SpecFromIter<&'a T, slice::Iter<'a, T>> for Vec<T>
 where
     T: Copy,
 {
@@ -2824,7 +2855,7 @@ impl<T> IntoIter<T> {
         ptr::slice_from_raw_parts_mut(self.ptr as *mut T, self.len())
     }
 
-    fn drop_in_place(&mut self) {
+    fn drop_remaining(&mut self) {
         if mem::needs_drop::<T>() {
             unsafe {
                 ptr::drop_in_place(self.as_mut_slice());
@@ -2835,7 +2866,7 @@ impl<T> IntoIter<T> {
 
     /// Relinquishes the backing allocation, equivalent to
     /// `ptr::write(&mut self, Vec::new().into_iter())`
-    fn forget_in_place(&mut self) {
+    fn forget_allocation(&mut self) {
         self.cap = 0;
         self.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
         self.ptr = self.buf.as_ptr();
