@@ -10,6 +10,7 @@ use syntax::{
 };
 
 use crate::assist_context::AssistContext;
+use test_utils::mark;
 
 /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
 pub(crate) fn find_insert_use_container(
@@ -126,6 +127,7 @@ pub fn try_merge_trees(
     if merge_behaviour == MergeBehaviour::Last
         && (use_tree_list_is_nested(&lhs_tl) || use_tree_list_is_nested(&rhs_tl))
     {
+        mark::hit!(test_last_merge_too_long);
         return None;
     }
 
@@ -584,6 +586,17 @@ use std::io;",
             r"use token::TokenKind::*;",
             r"use token::TokenKind::{self::*, self};",
         )
+    }
+
+    #[test]
+    fn merge_last_too_long() {
+        mark::check!(test_last_merge_too_long);
+        check_last(
+            "foo::bar",
+            r"use foo::bar::baz::Qux;",
+            r"use foo::bar::baz::Qux;
+use foo::bar;",
+        );
     }
 
     fn check(
