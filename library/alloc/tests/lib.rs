@@ -9,7 +9,6 @@
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(associated_type_bounds)]
-#![feature(binary_heap_into_iter_sorted)]
 #![feature(binary_heap_drain_sorted)]
 #![feature(slice_ptr_get)]
 #![feature(split_inclusive)]

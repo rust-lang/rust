@@ -720,18 +720,27 @@ impl<T> BinaryHeap<T> {
     /// Returns an iterator which retrieves elements in heap order.
     /// This method consumes the original heap.
     ///
+    /// One good use for this is if you need the largest (or smallest) `k`
+    /// items from an iterator, but you're not sure exactly how many you'll
+    /// need -- just that `k` is much less than all of them -- so want to
+    /// compute those items on-demand.
+    ///
+    /// You could collect into a `Vec` and sort everything, but that's `O(n log n)`.
+    ///
+    /// By instead collecting into a `BinaryHeap` and using this method,
+    /// the complexity improves to `O(n + k log n)`.
+    ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(binary_heap_into_iter_sorted)]
     /// use std::collections::BinaryHeap;
     /// let heap = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
     ///
     /// assert_eq!(heap.into_iter_sorted().take(2).collect::<Vec<_>>(), vec![5, 4]);
     /// ```
-    #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
+    #[stable(feature = "binary_heap_into_iter_sorted", since = "1.48.0")]
     pub fn into_iter_sorted(self) -> IntoIterSorted<T> {
         IntoIterSorted { inner: self }
     }
@@ -1173,13 +1182,20 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-#[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
+/// An owning iterator over the elements of a `BinaryHeap`.
+///
+/// This `struct` is created by the [`into_iter_sorted`] method on [`BinaryHeap`].
+/// See its documentation for more.
+///
+/// [`into_iter_sorted`]: struct.BinaryHeap.html#method.into_iter_sorted
+/// [`BinaryHeap`]: struct.BinaryHeap.html
+#[stable(feature = "binary_heap_into_iter_sorted", since = "1.48.0")]
 #[derive(Clone, Debug)]
 pub struct IntoIterSorted<T> {
     inner: BinaryHeap<T>,
 }
 
-#[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
+#[stable(feature = "binary_heap_into_iter_sorted", since = "1.48.0")]
 impl<T: Ord> Iterator for IntoIterSorted<T> {
     type Item = T;
 
@@ -1195,10 +1211,10 @@ impl<T: Ord> Iterator for IntoIterSorted<T> {
     }
 }
 
-#[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
+#[stable(feature = "binary_heap_into_iter_sorted", since = "1.48.0")]
 impl<T: Ord> ExactSizeIterator for IntoIterSorted<T> {}
 
-#[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
+#[stable(feature = "binary_heap_into_iter_sorted", since = "1.48.0")]
 impl<T: Ord> FusedIterator for IntoIterSorted<T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
