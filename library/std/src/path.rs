@@ -214,19 +214,20 @@ impl<'a> Prefix<'a> {
     /// assert!(!Disk(b'C').is_verbatim());
     /// ```
     #[inline]
+    #[rustc_const_stable(feature = "const_ip", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_verbatim(&self) -> bool {
+    pub const fn is_verbatim(&self) -> bool {
         use self::Prefix::*;
         matches!(*self, Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(..))
     }
 
     #[inline]
-    fn is_drive(&self) -> bool {
+    const fn is_drive(&self) -> bool {
         matches!(*self, Prefix::Disk(_))
     }
 
     #[inline]
-    fn has_implicit_root(&self) -> bool {
+    const fn has_implicit_root(&self) -> bool {
         !self.is_drive()
     }
 }
