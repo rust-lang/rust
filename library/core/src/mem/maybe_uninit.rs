@@ -3,8 +3,6 @@ use crate::fmt;
 use crate::intrinsics;
 use crate::mem::ManuallyDrop;
 
-// ignore-tidy-undocumented-unsafe
-
 /// A wrapper type to construct uninitialized instances of `T`.
 ///
 /// # Initialization invariant
@@ -355,6 +353,7 @@ impl<T> MaybeUninit<T> {
     #[rustc_diagnostic_item = "maybe_uninit_zeroed"]
     pub fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();
+        // SAFETY: `u.as_mut_ptr()` points to allocated memory.
         unsafe {
             u.as_mut_ptr().write_bytes(0u8, 1);
         }
@@ -368,10 +367,9 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
     pub fn write(&mut self, val: T) -> &mut T {
-        unsafe {
-            self.value = ManuallyDrop::new(val);
-            self.assume_init_mut()
-        }
+        *self = MaybeUninit::new(val);
+        // SAFETY: We just initialized this value.
+        unsafe { self.assume_init_mut() }
     }
 
     /// Gets a pointer to the contained value. Reading from this pointer or turning it
