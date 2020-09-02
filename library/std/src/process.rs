@@ -262,6 +262,25 @@ impl Write for ChildStdin {
     }
 }
 
+#[stable(feature = "write_mt", since = "1.47.0")]
+impl Write for &ChildStdin {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.inner.write(buf)
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.inner.write_vectored(bufs)
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
 impl AsInner<AnonPipe> for ChildStdin {
     fn as_inner(&self) -> &AnonPipe {
         &self.inner
