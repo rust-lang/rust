@@ -448,7 +448,8 @@ impl<T, const N: usize> [T; N] {
     /// ```
     #[unstable(feature = "array_methods", issue = "76118")]
     pub fn copied(&self) -> [<T as Reference>::Pointee; N]
-        where T: Reference<Pointee: Copy>
+    where
+        T: Reference<Pointee: Copy>,
     {
         // No guard needed here because these are all bitwise copies, which cannot fail.
         // (And things that are `Copy` can't be `Drop` anyway.)
@@ -469,6 +470,7 @@ impl<T, const N: usize> [T; N] {
 unsafe fn assume_init_array<T, const N: usize>(a: [MaybeUninit<T>; N]) -> [T; N] {
     // FIXME: Convert to crate::mem::transmute once it works with generics.
     // unsafe { crate::mem::transmute(a) }
+    // SAFETY: layouts are guaranteed compatible
     unsafe { crate::mem::transmute_copy(&a) }
 }
 
@@ -481,18 +483,30 @@ mod temporary_hacks {
         #[unstable(feature = "temporary_hacks", issue = "none")]
         type Pointee;
         #[unstable(feature = "temporary_hacks", issue = "none")]
-        fn copy(&self) -> Self::Pointee where Self::Pointee: Copy;
+        fn copy(&self) -> Self::Pointee
+        where
+            Self::Pointee: Copy;
     }
 
     #[unstable(feature = "temporary_hacks", issue = "none")]
     impl<T> Reference for &T {
         type Pointee = T;
-        fn copy(&self) -> T where T: Copy { **self }
+        fn copy(&self) -> T
+        where
+            T: Copy,
+        {
+            **self
+        }
     }
 
     #[unstable(feature = "temporary_hacks", issue = "none")]
     impl<T> Reference for &mut T {
         type Pointee = T;
-        fn copy(&self) -> T where T: Copy { **self }
+        fn copy(&self) -> T
+        where
+            T: Copy,
+        {
+            **self
+        }
     }
 }
