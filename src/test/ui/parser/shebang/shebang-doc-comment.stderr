@@ -1,8 +1,8 @@
-error: expected `[`, found doc comment `///bin/bash`
-  --> $DIR/shebang-doc-comment.rs:1:3
+error: expected item, found `[`
+  --> $DIR/shebang-doc-comment.rs:2:1
    |
-LL | #!///bin/bash
-   |   ^^^^^^^^^^^ expected `[`
+LL | [allow(unused_variables)]
+   | ^ expected item
 
 error: aborting due to previous error
 
