@@ -810,7 +810,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     // Returns true if we should skip the following item.
     pub(crate) fn visit_attrs(&mut self, attrs: &[ast::Attribute], style: ast::AttrStyle) -> bool {
         for attr in attrs {
-            if attr.check_name(depr_skip_annotation()) {
+            if attr.has_name(depr_skip_annotation()) {
                 let file_name = self.parse_sess.span_to_filename(attr.span);
                 self.report.append(
                     file_name,

@@ -426,7 +426,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
 }
 
 fn path_value(attr: &ast::Attribute) -> Option<Symbol> {
-    if attr.check_name(sym::path) {
+    if attr.has_name(sym::path) {
         attr.value_str()
     } else {
         None

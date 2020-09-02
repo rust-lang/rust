@@ -8,7 +8,7 @@
 
 use std::cmp::{Ord, Ordering};
 
-use rustc_ast::{ast, attr};
+use rustc_ast::ast;
 use rustc_span::{symbol::sym, Span};
 
 use crate::config::Config;
@@ -147,7 +147,7 @@ fn rewrite_reorderable_items(
 }
 
 fn contains_macro_use_attr(item: &ast::Item) -> bool {
-    attr::contains_name(&item.attrs, sym::macro_use)
+    crate::attr::contains_name(&item.attrs, sym::macro_use)
 }
 
 /// A simplified version of `ast::ItemKind`.

@@ -5,8 +5,9 @@ use rustc_ast::ast;
 use rustc_ast::token::{DelimToken, TokenKind};
 use rustc_errors::Diagnostic;
 use rustc_parse::{new_parser_from_file, parser::Parser as RawParser};
-use rustc_span::{symbol::kw, Span};
+use rustc_span::{symbol::kw, sym, Span};
 
+use crate::attr::first_attr_value_str_by_name;
 use crate::syntux::session::ParseSess;
 use crate::{Config, Input};
 
@@ -99,7 +100,15 @@ pub(crate) enum ParserError {
 
 impl<'a> Parser<'a> {
     pub(crate) fn submod_path_from_attr(attrs: &[ast::Attribute], path: &Path) -> Option<PathBuf> {
-        rustc_expand::module::submod_path_from_attr(attrs, path)
+        let path_string = first_attr_value_str_by_name(attrs, sym::path)?.as_str();
+        // On windows, the base path might have the form
+        // `\\?\foo\bar` in which case it does not tolerate
+        // mixed `/` and `\` separators, so canonicalize
+        // `/` to `\`.
+        #[cfg(windows)]
+        let path_string = path_string.replace("/", "\\");
+
+        Some(path.join(&*path_string))
     }
 
     pub(crate) fn parse_file_as_module(

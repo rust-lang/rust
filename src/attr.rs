@@ -2,7 +2,7 @@
 
 use rustc_ast::ast;
 use rustc_ast::attr::HasAttrs;
-use rustc_span::{symbol::sym, BytePos, Span, DUMMY_SP};
+use rustc_span::{symbol::sym, BytePos, Span, Symbol, DUMMY_SP};
 
 use self::doc_comment::DocCommentFormatter;
 use crate::comment::{contains_comment, rewrite_doc_comment, CommentStyle};
@@ -17,6 +17,14 @@ use crate::types::{rewrite_path, PathContext};
 use crate::utils::{count_newlines, mk_sp};
 
 mod doc_comment;
+
+pub(crate) fn contains_name(attrs: &[ast::Attribute], name: Symbol) -> bool {
+    attrs.iter().any(|attr| attr.has_name(name))
+}
+
+pub(crate) fn first_attr_value_str_by_name(attrs: &[ast::Attribute], name: Symbol) -> Option<Symbol> {
+    attrs.iter().find(|attr| attr.has_name(name)).and_then(|attr| attr.value_str())
+}
 
 /// Returns attributes on the given statement.
 pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
@@ -49,7 +57,7 @@ pub(crate) fn filter_inline_attrs(
 }
 
 fn is_derive(attr: &ast::Attribute) -> bool {
-    attr.check_name(sym::derive)
+    attr.has_name(sym::derive)
 }
 
 /// Returns the arguments of `#[derive(...)]`.
