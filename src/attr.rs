@@ -22,8 +22,14 @@ pub(crate) fn contains_name(attrs: &[ast::Attribute], name: Symbol) -> bool {
     attrs.iter().any(|attr| attr.has_name(name))
 }
 
-pub(crate) fn first_attr_value_str_by_name(attrs: &[ast::Attribute], name: Symbol) -> Option<Symbol> {
-    attrs.iter().find(|attr| attr.has_name(name)).and_then(|attr| attr.value_str())
+pub(crate) fn first_attr_value_str_by_name(
+    attrs: &[ast::Attribute],
+    name: Symbol,
+) -> Option<Symbol> {
+    attrs
+        .iter()
+        .find(|attr| attr.has_name(name))
+        .and_then(|attr| attr.value_str())
 }
 
 /// Returns attributes on the given statement.

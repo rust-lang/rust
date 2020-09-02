@@ -5,7 +5,7 @@ use rustc_ast::ast;
 use rustc_ast::token::{DelimToken, TokenKind};
 use rustc_errors::Diagnostic;
 use rustc_parse::{new_parser_from_file, parser::Parser as RawParser};
-use rustc_span::{symbol::kw, sym, Span};
+use rustc_span::{sym, symbol::kw, Span};
 
 use crate::attr::first_attr_value_str_by_name;
 use crate::syntux::session::ParseSess;
