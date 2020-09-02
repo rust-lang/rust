@@ -346,10 +346,9 @@ pub trait OpenOptionsExt {
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn custom_flags(&mut self, flags: i32) -> &mut Self;
 
-    /// Get the flags of this OpenOptions as [`libc::c_int`].
-    /// With: [`libc::open`]
+    /// Get the flags as [`libc::c_int`].
     ///
-    /// This method allows the reuse of the OpenOptions as flags argument for [`fs::OpenOptions`].
+    /// This method allows the reuse of the OpenOptions as flags argument for [`libc::open`].
     ///
     /// [`libc::c_int`]: https://docs.rs/libc/*/libc/type.c_int.html
     /// [`libc::open`]: https://docs.rs/libc/*/libc/fn.open.html

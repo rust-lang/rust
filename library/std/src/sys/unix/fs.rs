@@ -655,6 +655,7 @@ impl OpenOptions {
     pub fn mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
     }
+
     pub fn as_flags(&self) -> io::Result<c_int> {
         let access_mode = self.get_access_mode()?;
         let creation_mode = self.get_creation_mode()?;
