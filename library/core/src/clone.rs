@@ -7,11 +7,9 @@
 //! contain owned boxes or implement [`Drop`]), so the compiler considers
 //! them cheap and safe to copy. For other types copies must be made
 //! explicitly, by convention implementing the [`Clone`] trait and calling
-//! the [`clone`][clone] method.
+//! the [`clone`] method.
 //!
-//! [`Clone`]: trait.Clone.html
-//! [clone]: trait.Clone.html#tymethod.clone
-//! [`Drop`]: ../../std/ops/trait.Drop.html
+//! [`clone`]: Clone::clone
 //!
 //! Basic usage example:
 //!
@@ -51,7 +49,9 @@
 /// ## Derivable
 ///
 /// This trait can be used with `#[derive]` if all fields are `Clone`. The `derive`d
-/// implementation of [`clone`] calls [`clone`] on each field.
+/// implementation of [`Clone`] calls [`clone`] on each field.
+///
+/// [`clone`]: Clone::clone
 ///
 /// For a generic struct, `#[derive]` implements `Clone` conditionally by adding bound `Clone` on
 /// generic parameters.
@@ -73,9 +73,6 @@
 ///
 /// An example is a generic struct holding a function pointer. In this case, the
 /// implementation of `Clone` cannot be `derive`d, but can be implemented as:
-///
-/// [`Copy`]: ../../std/marker/trait.Copy.html
-/// [`clone`]: trait.Clone.html#tymethod.clone
 ///
 /// ```
 /// struct Generate<T>(fn() -> T);
