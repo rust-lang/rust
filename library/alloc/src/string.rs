@@ -1585,6 +1585,12 @@ impl String {
         let slice = self.vec.into_boxed_slice();
         unsafe { from_boxed_utf8_unchecked(slice) }
     }
+
+    #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
+    #[doc(hidden)]
+    pub fn __push_fmt(&mut self, args: fmt::Arguments<'_>) {
+        fmt::Write::write_fmt(self, args).unwrap();
+    }
 }
 
 impl FromUtf8Error {

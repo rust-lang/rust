@@ -261,6 +261,7 @@
 #![feature(external_doc)]
 #![feature(fn_traits)]
 #![feature(format_args_nl)]
+#![feature(format_to)]
 #![feature(gen_future)]
 #![feature(generator_trait)]
 #![feature(global_asm)]
@@ -373,6 +374,8 @@ pub use alloc_crate::boxed;
 pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::format;
+#[unstable(feature = "format_to", issue = "none", reason = "new API")]
+pub use alloc_crate::format_to;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::rc;
 #[stable(feature = "rust1", since = "1.0.0")]

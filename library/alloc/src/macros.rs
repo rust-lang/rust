@@ -107,3 +107,28 @@ macro_rules! format {
         res
     }}
 }
+
+/// Like [`format!`], but appends to an existing string
+///
+///
+/// [`format!`]: crate::format
+///
+/// # Examples
+///
+/// ```
+/// #![feature(format_to)]
+///
+/// let mut buf = String::new();
+/// format_to!(buf, "hello");
+/// format_to!(buf, ", world!");
+/// assert_eq!(buf, "hello, world!");
+/// ```
+#[macro_export]
+#[unstable(feature = "format_to", issue = "none", reason = "new API")]
+#[allow_internal_unstable(liballoc_internals)]
+macro_rules! format_to {
+    ($buf:expr $(, $($arg:tt)*)? ) => {{
+        // Redirect via method call syntax to get autoref behavior
+        $buf.__push_fmt($crate::__export::format_args!($($($arg)*)?));
+    }}
+}
