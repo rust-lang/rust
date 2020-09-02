@@ -79,7 +79,7 @@ pub struct LensConfig {
 
 impl Default for LensConfig {
     fn default() -> Self {
-        Self { run: true, debug: true, implementations: true, method_refs: true }
+        Self { run: true, debug: true, implementations: true, method_refs: false }
     }
 }
 
@@ -467,7 +467,7 @@ config_data! {
         lens_enable: bool           = true,
         lens_implementations: bool  = true,
         lens_run: bool              = true,
-        lens_methodReferences: bool = true,
+        lens_methodReferences: bool = false,
 
         linkedProjects: Vec<ManifestOrProjectJson> = Vec::new(),
         lruCapacity: Option<usize>                 = None,

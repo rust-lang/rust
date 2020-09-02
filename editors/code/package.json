@@ -557,7 +557,7 @@
                 "rust-analyzer.lens.methodReferences": {
                     "markdownDescription": "Whether to show `Method References` lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
                     "type": "boolean",
-                    "default": true
+                    "default": false
                 },
                 "rust-analyzer.hoverActions.enable": {
                     "description": "Whether to show HoverActions in Rust files.",
