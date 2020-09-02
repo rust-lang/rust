@@ -85,7 +85,7 @@ impl PathVisitor {
 
 impl<'ast> MetaVisitor<'ast> for PathVisitor {
     fn visit_meta_name_value(&mut self, meta_item: &'ast ast::MetaItem, lit: &'ast ast::Lit) {
-        if meta_item.check_name(Symbol::intern("path")) && lit.kind.is_str() {
+        if meta_item.has_name(Symbol::intern("path")) && lit.kind.is_str() {
             self.paths.push(lit_to_str(lit));
         }
     }

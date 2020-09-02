@@ -256,7 +256,7 @@ fn is_skip(meta_item: &MetaItem) -> bool {
                 || path_str == &*depr_skip_annotation().as_str()
         }
         MetaItemKind::List(ref l) => {
-            meta_item.check_name(sym::cfg_attr) && l.len() == 2 && is_skip_nested(&l[1])
+            meta_item.has_name(sym::cfg_attr) && l.len() == 2 && is_skip_nested(&l[1])
         }
         _ => false,
     }

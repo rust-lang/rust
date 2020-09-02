@@ -327,7 +327,7 @@ impl Rewrite for ast::Attribute {
 
             if let Some(ref meta) = self.meta() {
                 // This attribute is possibly a doc attribute needing normalization to a doc comment
-                if context.config.normalize_doc_attributes() && meta.check_name(sym::doc) {
+                if context.config.normalize_doc_attributes() && meta.has_name(sym::doc) {
                     if let Some(ref literal) = meta.value_str() {
                         let comment_style = match self.style {
                             ast::AttrStyle::Inner => CommentStyle::Doc,
