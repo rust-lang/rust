@@ -25,6 +25,7 @@ use rustc_span::symbol::{sym, Symbol};
 use smallvec::SmallVec;
 use std::env;
 use std::io::{self, Write};
+use std::lazy::SyncOnceCell;
 use std::mem;
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
@@ -243,8 +244,7 @@ pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
 // loading, so we leave the code here. It is potentially useful for other tools
 // that want to invoke the rustc binary while linking to rustc as well.
 pub fn rustc_path<'a>() -> Option<&'a Path> {
-    static RUSTC_PATH: once_cell::sync::OnceCell<Option<PathBuf>> =
-        once_cell::sync::OnceCell::new();
+    static RUSTC_PATH: SyncOnceCell<Option<PathBuf>> = SyncOnceCell::new();
 
     const BIN_PATH: &str = env!("RUSTC_INSTALL_BINDIR");
 

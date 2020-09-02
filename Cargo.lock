@@ -3417,7 +3417,6 @@ dependencies = [
  "ena",
  "indexmap",
  "jobserver",
- "lazy_static",
  "libc",
  "measureme",
  "parking_lot 0.10.2",
@@ -3440,7 +3439,6 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
- "lazy_static",
  "libc",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3514,7 +3512,6 @@ dependencies = [
 name = "rustc_feature"
 version = "0.0.0"
 dependencies = [
- "lazy_static",
  "rustc_data_structures",
  "rustc_span",
 ]
@@ -3531,7 +3528,6 @@ version = "0.0.0"
 name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
- "lazy_static",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_index",
@@ -3606,7 +3602,6 @@ name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
  "libc",
- "once_cell",
  "rustc-rayon",
  "rustc_ast",
  "rustc_ast_lowering",

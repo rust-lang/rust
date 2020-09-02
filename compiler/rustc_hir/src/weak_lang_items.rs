@@ -7,18 +7,16 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::{sym, Symbol};
 
-use lazy_static::lazy_static;
+use std::lazy::SyncLazy;
 
 macro_rules! weak_lang_items {
     ($($name:ident, $item:ident, $sym:ident;)*) => (
 
-lazy_static! {
-    pub static ref WEAK_ITEMS_REFS: FxHashMap<Symbol, LangItem> = {
-        let mut map = FxHashMap::default();
-        $(map.insert(sym::$name, LangItem::$item);)*
-        map
-    };
-}
+pub static WEAK_ITEMS_REFS: SyncLazy<FxHashMap<Symbol, LangItem>> = SyncLazy::new(|| {
+    let mut map = FxHashMap::default();
+    $(map.insert(sym::$name, LangItem::$item);)*
+    map
+});
 
 /// The `check_name` argument avoids the need for `librustc_hir` to depend on
 /// `librustc_session`.

@@ -5,9 +5,10 @@ use AttributeType::*;
 
 use crate::{Features, Stability};
 
-use lazy_static::lazy_static;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::{sym, Symbol};
+
+use std::lazy::SyncLazy;
 
 type GateFn = fn(&Features) -> bool;
 
@@ -589,8 +590,8 @@ pub fn is_builtin_attr_name(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()
 }
 
-lazy_static! {
-    pub static ref BUILTIN_ATTRIBUTE_MAP: FxHashMap<Symbol, &'static BuiltinAttribute> = {
+pub static BUILTIN_ATTRIBUTE_MAP: SyncLazy<FxHashMap<Symbol, &'static BuiltinAttribute>> =
+    SyncLazy::new(|| {
         let mut map = FxHashMap::default();
         for attr in BUILTIN_ATTRIBUTES.iter() {
             if map.insert(attr.0, attr).is_some() {
@@ -598,5 +599,4 @@ lazy_static! {
             }
         }
         map
-    };
-}
+    });
