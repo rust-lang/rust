@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 - The minimum Rust version has been bumped to 1.36 (due to `crossbeam` dependency). (#193)
+- Updated `ahash` dependency to 0.4. (#198)
 - `HashMap::with_hasher` and `HashSet::with_hasher` are now `const fn`. (#195)
 - Removed `T: Hash + Eq` and `S: BuildHasher` bounds on `HashSet::new`,
   `with_capacity`, `with_hasher`, and `with_capacity_and_hasher`.  (#185)
