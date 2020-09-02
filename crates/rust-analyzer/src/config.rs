@@ -402,7 +402,7 @@ config_data! {
         cargo_noDefaultFeatures: bool    = false,
         cargo_target: Option<String>     = None,
 
-        checkOnSave_enable: bool                         = false,
+        checkOnSave_enable: bool                         = true,
         checkOnSave_allFeatures: Option<bool>            = None,
         checkOnSave_allTargets: bool                     = true,
         checkOnSave_command: String                      = "check".into(),
