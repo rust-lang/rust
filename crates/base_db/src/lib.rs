@@ -96,7 +96,7 @@ pub trait FileLoader {
     /// `#[path = "C://no/way"]`
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId>;
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
-    fn possible_sudmobules(&self, module_file: FileId) -> Vec<(FileId, String)>;
+    fn possible_sudmobule_names(&self, module_file: FileId) -> Vec<String>;
 }
 
 /// Database which stores all significant input facts: source code and project
@@ -166,11 +166,11 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
         self.0.source_root_crates(source_root)
     }
 
-    fn possible_sudmobules(&self, module_file: FileId) -> Vec<(FileId, String)> {
+    fn possible_sudmobule_names(&self, module_file: FileId) -> Vec<String> {
         fn possible_sudmobules_opt(
             module_files: &FileSet,
             module_file: FileId,
-        ) -> Option<Vec<(FileId, String)>> {
+        ) -> Option<Vec<FileId>> {
             match module_files.file_name_and_extension(module_file)? {
                 ("mod", Some("rs")) | ("lib", Some("rs")) => {
                     module_files.list_files(module_file, None)
@@ -181,8 +181,16 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
             }
         }
 
-        possible_sudmobules_opt(&self.source_root(module_file).file_set, module_file)
+        let module_files = &self.source_root(module_file).file_set;
+        possible_sudmobules_opt(module_files, module_file)
             .unwrap_or_default()
+            .into_iter()
+            .filter_map(|submodule_file| module_files.file_name_and_extension(submodule_file))
+            .map(|(file_name, extension)| match extension {
+                Some(extension) => format!("{}.{}", file_name, extension),
+                None => file_name.to_owned(),
+            })
+            .collect()
     }
 }
 

@@ -34,22 +34,27 @@ impl FileSet {
         &self,
         anchor: FileId,
         anchor_relative_path: Option<&str>,
-    ) -> Option<Vec<(FileId, String)>> {
+    ) -> Option<Vec<FileId>> {
         let anchor_directory = {
             let path = self.paths[&anchor].clone();
             match anchor_relative_path {
                 Some(anchor_relative_path) => path.join(anchor_relative_path),
-                None => path.join("../"),
+                None => path.parent(),
             }
         }?;
 
         Some(
             self.paths
                 .iter()
-                .filter(|(_, path)| path.starts_with(&anchor_directory))
-                // TODO kb need to ensure that no / exists after the anchor_directory
-                .filter(|(_, path)| path.ends_with(".rs"))
-                .map(|(&file_id, path)| (file_id, path.to_string()))
+                .filter_map(|(&file_id, path)| {
+                    if path.parent()? == anchor_directory
+                        && matches!(path.file_name_and_extension(), Some((_, Some("rs"))))
+                    {
+                        Some(file_id)
+                    } else {
+                        None
+                    }
+                })
                 .collect(),
         )
     }

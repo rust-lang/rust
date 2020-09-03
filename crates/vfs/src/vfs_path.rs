@@ -48,10 +48,12 @@ impl VfsPath {
             (VfsPathRepr::VirtualPath(_), _) => false,
         }
     }
-    pub fn ends_with(&self, suffix: &str) -> bool {
-        match &self.0 {
-            VfsPathRepr::PathBuf(p) => p.ends_with(suffix),
-            VfsPathRepr::VirtualPath(p) => p.ends_with(suffix),
+    pub fn parent(&self) -> Option<VfsPath> {
+        let mut parent = self.clone();
+        if parent.pop() {
+            Some(parent)
+        } else {
+            None
         }
     }
 
@@ -264,9 +266,6 @@ struct VirtualPath(String);
 impl VirtualPath {
     fn starts_with(&self, other: &VirtualPath) -> bool {
         self.0.starts_with(&other.0)
-    }
-    fn ends_with(&self, suffix: &str) -> bool {
-        self.0.ends_with(suffix)
     }
     fn pop(&mut self) -> bool {
         let pos = match self.0.rfind('/') {

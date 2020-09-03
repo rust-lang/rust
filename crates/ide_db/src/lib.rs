@@ -74,8 +74,8 @@ impl FileLoader for RootDatabase {
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
-    fn possible_sudmobules(&self, module_file: FileId) -> Vec<(FileId, String)> {
-        FileLoaderDelegate(self).possible_sudmobules(module_file)
+    fn possible_sudmobule_names(&self, module_file: FileId) -> Vec<String> {
+        FileLoaderDelegate(self).possible_sudmobule_names(module_file)
     }
 }
 

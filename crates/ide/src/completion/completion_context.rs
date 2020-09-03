@@ -122,7 +122,7 @@ impl<'a> CompletionContext<'a> {
                     }
                     let module_definition_source_file = definition_source.file_id.original_file(db);
                     let mod_declaration_candidates =
-                        db.possible_sudmobules(module_definition_source_file);
+                        db.possible_sudmobule_names(module_definition_source_file);
                     dbg!(mod_declaration_candidates);
                     // TODO kb exlude existing children from the candidates
                     let existing_children = current_module.children(db).collect::<Vec<_>>();
