@@ -806,6 +806,19 @@ fn main() {
         }",
     );
     gen(
+        |(a, b): (MyI128, MyI128)| {
+            if b.0 == 0 {
+                None
+            } else {
+                Some((a.0 / b.0, a.0 % b.0))
+            }
+        },
+        "{
+            let mut r = 0;
+            (builtins::int::sdiv::__divmodti4(a, b, &mut r), r)
+        }",
+    );
+    gen(
         |(a, b): (MyI32, MyI32)| {
             if b.0 == 0 {
                 None

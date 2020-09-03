@@ -1,16 +1,6 @@
 use core::ops;
 
-macro_rules! hty {
-    ($ty:ty) => {
-        <$ty as LargeInt>::HighHalf
-    };
-}
-
-macro_rules! os_ty {
-    ($ty:ty) => {
-        <$ty as Int>::OtherSign
-    };
-}
+mod specialized_div_rem;
 
 pub mod addsub;
 pub mod leading_zeros;
