@@ -112,6 +112,7 @@ pub fn get_doc_link<T: Resolvable + Clone>(db: &dyn HirDatabase, definition: &T)
 // version of import map which follows the same process as rustdoc. Otherwise there'll always be some
 // edge cases where we select the wrong import path.
 fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
+    eprintln!("enter");
     // Get the outermost definition for the moduledef. This is used to resolve the public path to the type,
     // then we can join the method, field, etc onto it if required.
     let target_def: ModuleDef = match definition {
@@ -131,8 +132,8 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
     let module = definition.module(db)?;
     let krate = module.krate();
     let import_map = db.import_map(krate.into());
-    let base = once(krate.display_name(db).unwrap())
-        .chain(import_map.path_of(ns).unwrap().segments.iter().map(|name| format!("{}", name)))
+    let base = once(krate.display_name(db)?)
+        .chain(import_map.path_of(ns)?.segments.iter().map(|name| format!("{}", name)))
         .join("/");
 
     let filename = get_symbol_filename(db, &target_def);
@@ -152,6 +153,7 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
         Definition::Field(field) => get_symbol_fragment(db, &FieldOrAssocItem::Field(field)),
         _ => None,
     };
+    eprintln!("end-ish");
 
     get_doc_url(db, &krate)
         .and_then(|url| url.join(&base).ok())
@@ -428,5 +430,95 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
             kind if kind.is_trivia() => 0,
             _ => 1,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use expect_test::{expect, Expect};
+
+    use crate::mock_analysis::analysis_and_position;
+
+    fn check(ra_fixture: &str, expect: Expect) {
+        let (analysis, position) = analysis_and_position(ra_fixture);
+        let url = analysis.external_docs(position).unwrap().unwrap();
+
+        expect.assert_eq(&url)
+    }
+
+    #[test]
+    fn test_doc_url_struct() {
+        check(
+            r#"
+pub struct Fo<|>o;
+"#,
+            expect![[r#"https://docs.rs/test/*/test/struct.Foo.html"#]],
+        );
+    }
+
+    // TODO: Fix this test. Fails on `import_map.path_of(ns)`
+    #[test]
+    fn test_doc_url_fn() {
+        check(
+            r#"
+pub fn fo<|>o() {}
+"#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
+    fn test_doc_url_inherent_method() {
+        check(
+            r#"
+pub struct Foo;
+
+impl Foo {
+    pub fn met<|>hod() {}
+}
+
+"#,
+            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#method.method"##]],
+        );
+    }
+
+    #[test]
+    fn test_doc_url_trait_provided_method() {
+        check(
+            r#"
+pub trait Bar {
+    fn met<|>hod() {}
+}
+
+"#,
+            expect![[r##"https://docs.rs/test/*/test/trait.Bar.html#method.method"##]],
+        );
+    }
+
+    #[test]
+    fn test_doc_url_trait_required_method() {
+        check(
+            r#"
+pub trait Foo {
+    fn met<|>hod();
+}
+
+"#,
+            expect![[r##"https://docs.rs/test/*/test/trait.Foo.html#tymethod.method"##]],
+        );
+    }
+
+
+    #[test]
+    fn test_doc_url_field() {
+        check(
+            r#"
+pub struct Foo {
+    pub fie<|>ld: ()
+}
+
+"#,
+            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#structfield.field"##]],
+        );
     }
 }
