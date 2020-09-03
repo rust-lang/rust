@@ -1,4 +1,3 @@
-use core::array::FixedSizeArray;
 use core::clone::Clone;
 use core::mem;
 use core::ops::DerefMut;
