@@ -389,27 +389,24 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
     // Replace all unused stack_addr and stack_load instructions with nop.
     let mut func = &mut opt_ctx.ctx.func;
 
-    // drain_filter() on hashbrown::HashSet drains the items that do *not* match the
-    // predicate. Once hashbrown gets updated to match the behaviour of std::drain_filter
-    // (0.8.2), the predicate will have to be reversed
     for stack_slot_users in opt_ctx.stack_slot_usage_map.values_mut() {
         stack_slot_users
             .stack_addr
             .drain_filter(|inst| {
-                !(stack_addr_load_insts_users
+                stack_addr_load_insts_users
                     .get(inst)
                     .map(|users| users.is_empty())
-                    .unwrap_or(true))
+                    .unwrap_or(true)
             })
             .for_each(|inst| StackSlotUsage::remove_unused_stack_addr(&mut func, inst));
 
         stack_slot_users
             .stack_load
             .drain_filter(|inst| {
-                !(stack_addr_load_insts_users
+                stack_addr_load_insts_users
                     .get(inst)
                     .map(|users| users.is_empty())
-                    .unwrap_or(true))
+                    .unwrap_or(true)
             })
             .for_each(|inst| StackSlotUsage::remove_unused_load(&mut func, inst));
     }
