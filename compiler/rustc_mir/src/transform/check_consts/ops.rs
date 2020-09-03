@@ -1,6 +1,6 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::config::nightly_options;
@@ -16,7 +16,29 @@ pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) {
 
     let gate = match op.status_in_item(ccx) {
         Status::Allowed => return,
-        Status::Unstable(gate) if ccx.tcx.features().enabled(gate) => return,
+
+        Status::Unstable(gate) if ccx.tcx.features().enabled(gate) => {
+            let unstable_in_stable = ccx.const_kind() == hir::ConstContext::ConstFn
+                && ccx.tcx.features().enabled(sym::staged_api)
+                && !ccx.tcx.has_attr(ccx.def_id.to_def_id(), sym::rustc_const_unstable)
+                && !super::allow_internal_unstable(ccx.tcx, ccx.def_id.to_def_id(), gate);
+
+            if unstable_in_stable {
+                ccx.tcx.sess
+                    .struct_span_err(span, &format!("`#[feature({})]` cannot be depended on in a const-stable function", gate.as_str()))
+                    .span_suggestion(
+                        ccx.body.span,
+                        "if it is not part of the public API, make this function unstably const",
+                        concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
+                        Applicability::HasPlaceholders,
+                    )
+                    .help("otherwise `#[allow_internal_unstable]` can be used to bypass stability checks")
+                    .emit();
+            }
+
+            return;
+        }
+
         Status::Unstable(gate) => Some(gate),
         Status::Forbidden => None,
     };
