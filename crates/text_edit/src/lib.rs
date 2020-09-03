@@ -119,7 +119,7 @@ impl TextEdit {
             return Err(other);
         }
         self.indels.extend(other.indels);
-        assert!(check_disjoint(&mut self.indels));
+        assert_disjoint(&mut self.indels);
         Ok(())
     }
 
@@ -169,7 +169,7 @@ impl TextEditBuilder {
     }
     pub fn finish(self) -> TextEdit {
         let mut indels = self.indels;
-        assert!(check_disjoint(&mut indels));
+        assert_disjoint(&mut indels);
         TextEdit { indels }
     }
     pub fn invalidates_offset(&self, offset: TextSize) -> bool {
@@ -178,11 +178,14 @@ impl TextEditBuilder {
     fn indel(&mut self, indel: Indel) {
         self.indels.push(indel);
         if self.indels.len() <= 16 {
-            check_disjoint(&mut self.indels);
+            assert_disjoint(&mut self.indels);
         }
     }
 }
 
+fn assert_disjoint(indels: &mut [impl std::borrow::Borrow<Indel>]) {
+    assert!(check_disjoint(indels));
+}
 fn check_disjoint(indels: &mut [impl std::borrow::Borrow<Indel>]) -> bool {
     indels.sort_by_key(|indel| (indel.borrow().delete.start(), indel.borrow().delete.end()));
     indels
