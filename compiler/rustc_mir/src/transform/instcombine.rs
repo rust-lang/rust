@@ -66,7 +66,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
             *rvalue = Rvalue::Use(Operand::Constant(box constant));
         }
 
-        if let Some(operand) = self.optimizations.unneeded_not_equal.remove(&location) {
+        if let Some(operand) = self.optimizations.unneeded_equality_comparison.remove(&location) {
             debug!("replacing {:?} with {:?}", rvalue, operand);
             *rvalue = Rvalue::Use(operand);
         }
@@ -87,14 +87,39 @@ impl OptimizationFinder<'b, 'tcx> {
         OptimizationFinder { body, tcx, optimizations: OptimizationList::default() }
     }
 
-    fn find_operand_in_ne_false_pattern(
+    fn find_unneeded_equality_comparison(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        // find Ne(_place, false) or Ne(false, _place)
+        // or   Eq(_place, true) or Eq(true, _place)
+        if let Rvalue::BinaryOp(op, l, r) = rvalue {
+            let const_to_find = if *op == BinOp::Ne {
+                false
+            } else if *op == BinOp::Eq {
+                true
+            } else {
+                return;
+            };
+            // (const, _place)
+            if let Some(o) = self.find_operand_in_equality_comparison_pattern(l, r, const_to_find) {
+                self.optimizations.unneeded_equality_comparison.insert(location, o.clone());
+            }
+            // (_place, const)
+            else if let Some(o) =
+                self.find_operand_in_equality_comparison_pattern(r, l, const_to_find)
+            {
+                self.optimizations.unneeded_equality_comparison.insert(location, o.clone());
+            }
+        }
+    }
+
+    fn find_operand_in_equality_comparison_pattern(
         &self,
         l: &Operand<'tcx>,
         r: &'a Operand<'tcx>,
+        const_to_find: bool,
     ) -> Option<&'a Operand<'tcx>> {
         let const_ = l.constant()?;
         if const_.literal.ty == self.tcx.types.bool
-            && const_.literal.val.try_to_bool() == Some(false)
+            && const_.literal.val.try_to_bool() == Some(const_to_find)
         {
             if r.place().is_some() {
                 return Some(r);
@@ -128,17 +153,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
             }
         }
 
-        // find Ne(_place, false) or Ne(false, _place)
-        if let Rvalue::BinaryOp(BinOp::Ne, l, r) = rvalue {
-            // (false, _place)
-            if let Some(o) = self.find_operand_in_ne_false_pattern(l, r) {
-                self.optimizations.unneeded_not_equal.insert(location, o.clone());
-            }
-            // (_place, false)
-            else if let Some(o) = self.find_operand_in_ne_false_pattern(r, l) {
-                self.optimizations.unneeded_not_equal.insert(location, o.clone());
-            }
-        }
+        self.find_unneeded_equality_comparison(rvalue, location);
 
         self.super_rvalue(rvalue, location)
     }
@@ -148,5 +163,5 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 struct OptimizationList<'tcx> {
     and_stars: FxHashSet<Location>,
     arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
-    unneeded_not_equal: FxHashMap<Location, Operand<'tcx>>,
+    unneeded_equality_comparison: FxHashMap<Location, Operand<'tcx>>,
 }
