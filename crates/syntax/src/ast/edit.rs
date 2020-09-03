@@ -13,7 +13,7 @@ use crate::{
     ast::{
         self,
         make::{self, tokens},
-        AstNode, TypeBoundsOwner,
+        AstNode, GenericParamsOwner, NameOwner, TypeBoundsOwner,
     },
     AstToken, Direction, InsertPosition, SmolStr, SyntaxElement, SyntaxKind,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
@@ -45,6 +45,19 @@ impl ast::Fn {
         };
         to_insert.push(body.syntax().clone().into());
         self.replace_children(single_node(old_body_or_semi), to_insert)
+    }
+
+    #[must_use]
+    pub fn with_generic_params(&self, generic_args: ast::GenericParamList) -> ast::Fn {
+        if let Some(old) = self.generic_param_list() {
+            return self.replace_descendant(old, generic_args);
+        }
+
+        let anchor = self.name().expect("The function must have a name").syntax().clone();
+
+        let mut to_insert: ArrayVec<[SyntaxElement; 1]> = ArrayVec::new();
+        to_insert.push(generic_args.syntax().clone().into());
+        self.insert_children(InsertPosition::After(anchor.into()), to_insert)
     }
 }
 
@@ -461,14 +474,17 @@ impl ast::MatchArmList {
 
 impl ast::GenericParamList {
     #[must_use]
-    pub fn append_params(&self, params: impl IntoIterator<Item = ast::GenericParam>) -> Self {
+    pub fn append_params(
+        &self,
+        params: impl IntoIterator<Item = ast::GenericParam>,
+    ) -> ast::GenericParamList {
         let mut res = self.clone();
         params.into_iter().for_each(|it| res = res.append_param(it));
         res
     }
 
     #[must_use]
-    pub fn append_param(&self, item: ast::GenericParam) -> Self {
+    pub fn append_param(&self, item: ast::GenericParam) -> ast::GenericParamList {
         let is_multiline = self.syntax().text().contains_char('\n');
         let ws;
         let space = if is_multiline {
@@ -482,7 +498,9 @@ impl ast::GenericParamList {
         };
 
         let mut to_insert: ArrayVec<[SyntaxElement; 4]> = ArrayVec::new();
-        to_insert.push(space.into());
+        if self.generic_params().next().is_some() {
+            to_insert.push(space.into());
+        }
         to_insert.push(item.syntax().clone().into());
         to_insert.push(make::token(T![,]).into());
 
