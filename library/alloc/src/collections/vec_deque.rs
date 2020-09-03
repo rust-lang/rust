@@ -685,7 +685,7 @@ impl<T> VecDeque<T> {
     }
 
     /// Tries to reserve the minimum capacity for exactly `additional` more elements to
-    /// be inserted in the given `VecDeque<T>`. After calling `reserve_exact`,
+    /// be inserted in the given `VecDeque<T>`. After calling `try_reserve_exact`,
     /// capacity will be greater than or equal to `self.len() + additional`.
     /// Does nothing if the capacity is already sufficient.
     ///
@@ -727,7 +727,7 @@ impl<T> VecDeque<T> {
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the given `VecDeque<T>`. The collection may reserve more space to avoid
-    /// frequent reallocations. After calling `reserve`, capacity will be
+    /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional`. Does nothing if
     /// capacity is already sufficient.
     ///
