@@ -1392,3 +1392,13 @@ fn into_rc() {
     assert_eq!(&*rc2, path);
     assert_eq!(&*arc2, path);
 }
+
+#[test]
+fn prefix_const() {
+    // test that the methods of `Prefix` are usable in a const context
+
+    const PREFIX: Prefix<'_> = Prefix::Disk(2);
+
+    const IS_VERBATIM: bool = PREFIX.is_verbatim();
+    assert!(!IS_VERBATIM);
+}
