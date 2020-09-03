@@ -76,5 +76,6 @@ mod result;
 mod slice;
 mod str;
 mod str_lossy;
+mod task;
 mod time;
 mod tuple;
