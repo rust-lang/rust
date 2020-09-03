@@ -1,6 +1,6 @@
 use rustc_hir::Mutability;
 use rustc_index::bit_set::HybridBitSet;
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutVisitor, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, BasicBlock, Local, Location};
 use rustc_middle::ty::TyCtxt;
 
@@ -196,9 +196,10 @@ impl MutVisitor<'tcx> for RenameToReturnPlace<'tcx> {
         self.super_terminator(terminator, loc);
     }
 
-    fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
-        assert_ne!(*l, mir::RETURN_PLACE);
-        if *l == self.to_rename {
+    fn visit_local(&mut self, l: &mut Local, ctxt: PlaceContext, _: Location) {
+        if *l == mir::RETURN_PLACE {
+            assert_eq!(ctxt, PlaceContext::NonUse(NonUseContext::VarDebugInfo));
+        } else if *l == self.to_rename {
             *l = mir::RETURN_PLACE;
         }
     }
