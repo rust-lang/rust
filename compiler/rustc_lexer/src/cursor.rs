@@ -66,7 +66,7 @@ impl<'a> Cursor<'a> {
     }
 
     /// Returns a `Chars` iterator over the remaining characters.
-    fn chars(&self) -> Chars<'a> {
+    pub(crate) fn chars(&self) -> Chars<'a> {
         self.chars.clone()
     }
 

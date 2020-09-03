@@ -422,11 +422,12 @@ impl Cursor<'_> {
         debug_assert!(self.prev() == '/' && self.first() == '/');
         self.bump();
 
-        let doc_style = match self.first() {
+        let doc_style = match self.chars().as_str().as_bytes() {
             // `//!` is an inner line doc comment.
-            '!' => Some(DocStyle::Inner),
+            [b'!', ..] => Some(DocStyle::Inner),
             // `////` (more than 3 slashes) is not considered a doc comment.
-            '/' if self.second() != '/' => Some(DocStyle::Outer),
+            [b'/', b'/', ..] => None,
+            [b'/', ..] => Some(DocStyle::Outer),
             _ => None,
         };
 
@@ -438,12 +439,13 @@ impl Cursor<'_> {
         debug_assert!(self.prev() == '/' && self.first() == '*');
         self.bump();
 
-        let doc_style = match self.first() {
+        let doc_style = match self.chars().as_str().as_bytes() {
             // `/*!` is an inner block doc comment.
-            '!' => Some(DocStyle::Inner),
+            [b'!', ..] => Some(DocStyle::Inner),
             // `/***` (more than 2 stars) is not considered a doc comment.
             // `/**/` is not considered a doc comment.
-            '*' if !matches!(self.second(), '*' | '/') => Some(DocStyle::Outer),
+            [b'*', b'*' | b'/', ..] => None,
+            [b'*', ..] => Some(DocStyle::Outer),
             _ => None,
         };
 
@@ -464,7 +466,7 @@ impl Cursor<'_> {
                         break;
                     }
                 }
-                _ => (),
+                _ => {}
             }
         }
 
