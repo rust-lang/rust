@@ -2285,9 +2285,15 @@ where
             return SpecFromIterNested::from_iter(iterator);
         }
 
-        let (src_buf, dst_buf, dst_end, cap) = unsafe {
+        let (src_buf, src_ptr, dst_buf, dst_end, cap) = unsafe {
             let inner = iterator.as_inner().as_into_iter();
-            (inner.buf.as_ptr(), inner.buf.as_ptr() as *mut T, inner.end as *const T, inner.cap)
+            (
+                inner.buf.as_ptr(),
+                inner.ptr,
+                inner.buf.as_ptr() as *mut T,
+                inner.end as *const T,
+                inner.cap,
+            )
         };
 
         // use try-fold since
@@ -2302,10 +2308,18 @@ where
         let dst = mem::ManuallyDrop::new(sink).dst;
 
         let src = unsafe { iterator.as_inner().as_into_iter() };
-        // check if SourceIter and InPlaceIterable contracts were upheld.
+        // check if SourceIter contract was upheld
         // caveat: if they weren't we may not even make it to this point
         debug_assert_eq!(src_buf, src.buf.as_ptr());
-        debug_assert!(dst as *const _ <= src.ptr, "InPlaceIterable contract violation");
+        // check InPlaceIterable contract. This is only possible if the iterator advanced the
+        // source pointer at all. If it uses unchecked access via TrustedRandomAccess
+        // then the source pointer will stay in its initial position and we can't use it as reference
+        if src.ptr != src_ptr {
+            debug_assert!(
+                dst as *const _ <= src.ptr,
+                "InPlaceIterable contract violation, write pointer advanced beyond read pointer"
+            );
+        }
 
         // drop any remaining values at the tail of the source
         src.drop_remaining();
