@@ -287,6 +287,7 @@ use crate::raw_vec::RawVec;
 /// [`insert`]: Vec::insert
 /// [`reserve`]: Vec::reserve
 /// [owned slice]: Box
+/// [`&`]: ../../std/primitive.reference.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "vec_type")]
 pub struct Vec<T> {
