@@ -12,7 +12,7 @@ use rustc_errors::PResult;
 use rustc_span::Span;
 
 impl<'a> StringReader<'a> {
-    crate fn into_token_trees(self) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
+    pub(super) fn into_token_trees(self) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
         let mut tt_reader = TokenTreesReader {
             string_reader: self,
             token: Token::dummy(),
