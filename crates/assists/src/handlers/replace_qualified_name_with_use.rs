@@ -348,9 +348,9 @@ use std::fmt::{Debug, nested::{self, Display}};
 impl std::fmt::nested<|> for Foo {
 }
 ",
-            // FIXME(veykril): self is being pulled out for some reason now
+            // FIXME(veykril): nested is duplicated now
             r"
-use std::fmt::{Debug, nested::{Display}, nested};
+use std::fmt::{Debug, nested::{self, Display}, nested};
 
 impl nested for Foo {
 }
@@ -518,6 +518,7 @@ fn main() {
     ",
             r"
 #![allow(dead_code)]
+
 use std::fmt::Debug;
 
 fn main() {

@@ -275,7 +275,27 @@ fn find_insert_position(
                             (InsertPosition::After(node.into()), AddBlankLine::BeforeTwice)
                         }
                         // there are no imports in this file at all
-                        None => (InsertPosition::First, AddBlankLine::AfterTwice),
+                        None => {
+                            // check if the scope has a inner attributes, we dont want to insert in front of it
+                            match scope
+                                .children()
+                                // no flat_map here cause we want to short circuit the iterator
+                                .map(ast::Attr::cast)
+                                .take_while(|attr| {
+                                    attr.as_ref()
+                                        .map(|attr| attr.kind() == ast::AttrKind::Inner)
+                                        .unwrap_or(false)
+                                })
+                                .last()
+                                .flatten()
+                            {
+                                Some(attr) => (
+                                    InsertPosition::After(attr.syntax().clone().into()),
+                                    AddBlankLine::BeforeTwice,
+                                ),
+                                None => (InsertPosition::First, AddBlankLine::AfterTwice),
+                            }
+                        }
                     },
                 }
             }
@@ -456,6 +476,36 @@ fn main() {}",
             r"use foo::bar;
 
 ",
+        )
+    }
+
+    #[test]
+    fn insert_after_inner_attr() {
+        // empty files will get two trailing newlines
+        // this is due to the test case insert_no_imports above
+        check_full(
+            "foo::bar",
+            r"#![allow(unused_imports)]",
+            r"#![allow(unused_imports)]
+
+use foo::bar;",
+        )
+    }
+
+    #[test]
+    fn insert_after_inner_attr2() {
+        // empty files will get two trailing newlines
+        // this is due to the test case insert_no_imports above
+        check_full(
+            "foo::bar",
+            r"#![allow(unused_imports)]
+
+fn main() {}",
+            r"#![allow(unused_imports)]
+
+use foo::bar;
+
+fn main() {}",
         )
     }
 
