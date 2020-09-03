@@ -4,9 +4,9 @@
 
 There are various ways to write tests against the dependency graph.
 The simplest mechanisms are the `#[rustc_if_this_changed]` and
-`#[rustc_then_this_would_need]` annotations. These are used in compile-fail
-tests to test whether the expected set of paths exist in the dependency graph.
-As an example, see `src/test/compile-fail/dep-graph-caller-callee.rs`.
+`#[rustc_then_this_would_need]` annotations. These are used in ui tests
+to test whether the expected set of paths exist in the dependency graph.
+As an example, see `src/test/ui/dep-graph/dep-graph-caller-callee.rs`.
 
 The idea is that you can annotate a test like:
 
