@@ -294,7 +294,7 @@ LL |         let _val: NonNull<i32> = mem::zeroed();
    |                                  this code causes undefined behavior when executed
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: `NonNull<i32>` must be non-null
+   = note: `std::ptr::NonNull<i32>` must be non-null
 
 error: the type `NonNull<i32>` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:80:34
@@ -305,7 +305,7 @@ LL |         let _val: NonNull<i32> = mem::uninitialized();
    |                                  this code causes undefined behavior when executed
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: `NonNull<i32>` must be non-null
+   = note: `std::ptr::NonNull<i32>` must be non-null
 
 error: the type `*const dyn Send` does not permit zero-initialization
   --> $DIR/uninitialized-zeroed.rs:82:37
@@ -415,7 +415,7 @@ LL |         let _val: NonZeroU32 = mem::transmute(0);
    |                                this code causes undefined behavior when executed
    |                                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: `NonZeroU32` must be non-null
+   = note: `std::num::NonZeroU32` must be non-null
 
 error: the type `NonNull<i32>` does not permit zero-initialization
   --> $DIR/uninitialized-zeroed.rs:104:34
@@ -426,7 +426,7 @@ LL |         let _val: NonNull<i32> = MaybeUninit::zeroed().assume_init();
    |                                  this code causes undefined behavior when executed
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: `NonNull<i32>` must be non-null
+   = note: `std::ptr::NonNull<i32>` must be non-null
 
 error: the type `NonNull<i32>` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:105:34
@@ -437,7 +437,7 @@ LL |         let _val: NonNull<i32> = MaybeUninit::uninit().assume_init();
    |                                  this code causes undefined behavior when executed
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: `NonNull<i32>` must be non-null
+   = note: `std::ptr::NonNull<i32>` must be non-null
 
 error: the type `bool` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:106:26
