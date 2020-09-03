@@ -236,9 +236,6 @@ pub struct Evaluator<'mir, 'tcx> {
     pub(crate) argv: Option<Scalar<Tag>>,
     pub(crate) cmd_line: Option<Scalar<Tag>>,
 
-    /// Last OS error location in memory. It is a 32-bit integer.
-    pub(crate) last_error: Option<MPlaceTy<'tcx, Tag>>,
-
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
 
@@ -251,11 +248,6 @@ pub struct Evaluator<'mir, 'tcx> {
 
     pub(crate) file_handler: shims::posix::FileHandler,
     pub(crate) dir_handler: shims::posix::DirHandler,
-
-    /// The temporary used for storing the argument of
-    /// the call to `miri_start_panic` (the panic payload) when unwinding.
-    /// This is pointer-sized, and matches the `Payload` type in `src/libpanic_unwind/miri.rs`.
-    pub(crate) panic_payload: Option<Scalar<Tag>>,
 
     /// The "time anchor" for this machine's monotone clock (for `Instant` simulation).
     pub(crate) time_anchor: Instant,
@@ -285,13 +277,11 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             argc: None,
             argv: None,
             cmd_line: None,
-            last_error: None,
             tls: TlsData::default(),
             communicate,
             validate,
             file_handler: Default::default(),
             dir_handler: Default::default(),
-            panic_payload: None,
             time_anchor: Instant::now(),
             layouts,
             threads: ThreadManager::default(),

@@ -1,0 +1,11 @@
+warning: thread support is experimental. For example, Miri does not detect data races yet.
+
+Thread 1 starting, will block on mutex
+Thread 1 reported it has started
+thread '<unnamed>' panicked at 'panic in thread 2', $DIR/concurrent-panic.rs:65:13
+Thread 2 blocking on thread 1
+Thread 2 reported it has started
+Unlocking mutex
+thread '<unnamed>' panicked at 'panic in thread 1', $DIR/concurrent-panic.rs:42:13
+Thread 1 has exited
+Thread 2 has exited

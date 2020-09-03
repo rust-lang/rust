@@ -106,12 +106,23 @@ enum ThreadJoinStatus {
 /// A thread.
 pub struct Thread<'mir, 'tcx> {
     state: ThreadState,
+
     /// Name of the thread.
     thread_name: Option<Vec<u8>>,
+
     /// The virtual call stack.
     stack: Vec<Frame<'mir, 'tcx, Tag, FrameData<'tcx>>>,
+
     /// The join status.
     join_status: ThreadJoinStatus,
+
+    /// The temporary used for storing the argument of
+    /// the call to `miri_start_panic` (the panic payload) when unwinding.
+    /// This is pointer-sized, and matches the `Payload` type in `src/libpanic_unwind/miri.rs`.
+    pub(crate) panic_payload: Option<Scalar<Tag>>,
+
+    /// Last OS error location in memory. It is a 32-bit integer.
+    pub(crate) last_error: Option<MPlaceTy<'tcx, Tag>>,
 }
 
 impl<'mir, 'tcx> Thread<'mir, 'tcx> {
@@ -150,6 +161,8 @@ impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
             thread_name: None,
             stack: Vec::new(),
             join_status: ThreadJoinStatus::Joinable,
+            panic_payload: None,
+            last_error: None,
         }
     }
 }
@@ -566,6 +579,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn get_active_thread(&self) -> ThreadId {
         let this = self.eval_context_ref();
         this.machine.threads.get_active_thread_id()
+    }
+
+    #[inline]
+    fn active_thread_mut(&mut self) -> &mut Thread<'mir, 'tcx> {
+        let this = self.eval_context_mut();
+        this.machine.threads.active_thread_mut()
+    }
+
+    #[inline]
+    fn active_thread_ref(&self) -> &Thread<'mir, 'tcx> {
+        let this = self.eval_context_ref();
+        this.machine.threads.active_thread_ref()
     }
 
     #[inline]

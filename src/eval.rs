@@ -193,12 +193,6 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         StackPopCleanup::None { cleanup: true },
     )?;
 
-    // Set the last_error to 0
-    let errno_layout = ecx.machine.layouts.u32;
-    let errno_place = ecx.allocate(errno_layout, MiriMemoryKind::Machine.into());
-    ecx.write_scalar(Scalar::from_u32(0), errno_place.into())?;
-    ecx.machine.last_error = Some(errno_place);
-
     Ok((ecx, ret_place))
 }
 

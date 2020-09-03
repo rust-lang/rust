@@ -20,7 +20,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // errno
             "__error" => {
                 let &[] = check_arg_count(args)?;
-                let errno_place = this.machine.last_error.unwrap();
+                let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref().to_scalar()?, dest)?;
             }
 

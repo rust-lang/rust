@@ -394,17 +394,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         )
     }
 
+    /// Get last error variable as a place, lazily allocating thread-local storage for it if
+    /// necessary.
+    fn last_error_place(&mut self) -> InterpResult<'tcx, MPlaceTy<'tcx, Tag>> {
+        let this = self.eval_context_mut();
+        if let Some(errno_place) = this.active_thread_ref().last_error {
+            Ok(errno_place)
+        } else {
+            // Allocate new place, set initial value to 0.
+            let errno_layout = this.machine.layouts.u32;
+            let errno_place = this.allocate(errno_layout, MiriMemoryKind::Machine.into());
+            this.write_scalar(Scalar::from_u32(0), errno_place.into())?;
+            this.active_thread_mut().last_error = Some(errno_place);
+            Ok(errno_place)
+        }
+    }
+
     /// Sets the last error variable.
     fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let errno_place = this.machine.last_error.unwrap();
+        let errno_place = this.last_error_place()?;
         this.write_scalar(scalar, errno_place.into())
     }
 
     /// Gets the last error variable.
-    fn get_last_error(&self) -> InterpResult<'tcx, Scalar<Tag>> {
-        let this = self.eval_context_ref();
-        let errno_place = this.machine.last_error.unwrap();
+    fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_mut();
+        let errno_place = this.last_error_place()?;
         this.read_scalar(errno_place.into())?.check_init()
     }
 
