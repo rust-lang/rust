@@ -62,10 +62,6 @@ impl CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMIntTypeInContext(self.llcx, num_bits as c_uint) }
     }
 
-    crate fn type_x86_mmx(&self) -> &'ll Type {
-        unsafe { llvm::LLVMX86MMXTypeInContext(self.llcx) }
-    }
-
     crate fn type_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
         unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
     }

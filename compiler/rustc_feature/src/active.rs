@@ -229,7 +229,6 @@ declare_features! (
     (active, powerpc_target_feature, "1.27.0", Some(44839), None),
     (active, mips_target_feature, "1.27.0", Some(44839), None),
     (active, avx512_target_feature, "1.27.0", Some(44839), None),
-    (active, mmx_target_feature, "1.27.0", Some(44839), None),
     (active, sse4a_target_feature, "1.27.0", Some(44839), None),
     (active, tbm_target_feature, "1.27.0", Some(44839), None),
     (active, wasm_target_feature, "1.30.0", Some(44839), None),
