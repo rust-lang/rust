@@ -13,7 +13,7 @@ use ide_db::{defs::Definition, RootDatabase};
 
 use hir::{
     db::{DefDatabase, HirDatabase},
-    Adt, AsName, AssocItem, Crate, Field, HasAttrs, ItemInNs, ModuleDef,
+    Adt, AsName, AssocItem, Crate, Field, HasAttrs, ItemInNs, MethodOwner, ModuleDef,
 };
 use ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
@@ -117,7 +117,7 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
     let target_def: ModuleDef = match definition {
         Definition::ModuleDef(moddef) => match moddef {
             ModuleDef::Function(f) => {
-                f.parent_def(db).map(|mowner| mowner.into()).unwrap_or_else(|| f.clone().into())
+                f.method_owner(db).map(|mowner| mowner.into()).unwrap_or_else(|| f.clone().into())
             }
             moddef => moddef,
         },
@@ -401,9 +401,18 @@ fn get_symbol_fragment(db: &dyn HirDatabase, field_or_assoc: &FieldOrAssocItem) 
     Some(match field_or_assoc {
         FieldOrAssocItem::Field(field) => format!("#structfield.{}", field.name(db)),
         FieldOrAssocItem::AssocItem(assoc) => match assoc {
-            // TODO: Rustdoc sometimes uses tymethod instead of method. This case needs to be investigated.
-            AssocItem::Function(function) => format!("#method.{}", function.name(db)),
-            // TODO: This might be the old method for documenting associated constants, i32::MAX uses a separate page...
+            AssocItem::Function(function) => {
+                let is_trait_method =
+                    matches!(function.method_owner(db), Some(MethodOwner::Trait(..)));
+                // This distinction may get more complicated when specialisation is available.
+                // In particular this decision is made based on whether a method 'has defaultness'.
+                // Currently this is only the case for provided trait methods.
+                if is_trait_method && !function.has_body(db) {
+                    format!("#tymethod.{}", function.name(db))
+                } else {
+                    format!("#method.{}", function.name(db))
+                }
+            }
             AssocItem::Const(constant) => format!("#associatedconstant.{}", constant.name(db)?),
             AssocItem::TypeAlias(ty) => format!("#associatedtype.{}", ty.name(db)),
         },

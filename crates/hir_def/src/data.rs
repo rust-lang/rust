@@ -25,6 +25,7 @@ pub struct FunctionData {
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
     pub has_self_param: bool,
+    pub has_body: bool,
     pub is_unsafe: bool,
     pub is_varargs: bool,
     pub visibility: RawVisibility,
@@ -42,6 +43,7 @@ impl FunctionData {
             ret_type: func.ret_type.clone(),
             attrs: item_tree.attrs(ModItem::from(loc.id.value).into()).clone(),
             has_self_param: func.has_self_param,
+            has_body: func.has_body,
             is_unsafe: func.is_unsafe,
             is_varargs: func.is_varargs,
             visibility: item_tree[func.visibility].clone(),

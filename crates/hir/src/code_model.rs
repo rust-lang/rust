@@ -772,7 +772,14 @@ impl Function {
         hir_ty::diagnostics::validate_body(db, self.id.into(), sink)
     }
 
-    pub fn parent_def(self, db: &dyn HirDatabase) -> Option<MethodOwner> {
+    /// Whether this function declaration has a definition.
+    ///
+    /// This is false in the case of required (not provided) trait methods.
+    pub fn has_body(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).has_body
+    }
+
+    pub fn method_owner(self, db: &dyn HirDatabase) -> Option<MethodOwner> {
         match self.as_assoc_item(db).map(|assoc| assoc.container(db)) {
             Some(AssocItemContainer::Trait(t)) => Some(t.into()),
             Some(AssocItemContainer::ImplDef(imp)) => {

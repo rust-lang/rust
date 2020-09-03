@@ -505,6 +505,7 @@ pub struct Function {
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
     pub has_self_param: bool,
+    pub has_body: bool,
     pub is_unsafe: bool,
     pub params: Box<[TypeRef]>,
     pub is_varargs: bool,

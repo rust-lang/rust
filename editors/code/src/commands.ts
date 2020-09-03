@@ -425,7 +425,7 @@ export function openDocs(ctx: Ctx): Cmd {
         const client = ctx.client;
         const editor = vscode.window.activeTextEditor;
         if (!editor || !client) {
-            return
+            return;
         };
 
         const position = editor.selection.active;
