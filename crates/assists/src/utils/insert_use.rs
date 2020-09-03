@@ -9,13 +9,12 @@ use syntax::{
     Direction, InsertPosition, SyntaxElement, SyntaxNode, T,
 };
 
-use crate::assist_context::AssistContext;
 use test_utils::mark;
 
 /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
 pub(crate) fn find_insert_use_container(
     position: &SyntaxNode,
-    ctx: &AssistContext,
+    ctx: &crate::assist_context::AssistContext,
 ) -> Option<Either<ast::ItemList, ast::SourceFile>> {
     ctx.sema.ancestors_with_macros(position.clone()).find_map(|n| {
         if let Some(module) = ast::Module::cast(n.clone()) {
@@ -25,19 +24,9 @@ pub(crate) fn find_insert_use_container(
     })
 }
 
-pub(crate) fn insert_use_statement(
-    // Ideally the position of the cursor, used to
-    position: &SyntaxNode,
-    path_to_import: &str,
-    ctx: &crate::assist_context::AssistContext,
-    builder: &mut text_edit::TextEditBuilder,
-) {
-    insert_use(position.clone(), make::path_from_text(path_to_import), Some(MergeBehaviour::Full));
-}
-
 /// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
 pub fn insert_use(
-    where_: SyntaxNode,
+    where_: &SyntaxNode,
     path: ast::Path,
     merge: Option<MergeBehaviour>,
 ) -> SyntaxNode {
@@ -49,24 +38,21 @@ pub fn insert_use(
                 let to_delete: SyntaxElement = existing_use.syntax().clone().into();
                 let to_delete = to_delete.clone()..=to_delete;
                 let to_insert = iter::once(merged.syntax().clone().into());
-                return algo::replace_children(&where_, to_delete, to_insert);
+                return algo::replace_children(where_, to_delete, to_insert);
             }
         }
     }
 
     // either we weren't allowed to merge or there is no import that fits the merge conditions
     // so look for the place we have to insert to
-    let (insert_position, add_blank) = find_insert_position(&where_, path);
+    let (insert_position, add_blank) = find_insert_position(where_, path);
 
     let to_insert: Vec<SyntaxElement> = {
         let mut buf = Vec::new();
 
         match add_blank {
             AddBlankLine::Before => buf.push(make::tokens::single_newline().into()),
-            AddBlankLine::BeforeTwice => {
-                buf.push(make::tokens::single_newline().into());
-                buf.push(make::tokens::single_newline().into());
-            }
+            AddBlankLine::BeforeTwice => buf.push(make::tokens::blank_line().into()),
             _ => (),
         }
 
@@ -74,17 +60,14 @@ pub fn insert_use(
 
         match add_blank {
             AddBlankLine::After => buf.push(make::tokens::single_newline().into()),
-            AddBlankLine::AfterTwice => {
-                buf.push(make::tokens::single_newline().into());
-                buf.push(make::tokens::single_newline().into());
-            }
+            AddBlankLine::AfterTwice => buf.push(make::tokens::blank_line().into()),
             _ => (),
         }
 
         buf
     };
 
-    algo::insert_children(&where_, insert_position, to_insert)
+    algo::insert_children(where_, insert_position, to_insert)
 }
 
 fn try_merge_imports(
@@ -613,7 +596,7 @@ use foo::bar;",
             .find_map(ast::Path::cast)
             .unwrap();
 
-        let result = insert_use(file, path, mb).to_string();
+        let result = insert_use(&file, path, mb).to_string();
         assert_eq_text!(&result, ra_fixture_after);
     }
 
