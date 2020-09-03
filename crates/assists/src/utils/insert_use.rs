@@ -1,8 +1,10 @@
 use std::iter::{self, successors};
 
 use algo::skip_trivia_token;
-use ast::{edit::AstNodeEdit, PathSegmentKind, VisibilityOwner};
-use either::Either;
+use ast::{
+    edit::{AstNodeEdit, IndentLevel},
+    PathSegmentKind, VisibilityOwner,
+};
 use syntax::{
     algo,
     ast::{self, make, AstNode},
@@ -11,56 +13,121 @@ use syntax::{
 
 use test_utils::mark;
 
-/// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
-pub(crate) fn find_insert_use_container(
-    position: &SyntaxNode,
-    ctx: &crate::assist_context::AssistContext,
-) -> Option<Either<ast::ItemList, ast::SourceFile>> {
-    ctx.sema.ancestors_with_macros(position.clone()).find_map(|n| {
-        if let Some(module) = ast::Module::cast(n.clone()) {
-            module.item_list().map(Either::Left)
+#[derive(Debug)]
+pub enum ImportScope {
+    File(ast::SourceFile),
+    Module(ast::ItemList),
+}
+
+impl ImportScope {
+    pub fn from(syntax: SyntaxNode) -> Option<Self> {
+        if let Some(module) = ast::Module::cast(syntax.clone()) {
+            module.item_list().map(ImportScope::Module)
+        } else if let this @ Some(_) = ast::SourceFile::cast(syntax.clone()) {
+            this.map(ImportScope::File)
         } else {
-            Some(Either::Right(ast::SourceFile::cast(n)?))
+            ast::ItemList::cast(syntax).map(ImportScope::Module)
         }
-    })
+    }
+
+    /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
+    pub(crate) fn find_insert_use_container(
+        position: &SyntaxNode,
+        ctx: &crate::assist_context::AssistContext,
+    ) -> Option<Self> {
+        ctx.sema.ancestors_with_macros(position.clone()).find_map(Self::from)
+    }
+
+    pub(crate) fn as_syntax_node(&self) -> &SyntaxNode {
+        match self {
+            ImportScope::File(file) => file.syntax(),
+            ImportScope::Module(item_list) => item_list.syntax(),
+        }
+    }
+
+    fn indent_level(&self) -> IndentLevel {
+        match self {
+            ImportScope::File(file) => file.indent_level(),
+            ImportScope::Module(item_list) => item_list.indent_level() + 1,
+        }
+    }
+
+    fn first_insert_pos(&self) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
+        match self {
+            ImportScope::File(_) => (InsertPosition::First, AddBlankLine::AfterTwice),
+            // don't insert the impotrs before the item lists curly brace
+            ImportScope::Module(item_list) => item_list
+                .l_curly_token()
+                .map(|b| (InsertPosition::After(b.into()), AddBlankLine::Around))
+                .unwrap_or((InsertPosition::First, AddBlankLine::AfterTwice)),
+        }
+    }
+
+    fn insert_pos_after_inner_attribute(&self) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
+        // check if the scope has a inner attributes, we dont want to insert in front of it
+        match self
+            .as_syntax_node()
+            .children()
+            // no flat_map here cause we want to short circuit the iterator
+            .map(ast::Attr::cast)
+            .take_while(|attr| {
+                attr.as_ref().map(|attr| attr.kind() == ast::AttrKind::Inner).unwrap_or(false)
+            })
+            .last()
+            .flatten()
+        {
+            Some(attr) => {
+                (InsertPosition::After(attr.syntax().clone().into()), AddBlankLine::BeforeTwice)
+            }
+            None => self.first_insert_pos(),
+        }
+    }
 }
 
 /// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
-pub fn insert_use(
-    where_: &SyntaxNode,
+pub(crate) fn insert_use(
+    scope: &ImportScope,
     path: ast::Path,
     merge: Option<MergeBehaviour>,
 ) -> SyntaxNode {
     let use_item = make::use_(make::use_tree(path.clone(), None, None, false));
     // merge into existing imports if possible
     if let Some(mb) = merge {
-        for existing_use in where_.children().filter_map(ast::Use::cast) {
+        for existing_use in scope.as_syntax_node().children().filter_map(ast::Use::cast) {
             if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
                 let to_delete: SyntaxElement = existing_use.syntax().clone().into();
                 let to_delete = to_delete.clone()..=to_delete;
                 let to_insert = iter::once(merged.syntax().clone().into());
-                return algo::replace_children(where_, to_delete, to_insert);
+                return algo::replace_children(scope.as_syntax_node(), to_delete, to_insert);
             }
         }
     }
 
     // either we weren't allowed to merge or there is no import that fits the merge conditions
     // so look for the place we have to insert to
-    let (insert_position, add_blank) = find_insert_position(where_, path);
+    let (insert_position, add_blank) = find_insert_position(scope, path);
 
     let to_insert: Vec<SyntaxElement> = {
         let mut buf = Vec::new();
 
         match add_blank {
-            AddBlankLine::Before => buf.push(make::tokens::single_newline().into()),
+            AddBlankLine::Before | AddBlankLine::Around => {
+                buf.push(make::tokens::single_newline().into())
+            }
             AddBlankLine::BeforeTwice => buf.push(make::tokens::blank_line().into()),
             _ => (),
         }
 
+        if let ident_level @ 1..=usize::MAX = scope.indent_level().0 as usize {
+            // TODO: this alone doesnt properly re-align all cases
+            buf.push(make::tokens::whitespace(&" ".repeat(4 * ident_level)).into());
+        }
         buf.push(use_item.syntax().clone().into());
 
         match add_blank {
-            AddBlankLine::After => buf.push(make::tokens::single_newline().into()),
+            AddBlankLine::After | AddBlankLine::Around => {
+                buf.push(make::tokens::single_newline().into())
+            }
             AddBlankLine::AfterTwice => buf.push(make::tokens::blank_line().into()),
             _ => (),
         }
@@ -68,7 +135,7 @@ pub fn insert_use(
         buf
     };
 
-    algo::insert_children(where_, insert_position, to_insert)
+    algo::insert_children(scope.as_syntax_node(), insert_position, to_insert)
 }
 
 fn try_merge_imports(
@@ -218,16 +285,18 @@ fn segment_iter(path: &ast::Path) -> impl Iterator<Item = ast::PathSegment> + Cl
 enum AddBlankLine {
     Before,
     BeforeTwice,
+    Around,
     After,
     AfterTwice,
 }
 
 fn find_insert_position(
-    scope: &SyntaxNode,
+    scope: &ImportScope,
     insert_path: ast::Path,
 ) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
     let group = ImportGroup::new(&insert_path);
     let path_node_iter = scope
+        .as_syntax_node()
         .children()
         .filter_map(|node| ast::Use::cast(node.clone()).zip(Some(node)))
         .flat_map(|(use_, node)| use_.use_tree().and_then(|tree| tree.path()).zip(Some(node)));
@@ -275,27 +344,7 @@ fn find_insert_position(
                             (InsertPosition::After(node.into()), AddBlankLine::BeforeTwice)
                         }
                         // there are no imports in this file at all
-                        None => {
-                            // check if the scope has a inner attributes, we dont want to insert in front of it
-                            match scope
-                                .children()
-                                // no flat_map here cause we want to short circuit the iterator
-                                .map(ast::Attr::cast)
-                                .take_while(|attr| {
-                                    attr.as_ref()
-                                        .map(|attr| attr.kind() == ast::AttrKind::Inner)
-                                        .unwrap_or(false)
-                                })
-                                .last()
-                                .flatten()
-                            {
-                                Some(attr) => (
-                                    InsertPosition::After(attr.syntax().clone().into()),
-                                    AddBlankLine::BeforeTwice,
-                                ),
-                                None => (InsertPosition::First, AddBlankLine::AfterTwice),
-                            }
-                        }
+                        None => scope.insert_pos_after_inner_attribute(),
                     },
                 }
             }
@@ -640,7 +689,10 @@ use foo::bar;",
         ra_fixture_after: &str,
         mb: Option<MergeBehaviour>,
     ) {
-        let file = ast::SourceFile::parse(ra_fixture_before).tree().syntax().clone();
+        let file = super::ImportScope::from(
+            ast::SourceFile::parse(ra_fixture_before).tree().syntax().clone(),
+        )
+        .unwrap();
         let path = ast::SourceFile::parse(&format!("use {};", path))
             .tree()
             .syntax()

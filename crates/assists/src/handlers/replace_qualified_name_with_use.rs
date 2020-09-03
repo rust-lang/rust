@@ -2,7 +2,7 @@ use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SyntaxNode, TextRang
 use test_utils::mark;
 
 use crate::{
-    utils::{find_insert_use_container, insert_use, MergeBehaviour},
+    utils::{insert_use, ImportScope, MergeBehaviour},
     AssistContext, AssistId, AssistKind, Assists,
 };
 use ast::make;
@@ -44,8 +44,8 @@ pub(crate) fn replace_qualified_name_with_use(
     };
 
     let target = path.syntax().text_range();
-    let container = find_insert_use_container(path.syntax(), ctx)?;
-    let syntax = container.either(|l| l.syntax().clone(), |r| r.syntax().clone());
+    let scope = ImportScope::find_insert_use_container(path.syntax(), ctx)?;
+    let syntax = scope.as_syntax_node();
     acc.add(
         AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),
         "Replace qualified path with use",
@@ -56,12 +56,14 @@ pub(crate) fn replace_qualified_name_with_use(
             let mut rewriter = SyntaxRewriter::default();
             shorten_paths(&mut rewriter, syntax.clone(), path);
             let rewritten_syntax = rewriter.rewrite(&syntax);
-            let new_syntax = insert_use(
-                &rewritten_syntax,
-                make::path_from_text(path_to_import),
-                Some(MergeBehaviour::Full),
-            );
-            builder.replace(syntax.text_range(), new_syntax.to_string())
+            if let Some(ref import_scope) = ImportScope::from(rewritten_syntax) {
+                let new_syntax = insert_use(
+                    import_scope,
+                    make::path_from_text(path_to_import),
+                    Some(MergeBehaviour::Full),
+                );
+                builder.replace(syntax.text_range(), new_syntax.to_string())
+            }
         },
     )
 }

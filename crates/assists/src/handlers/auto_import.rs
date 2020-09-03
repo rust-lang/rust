@@ -1,11 +1,13 @@
 use std::collections::BTreeSet;
 
+use ast::make;
 use either::Either;
 use hir::{
     AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution, Semantics, Trait,
     Type,
 };
 use ide_db::{imports_locator, RootDatabase};
+use insert_use::ImportScope;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, AstNode},
@@ -16,8 +18,6 @@ use crate::{
     utils::{insert_use, MergeBehaviour},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
-use ast::make;
-use insert_use::find_insert_use_container;
 
 // Assist: auto_import
 //
@@ -47,8 +47,9 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 
     let range = ctx.sema.original_range(&auto_import_assets.syntax_under_caret).range;
     let group = auto_import_assets.get_import_group_message();
-    let container = find_insert_use_container(&auto_import_assets.syntax_under_caret, ctx)?;
-    let syntax = container.either(|l| l.syntax().clone(), |r| r.syntax().clone());
+    let scope =
+        ImportScope::find_insert_use_container(&auto_import_assets.syntax_under_caret, ctx)?;
+    let syntax = scope.as_syntax_node();
     for import in proposed_imports {
         acc.add_group(
             &group,
@@ -57,7 +58,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
             range,
             |builder| {
                 let new_syntax = insert_use(
-                    &syntax,
+                    &scope,
                     make::path_from_text(&import.to_string()),
                     Some(MergeBehaviour::Full),
                 );

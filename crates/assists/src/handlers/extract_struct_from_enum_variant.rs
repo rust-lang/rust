@@ -15,7 +15,7 @@ use crate::{
     AssistContext, AssistId, AssistKind, Assists,
 };
 use ast::make;
-use insert_use::find_insert_use_container;
+use insert_use::ImportScope;
 
 // Assist: extract_struct_from_enum_variant
 //
@@ -110,11 +110,11 @@ fn insert_import(
     if let Some(mut mod_path) = mod_path {
         mod_path.segments.pop();
         mod_path.segments.push(variant_hir_name.clone());
-        let container = find_insert_use_container(path.syntax(), ctx)?;
-        let syntax = container.either(|l| l.syntax().clone(), |r| r.syntax().clone());
+        let scope = ImportScope::find_insert_use_container(path.syntax(), ctx)?;
+        let syntax = scope.as_syntax_node();
 
         let new_syntax = insert_use(
-            &syntax,
+            &scope,
             make::path_from_text(&mod_path.to_string()),
             Some(MergeBehaviour::Full),
         );
