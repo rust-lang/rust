@@ -553,7 +553,7 @@ impl File {
     /// the `SetFileInformationByHandle` function on Windows. Note that, this
     /// [may change in the future][changes].
     ///
-    /// [changes]: ../io/index.html#platform-specific-behavior
+    /// [changes]: io#platform-specific-behavior
     ///
     /// # Errors
     ///
@@ -1503,7 +1503,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// and the `DeleteFile` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1541,7 +1541,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// and the `GetFileAttributesEx` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1575,7 +1575,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// and the `GetFileAttributesEx` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1618,7 +1618,7 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1669,7 +1669,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// `fcopyfile`.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1707,7 +1707,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// and the `CreateHardLink` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1772,7 +1772,7 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// `FILE_FLAG_BACKUP_SEMANTICS` flags on Windows.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1812,7 +1812,7 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// with other applications (if passed to the application on the command-line,
 /// or written to a file another application may read).
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 /// [path]: https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
 ///
 /// # Errors
@@ -1846,7 +1846,7 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// and the `CreateDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// **NOTE**: If a parent of the given path doesn't exist, this function will
 /// return an error. To create a directory and all its missing parents at the
@@ -1887,7 +1887,7 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// and the `CreateDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1930,7 +1930,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// and the `RemoveDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1970,7 +1970,7 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// on Windows.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -2006,7 +2006,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// currently corresponds to `readdir` on Unix and `FindNextFile` on Windows.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// The order in which this iterator returns entries is platform and filesystem
 /// dependent.
@@ -2075,7 +2075,7 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// and the `SetFileAttributes` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
-/// [changes]: ../io/index.html#platform-specific-behavior
+/// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
 ///

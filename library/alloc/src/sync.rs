@@ -152,7 +152,7 @@ macro_rules! acquire {
 /// [upgrade]: Weak::upgrade
 /// [`RefCell<T>`]: core::cell::RefCell
 /// [`std::sync`]: ../../std/sync/index.html
-/// [`Arc::clone(&from)`]: #method.clone
+/// [`Arc::clone(&from)`]: Arc::clone
 ///
 /// # Examples
 ///
@@ -201,7 +201,7 @@ macro_rules! acquire {
 /// See the [`rc` documentation][rc_examples] for more examples of reference
 /// counting in general.
 ///
-/// [rc_examples]: ../../std/rc/index.html#examples
+/// [rc_examples]: crate::rc#examples
 #[cfg_attr(not(test), rustc_diagnostic_item = "Arc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {

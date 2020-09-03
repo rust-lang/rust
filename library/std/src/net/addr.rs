@@ -213,8 +213,6 @@ impl SocketAddr {
     ///
     /// [IP address]: IpAddr
     /// [`IPv4` address]: IpAddr::V4
-    /// [`false`]: ../../std/primitive.bool.html
-    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -235,8 +233,6 @@ impl SocketAddr {
     ///
     /// [IP address]: IpAddr
     /// [`IPv6` address]: IpAddr::V6
-    /// [`false`]: ../../std/primitive.bool.html
-    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
