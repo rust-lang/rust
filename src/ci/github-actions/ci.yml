@@ -271,7 +271,7 @@ jobs:
     name: PR
     env:
       <<: [*shared-ci-variables, *public-variables]
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     strategy:
       matrix:
         include:

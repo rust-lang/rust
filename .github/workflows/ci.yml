@@ -36,7 +36,7 @@ jobs:
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
-    if: "github.event_name == 'pull_request'"
+    if: "github.event_name == 'pull_request' && github.event.pull_request.draft == false"
     strategy:
       matrix:
         include:
