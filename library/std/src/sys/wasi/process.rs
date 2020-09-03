@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::ffi::OsStr;
 use crate::fmt;
 use crate::io;
