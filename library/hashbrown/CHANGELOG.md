@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.9.0] - 2020-09-03
+
 ### Fixed
 - `drain_filter` now removes and yields items that do match the predicate,
   rather than items that don't.  This is a **breaking change** to match the
@@ -247,7 +249,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.9.0...HEAD
+[v0.9.0]: https://github.com/rust-lang/hashbrown/compare/v0.8.2...v0.9.0
 [v0.8.2]: https://github.com/rust-lang/hashbrown/compare/v0.8.1...v0.8.2
 [v0.8.1]: https://github.com/rust-lang/hashbrown/compare/v0.8.0...v0.8.1
 [v0.8.0]: https://github.com/rust-lang/hashbrown/compare/v0.7.2...v0.8.0
