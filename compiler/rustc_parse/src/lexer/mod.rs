@@ -1,6 +1,6 @@
 use rustc_ast::ast::AttrStyle;
 use rustc_ast::token::{self, CommentKind, Token, TokenKind};
-use rustc_ast::tokenstream::{IsJoint, TokenStream};
+use rustc_ast::tokenstream::{Spacing, TokenStream};
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
@@ -54,8 +54,8 @@ impl<'a> StringReader<'a> {
     }
 
     /// Returns the next token, and info about preceding whitespace, if any.
-    fn next_token(&mut self) -> (IsJoint, Token) {
-        let mut is_joint = IsJoint::Joint;
+    fn next_token(&mut self) -> (Spacing, Token) {
+        let mut spacing = Spacing::Joint;
 
         // Skip `#!` at the start of the file
         let start_src_index = self.src_index(self.pos);
@@ -64,7 +64,7 @@ impl<'a> StringReader<'a> {
         if is_beginning_of_file {
             if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
                 self.pos = self.pos + BytePos::from_usize(shebang_len);
-                is_joint = IsJoint::NonJoint;
+                spacing = Spacing::Alone;
             }
         }
 
@@ -75,7 +75,7 @@ impl<'a> StringReader<'a> {
 
             if text.is_empty() {
                 let span = self.mk_sp(self.pos, self.pos);
-                return (is_joint, Token::new(token::Eof, span));
+                return (spacing, Token::new(token::Eof, span));
             }
 
             let token = rustc_lexer::first_token(text);
@@ -88,9 +88,9 @@ impl<'a> StringReader<'a> {
             match self.cook_lexer_token(token.kind, start) {
                 Some(kind) => {
                     let span = self.mk_sp(start, self.pos);
-                    return (is_joint, Token::new(kind, span));
+                    return (spacing, Token::new(kind, span));
                 }
-                None => is_joint = IsJoint::NonJoint,
+                None => spacing = Spacing::Alone,
             }
         }
     }

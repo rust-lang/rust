@@ -8,7 +8,7 @@
 
 use rustc_ast as ast;
 use rustc_ast::token::{self, DelimToken, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{self, IsJoint, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{self, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
@@ -437,7 +437,7 @@ pub fn tokenstream_probably_equal_for_proc_macro(
             // issue #75734 tracks resolving this.
             nt_to_tokenstream(nt, sess, *span).into_trees()
         } else {
-            TokenStream::new(vec![(tree, IsJoint::NonJoint)]).into_trees()
+            TokenStream::new(vec![(tree, Spacing::Alone)]).into_trees()
         }
     };
 
