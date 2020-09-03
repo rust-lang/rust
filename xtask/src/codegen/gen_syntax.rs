@@ -247,14 +247,14 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
         #(#display_impls)*
     };
 
-    let ast = ast.to_string().replace("T ! [ ", "T![").replace(" ] )", "])");
+    let ast = ast.to_string().replace("T ! [", "T![");
 
     let mut res = String::with_capacity(ast.len() * 2);
 
     let mut docs =
         grammar.nodes.iter().map(|it| &it.doc).chain(grammar.enums.iter().map(|it| &it.doc));
 
-    for chunk in ast.split("# [ pretty_doc_comment_placeholder_workaround ]") {
+    for chunk in ast.split("# [pretty_doc_comment_placeholder_workaround] ") {
         res.push_str(chunk);
         if let Some(doc) = docs.next() {
             write_doc_comment(&doc, &mut res);
