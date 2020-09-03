@@ -38,6 +38,7 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         StorageLive(_8);                 // scope 1 at $DIR/inline-closure-captures.rs:12:7: 12:8
         _8 = _2;                         // scope 1 at $DIR/inline-closure-captures.rs:12:7: 12:8
         (_7.0: i32) = move _8;           // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
+        StorageLive(_11);                // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
         _11 = move (_7.0: i32);          // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
         StorageLive(_9);                 // scope 2 at $DIR/inline-closure-captures.rs:11:19: 11:20
         _9 = (*((*_6).0: &i32));         // scope 2 at $DIR/inline-closure-captures.rs:11:19: 11:20
@@ -47,6 +48,7 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         (_0.1: T) = move _10;            // scope 2 at $DIR/inline-closure-captures.rs:11:18: 11:24
         StorageDead(_10);                // scope 2 at $DIR/inline-closure-captures.rs:11:23: 11:24
         StorageDead(_9);                 // scope 2 at $DIR/inline-closure-captures.rs:11:23: 11:24
+        StorageDead(_11);                // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
         StorageDead(_8);                 // scope 1 at $DIR/inline-closure-captures.rs:12:8: 12:9
         StorageDead(_7);                 // scope 1 at $DIR/inline-closure-captures.rs:12:8: 12:9
         StorageDead(_6);                 // scope 1 at $DIR/inline-closure-captures.rs:12:8: 12:9

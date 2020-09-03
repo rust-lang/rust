@@ -22,9 +22,13 @@ fn bar() -> bool {
                                          // + literal: Const { ty: fn(i32, i32) -> bool {foo}, val: Value(Scalar(<ZST>)) }
         StorageLive(_2);                 // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:6
         _2 = _1;                         // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:6
+        StorageLive(_3);                 // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
         _3 = const 1_i32;                // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
+        StorageLive(_4);                 // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
         _4 = const -1_i32;               // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
         _0 = Eq(move _3, move _4);       // scope 2 at $DIR/inline-any-operand.rs:17:5: 17:11
+        StorageDead(_4);                 // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
+        StorageDead(_3);                 // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
         StorageDead(_2);                 // scope 1 at $DIR/inline-any-operand.rs:12:12: 12:13
         StorageDead(_1);                 // scope 0 at $DIR/inline-any-operand.rs:13:1: 13:2
         return;                          // scope 0 at $DIR/inline-any-operand.rs:13:2: 13:2
