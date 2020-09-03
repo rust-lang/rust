@@ -20,34 +20,38 @@ impl FileSet {
         self.files.len()
     }
     pub fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
-        let mut base = dbg!(self.paths[&anchor].clone());
+        let mut base = self.paths[&anchor].clone();
         base.pop();
-        let path = dbg!(base).join(dbg!(path))?;
+        let path = base.join(path)?;
         self.files.get(&path).copied()
     }
 
-    pub fn file_name_and_extension(&self, file: FileId) -> Option<(&str, &str)> {
+    pub fn file_name_and_extension(&self, file: FileId) -> Option<(&str, Option<&str>)> {
         self.paths[&file].file_name_and_extension()
     }
 
-    pub fn list_files(&self, directory: FileId) -> Vec<(FileId, String)> {
-        // TODO kb determine the ways to list all applicable files
-        // Maybe leave list directory here only and the move the rest of the logic into the database impl?
-        // cache results in Salsa?
+    pub fn list_files(
+        &self,
+        anchor: FileId,
+        anchor_relative_path: Option<&str>,
+    ) -> Option<Vec<(FileId, String)>> {
+        let anchor_directory = {
+            let path = self.paths[&anchor].clone();
+            match anchor_relative_path {
+                Some(anchor_relative_path) => path.join(anchor_relative_path),
+                None => path.join("../"),
+            }
+        }?;
 
-        dbg!(directory);
-        /*
-        [crates/vfs/src/file_set.rs:30] directory = "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/"
-        [crates/vfs/src/file_set.rs:31] self.files.keys() = [
-            "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/test_mod_1/test_mod_2/test_mod_3.rs",
-            "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/test_mod_1/test_mod_2.rs",
-            "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/test_mod_1.rs",
-            "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/lib.rs",
-            "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/test_mod_3/test_mod_3_1.rs",
-            "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/test_mod_3.rs",
-        ]
-        */
-        Vec::new()
+        Some(
+            self.paths
+                .iter()
+                .filter(|(_, path)| path.starts_with(&anchor_directory))
+                // TODO kb need to ensure that no / exists after the anchor_directory
+                .filter(|(_, path)| path.ends_with(".rs"))
+                .map(|(&file_id, path)| (file_id, path.to_string()))
+                .collect(),
+        )
     }
     pub fn insert(&mut self, file_id: FileId, path: VfsPath) {
         self.files.insert(path.clone(), file_id);

@@ -171,16 +171,14 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
             module_files: &FileSet,
             module_file: FileId,
         ) -> Option<Vec<(FileId, String)>> {
-            // TODO kb resolve path thinks that the input is a file...
-            let directory_with_module_file = module_files.resolve_path(module_file, "/../")?;
-            let directory_with_applicable_modules =
-                match module_files.file_name_and_extension(module_file)? {
-                    ("mod", "rs") | ("lib", "rs") => Some(directory_with_module_file),
-                    (directory_with_module_name, "rs") => module_files
-                        .resolve_path(directory_with_module_file, directory_with_module_name),
-                    _ => None,
-                }?;
-            Some(module_files.list_files(directory_with_applicable_modules))
+            match module_files.file_name_and_extension(module_file)? {
+                ("mod", Some("rs")) | ("lib", Some("rs")) => {
+                    module_files.list_files(module_file, None)
+                }
+                (directory_with_module_name, Some("rs")) => module_files
+                    .list_files(module_file, Some(&format!("../{}/", directory_with_module_name))),
+                _ => None,
+            }
         }
 
         possible_sudmobules_opt(&self.source_root(module_file).file_set, module_file)

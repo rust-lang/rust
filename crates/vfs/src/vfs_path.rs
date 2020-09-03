@@ -48,13 +48,19 @@ impl VfsPath {
             (VfsPathRepr::VirtualPath(_), _) => false,
         }
     }
-
-    pub fn file_name_and_extension(&self) -> Option<(&str, &str)> {
+    pub fn ends_with(&self, suffix: &str) -> bool {
         match &self.0 {
-            VfsPathRepr::PathBuf(p) => p
-                .file_stem()
-                .zip(p.extension())
-                .and_then(|(name, extension)| Some((name.to_str()?, extension.to_str()?))),
+            VfsPathRepr::PathBuf(p) => p.ends_with(suffix),
+            VfsPathRepr::VirtualPath(p) => p.ends_with(suffix),
+        }
+    }
+
+    pub fn file_name_and_extension(&self) -> Option<(&str, Option<&str>)> {
+        match &self.0 {
+            VfsPathRepr::PathBuf(p) => Some((
+                p.file_stem()?.to_str()?,
+                p.extension().and_then(|extension| extension.to_str()),
+            )),
             VfsPathRepr::VirtualPath(p) => p.file_name_and_extension(),
         }
     }
@@ -259,6 +265,9 @@ impl VirtualPath {
     fn starts_with(&self, other: &VirtualPath) -> bool {
         self.0.starts_with(&other.0)
     }
+    fn ends_with(&self, suffix: &str) -> bool {
+        self.0.ends_with(suffix)
+    }
     fn pop(&mut self) -> bool {
         let pos = match self.0.rfind('/') {
             Some(pos) => pos,
@@ -279,8 +288,8 @@ impl VirtualPath {
         Some(res)
     }
 
-    pub fn file_name_and_extension(&self) -> Option<(&str, &str)> {
+    pub fn file_name_and_extension(&self) -> Option<(&str, Option<&str>)> {
         // TODO kb check if is a file
-        Some(("test_mod_1", "rs"))
+        Some(("test_mod_1", Some("rs")))
     }
 }
