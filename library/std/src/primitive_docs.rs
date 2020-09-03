@@ -510,7 +510,7 @@ mod prim_pointer {}
 /// an array. Indeed, this provides most of the API for working with arrays.
 /// Slices have a dynamic size and do not coerce to arrays.
 ///
-/// You can move elements out of an array with a slice pattern. If you want
+/// You can move elements out of an array with a [slice pattern]. If you want
 /// one element, see [`mem::replace`].
 ///
 /// # Examples
@@ -552,7 +552,7 @@ mod prim_pointer {}
 /// for x in &array { }
 /// ```
 ///
-/// You can use a slice pattern to move elements out of an array:
+/// You can use a [slice pattern] to move elements out of an array:
 ///
 /// ```
 /// fn move_away(_: String) { /* Do interesting things. */ }
@@ -567,7 +567,7 @@ mod prim_pointer {}
 /// [`Hash`]: hash::Hash
 /// [`Borrow`]: borrow::Borrow
 /// [`BorrowMut`]: borrow::BorrowMut
-///
+/// [slice pattern]: ../reference/patterns.html#slice-patterns
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_array {}
 

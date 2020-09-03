@@ -523,7 +523,7 @@ impl<T> Vec<T> {
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the given `Vec<T>`. The collection may reserve more space to avoid
-    /// frequent reallocations. After calling `reserve`, capacity will be
+    /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional`. Does nothing if
     /// capacity is already sufficient.
     ///
@@ -559,7 +559,7 @@ impl<T> Vec<T> {
     }
 
     /// Tries to reserves the minimum capacity for exactly `additional` more elements to
-    /// be inserted in the given `Vec<T>`. After calling `reserve_exact`,
+    /// be inserted in the given `Vec<T>`. After calling `try_reserve_exact`,
     /// capacity will be greater than or equal to `self.len() + additional`.
     /// Does nothing if the capacity is already sufficient.
     ///
@@ -582,7 +582,7 @@ impl<T> Vec<T> {
     ///     let mut output = Vec::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
-    ///     output.try_reserve(data.len())?;
+    ///     output.try_reserve_exact(data.len())?;
     ///
     ///     // Now we know this can't OOM in the middle of our complex work
     ///     output.extend(data.iter().map(|&val| {

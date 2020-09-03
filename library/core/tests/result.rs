@@ -1,4 +1,3 @@
-use core::array::FixedSizeArray;
 use core::ops::DerefMut;
 use core::option::*;
 

@@ -1,9 +1,9 @@
 use crate::cmp;
 use crate::fmt;
 use crate::intrinsics;
-use crate::ops::{Add, AddAssign, Try};
+use crate::ops::{Add, AddAssign, ControlFlow, Try};
 
-use super::{from_fn, LoopState};
+use super::from_fn;
 use super::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedLen};
 
 mod chain;
@@ -1164,10 +1164,10 @@ where
         #[inline]
         fn find<T, B>(
             f: &mut impl FnMut(T) -> Option<B>,
-        ) -> impl FnMut((), T) -> LoopState<(), B> + '_ {
+        ) -> impl FnMut((), T) -> ControlFlow<(), B> + '_ {
             move |(), x| match f(x) {
-                Some(x) => LoopState::Break(x),
-                None => LoopState::Continue(()),
+                Some(x) => ControlFlow::Break(x),
+                None => ControlFlow::Continue(()),
             }
         }
 
@@ -1864,13 +1864,13 @@ where
             flag: &'a mut bool,
             p: &'a mut impl FnMut(&T) -> bool,
             mut fold: impl FnMut(Acc, T) -> R + 'a,
-        ) -> impl FnMut(Acc, T) -> LoopState<Acc, R> + 'a {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> + 'a {
             move |acc, x| {
                 if p(&x) {
-                    LoopState::from_try(fold(acc, x))
+                    ControlFlow::from_try(fold(acc, x))
                 } else {
                     *flag = true;
-                    LoopState::Break(Try::from_ok(acc))
+                    ControlFlow::Break(Try::from_ok(acc))
                 }
             }
         }
@@ -1963,8 +1963,8 @@ where
     {
         let Self { iter, predicate } = self;
         iter.try_fold(init, |acc, x| match predicate(x) {
-            Some(item) => LoopState::from_try(fold(acc, item)),
-            None => LoopState::Break(Try::from_ok(acc)),
+            Some(item) => ControlFlow::from_try(fold(acc, item)),
+            None => ControlFlow::Break(Try::from_ok(acc)),
         })
         .into_try()
     }
@@ -2135,11 +2135,11 @@ where
         fn check<T, Acc, R: Try<Ok = Acc>>(
             mut n: usize,
             mut fold: impl FnMut(Acc, T) -> R,
-        ) -> impl FnMut(Acc, T) -> LoopState<Acc, R> {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> {
             move |acc, x| {
                 n -= 1;
                 let r = fold(acc, x);
-                if n == 0 { LoopState::Break(r) } else { LoopState::from_try(r) }
+                if n == 0 { ControlFlow::Break(r) } else { ControlFlow::from_try(r) }
             }
         }
 
@@ -2246,11 +2246,11 @@ where
         fn check<'a, T, Acc, R: Try<Ok = Acc>>(
             n: &'a mut usize,
             mut fold: impl FnMut(Acc, T) -> R + 'a,
-        ) -> impl FnMut(Acc, T) -> LoopState<Acc, R> + 'a {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> + 'a {
             move |acc, x| {
                 *n -= 1;
                 let r = fold(acc, x);
-                if *n == 0 { LoopState::Break(r) } else { LoopState::from_try(r) }
+                if *n == 0 { ControlFlow::Break(r) } else { ControlFlow::from_try(r) }
             }
         }
 
@@ -2414,10 +2414,10 @@ where
             state: &'a mut St,
             f: &'a mut impl FnMut(&mut St, T) -> Option<B>,
             mut fold: impl FnMut(Acc, B) -> R + 'a,
-        ) -> impl FnMut(Acc, T) -> LoopState<Acc, R> + 'a {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> + 'a {
             move |acc, x| match f(state, x) {
-                None => LoopState::Break(Try::from_ok(acc)),
-                Some(x) => LoopState::from_try(fold(acc, x)),
+                None => ControlFlow::Break(Try::from_ok(acc)),
+                Some(x) => ControlFlow::from_try(fold(acc, x)),
             }
         }
 
@@ -2638,10 +2638,10 @@ where
         let error = &mut *self.error;
         self.iter
             .try_fold(init, |acc, x| match x {
-                Ok(x) => LoopState::from_try(f(acc, x)),
+                Ok(x) => ControlFlow::from_try(f(acc, x)),
                 Err(e) => {
                     *error = Err(e);
-                    LoopState::Break(Try::from_ok(acc))
+                    ControlFlow::Break(Try::from_ok(acc))
                 }
             })
             .into_try()

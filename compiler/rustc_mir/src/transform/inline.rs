@@ -107,8 +107,14 @@ impl Inliner<'tcx> {
                     // Avoid a cycle here by only using `optimized_mir` only if we have
                     // a lower `HirId` than the callee. This ensures that the callee will
                     // not inline us. This trick only works without incremental compilation.
-                    // So don't do it if that is enabled.
-                    if !self.tcx.dep_graph.is_fully_enabled() && self_hir_id < callee_hir_id {
+                    // So don't do it if that is enabled. Also avoid inlining into generators,
+                    // since their `optimized_mir` is used for layout computation, which can
+                    // create a cycle, even when no attempt is made to inline the function
+                    // in the other direction.
+                    if !self.tcx.dep_graph.is_fully_enabled()
+                        && self_hir_id < callee_hir_id
+                        && caller_body.generator_kind.is_none()
+                    {
                         self.tcx.optimized_mir(callsite.callee)
                     } else {
                         continue;

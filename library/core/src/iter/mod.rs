@@ -308,8 +308,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::ops::Try;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::Iterator;
 
@@ -367,57 +365,3 @@ mod adapters;
 mod range;
 mod sources;
 mod traits;
-
-/// Used to make try_fold closures more like normal loops
-#[derive(PartialEq)]
-enum LoopState<C, B> {
-    Continue(C),
-    Break(B),
-}
-
-impl<C, B> Try for LoopState<C, B> {
-    type Ok = C;
-    type Error = B;
-    #[inline]
-    fn into_result(self) -> Result<Self::Ok, Self::Error> {
-        match self {
-            LoopState::Continue(y) => Ok(y),
-            LoopState::Break(x) => Err(x),
-        }
-    }
-    #[inline]
-    fn from_error(v: Self::Error) -> Self {
-        LoopState::Break(v)
-    }
-    #[inline]
-    fn from_ok(v: Self::Ok) -> Self {
-        LoopState::Continue(v)
-    }
-}
-
-impl<C, B> LoopState<C, B> {
-    #[inline]
-    fn break_value(self) -> Option<B> {
-        match self {
-            LoopState::Continue(..) => None,
-            LoopState::Break(x) => Some(x),
-        }
-    }
-}
-
-impl<R: Try> LoopState<R::Ok, R> {
-    #[inline]
-    fn from_try(r: R) -> Self {
-        match Try::into_result(r) {
-            Ok(v) => LoopState::Continue(v),
-            Err(v) => LoopState::Break(Try::from_error(v)),
-        }
-    }
-    #[inline]
-    fn into_try(self) -> R {
-        match self {
-            LoopState::Continue(v) => Try::from_ok(v),
-            LoopState::Break(v) => v,
-        }
-    }
-}

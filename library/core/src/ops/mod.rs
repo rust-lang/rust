@@ -140,6 +140,7 @@
 
 mod arith;
 mod bit;
+mod control_flow;
 mod deref;
 mod drop;
 mod function;
@@ -191,3 +192,6 @@ pub use self::unsize::CoerceUnsized;
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 pub use self::unsize::DispatchFromDyn;
+
+#[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+pub use self::control_flow::ControlFlow;

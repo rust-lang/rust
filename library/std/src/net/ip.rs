@@ -365,8 +365,9 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// assert_eq!(addr.octets(), [127, 0, 0, 1]);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn octets(&self) -> [u8; 4] {
+    pub const fn octets(&self) -> [u8; 4] {
         // This returns the order we want because s_addr is stored in big-endian.
         self.inner.s_addr.to_ne_bytes()
     }
@@ -408,8 +409,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_loopback(), true);
     /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_loopback(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_loopback(&self) -> bool {
+    pub const fn is_loopback(&self) -> bool {
         self.octets()[0] == 127
     }
 
@@ -437,8 +439,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 168, 0, 2).is_private(), true);
     /// assert_eq!(Ipv4Addr::new(192, 169, 0, 2).is_private(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_private(&self) -> bool {
+    pub const fn is_private(&self) -> bool {
         match self.octets() {
             [10, ..] => true,
             [172, b, ..] if b >= 16 && b <= 31 => true,
@@ -463,8 +466,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(169, 254, 10, 65).is_link_local(), true);
     /// assert_eq!(Ipv4Addr::new(16, 89, 10, 65).is_link_local(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_link_local(&self) -> bool {
+    pub const fn is_link_local(&self) -> bool {
         match self.octets() {
             [169, 254, ..] => true,
             _ => false,
@@ -542,10 +546,13 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(1, 1, 1, 1).is_global(), true);
     /// assert_eq!(Ipv4Addr::new(80, 9, 12, 3).is_global(), true);
     /// ```
-    pub fn is_global(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_global(&self) -> bool {
         // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
         // globally routable addresses in the 192.0.0.0/24 range.
-        if u32::from(*self) == 0xc0000009 || u32::from(*self) == 0xc000000a {
+        if u32::from_be_bytes(self.octets()) == 0xc0000009
+            || u32::from_be_bytes(self.octets()) == 0xc000000a
+        {
             return true;
         }
         !self.is_private()
@@ -577,7 +584,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(100, 127, 255, 255).is_shared(), true);
     /// assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
     /// ```
-    pub fn is_shared(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_shared(&self) -> bool {
         self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
     }
 
@@ -609,7 +617,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 0, 1, 0).is_ietf_protocol_assignment(), false);
     /// assert_eq!(Ipv4Addr::new(191, 255, 255, 255).is_ietf_protocol_assignment(), false);
     /// ```
-    pub fn is_ietf_protocol_assignment(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_ietf_protocol_assignment(&self) -> bool {
         self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
     }
 
@@ -632,7 +641,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(198, 19, 255, 255).is_benchmarking(), true);
     /// assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
     /// ```
-    pub fn is_benchmarking(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_benchmarking(&self) -> bool {
         self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
     }
 
@@ -664,7 +674,8 @@ impl Ipv4Addr {
     /// // The broadcast address is not considered as reserved for future use by this implementation
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_reserved(), false);
     /// ```
-    pub fn is_reserved(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_reserved(&self) -> bool {
         self.octets()[0] & 240 == 240 && !self.is_broadcast()
     }
 
@@ -685,8 +696,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_multicast(), true);
     /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_multicast(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_multicast(&self) -> bool {
+    pub const fn is_multicast(&self) -> bool {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
     }
 
@@ -705,9 +717,10 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_broadcast(), true);
     /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_broadcast(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_broadcast(&self) -> bool {
-        self == &Self::BROADCAST
+    pub const fn is_broadcast(&self) -> bool {
+        u32::from_be_bytes(self.octets()) == u32::from_be_bytes(Self::BROADCAST.octets())
     }
 
     /// Returns [`true`] if this address is in a range designated for documentation.
@@ -731,8 +744,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_documentation(), true);
     /// assert_eq!(Ipv4Addr::new(193, 34, 17, 19).is_documentation(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_documentation(&self) -> bool {
+    pub const fn is_documentation(&self) -> bool {
         match self.octets() {
             [192, 0, 2, _] => true,
             [198, 51, 100, _] => true,
@@ -744,6 +758,9 @@ impl Ipv4Addr {
     /// Converts this address to an IPv4-compatible [`IPv6` address].
     ///
     /// a.b.c.d becomes ::a.b.c.d
+    ///
+    /// This isn't typically the method you want; these addresses don't typically
+    /// function on modern systems. Use `to_ipv6_mapped` instead.
     ///
     /// [`IPv6` address]: Ipv6Addr
     ///
@@ -757,10 +774,13 @@ impl Ipv4Addr {
     ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0, 49152, 767)
     /// );
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_ipv6_compatible(&self) -> Ipv6Addr {
+    pub const fn to_ipv6_compatible(&self) -> Ipv6Addr {
         let [a, b, c, d] = self.octets();
-        Ipv6Addr::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, a, b, c, d])
+        Ipv6Addr {
+            inner: c::in6_addr { s6_addr: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, a, b, c, d] },
+        }
     }
 
     /// Converts this address to an IPv4-mapped [`IPv6` address].
@@ -777,10 +797,13 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped(),
     ///            Ipv6Addr::new(0, 0, 0, 0, 0, 65535, 49152, 767));
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_ipv6_mapped(&self) -> Ipv6Addr {
+    pub const fn to_ipv6_mapped(&self) -> Ipv6Addr {
         let [a, b, c, d] = self.octets();
-        Ipv6Addr::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, a, b, c, d])
+        Ipv6Addr {
+            inner: c::in6_addr { s6_addr: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, a, b, c, d] },
+        }
     }
 }
 
