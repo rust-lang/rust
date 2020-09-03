@@ -99,6 +99,7 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(fundamental)]
+#![feature(inplace_iteration)]
 #![feature(internal_uninit_const)]
 #![feature(lang_items)]
 #![feature(layout_for_ptr)]
@@ -106,6 +107,7 @@
 #![feature(map_first_last)]
 #![feature(map_into_keys_values)]
 #![feature(negative_impls)]
+#![feature(never_type)]
 #![feature(new_uninit)]
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
@@ -133,7 +135,9 @@
 #![feature(slice_partition_dedup)]
 #![feature(maybe_uninit_extra, maybe_uninit_slice)]
 #![feature(alloc_layout_extra)]
+#![feature(trusted_random_access)]
 #![feature(try_trait)]
+#![feature(type_alias_impl_trait)]
 #![feature(associated_type_bounds)]
 // Allow testing this library
 

@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
 use std::fmt::Debug;
+use std::iter::InPlaceIterable;
 use std::mem::size_of;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::rc::Rc;
 use std::vec::{Drain, IntoIter};
 
 struct DropCounter<'a> {
@@ -773,6 +775,87 @@ fn test_into_iter_leak() {
     catch_unwind(move || drop(v.into_iter())).ok();
 
     assert_eq!(unsafe { DROPS }, 3);
+}
+
+#[test]
+fn test_from_iter_specialization() {
+    let src: Vec<usize> = vec![0usize; 1];
+    let srcptr = src.as_ptr();
+    let sink = src.into_iter().collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr);
+}
+
+#[test]
+fn test_from_iter_partially_drained_in_place_specialization() {
+    let src: Vec<usize> = vec![0usize; 10];
+    let srcptr = src.as_ptr();
+    let mut iter = src.into_iter();
+    iter.next();
+    iter.next();
+    let sink = iter.collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr);
+}
+
+#[test]
+fn test_from_iter_specialization_with_iterator_adapters() {
+    fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {};
+    let src: Vec<usize> = vec![0usize; 65535];
+    let srcptr = src.as_ptr();
+    let iter = src
+        .into_iter()
+        .enumerate()
+        .map(|i| i.0 + i.1)
+        .zip(std::iter::repeat(1usize))
+        .map(|(a, b)| a + b)
+        .map_while(Option::Some)
+        .peekable()
+        .skip(1)
+        .map(|e| std::num::NonZeroUsize::new(e));
+    assert_in_place_trait(&iter);
+    let sink = iter.collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr as *const usize);
+}
+
+#[test]
+fn test_from_iter_specialization_head_tail_drop() {
+    let drop_count: Vec<_> = (0..=2).map(|_| Rc::new(())).collect();
+    let src: Vec<_> = drop_count.iter().cloned().collect();
+    let srcptr = src.as_ptr();
+    let iter = src.into_iter();
+    let sink: Vec<_> = iter.skip(1).take(1).collect();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr, "specialization was applied");
+    assert_eq!(Rc::strong_count(&drop_count[0]), 1, "front was dropped");
+    assert_eq!(Rc::strong_count(&drop_count[1]), 2, "one element was collected");
+    assert_eq!(Rc::strong_count(&drop_count[2]), 1, "tail was dropped");
+    assert_eq!(sink.len(), 1);
+}
+
+#[test]
+fn test_from_iter_specialization_panic_drop() {
+    let drop_count: Vec<_> = (0..=2).map(|_| Rc::new(())).collect();
+    let src: Vec<_> = drop_count.iter().cloned().collect();
+    let iter = src.into_iter();
+
+    let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        let _ = iter
+            .enumerate()
+            .filter_map(|(i, e)| {
+                if i == 1 {
+                    std::panic!("aborting iteration");
+                }
+                Some(e)
+            })
+            .collect::<Vec<_>>();
+    }));
+
+    assert!(
+        drop_count.iter().map(Rc::strong_count).all(|count| count == 1),
+        "all items were dropped once"
+    );
 }
 
 #[test]

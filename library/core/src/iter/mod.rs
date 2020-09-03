@@ -342,16 +342,24 @@ pub use self::traits::{DoubleEndedIterator, Extend, FromIterator, IntoIterator};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{ExactSizeIterator, Product, Sum};
 
+#[unstable(issue = "none", feature = "inplace_iteration")]
+pub use self::traits::InPlaceIterable;
+
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::adapters::Cloned;
 #[stable(feature = "iter_copied", since = "1.36.0")]
 pub use self::adapters::Copied;
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::adapters::Flatten;
+
 #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 pub use self::adapters::MapWhile;
+#[unstable(issue = "none", feature = "inplace_iteration")]
+pub use self::adapters::SourceIter;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 pub use self::adapters::StepBy;
+#[unstable(feature = "trusted_random_access", issue = "none")]
+pub use self::adapters::TrustedRandomAccess;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{Chain, Cycle, Enumerate, Filter, FilterMap, Map, Rev, Zip};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -359,7 +367,7 @@ pub use self::adapters::{FlatMap, Peekable, Scan, Skip, SkipWhile, Take, TakeWhi
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{Fuse, Inspect};
 
-pub(crate) use self::adapters::{process_results, TrustedRandomAccess};
+pub(crate) use self::adapters::process_results;
 
 mod adapters;
 mod range;

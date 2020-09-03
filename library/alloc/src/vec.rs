@@ -58,7 +58,9 @@ use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::{FromIterator, FusedIterator, TrustedLen};
+use core::iter::{
+    FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess,
+};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Bound::{Excluded, Included, Unbounded};
@@ -2012,7 +2014,7 @@ impl<T, I: SliceIndex<[T]>> IndexMut<I> for Vec<T> {
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
-        <Self as SpecExtend<T, I::IntoIter>>::from_iter(iter.into_iter())
+        <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
     }
 }
 
@@ -2094,13 +2096,39 @@ impl<T> Extend<T> for Vec<T> {
     }
 }
 
-// Specialization trait used for Vec::from_iter and Vec::extend
-trait SpecExtend<T, I> {
+/// Specialization trait used for Vec::from_iter
+///
+/// ## The delegation graph:
+///
+/// ```text
+/// +-------------+
+/// |FromIterator |
+/// +-+-----------+
+///   |
+///   v
+/// +-+-------------------------------+  +---------------------+
+/// |SpecFromIter                  +---->+SpecFromIterNested   |
+/// |where I:                      |  |  |where I:             |
+/// |  Iterator (default)----------+  |  |  Iterator (default) |
+/// |  vec::IntoIter               |  |  |  TrustedLen         |
+/// |  SourceIterMarker---fallback-+  |  |                     |
+/// |  slice::Iter                    |  |                     |
+/// |  Iterator<Item = &Clone>        |  +---------------------+
+/// +---------------------------------+
+///
+/// ```
+trait SpecFromIter<T, I> {
     fn from_iter(iter: I) -> Self;
-    fn spec_extend(&mut self, iter: I);
 }
 
-impl<T, I> SpecExtend<T, I> for Vec<T>
+/// Another specialization trait for Vec::from_iter
+/// necessary to manually prioritize overlapping specializations
+/// see [`SpecFromIter`] for details.
+trait SpecFromIterNested<T, I> {
+    fn from_iter(iter: I) -> Self;
+}
+
+impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
@@ -2122,10 +2150,224 @@ where
                 vector
             }
         };
+        // must delegate to spec_extend() since extend() itself delegates
+        // to spec_from for empty Vecs
         <Vec<T> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
         vector
     }
+}
 
+impl<T, I> SpecFromIterNested<T, I> for Vec<T>
+where
+    I: TrustedLen<Item = T>,
+{
+    fn from_iter(iterator: I) -> Self {
+        let mut vector = Vec::new();
+        // must delegate to spec_extend() since extend() itself delegates
+        // to spec_from for empty Vecs
+        vector.spec_extend(iterator);
+        vector
+    }
+}
+
+impl<T, I> SpecFromIter<T, I> for Vec<T>
+where
+    I: Iterator<Item = T>,
+{
+    default fn from_iter(iterator: I) -> Self {
+        SpecFromIterNested::from_iter(iterator)
+    }
+}
+
+// A helper struct for in-place iteration that drops the destination slice of iteration,
+// i.e. the head. The source slice (the tail) is dropped by IntoIter.
+struct InPlaceDrop<T> {
+    inner: *mut T,
+    dst: *mut T,
+}
+
+impl<T> InPlaceDrop<T> {
+    fn len(&self) -> usize {
+        unsafe { self.dst.offset_from(self.inner) as usize }
+    }
+}
+
+impl<T> Drop for InPlaceDrop<T> {
+    #[inline]
+    fn drop(&mut self) {
+        if mem::needs_drop::<T>() {
+            unsafe {
+                ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()));
+            }
+        }
+    }
+}
+
+impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
+    fn from_iter(iterator: IntoIter<T>) -> Self {
+        // A common case is passing a vector into a function which immediately
+        // re-collects into a vector. We can short circuit this if the IntoIter
+        // has not been advanced at all.
+        // When it has been advanced We can also reuse the memory and move the data to the front.
+        // But we only do so when the resulting Vec wouldn't have more unused capacity
+        // than creating it through the generic FromIterator implementation would. That limitation
+        // is not strictly necessary as Vec's allocation behavior is intentionally unspecified.
+        // But it is a conservative choice.
+        let has_advanced = iterator.buf.as_ptr() as *const _ != iterator.ptr;
+        if !has_advanced || iterator.len() >= iterator.cap / 2 {
+            unsafe {
+                let it = ManuallyDrop::new(iterator);
+                if has_advanced {
+                    ptr::copy(it.ptr, it.buf.as_ptr(), it.len());
+                }
+                return Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap);
+            }
+        }
+
+        let mut vec = Vec::new();
+        // must delegate to spec_extend() since extend() itself delegates
+        // to spec_from for empty Vecs
+        vec.spec_extend(iterator);
+        vec
+    }
+}
+
+fn write_in_place_with_drop<T>(
+    src_end: *const T,
+) -> impl FnMut(InPlaceDrop<T>, T) -> Result<InPlaceDrop<T>, !> {
+    move |mut sink, item| {
+        unsafe {
+            // the InPlaceIterable contract cannot be verified precisely here since
+            // try_fold has an exclusive reference to the source pointer
+            // all we can do is check if it's still in range
+            debug_assert!(sink.dst as *const _ <= src_end, "InPlaceIterable contract violation");
+            ptr::write(sink.dst, item);
+            sink.dst = sink.dst.add(1);
+        }
+        Ok(sink)
+    }
+}
+
+/// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
+/// source allocation, i.e. executing the pipeline in place.
+///
+/// The SourceIter parent trait is necessary for the specializing function to access the allocation
+/// which is to be reused. But it is not sufficient for the specialization to be valid. See
+/// additional bounds on the impl.
+#[rustc_unsafe_specialization_marker]
+trait SourceIterMarker: SourceIter<Source: AsIntoIter> {}
+
+// The std-internal SourceIter/InPlaceIterable traits are only implemented by chains of
+// Adapter<Adapter<Adapter<IntoIter>>> (all owned by core/std). Additional bounds
+// on the adapter implementations (beyond `impl<I: Trait> Trait for Adapter<I>`) only depend on other
+// traits already marked as specialization traits (Copy, TrustedRandomAccess, FusedIterator).
+// I.e. the marker does not depend on lifetimes of user-supplied types. Modulo the Copy hole, which
+// several other specializations already depend on.
+impl<T> SourceIterMarker for T where T: SourceIter<Source: AsIntoIter> + InPlaceIterable {}
+
+impl<T, I> SpecFromIter<T, I> for Vec<T>
+where
+    I: Iterator<Item = T> + SourceIterMarker,
+{
+    default fn from_iter(mut iterator: I) -> Self {
+        // Additional requirements which cannot expressed via trait bounds. We rely on const eval
+        // instead:
+        // a) no ZSTs as there would be no allocation to reuse and pointer arithmetic would panic
+        // b) size match as required by Alloc contract
+        // c) alignments match as required by Alloc contract
+        if mem::size_of::<T>() == 0
+            || mem::size_of::<T>()
+                != mem::size_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
+            || mem::align_of::<T>()
+                != mem::align_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
+        {
+            // fallback to more generic implementations
+            return SpecFromIterNested::from_iter(iterator);
+        }
+
+        let (src_buf, src_ptr, dst_buf, dst_end, cap) = unsafe {
+            let inner = iterator.as_inner().as_into_iter();
+            (
+                inner.buf.as_ptr(),
+                inner.ptr,
+                inner.buf.as_ptr() as *mut T,
+                inner.end as *const T,
+                inner.cap,
+            )
+        };
+
+        // use try-fold since
+        // - it vectorizes better for some iterator adapters
+        // - unlike most internal iteration methods methods it only takes a &mut self
+        // - it lets us thread the write pointer through its innards and get it back in the end
+        let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
+        let sink = iterator
+            .try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(dst_end))
+            .unwrap();
+        // iteration succeeded, don't drop head
+        let dst = mem::ManuallyDrop::new(sink).dst;
+
+        let src = unsafe { iterator.as_inner().as_into_iter() };
+        // check if SourceIter contract was upheld
+        // caveat: if they weren't we may not even make it to this point
+        debug_assert_eq!(src_buf, src.buf.as_ptr());
+        // check InPlaceIterable contract. This is only possible if the iterator advanced the
+        // source pointer at all. If it uses unchecked access via TrustedRandomAccess
+        // then the source pointer will stay in its initial position and we can't use it as reference
+        if src.ptr != src_ptr {
+            debug_assert!(
+                dst as *const _ <= src.ptr,
+                "InPlaceIterable contract violation, write pointer advanced beyond read pointer"
+            );
+        }
+
+        // drop any remaining values at the tail of the source
+        src.drop_remaining();
+        // but prevent drop of the allocation itself once IntoIter goes out of scope
+        src.forget_allocation();
+
+        let vec = unsafe {
+            let len = dst.offset_from(dst_buf) as usize;
+            Vec::from_raw_parts(dst_buf, len, cap)
+        };
+
+        vec
+    }
+}
+
+impl<'a, T: 'a, I> SpecFromIter<&'a T, I> for Vec<T>
+where
+    I: Iterator<Item = &'a T>,
+    T: Clone,
+{
+    default fn from_iter(iterator: I) -> Self {
+        SpecFromIter::from_iter(iterator.cloned())
+    }
+}
+
+impl<'a, T: 'a> SpecFromIter<&'a T, slice::Iter<'a, T>> for Vec<T>
+where
+    T: Copy,
+{
+    // reuses the extend specialization for T: Copy
+    fn from_iter(iterator: slice::Iter<'a, T>) -> Self {
+        let mut vec = Vec::new();
+        // must delegate to spec_extend() since extend() itself delegates
+        // to spec_from for empty Vecs
+        vec.spec_extend(iterator);
+        vec
+    }
+}
+
+// Specialization trait used for Vec::extend
+trait SpecExtend<T, I> {
+    fn spec_extend(&mut self, iter: I);
+}
+
+impl<T, I> SpecExtend<T, I> for Vec<T>
+where
+    I: Iterator<Item = T>,
+{
     default fn spec_extend(&mut self, iter: I) {
         self.extend_desugared(iter)
     }
@@ -2135,12 +2377,6 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
 where
     I: TrustedLen<Item = T>,
 {
-    default fn from_iter(iterator: I) -> Self {
-        let mut vector = Vec::new();
-        vector.spec_extend(iterator);
-        vector
-    }
-
     default fn spec_extend(&mut self, iterator: I) {
         // This is the case for a TrustedLen iterator.
         let (low, high) = iterator.size_hint();
@@ -2171,22 +2407,6 @@ where
 }
 
 impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
-    fn from_iter(iterator: IntoIter<T>) -> Self {
-        // A common case is passing a vector into a function which immediately
-        // re-collects into a vector. We can short circuit this if the IntoIter
-        // has not been advanced at all.
-        if iterator.buf.as_ptr() as *const _ == iterator.ptr {
-            unsafe {
-                let it = ManuallyDrop::new(iterator);
-                Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap)
-            }
-        } else {
-            let mut vector = Vec::new();
-            vector.spec_extend(iterator);
-            vector
-        }
-    }
-
     fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
         unsafe {
             self.append_elements(iterator.as_slice() as _);
@@ -2200,10 +2420,6 @@ where
     I: Iterator<Item = &'a T>,
     T: Clone,
 {
-    default fn from_iter(iterator: I) -> Self {
-        SpecExtend::from_iter(iterator.cloned())
-    }
-
     default fn spec_extend(&mut self, iterator: I) {
         self.spec_extend(iterator.cloned())
     }
@@ -2215,17 +2431,13 @@ where
 {
     fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
         let slice = iterator.as_slice();
-        self.reserve(slice.len());
-        unsafe {
-            let len = self.len();
-            let dst_slice = slice::from_raw_parts_mut(self.as_mut_ptr().add(len), slice.len());
-            dst_slice.copy_from_slice(slice);
-            self.set_len(len + slice.len());
-        }
+        unsafe { self.append_elements(slice) };
     }
 }
 
 impl<T> Vec<T> {
+    // leaf method to which various SpecFrom/SpecExtend implementations delegate when
+    // they have no further optimizations to apply
     fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
         // This is the case for a general iterator.
         //
@@ -2656,6 +2868,24 @@ impl<T> IntoIter<T> {
     fn as_raw_mut_slice(&mut self) -> *mut [T] {
         ptr::slice_from_raw_parts_mut(self.ptr as *mut T, self.len())
     }
+
+    fn drop_remaining(&mut self) {
+        if mem::needs_drop::<T>() {
+            unsafe {
+                ptr::drop_in_place(self.as_mut_slice());
+            }
+        }
+        self.ptr = self.end;
+    }
+
+    /// Relinquishes the backing allocation, equivalent to
+    /// `ptr::write(&mut self, Vec::new().into_iter())`
+    fn forget_allocation(&mut self) {
+        self.cap = 0;
+        self.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
+        self.ptr = self.buf.as_ptr();
+        self.end = self.buf.as_ptr();
+    }
 }
 
 #[stable(feature = "vec_intoiter_as_ref", since = "1.46.0")]
@@ -2712,6 +2942,17 @@ impl<T> Iterator for IntoIter<T> {
     fn count(self) -> usize {
         self.len()
     }
+
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::get_unchecked`.
+        unsafe {
+            if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2751,6 +2992,19 @@ impl<T> FusedIterator for IntoIter<T> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for IntoIter<T> {}
 
+#[doc(hidden)]
+#[unstable(issue = "none", feature = "std_internals")]
+// T: Copy as approximation for !Drop since get_unchecked does not advance self.ptr
+// and thus we can't implement drop-handling
+unsafe impl<T> TrustedRandomAccess for IntoIter<T>
+where
+    T: Copy,
+{
+    fn may_have_side_effect() -> bool {
+        false
+    }
+}
+
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 impl<T: Clone> Clone for IntoIter<T> {
     fn clone(&self) -> IntoIter<T> {
@@ -2776,6 +3030,34 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
             ptr::drop_in_place(guard.0.as_raw_mut_slice());
         }
         // now `guard` will be dropped and do the rest
+    }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<T> InPlaceIterable for IntoIter<T> {}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<T> SourceIter for IntoIter<T> {
+    type Source = IntoIter<T>;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut Self::Source {
+        self
+    }
+}
+
+// internal helper trait for in-place iteration specialization.
+#[rustc_specialization_trait]
+pub(crate) trait AsIntoIter {
+    type Item;
+    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item>;
+}
+
+impl<T> AsIntoIter for IntoIter<T> {
+    type Item = T;
+
+    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item> {
+        self
     }
 }
 
@@ -3042,7 +3324,7 @@ where
     old_len: usize,
     /// The filter test predicate.
     pred: F,
-    /// A flag that indicates a panic has occurred in the filter test prodicate.
+    /// A flag that indicates a panic has occurred in the filter test predicate.
     /// This is used as a hint in the drop implementation to prevent consumption
     /// of the remainder of the `DrainFilter`. Any unprocessed items will be
     /// backshifted in the `vec`, but no further items will be dropped or

@@ -1,7 +1,10 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
 
-use super::super::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedLen};
+use super::super::{
+    DoubleEndedIterator, ExactSizeIterator, FusedIterator, InPlaceIterable, Iterator, SourceIter,
+    TrustedLen,
+};
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -326,6 +329,32 @@ where
     B: TrustedLen,
 {
 }
+
+// Arbitrarily selects the left side of the zip iteration as extractable "source"
+// it would require negative trait bounds to be able to try both
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<S, A, B> SourceIter for Zip<A, B>
+where
+    A: SourceIter<Source = S>,
+    B: Iterator,
+    S: Iterator,
+{
+    type Source = S;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.a) }
+    }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+// Limited to Item: Copy since interaction between Zip's use of TrustedRandomAccess
+// and Drop implementation of the source is unclear.
+//
+// An additional method returning the number of times the source has been logically advanced
+// (without calling next()) would be needed to properly drop the remainder of the source.
+unsafe impl<A: InPlaceIterable, B: Iterator> InPlaceIterable for Zip<A, B> where A::Item: Copy {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Debug, B: Debug> Debug for Zip<A, B> {
