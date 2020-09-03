@@ -188,6 +188,7 @@ macro_rules! int_impl {
     };
 }
 
+int_impl!(i16, u16, 16);
 int_impl!(i32, u32, 32);
 int_impl!(i64, u64, 64);
 int_impl!(i128, u128, 128);
@@ -229,6 +230,8 @@ macro_rules! large_int {
     };
 }
 
+large_int!(u32, u16, u16, 16);
+large_int!(i32, u16, i16, 16);
 large_int!(u64, u32, u32, 32);
 large_int!(i64, u32, i32, 32);
 large_int!(u128, u64, u64, 64);
