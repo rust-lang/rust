@@ -92,6 +92,9 @@ fn test_debug_fmt() {
 
     let vec2 = vec![0, 1];
     assert_eq!("[0, 1]", format!("{:?}", vec2));
+
+    let slice: &[isize] = &[4, 5];
+    assert_eq!("[4, 5]", format!("{:?}", slice));
 }
 
 #[test]
