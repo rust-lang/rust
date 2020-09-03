@@ -139,7 +139,7 @@ These rows are **sorted by total duration**, in descending order.
 
 The following example `profile_queries.counts.txt` file results from running on
 a hello world program (a single main function that uses `println` to print
-`"hellow world").
+`"hello world").
 
 As explained above, the columns consist of `provider/pass`, `count`, `duration`:
 
