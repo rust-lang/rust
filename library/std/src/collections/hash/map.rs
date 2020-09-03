@@ -1247,7 +1247,7 @@ pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
     /// An occupied entry.
-    Occupied(RawOccupiedEntryMut<'a, K, V>),
+    Occupied(RawOccupiedEntryMut<'a, K, V, S>),
     /// A vacant entry.
     Vacant(RawVacantEntryMut<'a, K, V, S>),
 }
@@ -1255,8 +1255,8 @@ pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 /// A view into an occupied entry in a `HashMap`.
 /// It is part of the [`RawEntryMut`] enum.
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
-    base: base::RawOccupiedEntryMut<'a, K, V>,
+pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a, S: 'a> {
+    base: base::RawOccupiedEntryMut<'a, K, V, S>,
 }
 
 /// A view into a vacant entry in a `HashMap`.
@@ -1457,7 +1457,7 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V> RawOccupiedEntryMut<'a, K, V> {
+impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
     /// Gets a reference to the key in the entry.
     #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
@@ -1597,7 +1597,7 @@ impl<K: Debug, V: Debug, S> Debug for RawEntryMut<'_, K, V, S> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'_, K, V> {
+impl<K: Debug, V: Debug, S> Debug for RawOccupiedEntryMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawOccupiedEntryMut")
             .field("key", self.key())
