@@ -52,11 +52,14 @@ where
     W: Write,
 {
     let mut buf = MaybeUninit::<[u8; super::DEFAULT_BUF_SIZE]>::uninit();
-    // FIXME(#76092): This is calling `get_mut` and `get_ref` on an uninitialized
-    // `MaybeUninit`. Revisit this once we decided whether that is valid or not.
-    // This is still technically undefined behavior due to creating a reference
-    // to uninitialized data, but within libstd we can rely on more guarantees
-    // than if this code were in an external lib.
+    // FIXME: #42788
+    //
+    //   - This creates a (mut) reference to a slice of
+    //     _uninitialized_ integers, which is **undefined behavior**
+    //
+    //   - Only the standard library gets to soundly "ignore" this,
+    //     based on its privileged knowledge of unstable rustc
+    //     internals;
     unsafe {
         reader.initializer().initialize(buf.assume_init_mut());
     }
