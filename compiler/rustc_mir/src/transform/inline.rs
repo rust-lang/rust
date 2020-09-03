@@ -251,9 +251,12 @@ impl Inliner<'tcx> {
             return false;
         }
 
-        // Avoid inlining functions marked as no_sanitize if sanitizer is enabled,
-        // since instrumentation might be enabled and performed on the caller.
-        if self.tcx.sess.opts.debugging_opts.sanitizer.intersects(codegen_fn_attrs.no_sanitize) {
+        let self_no_sanitize =
+            self.codegen_fn_attrs.no_sanitize & self.tcx.sess.opts.debugging_opts.sanitizer;
+        let callee_no_sanitize =
+            codegen_fn_attrs.no_sanitize & self.tcx.sess.opts.debugging_opts.sanitizer;
+        if self_no_sanitize != callee_no_sanitize {
+            debug!("`callee has incompatible no_sanitize attribute - not inlining");
             return false;
         }
 
