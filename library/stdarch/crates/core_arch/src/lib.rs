@@ -21,7 +21,6 @@
     stdsimd,
     staged_api,
     doc_cfg,
-    mmx_target_feature,
     tbm_target_feature,
     sse4a_target_feature,
     arm_target_feature,

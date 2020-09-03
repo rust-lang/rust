@@ -2,15 +2,6 @@
 
 use crate::core_arch::x86::*;
 
-#[target_feature(enable = "mmx")]
-pub unsafe fn assert_eq_m64(a: __m64, b: __m64) {
-    union A {
-        a: __m64,
-        b: u64,
-    }
-    assert_eq!(A { a }.b, A { a: b }.b)
-}
-
 #[target_feature(enable = "sse2")]
 pub unsafe fn assert_eq_m128i(a: __m128i, b: __m128i) {
     union A {
