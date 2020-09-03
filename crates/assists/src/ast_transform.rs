@@ -166,7 +166,7 @@ impl<'a> QualifyPaths<'a> {
                     .map(|arg_list| apply(self, arg_list));
                 if let Some(type_args) = type_args {
                     let last_segment = path.segment().unwrap();
-                    path = path.with_segment(last_segment.with_type_args(type_args))
+                    path = path.with_segment(last_segment.with_generic_args(type_args))
                 }
 
                 Some(path.syntax().clone())
