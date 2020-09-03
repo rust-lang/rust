@@ -127,6 +127,7 @@ impl Callbacks for TimePassesCallbacks {
         // time because it will mess up the --prints output. See #64339.
         self.time_passes = config.opts.prints.is_empty()
             && (config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time);
+        config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
     }
 }
 
@@ -159,10 +160,7 @@ pub fn run_compiler(
         None => return Ok(()),
     };
 
-    let sopts = config::Options {
-        trimmed_def_paths: TrimmedDefPaths::GoodPath,
-        ..config::build_session_options(&matches)
-    };
+    let sopts = config::build_session_options(&matches);
     let cfg = interface::parse_cfgspecs(matches.opt_strs("cfg"));
 
     let mut dummy_config = |sopts, cfg, diagnostic_output| {
