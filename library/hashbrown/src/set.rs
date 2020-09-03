@@ -100,11 +100,9 @@ use super::map::{self, ConsumeAllOnDrop, DefaultHashBuilder, DrainFilterInner, H
 /// ```
 /// use hashbrown::HashSet;
 ///
-/// fn main() {
 /// let viking_names: HashSet<&'static str> =
 ///     [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
 /// // use the values stored in the set
-/// }
 /// ```
 ///
 /// [`Cell`]: https://doc.rust-lang.org/std/cell/struct.Cell.html
