@@ -120,11 +120,10 @@ impl<'a> CompletionContext<'a> {
                     if !matches!(definition_source.value, ModuleSource::SourceFile(_)) {
                         return None;
                     }
-                    let definition_source_file = definition_source.file_id.original_file(db);
-
-                    // TODO kb for all possible candidates
-                    let zz = db.list_some_random_files_todo(definition_source_file);
-                    dbg!(zz);
+                    let module_definition_source_file = definition_source.file_id.original_file(db);
+                    let mod_declaration_candidates =
+                        db.possible_sudmobules(module_definition_source_file);
+                    dbg!(mod_declaration_candidates);
                     // TODO kb exlude existing children from the candidates
                     let existing_children = current_module.children(db).collect::<Vec<_>>();
                     dbg!(existing_children);

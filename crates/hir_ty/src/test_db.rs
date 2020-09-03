@@ -73,6 +73,9 @@ impl FileLoader for TestDB {
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
+    fn possible_sudmobules(&self, module_file: FileId) -> Vec<(FileId, String)> {
+        FileLoaderDelegate(self).possible_sudmobules(module_file)
+    }
 }
 
 impl TestDB {

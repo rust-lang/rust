@@ -96,7 +96,7 @@ pub trait FileLoader {
     /// `#[path = "C://no/way"]`
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId>;
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
-    fn list_some_random_files_todo(&self, anchor: FileId) -> Vec<(FileId, String)>;
+    fn possible_sudmobules(&self, module_file: FileId) -> Vec<(FileId, String)>;
 }
 
 /// Database which stores all significant input facts: source code and project
@@ -166,8 +166,25 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
         self.0.source_root_crates(source_root)
     }
 
-    fn list_some_random_files_todo(&self, anchor: FileId) -> Vec<(FileId, String)> {
-        self.source_root(anchor).file_set.list_some_random_files_todo(anchor)
+    fn possible_sudmobules(&self, module_file: FileId) -> Vec<(FileId, String)> {
+        fn possible_sudmobules_opt(
+            module_files: &FileSet,
+            module_file: FileId,
+        ) -> Option<Vec<(FileId, String)>> {
+            // TODO kb resolve path thinks that the input is a file...
+            let directory_with_module_file = module_files.resolve_path(module_file, "/../")?;
+            let directory_with_applicable_modules =
+                match module_files.file_name_and_extension(module_file)? {
+                    ("mod", "rs") | ("lib", "rs") => Some(directory_with_module_file),
+                    (directory_with_module_name, "rs") => module_files
+                        .resolve_path(directory_with_module_file, directory_with_module_name),
+                    _ => None,
+                }?;
+            Some(module_files.list_files(directory_with_applicable_modules))
+        }
+
+        possible_sudmobules_opt(&self.source_root(module_file).file_set, module_file)
+            .unwrap_or_default()
     }
 }
 

@@ -20,15 +20,24 @@ impl FileSet {
         self.files.len()
     }
     pub fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
-        let mut base = self.paths[&anchor].clone();
+        let mut base = dbg!(self.paths[&anchor].clone());
         base.pop();
-        let path = base.join(path)?;
+        let path = dbg!(base).join(dbg!(path))?;
         self.files.get(&path).copied()
     }
-    pub fn list_some_random_files_todo(&self, anchor: FileId) -> Vec<(FileId, String)> {
-        let anchor_path = self.paths[&anchor].clone();
+
+    pub fn file_name_and_extension(&self, file: FileId) -> Option<(&str, &str)> {
+        self.paths[&file].file_name_and_extension()
+    }
+
+    pub fn list_files(&self, directory: FileId) -> Vec<(FileId, String)> {
+        // TODO kb determine the ways to list all applicable files
+        // Maybe leave list directory here only and the move the rest of the logic into the database impl?
+        // cache results in Salsa?
+
+        dbg!(directory);
         /*
-        [crates/vfs/src/file_set.rs:30] anchor_path = "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/lib.rs"
+        [crates/vfs/src/file_set.rs:30] directory = "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/"
         [crates/vfs/src/file_set.rs:31] self.files.keys() = [
             "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/test_mod_1/test_mod_2/test_mod_3.rs",
             "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/test_mod_1/test_mod_2.rs",
@@ -38,15 +47,6 @@ impl FileSet {
             "/Users/someonetoignore/Downloads/tmp_dir/zzzz/src/test_mod_3.rs",
         ]
         */
-
-        // TODO kb determine the ways to list all applicable files
-        // Maybe leave list directory here only and the move the rest of the logic into the database impl?
-
-        // Need to get the following things:
-        // * name of the anchor_path file (file_name, validate that it's a file!)
-        // * list of all files in the file's contai/ning directory (file_dir)
-        // * list of all files in `file_dir/file_name` or just `file_dir/`, for lib.rs or mod.rs
-        // * consider special case for /src/bin/foo.rs as a mod<|> source
         Vec::new()
     }
     pub fn insert(&mut self, file_id: FileId, path: VfsPath) {

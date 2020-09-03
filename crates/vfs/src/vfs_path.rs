@@ -49,6 +49,16 @@ impl VfsPath {
         }
     }
 
+    pub fn file_name_and_extension(&self) -> Option<(&str, &str)> {
+        match &self.0 {
+            VfsPathRepr::PathBuf(p) => p
+                .file_stem()
+                .zip(p.extension())
+                .and_then(|(name, extension)| Some((name.to_str()?, extension.to_str()?))),
+            VfsPathRepr::VirtualPath(p) => p.file_name_and_extension(),
+        }
+    }
+
     // Don't make this `pub`
     pub(crate) fn encode(&self, buf: &mut Vec<u8>) {
         let tag = match &self.0 {
@@ -267,5 +277,10 @@ impl VirtualPath {
         }
         res.0 = format!("{}/{}", res.0, path);
         Some(res)
+    }
+
+    pub fn file_name_and_extension(&self) -> Option<(&str, &str)> {
+        // TODO kb check if is a file
+        Some(("test_mod_1", "rs"))
     }
 }
