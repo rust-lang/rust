@@ -1,14 +1,12 @@
 use super::*;
-use crate::mem::{self, MaybeUninit};
-use core::array::FixedSizeArray;
 
-// Verify that the bytes of initialized RWLock are the same as in
-// libunwind. If they change, `src/UnwindRustSgx.h` in libunwind needs to
-// be changed too.
+// Verify that the byte pattern libunwind uses to initialize an RWLock is
+// equivalent to the value of RWLock::new(). If the value changes,
+// `src/UnwindRustSgx.h` in libunwind needs to be changed too.
 #[test]
 fn test_c_rwlock_initializer() {
     #[rustfmt::skip]
-    const RWLOCK_INIT: &[u8] = &[
+    const C_RWLOCK_INIT: &[u8] = &[
         /* 0x00 */ 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
         /* 0x10 */ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
         /* 0x20 */ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
@@ -20,24 +18,14 @@ fn test_c_rwlock_initializer() {
         /* 0x80 */ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
     ];
 
-    #[inline(never)]
-    fn zero_stack() {
-        test::black_box(MaybeUninit::<[RWLock; 16]>::zeroed());
-    }
-
-    #[inline(never)]
-    unsafe fn rwlock_new(init: &mut MaybeUninit<RWLock>) {
-        init.write(RWLock::new());
-    }
+    // For the test to work, we need the padding/unused bytes in RWLock to be
+    // initialized as 0. In practice, this is the case with statics.
+    static RUST_RWLOCK_INIT: RWLock = RWLock::new();
 
     unsafe {
-        // try hard to make sure that the padding/unused bytes in RWLock
-        // get initialized as 0. If the assertion below fails, that might
-        // just be an issue with the test code and not with the value of
-        // RWLOCK_INIT.
-        zero_stack();
-        let mut init = MaybeUninit::<RWLock>::zeroed();
-        rwlock_new(&mut init);
-        assert_eq!(mem::transmute::<_, [u8; 144]>(init.assume_init()).as_slice(), RWLOCK_INIT)
+        // If the assertion fails, that not necessarily an issue with the value
+        // of C_RWLOCK_INIT. It might just be an issue with the way padding
+        // bytes are initialized in the test code.
+        assert_eq!(&crate::mem::transmute_copy::<_, [u8; 144]>(&RUST_RWLOCK_INIT), C_RWLOCK_INIT);
     };
 }
