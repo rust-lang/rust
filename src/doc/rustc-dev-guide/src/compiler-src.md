@@ -5,8 +5,8 @@
 > top-level directory has separate directories for the compiler, build-system,
 > std libs, etc, rather than one huge `src/` directory.
 >
-> As of this writing, the std libs have been moved to `library/` and there is
-> an ongoing MCP to move the compiler to `compiler/`.
+> As of this writing, the std libs have been moved to `library/` and the crates
+> that make up the `rustc` compiler itself have been moved to `compiler/`
 
 Now that we have [seen what the compiler does](./overview.md), let's take a
 look at the structure of the contents of the rust-lang/rust repo.
@@ -41,12 +41,9 @@ built in a special way because it can use unstable features.
 
 > You may find it helpful to read [The Overview Chapter](./overview.md) first,
 > which gives an overview of how the compiler works. The crates mentioned in
-> this section implement the compiler.
->
-> NOTE: As of this writing, the crates all live in `src/`, but there is an MCP
-> to move them to a new `compiler/` directory.
+> this section implement the compiler, and are underneath `compiler/`
 
-The compiler crates all have names starting with `rustc_*`. These are a
+The `compiler/` crates all have names starting with `rustc_*`. These are a
 collection of around 50 interdependent crates ranging in size from tiny to
 huge. There is also the `rustc` crate which is the actual binary (i.e. the
 `main` function); it doesn't actually do anything besides calling the
