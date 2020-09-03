@@ -47,13 +47,18 @@ impl ToInternal<token::DelimToken> for Delimiter {
     }
 }
 
-impl FromInternal<(TreeAndJoint, Option<tokenstream::TokenTree>, &'_ ParseSess, &'_ mut Vec<Self>)>
-    for TokenTree<Group, Punct, Ident, Literal>
+impl
+    FromInternal<(
+        TreeAndJoint,
+        Option<&'_ tokenstream::TokenTree>,
+        &'_ ParseSess,
+        &'_ mut Vec<Self>,
+    )> for TokenTree<Group, Punct, Ident, Literal>
 {
     fn from_internal(
         ((tree, is_joint), look_ahead, sess, stack): (
             TreeAndJoint,
-            Option<tokenstream::TokenTree>,
+            Option<&tokenstream::TokenTree>,
             &ParseSess,
             &mut Vec<Self>,
         ),
