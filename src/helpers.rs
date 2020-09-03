@@ -401,6 +401,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(errno_place) = this.active_thread_ref().last_error {
             Ok(errno_place)
         } else {
+            // Allocate new place, set initial value to 0.
             let errno_layout = this.machine.layouts.u32;
             let errno_place = this.allocate(errno_layout, MiriMemoryKind::Machine.into());
             this.write_scalar(Scalar::from_u32(0), errno_place.into())?;
