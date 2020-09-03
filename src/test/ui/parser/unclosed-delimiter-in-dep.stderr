@@ -18,7 +18,7 @@ LL |     let _: usize = unclosed_delim_mod::new();
    |            expected due to this
    |
    = note: expected type `usize`
-              found enum `std::result::Result<unclosed_delim_mod::Value, ()>`
+              found enum `std::result::Result<Value, ()>`
 
 error: aborting due to 2 previous errors
 

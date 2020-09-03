@@ -84,20 +84,20 @@ LL | |     Rc::new(String::from("foo"))
 LL | | }
    | |_^
 
-error[E0277]: `std::rc::Rc<std::string::String>` cannot be sent between threads safely
+error[E0277]: `Rc<String>` cannot be sent between threads safely
   --> $DIR/auto-trait-leak.rs:14:5
    |
 LL | fn send<T: Send>(_: T) {}
    |            ---- required by this bound in `send`
 ...
 LL |     send(cycle2().clone());
-   |     ^^^^ `std::rc::Rc<std::string::String>` cannot be sent between threads safely
+   |     ^^^^ `Rc<String>` cannot be sent between threads safely
 ...
 LL | fn cycle2() -> impl Clone {
-   |                ---------- within this `impl std::clone::Clone`
+   |                ---------- within this `impl Clone`
    |
-   = help: within `impl std::clone::Clone`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::string::String>`
-   = note: required because it appears within the type `impl std::clone::Clone`
+   = help: within `impl Clone`, the trait `Send` is not implemented for `Rc<String>`
+   = note: required because it appears within the type `impl Clone`
 
 error: aborting due to 2 previous errors
 

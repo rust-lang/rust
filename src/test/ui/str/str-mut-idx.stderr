@@ -7,7 +7,7 @@ LL | fn bot<T>() -> T { loop {} }
 LL |     s[1..2] = bot();
    |               ^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn bot<T: ?Sized>() -> T { loop {} }
@@ -19,7 +19,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL |     s[1..2] = bot();
    |     ^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
    = note: the left-hand-side of an assignment must have a statically known size
 
 error[E0277]: the type `str` cannot be indexed by `usize`
@@ -28,8 +28,8 @@ error[E0277]: the type `str` cannot be indexed by `usize`
 LL |     s[1usize] = bot();
    |     ^^^^^^^^^ string indices are ranges of `usize`
    |
-   = help: the trait `std::slice::SliceIndex<str>` is not implemented for `usize`
-   = note: required because of the requirements on the impl of `std::ops::Index<usize>` for `str`
+   = help: the trait `SliceIndex<str>` is not implemented for `usize`
+   = note: required because of the requirements on the impl of `Index<usize>` for `str`
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
   --> $DIR/str-mut-idx.rs:9:15
@@ -37,7 +37,7 @@ error[E0277]: the type `str` cannot be indexed by `{integer}`
 LL |     s.get_mut(1);
    |               ^ string indices are ranges of `usize`
    |
-   = help: the trait `std::slice::SliceIndex<str>` is not implemented for `{integer}`
+   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
 
@@ -47,7 +47,7 @@ error[E0277]: the type `str` cannot be indexed by `{integer}`
 LL |     s.get_unchecked_mut(1);
    |                         ^ string indices are ranges of `usize`
    |
-   = help: the trait `std::slice::SliceIndex<str>` is not implemented for `{integer}`
+   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
 
@@ -57,8 +57,8 @@ error[E0277]: the type `str` cannot be indexed by `char`
 LL |     s['c'];
    |     ^^^^^^ string indices are ranges of `usize`
    |
-   = help: the trait `std::slice::SliceIndex<str>` is not implemented for `char`
-   = note: required because of the requirements on the impl of `std::ops::Index<char>` for `str`
+   = help: the trait `SliceIndex<str>` is not implemented for `char`
+   = note: required because of the requirements on the impl of `Index<char>` for `str`
 
 error: aborting due to 6 previous errors
 

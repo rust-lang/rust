@@ -4,8 +4,8 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL |     A as fn(str) -> A<str>;
    |     ^ doesn't have a size known at compile-time
    |
-   = help: within `main::A<str>`, the trait `std::marker::Sized` is not implemented for `str`
-   = note: required because it appears within the type `main::A<str>`
+   = help: within `A<str>`, the trait `Sized` is not implemented for `str`
+   = note: required because it appears within the type `A<str>`
    = note: the return type of a function must have a statically known size
 
 error: aborting due to previous error

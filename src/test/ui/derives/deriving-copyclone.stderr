@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `C: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `C: Copy` is not satisfied
   --> $DIR/deriving-copyclone.rs:31:13
    |
 LL | fn is_copy<T: Copy>(_: T) {}
@@ -7,12 +7,12 @@ LL | fn is_copy<T: Copy>(_: T) {}
 LL |     is_copy(B { a: 1, b: C });
    |             ^^^^^^^^^^^^^^^^
    |             |
-   |             expected an implementor of trait `std::marker::Copy`
+   |             expected an implementor of trait `Copy`
    |             help: consider borrowing here: `&B { a: 1, b: C }`
    |
-   = note: required because of the requirements on the impl of `std::marker::Copy` for `B<C>`
+   = note: required because of the requirements on the impl of `Copy` for `B<C>`
 
-error[E0277]: the trait bound `C: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `C: Clone` is not satisfied
   --> $DIR/deriving-copyclone.rs:32:14
    |
 LL | fn is_clone<T: Clone>(_: T) {}
@@ -21,12 +21,12 @@ LL | fn is_clone<T: Clone>(_: T) {}
 LL |     is_clone(B { a: 1, b: C });
    |              ^^^^^^^^^^^^^^^^
    |              |
-   |              expected an implementor of trait `std::clone::Clone`
+   |              expected an implementor of trait `Clone`
    |              help: consider borrowing here: `&B { a: 1, b: C }`
    |
-   = note: required because of the requirements on the impl of `std::clone::Clone` for `B<C>`
+   = note: required because of the requirements on the impl of `Clone` for `B<C>`
 
-error[E0277]: the trait bound `D: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `D: Copy` is not satisfied
   --> $DIR/deriving-copyclone.rs:35:13
    |
 LL | fn is_copy<T: Copy>(_: T) {}
@@ -35,10 +35,10 @@ LL | fn is_copy<T: Copy>(_: T) {}
 LL |     is_copy(B { a: 1, b: D });
    |             ^^^^^^^^^^^^^^^^
    |             |
-   |             expected an implementor of trait `std::marker::Copy`
+   |             expected an implementor of trait `Copy`
    |             help: consider borrowing here: `&B { a: 1, b: D }`
    |
-   = note: required because of the requirements on the impl of `std::marker::Copy` for `B<D>`
+   = note: required because of the requirements on the impl of `Copy` for `B<D>`
 
 error: aborting due to 3 previous errors
 

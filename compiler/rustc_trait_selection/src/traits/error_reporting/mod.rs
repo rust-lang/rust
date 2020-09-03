@@ -1342,8 +1342,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .normalize(candidate)
                     .ok();
                 match normalized {
-                    Some(normalized) => format!("\n  {:?}", normalized.value),
-                    None => format!("\n  {:?}", candidate),
+                    Some(normalized) => format!("\n  {}", normalized.value),
+                    None => format!("\n  {}", candidate),
                 }
             })
         };

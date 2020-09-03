@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `x`
   --> $DIR/borrowck-reinit.rs:6:16
    |
 LL |     let mut x = Box::new(0);
-   |         ----- move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+   |         ----- move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
 ...
 LL |     drop(x);
    |          - value moved here

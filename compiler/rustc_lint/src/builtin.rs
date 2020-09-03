@@ -40,6 +40,7 @@ use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
 use rustc_hir::{HirId, HirIdSet, Node};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{self, layout::LayoutError, Ty, TyCtxt};
 use rustc_session::lint::FutureIncompatibleInfo;
@@ -2040,7 +2041,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             // using zeroed or uninitialized memory.
             // We are extremely conservative with what we warn about.
             let conjured_ty = cx.typeck_results().expr_ty(expr);
-            if let Some((msg, span)) = ty_find_init_error(cx.tcx, conjured_ty, init) {
+            if let Some((msg, span)) =
+                with_no_trimmed_paths(|| ty_find_init_error(cx.tcx, conjured_ty, init))
+            {
                 cx.struct_span_lint(INVALID_VALUE, expr.span, |lint| {
                     let mut err = lint.build(&format!(
                         "the type `{}` does not permit {}",

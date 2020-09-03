@@ -2,7 +2,7 @@ error[E0277]: the size for values of type `W` cannot be known at compilation tim
   --> $DIR/unsized-enum2.rs:23:8
    |
 LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
-   |        - this type parameter needs to be `std::marker::Sized`
+   |        - this type parameter needs to be `Sized`
 LL |     // parameter
 LL |     VA(W),
    |        ^ doesn't have a size known at compile-time
@@ -22,7 +22,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized-enum2.rs:25:11
    |
 LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
-   |                   - this type parameter needs to be `std::marker::Sized`
+   |                   - this type parameter needs to be `Sized`
 ...
 LL |     VB{x: X},
    |           ^ doesn't have a size known at compile-time
@@ -42,7 +42,7 @@ error[E0277]: the size for values of type `Y` cannot be known at compilation tim
   --> $DIR/unsized-enum2.rs:27:15
    |
 LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
-   |                              - this type parameter needs to be `std::marker::Sized`
+   |                              - this type parameter needs to be `Sized`
 ...
 LL |     VC(isize, Y),
    |               ^ doesn't have a size known at compile-time
@@ -62,7 +62,7 @@ error[E0277]: the size for values of type `Z` cannot be known at compilation tim
   --> $DIR/unsized-enum2.rs:29:21
    |
 LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
-   |                                         - this type parameter needs to be `std::marker::Sized`
+   |                                         - this type parameter needs to be `Sized`
 ...
 LL |     VD{u: isize, x: Z},
    |                     ^ doesn't have a size known at compile-time
@@ -84,7 +84,7 @@ error[E0277]: the size for values of type `[u8]` cannot be known at compilation 
 LL |     VE([u8]),
    |        ^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = help: the trait `Sized` is not implemented for `[u8]`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -102,7 +102,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL |     VF{x: str},
    |           ^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -120,7 +120,7 @@ error[E0277]: the size for values of type `[f32]` cannot be known at compilation
 LL |     VG(isize, [f32]),
    |               ^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[f32]`
+   = help: the trait `Sized` is not implemented for `[f32]`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -138,7 +138,7 @@ error[E0277]: the size for values of type `[u32]` cannot be known at compilation
 LL |     VH{u: isize, x: [u32]},
    |                     ^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[u32]`
+   = help: the trait `Sized` is not implemented for `[u32]`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -156,7 +156,7 @@ error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known 
 LL |     VM(dyn Foo),
    |        ^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `(dyn Foo + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -174,7 +174,7 @@ error[E0277]: the size for values of type `(dyn Bar + 'static)` cannot be known 
 LL |     VN{x: dyn Bar},
    |           ^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `(dyn Bar + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn Bar + 'static)`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -192,7 +192,7 @@ error[E0277]: the size for values of type `(dyn FooBar + 'static)` cannot be kno
 LL |     VO(isize, dyn FooBar),
    |               ^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `(dyn FooBar + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn FooBar + 'static)`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -210,7 +210,7 @@ error[E0277]: the size for values of type `(dyn BarFoo + 'static)` cannot be kno
 LL |     VP{u: isize, x: dyn BarFoo},
    |                     ^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `(dyn BarFoo + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn BarFoo + 'static)`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -228,7 +228,7 @@ error[E0277]: the size for values of type `[i8]` cannot be known at compilation 
 LL |     VQ(<&'static [i8] as Deref>::Target),
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[i8]`
+   = help: the trait `Sized` is not implemented for `[i8]`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -246,7 +246,7 @@ error[E0277]: the size for values of type `[char]` cannot be known at compilatio
 LL |     VR{x: <&'static [char] as Deref>::Target},
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[char]`
+   = help: the trait `Sized` is not implemented for `[char]`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -264,7 +264,7 @@ error[E0277]: the size for values of type `[f64]` cannot be known at compilation
 LL |     VS(isize, <&'static [f64] as Deref>::Target),
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[f64]`
+   = help: the trait `Sized` is not implemented for `[f64]`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -282,7 +282,7 @@ error[E0277]: the size for values of type `[i32]` cannot be known at compilation
 LL |     VT{u: isize, x: <&'static [i32] as Deref>::Target},
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[i32]`
+   = help: the trait `Sized` is not implemented for `[i32]`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -300,7 +300,7 @@ error[E0277]: the size for values of type `(dyn PathHelper1 + 'static)` cannot b
 LL |     VI(Path1),
    |        ^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path1`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper1 + 'static)`
+   = help: within `Path1`, the trait `Sized` is not implemented for `(dyn PathHelper1 + 'static)`
    = note: required because it appears within the type `Path1`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
@@ -319,7 +319,7 @@ error[E0277]: the size for values of type `(dyn PathHelper2 + 'static)` cannot b
 LL |     VJ{x: Path2},
    |           ^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path2`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper2 + 'static)`
+   = help: within `Path2`, the trait `Sized` is not implemented for `(dyn PathHelper2 + 'static)`
    = note: required because it appears within the type `Path2`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
@@ -338,7 +338,7 @@ error[E0277]: the size for values of type `(dyn PathHelper3 + 'static)` cannot b
 LL |     VK(isize, Path3),
    |               ^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path3`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper3 + 'static)`
+   = help: within `Path3`, the trait `Sized` is not implemented for `(dyn PathHelper3 + 'static)`
    = note: required because it appears within the type `Path3`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
@@ -357,7 +357,7 @@ error[E0277]: the size for values of type `(dyn PathHelper4 + 'static)` cannot b
 LL |     VL{u: isize, x: Path4},
    |                     ^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path4`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper4 + 'static)`
+   = help: within `Path4`, the trait `Sized` is not implemented for `(dyn PathHelper4 + 'static)`
    = note: required because it appears within the type `Path4`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size

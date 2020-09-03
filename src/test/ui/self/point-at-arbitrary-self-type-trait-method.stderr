@@ -4,7 +4,7 @@ error[E0599]: no method named `foo` found for struct `A` in the current scope
 LL | trait B { fn foo(self: Box<Self>); }
    |              ---       --------- the method might not be found because of this arbitrary self type
    |              |
-   |              the method is available for `std::boxed::Box<A>` here
+   |              the method is available for `Box<A>` here
 LL | struct A;
    | --------- method `foo` not found for this
 ...

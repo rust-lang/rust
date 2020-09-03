@@ -43,7 +43,7 @@ const D = &&42;
 static S = Vec::<String>::new();
 //~^ ERROR missing type for `static` item
 //~| HELP provide a type for the item
-//~| SUGGESTION S: std::vec::Vec<std::string::String>
+//~| SUGGESTION S: Vec<String>
 
 static mut SM = "abc";
 //~^ ERROR missing type for `static mut` item

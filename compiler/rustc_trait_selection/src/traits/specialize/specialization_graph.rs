@@ -3,6 +3,7 @@ use super::OverlapError;
 use crate::traits;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType};
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 
 pub use rustc_middle::traits::specialization_graph::*;
@@ -102,7 +103,8 @@ impl ChildrenExt for Children {
                 let trait_ref = overlap.impl_header.trait_ref.unwrap();
                 let self_ty = trait_ref.self_ty();
 
-                OverlapError {
+                // FIXME: should postpone string formatting until we decide to actually emit.
+                with_no_trimmed_paths(|| OverlapError {
                     with_impl: possible_sibling,
                     trait_desc: trait_ref.print_only_trait_path().to_string(),
                     // Only report the `Self` type if it has at least
@@ -115,7 +117,7 @@ impl ChildrenExt for Children {
                     },
                     intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
                     involves_placeholder: overlap.involves_placeholder,
-                }
+                })
             };
 
             let report_overlap_error = |overlap: traits::coherence::OverlapResult<'_>,

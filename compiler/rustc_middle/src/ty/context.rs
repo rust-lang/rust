@@ -944,7 +944,7 @@ pub struct GlobalCtxt<'tcx> {
     maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
     /// A map of glob use to a set of names it actually imports. Currently only
     /// used in save-analysis.
-    glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
+    pub(crate) glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.
     pub extern_prelude: FxHashMap<Symbol, bool>,

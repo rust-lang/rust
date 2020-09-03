@@ -38,7 +38,7 @@ fn main() -> () {
         StorageLive(_3);                 // scope 1 at $DIR/box_expr.rs:8:5: 8:12
         StorageLive(_4);                 // scope 1 at $DIR/box_expr.rs:8:10: 8:11
         _4 = move _1;                    // scope 1 at $DIR/box_expr.rs:8:10: 8:11
-        _3 = std::mem::drop::<std::boxed::Box<S>>(move _4) -> [return: bb5, unwind: bb7]; // scope 1 at $DIR/box_expr.rs:8:5: 8:12
+        _3 = std::mem::drop::<Box<S>>(move _4) -> [return: bb5, unwind: bb7]; // scope 1 at $DIR/box_expr.rs:8:5: 8:12
                                          // mir::Constant
                                          // + span: $DIR/box_expr.rs:8:5: 8:9
                                          // + literal: Const { ty: fn(std::boxed::Box<S>) {std::mem::drop::<std::boxed::Box<S>>}, val: Value(Scalar(<ZST>)) }

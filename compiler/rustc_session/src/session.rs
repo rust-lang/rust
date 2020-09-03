@@ -442,6 +442,24 @@ impl Session {
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().delay_span_bug(sp, msg)
     }
+
+    /// Used for code paths of expensive computations that should only take place when
+    /// warnings or errors are emitted. If no messages are emitted ("good path"), then
+    /// it's likely a bug.
+    pub fn delay_good_path_bug(&self, msg: &str) {
+        if self.opts.debugging_opts.print_type_sizes
+            || self.opts.debugging_opts.query_dep_graph
+            || self.opts.debugging_opts.dump_mir.is_some()
+            || self.opts.debugging_opts.unpretty.is_some()
+            || self.opts.output_types.contains_key(&OutputType::Mir)
+            || std::env::var_os("RUSTC_LOG").is_some()
+        {
+            return;
+        }
+
+        self.diagnostic().delay_good_path_bug(msg)
+    }
+
     pub fn note_without_error(&self, msg: &str) {
         self.diagnostic().note_without_error(msg)
     }

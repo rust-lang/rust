@@ -1,4 +1,4 @@
-error: Trait bound i32: std::marker::Copy does not depend on any type or lifetime parameters
+error: Trait bound i32: Copy does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:5:21
    |
 LL | struct A where i32: Copy;
@@ -40,7 +40,7 @@ error: Lifetime bound 'static: 'static does not depend on any type or lifetime p
 LL | fn global_outlives() where 'static: 'static {}
    |                                     ^^^^^^^
 
-error: Trait bound i32: std::marker::Copy does not depend on any type or lifetime parameters
+error: Trait bound i32: Copy does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:38:46
    |
 LL | fn mixed_bounds<T: Copy>() where i32: X<T> + Copy {}

@@ -5,22 +5,22 @@ LL | fn foo() -> impl Quux {
    |             ^^^^^^^^^ recursive opaque type
 ...
 LL |     Foo(bar())
-   |     ---------- returning here with type `foo::Foo<impl Quux>`
+   |     ---------- returning here with type `Foo<impl Quux>`
 ...
 LL | fn bar() -> impl Quux {
-   |             --------- returning this opaque type `foo::Foo<impl Quux>`
+   |             --------- returning this opaque type `Foo<impl Quux>`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/infinite-impl-trait-issue-38064.rs:14:13
    |
 LL | fn foo() -> impl Quux {
-   |             --------- returning this opaque type `bar::Bar<impl Quux>`
+   |             --------- returning this opaque type `Bar<impl Quux>`
 ...
 LL | fn bar() -> impl Quux {
    |             ^^^^^^^^^ recursive opaque type
 ...
 LL |     Bar(foo())
-   |     ---------- returning here with type `bar::Bar<impl Quux>`
+   |     ---------- returning here with type `Bar<impl Quux>`
 
 error: aborting due to 2 previous errors
 

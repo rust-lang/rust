@@ -8,11 +8,11 @@ LL |         A(self.0 + rhs.0)
    |           ^^^^^^^^^^^^^^ expected type parameter `B`, found associated type
    |
    = note: expected type parameter `B`
-             found associated type `<B as std::ops::Add>::Output`
+             found associated type `<B as Add>::Output`
 help: consider further restricting this bound
    |
-LL | impl<B> Add for A<B> where B: Add + std::ops::Add<Output = B> {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<B> Add for A<B> where B: Add + Add<Output = B> {
+   |                                   ^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/missing-bounds.rs:21:14
@@ -24,11 +24,11 @@ LL |         Self(self.0 + rhs.0)
    |              ^^^^^^^^^^^^^^ expected type parameter `B`, found associated type
    |
    = note: expected type parameter `B`
-             found associated type `<B as std::ops::Add>::Output`
+             found associated type `<B as Add>::Output`
 help: consider further restricting this bound
    |
-LL | impl<B: Add + std::ops::Add<Output = B>> Add for C<B> {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<B: Add + Add<Output = B>> Add for C<B> {
+   |             ^^^^^^^^^^^^^^^^^
 
 error[E0369]: cannot add `B` to `B`
   --> $DIR/missing-bounds.rs:31:21

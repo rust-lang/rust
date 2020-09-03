@@ -7,7 +7,7 @@ LL |         let ss: &isize = &id(1);
 LL |     }
    |     - temporary value is freed at the end of this statement
 LL | }
-   | - borrow might be used here, when `blah` is dropped and runs the destructor for type `std::boxed::Box<dyn Foo>`
+   | - borrow might be used here, when `blah` is dropped and runs the destructor for type `Box<dyn Foo>`
    |
    = note: consider using a `let` binding to create a longer lived value
 

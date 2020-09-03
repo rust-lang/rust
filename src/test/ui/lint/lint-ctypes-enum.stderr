@@ -45,7 +45,7 @@ note: the type is defined here
 LL | enum T { E, F, G }
    | ^^^^^^^^^^^^^^^^^^
 
-error: `extern` block uses type `std::option::Option<std::ptr::Unique<u8>>`, which is not FFI-safe
+error: `extern` block uses type `Option<Unique<u8>>`, which is not FFI-safe
   --> $DIR/lint-ctypes-enum.rs:48:17
    |
 LL |    fn unique(x: Option<std::ptr::Unique<u8>>);
@@ -70,7 +70,7 @@ LL |    fn nonzero_i128(x: Option<num::NonZeroI128>);
    |
    = note: 128-bit integers don't currently have a known stable ABI
 
-error: `extern` block uses type `std::option::Option<TransparentUnion<std::num::NonZeroU8>>`, which is not FFI-safe
+error: `extern` block uses type `Option<TransparentUnion<NonZeroU8>>`, which is not FFI-safe
   --> $DIR/lint-ctypes-enum.rs:66:28
    |
 LL |    fn transparent_union(x: Option<TransparentUnion<num::NonZeroU8>>);
@@ -79,7 +79,7 @@ LL |    fn transparent_union(x: Option<TransparentUnion<num::NonZeroU8>>);
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
-error: `extern` block uses type `std::option::Option<Rust<std::num::NonZeroU8>>`, which is not FFI-safe
+error: `extern` block uses type `Option<Rust<NonZeroU8>>`, which is not FFI-safe
   --> $DIR/lint-ctypes-enum.rs:68:20
    |
 LL |    fn repr_rust(x: Option<Rust<num::NonZeroU8>>);
@@ -88,7 +88,7 @@ LL |    fn repr_rust(x: Option<Rust<num::NonZeroU8>>);
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
-error: `extern` block uses type `std::result::Result<(), std::num::NonZeroI32>`, which is not FFI-safe
+error: `extern` block uses type `std::result::Result<(), NonZeroI32>`, which is not FFI-safe
   --> $DIR/lint-ctypes-enum.rs:69:20
    |
 LL |    fn no_result(x: Result<(), num::NonZeroI32>);

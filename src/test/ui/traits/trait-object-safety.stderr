@@ -9,7 +9,7 @@ LL |     fn foo();
 LL |     let _: &dyn Tr = &St;
    |                      ^^^ the trait `Tr` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Tr>` for `&St`
+   = note: required because of the requirements on the impl of `CoerceUnsized<&dyn Tr>` for `&St`
    = note: required by cast to type `&dyn Tr`
 help: consider turning `foo` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
    |

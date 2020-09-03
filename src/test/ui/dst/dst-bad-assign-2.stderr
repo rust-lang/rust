@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `dyn ToBar` cannot be known at compila
 LL |     f5.ptr = *z;
    |     ^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `dyn ToBar`
+   = help: the trait `Sized` is not implemented for `dyn ToBar`
    = note: the left-hand-side of an assignment must have a statically known size
 
 error: aborting due to previous error

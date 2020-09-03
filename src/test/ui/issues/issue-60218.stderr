@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `for<'t> <std::iter::Map<<&'t _ as std::iter::IntoIterator>::IntoIter, _> as std::iter::Iterator>::Item: Foo` is not satisfied
+error[E0277]: the trait bound `for<'t> <Map<<&'t _ as IntoIterator>::IntoIter, _> as Iterator>::Item: Foo` is not satisfied
   --> $DIR/issue-60218.rs:18:5
    |
 LL | pub fn trigger_error<I, F>(iterable: I, functor: F)
@@ -8,7 +8,7 @@ LL | for<'t> <Map<<&'t I as IntoIterator>::IntoIter, F> as Iterator>::Item: Foo,
    |                                                                        --- required by this bound in `trigger_error`
 ...
 LL |     trigger_error(vec![], |x: &u32| x)
-   |     ^^^^^^^^^^^^^ the trait `for<'t> Foo` is not implemented for `<std::iter::Map<<&'t _ as std::iter::IntoIterator>::IntoIter, _> as std::iter::Iterator>::Item`
+   |     ^^^^^^^^^^^^^ the trait `for<'t> Foo` is not implemented for `<Map<<&'t _ as IntoIterator>::IntoIter, _> as Iterator>::Item`
 
 error: aborting due to previous error
 

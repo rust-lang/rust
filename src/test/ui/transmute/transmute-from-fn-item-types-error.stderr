@@ -13,7 +13,7 @@ error[E0591]: can't transmute zero-sized type
 LL |     let p = mem::transmute(foo);
    |             ^^^^^^^^^^^^^^
    |
-   = note: source type: unsafe fn() -> (i8, *const (), std::option::Option<fn()>) {foo}
+   = note: source type: unsafe fn() -> (i8, *const (), Option<fn()>) {foo}
    = note: target type: *const ()
    = help: cast with `as` to a pointer instead
 
@@ -24,7 +24,7 @@ LL |     let of = mem::transmute(main);
    |              ^^^^^^^^^^^^^^
    |
    = note: source type: fn() {main}
-   = note: target type: std::option::Option<fn()>
+   = note: target type: Option<fn()>
    = help: cast with `as` to a pointer instead
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
@@ -42,7 +42,7 @@ error[E0591]: can't transmute zero-sized type
 LL |     mem::transmute::<_, *mut ()>(foo);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: source type: unsafe fn() -> (i8, *const (), std::option::Option<fn()>) {foo}
+   = note: source type: unsafe fn() -> (i8, *const (), Option<fn()>) {foo}
    = note: target type: *mut ()
    = help: cast with `as` to a pointer instead
 
@@ -62,7 +62,7 @@ error[E0591]: can't transmute zero-sized type
 LL |     mem::transmute::<_, *mut ()>(Some(foo));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: source type: unsafe fn() -> (i8, *const (), std::option::Option<fn()>) {foo}
+   = note: source type: unsafe fn() -> (i8, *const (), Option<fn()>) {foo}
    = note: target type: *mut ()
    = help: cast with `as` to a pointer instead
 
@@ -83,7 +83,7 @@ LL |     mem::transmute::<_, Option<fn()>>(Some(baz));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: unsafe fn() {baz}
-   = note: target type: std::option::Option<fn()>
+   = note: target type: Option<fn()>
    = help: cast with `as` to a pointer instead
 
 error: aborting due to 9 previous errors

@@ -32,6 +32,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fast_reject;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{
@@ -778,14 +779,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
                         let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
                         let self_ty = trait_ref.self_ty();
-                        let cause = IntercrateAmbiguityCause::DownstreamCrate {
-                            trait_desc: trait_ref.print_only_trait_path().to_string(),
-                            self_desc: if self_ty.has_concrete_skeleton() {
-                                Some(self_ty.to_string())
-                            } else {
-                                None
-                            },
-                        };
+                        let cause =
+                            with_no_trimmed_paths(|| IntercrateAmbiguityCause::DownstreamCrate {
+                                trait_desc: trait_ref.print_only_trait_path().to_string(),
+                                self_desc: if self_ty.has_concrete_skeleton() {
+                                    Some(self_ty.to_string())
+                                } else {
+                                    None
+                                },
+                            });
+
                         debug!("evaluate_stack: pushing cause = {:?}", cause);
                         self.intercrate_ambiguity_causes.as_mut().unwrap().push(cause);
                     }
@@ -1030,12 +1033,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if !candidate_set.ambiguous && no_candidates_apply {
                         let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
                         let self_ty = trait_ref.self_ty();
-                        let trait_desc = trait_ref.print_only_trait_path().to_string();
-                        let self_desc = if self_ty.has_concrete_skeleton() {
-                            Some(self_ty.to_string())
-                        } else {
-                            None
-                        };
+                        let (trait_desc, self_desc) = with_no_trimmed_paths(|| {
+                            let trait_desc = trait_ref.print_only_trait_path().to_string();
+                            let self_desc = if self_ty.has_concrete_skeleton() {
+                                Some(self_ty.to_string())
+                            } else {
+                                None
+                            };
+                            (trait_desc, self_desc)
+                        });
                         let cause = if let Conflict::Upstream = conflict {
                             IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
                         } else {

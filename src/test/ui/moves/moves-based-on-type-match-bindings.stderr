@@ -7,7 +7,7 @@ LL |         Foo {f} => {}
 LL |     touch(&x);
    |           ^^ value borrowed here after partial move
    |
-   = note: partial move occurs because `x.f` has type `std::string::String`, which does not implement the `Copy` trait
+   = note: partial move occurs because `x.f` has type `String`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

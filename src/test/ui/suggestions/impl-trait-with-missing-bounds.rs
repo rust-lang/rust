@@ -4,7 +4,7 @@
 fn foo(constraints: impl  Iterator) {
     for constraint in constraints {
         qux(constraint);
-//~^ ERROR `<impl Iterator as std::iter::Iterator>::Item` doesn't implement `std::fmt::Debug`
+//~^ ERROR `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
     }
 }
 
@@ -12,7 +12,7 @@ fn bar<T>(t: T, constraints: impl Iterator) where T: std::fmt::Debug {
     for constraint in constraints {
         qux(t);
         qux(constraint);
-//~^ ERROR `<impl Iterator as std::iter::Iterator>::Item` doesn't implement `std::fmt::Debug`
+//~^ ERROR `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
     }
 }
 
@@ -20,7 +20,7 @@ fn baz(t: impl std::fmt::Debug, constraints: impl Iterator) {
     for constraint in constraints {
         qux(t);
         qux(constraint);
-//~^ ERROR `<impl Iterator as std::iter::Iterator>::Item` doesn't implement `std::fmt::Debug`
+//~^ ERROR `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
     }
 }
 
@@ -28,14 +28,14 @@ fn bat<I, T: std::fmt::Debug>(t: T, constraints: impl Iterator, _: I) {
     for constraint in constraints {
         qux(t);
         qux(constraint);
-//~^ ERROR `<impl Iterator as std::iter::Iterator>::Item` doesn't implement `std::fmt::Debug`
+//~^ ERROR `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
     }
 }
 
 fn bak(constraints: impl  Iterator + std::fmt::Debug) {
     for constraint in constraints {
         qux(constraint);
-//~^ ERROR `<impl Iterator + std::fmt::Debug as std::iter::Iterator>::Item` doesn't implement
+//~^ ERROR `<impl Iterator + std::fmt::Debug as Iterator>::Item` doesn't implement
     }
 }
 

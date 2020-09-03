@@ -6,13 +6,13 @@ LL |     let sr: Vec<(u32, _, _) = vec![];
    |         |
    |         while parsing the type for `sr`
 
-error[E0277]: a value of type `std::vec::Vec<(u32, _, _)>` cannot be built from an iterator over elements of type `()`
+error[E0277]: a value of type `Vec<(u32, _, _)>` cannot be built from an iterator over elements of type `()`
   --> $DIR/issue-34334.rs:4:87
    |
 LL |     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_receiver)| {}).collect();
-   |                                                                                       ^^^^^^^ value of type `std::vec::Vec<(u32, _, _)>` cannot be built from `std::iter::Iterator<Item=()>`
+   |                                                                                       ^^^^^^^ value of type `Vec<(u32, _, _)>` cannot be built from `std::iter::Iterator<Item=()>`
    |
-   = help: the trait `std::iter::FromIterator<()>` is not implemented for `std::vec::Vec<(u32, _, _)>`
+   = help: the trait `FromIterator<()>` is not implemented for `Vec<(u32, _, _)>`
 
 error: aborting due to 2 previous errors
 

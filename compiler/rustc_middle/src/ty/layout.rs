@@ -174,9 +174,9 @@ pub enum LayoutError<'tcx> {
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            LayoutError::Unknown(ty) => write!(f, "the type `{:?}` has an unknown layout", ty),
+            LayoutError::Unknown(ty) => write!(f, "the type `{}` has an unknown layout", ty),
             LayoutError::SizeOverflow(ty) => {
-                write!(f, "the type `{:?}` is too big for the current architecture", ty)
+                write!(f, "the type `{}` is too big for the current architecture", ty)
             }
         }
     }

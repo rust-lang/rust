@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&std::string::String: SomeTrait` is not satisfied
+error[E0277]: the trait bound `&String: SomeTrait` is not satisfied
   --> $DIR/trait-suggest-deferences-issue-62530.rs:13:26
    |
 LL | fn takes_type_parameter<T>(_x: T) where T: SomeTrait {}
@@ -7,7 +7,7 @@ LL | fn takes_type_parameter<T>(_x: T) where T: SomeTrait {}
 LL |     takes_type_parameter(&string);  // Error
    |                          ^^^^^^^
    |                          |
-   |                          the trait `SomeTrait` is not implemented for `&std::string::String`
+   |                          the trait `SomeTrait` is not implemented for `&String`
    |                          help: consider adding dereference here: `&*string`
 
 error: aborting due to previous error

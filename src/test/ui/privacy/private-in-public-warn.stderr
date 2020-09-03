@@ -306,7 +306,7 @@ LL |     struct Priv;
 LL |         type Check = Priv;
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
-error: private trait `aliases_priv::PrivTr1` in public interface (error E0445)
+error: private trait `PrivTr1` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:249:5
    |
 LL |     pub trait Tr1: PrivUseAliasTr {}
@@ -315,7 +315,7 @@ LL |     pub trait Tr1: PrivUseAliasTr {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
-error: private trait `aliases_priv::PrivTr1<aliases_priv::Priv2>` in public interface (error E0445)
+error: private trait `PrivTr1<Priv2>` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:252:5
    |
 LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
@@ -324,7 +324,7 @@ LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
-error: private type `aliases_priv::Priv2` in public interface (error E0446)
+error: private type `Priv2` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:252:5
    |
 LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}

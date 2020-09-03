@@ -4,7 +4,7 @@ extern crate enums;
 use enums::{EmptyNonExhaustiveEnum, NonExhaustiveEnum};
 
 fn empty(x: EmptyNonExhaustiveEnum) {
-    match x {} //~ ERROR type `enums::EmptyNonExhaustiveEnum` is non-empty
+    match x {} //~ ERROR type `EmptyNonExhaustiveEnum` is non-empty
     match x {
         _ => {}, // ok
     }

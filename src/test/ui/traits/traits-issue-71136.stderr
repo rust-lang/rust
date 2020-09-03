@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `Foo: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `Foo: Clone` is not satisfied
   --> $DIR/traits-issue-71136.rs:5:5
    |
 LL |     the_foos: Vec<Foo>,
-   |     ^^^^^^^^^^^^^^^^^^ expected an implementor of trait `std::clone::Clone`
+   |     ^^^^^^^^^^^^^^^^^^ expected an implementor of trait `Clone`
    |
-   = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<Foo>`
-   = note: required by `std::clone::Clone::clone`
+   = note: required because of the requirements on the impl of `Clone` for `Vec<Foo>`
+   = note: required by `clone`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

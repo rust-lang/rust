@@ -1,6 +1,6 @@
-// MIR for `std::intrinsics::drop_in_place` before AddMovesForPackedDrops
+// MIR for `drop_in_place` before AddMovesForPackedDrops
 
-fn std::intrinsics::drop_in_place(_1: *mut std::vec::Vec<i32>) -> () {
+fn drop_in_place(_1: *mut Vec<i32>) -> () {
     let mut _0: ();                      // return place in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     let mut _2: &mut std::vec::Vec<i32>; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     let mut _3: ();                      // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -35,7 +35,7 @@ fn std::intrinsics::drop_in_place(_1: *mut std::vec::Vec<i32>) -> () {
 
     bb7: {
         _2 = &mut (*_1);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-        _3 = <std::vec::Vec<i32> as std::ops::Drop>::drop(move _2) -> [return: bb6, unwind: bb5]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _3 = <Vec<i32> as Drop>::drop(move _2) -> [return: bb6, unwind: bb5]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // + literal: Const { ty: for<'r> fn(&'r mut std::vec::Vec<i32>) {<std::vec::Vec<i32> as std::ops::Drop>::drop}, val: Value(Scalar(<ZST>)) }

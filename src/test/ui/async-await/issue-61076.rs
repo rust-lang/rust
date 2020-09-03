@@ -39,7 +39,7 @@ async fn foo() -> Result<(), ()> {
 }
 
 async fn bar() -> Result<(), ()> {
-    foo()?; //~ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
+    foo()?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
     Ok(())
 }
 
@@ -53,7 +53,7 @@ async fn tuple() -> Tuple {
 
 async fn baz() -> Result<(), ()> {
     let t = T;
-    t?; //~ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
+    t?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
 
     let _: i32 = tuple().0; //~ ERROR no field `0`
 

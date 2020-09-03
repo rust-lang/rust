@@ -1,4 +1,4 @@
-error[E0451]: field `x` of struct `foo::bar::S` is private
+error[E0451]: field `x` of struct `S` is private
   --> $DIR/struct-literal-field.rs:18:9
    |
 LL |     S { x: 0 };

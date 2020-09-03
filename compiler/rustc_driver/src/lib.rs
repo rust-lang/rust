@@ -32,7 +32,7 @@ use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};
 use rustc_session::config::nightly_options;
-use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest};
+use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
 use rustc_session::getopts;
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::{config, DiagnosticOutput, Session};
@@ -126,6 +126,7 @@ impl Callbacks for TimePassesCallbacks {
         // time because it will mess up the --prints output. See #64339.
         self.time_passes = config.opts.prints.is_empty()
             && (config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time);
+        config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
     }
 }
 

@@ -361,7 +361,7 @@ LL |                 drop(x);
 LL |                 drop(x);
    |                      ^ value used here after move
    |
-   = note: move occurs because `x` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
+   = note: move occurs because `x` has type `Vec<i32>`, which does not implement the `Copy` trait
 
 error: aborting due to 32 previous errors
 

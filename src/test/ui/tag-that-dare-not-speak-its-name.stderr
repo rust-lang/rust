@@ -2,12 +2,12 @@ error[E0308]: mismatched types
   --> $DIR/tag-that-dare-not-speak-its-name.rs:11:20
    |
 LL |     let x : char = last(y);
-   |             ----   ^^^^^^^ expected `char`, found enum `std::option::Option`
+   |             ----   ^^^^^^^ expected `char`, found enum `Option`
    |             |
    |             expected due to this
    |
    = note: expected type `char`
-              found enum `std::option::Option<_>`
+              found enum `Option<_>`
 
 error: aborting due to previous error
 

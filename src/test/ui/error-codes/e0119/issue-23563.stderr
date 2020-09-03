@@ -5,8 +5,8 @@ LL | impl<'a, T> LolFrom<&'a [T]> for LocalType<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `issue_23563_a`:
-           - impl<T, U> a::LolFrom<T> for U
-             where T: a::LolInto<U>;
+           - impl<T, U> LolFrom<T> for U
+             where T: LolInto<U>;
 
 error: aborting due to previous error
 

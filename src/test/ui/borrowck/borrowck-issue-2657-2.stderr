@@ -4,7 +4,7 @@ error[E0507]: cannot move out of `*y` which is behind a shared reference
 LL |         let _b = *y;
    |                  ^^
    |                  |
-   |                  move occurs because `*y` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+   |                  move occurs because `*y` has type `Box<i32>`, which does not implement the `Copy` trait
    |                  help: consider borrowing here: `&*y`
 
 error: aborting due to previous error

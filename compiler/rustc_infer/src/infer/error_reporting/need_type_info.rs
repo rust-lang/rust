@@ -611,11 +611,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let sig = self.tcx.fn_sig(did);
                     let bound_output = sig.output();
                     let output = bound_output.skip_binder();
-                    err.span_label(e.span, &format!("this method call resolves to `{:?}`", output));
+                    err.span_label(e.span, &format!("this method call resolves to `{}`", output));
                     let kind = &output.kind;
                     if let ty::Projection(proj) = kind {
                         if let Some(span) = self.tcx.hir().span_if_local(proj.item_def_id) {
-                            err.span_label(span, &format!("`{:?}` defined here", output));
+                            err.span_label(span, &format!("`{}` defined here", output));
                         }
                     }
                 }

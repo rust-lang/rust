@@ -4,7 +4,7 @@ error[E0507]: cannot move out of `*x` which is behind a raw pointer
 LL |     let y = *x;
    |             ^^
    |             |
-   |             move occurs because `*x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |             move occurs because `*x` has type `Box<isize>`, which does not implement the `Copy` trait
    |             help: consider borrowing here: `&*x`
 
 error: aborting due to previous error

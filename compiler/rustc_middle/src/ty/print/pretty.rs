@@ -7,10 +7,13 @@ use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_ast as ast;
 use rustc_attr::{SignedInt, UnsignedInt};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_hir::ItemKind;
+use rustc_session::config::TrimmedDefPaths;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::abi::{Integer, Size};
 use rustc_target::spec::abi::Abi;
@@ -52,6 +55,7 @@ macro_rules! define_scoped_cx {
 thread_local! {
     static FORCE_IMPL_FILENAME_LINE: Cell<bool> = Cell::new(false);
     static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = Cell::new(false);
+    static NO_TRIMMED_PATH: Cell<bool> = Cell::new(false);
     static NO_QUERIES: Cell<bool> = Cell::new(false);
 }
 
@@ -87,6 +91,18 @@ pub fn with_forced_impl_filename_line<F: FnOnce() -> R, R>(f: F) -> R {
 /// Adds the `crate::` prefix to paths where appropriate.
 pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
     SHOULD_PREFIX_WITH_CRATE.with(|flag| {
+        let old = flag.replace(true);
+        let result = f();
+        flag.set(old);
+        result
+    })
+}
+
+/// Prevent path trimming if it is turned on. Path trimming affects `Display` impl
+/// of various rustc types, for example `std::vec::Vec` would be trimmed to `Vec`,
+/// if no other `Vec` is found.
+pub fn with_no_trimmed_paths<F: FnOnce() -> R, R>(f: F) -> R {
+    NO_TRIMMED_PATH.with(|flag| {
         let old = flag.replace(true);
         let result = f();
         flag.set(old);
@@ -241,6 +257,28 @@ pub trait PrettyPrinter<'tcx>:
     fn try_print_visible_def_path(self, def_id: DefId) -> Result<(Self, bool), Self::Error> {
         let mut callers = Vec::new();
         self.try_print_visible_def_path_recur(def_id, &mut callers)
+    }
+
+    /// Try to see if this path can be trimmed to a unique symbol name.
+    fn try_print_trimmed_def_path(
+        mut self,
+        def_id: DefId,
+    ) -> Result<(Self::Path, bool), Self::Error> {
+        if !self.tcx().sess.opts.debugging_opts.trim_diagnostic_paths
+            || matches!(self.tcx().sess.opts.trimmed_def_paths, TrimmedDefPaths::Never)
+            || NO_TRIMMED_PATH.with(|flag| flag.get())
+            || SHOULD_PREFIX_WITH_CRATE.with(|flag| flag.get())
+        {
+            return Ok((self, false));
+        }
+
+        match self.tcx().trimmed_def_paths(LOCAL_CRATE).get(&def_id) {
+            None => return Ok((self, false)),
+            Some(symbol) => {
+                self.write_str(&symbol.as_str())?;
+                return Ok((self, true));
+            }
+        }
     }
 
     /// Does the work of `try_print_visible_def_path`, building the
@@ -1324,6 +1362,11 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
         define_scoped_cx!(self);
 
         if substs.is_empty() {
+            match self.try_print_trimmed_def_path(def_id)? {
+                (cx, true) => return Ok(cx),
+                (cx, false) => self = cx,
+            }
+
             match self.try_print_visible_def_path(def_id)? {
                 (cx, true) => return Ok(cx),
                 (cx, false) => self = cx,
@@ -2063,4 +2106,135 @@ define_print_and_forward_display! {
             GenericArgKind::Const(ct) => p!(print(ct)),
         }
     }
+}
+
+fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, Namespace, DefId)) {
+    // Iterate all local crate items no matter where they are defined.
+    let hir = tcx.hir();
+    for item in hir.krate().items.values() {
+        if item.ident.name.as_str().is_empty() {
+            continue;
+        }
+
+        match item.kind {
+            ItemKind::Use(_, _) => {
+                continue;
+            }
+            _ => {}
+        }
+
+        if let Some(local_def_id) = hir.definitions().opt_hir_id_to_local_def_id(item.hir_id) {
+            let def_id = local_def_id.to_def_id();
+            let ns = tcx.def_kind(def_id).ns().unwrap_or(Namespace::TypeNS);
+            collect_fn(&item.ident, ns, def_id);
+        }
+    }
+
+    // Now take care of extern crate items.
+    let queue = &mut Vec::new();
+    let mut seen_defs: DefIdSet = Default::default();
+
+    for &cnum in tcx.crates().iter() {
+        let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+
+        // Ignore crates that are not direct dependencies.
+        match tcx.extern_crate(def_id) {
+            None => continue,
+            Some(extern_crate) => {
+                if !extern_crate.is_direct() {
+                    continue;
+                }
+            }
+        }
+
+        queue.push(def_id);
+    }
+
+    // Iterate external crate defs but be mindful about visibility
+    while let Some(def) = queue.pop() {
+        for child in tcx.item_children(def).iter() {
+            if child.vis != ty::Visibility::Public {
+                continue;
+            }
+
+            match child.res {
+                def::Res::Def(DefKind::AssocTy, _) => {}
+                def::Res::Def(defkind, def_id) => {
+                    if let Some(ns) = defkind.ns() {
+                        collect_fn(&child.ident, ns, def_id);
+                    }
+
+                    if seen_defs.insert(def_id) {
+                        queue.push(def_id);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// The purpose of this function is to collect public symbols names that are unique across all
+/// crates in the build. Later, when printing about types we can use those names instead of the
+/// full exported path to them.
+///
+/// So essentially, if a symbol name can only be imported from one place for a type, and as
+/// long as it was not glob-imported anywhere in the current crate, we can trim its printed
+/// path and print only the name.
+///
+/// This has wide implications on error messages with types, for example, shortening
+/// `std::vec::Vec` to just `Vec`, as long as there is no other `Vec` importable anywhere.
+///
+/// The implementation uses similar import discovery logic to that of 'use' suggestions.
+fn trimmed_def_paths(tcx: TyCtxt<'_>, crate_num: CrateNum) -> FxHashMap<DefId, Symbol> {
+    assert_eq!(crate_num, LOCAL_CRATE);
+
+    let mut map = FxHashMap::default();
+
+    if let TrimmedDefPaths::GoodPath = tcx.sess.opts.trimmed_def_paths {
+        // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
+        // wrapper can be used to suppress this query, in exchange for full paths being formatted.
+        tcx.sess.delay_good_path_bug("trimmed_def_paths constructed");
+    }
+
+    let unique_symbols_rev: &mut FxHashMap<(Namespace, Symbol), Option<DefId>> =
+        &mut FxHashMap::default();
+
+    for symbol_set in tcx.glob_map.values() {
+        for symbol in symbol_set {
+            unique_symbols_rev.insert((Namespace::TypeNS, *symbol), None);
+            unique_symbols_rev.insert((Namespace::ValueNS, *symbol), None);
+            unique_symbols_rev.insert((Namespace::MacroNS, *symbol), None);
+        }
+    }
+
+    for_each_def(tcx, |ident, ns, def_id| {
+        use std::collections::hash_map::Entry::{Occupied, Vacant};
+
+        match unique_symbols_rev.entry((ns, ident.name)) {
+            Occupied(mut v) => match v.get() {
+                None => {}
+                Some(existing) => {
+                    if *existing != def_id {
+                        v.insert(None);
+                    }
+                }
+            },
+            Vacant(v) => {
+                v.insert(Some(def_id));
+            }
+        }
+    });
+
+    for ((_, symbol), opt_def_id) in unique_symbols_rev.drain() {
+        if let Some(def_id) = opt_def_id {
+            map.insert(def_id, symbol);
+        }
+    }
+
+    map
+}
+
+pub fn provide(providers: &mut ty::query::Providers) {
+    *providers = ty::query::Providers { trimmed_def_paths, ..*providers };
 }

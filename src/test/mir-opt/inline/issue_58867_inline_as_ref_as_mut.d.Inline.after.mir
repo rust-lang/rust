@@ -1,6 +1,6 @@
 // MIR for `d` after Inline
 
-fn d(_1: &std::boxed::Box<T>) -> &T {
+fn d(_1: &Box<T>) -> &T {
     debug x => _1;                       // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:17:13: 17:14
     let mut _0: &T;                      // return place in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:17:28: 17:30
     let _2: &T;                          // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15

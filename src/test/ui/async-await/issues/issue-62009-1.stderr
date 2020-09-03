@@ -33,8 +33,8 @@ error[E0277]: `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]` is not a future
 LL |     (|_| 2333).await;
    |     ^^^^^^^^^^^^^^^^ `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]` is not a future
    |
-   = help: the trait `std::future::Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]`
-   = note: required by `std::future::Future::poll`
+   = help: the trait `Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]`
+   = note: required by `poll`
 
 error: aborting due to 4 previous errors
 

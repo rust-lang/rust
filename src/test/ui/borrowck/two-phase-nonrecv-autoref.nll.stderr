@@ -11,7 +11,7 @@ error[E0382]: use of moved value: `f`
   --> $DIR/two-phase-nonrecv-autoref.rs:59:11
    |
 LL |     fn twice_ten_so<F: FnOnce(i32) -> i32>(f: Box<F>) {
-   |                                            - move occurs because `f` has type `std::boxed::Box<F>`, which does not implement the `Copy` trait
+   |                                            - move occurs because `f` has type `Box<F>`, which does not implement the `Copy` trait
 LL |         f(f(10));
    |         - ^ value used here after move
    |         |
@@ -30,7 +30,7 @@ error[E0382]: use of moved value: `f`
   --> $DIR/two-phase-nonrecv-autoref.rs:73:11
    |
 LL |     fn twice_ten_oo(f: Box<dyn FnOnce(i32) -> i32>) {
-   |                     - move occurs because `f` has type `std::boxed::Box<dyn std::ops::FnOnce(i32) -> i32>`, which does not implement the `Copy` trait
+   |                     - move occurs because `f` has type `Box<dyn FnOnce(i32) -> i32>`, which does not implement the `Copy` trait
 LL |         f(f(10));
    |         - ^ value used here after move
    |         |

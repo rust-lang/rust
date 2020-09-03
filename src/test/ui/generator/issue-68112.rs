@@ -50,7 +50,7 @@ fn test2() {
         yield;
     };
     require_send(send_gen);
-    //~^ ERROR `std::cell::RefCell<i32>` cannot be shared between threads safely
+    //~^ ERROR `RefCell<i32>` cannot be shared between threads safely
 }
 
 fn main() {}

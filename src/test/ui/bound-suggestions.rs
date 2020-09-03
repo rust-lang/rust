@@ -1,5 +1,9 @@
 // run-rustfix
 
+#[allow(unused)]
+use std::fmt::Debug;
+// Rustfix should add this, or use `std::fmt::Debug` instead.
+
 #[allow(dead_code)]
 fn test_impl(t: impl Sized) {
     println!("{:?}", t);

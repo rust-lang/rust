@@ -328,6 +328,23 @@ impl Default for ErrorOutputType {
     }
 }
 
+/// Parameter to control path trimming.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum TrimmedDefPaths {
+    /// `try_print_trimmed_def_path` never prints a trimmed path and never calls the expensive query
+    Never,
+    /// `try_print_trimmed_def_path` calls the expensive query, the query doesn't call `delay_good_path_bug`
+    Always,
+    /// `try_print_trimmed_def_path` calls the expensive query, the query calls `delay_good_path_bug`
+    GoodPath,
+}
+
+impl Default for TrimmedDefPaths {
+    fn default() -> Self {
+        Self::Never
+    }
+}
+
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
 /// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
 /// dependency tracking for command-line arguments.
@@ -621,6 +638,7 @@ impl Default for Options {
             unstable_features: UnstableFeatures::Disallow,
             debug_assertions: true,
             actually_rustdoc: false,
+            trimmed_def_paths: TrimmedDefPaths::default(),
             cli_forced_codegen_units: None,
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
@@ -1811,6 +1829,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         unstable_features: UnstableFeatures::from_environment(),
         debug_assertions,
         actually_rustdoc: false,
+        trimmed_def_paths: TrimmedDefPaths::default(),
         cli_forced_codegen_units: codegen_units,
         cli_forced_thinlto_off: disable_thinlto,
         remap_path_prefix,
@@ -2057,7 +2076,7 @@ crate mod dep_tracking {
     use super::{
         CFGuard, CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel,
         OutputTypes, Passes, SanitizerSet, SourceFileHashAlgorithm, SwitchWithOptPath,
-        SymbolManglingVersion,
+        SymbolManglingVersion, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::utils::NativeLibKind;
@@ -2138,6 +2157,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(SwitchWithOptPath);
     impl_dep_tracking_hash_via_hash!(SymbolManglingVersion);
     impl_dep_tracking_hash_via_hash!(Option<SourceFileHashAlgorithm>);
+    impl_dep_tracking_hash_via_hash!(TrimmedDefPaths);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);

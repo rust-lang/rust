@@ -8,8 +8,8 @@ LL |     type This = Self;
    |
 help: consider further restricting `Self`
    |
-LL | trait MyTrait: std::marker::Sized {
-   |              ^^^^^^^^^^^^^^^^^^^^
+LL | trait MyTrait: Sized {
+   |              ^^^^^^^
 
 error: aborting due to previous error
 

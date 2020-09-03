@@ -7,14 +7,14 @@ LL | #![feature(specialization)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
 
-error[E0277]: the trait bound `str: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `str: Clone` is not satisfied
   --> $DIR/deafult-associated-type-bound-1.rs:18:5
    |
 LL |     type U: Clone;
    |     -------------- required by `X::U`
 ...
 LL |     default type U = str;
-   |     ^^^^^^^^^^^^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `str`
+   |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `str`
 
 error: aborting due to previous error; 1 warning emitted
 

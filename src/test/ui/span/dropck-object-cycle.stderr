@@ -8,7 +8,7 @@ LL | }
    | -
    | |
    | `*m` dropped here while still borrowed
-   | borrow might be used here, when `m` is dropped and runs the destructor for type `std::boxed::Box<dyn Trait<'_>>`
+   | borrow might be used here, when `m` is dropped and runs the destructor for type `Box<dyn Trait<'_>>`
 
 error: aborting due to previous error
 

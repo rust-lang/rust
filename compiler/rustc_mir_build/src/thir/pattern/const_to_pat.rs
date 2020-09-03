@@ -2,6 +2,7 @@ use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::Field;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::Span;
@@ -118,7 +119,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             }
 
             if let Some(non_sm_ty) = structural {
-                let msg = match non_sm_ty {
+                let msg = with_no_trimmed_paths(|| match non_sm_ty {
                     traits::NonStructuralMatchTy::Adt(adt_def) => {
                         let path = self.tcx().def_path_str(adt_def.did);
                         format!(
@@ -148,7 +149,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     traits::NonStructuralMatchTy::Foreign => {
                         bug!("use of a value of a foreign type inside a pattern")
                     }
-                };
+                });
 
                 // double-check there even *is* a semantic `PartialEq` to dispatch to.
                 //

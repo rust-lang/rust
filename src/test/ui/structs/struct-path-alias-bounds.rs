@@ -7,5 +7,5 @@ type A = S<NoClone>;
 
 fn main() {
     let s = A { a: NoClone };
-    //~^ ERROR the trait bound `NoClone: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `NoClone: Clone` is not satisfied
 }

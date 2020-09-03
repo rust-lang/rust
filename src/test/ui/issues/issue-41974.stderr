@@ -5,7 +5,7 @@ LL | impl<T> Drop for T where T: A {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `alloc`:
-           - impl<T> std::ops::Drop for std::boxed::Box<T>
+           - impl<T> Drop for Box<T>
              where T: ?Sized;
    = note: downstream crates may implement trait `A` for type `std::boxed::Box<_>`
 

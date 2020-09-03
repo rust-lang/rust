@@ -96,7 +96,7 @@ LL |     let a @ (ref mut b, ref mut c) = (U, U);
    |         |    |          value borrowed here after move
    |         |    value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `(main::U, main::U)` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `(U, U)` which does not implement the `Copy` trait
 
 error: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-twice.rs:70:9
@@ -108,7 +108,7 @@ LL |     let a @ (b, [c, d]) = &mut val; // Same as ^--
    |         |    |   value borrowed here after move
    |         |    value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `&mut (main::U, [main::U; 2])` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `&mut (U, [U; 2])` which does not implement the `Copy` trait
 
 error: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-twice.rs:74:9
@@ -118,7 +118,7 @@ LL |     let a @ &mut ref mut b = &mut U;
    |         |        |
    |         |        value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `&mut main::U` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `&mut U` which does not implement the `Copy` trait
 
 error: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-twice.rs:77:9
@@ -129,7 +129,7 @@ LL |     let a @ &mut (ref mut b, ref mut c) = &mut (U, U);
    |         |         |          value borrowed here after move
    |         |         value borrowed here after move
    |         value moved into `a` here
-   |         move occurs because `a` has type `&mut (main::U, main::U)` which does not implement the `Copy` trait
+   |         move occurs because `a` has type `&mut (U, U)` which does not implement the `Copy` trait
 
 error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:82:9
@@ -286,7 +286,7 @@ error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-twice.rs:66:25
    |
 LL |     let a @ (ref mut b, ref mut c) = (U, U);
-   |         ----------------^^^^^^^^^-   ------ move occurs because value has type `(main::U, main::U)`, which does not implement the `Copy` trait
+   |         ----------------^^^^^^^^^-   ------ move occurs because value has type `(U, U)`, which does not implement the `Copy` trait
    |         |               |
    |         |               value borrowed here after move
    |         value moved here
@@ -295,7 +295,7 @@ error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-twice.rs:70:21
    |
 LL |     let a @ (b, [c, d]) = &mut val; // Same as ^--
-   |         ------------^--   -------- move occurs because value has type `&mut (main::U, [main::U; 2])`, which does not implement the `Copy` trait
+   |         ------------^--   -------- move occurs because value has type `&mut (U, [U; 2])`, which does not implement the `Copy` trait
    |         |           |
    |         |           value borrowed here after move
    |         value moved here
@@ -304,7 +304,7 @@ error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-twice.rs:74:18
    |
 LL |     let a @ &mut ref mut b = &mut U;
-   |         ---------^^^^^^^^^   ------ move occurs because value has type `&mut main::U`, which does not implement the `Copy` trait
+   |         ---------^^^^^^^^^   ------ move occurs because value has type `&mut U`, which does not implement the `Copy` trait
    |         |        |
    |         |        value borrowed here after move
    |         value moved here
@@ -313,7 +313,7 @@ error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-twice.rs:77:30
    |
 LL |     let a @ &mut (ref mut b, ref mut c) = &mut (U, U);
-   |         ---------------------^^^^^^^^^-   ----------- move occurs because value has type `&mut (main::U, main::U)`, which does not implement the `Copy` trait
+   |         ---------------------^^^^^^^^^-   ----------- move occurs because value has type `&mut (U, U)`, which does not implement the `Copy` trait
    |         |                    |
    |         |                    value borrowed here after move
    |         value moved here

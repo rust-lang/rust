@@ -5,7 +5,7 @@
 use crate::mir::interpret;
 use crate::mir::ProjectionKind;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use crate::ty::print::{FmtPrinter, Printer};
+use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::{self, InferConst, Lift, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
@@ -20,7 +20,9 @@ use std::sync::Arc;
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
-            FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.def_id, &[])?;
+            with_no_trimmed_paths(|| {
+                FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.def_id, &[])
+            })?;
             Ok(())
         })
     }
@@ -29,7 +31,9 @@ impl fmt::Debug for ty::TraitDef {
 impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
-            FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.did, &[])?;
+            with_no_trimmed_paths(|| {
+                FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.did, &[])
+            })?;
             Ok(())
         })
     }
@@ -50,7 +54,7 @@ impl fmt::Debug for ty::UpvarBorrow<'tcx> {
 
 impl fmt::Debug for ty::ExistentialTraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+        with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
     }
 }
 
@@ -183,13 +187,13 @@ impl fmt::Debug for ty::FloatVarValue {
 
 impl fmt::Debug for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+        with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
     }
 }
 
 impl fmt::Debug for Ty<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+        with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
     }
 }
 

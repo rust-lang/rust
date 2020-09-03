@@ -5,7 +5,7 @@ LL | struct X<T>(T);
    |          - required by this bound in `X`
 ...
 LL | struct Struct5<T: ?Sized>{
-   |                - this type parameter needs to be `std::marker::Sized`
+   |                - this type parameter needs to be `Sized`
 LL |     _t: X<T>,
    |         ^^^^ doesn't have a size known at compile-time
    |
@@ -28,8 +28,8 @@ LL | struct Struct1<T>{
    |
 help: consider further restricting `Self`
    |
-LL |     fn func1() -> Struct1<Self> where Self: std::marker::Sized;
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn func1() -> Struct1<Self> where Self: Sized;
+   |                                 ^^^^^^^^^^^^^^^^^
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Struct1<T: ?Sized>{
@@ -46,8 +46,8 @@ LL | struct Struct2<'a, T>{
    |
 help: consider further restricting `Self`
    |
-LL |     fn func2<'a>() -> Struct2<'a, Self> where Self: std::marker::Sized;
-   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn func2<'a>() -> Struct2<'a, Self> where Self: Sized;
+   |                                         ^^^^^^^^^^^^^^^^^
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Struct2<'a, T: ?Sized>{
@@ -71,8 +71,8 @@ LL |     _t: T,
    |         - ...if indirection was used here: `Box<T>`
 help: consider further restricting `Self`
    |
-LL |     fn func3() -> Struct3<Self> where Self: std::marker::Sized;
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn func3() -> Struct3<Self> where Self: Sized;
+   |                                 ^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/adt-param-with-implicit-sized-bound.rs:5:19
@@ -85,8 +85,8 @@ LL | struct Struct4<T>{
    |
 help: consider further restricting `Self`
    |
-LL |     fn func4() -> Struct4<Self> where Self: std::marker::Sized;
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn func4() -> Struct4<Self> where Self: Sized;
+   |                                 ^^^^^^^^^^^^^^^^^
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Struct4<T: ?Sized>{

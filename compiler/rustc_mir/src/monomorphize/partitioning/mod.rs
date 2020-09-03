@@ -100,6 +100,7 @@ use rustc_data_structures::sync;
 use rustc_hir::def_id::{CrateNum, DefIdSet, LOCAL_CRATE};
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
@@ -374,7 +375,7 @@ fn collect_and_partition_mono_items<'tcx>(
         let mut item_keys: Vec<_> = items
             .iter()
             .map(|i| {
-                let mut output = i.to_string();
+                let mut output = with_no_trimmed_paths(|| i.to_string());
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);

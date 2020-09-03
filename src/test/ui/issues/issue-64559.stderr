@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `orig`
   --> $DIR/issue-64559.rs:4:20
    |
 LL |     let orig = vec![true];
-   |         ---- move occurs because `orig` has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+   |         ---- move occurs because `orig` has type `Vec<bool>`, which does not implement the `Copy` trait
 LL |     for _val in orig {}
    |                 ----
    |                 |

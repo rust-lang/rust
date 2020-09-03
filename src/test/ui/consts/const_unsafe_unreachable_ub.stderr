@@ -5,7 +5,7 @@ LL |     unsafe { intrinsics::unreachable() }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
    |              entering unreachable code
-   |              inside `std::hint::unreachable_unchecked` at $SRC_DIR/core/src/hint.rs:LL:COL
+   |              inside `unreachable_unchecked` at $SRC_DIR/core/src/hint.rs:LL:COL
    |              inside `foo` at $DIR/const_unsafe_unreachable_ub.rs:9:18
    |              inside `BAR` at $DIR/const_unsafe_unreachable_ub.rs:14:28
    | 

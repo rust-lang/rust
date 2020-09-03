@@ -7,11 +7,11 @@ LL | #![feature(impl_trait_in_bindings)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
 
-error[E0282]: type annotations needed for `impl std::future::Future`
+error[E0282]: type annotations needed for `impl Future`
   --> $DIR/cannot-infer-async-enabled-impl-trait-bindings.rs:13:9
    |
 LL |     let fut = async {
-   |         --- consider giving `fut` the explicit type `impl std::future::Future`, with the type parameters specified
+   |         --- consider giving `fut` the explicit type `impl Future`, with the type parameters specified
 LL |         make_unit()?;
    |         ^^^^^^^^^^^^ cannot infer type
 

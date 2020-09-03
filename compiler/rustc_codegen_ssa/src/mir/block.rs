@@ -16,6 +16,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::{AllocId, ConstValue, Pointer, Scalar};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
@@ -479,14 +480,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 UninitValid => !layout.might_permit_raw_init(bx, /*zero:*/ false).unwrap(),
             };
             if do_panic {
-                let msg_str = if layout.abi.is_uninhabited() {
-                    // Use this error even for the other intrinsics as it is more precise.
-                    format!("attempted to instantiate uninhabited type `{}`", ty)
-                } else if intrinsic == ZeroValid {
-                    format!("attempted to zero-initialize type `{}`, which is invalid", ty)
-                } else {
-                    format!("attempted to leave type `{}` uninitialized, which is invalid", ty)
-                };
+                let msg_str = with_no_trimmed_paths(|| {
+                    if layout.abi.is_uninhabited() {
+                        // Use this error even for the other intrinsics as it is more precise.
+                        format!("attempted to instantiate uninhabited type `{}`", ty)
+                    } else if intrinsic == ZeroValid {
+                        format!("attempted to zero-initialize type `{}`, which is invalid", ty)
+                    } else {
+                        format!("attempted to leave type `{}` uninitialized, which is invalid", ty)
+                    }
+                });
                 let msg = bx.const_str(Symbol::intern(&msg_str));
                 let location = self.get_caller_location(bx, span).immediate();
 

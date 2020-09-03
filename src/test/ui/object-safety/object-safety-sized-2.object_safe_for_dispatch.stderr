@@ -9,7 +9,7 @@ LL |     where Self : Sized
 LL |     t
    |     ^ the trait `Bar` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Bar>` for `&T`
+   = note: required because of the requirements on the impl of `CoerceUnsized<&dyn Bar>` for `&T`
    = note: required by cast to type `&dyn Bar`
 
 error: aborting due to previous error

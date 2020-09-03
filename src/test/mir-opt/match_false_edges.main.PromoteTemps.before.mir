@@ -36,7 +36,7 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/match_false_edges.rs:35:13: 40:6
         StorageLive(_2);                 // scope 0 at $DIR/match_false_edges.rs:35:19: 35:26
-        _2 = std::option::Option::<i32>::Some(const 1_i32); // scope 0 at $DIR/match_false_edges.rs:35:19: 35:26
+        _2 = Option::<i32>::Some(const 1_i32); // scope 0 at $DIR/match_false_edges.rs:35:19: 35:26
         FakeRead(ForMatchedPlace, _2);   // scope 0 at $DIR/match_false_edges.rs:35:19: 35:26
         _4 = discriminant(_2);           // scope 0 at $DIR/match_false_edges.rs:36:9: 36:17
         switchInt(move _4) -> [1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/match_false_edges.rs:36:9: 36:17

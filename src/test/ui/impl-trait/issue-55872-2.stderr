@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `impl std::future::Future: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `impl Future: Copy` is not satisfied
   --> $DIR/issue-55872-2.rs:13:14
    |
-LL |     type E = impl Copy;
-   |              ^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `impl std::future::Future`
+LL |     type E = impl std::marker::Copy;
+   |              ^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `impl Future`
    |
    = note: the return type of a function must have a statically known size
 

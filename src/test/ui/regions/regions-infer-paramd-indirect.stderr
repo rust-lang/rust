@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |         self.f = b;
    |                  ^ lifetime mismatch
    |
-   = note: expected struct `std::boxed::Box<std::boxed::Box<&'a isize>>`
-              found struct `std::boxed::Box<std::boxed::Box<&isize>>`
+   = note: expected struct `Box<Box<&'a isize>>`
+              found struct `Box<Box<&isize>>`
 note: the anonymous lifetime #2 defined on the method body at 21:5...
   --> $DIR/regions-infer-paramd-indirect.rs:21:5
    |

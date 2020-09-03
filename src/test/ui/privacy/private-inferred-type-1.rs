@@ -13,6 +13,6 @@ mod m {
 }
 
 fn main() {
-    [].arr0_secret(); //~ ERROR type `m::Priv` is private
-    None.ty_param_secret(); //~ ERROR type `m::Priv` is private
+    [].arr0_secret(); //~ ERROR type `Priv` is private
+    None.ty_param_secret(); //~ ERROR type `Priv` is private
 }

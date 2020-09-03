@@ -2,10 +2,10 @@ error[E0308]: mismatched types
   --> $DIR/mut-ref-reassignment.rs:2:11
    |
 LL |     opt = None;
-   |           ^^^^ expected mutable reference, found enum `std::option::Option`
+   |           ^^^^ expected mutable reference, found enum `Option`
    |
-   = note: expected mutable reference `&mut std::option::Option<std::string::String>`
-                           found enum `std::option::Option<_>`
+   = note: expected mutable reference `&mut Option<String>`
+                           found enum `Option<_>`
 help: consider dereferencing here to assign to the mutable borrowed piece of memory
    |
 LL |     *opt = None;
@@ -15,19 +15,19 @@ error[E0308]: mismatched types
   --> $DIR/mut-ref-reassignment.rs:6:11
    |
 LL |     opt = None
-   |           ^^^^ expected mutable reference, found enum `std::option::Option`
+   |           ^^^^ expected mutable reference, found enum `Option`
    |
-   = note: expected mutable reference `&mut std::result::Result<std::string::String, ()>`
-                           found enum `std::option::Option<_>`
+   = note: expected mutable reference `&mut std::result::Result<String, ()>`
+                           found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/mut-ref-reassignment.rs:10:11
    |
 LL |     opt = Some(String::new())
-   |           ^^^^^^^^^^^^^^^^^^^ expected mutable reference, found enum `std::option::Option`
+   |           ^^^^^^^^^^^^^^^^^^^ expected mutable reference, found enum `Option`
    |
-   = note: expected mutable reference `&mut std::option::Option<std::string::String>`
-                           found enum `std::option::Option<std::string::String>`
+   = note: expected mutable reference `&mut Option<String>`
+                           found enum `Option<String>`
 help: consider dereferencing here to assign to the mutable borrowed piece of memory
    |
 LL |     *opt = Some(String::new())
@@ -37,10 +37,10 @@ error[E0308]: mismatched types
   --> $DIR/mut-ref-reassignment.rs:14:11
    |
 LL |     opt = Some(42)
-   |           ^^^^^^^^ expected mutable reference, found enum `std::option::Option`
+   |           ^^^^^^^^ expected mutable reference, found enum `Option`
    |
-   = note: expected mutable reference `&mut std::option::Option<std::string::String>`
-                           found enum `std::option::Option<{integer}>`
+   = note: expected mutable reference `&mut Option<String>`
+                           found enum `Option<{integer}>`
 
 error: aborting due to 4 previous errors
 

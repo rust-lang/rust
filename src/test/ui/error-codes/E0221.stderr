@@ -31,7 +31,7 @@ LL |         let _: Self::Err;
    |                ambiguous associated type `Err`
    |                help: use fully qualified syntax to disambiguate: `<Self as My>::Err`
    |
-   = note: associated type `Self` could derive from `std::str::FromStr`
+   = note: associated type `Self` could derive from `FromStr`
 
 error: aborting due to 2 previous errors
 

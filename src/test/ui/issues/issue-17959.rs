@@ -9,7 +9,7 @@ struct G<T: ?Sized> {
 }
 
 impl<T> Drop for G<T> {
-//~^ ERROR `Drop` impl requires `T: std::marker::Sized`
+//~^ ERROR `Drop` impl requires `T: Sized`
     fn drop(&mut self) {
         if !self._ptr.is_null() {
         }

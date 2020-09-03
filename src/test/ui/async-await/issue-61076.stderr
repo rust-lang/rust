@@ -1,16 +1,16 @@
-error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/issue-61076.rs:42:5
    |
 LL |     foo()?;
    |     ^^^^^^
    |     |
-   |     the `?` operator cannot be applied to type `impl std::future::Future`
+   |     the `?` operator cannot be applied to type `impl Future`
    |     help: consider using `.await` here: `foo().await?`
    |
-   = help: the trait `std::ops::Try` is not implemented for `impl std::future::Future`
-   = note: required by `std::ops::Try::into_result`
+   = help: the trait `Try` is not implemented for `impl Future`
+   = note: required by `into_result`
 
-error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/issue-61076.rs:56:5
    |
 LL |     t?;
@@ -19,10 +19,10 @@ LL |     t?;
    |     the `?` operator cannot be applied to type `T`
    |     help: consider using `.await` here: `t.await?`
    |
-   = help: the trait `std::ops::Try` is not implemented for `T`
-   = note: required by `std::ops::Try::into_result`
+   = help: the trait `Try` is not implemented for `T`
+   = note: required by `into_result`
 
-error[E0609]: no field `0` on type `impl std::future::Future`
+error[E0609]: no field `0` on type `impl Future`
   --> $DIR/issue-61076.rs:58:26
    |
 LL |     let _: i32 = tuple().0;
@@ -33,7 +33,7 @@ help: consider awaiting before field access
 LL |     let _: i32 = tuple().await.0;
    |                         ^^^^^^
 
-error[E0609]: no field `a` on type `impl std::future::Future`
+error[E0609]: no field `a` on type `impl Future`
   --> $DIR/issue-61076.rs:60:28
    |
 LL |     let _: i32 = struct_().a;
@@ -44,11 +44,11 @@ help: consider awaiting before field access
 LL |     let _: i32 = struct_().await.a;
    |                           ^^^^^^
 
-error[E0599]: no method named `method` found for opaque type `impl std::future::Future` in the current scope
+error[E0599]: no method named `method` found for opaque type `impl Future` in the current scope
   --> $DIR/issue-61076.rs:62:15
    |
 LL |     struct_().method();
-   |               ^^^^^^ method not found in `impl std::future::Future`
+   |               ^^^^^^ method not found in `impl Future`
    |
 help: consider awaiting before this method call
    |
@@ -64,7 +64,7 @@ LL | async fn tuple() -> Tuple {
 LL |         Tuple(_) => {}
    |         ^^^^^^^^ expected opaque type, found struct `Tuple`
    |
-   = note: expected opaque type `impl std::future::Future`
+   = note: expected opaque type `impl Future`
                    found struct `Tuple`
 help: consider awaiting on the future
    |
