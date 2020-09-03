@@ -4,7 +4,7 @@ use rustc_attr as attr;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
@@ -45,7 +45,8 @@ impl<'tcx> MirPass<'tcx> for Inline {
                 // based function.
                 debug!("function inlining is disabled when compiling with `instrument_coverage`");
             } else {
-                Inliner { tcx, source }.run_pass(body);
+                Inliner { tcx, source, codegen_fn_attrs: tcx.codegen_fn_attrs(source.def_id()) }
+                    .run_pass(body);
             }
         }
     }
@@ -54,6 +55,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
 struct Inliner<'tcx> {
     tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
+    codegen_fn_attrs: &'tcx CodegenFnAttrs,
 }
 
 impl Inliner<'tcx> {
@@ -239,6 +241,13 @@ impl Inliner<'tcx> {
 
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER) {
             debug!("`#[track_caller]` present - not inlining");
+            return false;
+        }
+
+        let self_features = &self.codegen_fn_attrs.target_features;
+        let callee_features = &codegen_fn_attrs.target_features;
+        if callee_features.iter().any(|feature| !self_features.contains(feature)) {
+            debug!("`callee has extra target features - not inlining");
             return false;
         }
 
