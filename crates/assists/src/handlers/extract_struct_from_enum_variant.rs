@@ -97,6 +97,7 @@ fn existing_struct_def(db: &RootDatabase, variant_name: &str, variant: &EnumVari
         .any(|(name, _)| name.to_string() == variant_name.to_string())
 }
 
+#[allow(dead_code)]
 fn insert_import(
     ctx: &AssistContext,
     builder: &mut AssistBuilder,
@@ -174,9 +175,9 @@ fn update_reference(
     builder: &mut AssistBuilder,
     reference: Reference,
     source_file: &SourceFile,
-    enum_module_def: &ModuleDef,
-    variant_hir_name: &Name,
-    visited_modules_set: &mut FxHashSet<Module>,
+    _enum_module_def: &ModuleDef,
+    _variant_hir_name: &Name,
+    _visited_modules_set: &mut FxHashSet<Module>,
 ) -> Option<()> {
     let path_expr: ast::PathExpr = find_node_at_offset::<ast::PathExpr>(
         source_file.syntax(),
@@ -185,7 +186,7 @@ fn update_reference(
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
     let list = call.arg_list()?;
     let segment = path_expr.path()?.segment()?;
-    let module = ctx.sema.scope(&path_expr.syntax()).module()?;
+    let _module = ctx.sema.scope(&path_expr.syntax()).module()?;
     let list_range = list.syntax().text_range();
     let inside_list_range = TextRange::new(
         list_range.start().checked_add(TextSize::from(1))?,

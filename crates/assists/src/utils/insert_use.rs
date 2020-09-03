@@ -1,3 +1,4 @@
+//! Handle syntactic aspects of inserting a new `use`.
 use std::iter::{self, successors};
 
 use algo::skip_trivia_token;
@@ -10,7 +11,6 @@ use syntax::{
     ast::{self, make, AstNode},
     Direction, InsertPosition, SyntaxElement, SyntaxNode, T,
 };
-
 use test_utils::mark;
 
 #[derive(Debug)]
@@ -55,7 +55,7 @@ impl ImportScope {
     fn first_insert_pos(&self) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
         match self {
             ImportScope::File(_) => (InsertPosition::First, AddBlankLine::AfterTwice),
-            // don't insert the impotrs before the item lists curly brace
+            // don't insert the imports before the item list's opening curly brace
             ImportScope::Module(item_list) => item_list
                 .l_curly_token()
                 .map(|b| (InsertPosition::After(b.into()), AddBlankLine::Around))
@@ -64,7 +64,7 @@ impl ImportScope {
     }
 
     fn insert_pos_after_inner_attribute(&self) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
-        // check if the scope has a inner attributes, we dont want to insert in front of it
+        // check if the scope has inner attributes, we dont want to insert in front of them
         match self
             .as_syntax_node()
             .children()
@@ -119,7 +119,7 @@ pub(crate) fn insert_use(
         }
 
         if let ident_level @ 1..=usize::MAX = scope.indent_level().0 as usize {
-            // TODO: this alone doesnt properly re-align all cases
+            // FIXME: this alone doesnt properly re-align all cases
             buf.push(make::tokens::whitespace(&" ".repeat(4 * ident_level)).into());
         }
         buf.push(use_item.syntax().clone().into());
@@ -530,8 +530,6 @@ fn main() {}",
 
     #[test]
     fn insert_after_inner_attr() {
-        // empty files will get two trailing newlines
-        // this is due to the test case insert_no_imports above
         check_full(
             "foo::bar",
             r"#![allow(unused_imports)]",
@@ -543,8 +541,6 @@ use foo::bar;",
 
     #[test]
     fn insert_after_inner_attr2() {
-        // empty files will get two trailing newlines
-        // this is due to the test case insert_no_imports above
         check_full(
             "foo::bar",
             r"#![allow(unused_imports)]
@@ -643,6 +639,16 @@ use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
             "std::io",
             r"pub use std::fmt::{Result, Display};",
             r"pub use std::fmt::{Result, Display};
+use std::io;",
+        )
+    }
+
+    #[test]
+    fn merge_groups_skip_pub_crate() {
+        check_full(
+            "std::io",
+            r"pub(crate) use std::fmt::{Result, Display};",
+            r"pub(crate) use std::fmt::{Result, Display};
 use std::io;",
         )
     }
