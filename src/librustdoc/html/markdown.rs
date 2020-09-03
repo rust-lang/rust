@@ -954,44 +954,33 @@ impl MarkdownSummaryLine<'_> {
     }
 }
 
-pub fn plain_summary_line(md: &str) -> String {
-    struct ParserWrapper<'a> {
-        inner: Parser<'a>,
-        is_in: isize,
-        is_first: bool,
+/// Renders the first paragraph of the provided markdown as plain text.
+///
+/// - Headings, links, and formatting are stripped.
+/// - Inline code is rendered as-is, surrounded by backticks.
+/// - HTML and code blocks are ignored.
+pub fn plain_text_summary(md: &str) -> String {
+    if md.is_empty() {
+        return String::new();
     }
 
-    impl<'a> Iterator for ParserWrapper<'a> {
-        type Item = String;
+    let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        fn next(&mut self) -> Option<String> {
-            let next_event = self.inner.next()?;
-            let (ret, is_in) = match next_event {
-                Event::Start(Tag::Paragraph) => (None, 1),
-                Event::Start(Tag::Heading(_)) => (None, 1),
-                Event::Code(code) => (Some(format!("`{}`", code)), 0),
-                Event::Text(ref s) if self.is_in > 0 => (Some(s.as_ref().to_owned()), 0),
-                Event::End(Tag::Paragraph | Tag::Heading(_)) => (None, -1),
-                _ => (None, 0),
-            };
-            if is_in > 0 || (is_in < 0 && self.is_in > 0) {
-                self.is_in += is_in;
+    for event in Parser::new_ext(md, Options::ENABLE_STRIKETHROUGH) {
+        match &event {
+            Event::Text(text) => s.push_str(text),
+            Event::Code(code) => {
+                s.push('`');
+                s.push_str(code);
+                s.push('`');
             }
-            if ret.is_some() {
-                self.is_first = false;
-                ret
-            } else {
-                Some(String::new())
-            }
+            Event::HardBreak | Event::SoftBreak => s.push(' '),
+            Event::Start(Tag::CodeBlock(..)) => break,
+            Event::End(Tag::Paragraph) => break,
+            _ => (),
         }
     }
-    let mut s = String::with_capacity(md.len() * 3 / 2);
-    let p = ParserWrapper {
-        inner: Parser::new_ext(md, Options::ENABLE_STRIKETHROUGH),
-        is_in: 0,
-        is_first: true,
-    };
-    p.filter(|t| !t.is_empty()).for_each(|i| s.push_str(&i));
+
     s
 }
 

@@ -1508,6 +1508,7 @@ impl Context {
         }
     }
 
+    /// Construct a map of items shown in the sidebar to a plain-text summary of their docs.
     fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<NameDoc>> {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
@@ -1524,7 +1525,7 @@ impl Context {
             let short = short.to_string();
             map.entry(short)
                 .or_default()
-                .push((myname, Some(plain_summary_line(item.doc_value()))));
+                .push((myname, Some(plain_text_summary(item.doc_value()))));
         }
 
         if self.shared.sort_modules_alphabetically {
@@ -1730,22 +1731,15 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
     s
 }
 
+/// Renders the first paragraph of the given markdown as plain text, making it suitable for
+/// contexts like alt-text or the search index.
+///
+/// If no markdown is supplied, the empty string is returned.
+///
+/// See [`markdown::plain_text_summary`] for further details.
 #[inline]
-crate fn plain_summary_line(s: Option<&str>) -> String {
-    let s = s.unwrap_or("");
-    // This essentially gets the first paragraph of text in one line.
-    let mut line = s
-        .lines()
-        .skip_while(|line| line.chars().all(|c| c.is_whitespace()))
-        .take_while(|line| line.chars().any(|c| !c.is_whitespace()))
-        .fold(String::new(), |mut acc, line| {
-            acc.push_str(line);
-            acc.push(' ');
-            acc
-        });
-    // remove final whitespace
-    line.pop();
-    markdown::plain_summary_line(&line[..])
+crate fn plain_text_summary(s: Option<&str>) -> String {
+    s.map(markdown::plain_text_summary).unwrap_or_default()
 }
 
 crate fn shorten(s: String) -> String {
@@ -1802,25 +1796,35 @@ fn render_markdown(
     )
 }
 
+/// Writes a documentation block containing only the first paragraph of the documentation. If the
+/// docs are longer, a "Read more" link is appended to the end.
 fn document_short(
     w: &mut Buffer,
-    cx: &Context,
     item: &clean::Item,
     link: AssocItemLink<'_>,
     prefix: &str,
     is_hidden: bool,
 ) {
     if let Some(s) = item.doc_value() {
-        let markdown = if s.contains('\n') {
-            format!(
-                "{} [Read more]({})",
-                &plain_summary_line(Some(s)),
-                naive_assoc_href(item, link)
-            )
-        } else {
-            plain_summary_line(Some(s))
-        };
-        render_markdown(w, cx, &markdown, item.links(), prefix, is_hidden);
+        let mut summary_html = MarkdownSummaryLine(s, &item.links()).into_string();
+
+        if s.contains('\n') {
+            let link = format!(r#" <a href="{}">Read more</a>"#, naive_assoc_href(item, link));
+
+            if let Some(idx) = summary_html.rfind("</p>") {
+                summary_html.insert_str(idx, &link);
+            } else {
+                summary_html.push_str(&link);
+            }
+        }
+
+        write!(
+            w,
+            "<div class='docblock{}'>{}{}</div>",
+            if is_hidden { " hidden" } else { "" },
+            prefix,
+            summary_html,
+        );
     } else if !prefix.is_empty() {
         write!(
             w,
@@ -3677,7 +3681,7 @@ fn render_impl(
                         } else if show_def_docs {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, cx, it, link, "", is_hidden);
+                            document_short(w, it, link, "", is_hidden);
                         }
                     }
                 } else {
@@ -3689,7 +3693,7 @@ fn render_impl(
             } else {
                 document_stability(w, cx, item, is_hidden);
                 if show_def_docs {
-                    document_short(w, cx, item, link, "", is_hidden);
+                    document_short(w, item, link, "", is_hidden);
                 }
             }
         }

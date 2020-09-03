@@ -3319,7 +3319,7 @@ pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
     /// is *[undefined behavior]* even if the resulting reference is not used.
     ///
-    /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]
     unsafe fn get_unchecked(self, slice: *const T) -> *const Self::Output;
 
@@ -3328,7 +3328,7 @@ pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
     /// is *[undefined behavior]* even if the resulting reference is not used.
     ///
-    /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]
     unsafe fn get_unchecked_mut(self, slice: *mut T) -> *mut Self::Output;
 
