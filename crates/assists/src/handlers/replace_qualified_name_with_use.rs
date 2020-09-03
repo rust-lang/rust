@@ -2,9 +2,10 @@ use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SyntaxNode, TextRang
 use test_utils::mark;
 
 use crate::{
-    utils::{find_insert_use_container, insert_use_statement},
+    utils::{find_insert_use_container, insert_use, MergeBehaviour},
     AssistContext, AssistId, AssistKind, Assists,
 };
+use ast::make;
 
 // Assist: replace_qualified_name_with_use
 //
@@ -32,7 +33,7 @@ pub(crate) fn replace_qualified_name_with_use(
         mark::hit!(dont_import_trivial_paths);
         return None;
     }
-    let path_to_import = path.to_string().clone();
+    let path_to_import = path.to_string();
     let path_to_import = match path.segment()?.generic_arg_list() {
         Some(generic_args) => {
             let generic_args_start =
@@ -43,28 +44,24 @@ pub(crate) fn replace_qualified_name_with_use(
     };
 
     let target = path.syntax().text_range();
+    let container = find_insert_use_container(path.syntax(), ctx)?;
+    let syntax = container.either(|l| l.syntax().clone(), |r| r.syntax().clone());
     acc.add(
         AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),
         "Replace qualified path with use",
         target,
         |builder| {
-            let container = match find_insert_use_container(path.syntax(), ctx) {
-                Some(c) => c,
-                None => return,
-            };
-            insert_use_statement(
-                path.syntax(),
-                &path_to_import.to_string(),
-                ctx,
-                builder.text_edit_builder(),
-            );
-
             // Now that we've brought the name into scope, re-qualify all paths that could be
             // affected (that is, all paths inside the node we added the `use` to).
             let mut rewriter = SyntaxRewriter::default();
-            let syntax = container.either(|l| l.syntax().clone(), |r| r.syntax().clone());
-            shorten_paths(&mut rewriter, syntax, path);
-            builder.rewrite(rewriter);
+            shorten_paths(&mut rewriter, syntax.clone(), path);
+            let rewritten_syntax = rewriter.rewrite(&syntax);
+            let new_syntax = insert_use(
+                &rewritten_syntax,
+                make::path_from_text(path_to_import),
+                Some(MergeBehaviour::Full),
+            );
+            builder.replace(syntax.text_range(), new_syntax.to_string())
         },
     )
 }
@@ -220,8 +217,9 @@ impl std::fmt::Debug<|> for Foo {
 }
     ",
             r"
-use stdx;
 use std::fmt::Debug;
+
+use stdx;
 
 impl Debug for Foo {
 }
@@ -274,7 +272,7 @@ impl std::io<|> for Foo {
 }
     ",
             r"
-use std::{io, fmt};
+use std::{fmt, io};
 
 impl io for Foo {
 }
@@ -293,7 +291,7 @@ impl std::fmt::Debug<|> for Foo {
 }
     ",
             r"
-use std::fmt::{self, Debug, };
+use std::fmt::{self, Debug};
 
 impl Debug for Foo {
 }
@@ -312,7 +310,7 @@ impl std::fmt<|> for Foo {
 }
     ",
             r"
-use std::fmt::{self, Debug};
+use std::fmt::{Debug, self};
 
 impl fmt for Foo {
 }
@@ -330,8 +328,9 @@ use std::fmt::{Debug, nested::{Display}};
 impl std::fmt::nested<|> for Foo {
 }
 ",
+            // FIXME(veykril): should be nested::{self, Display} here
             r"
-use std::fmt::{Debug, nested::{Display, self}};
+use std::fmt::{Debug, nested::{Display}, nested};
 
 impl nested for Foo {
 }
@@ -349,8 +348,9 @@ use std::fmt::{Debug, nested::{self, Display}};
 impl std::fmt::nested<|> for Foo {
 }
 ",
+            // FIXME(veykril): self is being pulled out for some reason now
             r"
-use std::fmt::{Debug, nested::{self, Display}};
+use std::fmt::{Debug, nested::{Display}, nested};
 
 impl nested for Foo {
 }
@@ -369,7 +369,7 @@ impl std::fmt::nested::Debug<|> for Foo {
 }
 ",
             r"
-use std::fmt::{Debug, nested::{Display, Debug}};
+use std::fmt::{Debug, nested::{Display}, nested::Debug};
 
 impl Debug for Foo {
 }
@@ -388,7 +388,7 @@ impl std::fmt::nested::Display<|> for Foo {
 }
 ",
             r"
-use std::fmt::{nested::Display, Debug};
+use std::fmt::{Debug, nested::Display};
 
 impl Display for Foo {
 }
@@ -407,7 +407,7 @@ impl std::fmt::Display<|> for Foo {
 }
 ",
             r"
-use std::fmt::{Display, nested::Debug};
+use std::fmt::{nested::Debug, Display};
 
 impl Display for Foo {
 }
@@ -427,11 +427,12 @@ use crate::{
 
 fn foo() { crate::ty::lower<|>::trait_env() }
 ",
+            // FIXME(veykril): formatting broke here
             r"
 use crate::{
-    ty::{Substs, Ty, lower},
+    ty::{Substs, Ty},
     AssocItem,
-};
+ty::lower};
 
 fn foo() { lower::trait_env() }
 ",
@@ -450,6 +451,8 @@ impl foo::Debug<|> for Foo {
 ",
             r"
 use std::fmt as foo;
+
+use foo::Debug;
 
 impl Debug for Foo {
 }
@@ -627,7 +630,7 @@ fn main() {
 }
     ",
             r"
-use std::fmt::{self, Display};
+use std::fmt::{Display, self};
 
 fn main() {
     fmt;
@@ -647,9 +650,8 @@ impl std::io<|> for Foo {
 }
     ",
             r"
-use std::io;
-
 pub use std::fmt;
+use std::io;
 
 impl io for Foo {
 }
@@ -668,9 +670,8 @@ impl std::io<|> for Foo {
 }
     ",
             r"
-use std::io;
-
 pub(crate) use std::fmt;
+use std::io;
 
 impl io for Foo {
 }

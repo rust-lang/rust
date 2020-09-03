@@ -13,8 +13,11 @@ use syntax::{
 };
 
 use crate::{
-    utils::insert_use_statement, AssistContext, AssistId, AssistKind, Assists, GroupLabel,
+    utils::{insert_use, MergeBehaviour},
+    AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
+use ast::make;
+use insert_use::find_insert_use_container;
 
 // Assist: auto_import
 //
@@ -44,6 +47,8 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 
     let range = ctx.sema.original_range(&auto_import_assets.syntax_under_caret).range;
     let group = auto_import_assets.get_import_group_message();
+    let container = find_insert_use_container(&auto_import_assets.syntax_under_caret, ctx)?;
+    let syntax = container.either(|l| l.syntax().clone(), |r| r.syntax().clone());
     for import in proposed_imports {
         acc.add_group(
             &group,
@@ -51,12 +56,12 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
             format!("Import `{}`", &import),
             range,
             |builder| {
-                insert_use_statement(
-                    &auto_import_assets.syntax_under_caret,
-                    &import.to_string(),
-                    ctx,
-                    builder.text_edit_builder(),
+                let new_syntax = insert_use(
+                    &syntax,
+                    make::path_from_text(&import.to_string()),
+                    Some(MergeBehaviour::Full),
                 );
+                builder.replace(syntax.text_range(), new_syntax.to_string())
             },
         );
     }
@@ -358,7 +363,7 @@ mod tests {
             }
             ",
             r"
-            use PubMod::{PubStruct2, PubStruct1};
+            use PubMod::{PubStruct1, PubStruct2};
 
             struct Test {
                 test: PubStruct2<u8>,

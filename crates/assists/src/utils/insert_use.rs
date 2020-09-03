@@ -18,9 +18,10 @@ pub(crate) fn find_insert_use_container(
 ) -> Option<Either<ast::ItemList, ast::SourceFile>> {
     ctx.sema.ancestors_with_macros(position.clone()).find_map(|n| {
         if let Some(module) = ast::Module::cast(n.clone()) {
-            return module.item_list().map(Either::Left);
+            module.item_list().map(Either::Left)
+        } else {
+            Some(Either::Right(ast::SourceFile::cast(n)?))
         }
-        Some(Either::Right(ast::SourceFile::cast(n)?))
     })
 }
 
@@ -92,6 +93,7 @@ fn use_tree_list_is_nested(tl: &ast::UseTreeList) -> bool {
     })
 }
 
+// FIXME: currently this merely prepends the new tree into old, ideally it would insert the items in a sorted fashion
 pub fn try_merge_trees(
     old: &ast::UseTree,
     new: &ast::UseTree,
@@ -486,7 +488,7 @@ use std::io;",
         check_full(
             "std::foo::bar::Baz",
             r"use std::foo::bar::Qux;",
-            r"use std::foo::bar::{Baz, Qux};",
+            r"use std::foo::bar::{Qux, Baz};",
         )
     }
 
@@ -495,7 +497,7 @@ use std::io;",
         check_last(
             "std::foo::bar::Baz",
             r"use std::foo::bar::Qux;",
-            r"use std::foo::bar::{Baz, Qux};",
+            r"use std::foo::bar::{Qux, Baz};",
         )
     }
 
@@ -504,7 +506,7 @@ use std::io;",
         check_full(
             "std::foo::bar::Baz",
             r"use std::foo::bar::{Qux, Quux};",
-            r"use std::foo::bar::{Baz, Quux, Qux};",
+            r"use std::foo::bar::{Qux, Quux, Baz};",
         )
     }
 
@@ -513,7 +515,7 @@ use std::io;",
         check_last(
             "std::foo::bar::Baz",
             r"use std::foo::bar::{Qux, Quux};",
-            r"use std::foo::bar::{Baz, Quux, Qux};",
+            r"use std::foo::bar::{Qux, Quux, Baz};",
         )
     }
 
@@ -522,7 +524,7 @@ use std::io;",
         check_full(
             "std::foo::bar::Baz",
             r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
-            r"use std::foo::bar::{Baz, quux::{Fez, Fizz}, Qux};",
+            r"use std::foo::bar::{Qux, quux::{Fez, Fizz}, Baz};",
         )
     }
 
@@ -532,7 +534,7 @@ use std::io;",
             "std::foo::bar::Baz",
             r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
             r"use std::foo::bar::Baz;
-use std::foo::bar::{quux::{Fez, Fizz}, Qux};",
+use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
         )
     }
 

@@ -10,9 +10,12 @@ use syntax::{
 };
 
 use crate::{
-    assist_context::AssistBuilder, utils::insert_use_statement, AssistContext, AssistId,
-    AssistKind, Assists,
+    assist_context::AssistBuilder,
+    utils::{insert_use, MergeBehaviour},
+    AssistContext, AssistId, AssistKind, Assists,
 };
+use ast::make;
+use insert_use::find_insert_use_container;
 
 // Assist: extract_struct_from_enum_variant
 //
@@ -107,12 +110,15 @@ fn insert_import(
     if let Some(mut mod_path) = mod_path {
         mod_path.segments.pop();
         mod_path.segments.push(variant_hir_name.clone());
-        insert_use_statement(
-            path.syntax(),
-            &mod_path.to_string(),
-            ctx,
-            builder.text_edit_builder(),
+        let container = find_insert_use_container(path.syntax(), ctx)?;
+        let syntax = container.either(|l| l.syntax().clone(), |r| r.syntax().clone());
+
+        let new_syntax = insert_use(
+            &syntax,
+            make::path_from_text(&mod_path.to_string()),
+            Some(MergeBehaviour::Full),
         );
+        builder.replace(syntax.text_range(), new_syntax.to_string())
     }
     Some(())
 }
