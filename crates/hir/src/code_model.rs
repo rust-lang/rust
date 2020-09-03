@@ -779,6 +779,7 @@ impl Function {
         db.function_data(self.id).has_body
     }
 
+    /// If this function is a method, the trait or type where it is declared.
     pub fn method_owner(self, db: &dyn HirDatabase) -> Option<MethodOwner> {
         match self.as_assoc_item(db).map(|assoc| assoc.container(db)) {
             Some(AssocItemContainer::Trait(t)) => Some(t.into()),

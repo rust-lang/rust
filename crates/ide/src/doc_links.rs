@@ -103,8 +103,8 @@ pub fn get_doc_link<T: Resolvable + Clone>(db: &dyn HirDatabase, definition: &T)
     get_doc_link_impl(db, &module_def)
 }
 
-// TODO:
-// BUG: For Option
+// FIXME:
+// BUG: For Option::Some
 // Returns https://doc.rust-lang.org/nightly/core/prelude/v1/enum.Option.html#variant.Some
 // Instead of https://doc.rust-lang.org/nightly/core/option/enum.Option.html
 // This could be worked around by turning the `EnumVariant` into `Enum` before attempting resolution,
@@ -405,7 +405,7 @@ fn get_symbol_fragment(db: &dyn HirDatabase, field_or_assoc: &FieldOrAssocItem) 
                 let is_trait_method =
                     matches!(function.method_owner(db), Some(MethodOwner::Trait(..)));
                 // This distinction may get more complicated when specialisation is available.
-                // In particular this decision is made based on whether a method 'has defaultness'.
+                // Rustdoc makes this decision based on whether a method 'has defaultness'.
                 // Currently this is only the case for provided trait methods.
                 if is_trait_method && !function.has_body(db) {
                     format!("#tymethod.{}", function.name(db))
