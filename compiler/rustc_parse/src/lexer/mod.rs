@@ -172,17 +172,17 @@ impl<'a> StringReader<'a> {
                         )
                         .emit();
                     FatalError.raise();
+                } else {
+                    // Skip non-doc comments
+                    let doc_style = doc_style?;
+
+                    // Opening delimiter of the length 3 and closing delimiter of the length 2
+                    // are not included into the symbol.
+                    let content_start = start + BytePos(3);
+                    let content_end = self.pos - BytePos(2);
+                    let content = self.str_from_to(content_start, content_end);
+                    self.cook_doc_comment(content_start, content, CommentKind::Block, doc_style)
                 }
-
-                // Skip non-doc comments
-                let doc_style = doc_style?;
-
-                // Opening delimiter of the length 3 and closing delimiter of the length 2
-                // are not included into the symbol.
-                let content_start = start + BytePos(3);
-                let content_end = self.pos - BytePos(if terminated { 2 } else { 0 });
-                let content = self.str_from_to(content_start, content_end);
-                self.cook_doc_comment(content_start, content, CommentKind::Block, doc_style)
             }
             rustc_lexer::TokenKind::Whitespace => return None,
             rustc_lexer::TokenKind::Ident | rustc_lexer::TokenKind::RawIdent => {
