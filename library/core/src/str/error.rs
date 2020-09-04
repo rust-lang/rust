@@ -9,7 +9,7 @@ use crate::fmt;
 /// and [`&str`]s make use of this error, for example.
 ///
 /// [`String`]: ../../std/string/struct.String.html#method.from_utf8
-/// [`&str`]: from_utf8
+/// [`&str`]: super::from_utf8
 ///
 /// # Examples
 ///
@@ -114,7 +114,7 @@ impl fmt::Display for Utf8Error {
 
 /// An error returned when parsing a `bool` using [`from_str`] fails
 ///
-/// [`from_str`]: FromStr::from_str
+/// [`from_str`]: super::FromStr::from_str
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseBoolError {
