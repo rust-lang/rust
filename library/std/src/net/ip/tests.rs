@@ -524,11 +524,6 @@ fn ipv6_properties() {
             } else {
                 assert!(!ip!($s).is_unicast_link_local());
             }
-            if ($mask & unicast_link_local_strict) == unicast_link_local_strict {
-                assert!(ip!($s).is_unicast_link_local_strict());
-            } else {
-                assert!(!ip!($s).is_unicast_link_local_strict());
-            }
             if ($mask & unicast_site_local) == unicast_site_local {
                 assert!(ip!($s).is_unicast_site_local());
             } else {

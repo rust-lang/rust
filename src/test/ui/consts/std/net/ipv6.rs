@@ -26,9 +26,6 @@ fn main() {
     const IS_UNIQUE_LOCAL : bool = IP_ADDRESS.is_unique_local();
     assert!(!IS_UNIQUE_LOCAL);
 
-    const IS_UNICAST_LINK_LOCAL_STRICT : bool = IP_ADDRESS.is_unicast_link_local_strict();
-    assert!(!IS_UNICAST_LINK_LOCAL_STRICT);
-
     const IS_UNICAST_LINK_LOCAL : bool = IP_ADDRESS.is_unicast_link_local();
     assert!(!IS_UNICAST_LINK_LOCAL);
 
