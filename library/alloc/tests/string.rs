@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
 use std::mem::size_of;
+use std::ops::Bound::*;
 
 pub trait IntoCow<'a, B: ?Sized>
 where
@@ -464,6 +465,20 @@ fn test_drain() {
 }
 
 #[test]
+#[should_panic]
+fn test_drain_start_overflow() {
+    let mut s = String::from("abc");
+    s.drain((Excluded(usize::MAX), Included(0)));
+}
+
+#[test]
+#[should_panic]
+fn test_drain_end_overflow() {
+    let mut s = String::from("abc");
+    s.drain((Included(0), Included(usize::MAX)));
+}
+
+#[test]
 fn test_replace_range() {
     let mut s = "Hello, world!".to_owned();
     s.replace_range(7..12, "世界");
@@ -498,6 +513,20 @@ fn test_replace_range_out_of_bounds() {
 fn test_replace_range_inclusive_out_of_bounds() {
     let mut s = String::from("12345");
     s.replace_range(5..=5, "789");
+}
+
+#[test]
+#[should_panic]
+fn test_replace_range_start_overflow() {
+    let mut s = String::from("123");
+    s.replace_range((Excluded(usize::MAX), Included(0)), "");
+}
+
+#[test]
+#[should_panic]
+fn test_replace_range_end_overflow() {
+    let mut s = String::from("456");
+    s.replace_range((Included(0), Included(usize::MAX)), "");
 }
 
 #[test]
