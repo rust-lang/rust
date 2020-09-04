@@ -809,9 +809,19 @@ impl Nonterminal {
             if let ExpnKind::Macro(_, macro_name) = orig_span.ctxt().outer_expn_data().kind {
                 let filename = source_map.span_to_filename(orig_span);
                 if let FileName::Real(RealFileName::Named(path)) = filename {
-                    if (path.ends_with("time-macros-impl/src/lib.rs")
-                        && macro_name == sym::impl_macros)
-                        || (path.ends_with("js-sys/src/lib.rs") && macro_name == sym::arrays)
+                    let matches_prefix = |prefix| {
+                        // Check for a path that ends with 'prefix*/src/lib.rs'
+                        let mut iter = path.components().rev();
+                        iter.next().and_then(|p| p.as_os_str().to_str()) == Some("lib.rs")
+                            && iter.next().and_then(|p| p.as_os_str().to_str()) == Some("src")
+                            && iter
+                                .next()
+                                .and_then(|p| p.as_os_str().to_str())
+                                .map_or(false, |p| p.starts_with(prefix))
+                    };
+
+                    if (macro_name == sym::impl_macros && matches_prefix("time-macros-impl"))
+                        || (macro_name == sym::arrays && matches_prefix("js-sys"))
                     {
                         let snippet = source_map.span_to_snippet(orig_span);
                         if snippet.as_deref() == Ok("$name") {
