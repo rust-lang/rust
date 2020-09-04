@@ -14,8 +14,7 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{once, repeat_with, FromIterator, FusedIterator};
 use core::mem::{self, replace, ManuallyDrop};
-use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{Index, IndexMut, RangeBounds, Try};
+use core::ops::{Index, IndexMut, Range, RangeBounds, Try};
 use core::ptr::{self, NonNull};
 use core::slice;
 
@@ -1090,24 +1089,18 @@ impl<T> VecDeque<T> {
         self.tail == self.head
     }
 
-    fn range_start_end<R>(&self, range: R) -> (usize, usize)
+    fn range_tail_head<R>(&self, range: R) -> (usize, usize)
     where
         R: RangeBounds<usize>,
     {
-        let len = self.len();
-        let start = match range.start_bound() {
-            Included(&n) => n,
-            Excluded(&n) => n + 1,
-            Unbounded => 0,
-        };
-        let end = match range.end_bound() {
-            Included(&n) => n + 1,
-            Excluded(&n) => n,
-            Unbounded => len,
-        };
-        assert!(start <= end, "lower bound was too large");
-        assert!(end <= len, "upper bound was too large");
-        (start, end)
+        // SAFETY: This buffer is only used to check the range. It might be partially
+        // uninitialized, but `check_range` needs a contiguous slice.
+        // https://github.com/rust-lang/rust/pull/75207#discussion_r471193682
+        let buffer = unsafe { slice::from_raw_parts(self.ptr(), self.len()) };
+        let Range { start, end } = buffer.check_range(range);
+        let tail = self.wrap_add(self.tail, start);
+        let head = self.wrap_add(self.tail, end);
+        (tail, head)
     }
 
     /// Creates an iterator that covers the specified range in the `VecDeque`.
@@ -1138,9 +1131,7 @@ impl<T> VecDeque<T> {
     where
         R: RangeBounds<usize>,
     {
-        let (start, end) = self.range_start_end(range);
-        let tail = self.wrap_add(self.tail, start);
-        let head = self.wrap_add(self.tail, end);
+        let (tail, head) = self.range_tail_head(range);
         Iter {
             tail,
             head,
@@ -1181,9 +1172,7 @@ impl<T> VecDeque<T> {
     where
         R: RangeBounds<usize>,
     {
-        let (start, end) = self.range_start_end(range);
-        let tail = self.wrap_add(self.tail, start);
-        let head = self.wrap_add(self.tail, end);
+        let (tail, head) = self.range_tail_head(range);
         IterMut {
             tail,
             head,
@@ -1237,7 +1226,7 @@ impl<T> VecDeque<T> {
         // When finished, the remaining data will be copied back to cover the hole,
         // and the head/tail values will be restored correctly.
         //
-        let (start, end) = self.range_start_end(range);
+        let (drain_tail, drain_head) = self.range_tail_head(range);
 
         // The deque's elements are parted into three segments:
         // * self.tail  -> drain_tail
@@ -1255,8 +1244,6 @@ impl<T> VecDeque<T> {
         //        T   t   h   H
         // [. . . o o x x o o . . .]
         //
-        let drain_tail = self.wrap_add(self.tail, start);
-        let drain_head = self.wrap_add(self.tail, end);
         let head = self.head;
 
         // "forget" about the values after the start of the drain until after

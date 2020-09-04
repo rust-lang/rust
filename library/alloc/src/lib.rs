@@ -119,6 +119,7 @@
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]
 #![feature(min_specialization)]
+#![feature(slice_check_range)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
 #![feature(staged_api)]
