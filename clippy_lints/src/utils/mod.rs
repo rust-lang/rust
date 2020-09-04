@@ -1432,7 +1432,7 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
             } else {
                 unreachable!()
             }
-        }
+        },
         _ => false,
     };
 
