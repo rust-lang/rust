@@ -193,7 +193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Convert auto-derefs, indices, etc of an expression from `Deref` and `Index`
     /// into `DerefMut` and `IndexMut` respectively.
     ///
-    /// This is a second pass of typechecking derefs/indices. We need this we do not
+    /// This is a second pass of typechecking derefs/indices. We need this because we do not
     /// always know whether a place needs to be mutable or not in the first pass.
     /// This happens whether there is an implicit mutable reborrow, e.g. when the type
     /// is used as the receiver of a method call.
@@ -211,13 +211,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("convert_place_derefs_to_mutable: exprs={:?}", exprs);
 
         // Fix up autoderefs and derefs.
+        let mut inside_union = false;
         for (i, &expr) in exprs.iter().rev().enumerate() {
             debug!("convert_place_derefs_to_mutable: i={} expr={:?}", i, expr);
 
+            let mut source = self.node_ty(expr.hir_id);
+            if matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::UnDeref, _)) {
+                // Clear previous flag; after a pointer indirection it does not apply any more.
+                inside_union = false;
+            }
+            if source.ty_adt_def().map_or(false, |adt| adt.is_union()) {
+                inside_union = true;
+            }
             // Fix up the autoderefs. Autorefs can only occur immediately preceding
             // overloaded place ops, and will be fixed by them in order to get
             // the correct region.
-            let mut source = self.node_ty(expr.hir_id);
             // Do not mutate adjustments in place, but rather take them,
             // and replace them after mutating them, to avoid having the
             // typeck results borrowed during (`deref_mut`) method resolution.
@@ -235,6 +243,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let method = self.register_infer_ok_obligations(ok);
                             if let ty::Ref(region, _, mutbl) = *method.sig.output().kind() {
                                 *deref = OverloadedDeref { region, mutbl };
+                            }
+                            // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
+                            // This helps avoid accidental drops.
+                            if inside_union
+                                && source.ty_adt_def().map_or(false, |adt| adt.is_manually_drop())
+                            {
+                                let mut err = self.tcx.sess.struct_span_err(
+                                    expr.span,
+                                    "not automatically applying `DerefMut` on `ManuallyDrop` union field",
+                                );
+                                err.help(
+                                    "writing to this reference calls the destructor for the old value",
+                                );
+                                err.help("add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor");
+                                err.emit();
                             }
                         }
                     }
