@@ -294,6 +294,21 @@ pub fn param_list(pats: impl IntoIterator<Item = ast::Param>) -> ast::ParamList 
     ast_from_text(&format!("fn f({}) {{ }}", args))
 }
 
+pub fn generic_param(name: String, ty: Option<ast::TypeBoundList>) -> ast::GenericParam {
+    let bound = match ty {
+        Some(it) => format!(": {}", it),
+        None => String::new(),
+    };
+    ast_from_text(&format!("fn f<{}{}>() {{ }}", name, bound))
+}
+
+pub fn generic_param_list(
+    pats: impl IntoIterator<Item = ast::GenericParam>,
+) -> ast::GenericParamList {
+    let args = pats.into_iter().join(", ");
+    ast_from_text(&format!("fn f<{}>() {{ }}", args))
+}
+
 pub fn visibility_pub_crate() -> ast::Visibility {
     ast_from_text("pub(crate) struct S")
 }

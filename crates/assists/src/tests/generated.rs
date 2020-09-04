@@ -815,6 +815,19 @@ fn handle(action: Action) {
 }
 
 #[test]
+fn doctest_replace_impl_trait_with_generic() {
+    check_doc_test(
+        "replace_impl_trait_with_generic",
+        r#####"
+fn foo(bar: <|>impl Bar) {}
+"#####,
+        r#####"
+fn foo<B: Bar>(bar: B) {}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_let_with_if_let() {
     check_doc_test(
         "replace_let_with_if_let",
