@@ -118,7 +118,7 @@ impl Item {
         self.attrs.collapsed_doc_value()
     }
 
-    pub fn links(&self) -> Vec<(String, String)> {
+    pub fn links(&self) -> Vec<RenderedLink> {
         self.attrs.links(&self.def_id.krate)
     }
 
@@ -425,8 +425,36 @@ pub struct Attributes {
     pub cfg: Option<Arc<Cfg>>,
     pub span: Option<rustc_span::Span>,
     /// map from Rust paths to resolved defs and potential URL fragments
-    pub links: Vec<(String, Option<DefId>, Option<String>)>,
+    pub links: Vec<ItemLink>,
     pub inner_docs: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+/// A link that has not yet been rendered.
+///
+/// This link will be turned into a rendered link by [`Attributes::links`]
+pub struct ItemLink {
+    /// The original link written in the markdown
+    pub(crate) link: String,
+    /// The link text displayed in the HTML.
+    ///
+    /// This may not be the same as `link` if there was a disambiguator
+    /// in an intra-doc link (e.g. \[`fn@f`\])
+    pub(crate) link_text: String,
+    pub(crate) did: Option<DefId>,
+    /// The url fragment to append to the link
+    pub(crate) fragment: Option<String>,
+}
+
+pub struct RenderedLink {
+    /// The text the link was original written as.
+    ///
+    /// This could potentially include disambiguators and backticks.
+    pub(crate) original_text: String,
+    /// The text to display in the HTML
+    pub(crate) new_text: String,
+    /// The URL to put in the `href`
+    pub(crate) href: String,
 }
 
 impl Attributes {
@@ -605,21 +633,25 @@ impl Attributes {
     /// Gets links as a vector
     ///
     /// Cache must be populated before call
-    pub fn links(&self, krate: &CrateNum) -> Vec<(String, String)> {
+    pub fn links(&self, krate: &CrateNum) -> Vec<RenderedLink> {
         use crate::html::format::href;
         use crate::html::render::CURRENT_DEPTH;
 
         self.links
             .iter()
-            .filter_map(|&(ref s, did, ref fragment)| {
-                match did {
+            .filter_map(|ItemLink { link: s, link_text, did, fragment }| {
+                match *did {
                     Some(did) => {
                         if let Some((mut href, ..)) = href(did) {
                             if let Some(ref fragment) = *fragment {
                                 href.push_str("#");
                                 href.push_str(fragment);
                             }
-                            Some((s.clone(), href))
+                            Some(RenderedLink {
+                                original_text: s.clone(),
+                                new_text: link_text.clone(),
+                                href,
+                            })
                         } else {
                             None
                         }
@@ -639,16 +671,17 @@ impl Attributes {
                             };
                             // This is a primitive so the url is done "by hand".
                             let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
-                            Some((
-                                s.clone(),
-                                format!(
+                            Some(RenderedLink {
+                                original_text: s.clone(),
+                                new_text: link_text.clone(),
+                                href: format!(
                                     "{}{}std/primitive.{}.html{}",
                                     url,
                                     if !url.ends_with('/') { "/" } else { "" },
                                     &fragment[..tail],
                                     &fragment[tail..]
                                 ),
-                            ))
+                            })
                         } else {
                             panic!("This isn't a primitive?!");
                         }
