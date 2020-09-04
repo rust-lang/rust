@@ -36,8 +36,10 @@ pub trait EncodableWithShorthand<'tcx, E: TyEncoder<'tcx>>: Copy + Eq + Hash {
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for Ty<'tcx> {
     type Variant = ty::TyKind<'tcx>;
+
+    #[inline]
     fn variant(&self) -> &Self::Variant {
-        &self.kind
+        self.kind()
     }
 }
 

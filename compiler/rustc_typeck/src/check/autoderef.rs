@@ -43,7 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.try_overloaded_deref(autoderef.span(), source).and_then(
                         |InferOk { value: method, obligations: o }| {
                             obligations.extend(o);
-                            if let ty::Ref(region, _, mutbl) = method.sig.output().kind {
+                            if let ty::Ref(region, _, mutbl) = *method.sig.output().kind() {
                                 Some(OverloadedDeref { region, mutbl })
                             } else {
                                 None

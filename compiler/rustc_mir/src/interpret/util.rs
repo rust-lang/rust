@@ -33,7 +33,7 @@ where
                 return false;
             }
 
-            match ty.kind {
+            match *ty.kind() {
                 ty::Param(_) => true,
                 ty::Closure(def_id, substs)
                 | ty::Generator(def_id, substs, ..)
@@ -59,7 +59,7 @@ where
                             // `ty::Param`/`ty::ConstKind::Param`.
                             (false, true) if cfg!(debug_assertions) => match subst.unpack() {
                                 ty::subst::GenericArgKind::Type(ty) => {
-                                    assert!(matches!(ty.kind, ty::Param(_)))
+                                    assert!(matches!(ty.kind(), ty::Param(_)))
                                 }
                                 ty::subst::GenericArgKind::Const(ct) => {
                                     assert!(matches!(ct.val, ty::ConstKind::Param(_)))

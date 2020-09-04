@@ -321,7 +321,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
             | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place) => {
                 let ty = place.ty(self.body, self.tcx).ty;
-                let is_allowed = match ty.kind {
+                let is_allowed = match ty.kind() {
                     // Inside a `static mut`, `&mut [...]` is allowed.
                     ty::Array(..) | ty::Slice(_)
                         if self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut) =>
@@ -374,7 +374,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind() {
                     assert!(
                         op == BinOp::Eq
                             || op == BinOp::Ne
@@ -426,7 +426,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         match elem {
             ProjectionElem::Deref => {
                 let base_ty = Place::ty_from(place_local, proj_base, self.body, self.tcx).ty;
-                if let ty::RawPtr(_) = base_ty.kind {
+                if let ty::RawPtr(_) = base_ty.kind() {
                     if proj_base.is_empty() {
                         if let (local, []) = (place_local, proj_base) {
                             let decl = &self.body.local_decls[local];
@@ -498,7 +498,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             TerminatorKind::Call { func, .. } => {
                 let fn_ty = func.ty(self.body, self.tcx);
 
-                let (def_id, substs) = match fn_ty.kind {
+                let (def_id, substs) = match *fn_ty.kind() {
                     ty::FnDef(def_id, substs) => (def_id, substs),
 
                     ty::FnPtr(_) => {
@@ -647,7 +647,7 @@ fn place_as_reborrow(
         // This is sufficient to prevent an access to a `static mut` from being marked as a
         // reborrow, even if the check above were to disappear.
         let inner_ty = Place::ty_from(place.local, inner, body, tcx).ty;
-        match inner_ty.kind {
+        match inner_ty.kind() {
             ty::Ref(..) => Some(inner),
             _ => None,
         }

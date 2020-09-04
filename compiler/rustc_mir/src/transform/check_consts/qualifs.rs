@@ -170,7 +170,7 @@ where
             // Special-case reborrows to be more like a copy of the reference.
             if let &[ref proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
                 let base_ty = Place::ty_from(place.local, proj_base, cx.body, cx.tcx).ty;
-                if let ty::Ref(..) = base_ty.kind {
+                if let ty::Ref(..) = base_ty.kind() {
                     return in_place::<Q, _>(
                         cx,
                         in_local,

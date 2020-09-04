@@ -382,7 +382,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
                             err.span_label(span, s.as_str());
-                            if !matches!(trait_ref.skip_binder().self_ty().kind, ty::Param(_)) {
+                            if !matches!(trait_ref.skip_binder().self_ty().kind(), ty::Param(_)) {
                                 // When the self type is a type param We don't need to "the trait
                                 // `std::marker::Sized` is not implemented for `T`" as we will point
                                 // at the type param with a label to suggest constraining it.
@@ -446,12 +446,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             self.tcx.lang_items().fn_once_trait(),
                         ]
                         .contains(&Some(trait_ref.def_id()));
-                        let is_target_feature_fn =
-                            if let ty::FnDef(def_id, _) = trait_ref.skip_binder().self_ty().kind {
-                                !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
-                            } else {
-                                false
-                            };
+                        let is_target_feature_fn = if let ty::FnDef(def_id, _) =
+                            *trait_ref.skip_binder().self_ty().kind()
+                        {
+                            !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                        } else {
+                            false
+                        };
                         if is_fn_trait && is_target_feature_fn {
                             err.note(
                                 "`#[target_feature]` functions do not implement the `Fn` traits",
@@ -678,7 +679,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     None => return,
                 };
 
-                let found_did = match found_trait_ty.kind {
+                let found_did = match *found_trait_ty.kind() {
                     ty::Closure(did, _) | ty::Foreign(did) | ty::FnDef(did, _) => Some(did),
                     ty::Adt(def, _) => Some(def.did),
                     _ => None,
@@ -696,13 +697,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 self.reported_closure_mismatch.borrow_mut().insert((span, found_span));
 
-                let found = match found_trait_ref.skip_binder().substs.type_at(1).kind {
+                let found = match found_trait_ref.skip_binder().substs.type_at(1).kind() {
                     ty::Tuple(ref tys) => vec![ArgKind::empty(); tys.len()],
                     _ => vec![ArgKind::empty()],
                 };
 
                 let expected_ty = expected_trait_ref.skip_binder().substs.type_at(1);
-                let expected = match expected_ty.kind {
+                let expected = match expected_ty.kind() {
                     ty::Tuple(ref tys) => tys
                         .iter()
                         .map(|t| ArgKind::from_expected_ty(t.expect_ty(), Some(span)))
@@ -1252,7 +1253,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         /// returns the fuzzy category of a given type, or None
         /// if the type can be equated to any type.
         fn type_category(t: Ty<'_>) -> Option<u32> {
-            match t.kind {
+            match t.kind() {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
                 ty::Str => Some(2),
@@ -1281,7 +1282,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         match (type_category(a), type_category(b)) {
-            (Some(cat_a), Some(cat_b)) => match (&a.kind, &b.kind) {
+            (Some(cat_a), Some(cat_b)) => match (a.kind(), b.kind()) {
                 (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => def_a == def_b,
                 _ => cat_a == cat_b,
             },
@@ -1476,7 +1477,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             ty::PredicateAtom::Trait(data, _) => {
                 let trait_ref = ty::Binder::bind(data.trait_ref);
                 let self_ty = trait_ref.skip_binder().self_ty();
-                debug!("self_ty {:?} {:?} trait_ref {:?}", self_ty, self_ty.kind, trait_ref);
+                debug!("self_ty {:?} {:?} trait_ref {:?}", self_ty, self_ty.kind(), trait_ref);
 
                 if predicate.references_error() {
                     return;
@@ -1664,7 +1665,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if let ty::Param(ty::ParamTy { name, .. }) = ty.kind {
+                if let ty::Param(ty::ParamTy { name, .. }) = *ty.kind() {
                     let infcx = self.infcx;
                     self.var_map.entry(ty).or_insert_with(|| {
                         infcx.next_ty_var(TypeVariableOrigin {
@@ -1938,8 +1939,8 @@ impl ArgKind {
     /// Creates an `ArgKind` from the expected type of an
     /// argument. It has no name (`_`) and an optional source span.
     pub fn from_expected_ty(t: Ty<'_>, span: Option<Span>) -> ArgKind {
-        match t.kind {
-            ty::Tuple(ref tys) => ArgKind::Tuple(
+        match t.kind() {
+            ty::Tuple(tys) => ArgKind::Tuple(
                 span,
                 tys.iter().map(|ty| ("_".to_owned(), ty.to_string())).collect::<Vec<_>>(),
             ),

@@ -282,7 +282,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             right.layout.ty
         );
 
-        match left.layout.ty.kind {
+        match left.layout.ty.kind() {
             ty::Char => {
                 assert_eq!(left.layout.ty, right.layout.ty);
                 let left = left.to_scalar()?;
@@ -368,7 +368,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let val = val.to_scalar()?;
         trace!("Running unary op {:?}: {:?} ({:?})", un_op, val, layout.ty);
 
-        match layout.ty.kind {
+        match layout.ty.kind() {
             ty::Bool => {
                 let val = val.to_bool()?;
                 let res = match un_op {

@@ -51,7 +51,7 @@ fn uncached_llvm_type<'a, 'tcx>(
         Abi::Uninhabited | Abi::Aggregate { .. } => {}
     }
 
-    let name = match layout.ty.kind {
+    let name = match layout.ty.kind() {
         // FIXME(eddyb) producing readable type names for trait objects can result
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
@@ -60,14 +60,14 @@ fn uncached_llvm_type<'a, 'tcx>(
         {
             let mut name = with_no_trimmed_paths(|| layout.ty.to_string());
             if let (&ty::Adt(def, _), &Variants::Single { index }) =
-                (&layout.ty.kind, &layout.variants)
+                (layout.ty.kind(), &layout.variants)
             {
                 if def.is_enum() && !def.variants.is_empty() {
                     write!(&mut name, "::{}", def.variants[index].ident).unwrap();
                 }
             }
             if let (&ty::Generator(_, _, _), &Variants::Single { index }) =
-                (&layout.ty.kind, &layout.variants)
+                (layout.ty.kind(), &layout.variants)
             {
                 write!(&mut name, "::{}", ty::GeneratorSubsts::variant_name(index)).unwrap();
             }
@@ -238,7 +238,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             if let Some(&llty) = cx.scalar_lltypes.borrow().get(&self.ty) {
                 return llty;
             }
-            let llty = match self.ty.kind {
+            let llty = match *self.ty.kind() {
                 ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
                     cx.type_ptr_to(cx.layout_of(ty).llvm_type(cx))
                 }
@@ -331,7 +331,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     ) -> &'a Type {
         // HACK(eddyb) special-case fat pointers until LLVM removes
         // pointee types, to avoid bitcasting every `OperandRef::deref`.
-        match self.ty.kind {
+        match self.ty.kind() {
             ty::Ref(..) | ty::RawPtr(_) => {
                 return self.field(cx, index).llvm_type(cx);
             }

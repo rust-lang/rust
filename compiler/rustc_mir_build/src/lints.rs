@@ -70,7 +70,7 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
         let param_env = tcx.param_env(def_id);
 
         let func_ty = func.ty(body, tcx);
-        if let ty::FnDef(fn_def_id, substs) = func_ty.kind {
+        if let ty::FnDef(fn_def_id, substs) = *func_ty.kind() {
             let (call_fn_id, call_substs) =
                 if let Ok(Some(instance)) = Instance::resolve(tcx, param_env, fn_def_id, substs) {
                     (instance.def_id(), instance.substs)

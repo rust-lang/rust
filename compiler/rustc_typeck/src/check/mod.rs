@@ -329,7 +329,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
     fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
-        match fcx.tcx.struct_tail_without_normalization(ty).kind {
+        match fcx.tcx.struct_tail_without_normalization(ty).kind() {
             ty::Slice(_) | ty::Str | ty::Dynamic(..) => ExpectRvalueLikeUnsized(ty),
             _ => ExpectHasType(ty),
         }
@@ -884,7 +884,7 @@ where
         }
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-            match ty.kind {
+            match *ty.kind() {
                 ty::Opaque(def_id, substs) => {
                     debug!("fixup_opaque_types: found type {:?}", ty);
                     // Here, we replace any inference variables that occur within
@@ -900,7 +900,7 @@ where
                             let old_param = substs[param.index as usize];
                             match old_param.unpack() {
                                 GenericArgKind::Type(old_ty) => {
-                                    if let ty::Infer(_) = old_ty.kind {
+                                    if let ty::Infer(_) = old_ty.kind() {
                                         // Replace inference type with a generic parameter
                                         self.tcx.mk_param_from_def(param)
                                     } else {
@@ -1366,7 +1366,7 @@ fn check_fn<'a, 'tcx>(
 
     inherited.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
-    if let ty::Dynamic(..) = declared_ret_ty.kind {
+    if let ty::Dynamic(..) = declared_ret_ty.kind() {
         // FIXME: We need to verify that the return type is `Sized` after the return expression has
         // been evaluated so that we have types available for all the nodes being returned, but that
         // requires the coerced evaluated type to be stored. Moving `check_return_expr` before this
@@ -1465,15 +1465,15 @@ fn check_fn<'a, 'tcx>(
     if let Some(panic_impl_did) = tcx.lang_items().panic_impl() {
         if panic_impl_did == hir.local_def_id(fn_id).to_def_id() {
             if let Some(panic_info_did) = tcx.lang_items().panic_info() {
-                if declared_ret_ty.kind != ty::Never {
+                if *declared_ret_ty.kind() != ty::Never {
                     sess.span_err(decl.output.span(), "return type should be `!`");
                 }
 
                 let inputs = fn_sig.inputs();
                 let span = hir.span(fn_id);
                 if inputs.len() == 1 {
-                    let arg_is_panic_info = match inputs[0].kind {
-                        ty::Ref(region, ty, mutbl) => match ty.kind {
+                    let arg_is_panic_info = match *inputs[0].kind() {
+                        ty::Ref(region, ty, mutbl) => match *ty.kind() {
                             ty::Adt(ref adt, _) => {
                                 adt.did == panic_info_did
                                     && mutbl == hir::Mutability::Not
@@ -1509,14 +1509,14 @@ fn check_fn<'a, 'tcx>(
     if let Some(alloc_error_handler_did) = tcx.lang_items().oom() {
         if alloc_error_handler_did == hir.local_def_id(fn_id).to_def_id() {
             if let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() {
-                if declared_ret_ty.kind != ty::Never {
+                if *declared_ret_ty.kind() != ty::Never {
                     sess.span_err(decl.output.span(), "return type should be `!`");
                 }
 
                 let inputs = fn_sig.inputs();
                 let span = hir.span(fn_id);
                 if inputs.len() == 1 {
-                    let arg_is_alloc_layout = match inputs[0].kind {
+                    let arg_is_alloc_layout = match inputs[0].kind() {
                         ty::Adt(ref adt, _) => adt.did == alloc_layout_did,
                         _ => false,
                     };
@@ -1577,7 +1577,7 @@ fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
 /// check that the fields of the `union` does not contain fields that need dropping.
 fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> bool {
     let item_type = tcx.type_of(item_def_id);
-    if let ty::Adt(def, substs) = item_type.kind {
+    if let ty::Adt(def, substs) = item_type.kind() {
         assert!(def.is_union());
         let fields = &def.non_enum_variant().fields;
         let param_env = tcx.param_env(item_def_id);
@@ -1598,7 +1598,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
             }
         }
     } else {
-        span_bug!(span, "unions must be ty::Adt, but got {:?}", item_type.kind);
+        span_bug!(span, "unions must be ty::Adt, but got {:?}", item_type.kind());
     }
     true
 }
@@ -1758,7 +1758,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
             .returns
             .iter()
             .filter_map(|expr| typeck_results.node_type_opt(expr.hir_id))
-            .all(|ty| matches!(ty.kind, ty::Never))
+            .all(|ty| matches!(ty.kind(), ty::Never))
         {
             let spans = visitor
                 .returns
@@ -1787,12 +1787,12 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
                 .returns
                 .iter()
                 .filter_map(|e| typeck_results.node_type_opt(e.hir_id).map(|t| (e.span, t)))
-                .filter(|(_, ty)| !matches!(ty.kind, ty::Never))
+                .filter(|(_, ty)| !matches!(ty.kind(), ty::Never))
             {
                 struct VisitTypes(Vec<DefId>);
                 impl<'tcx> ty::fold::TypeVisitor<'tcx> for VisitTypes {
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-                        match t.kind {
+                        match *t.kind() {
                             ty::Opaque(def, _) => {
                                 self.0.push(def);
                                 false
@@ -2426,7 +2426,7 @@ fn bounds_from_generic_predicates<'tcx>(
             "<{}>",
             types
                 .keys()
-                .filter_map(|t| match t.kind {
+                .filter_map(|t| match t.kind() {
                     ty::Param(_) => Some(t.to_string()),
                     // Avoid suggesting the following:
                     // fn foo<T, <T as Trait>::Bar>(_: T) where T: Trait, <T as Trait>::Bar: Other {}
@@ -2471,7 +2471,7 @@ fn fn_sig_suggestion<'tcx>(
         .iter()
         .enumerate()
         .map(|(i, ty)| {
-            Some(match ty.kind {
+            Some(match ty.kind() {
                 ty::Param(_) if assoc.fn_has_self_parameter && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {
                     let reg = match &format!("{}", reg)[..] {
@@ -2479,7 +2479,7 @@ fn fn_sig_suggestion<'tcx>(
                         reg => format!("{} ", reg),
                     };
                     if assoc.fn_has_self_parameter {
-                        match ref_ty.kind {
+                        match ref_ty.kind() {
                             ty::Param(param) if param.name == kw::SelfUpper => {
                                 format!("&{}{}self", reg, mutability.prefix_str())
                             }
@@ -2570,7 +2570,7 @@ fn check_representable(tcx: TyCtxt<'_>, sp: Span, item_def_id: LocalDefId) -> bo
 
 pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
     let t = tcx.type_of(def_id);
-    if let ty::Adt(def, substs) = t.kind {
+    if let ty::Adt(def, substs) = t.kind() {
         if def.is_struct() {
             let fields = &def.non_enum_variant().fields;
             if fields.is_empty() {
@@ -2584,7 +2584,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                     .emit();
                 return;
             }
-            match e.kind {
+            match e.kind() {
                 ty::Param(_) => { /* struct<T>(T, T, T, T) is ok */ }
                 _ if e.is_machine() => { /* struct(u8, u8, u8, u8) is ok */ }
                 _ => {
@@ -2678,7 +2678,7 @@ fn check_packed_inner(
     def_id: DefId,
     stack: &mut Vec<DefId>,
 ) -> Option<Vec<(DefId, Span)>> {
-    if let ty::Adt(def, substs) = tcx.type_of(def_id).kind {
+    if let ty::Adt(def, substs) = tcx.type_of(def_id).kind() {
         if def.is_struct() || def.is_union() {
             if def.repr.align.is_some() {
                 return Some(vec![(def.did, DUMMY_SP)]);
@@ -2686,7 +2686,7 @@ fn check_packed_inner(
 
             stack.push(def_id);
             for field in &def.non_enum_variant().fields {
-                if let ty::Adt(def, _) = field.ty(tcx, substs).kind {
+                if let ty::Adt(def, _) = field.ty(tcx, substs).kind() {
                     if !stack.contains(&def.did) {
                         if let Some(mut defs) = check_packed_inner(tcx, def.did, stack) {
                             defs.push((def.did, field.ident.span));
@@ -3862,7 +3862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?}, expected_vid={:?})",
             trait_ref, self_ty, expected_vid
         );
-        match self_ty.kind {
+        match *self_ty.kind() {
             ty::Infer(ty::TyVar(found_vid)) => {
                 // FIXME: consider using `sub_root_var` here so we
                 // can see through subtyping.
@@ -4042,7 +4042,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let formal_tys = if tuple_arguments == TupleArguments {
             let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
-            match tuple_type.kind {
+            match tuple_type.kind() {
                 ty::Tuple(arg_types) if arg_types.len() != args.len() => {
                     param_count_error(arg_types.len(), args.len(), "E0057", false, false);
                     expected_arg_tys = vec![];
@@ -4050,7 +4050,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 ty::Tuple(arg_types) => {
                     expected_arg_tys = match expected_arg_tys.get(0) {
-                        Some(&ty) => match ty.kind {
+                        Some(&ty) => match ty.kind() {
                             ty::Tuple(ref tys) => tys.iter().map(|k| k.expect_ty()).collect(),
                             _ => vec![],
                         },
@@ -4195,7 +4195,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // There are a few types which get autopromoted when passed via varargs
                 // in C but we just error out instead and require explicit casts.
                 let arg_ty = self.structurally_resolved_type(arg.span, arg_ty);
-                match arg_ty.kind {
+                match arg_ty.kind() {
                     ty::Float(ast::FloatTy::F32) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_double");
                     }
@@ -4345,7 +4345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(t),
             ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(t),
             ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
-                let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind {
+                let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
                     ty::Char => Some(tcx.types.u8),
                     ty::RawPtr(..) => Some(tcx.types.usize),
@@ -4356,7 +4356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ast::LitKind::Float(_, ast::LitFloatType::Suffixed(t)) => tcx.mk_mach_float(t),
             ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
-                let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind {
+                let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Float(_) => Some(ty),
                     _ => None,
                 });
@@ -4434,12 +4434,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.set_tainted_by_errors();
                 return None;
             }
-            Res::Def(DefKind::Variant, _) => match ty.kind {
+            Res::Def(DefKind::Variant, _) => match ty.kind() {
                 ty::Adt(adt, substs) => Some((adt.variant_of_res(def), adt.did, substs)),
                 _ => bug!("unexpected type: {:?}", ty),
             },
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
-            | Res::SelfTy(..) => match ty.kind {
+            | Res::SelfTy(..) => match ty.kind() {
                 ty::Adt(adt, substs) if !adt.is_enum() => {
                     Some((adt.non_enum_variant(), adt.did, substs))
                 }
@@ -4976,7 +4976,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
     ) -> bool {
         let hir = self.tcx.hir();
-        let (def_id, sig) = match found.kind {
+        let (def_id, sig) = match *found.kind() {
             ty::FnDef(def_id, _) => (def_id, found.fn_sig(self.tcx)),
             ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig()),
             _ => return false,
@@ -5109,7 +5109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some((sp, msg, suggestion, applicability)) = self.check_ref(expr, found, expected) {
             err.span_suggestion(sp, msg, suggestion, applicability);
         } else if let (ty::FnDef(def_id, ..), true) =
-            (&found.kind, self.suggest_fn_call(err, expr, expected, found))
+            (&found.kind(), self.suggest_fn_call(err, expr, expected, found))
         {
             if let Some(sp) = self.tcx.hir().span_if_local(*def_id) {
                 let sp = self.sess().source_map().guess_head_span(sp);
@@ -5256,7 +5256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         let pin_did = self.tcx.lang_items().pin_type();
-        match expected.kind {
+        match expected.kind() {
             ty::Adt(def, _) if Some(def.did) != pin_did => return false,
             // This guards the `unwrap` and `mk_box` below.
             _ if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() => return false,
@@ -5268,7 +5268,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.can_coerce(new_found, expected),
             self.sess().source_map().span_to_snippet(expr.span),
         ) {
-            match found.kind {
+            match found.kind() {
                 ty::Adt(def, _) if def.is_box() => {
                     err.help("use `Box::pin`");
                 }
@@ -5376,7 +5376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = AstConv::ast_ty_to_ty(self, ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
-                if ty.kind == expected.kind {
+                if ty.kind() == expected.kind() {
                     err.span_label(sp, format!("expected `{}` because of return type", expected));
                     return true;
                 }
@@ -5480,7 +5480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
-        let (sig, did, substs) = match (&expected.kind, &found.kind) {
+        let (sig, did, substs) = match (&expected.kind(), &found.kind()) {
             (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
                 let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
@@ -5551,7 +5551,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return None,
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
-        if matches!(last_expr_ty.kind, ty::Error(_))
+        if matches!(last_expr_ty.kind(), ty::Error(_))
             || self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err()
         {
             return None;
@@ -5680,7 +5680,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
             let ty = self.normalize_ty(span, tcx.at(span).type_of(impl_def_id));
-            match ty.kind {
+            match *ty.kind() {
                 ty::Adt(adt_def, substs) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
                     let ctor_def_id = variant.ctor_def_id.unwrap();
@@ -5992,7 +5992,7 @@ fn check_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, 
 
     for leaf in ty.walk() {
         if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
-            if let ty::Param(param) = leaf_ty.kind {
+            if let ty::Param(param) = leaf_ty.kind() {
                 debug!("found use of ty param {:?}", param);
                 params_used.insert(param.index);
             }

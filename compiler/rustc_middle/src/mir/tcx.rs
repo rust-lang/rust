@@ -33,7 +33,7 @@ impl<'tcx> PlaceTy<'tcx> {
     ///
     /// Note that the resulting type has not been normalized.
     pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: &Field) -> Ty<'tcx> {
-        let answer = match self.ty.kind {
+        let answer = match self.ty.kind() {
             ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
                     None => adt_def.non_enum_variant(),
@@ -90,7 +90,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 PlaceTy::from_ty(self.ty.builtin_index().unwrap())
             }
             ProjectionElem::Subslice { from, to, from_end } => {
-                PlaceTy::from_ty(match self.ty.kind {
+                PlaceTy::from_ty(match self.ty.kind() {
                     ty::Slice(..) => self.ty,
                     ty::Array(inner, _) if !from_end => tcx.mk_array(inner, (to - from) as u64),
                     ty::Array(inner, size) if from_end => {

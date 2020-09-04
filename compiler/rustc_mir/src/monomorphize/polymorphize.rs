@@ -288,7 +288,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
             return false;
         }
 
-        match ty.kind {
+        match *ty.kind() {
             ty::Closure(def_id, substs) | ty::Generator(def_id, substs, ..) => {
                 debug!("visit_ty: def_id={:?}", def_id);
                 // Avoid cycle errors with generators.
@@ -337,7 +337,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
             return false;
         }
 
-        match ty.kind {
+        match ty.kind() {
             ty::Param(param) => !self.unused_parameters.contains(param.index).unwrap_or(false),
             _ => ty.super_visit_with(self),
         }

@@ -53,7 +53,7 @@ fn place_contents_drop_state_cannot_differ<'tcx>(
     place: mir::Place<'tcx>,
 ) -> bool {
     let ty = place.ty(body, tcx).ty;
-    match ty.kind {
+    match ty.kind() {
         ty::Array(..) => {
             debug!(
                 "place_contents_drop_state_cannot_differ place: {:?} ty: {:?} => false",

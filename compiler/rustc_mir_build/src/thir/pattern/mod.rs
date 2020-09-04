@@ -237,7 +237,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                         Some(&adt_def.variants[variant_index])
                     }
                     _ => {
-                        if let ty::Adt(adt, _) = self.ty.kind {
+                        if let ty::Adt(adt, _) = self.ty.kind() {
                             if !adt.is_enum() {
                                 Some(&adt.variants[VariantIdx::new(0)])
                             } else {
@@ -302,7 +302,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 Ok(())
             }
             PatKind::Deref { ref subpattern } => {
-                match self.ty.kind {
+                match self.ty.kind() {
                     ty::Adt(def, _) if def.is_box() => write!(f, "box ")?,
                     ty::Ref(_, _, mutbl) => {
                         write!(f, "&{}", mutbl.prefix_str())?;
@@ -559,7 +559,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Tuple(ref pats, ddpos) => {
-                let tys = match ty.kind {
+                let tys = match ty.kind() {
                     ty::Tuple(ref tys) => tys,
                     _ => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty),
                 };
@@ -588,7 +588,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 // x's type, which is &T, where we want T (the type being matched).
                 let var_ty = ty;
                 if let ty::BindByReference(_) = bm {
-                    if let ty::Ref(_, rty, _) = ty.kind {
+                    if let ty::Ref(_, rty, _) = ty.kind() {
                         ty = rty;
                     } else {
                         bug!("`ref {}` has wrong type {}", ident, ty);
@@ -608,7 +608,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::TupleStruct(ref qpath, ref pats, ddpos) => {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
-                let adt_def = match ty.kind {
+                let adt_def = match ty.kind() {
                     ty::Adt(adt_def, _) => adt_def,
                     _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty),
                 };
@@ -670,7 +670,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let prefix = self.lower_patterns(prefix);
         let slice = self.lower_opt_pattern(slice);
         let suffix = self.lower_patterns(suffix);
-        match ty.kind {
+        match ty.kind() {
             // Matching a slice, `[T]`.
             ty::Slice(..) => PatKind::Slice { prefix, slice, suffix },
             // Fixed-length array, `[T; len]`.
@@ -704,7 +704,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
-                    let substs = match ty.kind {
+                    let substs = match ty.kind() {
                         ty::Adt(_, substs) | ty::FnDef(_, substs) => substs,
                         ty::Error(_) => {
                             // Avoid ICE (#50585)
@@ -1058,7 +1058,7 @@ crate fn compare_const_vals<'tcx>(
 
     if let (Some(a), Some(b)) = (a_bits, b_bits) {
         use rustc_apfloat::Float;
-        return match ty.kind {
+        return match *ty.kind() {
             ty::Float(ast::FloatTy::F32) => {
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Single::from_bits(b);
@@ -1081,7 +1081,7 @@ crate fn compare_const_vals<'tcx>(
         };
     }
 
-    if let ty::Str = ty.kind {
+    if let ty::Str = ty.kind() {
         if let (
             ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
             ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),

@@ -465,7 +465,7 @@ struct TraitObjectVisitor(Vec<DefId>);
 
 impl TypeVisitor<'_> for TraitObjectVisitor {
     fn visit_ty(&mut self, t: Ty<'_>) -> bool {
-        match t.kind {
+        match t.kind() {
             ty::Dynamic(preds, RegionKind::ReStatic) => {
                 if let Some(def_id) = preds.principal_def_id() {
                     self.0.push(def_id);

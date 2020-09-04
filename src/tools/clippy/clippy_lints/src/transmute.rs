@@ -338,7 +338,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 let from_ty = cx.typeck_results().expr_ty(&args[0]);
                 let to_ty = cx.typeck_results().expr_ty(e);
 
-                match (&from_ty.kind, &to_ty.kind) {
+                match (&from_ty.kind(), &to_ty.kind()) {
                     _ if from_ty == to_ty => span_lint(
                         cx,
                         USELESS_TRANSMUTE,
@@ -446,7 +446,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             &format!("transmute from a `{}` to a `char`", from_ty),
                             |diag| {
                                 let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                let arg = if let ty::Int(_) = from_ty.kind {
+                                let arg = if let ty::Int(_) = from_ty.kind() {
                                     arg.as_ty(ast::UintTy::U32.name_str())
                                 } else {
                                     arg
@@ -462,8 +462,8 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                     },
                     (ty::Ref(_, ty_from, from_mutbl), ty::Ref(_, ty_to, to_mutbl)) => {
                         if_chain! {
-                            if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.kind, &ty_to.kind);
-                            if let ty::Uint(ast::UintTy::U8) = slice_ty.kind;
+                            if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.kind(), &ty_to.kind());
+                            if let ty::Uint(ast::UintTy::U8) = slice_ty.kind();
                             if from_mutbl == to_mutbl;
                             then {
                                 let postfix = if *from_mutbl == Mutability::Mut {
@@ -555,7 +555,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                         &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                         |diag| {
                             let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                            let arg = if let ty::Int(int_ty) = from_ty.kind {
+                            let arg = if let ty::Int(int_ty) = from_ty.kind() {
                                 arg.as_ty(format!(
                                     "u{}",
                                     int_ty.bit_width().map_or_else(|| "size".to_string(), |v| v.to_string())
@@ -601,7 +601,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             arg = sugg::Sugg::NonParen(format!("{}.to_bits()", arg.maybe_par()).into());
 
                             // cast the result of `to_bits` if `to_ty` is signed
-                            arg = if let ty::Int(int_ty) = to_ty.kind {
+                            arg = if let ty::Int(int_ty) = to_ty.kind() {
                                 arg.as_ty(int_ty.name_str().to_string())
                             } else {
                                 arg

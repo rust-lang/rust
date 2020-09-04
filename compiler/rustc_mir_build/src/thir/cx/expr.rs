@@ -313,7 +313,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             }
         }
 
-        hir::ExprKind::Struct(ref qpath, ref fields, ref base) => match expr_ty.kind {
+        hir::ExprKind::Struct(ref qpath, ref fields, ref base) => match expr_ty.kind() {
             ty::Adt(adt, substs) => match adt.adt_kind() {
                 AdtKind::Struct | AdtKind::Union => {
                     let user_provided_types = cx.typeck_results().user_provided_types();
@@ -363,7 +363,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
         hir::ExprKind::Closure(..) => {
             let closure_ty = cx.typeck_results().expr_ty(expr);
-            let (def_id, substs, movability) = match closure_ty.kind {
+            let (def_id, substs, movability) = match *closure_ty.kind() {
                 ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
                 ty::Generator(def_id, substs, movability) => {
                     (def_id, UpvarSubsts::Generator(substs), Some(movability))
@@ -818,7 +818,7 @@ fn convert_path_expr<'a, 'tcx>(
             let user_provided_type = user_provided_types.get(expr.hir_id).copied();
             debug!("convert_path_expr: user_provided_type={:?}", user_provided_type);
             let ty = cx.typeck_results().node_type(expr.hir_id);
-            match ty.kind {
+            match ty.kind() {
                 // A unit struct/variant which is used as a value.
                 // We return a completely different ExprKind here to account for this special case.
                 ty::Adt(adt_def, substs) => ExprKind::Adt {
@@ -899,7 +899,7 @@ fn convert_var<'tcx>(
             });
             let region = cx.tcx.mk_region(region);
 
-            let self_expr = if let ty::Closure(_, closure_substs) = closure_ty.kind {
+            let self_expr = if let ty::Closure(_, closure_substs) = closure_ty.kind() {
                 match cx.infcx.closure_kind(closure_substs).unwrap() {
                     ty::ClosureKind::Fn => {
                         let ref_closure_ty = cx.tcx.mk_ref(
@@ -1027,7 +1027,7 @@ fn overloaded_place<'a, 'tcx>(
     // Reconstruct the output assuming it's a reference with the
     // same region and mutability as the receiver. This holds for
     // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
-    let (region, mutbl) = match recv_ty.kind {
+    let (region, mutbl) = match *recv_ty.kind() {
         ty::Ref(region, _, mutbl) => (region, mutbl),
         _ => span_bug!(expr.span, "overloaded_place: receiver is not a reference"),
     };

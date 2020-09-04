@@ -152,7 +152,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Before we go into the whole placeholder thing, just
         // quickly check if the self-type is a projection at all.
-        match obligation.predicate.skip_binder().trait_ref.self_ty().kind {
+        match obligation.predicate.skip_binder().trait_ref.self_ty().kind() {
             ty::Projection(_) | ty::Opaque(..) => {}
             ty::Infer(ty::TyVar(_)) => {
                 span_bug!(
@@ -221,7 +221,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = obligation.self_ty().skip_binder();
-        match self_ty.kind {
+        match self_ty.kind() {
             ty::Generator(..) => {
                 debug!(
                     "assemble_generator_candidates: self_ty={:?} obligation={:?}",
@@ -261,7 +261,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        match obligation.self_ty().skip_binder().kind {
+        match *obligation.self_ty().skip_binder().kind() {
             ty::Closure(_, closure_substs) => {
                 debug!("assemble_unboxed_candidates: kind={:?} obligation={:?}", kind, obligation);
                 match self.infcx.closure_kind(closure_substs) {
@@ -300,7 +300,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Okay to skip binder because what we are inspecting doesn't involve bound regions.
         let self_ty = obligation.self_ty().skip_binder();
-        match self_ty.kind {
+        match *self_ty.kind() {
             ty::Infer(ty::TyVar(_)) => {
                 debug!("assemble_fn_pointer_candidates: ambiguous self-type");
                 candidates.ambiguous = true; // Could wind up being a fn() type.
@@ -382,7 +382,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let def_id = obligation.predicate.def_id();
 
         if self.tcx().trait_is_auto(def_id) {
-            match self_ty.kind {
+            match self_ty.kind() {
                 ty::Dynamic(..) => {
                     // For object types, we don't know what the closed
                     // over types are. This means we conservatively
@@ -453,7 +453,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // self-ty here doesn't escape this probe, so just erase
             // any LBR.
             let self_ty = self.tcx().erase_late_bound_regions(&obligation.self_ty());
-            let poly_trait_ref = match self_ty.kind {
+            let poly_trait_ref = match self_ty.kind() {
                 ty::Dynamic(ref data, ..) => {
                     if data.auto_traits().any(|did| did == obligation.predicate.def_id()) {
                         debug!(
@@ -539,7 +539,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!("assemble_candidates_for_unsizing(source={:?}, target={:?})", source, target);
 
-        let may_apply = match (&source.kind, &target.kind) {
+        let may_apply = match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
             (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
                 // Upcasts permit two things:

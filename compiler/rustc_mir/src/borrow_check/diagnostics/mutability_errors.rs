@@ -230,7 +230,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 // Otherwise, check if the name is the self kewyord - in which case
                                 // we have an explicit self. Do the same thing in this case and check
                                 // for a `self: &mut Self` to suggest removing the `&mut`.
-                                if let ty::Ref(_, _, hir::Mutability::Mut) = local_decl.ty.kind {
+                                if let ty::Ref(_, _, hir::Mutability::Mut) = local_decl.ty.kind() {
                                     true
                                 } else {
                                     false
@@ -509,7 +509,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let def_id = hir.local_def_id(item_id);
             let tables = self.infcx.tcx.typeck(def_id);
             if let Some(ty::FnDef(def_id, _)) =
-                tables.node_type_opt(func.hir_id).as_ref().map(|ty| &ty.kind)
+                tables.node_type_opt(func.hir_id).as_ref().map(|ty| ty.kind())
             {
                 let arg = match hir.get_if_local(*def_id) {
                     Some(
@@ -687,8 +687,8 @@ fn annotate_struct_field(
     field: &mir::Field,
 ) -> Option<(Span, String)> {
     // Expect our local to be a reference to a struct of some kind.
-    if let ty::Ref(_, ty, _) = ty.kind {
-        if let ty::Adt(def, _) = ty.kind {
+    if let ty::Ref(_, ty, _) = ty.kind() {
+        if let ty::Adt(def, _) = ty.kind() {
             let field = def.all_fields().nth(field.index())?;
             // Use the HIR types to construct the diagnostic message.
             let hir_id = tcx.hir().local_def_id_to_hir_id(field.did.as_local()?);

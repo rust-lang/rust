@@ -81,43 +81,41 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let terminator = self.body[location.block].terminator();
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
-            func:
-                Operand::Constant(box Constant {
-                    literal: ty::Const { ty: &ty::TyS { kind: ty::FnDef(id, _), .. }, .. },
-                    ..
-                }),
+            func: Operand::Constant(box Constant { literal: ty::Const { ty: const_ty, .. }, .. }),
             args,
             ..
         } = &terminator.kind
         {
-            debug!("add_moved_or_invoked_closure_note: id={:?}", id);
-            if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
-                let closure = match args.first() {
-                    Some(Operand::Copy(ref place)) | Some(Operand::Move(ref place))
-                        if target == place.local_or_deref_local() =>
-                    {
-                        place.local_or_deref_local().unwrap()
-                    }
-                    _ => return,
-                };
+            if let ty::FnDef(id, _) = *const_ty.kind() {
+                debug!("add_moved_or_invoked_closure_note: id={:?}", id);
+                if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
+                    let closure = match args.first() {
+                        Some(Operand::Copy(ref place)) | Some(Operand::Move(ref place))
+                            if target == place.local_or_deref_local() =>
+                        {
+                            place.local_or_deref_local().unwrap()
+                        }
+                        _ => return,
+                    };
 
-                debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
-                if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind {
-                    let did = did.expect_local();
-                    let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
+                    debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
+                    if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind() {
+                        let did = did.expect_local();
+                        let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
 
-                    if let Some((span, name)) =
-                        self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
-                    {
-                        diag.span_note(
-                            *span,
-                            &format!(
-                                "closure cannot be invoked more than once because it moves the \
-                                 variable `{}` out of its environment",
-                                name,
-                            ),
-                        );
-                        return;
+                        if let Some((span, name)) =
+                            self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
+                        {
+                            diag.span_note(
+                                *span,
+                                &format!(
+                                    "closure cannot be invoked more than once because it moves the \
+                                    variable `{}` out of its environment",
+                                    name,
+                                ),
+                            );
+                            return;
+                        }
                     }
                 }
             }
@@ -125,7 +123,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // Check if we are just moving a closure after it has been invoked.
         if let Some(target) = target {
-            if let ty::Closure(did, _) = self.body.local_decls[target].ty.kind {
+            if let ty::Closure(did, _) = self.body.local_decls[target].ty.kind() {
                 let did = did.expect_local();
                 let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
 
@@ -365,7 +363,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // If the type is a box, the field is described from the boxed type
             self.describe_field_from_ty(&ty.boxed_ty(), field, variant_index)
         } else {
-            match ty.kind {
+            match *ty.kind() {
                 ty::Adt(def, _) => {
                     let variant = if let Some(idx) = variant_index {
                         assert!(def.is_enum());
@@ -496,7 +494,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // We need to add synthesized lifetimes where appropriate. We do
         // this by hooking into the pretty printer and telling it to label the
         // lifetimes without names with the value `'0`.
-        match ty.kind {
+        match ty.kind() {
             ty::Ref(
                 ty::RegionKind::ReLateBound(_, br)
                 | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
@@ -516,7 +514,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut s = String::new();
         let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, &mut s, Namespace::TypeNS);
 
-        let region = match ty.kind {
+        let region = match ty.kind() {
             ty::Ref(region, _, _) => {
                 match region {
                     ty::RegionKind::ReLateBound(_, br)
@@ -680,7 +678,7 @@ impl BorrowedContentSource<'tcx> {
             BorrowedContentSource::DerefRawPointer => "a raw pointer".to_string(),
             BorrowedContentSource::DerefSharedRef => "a shared reference".to_string(),
             BorrowedContentSource::DerefMutableRef => "a mutable reference".to_string(),
-            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind {
+            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind() {
                 ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Rc, def.did) => {
                     "an `Rc`".to_string()
                 }
@@ -712,7 +710,7 @@ impl BorrowedContentSource<'tcx> {
             BorrowedContentSource::DerefMutableRef => {
                 bug!("describe_for_immutable_place: DerefMutableRef isn't immutable")
             }
-            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind {
+            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind() {
                 ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Rc, def.did) => {
                     "an `Rc`".to_string()
                 }
@@ -726,7 +724,7 @@ impl BorrowedContentSource<'tcx> {
     }
 
     fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
-        match func.kind {
+        match *func.kind() {
             ty::FnDef(def_id, substs) => {
                 let trait_id = tcx.trait_of_item(def_id)?;
 
@@ -812,7 +810,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         {
             let mut method_did = None;
             if let Operand::Constant(box Constant { literal: ty::Const { ty, .. }, .. }) = func {
-                if let ty::FnDef(def_id, _) = ty.kind {
+                if let ty::FnDef(def_id, _) = *ty.kind() {
                     debug!("move_spans: fn = {:?}", def_id);
                     if let Some(ty::AssocItem { fn_has_self_parameter, .. }) =
                         self.infcx.tcx.opt_associated_item(def_id)

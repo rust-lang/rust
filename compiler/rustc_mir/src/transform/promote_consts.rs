@@ -220,7 +220,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
         match terminator.kind {
             TerminatorKind::Call { ref func, .. } => {
-                if let ty::FnDef(def_id, _) = func.ty(self.ccx.body, self.ccx.tcx).kind {
+                if let ty::FnDef(def_id, _) = *func.ty(self.ccx.body, self.ccx.tcx).kind() {
                     let fn_sig = self.ccx.tcx.fn_sig(def_id);
                     if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
                         let name = self.ccx.tcx.item_name(def_id);
@@ -368,11 +368,11 @@ impl<'tcx> Validator<'_, 'tcx> {
                                 == Some(hir::ConstContext::Static(hir::Mutability::Mut))
                             {
                                 // Inside a `static mut`, &mut [...] is also allowed.
-                                match ty.kind {
+                                match ty.kind() {
                                     ty::Array(..) | ty::Slice(_) => {}
                                     _ => return Err(Unpromotable),
                                 }
-                            } else if let ty::Array(_, len) = ty.kind {
+                            } else if let ty::Array(_, len) = ty.kind() {
                                 // FIXME(eddyb) the `self.is_non_const_fn` condition
                                 // seems unnecessary, given that this is merely a ZST.
                                 match len.try_eval_usize(self.tcx, self.param_env) {
@@ -613,7 +613,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) if self.const_kind.is_none() => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind() {
                     assert!(
                         op == BinOp::Eq
                             || op == BinOp::Ne
@@ -656,7 +656,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // so are allowed.
                 if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
                     let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
-                    if let ty::Ref(..) = base_ty.kind {
+                    if let ty::Ref(..) = base_ty.kind() {
                         return self.validate_place(PlaceRef {
                             local: place.local,
                             projection: proj_base,
@@ -675,11 +675,11 @@ impl<'tcx> Validator<'_, 'tcx> {
                     // is allowed right now, and only in functions.
                     if self.const_kind == Some(hir::ConstContext::Static(hir::Mutability::Mut)) {
                         // Inside a `static mut`, &mut [...] is also allowed.
-                        match ty.kind {
+                        match ty.kind() {
                             ty::Array(..) | ty::Slice(_) => {}
                             _ => return Err(Unpromotable),
                         }
-                    } else if let ty::Array(_, len) = ty.kind {
+                    } else if let ty::Array(_, len) = ty.kind() {
                         // FIXME(eddyb): We only return `Unpromotable` for `&mut []` inside a
                         // const context which seems unnecessary given that this is merely a ZST.
                         match len.try_eval_usize(self.tcx, self.param_env) {
@@ -695,7 +695,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let mut place = place.as_ref();
                 if let [proj_base @ .., ProjectionElem::Deref] = &place.projection {
                     let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
-                    if let ty::Ref(..) = base_ty.kind {
+                    if let ty::Ref(..) = base_ty.kind() {
                         place = PlaceRef { local: place.local, projection: proj_base };
                     }
                 }
@@ -749,7 +749,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         let fn_ty = callee.ty(self.body, self.tcx);
 
         if !self.explicit && self.const_kind.is_none() {
-            if let ty::FnDef(def_id, _) = fn_ty.kind {
+            if let ty::FnDef(def_id, _) = *fn_ty.kind() {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
                 if !self.tcx.is_promotable_const_fn(def_id) {
@@ -758,7 +758,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
         }
 
-        let is_const_fn = match fn_ty.kind {
+        let is_const_fn = match *fn_ty.kind() {
             ty::FnDef(def_id, _) => {
                 is_const_fn(self.tcx, def_id)
                     || is_unstable_const_fn(self.tcx, def_id).is_some()

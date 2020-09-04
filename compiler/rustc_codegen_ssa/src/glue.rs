@@ -19,7 +19,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let align = bx.const_usize(layout.align.abi.bytes());
         return (size, align);
     }
-    match t.kind {
+    match t.kind() {
         ty::Dynamic(..) => {
             // load size/align from vtable
             let vtable = info.unwrap();
@@ -64,7 +64,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let size = bx.add(sized_size, unsized_size);
 
             // Packed types ignore the alignment of their fields.
-            if let ty::Adt(def, _) = t.kind {
+            if let ty::Adt(def, _) = t.kind() {
                 if def.repr.packed() {
                     unsized_align = sized_align;
                 }

@@ -121,7 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 let arg = &args[0];
                 let arg_ty = cx.typeck_results().expr_ty(arg);
 
-                if let ty::Ref(..) = arg_ty.kind {
+                if let ty::Ref(..) = arg_ty.kind() {
                     if match_def_path(cx, def_id, &paths::DROP) {
                         lint = DROP_REF;
                         msg = DROP_REF_SUMMARY.to_string();

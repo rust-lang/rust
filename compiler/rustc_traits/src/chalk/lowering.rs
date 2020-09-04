@@ -217,7 +217,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                 ty::Binder::bind(predicate).lower_into(interner)
             }
             ty::PredicateAtom::WellFormed(arg) => match arg.unpack() {
-                GenericArgKind::Type(ty) => match ty.kind {
+                GenericArgKind::Type(ty) => match ty.kind() {
                     // FIXME(chalk): In Chalk, a placeholder is WellFormed if it
                     // `FromEnv`. However, when we "lower" Params, we don't update
                     // the environment.
@@ -340,7 +340,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
         let uint = |i| apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Uint(i)), empty());
         let float = |f| apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Float(f)), empty());
 
-        match self.kind {
+        match *self.kind() {
             Bool => apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Bool), empty()),
             Char => apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Char), empty()),
             Int(ty) => match ty {
@@ -692,7 +692,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-        match t.kind {
+        match *t.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 match self.parameters.entry(bound_ty.var.as_u32()) {
                     Entry::Vacant(entry) => {
@@ -836,7 +836,7 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match t.kind {
+        match *t.kind() {
             // FIXME(chalk): currently we convert params to placeholders starting at
             // index `0`. To support placeholders, we'll actually need to do a
             // first pass to collect placeholders. Then we can insert params after.

@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             }
 
             // Make sure we found an array after peeling the boxes.
-            if !matches!(recv_ty.kind, ty::Array(..)) {
+            if !matches!(recv_ty.kind(), ty::Array(..)) {
                 return;
             }
 
@@ -66,9 +66,9 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             }
 
             // Emit lint diagnostic.
-            let target = match cx.typeck_results().expr_ty_adjusted(receiver_arg).kind {
-                ty::Ref(_, ty::TyS { kind: ty::Array(..), .. }, _) => "[T; N]",
-                ty::Ref(_, ty::TyS { kind: ty::Slice(..), .. }, _) => "[T]",
+            let target = match *cx.typeck_results().expr_ty_adjusted(receiver_arg).kind() {
+                ty::Ref(_, inner_ty, _) if inner_ty.is_array() => "[T; N]",
+                ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), ty::Slice(..)) => "[T]",
 
                 // We know the original first argument type is an array type,
                 // we know that the first adjustment was an autoref coercion
