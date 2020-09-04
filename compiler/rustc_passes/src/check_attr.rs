@@ -13,7 +13,7 @@ use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem};
+use rustc_hir::{self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_hir::{MethodKind, Target};
 use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
 use rustc_session::parse::feature_err;
@@ -329,6 +329,17 @@ impl CheckAttrVisitor<'tcx> {
                                 .struct_span_err(
                                     meta.span(),
                                     &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", err),
+                                )
+                                .emit();
+                            return false;
+                        }
+                        if CRATE_HIR_ID == hir_id {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    meta.span(),
+                                    "`#![doc(alias = \"...\")]` isn't allowed as a crate \
+                                     level attribute",
                                 )
                                 .emit();
                             return false;
@@ -811,6 +822,11 @@ fn is_c_like_enum(item: &Item<'_>) -> bool {
 fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir()
         .visit_item_likes_in_module(module_def_id, &mut CheckAttrVisitor { tcx }.as_deep_visitor());
+    if module_def_id.is_top_level_module() {
+        for attr in tcx.hir().krate_attrs() {
+            CheckAttrVisitor { tcx }.check_doc_alias(attr, CRATE_HIR_ID, Target::Mod);
+        }
+    }
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
