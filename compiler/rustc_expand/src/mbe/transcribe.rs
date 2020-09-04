@@ -4,7 +4,7 @@ use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, NtTT, Token};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
 use rustc_ast::MacCall;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -111,7 +111,7 @@ pub(super) fn transcribe<'a>(
     //
     // Thus, if we try to pop the `result_stack` and it is empty, we have reached the top-level
     // again, and we are done transcribing.
-    let mut result: Vec<TreeAndJoint> = Vec::new();
+    let mut result: Vec<TreeAndSpacing> = Vec::new();
     let mut result_stack = Vec::new();
     let mut marker = Marker(cx.current_expansion.id, transparency);
 
