@@ -8,7 +8,7 @@ use crate::ast::{Path, PathSegment};
 use crate::mut_visit::visit_clobber;
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Token};
-use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::source_map::{BytePos, Spanned};
@@ -361,7 +361,7 @@ pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {
 }
 
 impl MetaItem {
-    fn token_trees_and_joints(&self) -> Vec<TreeAndJoint> {
+    fn token_trees_and_spacings(&self) -> Vec<TreeAndSpacing> {
         let mut idents = vec![];
         let mut last_pos = BytePos(0 as u32);
         for (i, segment) in self.path.segments.iter().enumerate() {
@@ -374,7 +374,7 @@ impl MetaItem {
             idents.push(TokenTree::Token(Token::from_ast_ident(segment.ident)).into());
             last_pos = segment.ident.span.hi();
         }
-        idents.extend(self.kind.token_trees_and_joints(self.span));
+        idents.extend(self.kind.token_trees_and_spacings(self.span));
         idents
     }
 
@@ -447,7 +447,7 @@ impl MetaItemKind {
                     if i > 0 {
                         tts.push(TokenTree::token(token::Comma, span).into());
                     }
-                    tts.extend(item.token_trees_and_joints())
+                    tts.extend(item.token_trees_and_spacings())
                 }
                 MacArgs::Delimited(
                     DelimSpan::from_single(span),
@@ -458,7 +458,7 @@ impl MetaItemKind {
         }
     }
 
-    fn token_trees_and_joints(&self, span: Span) -> Vec<TreeAndJoint> {
+    fn token_trees_and_spacings(&self, span: Span) -> Vec<TreeAndSpacing> {
         match *self {
             MetaItemKind::Word => vec![],
             MetaItemKind::NameValue(ref lit) => {
@@ -470,7 +470,7 @@ impl MetaItemKind {
                     if i > 0 {
                         tokens.push(TokenTree::token(token::Comma, span).into());
                     }
-                    tokens.extend(item.token_trees_and_joints())
+                    tokens.extend(item.token_trees_and_spacings())
                 }
                 vec![
                     TokenTree::Delimited(
@@ -553,9 +553,9 @@ impl NestedMetaItem {
         }
     }
 
-    fn token_trees_and_joints(&self) -> Vec<TreeAndJoint> {
+    fn token_trees_and_spacings(&self) -> Vec<TreeAndSpacing> {
         match *self {
-            NestedMetaItem::MetaItem(ref item) => item.token_trees_and_joints(),
+            NestedMetaItem::MetaItem(ref item) => item.token_trees_and_spacings(),
             NestedMetaItem::Literal(ref lit) => vec![lit.token_tree().into()],
         }
     }
