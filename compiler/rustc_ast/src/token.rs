@@ -173,6 +173,7 @@ pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: bool) -> bool {
             kw::Move,
             kw::Return,
             kw::True,
+            kw::Try,
             kw::Unsafe,
             kw::While,
             kw::Yield,
