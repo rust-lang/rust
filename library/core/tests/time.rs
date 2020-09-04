@@ -321,3 +321,104 @@ fn debug_formatting_precision_high() {
     assert_eq!(format!("{:.10?}", Duration::new(4, 001_000_000)), "4.0010000000s");
     assert_eq!(format!("{:.20?}", Duration::new(4, 001_000_000)), "4.00100000000000000000s");
 }
+
+#[test]
+fn duration_const() {
+    // test that the methods of `Duration` are usable in a const context
+
+    const DURATION: Duration = Duration::new(0, 123_456_789);
+
+    const SUB_SEC_MILLIS: u32 = DURATION.subsec_millis();
+    assert_eq!(SUB_SEC_MILLIS, 123);
+
+    const SUB_SEC_MICROS: u32 = DURATION.subsec_micros();
+    assert_eq!(SUB_SEC_MICROS, 123_456);
+
+    const SUB_SEC_NANOS: u32 = DURATION.subsec_nanos();
+    assert_eq!(SUB_SEC_NANOS, 123_456_789);
+
+    const ZERO: Duration = Duration::zero();
+    assert_eq!(ZERO, Duration::new(0, 0));
+
+    const IS_ZERO: bool = ZERO.is_zero();
+    assert!(IS_ZERO);
+
+    const ONE: Duration = Duration::new(1, 0);
+
+    const SECONDS: u64 = ONE.as_secs();
+    assert_eq!(SECONDS, 1);
+
+    const FROM_SECONDS: Duration = Duration::from_secs(1);
+    assert_eq!(FROM_SECONDS, ONE);
+
+    const SECONDS_F32: f32 = ONE.as_secs_f32();
+    assert_eq!(SECONDS_F32, 1.0);
+
+    const FROM_SECONDS_F32: Duration = Duration::from_secs_f32(1.0);
+    assert_eq!(FROM_SECONDS_F32, ONE);
+
+    const SECONDS_F64: f64 = ONE.as_secs_f64();
+    assert_eq!(SECONDS_F64, 1.0);
+
+    const FROM_SECONDS_F64: Duration = Duration::from_secs_f64(1.0);
+    assert_eq!(FROM_SECONDS_F64, ONE);
+
+    const MILLIS: u128 = ONE.as_millis();
+    assert_eq!(MILLIS, 1_000);
+
+    const FROM_MILLIS: Duration = Duration::from_millis(1_000);
+    assert_eq!(FROM_MILLIS, ONE);
+
+    const MICROS: u128 = ONE.as_micros();
+    assert_eq!(MICROS, 1_000_000);
+
+    const FROM_MICROS: Duration = Duration::from_micros(1_000_000);
+    assert_eq!(FROM_MICROS, ONE);
+
+    const NANOS: u128 = ONE.as_nanos();
+    assert_eq!(NANOS, 1_000_000_000);
+
+    const FROM_NANOS: Duration = Duration::from_nanos(1_000_000_000);
+    assert_eq!(FROM_NANOS, ONE);
+
+    const MAX: Duration = Duration::new(u64::MAX, 999_999_999);
+
+    const CHECKED_ADD: Option<Duration> = MAX.checked_add(ONE);
+    assert_eq!(CHECKED_ADD, None);
+
+    const CHECKED_SUB: Option<Duration> = ZERO.checked_sub(ONE);
+    assert_eq!(CHECKED_SUB, None);
+
+    const CHECKED_MUL: Option<Duration> = ONE.checked_mul(1);
+    assert_eq!(CHECKED_MUL, Some(ONE));
+
+    const MUL_F32: Duration = ONE.mul_f32(1.0);
+    assert_eq!(MUL_F32, ONE);
+
+    const MUL_F64: Duration = ONE.mul_f64(1.0);
+    assert_eq!(MUL_F64, ONE);
+
+    const CHECKED_DIV: Option<Duration> = ONE.checked_div(1);
+    assert_eq!(CHECKED_DIV, Some(ONE));
+
+    const DIV_F32: Duration = ONE.div_f32(1.0);
+    assert_eq!(DIV_F32, ONE);
+
+    const DIV_F64: Duration = ONE.div_f64(1.0);
+    assert_eq!(DIV_F64, ONE);
+
+    const DIV_DURATION_F32: f32 = ONE.div_duration_f32(ONE);
+    assert_eq!(DIV_DURATION_F32, 1.0);
+
+    const DIV_DURATION_F64: f64 = ONE.div_duration_f64(ONE);
+    assert_eq!(DIV_DURATION_F64, 1.0);
+
+    const SATURATING_ADD: Duration = MAX.saturating_add(ONE);
+    assert_eq!(SATURATING_ADD, MAX);
+
+    const SATURATING_SUB: Duration = ZERO.saturating_sub(ONE);
+    assert_eq!(SATURATING_SUB, ZERO);
+
+    const SATURATING_MUL: Duration = MAX.saturating_mul(2);
+    assert_eq!(SATURATING_MUL, MAX);
+}
