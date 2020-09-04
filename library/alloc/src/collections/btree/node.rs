@@ -461,11 +461,15 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     fn into_key_slice(self) -> &'a [K] {
-        unsafe { slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().keys), self.len()) }
+        unsafe {
+            slice::from_raw_parts(MaybeUninit::slice_as_ptr(&self.as_leaf().keys), self.len())
+        }
     }
 
     fn into_val_slice(self) -> &'a [V] {
-        unsafe { slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().vals), self.len()) }
+        unsafe {
+            slice::from_raw_parts(MaybeUninit::slice_as_ptr(&self.as_leaf().vals), self.len())
+        }
     }
 }
 
@@ -480,7 +484,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         // SAFETY: The keys of a node must always be initialized up to length.
         unsafe {
             slice::from_raw_parts_mut(
-                MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).keys),
+                MaybeUninit::slice_as_mut_ptr(&mut (*self.as_leaf_mut()).keys),
                 self.len(),
             )
         }
@@ -490,7 +494,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         // SAFETY: The values of a node must always be initialized up to length.
         unsafe {
             slice::from_raw_parts_mut(
-                MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).vals),
+                MaybeUninit::slice_as_mut_ptr(&mut (*self.as_leaf_mut()).vals),
                 self.len(),
             )
         }
@@ -506,10 +510,10 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         let leaf = self.as_leaf_mut();
         // SAFETY: The keys and values of a node must always be initialized up to length.
         let keys = unsafe {
-            slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).keys), len)
+            slice::from_raw_parts_mut(MaybeUninit::slice_as_mut_ptr(&mut (*leaf).keys), len)
         };
         let vals = unsafe {
-            slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).vals), len)
+            slice::from_raw_parts_mut(MaybeUninit::slice_as_mut_ptr(&mut (*leaf).vals), len)
         };
         (keys, vals)
     }
@@ -588,7 +592,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
             slice_insert(self.vals_mut(), 0, val);
             slice_insert(
                 slice::from_raw_parts_mut(
-                    MaybeUninit::first_ptr_mut(&mut self.as_internal_mut().edges),
+                    MaybeUninit::slice_as_mut_ptr(&mut self.as_internal_mut().edges),
                     self.len() + 1,
                 ),
                 0,
@@ -646,7 +650,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                 ForceResult::Internal(mut internal) => {
                     let edge = slice_remove(
                         slice::from_raw_parts_mut(
-                            MaybeUninit::first_ptr_mut(&mut internal.as_internal_mut().edges),
+                            MaybeUninit::slice_as_mut_ptr(&mut internal.as_internal_mut().edges),
                             old_len + 1,
                         ),
                         0,
@@ -933,7 +937,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             slice_insert(
                 slice::from_raw_parts_mut(
-                    MaybeUninit::first_ptr_mut(&mut self.node.as_internal_mut().edges),
+                    MaybeUninit::slice_as_mut_ptr(&mut self.node.as_internal_mut().edges),
                     self.node.len(),
                 ),
                 self.idx + 1,
