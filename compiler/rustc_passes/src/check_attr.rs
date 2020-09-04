@@ -250,13 +250,23 @@ impl CheckAttrVisitor<'tcx> {
                                     None
                                 }
                             }
+                            Target::AssocConst => {
+                                let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
+                                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
+                                // We can't link to trait impl's consts.
+                                let err = "associated constant in trait implementation block";
+                                match containing_item.kind {
+                                    ItemKind::Impl { of_trait: Some(_), .. } => Some(err),
+                                    _ => None,
+                                }
+                            }
                             _ => None,
                         } {
                             self.tcx
                                 .sess
                                 .struct_span_err(
                                     meta.span(),
-                                    &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", err,),
+                                    &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", err),
                                 )
                                 .emit();
                         }
