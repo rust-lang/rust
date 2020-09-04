@@ -59,3 +59,13 @@ fn test_show() {
     let s = format!("{:?}", (1, "hi", true));
     assert_eq!(s, "(1, \"hi\", true)");
 }
+
+
+#[test]
+fn test_nested_index() {
+    let n = (1, (2, 3)).1.1;
+    assert_eq!(n, 3);
+
+    let n = (1, (2, (3, 4))).1.1.1;
+    assert_eq!(n, 4);
+}
