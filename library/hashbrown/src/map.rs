@@ -1583,7 +1583,7 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Eq,
     {
         self.from_hash(hash, |q| q.borrow().eq(k))
     }
