@@ -97,7 +97,7 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, item_hir_id: hir::HirId, decl: &hir::
 // generics (because the compiler cannot ensure immutability for unknown types).
 fn check_ty<'tcx>(cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
     let ty = walk_ptrs_ty(ty);
-    if let Adt(def, substs) = ty.kind {
+    if let Adt(def, substs) = ty.kind() {
         if [&paths::HASHMAP, &paths::BTREEMAP, &paths::HASHSET, &paths::BTREESET]
             .iter()
             .any(|path| match_def_path(cx, def.did, &**path))
@@ -109,7 +109,7 @@ fn check_ty<'tcx>(cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
 }
 
 fn is_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
-    match ty.kind {
+    match *ty.kind() {
         RawPtr(TypeAndMut { ty: inner_ty, mutbl }) | Ref(_, inner_ty, mutbl) => {
             mutbl == hir::Mutability::Mut || is_mutable_type(cx, inner_ty, span)
         },

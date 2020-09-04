@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                         match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
                                 if ident_eq(name, inner) {
-                                    if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind {
+                                    if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
                                         lint(cx, e.span, args[0].span, true);
                                     }
                                 }
@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                                     && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
 
                                     let obj_ty = cx.typeck_results().expr_ty(&obj[0]);
-                                    if let ty::Ref(_, ty, _) = obj_ty.kind {
+                                    if let ty::Ref(_, ty, _) = obj_ty.kind() {
                                         let copy = is_copy(cx, ty);
                                         lint(cx, e.span, args[0].span, copy);
                                     } else {

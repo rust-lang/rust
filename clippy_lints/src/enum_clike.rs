@@ -53,12 +53,12 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
                         .ok()
                         .map(|val| rustc_middle::ty::Const::from_value(cx.tcx, val, ty));
                     if let Some(Constant::Int(val)) = constant.and_then(miri_to_const) {
-                        if let ty::Adt(adt, _) = ty.kind {
+                        if let ty::Adt(adt, _) = ty.kind() {
                             if adt.is_enum() {
                                 ty = adt.repr.discr_type().to_ty(cx.tcx);
                             }
                         }
-                        match ty.kind {
+                        match ty.kind() {
                             ty::Int(IntTy::Isize) => {
                                 let val = ((val as i128) << 64) >> 64;
                                 if i32::try_from(val).is_ok() {
