@@ -8,7 +8,7 @@
 
 use rustc_ast as ast;
 use rustc_ast::token::{self, DelimToken, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{self, IsJoint, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{self, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
@@ -200,8 +200,13 @@ pub fn maybe_file_to_stream(
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
 ) -> Result<(TokenStream, Vec<lexer::UnmatchedBrace>), Vec<Diagnostic>> {
-    let srdr = lexer::StringReader::new(sess, source_file, override_span);
-    let (token_trees, unmatched_braces) = srdr.into_token_trees();
+    let src = source_file.src.as_ref().unwrap_or_else(|| {
+        sess.span_diagnostic
+            .bug(&format!("cannot lex `source_file` without source: {}", source_file.name));
+    });
+
+    let (token_trees, unmatched_braces) =
+        lexer::parse_token_trees(sess, src.as_str(), source_file.start_pos, override_span);
 
     match token_trees {
         Ok(stream) => Ok((stream, unmatched_braces)),
@@ -432,7 +437,7 @@ pub fn tokenstream_probably_equal_for_proc_macro(
             // issue #75734 tracks resolving this.
             nt_to_tokenstream(nt, sess, *span).into_trees()
         } else {
-            TokenStream::new(vec![(tree, IsJoint::NonJoint)]).into_trees()
+            TokenStream::new(vec![(tree, Spacing::Alone)]).into_trees()
         }
     };
 

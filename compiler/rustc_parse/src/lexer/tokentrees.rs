@@ -3,8 +3,8 @@ use super::{StringReader, UnmatchedBrace};
 use rustc_ast::token::{self, DelimToken, Token};
 use rustc_ast::tokenstream::{
     DelimSpan,
-    IsJoint::{self, *},
-    TokenStream, TokenTree, TreeAndJoint,
+    Spacing::{self, *},
+    TokenStream, TokenTree, TreeAndSpacing,
 };
 use rustc_ast_pretty::pprust::token_to_string;
 use rustc_data_structures::fx::FxHashMap;
@@ -12,7 +12,7 @@ use rustc_errors::PResult;
 use rustc_span::Span;
 
 impl<'a> StringReader<'a> {
-    crate fn into_token_trees(self) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
+    pub(super) fn into_token_trees(self) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
         let mut tt_reader = TokenTreesReader {
             string_reader: self,
             token: Token::dummy(),
@@ -77,7 +77,7 @@ impl<'a> TokenTreesReader<'a> {
         }
     }
 
-    fn parse_token_tree(&mut self) -> PResult<'a, TreeAndJoint> {
+    fn parse_token_tree(&mut self) -> PResult<'a, TreeAndSpacing> {
         let sm = self.string_reader.sess.source_map();
 
         match self.token.kind {
@@ -262,29 +262,29 @@ impl<'a> TokenTreesReader<'a> {
             }
             _ => {
                 let tt = TokenTree::Token(self.token.take());
-                let mut is_joint = self.bump();
+                let mut spacing = self.bump();
                 if !self.token.is_op() {
-                    is_joint = NonJoint;
+                    spacing = Alone;
                 }
-                Ok((tt, is_joint))
+                Ok((tt, spacing))
             }
         }
     }
 
-    fn bump(&mut self) -> IsJoint {
-        let (joint_to_prev, token) = self.string_reader.next_token();
+    fn bump(&mut self) -> Spacing {
+        let (spacing, token) = self.string_reader.next_token();
         self.token = token;
-        joint_to_prev
+        spacing
     }
 }
 
 #[derive(Default)]
 struct TokenStreamBuilder {
-    buf: Vec<TreeAndJoint>,
+    buf: Vec<TreeAndSpacing>,
 }
 
 impl TokenStreamBuilder {
-    fn push(&mut self, (tree, joint): TreeAndJoint) {
+    fn push(&mut self, (tree, joint): TreeAndSpacing) {
         if let Some((TokenTree::Token(prev_token), Joint)) = self.buf.last() {
             if let TokenTree::Token(token) = &tree {
                 if let Some(glued) = prev_token.glue(token) {
