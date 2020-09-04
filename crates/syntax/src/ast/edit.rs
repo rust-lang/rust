@@ -492,7 +492,6 @@ impl ast::GenericParamList {
             to_insert.push(space.into());
         }
         to_insert.push(item.syntax().clone().into());
-        to_insert.push(make::token(T![,]).into());
 
         macro_rules! after_l_angle {
             () => {{

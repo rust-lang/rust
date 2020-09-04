@@ -11,7 +11,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // ->
 // ```
-// fn foo<B: Bar,>(bar: B) {}
+// fn foo<B: Bar>(bar: B) {}
 // ```
 pub(crate) fn replace_impl_trait_with_generic(
     acc: &mut Assists,
@@ -59,7 +59,7 @@ mod tests {
             fn foo<G>(bar: <|>impl Bar) {}
             "#,
             r#"
-            fn foo<G, B: Bar,>(bar: B) {}
+            fn foo<G, B: Bar>(bar: B) {}
             "#,
         );
     }
@@ -72,7 +72,7 @@ mod tests {
             fn foo(bar: <|>impl Bar) {}
             "#,
             r#"
-            fn foo<B: Bar,>(bar: B) {}
+            fn foo<B: Bar>(bar: B) {}
             "#,
         );
     }
@@ -85,7 +85,7 @@ mod tests {
             fn foo<G>(foo: impl Foo, bar: <|>impl Bar) {}
             "#,
             r#"
-            fn foo<G, B: Bar,>(foo: impl Foo, bar: B) {}
+            fn foo<G, B: Bar>(foo: impl Foo, bar: B) {}
             "#,
         );
     }
@@ -98,7 +98,7 @@ mod tests {
             fn foo<>(bar: <|>impl Bar) {}
             "#,
             r#"
-            fn foo<B: Bar,>(bar: B) {}
+            fn foo<B: Bar>(bar: B) {}
             "#,
         );
     }
@@ -112,7 +112,7 @@ mod tests {
             >(bar: <|>impl Bar) {}
             "#,
             r#"
-            fn foo<B: Bar,
+            fn foo<B: Bar
             >(bar: B) {}
             "#,
         );
@@ -127,7 +127,7 @@ mod tests {
             fn foo<B>(bar: <|>impl Bar) {}
             "#,
             r#"
-            fn foo<B, C: Bar,>(bar: C) {}
+            fn foo<B, C: Bar>(bar: C) {}
             "#,
         );
     }
@@ -147,7 +147,7 @@ mod tests {
             fn foo<
                 G: Foo,
                 F,
-                H, B: Bar,
+                H, B: Bar
             >(bar: B) {}
             "#,
         );
@@ -161,7 +161,7 @@ mod tests {
             fn foo(bar: <|>impl Foo + Bar) {}
             "#,
             r#"
-            fn foo<F: Foo + Bar,>(bar: F) {}
+            fn foo<F: Foo + Bar>(bar: F) {}
             "#,
         );
     }

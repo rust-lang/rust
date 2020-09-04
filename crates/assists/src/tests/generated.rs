@@ -822,7 +822,7 @@ fn doctest_replace_impl_trait_with_generic() {
 fn foo(bar: <|>impl Bar) {}
 "#####,
         r#####"
-fn foo<B: Bar,>(bar: B) {}
+fn foo<B: Bar>(bar: B) {}
 "#####,
     )
 }
