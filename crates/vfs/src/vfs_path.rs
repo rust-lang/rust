@@ -287,8 +287,26 @@ impl VirtualPath {
         Some(res)
     }
 
+    // FIXME: Currently VirtualPath does is unable to distinguish a directory from a file
+    // hence this method will return `Some("directory_name", None)` for a directory
     pub fn file_name_and_extension(&self) -> Option<(&str, Option<&str>)> {
-        // TODO kb check if is a file
-        Some(("test_mod_1", Some("rs")))
+        let file_name = match self.0.rfind('/') {
+            Some(position) => &self.0[position + 1..],
+            None => &self.0,
+        };
+
+        if file_name.is_empty() {
+            None
+        } else {
+            let mut file_stem_and_extension = file_name.rsplitn(2, '.');
+            let extension = file_stem_and_extension.next();
+            let file_stem = file_stem_and_extension.next();
+
+            match (file_stem, extension) {
+                (None, None) => None,
+                (None, Some(_)) | (Some(""), Some(_)) => Some((file_name, None)),
+                (Some(file_stem), extension) => Some((file_stem, extension)),
+            }
+        }
     }
 }
