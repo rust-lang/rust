@@ -75,6 +75,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
     type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
     type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
+    type InternedConstraints = Vec<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>>;
     type DefId = DefId;
     type InternedAdtId = &'tcx AdtDef;
     type Identifier = ();
@@ -108,8 +109,42 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         application_ty: &chalk_ir::ApplicationTy<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        let chalk_ir::ApplicationTy { name, substitution } = application_ty;
-        Some(write!(fmt, "{:?}{:?}", name, chalk_ir::debug::Angle(substitution.interned())))
+        match application_ty.name {
+            chalk_ir::TypeName::Ref(mutbl) => {
+                let data = application_ty.substitution.interned();
+                match (&**data[0].interned(), &**data[1].interned()) {
+                    (
+                        chalk_ir::GenericArgData::Lifetime(lifetime),
+                        chalk_ir::GenericArgData::Ty(ty),
+                    ) => Some(match mutbl {
+                        chalk_ir::Mutability::Not => write!(fmt, "(&{:?} {:?})", lifetime, ty),
+                        chalk_ir::Mutability::Mut => write!(fmt, "(&{:?} mut {:?})", lifetime, ty),
+                    }),
+                    _ => unreachable!(),
+                }
+            }
+            chalk_ir::TypeName::Array => {
+                let data = application_ty.substitution.interned();
+                match (&**data[0].interned(), &**data[1].interned()) {
+                    (chalk_ir::GenericArgData::Ty(ty), chalk_ir::GenericArgData::Const(len)) => {
+                        Some(write!(fmt, "[{:?}; {:?}]", ty, len))
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            chalk_ir::TypeName::Slice => {
+                let data = application_ty.substitution.interned();
+                let ty = match &**data[0].interned() {
+                    chalk_ir::GenericArgData::Ty(t) => t,
+                    _ => unreachable!(),
+                };
+                Some(write!(fmt, "[{:?}]", ty))
+            }
+            _ => {
+                let chalk_ir::ApplicationTy { name, substitution } = application_ty;
+                Some(write!(fmt, "{:?}{:?}", name, chalk_ir::debug::Angle(substitution.interned())))
+            }
+        }
     }
 
     fn debug_substitution(
@@ -320,6 +355,20 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         canonical_var_kinds: &'a Self::InternedCanonicalVarKinds,
     ) -> &'a [chalk_ir::CanonicalVarKind<Self>] {
         canonical_var_kinds
+    }
+
+    fn intern_constraints<E>(
+        &self,
+        data: impl IntoIterator<Item = Result<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>, E>>,
+    ) -> Result<Self::InternedConstraints, E> {
+        data.into_iter().collect::<Result<Vec<_>, _>>()
+    }
+
+    fn constraints_data<'a>(
+        &self,
+        constraints: &'a Self::InternedConstraints,
+    ) -> &'a [chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>] {
+        constraints
     }
 }
 
