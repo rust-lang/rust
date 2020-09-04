@@ -167,29 +167,23 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     }
 
     fn possible_sudmobule_names(&self, module_file: FileId) -> Vec<String> {
-        fn possible_sudmobules_opt(
-            module_files: &FileSet,
-            module_file: FileId,
-        ) -> Option<Vec<FileId>> {
-            match module_files.file_name_and_extension(module_file)? {
-                ("mod", Some("rs")) | ("lib", Some("rs")) => {
-                    module_files.list_files(module_file, None)
-                }
-                (directory_with_module_name, Some("rs")) => module_files
-                    .list_files(module_file, Some(&format!("../{}/", directory_with_module_name))),
-                _ => None,
-            }
-        }
-
         let module_files = &self.source_root(module_file).file_set;
-        possible_sudmobules_opt(module_files, module_file)
-            .unwrap_or_default()
+        let possible_submodule_files = match module_files.file_name_and_extension(module_file) {
+            Some(("mod", Some("rs"))) | Some(("lib", Some("rs"))) => {
+                module_files.list_files_with_extensions(module_file, None)
+            }
+            Some((directory_with_module_name, Some("rs"))) => module_files
+                .list_files_with_extensions(
+                    module_file,
+                    Some(&format!("../{}/", directory_with_module_name)),
+                ),
+            _ => Vec::new(),
+        };
+
+        possible_submodule_files
             .into_iter()
-            .filter_map(|submodule_file| module_files.file_name_and_extension(submodule_file))
-            .map(|(file_name, extension)| match extension {
-                Some(extension) => format!("{}.{}", file_name, extension),
-                None => file_name.to_owned(),
-            })
+            .filter(|(_, extension)| extension == &Some("rs"))
+            .map(|(file_name, _)| file_name.to_owned())
             .collect()
     }
 }

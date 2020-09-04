@@ -30,33 +30,33 @@ impl FileSet {
         self.paths[&file].file_name_and_extension()
     }
 
-    pub fn list_files(
+    pub fn list_files_with_extensions(
         &self,
         anchor: FileId,
         anchor_relative_path: Option<&str>,
-    ) -> Option<Vec<FileId>> {
+    ) -> Vec<(&str, Option<&str>)> {
         let anchor_directory = {
             let path = self.paths[&anchor].clone();
             match anchor_relative_path {
                 Some(anchor_relative_path) => path.join(anchor_relative_path),
                 None => path.parent(),
             }
-        }?;
+        };
 
-        Some(
+        if let Some(anchor_directory) = anchor_directory {
             self.paths
                 .iter()
-                .filter_map(|(&file_id, path)| {
-                    if path.parent()? == anchor_directory
-                        && matches!(path.file_name_and_extension(), Some((_, Some("rs"))))
-                    {
-                        Some(file_id)
+                .filter_map(|(_, path)| {
+                    if path.parent()? == anchor_directory {
+                        path.file_name_and_extension()
                     } else {
                         None
                     }
                 })
-                .collect(),
-        )
+                .collect()
+        } else {
+            Vec::new()
+        }
     }
     pub fn insert(&mut self, file_id: FileId, path: VfsPath) {
         self.files.insert(path.clone(), file_id);
