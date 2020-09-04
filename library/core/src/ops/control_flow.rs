@@ -65,3 +65,10 @@ impl<R: Try> ControlFlow<R::Ok, R> {
         }
     }
 }
+
+impl<B> ControlFlow<(), B> {
+    /// It's frequently the case that there's no value needed with `Continue`,
+    /// so this provides a way to avoid typing `(())`, if you prefer it.
+    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    pub const CONTINUE: Self = ControlFlow::Continue(());
+}
