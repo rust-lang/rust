@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 //! String manipulation.
 //!
 //! For more details, see the [`std::str`] module.
