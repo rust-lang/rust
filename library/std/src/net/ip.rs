@@ -126,6 +126,7 @@ pub struct Ipv6Addr {
 /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
 /// [section 2 of IETF RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
+#[stable(feature = "ip", since = "1.47.0")]
 #[non_exhaustive]
 #[stable(feature = "ip", since = "1.47.0")]
 pub enum Ipv6MulticastScope {
