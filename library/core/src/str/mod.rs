@@ -79,16 +79,6 @@ use iter::{MatchesInternal, SplitNInternal};
 
 use validations::truncate_to_char_boundary;
 
-impl_fn_for_zst! {
-    /// A nameable, cloneable fn type
-    #[derive(Clone)]
-    struct LinesAnyMap impl<'a> Fn = |line: &'a str| -> &'a str {
-        let l = line.len();
-        if l > 0 && line.as_bytes()[l - 1] == b'\r' { &line[0 .. l - 1] }
-        else { line }
-    };
-}
-
 #[inline(never)]
 #[cold]
 #[track_caller]
@@ -2425,22 +2415,6 @@ impl str {
     }
 }
 
-impl_fn_for_zst! {
-    #[derive(Clone)]
-    struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
-        c.escape_debug_ext(false)
-    };
-
-    #[derive(Clone)]
-    struct CharEscapeUnicode impl Fn = |c: char| -> char::EscapeUnicode {
-        c.escape_unicode()
-    };
-    #[derive(Clone)]
-    struct CharEscapeDefault impl Fn = |c: char| -> char::EscapeDefault {
-        c.escape_default()
-    };
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<[u8]> for str {
     #[inline]
@@ -2467,6 +2441,28 @@ impl Default for &mut str {
 }
 
 impl_fn_for_zst! {
+    /// A nameable, cloneable fn type
+    #[derive(Clone)]
+    struct LinesAnyMap impl<'a> Fn = |line: &'a str| -> &'a str {
+        let l = line.len();
+        if l > 0 && line.as_bytes()[l - 1] == b'\r' { &line[0 .. l - 1] }
+        else { line }
+    };
+
+    #[derive(Clone)]
+    struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
+        c.escape_debug_ext(false)
+    };
+
+    #[derive(Clone)]
+    struct CharEscapeUnicode impl Fn = |c: char| -> char::EscapeUnicode {
+        c.escape_unicode()
+    };
+    #[derive(Clone)]
+    struct CharEscapeDefault impl Fn = |c: char| -> char::EscapeDefault {
+        c.escape_default()
+    };
+
     #[derive(Clone)]
     struct IsWhitespace impl Fn = |c: char| -> bool {
         c.is_whitespace()
