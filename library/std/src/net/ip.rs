@@ -650,7 +650,6 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
     /// use std::net::Ipv4Addr;
     ///
     /// assert_eq!(Ipv4Addr::new(100, 64, 0, 0).is_shared(), true);
@@ -687,7 +686,6 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
     /// use std::net::Ipv4Addr;
     ///
     /// assert_eq!(Ipv4Addr::new(192, 0, 0, 0).is_ietf_protocol_assignment(), true);
@@ -720,7 +718,6 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
     /// use std::net::Ipv4Addr;
     ///
     /// assert_eq!(Ipv4Addr::new(198, 17, 255, 255).is_benchmarking(), false);
@@ -758,7 +755,6 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
     /// use std::net::Ipv4Addr;
     ///
     /// assert_eq!(Ipv4Addr::new(240, 0, 0, 0).is_reserved(), true);
