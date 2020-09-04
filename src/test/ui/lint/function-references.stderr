@@ -1,0 +1,22 @@
+warning: cast `foo` with `as *const fn() -> _` to use it as a pointer
+  --> $DIR/function-references.rs:7:23
+   |
+LL |     println!("{:p}", &foo);
+   |                       ^^^
+   |
+   = note: `#[warn(function_references)]` on by default
+
+warning: cast `bar` with `as *const fn(_) -> _` to use it as a pointer
+  --> $DIR/function-references.rs:9:23
+   |
+LL |     println!("{:p}", &bar);
+   |                       ^^^
+
+warning: cast `baz` with `as *const fn(_, _) -> _` to use it as a pointer
+  --> $DIR/function-references.rs:11:23
+   |
+LL |     println!("{:p}", &baz);
+   |                       ^^^
+
+warning: 3 warnings emitted
+

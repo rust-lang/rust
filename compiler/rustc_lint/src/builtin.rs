@@ -2957,17 +2957,19 @@ impl<'tcx> LateLintPass<'tcx> for FunctionReferences {
             if let hir::ExprKind::Path(qpath) = &referent.kind {
                 if let Some(def_id) = cx.qpath_res(qpath, referent.hir_id).opt_def_id() {
                     cx.tcx.hir().get_if_local(def_id).map(|node| {
-                        if node.fn_decl().is_some() {
+                        node.fn_decl().map(|decl| {
                             if let Some(ident) = node.ident() {
                                 cx.struct_span_lint(FUNCTION_REFERENCES, referent.span, |lint| {
+                                    let num_args = decl.inputs.len();
                                     lint.build(&format!(
-                                        "cast {} with `as *const ()` to use it as a pointer",
-                                        ident.to_string()
+                                        "cast `{}` with `as *const fn({}) -> _` to use it as a pointer",
+                                        ident.to_string(),
+                                        vec!["_"; num_args].join(", ")
                                     ))
                                     .emit()
                                 });
                             }
-                        }
+                        });
                     });
                 }
             }
