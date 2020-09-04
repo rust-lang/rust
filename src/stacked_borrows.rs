@@ -623,7 +623,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
         // making it useless.
         fn qualify(ty: ty::Ty<'_>, kind: RetagKind) -> Option<(RefKind, bool)> {
-            match ty.kind {
+            match ty.kind() {
                 // References are simple.
                 ty::Ref(_, _, Mutability::Mut) => Some((
                     RefKind::Unique { two_phase: kind == RetagKind::TwoPhase },
