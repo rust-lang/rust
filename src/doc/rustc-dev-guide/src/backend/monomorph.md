@@ -55,8 +55,28 @@ The monomorphization collector is run just before MIR lowering and codegen.
 collection and then partitions them into [codegen
 units](../appendix/glossary.md#codegen-unit).
 
+## Codegen Unit (CGU) partitioning
+
+For better incremental build times, the CGU partitioner creates two CGU for each source level 
+modules. One is for "stable" i.e. non-generic code and the other is more volatile code i.e. 
+monoporphized/specialized instances.
+
+For depenencies, consider Crate A and Crate B, such that Crate B depends on Crate A.
+The following table lists different scenarios for a function in Crate A that might be used by one 
+or more modules in Crate B.
+
+| Crate A function | Behavior |
+| - | - |
+| Non-generic function | Crate A function doesn't appear in any codegen units of Crate B |
+| Non-generic `#[inline]` function |  Crate A function appears with in a single CGU  of Crate B, and exists even after post-inlining stage|
+| Generic function |  Regardless of inlining, all monoporphized (specialized) functions <br> from Crate A appear within a single codegen unit for Crate B. <br> The codegen unit exists even after the post inlining stage.|
+| Generic `#[inline]` function |   - same - |
+
+For more details about the partitioner read the module level [documentation].
+
 [mono]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/monomorphize/partitioning/fn.collect_and_partition_mono_items.html
 [codegen1]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html
+[documentation]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/monomorphize/partitioning/index.html
 
 ## Polymorphization
 
