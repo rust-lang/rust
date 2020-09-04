@@ -260,7 +260,7 @@ impl IpAddr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     pub fn is_global(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_global(),
@@ -314,7 +314,7 @@ impl IpAddr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     pub fn is_documentation(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_documentation(),
@@ -618,7 +618,7 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_global(&self) -> bool {
         // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
@@ -663,7 +663,7 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_shared(&self) -> bool {
         self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
@@ -703,7 +703,7 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_ietf_protocol_assignment(&self) -> bool {
         self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
@@ -734,7 +734,7 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_benchmarking(&self) -> bool {
         self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
@@ -774,7 +774,7 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_reserved(&self) -> bool {
         self.octets()[0] & 240 == 240 && !self.is_broadcast()
@@ -1336,7 +1336,7 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_global(&self) -> bool {
         match self.multicast_scope() {
@@ -1367,7 +1367,7 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
@@ -1386,9 +1386,8 @@ impl Ipv6Addr {
     /// +----------+-------------------------+----------------------------+
     /// ```
     ///
-    /// This method validates the format defined in the RFC and won't recognize addresses
-    /// like `fe80:0:0:1::` or `fe81::` as unicast link-local addresses.
-    /// If you need a less strict validation, use [`Ipv6Addr::is_unicast_link_local()`] instead.
+    /// This method validates the format defined in the RFC and won't recognize the following
+    /// addresses such as `fe80:0:0:1::` or `fe81::` as unicast link-local addresses for example.
     ///
     /// # Examples
     ///
@@ -1396,18 +1395,17 @@ impl Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local_strict());
+    /// assert!(ip.is_unicast_link_local());
     ///
     /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
-    /// assert!(ip.is_unicast_link_local_strict());
+    /// assert!(ip.is_unicast_link_local());
     ///
     /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
-    /// assert!(!ip.is_unicast_link_local_strict());
+    /// assert!(!ip.is_unicast_link_local());
     /// assert!(ip.is_unicast_link_local());
     ///
     /// let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(!ip.is_unicast_link_local_strict());
-    /// assert!(ip.is_unicast_link_local());
+    /// assert!(!ip.is_unicast_link_local());
     /// ```
     ///
     /// # See also
@@ -1415,12 +1413,10 @@ impl Ipv6Addr {
     /// - [IETF RFC 4291 section 2.5.6]
     /// - [RFC 4291 errata 4406] (which has been rejected but provides useful
     ///   insight)
-    /// - [`Ipv6Addr::is_unicast_link_local()`]
     ///
     /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     /// [IETF RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
-    /// [`is_unicast_link_local()`]: ../../std/net/struct.Ipv6Addr.html#method.is_unicast_link_local
     ///
     /// # Stability guarantees
     ///
@@ -1428,73 +1424,13 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    pub const fn is_unicast_link_local_strict(&self) -> bool {
+    pub const fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffff) == 0xfe80
             && (self.segments()[1] & 0xffff) == 0
             && (self.segments()[2] & 0xffff) == 0
             && (self.segments()[3] & 0xffff) == 0
-    }
-
-    /// Returns [`true`] if the address is a unicast link-local address (`fe80::/10`).
-    ///
-    /// This method returns [`true`] for addresses in the range reserved by [RFC 4291 section 2.4],
-    /// i.e. addresses with the following format:
-    ///
-    /// ```no_rust
-    /// |   10     |
-    /// |  bits    |         54 bits         |          64 bits           |
-    /// +----------+-------------------------+----------------------------+
-    /// |1111111010|    arbitratry value     |       interface ID         |
-    /// +----------+-------------------------+----------------------------+
-    /// ```
-    ///
-    /// As a result, this method considers addresses such as `fe80:0:0:1::` or `fe81::` to be
-    /// unicast link-local addresses, whereas [`Ipv6Addr::is_unicast_link_local_strict()`] does not.
-    /// If you need a strict validation fully compliant with the RFC, use
-    /// [`Ipv6Addr::is_unicast_link_local_strict()`] instead.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local());
-    ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
-    /// assert!(ip.is_unicast_link_local());
-    ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local());
-    /// assert!(!ip.is_unicast_link_local_strict());
-    ///
-    /// let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local());
-    /// assert!(!ip.is_unicast_link_local_strict());
-    /// ```
-    ///
-    /// # See also
-    ///
-    /// - [IETF RFC 4291 section 2.4]
-    /// - [RFC 4291 errata 4406] (which has been rejected but provides useful
-    ///   insight)
-    ///
-    /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
-    /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
-    /// [`is_unicast_link_local_strict()`]: ../../std/net/struct.Ipv6Addr.html#method.is_unicast_link_local_strict
-    ///
-    /// # Stability guarantees
-    ///
-    /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
-    ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    pub const fn is_unicast_link_local(&self) -> bool {
-        (self.segments()[0] & 0xffc0) == 0xfe80
     }
 
     /// Returns [`true`] if this is a deprecated unicast site-local address (fec0::/10). The
@@ -1536,7 +1472,7 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_site_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfec0
@@ -1564,7 +1500,7 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
@@ -1605,7 +1541,7 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_global(&self) -> bool {
         !self.is_multicast()
@@ -1636,7 +1572,7 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
         use crate::net::Ipv6MulticastScope::{
@@ -1699,7 +1635,7 @@ impl Ipv6Addr {
     ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
     /// ```
-#[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
         match self.octets() {
