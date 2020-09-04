@@ -1,0 +1,8 @@
+error: `#![doc(alias = "...")]` isn't allowed as a crate level attribute
+  --> $DIR/doc-alias-crate-level.rs:3:8
+   |
+LL | #![doc(alias = "shouldn't work!")]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
