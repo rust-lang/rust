@@ -1282,7 +1282,12 @@ impl Ipv6Addr {
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_unspecified(&self) -> bool {
-        u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED.octets())
+        if let Some(v4_addr) = self.to_ipv4() {
+            v4_addr.is_unspecified()
+        } else {
+            u128::from_be_bytes(self.octets())
+                == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED.octets())
+        }
     }
 
     /// Returns [`true`] if this is a loopback address (::1).
@@ -1303,7 +1308,11 @@ impl Ipv6Addr {
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_loopback(&self) -> bool {
-        u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::LOCALHOST.octets())
+        if let Some(v4_addr) = self.to_ipv4() {
+            v4_addr.is_loopback()
+        } else {
+            u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::LOCALHOST.octets())
+        }
     }
 
     /// Returns [`true`] if the address appears to be globally routable.
@@ -1333,10 +1342,14 @@ impl Ipv6Addr {
     #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_global(&self) -> bool {
-        match self.multicast_scope() {
-            Some(Ipv6MulticastScope::Global) => true,
-            None => self.is_unicast_global(),
-            _ => false,
+        if let Some(v4_addr) = self.to_ipv4() {
+            v4_addr.is_global()
+        } else {
+            match self.multicast_scope() {
+                Some(Ipv6MulticastScope::Global) => true,
+                None => self.is_unicast_global(),
+                _ => false,
+            }
         }
     }
 
@@ -1421,10 +1434,14 @@ impl Ipv6Addr {
     #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_link_local(&self) -> bool {
-        (self.segments()[0] & 0xffff) == 0xfe80
-            && (self.segments()[1] & 0xffff) == 0
-            && (self.segments()[2] & 0xffff) == 0
-            && (self.segments()[3] & 0xffff) == 0
+        if let Some(v4_addr) = self.to_ipv4() {
+            v4_addr.is_link_local()
+        } else {
+            (self.segments()[0] & 0xffff) == 0xfe80
+                && (self.segments()[1] & 0xffff) == 0
+                && (self.segments()[2] & 0xffff) == 0
+                && (self.segments()[3] & 0xffff) == 0
+        }
     }
 
     /// Returns [`true`] if this is a deprecated unicast site-local address (fec0::/10). The
@@ -1497,7 +1514,11 @@ impl Ipv6Addr {
     #[stable(feature = "ip", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_documentation(&self) -> bool {
-        (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
+        if let Some(v4_addr) = self.to_ipv4() {
+            v4_addr.is_documentation()
+        } else {
+            (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
+        }
     }
 
     /// Returns [`true`] if the address is a globally routable unicast address.
@@ -1607,7 +1628,11 @@ impl Ipv6Addr {
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_multicast(&self) -> bool {
-        (self.segments()[0] & 0xff00) == 0xff00
+        if let Some(v4_addr) = self.to_ipv4() {
+            v4_addr.is_multicast()
+        } else {
+            (self.segments()[0] & 0xff00) == 0xff00
+        }
     }
 
     /// Converts this address to an [`IPv4` address] if it's an "IPv4-mapped IPv6 address"
