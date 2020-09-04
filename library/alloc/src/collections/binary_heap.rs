@@ -260,7 +260,6 @@ pub struct BinaryHeap<T> {
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 pub struct PeekMut<'a, T: 'a + Ord> {
     heap: &'a mut BinaryHeap<T>,
-    sift: bool,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -273,9 +272,7 @@ impl<T: Ord + fmt::Debug> fmt::Debug for PeekMut<'_, T> {
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<T: Ord> Drop for PeekMut<'_, T> {
     fn drop(&mut self) {
-        if self.sift {
-            self.heap.sift_down(0);
-        }
+        self.heap.sift_down(0);
     }
 }
 
@@ -301,10 +298,10 @@ impl<T: Ord> DerefMut for PeekMut<'_, T> {
 impl<'a, T: Ord> PeekMut<'a, T> {
     /// Removes the peeked value from the heap and returns it.
     #[stable(feature = "binary_heap_peek_mut_pop", since = "1.18.0")]
-    pub fn pop(mut this: PeekMut<'a, T>) -> T {
-        let value = this.heap.pop().unwrap();
-        this.sift = false;
-        value
+    pub fn pop(this: PeekMut<'a, T>) -> T {
+        // Destructor is unnecessary since pop() already sifts heap
+        let mut this = ManuallyDrop::new(this);
+        this.heap.pop().unwrap()
     }
 }
 
@@ -401,7 +398,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// Cost is *O*(1) in the worst case.
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
     pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
-        if self.is_empty() { None } else { Some(PeekMut { heap: self, sift: true }) }
+        if self.is_empty() { None } else { Some(PeekMut { heap: self }) }
     }
 
     /// Removes the greatest item from the binary heap and returns it, or `None` if it
