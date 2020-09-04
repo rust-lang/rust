@@ -48,7 +48,7 @@ impl ast::Fn {
     }
 
     #[must_use]
-    pub fn with_generic_params(&self, generic_args: ast::GenericParamList) -> ast::Fn {
+    pub fn with_generic_param_list(&self, generic_args: ast::GenericParamList) -> ast::Fn {
         if let Some(old) = self.generic_param_list() {
             return self.replace_descendant(old, generic_args);
         }
@@ -485,17 +485,7 @@ impl ast::GenericParamList {
 
     #[must_use]
     pub fn append_param(&self, item: ast::GenericParam) -> ast::GenericParamList {
-        let is_multiline = self.syntax().text().contains_char('\n');
-        let ws;
-        let space = if is_multiline {
-            ws = tokens::WsBuilder::new(&format!(
-                "\n{}    ",
-                leading_indent(self.syntax()).unwrap_or_default()
-            ));
-            ws.ws()
-        } else {
-            tokens::single_space()
-        };
+        let space = tokens::single_space();
 
         let mut to_insert: ArrayVec<[SyntaxElement; 4]> = ArrayVec::new();
         if self.generic_params().next().is_some() {
@@ -528,11 +518,6 @@ impl ast::GenericParamList {
                 }
             };
         };
-
-        if !is_multiline {
-            // don't insert comma before angle
-            to_insert.pop();
-        }
 
         let position = match self.generic_params().last() {
             Some(it) => after_field!(it),
