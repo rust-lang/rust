@@ -1742,6 +1742,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
+    if debugging_opts.experimental_coverage {
+        debugging_opts.instrument_coverage = true;
+    }
+
     if debugging_opts.instrument_coverage {
         if cg.profile_generate.enabled() || cg.profile_use.is_some() {
             early_error(
