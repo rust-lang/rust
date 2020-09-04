@@ -172,17 +172,22 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
             Some(("mod", Some("rs"))) | Some(("lib", Some("rs"))) => {
                 module_files.list_files_with_extensions(module_file, None)
             }
+            // TODO kb for `src/bin/foo.rs`, we need to check for modules in `src/bin/`
             Some((directory_with_module_name, Some("rs"))) => module_files
                 .list_files_with_extensions(
                     module_file,
                     Some(&format!("../{}/", directory_with_module_name)),
                 ),
+            // TODO kb also consider the case when there's no `../module_name.rs`, but `../module_name/mod.rs`
             _ => Vec::new(),
         };
 
         possible_submodule_files
             .into_iter()
             .filter(|(_, extension)| extension == &Some("rs"))
+            .filter(|(file_name, _)| file_name != &"mod")
+            .filter(|(file_name, _)| file_name != &"lib")
+            .filter(|(file_name, _)| file_name != &"main")
             .map(|(file_name, _)| file_name.to_owned())
             .collect()
     }

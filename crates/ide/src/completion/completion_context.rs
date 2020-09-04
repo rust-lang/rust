@@ -117,9 +117,6 @@ impl<'a> CompletionContext<'a> {
                 .to_module_def(position.file_id)
                 .and_then(|current_module| {
                     let definition_source = current_module.definition_source(db);
-                    if !matches!(definition_source.value, ModuleSource::SourceFile(_)) {
-                        return None;
-                    }
                     let module_definition_source_file = definition_source.file_id.original_file(db);
                     let mod_declaration_candidates =
                         db.possible_sudmobule_names(module_definition_source_file);
