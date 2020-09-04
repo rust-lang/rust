@@ -109,7 +109,7 @@ where
             acc = b.try_fold(acc, f)?;
             // we don't fuse the second iterator
         }
-        Try::from_ok(acc)
+        try { acc }
     }
 
     fn fold<Acc, F>(self, mut acc: Acc, mut f: F) -> Acc
@@ -292,7 +292,7 @@ where
             acc = a.try_rfold(acc, f)?;
             // we don't fuse the second iterator
         }
-        Try::from_ok(acc)
+        try { acc }
     }
 
     fn rfold<Acc, F>(self, mut acc: Acc, mut f: F) -> Acc

@@ -127,6 +127,7 @@
 #![feature(std_internals)]
 #![feature(stmt_expr_attributes)]
 #![feature(transparent_unions)]
+#![feature(try_blocks)]
 #![feature(unboxed_closures)]
 #![feature(unsized_locals)]
 #![feature(untagged_unions)]
