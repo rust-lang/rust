@@ -1,11 +1,3 @@
-#![unstable(
-    feature = "ip",
-    reason = "extra functionality has not been \
-                                      scrutinized to the level that it should \
-                                      be to be stable",
-    issue = "27709"
-)]
-
 // Tests for this module
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
@@ -122,7 +114,15 @@ pub struct Ipv6Addr {
     inner: c::in6_addr,
 }
 
-#[allow(missing_docs)]
+/// Scope of an IPv6 address as defined in [section 2 of IETF RFC 7346]
+///
+/// # Stability guarantees
+///
+/// This enum [may by subject to changes][changes] in the
+/// future, as new RFCs are published.
+///
+/// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+/// [section 2 of IETF RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
 #[non_exhaustive]
 #[stable(feature = "ip", since = "1.47.0")]
@@ -246,8 +246,6 @@ impl IpAddr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     ///
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(80, 9, 12, 3)).is_global(), true);
@@ -260,7 +258,7 @@ impl IpAddr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+#[stable(feature = "ip", since = "1.47.0")]
     pub fn is_global(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_global(),
@@ -299,8 +297,6 @@ impl IpAddr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     ///
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_documentation(), true);
@@ -316,7 +312,7 @@ impl IpAddr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+#[stable(feature = "ip", since = "1.47.0")]
     pub fn is_documentation(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_documentation(),
@@ -567,8 +563,6 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv4Addr;
     ///
     /// // private addresses are not global
@@ -619,8 +613,9 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_global(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_global(&self) -> bool {
         // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
         // globally routable addresses in the 192.0.0.0/24 range.
         if u32::from_be_bytes(self.octets()) == 0xc0000009
@@ -663,8 +658,9 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_shared(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_shared(&self) -> bool {
         self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
     }
 
@@ -702,8 +698,9 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_ietf_protocol_assignment(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_ietf_protocol_assignment(&self) -> bool {
         self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
     }
 
@@ -732,8 +729,9 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_benchmarking(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_benchmarking(&self) -> bool {
         self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
     }
 
@@ -771,8 +769,9 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_reserved(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_reserved(&self) -> bool {
         self.octets()[0] & 240 == 240 && !self.is_broadcast()
     }
 
@@ -1318,8 +1317,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_global(), true);
@@ -1333,8 +1330,9 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_global(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_global(&self) -> bool {
         match self.multicast_scope() {
             Some(Ipv6MulticastScope::Global) => true,
             None => self.is_unicast_global(),
@@ -1351,8 +1349,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unique_local(), false);
@@ -1365,8 +1361,9 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_unique_local(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
@@ -1390,8 +1387,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
@@ -1427,8 +1422,9 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_unicast_link_local_strict(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_unicast_link_local_strict(&self) -> bool {
         (self.segments()[0] & 0xffff) == 0xfe80
             && (self.segments()[1] & 0xffff) == 0
             && (self.segments()[2] & 0xffff) == 0
@@ -1456,8 +1452,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
@@ -1491,8 +1485,9 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_unicast_link_local(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
 
@@ -1512,8 +1507,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(
@@ -1537,8 +1530,9 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_unicast_site_local(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_unicast_site_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfec0
     }
 
@@ -1552,8 +1546,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_documentation(), false);
@@ -1566,8 +1558,9 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_documentation(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
     }
 
@@ -1594,8 +1587,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_global(), false);
@@ -1608,8 +1599,9 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_unicast_global(&self) -> bool {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_unicast_global(&self) -> bool {
         !self.is_multicast()
             && !self.is_loopback()
             && !self.is_unicast_link_local()
@@ -1623,8 +1615,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::{Ipv6Addr, Ipv6MulticastScope};
     ///
     /// assert_eq!(
@@ -1640,9 +1630,13 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
-        use Ipv6MulticastScope::*;
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
+        use crate::net::Ipv6MulticastScope::{
+            AdminLocal, Global, InterfaceLocal, LinkLocal, OrganizationLocal, RealmLocal, Reserved,
+            SiteLocal, Unassigned,
+        };
         if self.is_multicast() {
             match self.segments()[0] & 0x000f {
                 1 => Some(Ipv6MulticastScope::InterfaceLocal),
@@ -1692,7 +1686,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    ///
     /// use std::net::{Ipv4Addr, Ipv6Addr};
     ///
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4_mapped(), None);
@@ -1700,8 +1693,9 @@ impl Ipv6Addr {
     ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
     /// ```
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
+#[stable(feature = "ip", since = "1.47.0")]
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
         match self.octets() {
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, a, b, c, d] => {
                 Some(Ipv4Addr::new(a, b, c, d))
