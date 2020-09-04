@@ -8,8 +8,8 @@ LL |     let s = S {
    |             ^ the trait `Foo` is not implemented for `{float}`
    |
    = help: the following implementations were found:
+             <Option<T> as Foo>
              <i32 as Foo>
-             <std::option::Option<T> as Foo>
 
 error: aborting due to previous error
 
