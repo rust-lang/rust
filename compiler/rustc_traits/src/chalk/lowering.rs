@@ -1009,7 +1009,7 @@ impl PlaceholdersCollector {
 
 impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-        match t.kind {
+        match t.kind() {
             ty::Placeholder(p) if p.universe == self.universe_index => {
                 self.next_ty_placeholder = self.next_ty_placeholder.max(p.name.as_usize() + 1);
             }
