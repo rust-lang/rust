@@ -1,7 +1,9 @@
 use crate::char;
 use crate::fmt::{self, Write};
 use crate::mem;
-use crate::str as core_str;
+
+use super::from_utf8_unchecked;
+use super::validations::utf8_char_width;
 
 /// Lossy UTF-8 string.
 #[unstable(feature = "str_internals", issue = "none")]
@@ -66,14 +68,14 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
 
             if byte < 128 {
             } else {
-                let w = core_str::utf8_char_width(byte);
+                let w = utf8_char_width(byte);
 
                 macro_rules! error {
                     () => {{
                         // SAFETY: We have checked up to `i` that source is valid UTF-8.
                         unsafe {
                             let r = Utf8LossyChunk {
-                                valid: core_str::from_utf8_unchecked(&self.source[0..i_]),
+                                valid: from_utf8_unchecked(&self.source[0..i_]),
                                 broken: &self.source[i_..i],
                             };
                             self.source = &self.source[i..];
@@ -133,7 +135,7 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
 
         let r = Utf8LossyChunk {
             // SAFETY: We have checked that the entire source is valid UTF-8.
-            valid: unsafe { core_str::from_utf8_unchecked(self.source) },
+            valid: unsafe { from_utf8_unchecked(self.source) },
             broken: &[],
         };
         self.source = &[];
