@@ -5,7 +5,6 @@ use core::hash::{Hash, Hasher};
 use core::iter::{FromIterator, FusedIterator, Peekable};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop};
-use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{Index, RangeBounds};
 use core::ptr;
 
@@ -408,8 +407,8 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Range<'_, K, V> {
 /// [`range_mut`]: BTreeMap::range_mut
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct RangeMut<'a, K: 'a, V: 'a> {
-    front: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
-    back: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
+    front: Option<Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>>,
+    back: Option<Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>>,
 
     // Be invariant in `K` and `V`
     _marker: PhantomData<&'a mut (K, V)>,
@@ -999,7 +998,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         R: RangeBounds<T>,
     {
         if let Some(root) = &self.root {
-            let (f, b) = range_search(root.node_as_ref(), range);
+            let (f, b) = root.node_as_ref().range_search(range);
 
             Range { front: Some(f), back: Some(b) }
         } else {
@@ -1045,7 +1044,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         R: RangeBounds<T>,
     {
         if let Some(root) = &mut self.root {
-            let (f, b) = range_search(root.node_as_mut(), range);
+            let (f, b) = root.node_as_valmut().range_search(range);
 
             RangeMut { front: Some(f), back: Some(b), _marker: PhantomData }
         } else {
@@ -1478,7 +1477,7 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
     fn into_iter(self) -> IntoIter<K, V> {
         let mut me = ManuallyDrop::new(self);
         if let Some(root) = me.root.take() {
-            let (f, b) = full_range_search(root.into_ref());
+            let (f, b) = root.into_ref().full_range();
 
             IntoIter { front: Some(f), back: Some(b), length: me.length }
         } else {
@@ -1942,7 +1941,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
         self.front == self.back
     }
 
-    unsafe fn next_unchecked(&mut self) -> (&'a mut K, &'a mut V) {
+    unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
         unsafe { unwrap_unchecked(self.front.as_mut()).next_unchecked() }
     }
 }
@@ -1963,7 +1962,7 @@ impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
 impl<K, V> FusedIterator for RangeMut<'_, K, V> {}
 
 impl<'a, K, V> RangeMut<'a, K, V> {
-    unsafe fn next_back_unchecked(&mut self) -> (&'a mut K, &'a mut V) {
+    unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
         unsafe { unwrap_unchecked(self.back.as_mut()).next_back_unchecked() }
     }
 }
@@ -2073,119 +2072,6 @@ where
     }
 }
 
-/// Finds the leaf edges delimiting a specified range in or underneath a node.
-fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeBounds<Q>>(
-    root: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    range: R,
-) -> (
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-)
-where
-    Q: Ord,
-    K: Borrow<Q>,
-{
-    match (range.start_bound(), range.end_bound()) {
-        (Excluded(s), Excluded(e)) if s == e => {
-            panic!("range start and end are equal and excluded in BTreeMap")
-        }
-        (Included(s) | Excluded(s), Included(e) | Excluded(e)) if s > e => {
-            panic!("range start is greater than range end in BTreeMap")
-        }
-        _ => {}
-    };
-
-    // We duplicate the root NodeRef here -- we will never access it in a way
-    // that overlaps references obtained from the root.
-    let mut min_node = unsafe { ptr::read(&root) };
-    let mut max_node = root;
-    let mut min_found = false;
-    let mut max_found = false;
-
-    loop {
-        let front = match (min_found, range.start_bound()) {
-            (false, Included(key)) => match search::search_node(min_node, key) {
-                Found(kv) => {
-                    min_found = true;
-                    kv.left_edge()
-                }
-                GoDown(edge) => edge,
-            },
-            (false, Excluded(key)) => match search::search_node(min_node, key) {
-                Found(kv) => {
-                    min_found = true;
-                    kv.right_edge()
-                }
-                GoDown(edge) => edge,
-            },
-            (true, Included(_)) => min_node.last_edge(),
-            (true, Excluded(_)) => min_node.first_edge(),
-            (_, Unbounded) => min_node.first_edge(),
-        };
-
-        let back = match (max_found, range.end_bound()) {
-            (false, Included(key)) => match search::search_node(max_node, key) {
-                Found(kv) => {
-                    max_found = true;
-                    kv.right_edge()
-                }
-                GoDown(edge) => edge,
-            },
-            (false, Excluded(key)) => match search::search_node(max_node, key) {
-                Found(kv) => {
-                    max_found = true;
-                    kv.left_edge()
-                }
-                GoDown(edge) => edge,
-            },
-            (true, Included(_)) => max_node.first_edge(),
-            (true, Excluded(_)) => max_node.last_edge(),
-            (_, Unbounded) => max_node.last_edge(),
-        };
-
-        if front.partial_cmp(&back) == Some(Ordering::Greater) {
-            panic!("Ord is ill-defined in BTreeMap range");
-        }
-        match (front.force(), back.force()) {
-            (Leaf(f), Leaf(b)) => {
-                return (f, b);
-            }
-            (Internal(min_int), Internal(max_int)) => {
-                min_node = min_int.descend();
-                max_node = max_int.descend();
-            }
-            _ => unreachable!("BTreeMap has different depths"),
-        };
-    }
-}
-
-/// Equivalent to `range_search(k, v, ..)` without the `Ord` bound.
-fn full_range_search<BorrowType, K, V>(
-    root: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-) -> (
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-) {
-    // We duplicate the root NodeRef here -- we will never access it in a way
-    // that overlaps references obtained from the root.
-    let mut min_node = unsafe { ptr::read(&root) };
-    let mut max_node = root;
-    loop {
-        let front = min_node.first_edge();
-        let back = max_node.last_edge();
-        match (front.force(), back.force()) {
-            (Leaf(f), Leaf(b)) => {
-                return (f, b);
-            }
-            (Internal(min_int), Internal(max_int)) => {
-                min_node = min_int.descend();
-                max_node = max_int.descend();
-            }
-            _ => unreachable!("BTreeMap has different depths"),
-        };
-    }
-}
-
 impl<K, V> BTreeMap<K, V> {
     /// Gets an iterator over the entries of the map, sorted by key.
     ///
@@ -2211,7 +2097,7 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, K, V> {
         if let Some(root) = &self.root {
-            let (f, b) = full_range_search(root.node_as_ref());
+            let (f, b) = root.node_as_ref().full_range();
 
             Iter { range: Range { front: Some(f), back: Some(b) }, length: self.length }
         } else {
@@ -2243,7 +2129,7 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         if let Some(root) = &mut self.root {
-            let (f, b) = full_range_search(root.node_as_mut());
+            let (f, b) = root.node_as_valmut().full_range();
 
             IterMut {
                 range: RangeMut { front: Some(f), back: Some(b), _marker: PhantomData },
@@ -2826,7 +2712,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
                     if stole_from_left && at_leaf {
                         // SAFETY: This is safe since we just added an element to our node.
                         unsafe {
-                            pos.next_unchecked();
+                            pos.move_next_unchecked();
                         }
                     }
                     break;
