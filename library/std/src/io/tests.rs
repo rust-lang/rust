@@ -1,8 +1,15 @@
 use super::{repeat, Cursor, SeekFrom};
 use crate::cmp::{self, min};
+use crate::env::temp_dir;
+#[cfg(unix)]
+use crate::fs::OpenOptions;
+#[cfg(unix)]
+use crate::io::Result;
 use crate::io::{self, IoSlice, IoSliceMut};
-use crate::io::{BufRead, BufReader, BufWriter, Read, Result, Seek, Write};
+use crate::io::{BufRead, Read, Seek, Write};
 use crate::ops::Deref;
+#[cfg(unix)]
+use crate::os::unix::io::AsRawFd;
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
@@ -496,6 +503,8 @@ fn test_write_all_vectored() {
 #[test]
 #[cfg(unix)]
 fn copy_specialization() -> Result<()> {
+    use crate::io::{BufReader, BufWriter};
+
     let path = crate::env::temp_dir();
     let source_path = path.join("copy-spec.source");
     let sink_path = path.join("copy-spec.sink");
@@ -542,4 +551,125 @@ fn copy_specialization() -> Result<()> {
     let rm2 = crate::fs::remove_file(sink_path);
 
     result.and(rm1).and(rm2)
+}
+
+#[bench]
+fn bench_file_to_file_copy(b: &mut test::Bencher) {
+    const BYTES: usize = 128 * 1024;
+    let src_path = temp_dir().join("file-copy-bench-src");
+    let mut src = crate::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .read(true)
+        .write(true)
+        .open(src_path)
+        .unwrap();
+    src.write(&vec![0u8; BYTES]).unwrap();
+
+    let sink_path = temp_dir().join("file-copy-bench-sink");
+    let mut sink = crate::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(sink_path)
+        .unwrap();
+
+    b.bytes = BYTES as u64;
+    b.iter(|| {
+        src.seek(SeekFrom::Start(0)).unwrap();
+        sink.seek(SeekFrom::Start(0)).unwrap();
+        assert_eq!(BYTES as u64, io::copy(&mut src, &mut sink).unwrap());
+    });
+}
+
+#[cfg(unix)]
+#[bench]
+fn bench_file_to_socket_copy(b: &mut test::Bencher) {
+    const BYTES: usize = 128 * 1024;
+    let src_path = temp_dir().join("pipe-copy-bench-src");
+    let mut src = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .read(true)
+        .write(true)
+        .open(src_path)
+        .unwrap();
+    src.write(&vec![0u8; BYTES]).unwrap();
+
+    let sink_drainer = crate::net::TcpListener::bind("localhost:0").unwrap();
+    let mut sink = crate::net::TcpStream::connect(sink_drainer.local_addr().unwrap()).unwrap();
+    let mut sink_drainer = sink_drainer.accept().unwrap().0;
+
+    crate::thread::spawn(move || {
+        let mut sink_buf = vec![0u8; 1024 * 1024];
+        loop {
+            sink_drainer.read(&mut sink_buf[..]).unwrap();
+        }
+    });
+
+    b.bytes = BYTES as u64;
+    b.iter(|| {
+        src.seek(SeekFrom::Start(0)).unwrap();
+        assert_eq!(BYTES as u64, io::copy(&mut src, &mut sink).unwrap());
+    });
+}
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
+#[bench]
+fn bench_socket_pipe_socket_copy(b: &mut test::Bencher) {
+    use crate::io::ErrorKind;
+    use crate::process::{ChildStdin, ChildStdout};
+    use crate::sys_common::FromInner;
+
+    let (read_end, write_end) = crate::sys::pipe::anon_pipe().unwrap();
+
+    let mut read_end = ChildStdout::from_inner(read_end);
+    let write_end = ChildStdin::from_inner(write_end);
+
+    let acceptor = crate::net::TcpListener::bind("localhost:0").unwrap();
+    let mut remote_end = crate::net::TcpStream::connect(acceptor.local_addr().unwrap()).unwrap();
+
+    let local_end = crate::sync::Arc::new(acceptor.accept().unwrap().0);
+
+    crate::thread::spawn(move || {
+        let mut sink_buf = vec![0u8; 1024 * 1024];
+        remote_end.set_nonblocking(true).unwrap();
+        loop {
+            match remote_end.write(&mut sink_buf[..]) {
+                Err(err) if err.kind() == ErrorKind::WouldBlock => {}
+                Ok(_) => {}
+                err => {
+                    err.expect("write failed");
+                }
+            };
+            match remote_end.read(&mut sink_buf[..]) {
+                Err(err) if err.kind() == ErrorKind::WouldBlock => {}
+                Ok(_) => {}
+                err => {
+                    err.expect("read failed");
+                }
+            };
+        }
+    });
+
+    let local_source = local_end.clone();
+    crate::thread::spawn(move || {
+        loop {
+            crate::sys::fs::sendfile_splice(
+                crate::sys::fs::SpliceMode::Splice,
+                local_source.as_raw_fd(),
+                write_end.as_raw_fd(),
+                u64::MAX,
+            );
+        }
+    });
+
+    const BYTES: usize = 128 * 1024;
+    b.bytes = BYTES as u64;
+    b.iter(|| {
+        assert_eq!(
+            BYTES as u64,
+            io::copy(&mut (&mut read_end).take(BYTES as u64), &mut &*local_end).unwrap()
+        );
+    });
 }
