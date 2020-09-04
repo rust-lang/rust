@@ -1,5 +1,4 @@
 use crate::any::TypeId;
-use crate::mem;
 
 macro_rules! ok {
     ($($t:ident)*) => {$(

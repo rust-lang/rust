@@ -9,7 +9,6 @@
 #![stable(feature = "raw_os", since = "1.1.0")]
 
 #[cfg(test)]
-#[allow(unused_imports)]
 mod tests;
 
 #[doc(include = "char.md")]
