@@ -135,4 +135,7 @@ fn main() {
             if truth() {}
         }
     }
+
+    // Fix #5962
+    if matches!(true, true) && matches!(true, true) {}
 }

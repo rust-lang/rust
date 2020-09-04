@@ -122,7 +122,7 @@ define_Conf! {
         "IPv4", "IPv6",
         "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
         "NaN", "NaNs",
-        "OAuth",
+        "OAuth", "GraphQL",
         "OCaml",
         "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap",
         "TensorFlow",
