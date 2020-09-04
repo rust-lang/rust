@@ -231,3 +231,17 @@ macro_rules! assert_approx_eq {
         );
     }};
 }
+
+macro_rules! constify_imm4_sae {
+    ($imm8:expr, $expand:ident) => {
+        #[allow(overflowing_literals)]
+        match ($imm8) & 0b1111 {
+            4 => $expand!(4),
+            8 => $expand!(8),
+            9 => $expand!(9),
+            10 => $expand!(10),
+            11 => $expand!(11),
+            _ => panic!("Invalid sae value"),
+        }
+    };
+}
