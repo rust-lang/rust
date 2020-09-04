@@ -1,5 +1,4 @@
 use crate::utils;
-use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -171,12 +170,22 @@ fn mirrored_exprs(
 }
 
 fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
+    // NOTE: Vectors of references are not supported. In order to avoid hitting https://github.com/rust-lang/rust/issues/34162,
+    // (different unnamed lifetimes for closure arg and return type) we need to make sure the suggested
+    // closure parameter is not a reference in case we suggest `Reverse`. Trying to destructure more
+    // than one level of references would add some extra complexity as we would have to compensate
+    // in the closure body.
+
     if_chain! {
         if let ExprKind::MethodCall(name_ident, _, args, _) = &expr.kind;
         if let name = name_ident.ident.name.to_ident_string();
         if name == "sort_by" || name == "sort_unstable_by";
         if let [vec, Expr { kind: ExprKind::Closure(_, _, closure_body_id, _, _), .. }] = args;
-        if utils::match_type(cx, &cx.typeck_results().expr_ty(vec), &paths::VEC);
+        let vec_ty = cx.typeck_results().expr_ty(vec);
+        if utils::is_type_diagnostic_item(cx, vec_ty, sym!(vec_type));
+        let ty = vec_ty.walk().nth(1).unwrap().expect_ty(); // T in Vec<T>
+        if !matches!(&ty.kind(), ty::Ref(..));
+        if utils::is_copy(cx, ty);
         if let closure_body = cx.tcx.hir().body(*closure_body_id);
         if let &[
             Param { pat: Pat { kind: PatKind::Binding(_, _, left_ident, _), .. }, ..},
