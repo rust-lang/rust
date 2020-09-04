@@ -286,7 +286,7 @@ where
         prior_status: Option<NodeStatus>,
     ) -> ControlFlow<Self::BreakVal> {
         match prior_status {
-            Some(NodeStatus::Visited) => ControlFlow::Break(()),
+            Some(NodeStatus::Visited) => ControlFlow::BREAK,
             _ => ControlFlow::CONTINUE,
         }
     }
