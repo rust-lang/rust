@@ -819,10 +819,10 @@ fn doctest_replace_impl_trait_with_generic() {
     check_doc_test(
         "replace_impl_trait_with_generic",
         r#####"
-fn foo<G>(bar: <|>impl Bar) {}
+fn foo(bar: <|>impl Bar) {}
 "#####,
         r#####"
-fn foo<B: Bar>(bar: B) {}
+fn foo<B: Bar,>(bar: B) {}
 "#####,
     )
 }

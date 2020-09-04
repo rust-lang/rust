@@ -294,7 +294,7 @@ pub fn param_list(pats: impl IntoIterator<Item = ast::Param>) -> ast::ParamList 
     ast_from_text(&format!("fn f({}) {{ }}", args))
 }
 
-pub fn generic_param(name: String, ty: Option<String>) -> ast::GenericParam {
+pub fn generic_param(name: String, ty: Option<ast::TypeBoundList>) -> ast::GenericParam {
     let bound = match ty {
         Some(it) => format!(": {}", it),
         None => String::new(),

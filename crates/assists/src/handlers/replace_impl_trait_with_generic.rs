@@ -7,11 +7,11 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Replaces `impl Trait` function argument with the named generic.
 //
 // ```
-// fn foo<G>(bar: <|>impl Bar) {}
+// fn foo(bar: <|>impl Bar) {}
 // ```
 // ->
 // ```
-// fn foo<B: Bar>(bar: B) {}
+// fn foo<B: Bar,>(bar: B) {}
 // ```
 pub(crate) fn replace_impl_trait_with_generic(
     acc: &mut Assists,
@@ -21,13 +21,7 @@ pub(crate) fn replace_impl_trait_with_generic(
     let type_param = type_impl_trait.syntax().parent().and_then(ast::Param::cast)?;
     let type_fn = type_param.syntax().ancestors().find_map(ast::Fn::cast)?;
 
-    let impl_trait_ty = type_impl_trait
-        .syntax()
-        .descendants()
-        .last()
-        .and_then(ast::NameRef::cast)?
-        .text()
-        .to_string();
+    let impl_trait_ty = type_impl_trait.type_bound_list()?;
 
     let target = type_fn.syntax().text_range();
     acc.add(
@@ -35,7 +29,7 @@ pub(crate) fn replace_impl_trait_with_generic(
         "Replace impl trait with generic",
         target,
         |edit| {
-            let generic_letter = impl_trait_ty.chars().next().unwrap().to_string();
+            let generic_letter = impl_trait_ty.to_string().chars().next().unwrap().to_string();
 
             let generic_param_list = type_fn
                 .generic_param_list()
@@ -65,7 +59,7 @@ mod tests {
             fn foo<G>(bar: <|>impl Bar) {}
             "#,
             r#"
-            fn foo<G, B: Bar>(bar: B) {}
+            fn foo<G, B: Bar,>(bar: B) {}
             "#,
         );
     }
@@ -78,7 +72,7 @@ mod tests {
             fn foo(bar: <|>impl Bar) {}
             "#,
             r#"
-            fn foo<B: Bar>(bar: B) {}
+            fn foo<B: Bar,>(bar: B) {}
             "#,
         );
     }
@@ -91,7 +85,7 @@ mod tests {
             fn foo<G>(foo: impl Foo, bar: <|>impl Bar) {}
             "#,
             r#"
-            fn foo<G, B: Bar>(foo: impl Foo, bar: B) {}
+            fn foo<G, B: Bar,>(foo: impl Foo, bar: B) {}
             "#,
         );
     }
@@ -104,7 +98,7 @@ mod tests {
             fn foo<>(bar: <|>impl Bar) {}
             "#,
             r#"
-            fn foo<B: Bar>(bar: B) {}
+            fn foo<B: Bar,>(bar: B) {}
             "#,
         );
     }
@@ -133,7 +127,7 @@ mod tests {
             fn foo<B>(bar: <|>impl Bar) {}
             "#,
             r#"
-            fn foo<B, C: Bar>(bar: C) {}
+            fn foo<B, C: Bar,>(bar: C) {}
             "#,
         );
     }
@@ -155,6 +149,19 @@ mod tests {
                 F,
                 H, B: Bar,
             >(bar: B) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn replace_impl_trait_multiple() {
+        check_assist(
+            replace_impl_trait_with_generic,
+            r#"
+            fn foo(bar: <|>impl Foo + Bar) {}
+            "#,
+            r#"
+            fn foo<F: Foo + Bar,>(bar: F) {}
             "#,
         );
     }
