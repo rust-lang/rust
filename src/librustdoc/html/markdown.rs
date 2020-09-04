@@ -34,6 +34,7 @@ use std::fmt::Write;
 use std::ops::Range;
 use std::str;
 
+use crate::clean::RenderedLink;
 use crate::doctest;
 use crate::html::highlight;
 use crate::html::toc::TocBuilder;
@@ -52,7 +53,7 @@ fn opts() -> Options {
 pub struct Markdown<'a>(
     pub &'a str,
     /// A list of link replacements.
-    pub &'a [(String, String)],
+    pub &'a [RenderedLink],
     /// The current list of used header IDs.
     pub &'a mut IdMap,
     /// Whether to allow the use of explicit error codes in doctest lang strings.
@@ -78,7 +79,7 @@ pub struct MarkdownHtml<'a>(
     pub &'a Option<Playground>,
 );
 /// A tuple struct like `Markdown` that renders only the first paragraph.
-pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [(String, String)]);
+pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ErrorCodes {
@@ -337,31 +338,107 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 }
 
 /// Make headings links with anchor IDs and build up TOC.
-struct LinkReplacer<'a, 'b, I: Iterator<Item = Event<'a>>> {
+struct LinkReplacer<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
-    links: &'b [(String, String)],
+    links: &'a [RenderedLink],
+    shortcut_link: Option<&'a RenderedLink>,
 }
 
-impl<'a, 'b, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, 'b, I> {
-    fn new(iter: I, links: &'b [(String, String)]) -> Self {
-        LinkReplacer { inner: iter, links }
+impl<'a, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, I> {
+    fn new(iter: I, links: &'a [RenderedLink]) -> Self {
+        LinkReplacer { inner: iter, links, shortcut_link: None }
     }
 }
 
-impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I> {
+impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
     type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let event = self.inner.next();
-        if let Some(Event::Start(Tag::Link(kind, dest, text))) = event {
-            if let Some(&(_, ref replace)) = self.links.iter().find(|link| link.0 == *dest) {
-                Some(Event::Start(Tag::Link(kind, replace.to_owned().into(), text)))
-            } else {
-                Some(Event::Start(Tag::Link(kind, dest, text)))
+        use pulldown_cmark::LinkType;
+
+        let mut event = self.inner.next();
+
+        // Replace intra-doc links and remove disambiguators from shortcut links (`[fn@f]`).
+        match &mut event {
+            // This is a shortcut link that was resolved by the broken_link_callback: `[fn@f]`
+            // Remove any disambiguator.
+            Some(Event::Start(Tag::Link(
+                // [fn@f] or [fn@f][]
+                LinkType::ShortcutUnknown | LinkType::CollapsedUnknown,
+                dest,
+                title,
+            ))) => {
+                debug!("saw start of shortcut link to {} with title {}", dest, title);
+                // If this is a shortcut link, it was resolved by the broken_link_callback.
+                // So the URL will already be updated properly.
+                let link = self.links.iter().find(|&link| *link.href == **dest);
+                // Since this is an external iterator, we can't replace the inner text just yet.
+                // Store that we saw a link so we know to replace it later.
+                if let Some(link) = link {
+                    trace!("it matched");
+                    assert!(self.shortcut_link.is_none(), "shortcut links cannot be nested");
+                    self.shortcut_link = Some(link);
+                }
             }
-        } else {
-            event
+            // Now that we're done with the shortcut link, don't replace any more text.
+            Some(Event::End(Tag::Link(
+                LinkType::ShortcutUnknown | LinkType::CollapsedUnknown,
+                dest,
+                _,
+            ))) => {
+                debug!("saw end of shortcut link to {}", dest);
+                if self.links.iter().find(|&link| *link.href == **dest).is_some() {
+                    assert!(self.shortcut_link.is_some(), "saw closing link without opening tag");
+                    self.shortcut_link = None;
+                }
+            }
+            // Handle backticks in inline code blocks, but only if we're in the middle of a shortcut link.
+            // [`fn@f`]
+            Some(Event::Code(text)) => {
+                trace!("saw code {}", text);
+                if let Some(link) = self.shortcut_link {
+                    trace!("original text was {}", link.original_text);
+                    // NOTE: this only replaces if the code block is the *entire* text.
+                    // If only part of the link has code highlighting, the disambiguator will not be removed.
+                    // e.g. [fn@`f`]
+                    // This is a limitation from `collect_intra_doc_links`: it passes a full link,
+                    // and does not distinguish at all between code blocks.
+                    // So we could never be sure we weren't replacing too much:
+                    // [fn@my_`f`unc] is treated the same as [my_func()] in that pass.
+                    //
+                    // NOTE: &[1..len() - 1] is to strip the backticks
+                    if **text == link.original_text[1..link.original_text.len() - 1] {
+                        debug!("replacing {} with {}", text, link.new_text);
+                        *text = CowStr::Borrowed(&link.new_text);
+                    }
+                }
+            }
+            // Replace plain text in links, but only in the middle of a shortcut link.
+            // [fn@f]
+            Some(Event::Text(text)) => {
+                trace!("saw text {}", text);
+                if let Some(link) = self.shortcut_link {
+                    trace!("original text was {}", link.original_text);
+                    // NOTE: same limitations as `Event::Code`
+                    if **text == *link.original_text {
+                        debug!("replacing {} with {}", text, link.new_text);
+                        *text = CowStr::Borrowed(&link.new_text);
+                    }
+                }
+            }
+            // If this is a link, but not a shortcut link,
+            // replace the URL, since the broken_link_callback was not called.
+            Some(Event::Start(Tag::Link(_, dest, _))) => {
+                if let Some(link) = self.links.iter().find(|&link| *link.original_text == **dest) {
+                    *dest = CowStr::Borrowed(link.href.as_ref());
+                }
+            }
+            // Anything else couldn't have been a valid Rust path, so no need to replace the text.
+            _ => {}
         }
+
+        // Yield the modified event
+        event
     }
 }
 
@@ -855,8 +932,8 @@ impl Markdown<'_> {
             return String::new();
         }
         let replacer = |_: &str, s: &str| {
-            if let Some(&(_, ref replace)) = links.iter().find(|link| &*link.0 == s) {
-                Some((replace.clone(), s.to_owned()))
+            if let Some(link) = links.iter().find(|link| &*link.original_text == s) {
+                Some((link.href.clone(), link.new_text.clone()))
             } else {
                 None
             }
@@ -933,8 +1010,8 @@ impl MarkdownSummaryLine<'_> {
         }
 
         let replacer = |_: &str, s: &str| {
-            if let Some(&(_, ref replace)) = links.iter().find(|link| &*link.0 == s) {
-                Some((replace.clone(), s.to_owned()))
+            if let Some(link) = links.iter().find(|link| &*link.original_text == s) {
+                Some((link.href.clone(), link.new_text.clone()))
             } else {
                 None
             }
