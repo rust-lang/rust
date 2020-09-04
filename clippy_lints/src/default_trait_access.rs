@@ -42,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultTraitAccess {
             if let QPath::Resolved(None, _path) = qpath;
             then {
                 let expr_ty = cx.typeck_results().expr_ty(expr);
-                if let ty::Adt(def, ..) = expr_ty.kind {
+                if let ty::Adt(def, ..) = expr_ty.kind() {
                     // TODO: Work out a way to put "whatever the imported way of referencing
                     // this type in this file" rather than a fully-qualified type.
                     let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did));
