@@ -313,6 +313,7 @@ impl Definitions {
     }
 
     #[inline]
+    #[track_caller]
     pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
         self.def_id_to_hir_id[id].unwrap()
     }
