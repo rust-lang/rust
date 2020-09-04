@@ -14,55 +14,88 @@ declare_clippy_lint! {
     /// **Example:**
     /// Before:
     /// ```rust
-    /// use std::convert::TryFrom;
+    /// use std::fmt;
     ///
     /// #[derive(Debug)]
-    /// enum Errors {
-    ///     Ignored
+    /// enum Error {
+    ///     Indivisible,
+    ///     Remainder(u8),
     /// }
     ///
-    /// fn divisible_by_3(inp: i32) -> Result<u32, Errors> {
-    ///     let i = u32::try_from(inp).map_err(|_| Errors::Ignored)?;
+    /// impl fmt::Display for Error {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         match self {
+    ///             Error::Indivisible => write!(f, "could not divide input by three"),
+    ///             Error::Remainder(remainder) => write!(
+    ///                 f,
+    ///                 "input is not divisible by three, remainder = {}",
+    ///                 remainder
+    ///             ),
+    ///         }
+    ///     }
+    /// }
     ///
-    ///     Ok(i)
+    /// impl std::error::Error for Error {}
+    ///
+    /// fn divisible_by_3(input: &str) -> Result<(), Error> {
+    ///     input
+    ///         .parse::<i32>()
+    ///         .map_err(|_| Error::Indivisible)
+    ///         .map(|v| v % 3)
+    ///         .and_then(|remainder| {
+    ///             if remainder == 0 {
+    ///                 Ok(())
+    ///             } else {
+    ///                 Err(Error::Remainder(remainder as u8))
+    ///             }
+    ///         })
     /// }
     ///  ```
     ///
     ///  After:
     ///  ```rust
-    /// use std::convert::TryFrom;
-    /// use std::num::TryFromIntError;
-    /// use std::fmt;
-    /// use std::error::Error;
+    /// use std::{fmt, num::ParseIntError};
     ///
     /// #[derive(Debug)]
-    /// enum ParseError {
-    ///     Indivisible {
-    ///         source: TryFromIntError,
-    ///         input: String,
-    ///     }
+    /// enum Error {
+    ///     Indivisible(ParseIntError),
+    ///     Remainder(u8),
     /// }
     ///
-    /// impl fmt::Display for ParseError {
+    /// impl fmt::Display for Error {
     ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         match &self {
-    ///             ParseError::Indivisible{source: _, input} => write!(f, "Error: {}", input)
+    ///         match self {
+    ///             Error::Indivisible(_) => write!(f, "could not divide input by three"),
+    ///             Error::Remainder(remainder) => write!(
+    ///                 f,
+    ///                 "input is not divisible by three, remainder = {}",
+    ///                 remainder
+    ///             ),
     ///         }
     ///     }
     /// }
     ///
-    /// impl Error for ParseError {}
-    ///
-    /// impl ParseError {
-    ///     fn new(source: TryFromIntError, input: String) -> ParseError {
-    ///         ParseError::Indivisible{source, input}
+    /// impl std::error::Error for Error {
+    ///     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    ///         match self {
+    ///             Error::Indivisible(source) => Some(source),
+    ///             _ => None,
+    ///         }
     ///     }
     /// }
     ///
-    /// fn divisible_by_3(inp: i32) -> Result<u32, ParseError> {
-    ///     let i = u32::try_from(inp).map_err(|e| ParseError::new(e, e.to_string()))?;
-    ///
-    ///     Ok(i)
+    /// fn divisible_by_3(input: &str) -> Result<(), Error> {
+    ///     input
+    ///         .parse::<i32>()
+    ///         .map_err(Error::Indivisible)
+    ///         .map(|v| v % 3)
+    ///         .and_then(|remainder| {
+    ///             if remainder == 0 {
+    ///                 Ok(())
+    ///             } else {
+    ///                 Err(Error::Remainder(remainder as u8))
+    ///             }
+    ///         })
     /// }
     /// ```
     pub MAP_ERR_IGNORE,
