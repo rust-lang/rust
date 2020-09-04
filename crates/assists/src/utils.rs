@@ -16,7 +16,7 @@ use syntax::{
 
 use crate::assist_config::SnippetCap;
 
-pub(crate) use insert_use::{find_insert_use_container, insert_use_statement};
+pub(crate) use insert_use::{insert_use, ImportScope, MergeBehaviour};
 
 pub(crate) fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
     extract_trivial_expression(&block)
