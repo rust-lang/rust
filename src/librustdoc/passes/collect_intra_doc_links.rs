@@ -582,6 +582,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         let parent_node = if item.is_fake() {
             // FIXME: is this correct?
             None
+        // If we're documenting the crate root itself, it has no parent. Use the root instead.
+        } else if item.def_id.is_top_level_module() {
+            Some(item.def_id)
         } else {
             let mut current = item.def_id;
             // The immediate parent might not always be a module.
@@ -593,6 +596,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                     current = parent;
                 } else {
+                    debug!(
+                        "{:?} has no parent (kind={:?}, original was {:?})",
+                        current,
+                        self.cx.tcx.def_kind(current),
+                        item.def_id
+                    );
                     break None;
                 }
             }
@@ -697,11 +706,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     // This is an anchor to an element of the current page, nothing to do in here!
                     continue;
                 }
-                (parts[0].to_owned(), Some(parts[1].to_owned()))
+                (parts[0], Some(parts[1].to_owned()))
             } else {
-                (parts[0].to_owned(), None)
+                (parts[0], None)
             };
             let resolved_self;
+            let link_text;
             let mut path_str;
             let disambiguator;
             let (mut res, mut fragment) = {
@@ -717,6 +727,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ch == ':' || ch == '_')) {
                     continue;
                 }
+
+                // We stripped `()` and `!` when parsing the disambiguator.
+                // Add them back to be displayed, but not prefix disambiguators.
+                link_text = disambiguator
+                    .map(|d| d.display_for(path_str))
+                    .unwrap_or_else(|| path_str.to_owned());
 
                 // In order to correctly resolve intra-doc-links we need to
                 // pick a base AST node to work from.  If the documentation for
@@ -906,7 +922,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             if let Res::PrimTy(_) = res {
                 match disambiguator {
                     Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {
-                        item.attrs.links.push((ori_link, None, fragment))
+                        item.attrs.links.push(ItemLink {
+                            link: ori_link,
+                            link_text: path_str.to_owned(),
+                            did: None,
+                            fragment,
+                        });
                     }
                     Some(other) => {
                         report_mismatch(other, Disambiguator::Primitive);
@@ -957,7 +978,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                 }
                 let id = register_res(cx, res);
-                item.attrs.links.push((ori_link, Some(id), fragment));
+                item.attrs.links.push(ItemLink {
+                    link: ori_link,
+                    link_text,
+                    did: Some(id),
+                    fragment,
+                });
             }
         }
 
@@ -985,6 +1011,18 @@ enum Disambiguator {
 }
 
 impl Disambiguator {
+    /// The text that should be displayed when the path is rendered as HTML.
+    ///
+    /// NOTE: `path` is not the original link given by the user, but a name suitable for passing to `resolve`.
+    fn display_for(&self, path: &str) -> String {
+        match self {
+            // FIXME: this will have different output if the user had `m!()` originally.
+            Self::Kind(DefKind::Macro(MacroKind::Bang)) => format!("{}!", path),
+            Self::Kind(DefKind::Fn) => format!("{}()", path),
+            _ => path.to_owned(),
+        }
+    }
+
     /// (disambiguator, path_str)
     fn from_str(link: &str) -> Result<(Self, &str), ()> {
         use Disambiguator::{Kind, Namespace as NS, Primitive};
@@ -1037,7 +1075,7 @@ impl Disambiguator {
     }
 
     /// Return (description of the change, suggestion)
-    fn display_for(self, path_str: &str) -> (&'static str, String) {
+    fn suggestion_for(self, path_str: &str) -> (&'static str, String) {
         const PREFIX: &str = "prefix with the item kind";
         const FUNCTION: &str = "add parentheses";
         const MACRO: &str = "add an exclamation mark";
@@ -1292,7 +1330,7 @@ fn suggest_disambiguator(
     sp: Option<rustc_span::Span>,
     link_range: &Option<Range<usize>>,
 ) {
-    let (action, mut suggestion) = disambiguator.display_for(path_str);
+    let (action, mut suggestion) = disambiguator.suggestion_for(path_str);
     let help = format!("to link to the {}, {}", disambiguator.descr(), action);
 
     if let Some(sp) = sp {

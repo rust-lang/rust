@@ -382,7 +382,7 @@ impl<'a> Builder<'a> {
                 native::Lld
             ),
             Kind::Check | Kind::Clippy | Kind::Fix | Kind::Format => {
-                describe!(check::Std, check::Rustc, check::Rustdoc, check::Clippy)
+                describe!(check::Std, check::Rustc, check::Rustdoc, check::Clippy, check::Bootstrap)
             }
             Kind::Test => describe!(
                 crate::toolstate::ToolStateCheck,

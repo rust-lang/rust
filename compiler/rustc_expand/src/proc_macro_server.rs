@@ -47,15 +47,26 @@ impl ToInternal<token::DelimToken> for Delimiter {
     }
 }
 
-impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
-    for TokenTree<Group, Punct, Ident, Literal>
+impl
+    FromInternal<(
+        TreeAndJoint,
+        Option<&'_ tokenstream::TokenTree>,
+        &'_ ParseSess,
+        &'_ mut Vec<Self>,
+    )> for TokenTree<Group, Punct, Ident, Literal>
 {
     fn from_internal(
-        ((tree, is_joint), sess, stack): (TreeAndJoint, &ParseSess, &mut Vec<Self>),
+        ((tree, is_joint), look_ahead, sess, stack): (
+            TreeAndJoint,
+            Option<&tokenstream::TokenTree>,
+            &ParseSess,
+            &mut Vec<Self>,
+        ),
     ) -> Self {
         use rustc_ast::token::*;
 
-        let joint = is_joint == Joint;
+        let joint = is_joint == Joint
+            && matches!(look_ahead, Some(tokenstream::TokenTree::Token(t)) if t.is_op());
         let Token { kind, span } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
@@ -445,7 +456,8 @@ impl server::TokenStreamIter for Rustc<'_> {
         loop {
             let tree = iter.stack.pop().or_else(|| {
                 let next = iter.cursor.next_with_joint()?;
-                Some(TokenTree::from_internal((next, self.sess, &mut iter.stack)))
+                let lookahead = iter.cursor.look_ahead(0);
+                Some(TokenTree::from_internal((next, lookahead, self.sess, &mut iter.stack)))
             })?;
             // A hack used to pass AST fragments to attribute and derive macros
             // as a single nonterminal token instead of a token stream.
