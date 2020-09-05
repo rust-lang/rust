@@ -73,7 +73,7 @@ impl<T, const N: usize> IntoIter<T, N> {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
             let slice = self.data.get_unchecked(self.alive.clone());
-            MaybeUninit::slice_get_ref(slice)
+            MaybeUninit::slice_assume_init_ref(slice)
         }
     }
 
@@ -82,7 +82,7 @@ impl<T, const N: usize> IntoIter<T, N> {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
             let slice = self.data.get_unchecked_mut(self.alive.clone());
-            MaybeUninit::slice_get_mut(slice)
+            MaybeUninit::slice_assume_init_mut(slice)
         }
     }
 }
