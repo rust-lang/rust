@@ -9,7 +9,8 @@ function makeRunnable(label: string): ra.Runnable {
         kind: "cargo",
         args: {
             cargoArgs: [],
-            executableArgs: []
+            executableArgs: [],
+            cargoExtraArgs: []
         }
     };
 }

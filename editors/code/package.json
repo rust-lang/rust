@@ -651,6 +651,22 @@
                     ],
                     "default": "full",
                     "description": "The strategy to use when inserting new imports or merging imports."
+                },
+                "rust-analyzer.runnables.overrideCargo": {
+                    "type": [
+                        "null",
+                        "string"
+                    ],
+                    "default": null,
+                    "description": "Command to be executed instead of 'cargo' for runnables."
+                },
+                "rust-analyzer.runnables.cargoExtraArgs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [],
+                    "description": "Additional arguments to be passed to cargo for runnables such as tests or binaries.\nFor example, it may be '--release'"
                 }
             }
         },
