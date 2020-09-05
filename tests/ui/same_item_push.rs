@@ -94,4 +94,21 @@ fn main() {
         vec13.push(item);
         item += 10;
     }
+
+    // Fix #5979
+    let mut vec14: Vec<std::fs::File> = Vec::new();
+    for _ in 0..10 {
+        vec14.push(std::fs::File::open("foobar").unwrap());
+    }
+    // Fix #5979
+    #[derive(Clone)]
+    struct S {}
+
+    trait T {}
+    impl T for S {}
+
+    let mut vec15: Vec<Box<dyn T>> = Vec::new();
+    for _ in 0..10 {
+        vec15.push(Box::new(S {}));
+    }
 }
