@@ -98,10 +98,10 @@ mod value;
 use std::convert::TryFrom;
 use std::fmt;
 use std::io;
+use std::io::{Read, Write};
 use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
@@ -561,19 +561,33 @@ pub fn write_target_uint(
     mut target: &mut [u8],
     data: u128,
 ) -> Result<(), io::Error> {
-    let len = target.len();
+    // This u128 holds an "any-size uint" (since smaller uints can fits in it)
+    // So we do not write all bytes of the u128, just the "payload".
     match endianness {
-        Endian::Little => target.write_uint128::<LittleEndian>(data, len),
-        Endian::Big => target.write_uint128::<BigEndian>(data, len),
-    }
+        Endian::Little => target.write(&data.to_le_bytes())?,
+        Endian::Big => target.write(&data.to_be_bytes()[16 - target.len()..])?,
+    };
+    debug_assert!(target.len() == 0); // We should have filled the target buffer.
+    Ok(())
 }
 
 #[inline]
 pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, io::Error> {
-    match endianness {
-        Endian::Little => source.read_uint128::<LittleEndian>(source.len()),
-        Endian::Big => source.read_uint128::<BigEndian>(source.len()),
-    }
+    // This u128 holds an "any-size uint" (since smaller uints can fits in it)
+    let mut buf = [0u8; std::mem::size_of::<u128>()];
+    // So we do not read exactly 16 bytes into the u128, just the "payload".
+    let uint = match endianness {
+        Endian::Little => {
+            source.read(&mut buf)?;
+            Ok(u128::from_le_bytes(buf))
+        }
+        Endian::Big => {
+            source.read(&mut buf[16 - source.len()..])?;
+            Ok(u128::from_be_bytes(buf))
+        }
+    };
+    debug_assert!(source.len() == 0); // We should have consumed the source buffer.
+    uint
 }
 
 ////////////////////////////////////////////////////////////////////////////////
