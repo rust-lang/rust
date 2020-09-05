@@ -14,6 +14,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::ExprKind;
+// use rustc_hir::TyKind;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::ty::{
     self, suggest_constraining_type_param, AdtKind, DefIdTree, Infer, InferTy, ToPredicate, Ty,
@@ -121,6 +123,7 @@ pub trait InferCtxtExt<'tcx> {
         found_span: Option<Span>,
         expected_ref: ty::PolyTraitRef<'tcx>,
         found: ty::PolyTraitRef<'tcx>,
+        found_node: Option<Node<'tcx>>,
     ) -> DiagnosticBuilder<'tcx>;
 
     fn suggest_fully_qualified_path(
@@ -907,7 +910,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             _ => return None,
         };
 
-        if let hir::FnRetTy::Return(ret_ty) = sig.decl.output { Some(ret_ty.span) } else { None }
+        if let hir::FnRetTy::Return(ret_ty) = sig.decl.output {
+            Some(ret_ty.span)
+        } else {
+            None
+        }
     }
 
     /// If all conditions are met to identify a returned `dyn Trait`, suggest using `impl Trait` if
@@ -1145,6 +1152,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         found_span: Option<Span>,
         expected_ref: ty::PolyTraitRef<'tcx>,
         found: ty::PolyTraitRef<'tcx>,
+        found_node: Option<Node<'tcx>>,
     ) -> DiagnosticBuilder<'tcx> {
         crate fn build_fn_sig_string<'tcx>(
             tcx: TyCtxt<'tcx>,
@@ -1192,6 +1200,54 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             build_fn_sig_string(self.tcx, expected_ref.skip_binder())
         );
         err.span_label(found_span, expected_str);
+
+        if let Some(node) = found_node {
+            match node {
+                Node::Expr(param) => match param.kind {
+                    ExprKind::Closure(_, _fn_decl_input, _, _, _) => {
+                        // Input are in closure with _fn_decl_input inputs itself
+                        let expected = expected_ref.skip_binder().substs.type_at(1); // ?
+
+                        // let inputs = expected_ref.skip_binder().substs.type_at(1);
+                        // let sig = if let ty::Tuple(inputs) = inputs.kind() {
+                        //         inputs.iter().map(|k| k.expect_ty())
+                        // } else {
+                        //         ::std::iter::once(inputs)
+                        // };
+
+                        match expected.kind() {
+                            ty::Closure(_did, substs) => {
+                                let msg = format!(
+                                    "closure -> & {:?}",
+                                    substs
+                                );
+                                err.span_suggestion_verbose(
+                                    span.shrink_to_lo(),
+                                    "hint: add missing borrow here:",
+                                    msg,
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            ty::Ref(_region, ty, _) => {
+                                let msg = format!(
+                                    "ref -> & {:?}",
+                                    ty
+                                );
+                                err.span_suggestion_verbose(
+                                    span.shrink_to_lo(),
+                                    "hint: add missing borrow here:",
+                                    msg,
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        };
 
         err
     }

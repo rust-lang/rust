@@ -685,6 +685,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     _ => None,
                 };
 
+                let found_node = match found_did {
+                    Some(found_did) => self.tcx.hir().get_if_local(found_did),
+                    None => None,
+                };
+
                 let found_span = found_did
                     .and_then(|did| self.tcx.hir().span_if_local(did))
                     .map(|sp| self.tcx.sess.source_map().guess_head_span(sp)); // the sp could be an fn def
@@ -694,7 +699,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // but we want to complain about them only once.
                     return;
                 }
-
+ 
                 self.reported_closure_mismatch.borrow_mut().insert((span, found_span));
 
                 let found = match found_trait_ref.skip_binder().substs.type_at(1).kind() {
@@ -717,6 +722,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         found_span,
                         found_trait_ref,
                         expected_trait_ref,
+                        found_node,
                     )
                 } else {
                     let (closure_span, found) = found_did
