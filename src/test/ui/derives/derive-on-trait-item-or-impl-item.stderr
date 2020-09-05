@@ -1,10 +1,10 @@
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/derive-on-trait-item-or-impl-item.rs:2:5
    |
 LL |     #[derive(Clone)]
    |     ^^^^^^^^^^^^^^^^
 
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/derive-on-trait-item-or-impl-item.rs:10:5
    |
 LL |     #[derive(Clone)]
@@ -12,3 +12,4 @@ LL |     #[derive(Clone)]
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0774`.
