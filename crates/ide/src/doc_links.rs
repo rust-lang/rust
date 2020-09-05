@@ -112,7 +112,6 @@ pub fn get_doc_link<T: Resolvable + Clone>(db: &dyn HirDatabase, definition: &T)
 // version of import map which follows the same process as rustdoc. Otherwise there'll always be some
 // edge cases where we select the wrong import path.
 fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
-    eprintln!("enter");
     // Get the outermost definition for the moduledef. This is used to resolve the public path to the type,
     // then we can join the method, field, etc onto it if required.
     let target_def: ModuleDef = match definition {
@@ -127,7 +126,7 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
         _ => return None,
     };
 
-    let ns = ItemInNs::Types(target_def.clone().into());
+    let ns = ItemInNs::from(target_def.clone());
 
     let module = definition.module(db)?;
     let krate = module.krate();
@@ -153,7 +152,6 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
         Definition::Field(field) => get_symbol_fragment(db, &FieldOrAssocItem::Field(field)),
         _ => None,
     };
-    eprintln!("end-ish");
 
     get_doc_url(db, &krate)
         .and_then(|url| url.join(&base).ok())
@@ -456,14 +454,13 @@ pub struct Fo<|>o;
         );
     }
 
-    // TODO: Fix this test. Fails on `import_map.path_of(ns)`
     #[test]
     fn test_doc_url_fn() {
         check(
             r#"
 pub fn fo<|>o() {}
 "#,
-            expect![[r#""#]],
+            expect![[r##"https://docs.rs/test/*/test/fn.foo.html#method.foo"##]],
         );
     }
 
@@ -507,7 +504,6 @@ pub trait Foo {
             expect![[r##"https://docs.rs/test/*/test/trait.Foo.html#tymethod.method"##]],
         );
     }
-
 
     #[test]
     fn test_doc_url_field() {
