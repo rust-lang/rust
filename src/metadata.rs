@@ -63,8 +63,7 @@ pub(crate) fn write_metadata<P: WriteMetadata>(
     tcx: TyCtxt<'_>,
     product: &mut P,
 ) -> EncodedMetadata {
-    use flate2::write::DeflateEncoder;
-    use flate2::Compression;
+    use snap::write::FrameEncoder;
     use std::io::Write;
 
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -101,7 +100,7 @@ pub(crate) fn write_metadata<P: WriteMetadata>(
 
     assert!(kind == MetadataKind::Compressed);
     let mut compressed = tcx.metadata_encoding_version();
-    DeflateEncoder::new(&mut compressed, Compression::fast())
+    FrameEncoder::new(&mut compressed)
         .write_all(&metadata.raw_data)
         .unwrap();
 

@@ -11,6 +11,7 @@
 
 #[cfg(feature = "jit")]
 extern crate libc;
+extern crate snap;
 #[macro_use]
 extern crate rustc_middle;
 extern crate rustc_ast;
