@@ -150,6 +150,56 @@ pub use std::fmt::Display;
     }
 
     #[test]
+    fn skip_pub_crate_pub() {
+        check_assist_not_applicable(
+            merge_imports,
+            r"
+pub(crate) use std::fmt<|>::Debug;
+pub use std::fmt::Display;
+",
+        );
+    }
+
+    #[test]
+    fn skip_pub_pub_crate() {
+        check_assist_not_applicable(
+            merge_imports,
+            r"
+pub use std::fmt<|>::Debug;
+pub(crate) use std::fmt::Display;
+",
+        );
+    }
+
+    #[test]
+    fn merge_pub() {
+        check_assist(
+            merge_imports,
+            r"
+pub use std::fmt<|>::Debug;
+pub use std::fmt::Display;
+",
+            r"
+pub use std::fmt::{Debug, Display};
+",
+        )
+    }
+
+    #[test]
+    fn merge_pub_crate() {
+        check_assist(
+            merge_imports,
+            r"
+pub(crate) use std::fmt<|>::Debug;
+pub(crate) use std::fmt::Display;
+",
+            r"
+pub(crate) use std::fmt::{Debug, Display};
+",
+        )
+    }
+
+    #[test]
     fn test_merge_nested() {
         check_assist(
             merge_imports,

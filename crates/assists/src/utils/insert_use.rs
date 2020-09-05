@@ -138,18 +138,23 @@ pub(crate) fn insert_use(
     algo::insert_children(scope.as_syntax_node(), insert_position, to_insert)
 }
 
+fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -> bool {
+    match (vis0, vis1) {
+        (None, None) => true,
+        // FIXME: Don't use the string representation to check for equality
+        // spaces inside of the node would break this comparison
+        (Some(vis0), Some(vis1)) => vis0.to_string() == vis1.to_string(),
+        _ => false,
+    }
+}
+
 pub(crate) fn try_merge_imports(
     old: &ast::Use,
     new: &ast::Use,
     merge_behaviour: MergeBehaviour,
 ) -> Option<ast::Use> {
     // don't merge imports with different visibilities
-    if old
-        .visibility()
-        .and_then(|vis| vis.pub_token())
-        .or_else(|| new.visibility().and_then(|vis| vis.pub_token()))
-        .is_some()
-    {
+    if !eq_visibility(old.visibility(), new.visibility()) {
         return None;
     }
     let old_tree = old.use_tree()?;
