@@ -501,7 +501,7 @@ pub(crate) fn handle_runnables(
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
                         workspace_root: Some(spec.workspace_root.clone().into()),
-                        cargo_prefix: config.cargo_prefix.clone(),
+                        override_cargo: config.override_cargo.clone(),
                         cargo_args: vec![
                             cmd.to_string(),
                             "--package".to_string(),
@@ -522,7 +522,7 @@ pub(crate) fn handle_runnables(
                 kind: lsp_ext::RunnableKind::Cargo,
                 args: lsp_ext::CargoRunnable {
                     workspace_root: None,
-                    cargo_prefix: config.cargo_prefix.clone(),
+                    override_cargo: config.override_cargo.clone(),
                     cargo_args: vec!["check".to_string(), "--workspace".to_string()],
                     cargo_extra_args: config.cargo_extra_args.clone(),
                     executable_args: Vec::new(),

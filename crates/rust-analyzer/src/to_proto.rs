@@ -755,7 +755,7 @@ pub(crate) fn runnable(
         kind: lsp_ext::RunnableKind::Cargo,
         args: lsp_ext::CargoRunnable {
             workspace_root: workspace_root.map(|it| it.into()),
-            cargo_prefix: config.cargo_prefix.clone(),
+            override_cargo: config.override_cargo.clone(),
             cargo_args,
             cargo_extra_args: config.cargo_extra_args.clone(),
             executable_args,

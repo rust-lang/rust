@@ -128,8 +128,8 @@ pub enum RustfmtConfig {
 /// Configuration for runnable items, such as `main` function or tests.
 #[derive(Debug, Clone, Default)]
 pub struct RunnablesConfig {
-    /// Stuff to be inserted before `cargo`, e.g. `RUST_LOG=info`.
-    pub cargo_prefix: Vec<String>,
+    /// Custom command to be executed instead of `cargo` for runnables.
+    pub override_cargo: Option<String>,
     /// Additional arguments for the `cargo`, e.g. `--release`.
     pub cargo_extra_args: Vec<String>,
 }
@@ -232,7 +232,7 @@ impl Config {
             target: data.cargo_target.clone(),
         };
         self.runnables = RunnablesConfig {
-            cargo_prefix: data.runnables_cargoPrefix,
+            override_cargo: data.runnables_overrideCargo,
             cargo_extra_args: data.runnables_cargoExtraArgs,
         };
 
@@ -489,8 +489,8 @@ config_data! {
         notifications_cargoTomlNotFound: bool      = true,
         procMacro_enable: bool                     = false,
 
-        runnables_cargoPrefix: Vec<String>    = Vec::new(),
-        runnables_cargoExtraArgs: Vec<String> = Vec::new(),
+        runnables_overrideCargo: Option<String> = None,
+        runnables_cargoExtraArgs: Vec<String>   = Vec::new(),
 
         rustfmt_extraArgs: Vec<String>               = Vec::new(),
         rustfmt_overrideCommand: Option<Vec<String>> = None,

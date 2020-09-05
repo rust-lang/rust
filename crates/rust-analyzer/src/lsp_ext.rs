@@ -171,8 +171,8 @@ pub enum RunnableKind {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CargoRunnable {
-    // stuff before `cargo` command, e.g. `RUST_LOG=info`
-    pub cargo_prefix: Vec<String>,
+    // command to be executed instead of cargo
+    pub override_cargo: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub workspace_root: Option<PathBuf>,
     // command, --package and --lib stuff
