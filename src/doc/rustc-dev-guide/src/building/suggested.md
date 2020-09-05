@@ -3,6 +3,19 @@
 The full bootstrapping process takes quite a while. Here are some suggestions
 to make your life easier.
 
+## Installing a pre-commit hook
+
+CI will automatically fail your build if it doesn't pass `tidy`, our
+internal tool for ensuring code quality. If you'd like, you can install a
+[Git hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
+that will automatically run `x.py test tidy --bless` on each commit, to ensure
+your code is up to par. If you decide later that this behavior is
+undesirable, you can delete the `pre-commit` file in `.git/hooks`.
+
+A prebuilt git hook lives at [`src/etc/pre-commit.sh`](https://github.com/rust-lang/rust/blob/master/src/etc/pre-commit.sh) which can be copied into your `.git/hooks` folder as `pre-commit` (without the `.sh` extension!).
+
+You can also install the hook as a step of running `x.py setup`!
+
 ## Configuring `rust-analyzer` for `rustc`
 
 `rust-analyzer` can help you check and format your code whenever you save
@@ -82,7 +95,7 @@ directories you have [setup a worktree for]. You may need to use the pinned
 nightly version from `src/stage0.txt`, but often the normal `nightly` channel
 will work.
 
-**Note** see [the section on vscode] for how to configure it with this real rustfmt `x.py` uses, 
+**Note** see [the section on vscode] for how to configure it with this real rustfmt `x.py` uses,
 and [the section on rustup] for how to setup `rustup` toolchain for your bootstrapped compiler
 
 **Note** This does _not_ allow you to build `rustc` with cargo directly. You
@@ -100,7 +113,7 @@ Sometimes just checking
 whether the compiler builds is not enough. A common example is that
 you need to add a `debug!` statement to inspect the value of some
 state or better understand the problem. In that case, you really need
-a full build.  By leveraging incremental, though, you can often get
+a full build. By leveraging incremental, though, you can often get
 these builds to complete very fast (e.g., around 30 seconds). The only
 catch is this requires a bit of fudging and may produce compilers that
 don't work (but that is easily detected and fixed).
@@ -118,10 +131,10 @@ The sequence of commands you want is as follows:
 
 [documented previously]: ./how-to-build-and-run.md#building-the-compiler
 
-As mentioned, the effect of `--keep-stage 1` is that we just *assume* that the
+As mentioned, the effect of `--keep-stage 1` is that we just _assume_ that the
 old standard library can be re-used. If you are editing the compiler, this
 is almost always true: you haven't changed the standard library, after
-all.  But sometimes, it's not true: for example, if you are editing
+all. But sometimes, it's not true: for example, if you are editing
 the "metadata" part of the compiler, which controls how the compiler
 encodes types and other states into the `rlib` files, or if you are
 editing things that wind up in the metadata (such as the definition of
@@ -131,7 +144,7 @@ the MIR).
 using `--keep-stage 1`** -- for example, strange
 [ICEs](../appendix/glossary.html#ice) or other panics. In that case, you
 should simply remove the `--keep-stage 1` from the command and
-rebuild.  That ought to fix the problem.
+rebuild. That ought to fix the problem.
 
 You can also use `--keep-stage 1` when running tests. Something like this:
 
@@ -147,6 +160,7 @@ crates you'll have to rebuild
 For example, when working on `rustc_mir_build`, the `rustc_mir_build` and
 `rustc_driver` crates take the most time to incrementally rebuild. You could
 therefore set the following in the root `Cargo.toml`:
+
 ```toml
 [profile.release.package.rustc_mir_build]
 opt-level = 0
@@ -218,6 +232,6 @@ Note that you need to have the LLVM `FileCheck` tool installed, which is used
 for codegen tests. This tool is normally built with LLVM, but if you use your
 own preinstalled LLVM, you will need to provide `FileCheck` in some other way.
 On Debian-based systems, you can install the `llvm-N-tools` package (where `N`
-is the LLVM version number, e.g. `llvm-8-tools`).  Alternately, you can specify
+is the LLVM version number, e.g. `llvm-8-tools`). Alternately, you can specify
 the path to `FileCheck` with the `llvm-filecheck` config item in `config.toml`
 or you can disable codegen test with the `codegen-tests` item in `config.toml`.
