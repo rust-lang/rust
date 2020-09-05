@@ -246,7 +246,7 @@ pub fn format_shortest<'a>(
         // it seems that this condition is very hard to satisfy (possibly impossible),
         // but we are just being safe and consistent here.
         // SAFETY: we initialized that memory above.
-        if let Some(c) = round_up(unsafe { MaybeUninit::slice_get_mut(&mut buf[..i]) }) {
+        if let Some(c) = round_up(unsafe { MaybeUninit::slice_assume_init_mut(&mut buf[..i]) }) {
             buf[i] = MaybeUninit::new(c);
             i += 1;
             k += 1;
@@ -254,7 +254,7 @@ pub fn format_shortest<'a>(
     }
 
     // SAFETY: we initialized that memory above.
-    (unsafe { MaybeUninit::slice_get_ref(&buf[..i]) }, k)
+    (unsafe { MaybeUninit::slice_assume_init_ref(&buf[..i]) }, k)
 }
 
 /// The exact and fixed mode implementation for Dragon.
@@ -332,7 +332,7 @@ pub fn format_exact<'a>(
                     *c = MaybeUninit::new(b'0');
                 }
                 // SAFETY: we initialized that memory above.
-                return (unsafe { MaybeUninit::slice_get_ref(&buf[..len]) }, k);
+                return (unsafe { MaybeUninit::slice_assume_init_ref(&buf[..len]) }, k);
             }
 
             let mut d = 0;
@@ -371,7 +371,7 @@ pub fn format_exact<'a>(
         // if rounding up changes the length, the exponent should also change.
         // but we've been requested a fixed number of digits, so do not alter the buffer...
         // SAFETY: we initialized that memory above.
-        if let Some(c) = round_up(unsafe { MaybeUninit::slice_get_mut(&mut buf[..len]) }) {
+        if let Some(c) = round_up(unsafe { MaybeUninit::slice_assume_init_mut(&mut buf[..len]) }) {
             // ...unless we've been requested the fixed precision instead.
             // we also need to check that, if the original buffer was empty,
             // the additional digit can only be added when `k == limit` (edge case).
@@ -384,5 +384,5 @@ pub fn format_exact<'a>(
     }
 
     // SAFETY: we initialized that memory above.
-    (unsafe { MaybeUninit::slice_get_ref(&buf[..len]) }, k)
+    (unsafe { MaybeUninit::slice_assume_init_ref(&buf[..len]) }, k)
 }
