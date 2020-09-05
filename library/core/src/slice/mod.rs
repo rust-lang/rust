@@ -1412,7 +1412,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(contains_ref)]
+    /// #![feature(contains_ref)]
     /// let v = [String::from("Hello"), String::from("world")];
     /// assert!(v.contains_ref("Hello"));
     /// assert!(!v.contains_ref("Rust"));
