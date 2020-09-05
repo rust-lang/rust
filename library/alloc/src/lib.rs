@@ -140,6 +140,7 @@
 #![feature(try_trait)]
 #![feature(type_alias_impl_trait)]
 #![feature(associated_type_bounds)]
+#![feature(atomic_mut_ptr)]
 // Allow testing this library
 
 #[cfg(test)]
