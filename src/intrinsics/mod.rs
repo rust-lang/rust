@@ -141,7 +141,7 @@ macro atomic_minmax($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $
 }
 
 macro validate_atomic_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
-    match $ty.kind {
+    match $ty.kind() {
         ty::Uint(_) | ty::Int(_) => {}
         _ => {
             $fx.tcx.sess.span_err(
@@ -302,7 +302,7 @@ macro simd_cmp {
                 $y,
                 $ret,
                 |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
-                    let res_lane = match lane_layout.ty.kind {
+                    let res_lane = match lane_layout.ty.kind() {
                         ty::Uint(_) | ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane),
                         _ => unreachable!("{:?}", lane_layout.ty),
                     };
@@ -319,7 +319,7 @@ macro simd_cmp {
             $y,
             $ret,
             |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind {
+                let res_lane = match lane_layout.ty.kind() {
                     ty::Uint(_) => fx.bcx.ins().icmp(IntCC::$cc_u, x_lane, y_lane),
                     ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc_s, x_lane, y_lane),
                     _ => unreachable!("{:?}", lane_layout.ty),
@@ -341,7 +341,7 @@ macro simd_int_binop {
             $y,
             $ret,
             |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind {
+                let res_lane = match lane_layout.ty.kind() {
                     ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
                     ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
                     _ => unreachable!("{:?}", lane_layout.ty),
@@ -363,7 +363,7 @@ macro simd_int_flt_binop {
             $y,
             $ret,
             |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind {
+                let res_lane = match lane_layout.ty.kind() {
                     ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
                     ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
                     ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
@@ -382,7 +382,7 @@ macro simd_flt_binop($fx:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) {
         $y,
         $ret,
         |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-            let res_lane = match lane_layout.ty.kind {
+            let res_lane = match lane_layout.ty.kind() {
                 ty::Float(_) => fx.bcx.ins().$op(x_lane, y_lane),
                 _ => unreachable!("{:?}", lane_layout.ty),
             };

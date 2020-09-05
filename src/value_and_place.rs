@@ -24,7 +24,7 @@ fn codegen_field<'tcx>(
         if !field_layout.is_unsized() {
             return simple(fx);
         }
-        match field_layout.ty.kind {
+        match field_layout.ty.kind() {
             ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(fx),
             ty::Adt(def, _) if def.repr.packed() => {
                 assert_eq!(layout.align.abi.bytes(), 1);
@@ -235,7 +235,7 @@ impl<'tcx> CValue<'tcx> {
 
         let clif_ty = fx.clif_type(layout.ty).unwrap();
 
-        match layout.ty.kind {
+        match layout.ty.kind() {
             ty::Bool => {
                 assert!(
                     const_val == 0 || const_val == 1,
@@ -246,7 +246,7 @@ impl<'tcx> CValue<'tcx> {
             _ => {}
         }
 
-        let val = match layout.ty.kind {
+        let val = match layout.ty.kind() {
             ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
                 let lsb = fx.bcx.ins().iconst(types::I64, const_val as u64 as i64);
                 let msb = fx
@@ -279,11 +279,11 @@ impl<'tcx> CValue<'tcx> {
 
     pub(crate) fn cast_pointer_to(self, layout: TyAndLayout<'tcx>) -> Self {
         assert!(matches!(
-            self.layout().ty.kind,
+            self.layout().ty.kind(),
             ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)
         ));
         assert!(matches!(
-            layout.ty.kind,
+            layout.ty.kind(),
             ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)
         ));
         assert_eq!(self.layout().abi, layout.abi);
@@ -454,7 +454,7 @@ impl<'tcx> CPlace<'tcx> {
             from_ty: Ty<'tcx>,
             to_ty: Ty<'tcx>,
         ) {
-            match (&from_ty.kind, &to_ty.kind) {
+            match (&from_ty.kind(), &to_ty.kind()) {
                 (ty::Ref(_, a, _), ty::Ref(_, b, _))
                 | (
                     ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
@@ -716,7 +716,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         index: Value,
     ) -> CPlace<'tcx> {
-        let (elem_layout, ptr) = match self.layout().ty.kind {
+        let (elem_layout, ptr) = match self.layout().ty.kind() {
             ty::Array(elem_ty, _) => (fx.layout_of(elem_ty), self.to_ptr()),
             ty::Slice(elem_ty) => (fx.layout_of(elem_ty), self.to_ptr_maybe_unsized().0),
             _ => bug!("place_index({:?})", self.layout().ty),

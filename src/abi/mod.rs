@@ -20,14 +20,14 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx
 
     // FIXME(davidtwco,eddyb): A `ParamEnv` should be passed through to this function.
     let ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
-    match ty.kind {
+    match *ty.kind() {
         ty::FnDef(..) => {
             // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
             // parameters unused if they show up in the signature, but not in the `mir::Body`
             // (i.e. due to being inside a projection that got normalized, see
             // `src/test/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
             // track of a polymorphization `ParamEnv` to allow normalizing later.
-            let mut sig = match ty.kind {
+            let mut sig = match *ty.kind() {
                 ty::FnDef(def_id, substs) => tcx
                     .normalize_erasing_regions(tcx.param_env(def_id), tcx.fn_sig(def_id))
                     .subst(tcx, substs),
@@ -65,13 +65,13 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx
             let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
-            let pin_did = tcx.require_lang_item(rustc_hir::LangItem::PinTypeLangItem, None);
+            let pin_did = tcx.require_lang_item(rustc_hir::LangItem::Pin, None);
             let pin_adt_ref = tcx.adt_def(pin_did);
             let pin_substs = tcx.intern_substs(&[env_ty.into()]);
             let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
 
             sig.map_bound(|sig| {
-                let state_did = tcx.require_lang_item(rustc_hir::LangItem::GeneratorStateLangItem, None);
+                let state_did = tcx.require_lang_item(rustc_hir::LangItem::GeneratorState, None);
                 let state_adt_ref = tcx.adt_def(state_did);
                 let state_substs =
                     tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
@@ -116,7 +116,7 @@ fn clif_sig_from_fn_sig<'tcx>(
         Abi::SysV64 => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
             assert_eq!(sig.inputs().len(), 2);
-            let extra_args = match sig.inputs().last().unwrap().kind {
+            let extra_args = match sig.inputs().last().unwrap().kind() {
                 ty::Tuple(ref tupled_arguments) => tupled_arguments,
                 _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
             };
@@ -307,7 +307,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             })
             .unzip();
         let return_layout = self.layout_of(return_ty);
-        let return_tys = if let ty::Tuple(tup) = return_ty.kind {
+        let return_tys = if let ty::Tuple(tup) = return_ty.kind() {
             tup.types().map(|ty| self.clif_type(ty).unwrap()).collect()
         } else {
             vec![self.clif_type(return_ty).unwrap()]
@@ -379,7 +379,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
                 // to reconstruct it into a tuple local variable, from multiple
                 // individual function arguments.
 
-                let tupled_arg_tys = match arg_ty.kind {
+                let tupled_arg_tys = match arg_ty.kind() {
                     ty::Tuple(ref tys) => tys,
                     _ => bug!("spread argument isn't a tuple?! but {:?}", arg_ty),
                 };
@@ -500,7 +500,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     let destination = destination.map(|(place, bb)| (trans_place(fx, place), bb));
 
     // Handle special calls like instrinsics and empty drop glue.
-    let instance = if let ty::FnDef(def_id, substs) = fn_ty.kind {
+    let instance = if let ty::FnDef(def_id, substs) = *fn_ty.kind() {
         let instance = ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
             .unwrap()
             .unwrap()
@@ -553,7 +553,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         let self_arg = trans_operand(fx, &args[0]);
         let pack_arg = trans_operand(fx, &args[1]);
 
-        let tupled_arguments = match pack_arg.layout().ty.kind {
+        let tupled_arguments = match pack_arg.layout().ty.kind() {
             ty::Tuple(ref tupled_arguments) => tupled_arguments,
             _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
         };
@@ -715,7 +715,7 @@ pub(crate) fn codegen_drop<'tcx>(
         );
         assert_eq!(fn_sig.output(), fx.tcx.mk_unit());
 
-        match ty.kind {
+        match ty.kind() {
             ty::Dynamic(..) => {
                 let (ptr, vtable) = drop_place.to_ptr_maybe_unsized();
                 let ptr = ptr.get_addr(fx);

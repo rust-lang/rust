@@ -17,7 +17,7 @@ pub(crate) fn unsized_info<'tcx>(
     let (source, target) =
         fx.tcx
             .struct_lockstep_tails_erasing_lifetimes(source, target, ParamEnv::reveal_all());
-    match (&source.kind, &target.kind) {
+    match (&source.kind(), &target.kind()) {
         (&ty::Array(_, len), &ty::Slice(_)) => fx.bcx.ins().iconst(
             fx.pointer_type,
             len.eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64,
@@ -46,7 +46,7 @@ fn unsize_thin_ptr<'tcx>(
     src_layout: TyAndLayout<'tcx>,
     dst_layout: TyAndLayout<'tcx>,
 ) -> (Value, Value) {
-    match (&src_layout.ty.kind, &dst_layout.ty.kind) {
+    match (&src_layout.ty.kind(), &dst_layout.ty.kind()) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _))
         | (&ty::Ref(_, a, _), &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
@@ -105,7 +105,7 @@ pub(crate) fn coerce_unsized_into<'tcx>(
         };
         dst.write_cvalue(fx, CValue::by_val_pair(base, info, dst.layout()));
     };
-    match (&src_ty.kind, &dst_ty.kind) {
+    match (&src_ty.kind(), &dst_ty.kind()) {
         (&ty::Ref(..), &ty::Ref(..))
         | (&ty::Ref(..), &ty::RawPtr(..))
         | (&ty::RawPtr(..), &ty::RawPtr(..)) => coerce_ptr(),
@@ -153,7 +153,7 @@ pub(crate) fn size_and_align_of_dst<'tcx>(
             .iconst(fx.pointer_type, layout.align.abi.bytes() as i64);
         return (size, align);
     }
-    match layout.ty.kind {
+    match layout.ty.kind() {
         ty::Dynamic(..) => {
             // load size/align from vtable
             (
@@ -199,7 +199,7 @@ pub(crate) fn size_and_align_of_dst<'tcx>(
             let size = fx.bcx.ins().iadd_imm(unsized_size, sized_size as i64);
 
             // Packed types ignore the alignment of their fields.
-            if let ty::Adt(def, _) = layout.ty.kind {
+            if let ty::Adt(def, _) = layout.ty.kind() {
                 if def.repr.packed() {
                     unsized_align = sized_align;
                 }

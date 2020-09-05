@@ -9,7 +9,6 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 
-extern crate flate2;
 #[cfg(feature = "jit")]
 extern crate libc;
 #[macro_use]

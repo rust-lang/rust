@@ -170,7 +170,7 @@ impl<'tcx> DebugContext<'tcx> {
         let name = format!("{}", ty);
         let layout = self.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
 
-        let type_id = match ty.kind {
+        let type_id = match ty.kind() {
             ty::Bool => primitive(&mut self.dwarf, gimli::DW_ATE_boolean),
             ty::Char => primitive(&mut self.dwarf, gimli::DW_ATE_UTF),
             ty::Uint(_) => primitive(&mut self.dwarf, gimli::DW_ATE_unsigned),

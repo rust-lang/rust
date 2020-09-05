@@ -31,7 +31,7 @@ pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
 }
 
 fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Type> {
-    Some(match ty.kind {
+    Some(match ty.kind() {
         ty::Bool => types::I8,
         ty::Uint(size) => match size {
             UintTy::U8 => types::I8,
@@ -88,7 +88,7 @@ fn clif_pair_type_from_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<(types::Type, types::Type)> {
-    Some(match ty.kind {
+    Some(match ty.kind() {
         ty::Tuple(substs) if substs.len() == 2 => {
             let mut types = substs.types();
             let a = clif_type_from_ty(tcx, types.next().unwrap())?;
@@ -279,7 +279,7 @@ pub(crate) fn type_min_max_value(
 }
 
 pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..) | ty::Char | ty::Uint(..) | ty::Bool => false,
         ty::Int(..) => true,
         ty::Float(..) => false, // `signed` is unused for floats

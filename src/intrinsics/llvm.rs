@@ -87,7 +87,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
             };
 
             simd_pair_for_each_lane(fx, x, y, ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind {
+                let res_lane = match lane_layout.ty.kind() {
                     ty::Float(_) => fx.bcx.ins().fcmp(flt_cc, x_lane, y_lane),
                     _ => unreachable!("{:?}", lane_layout.ty),
                 };

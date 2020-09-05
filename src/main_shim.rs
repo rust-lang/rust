@@ -1,3 +1,6 @@
+use rustc_hir::LangItem;
+use rustc_session::config::EntryFnType;
+
 use crate::prelude::*;
 
 /// Create the `main` function which will initialize the rust runtime and call
@@ -7,9 +10,6 @@ pub(crate) fn maybe_create_entry_wrapper(
     module: &mut Module<impl Backend + 'static>,
     unwind_context: &mut UnwindContext<'_>,
 ) {
-    use rustc_hir::lang_items::StartFnLangItem;
-    use rustc_session::config::EntryFnType;
-
     let (main_def_id, use_start_lang_item) = match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, entry_ty)) => (
             def_id.to_def_id(),
@@ -88,7 +88,7 @@ pub(crate) fn maybe_create_entry_wrapper(
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
             let call_inst = if use_start_lang_item {
-                let start_def_id = tcx.require_lang_item(StartFnLangItem, None);
+                let start_def_id = tcx.require_lang_item(LangItem::Start, None);
                 let start_instance = Instance::resolve(
                     tcx,
                     ParamEnv::reveal_all(),

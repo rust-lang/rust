@@ -281,7 +281,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                         let len = trans_operand(fx, len).load_scalar(fx);
                         let index = trans_operand(fx, index).load_scalar(fx);
                         args = [index, len, location];
-                        rustc_hir::lang_items::PanicBoundsCheckFnLangItem
+                        rustc_hir::LangItem::PanicBoundsCheck
                     }
                     _ => {
                         let msg_str = msg.description();
@@ -291,7 +291,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                             .ins()
                             .iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
                         args = [msg_ptr, msg_len, location];
-                        rustc_hir::lang_items::PanicFnLangItem
+                        rustc_hir::LangItem::Panic
                     }
                 };
 
@@ -322,7 +322,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
             } => {
                 let discr = trans_operand(fx, discr).load_scalar(fx);
 
-                if switch_ty.kind == fx.tcx.types.bool.kind {
+                if switch_ty.kind() == fx.tcx.types.bool.kind() {
                     assert_eq!(targets.len(), 2);
                     let then_block = fx.get_block(targets[0]);
                     let else_block = fx.get_block(targets[1]);
@@ -504,7 +504,7 @@ fn trans_stmt<'tcx>(
                     let layout = operand.layout();
                     let val = operand.load_scalar(fx);
                     let res = match un_op {
-                        UnOp::Not => match layout.ty.kind {
+                        UnOp::Not => match layout.ty.kind() {
                             ty::Bool => {
                                 let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
                                 CValue::by_val(fx.bcx.ins().bint(types::I8, res), layout)
@@ -514,7 +514,7 @@ fn trans_stmt<'tcx>(
                             }
                             _ => unreachable!("un op Not for {:?}", layout.ty),
                         },
-                        UnOp::Neg => match layout.ty.kind {
+                        UnOp::Neg => match layout.ty.kind() {
                             ty::Int(IntTy::I128) => {
                                 // FIXME remove this case once ineg.i128 works
                                 let zero = CValue::const_val(fx, layout, 0);
@@ -530,7 +530,7 @@ fn trans_stmt<'tcx>(
                 Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), operand, to_ty) => {
                     let from_ty = fx.monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx));
                     let to_layout = fx.layout_of(fx.monomorphize(to_ty));
-                    match from_ty.kind {
+                    match *from_ty.kind() {
                         ty::FnDef(def_id, substs) => {
                             let func_ref = fx.get_function_ref(
                                 Instance::resolve_for_fn_ptr(
@@ -585,10 +585,10 @@ fn trans_stmt<'tcx>(
                             let (ptr, _extra) = operand.load_scalar_pair(fx);
                             lval.write_cvalue(fx, CValue::by_val(ptr, dest_layout))
                         }
-                    } else if let ty::Adt(adt_def, _substs) = from_ty.kind {
+                    } else if let ty::Adt(adt_def, _substs) = from_ty.kind() {
                         // enum -> discriminant value
                         assert!(adt_def.is_enum());
-                        match to_ty.kind {
+                        match to_ty.kind() {
                             ty::Uint(_) | ty::Int(_) => {}
                             _ => unreachable!("cast adt {} -> {}", from_ty, to_ty),
                         }
@@ -658,7 +658,7 @@ fn trans_stmt<'tcx>(
                     _to_ty,
                 ) => {
                     let operand = trans_operand(fx, operand);
-                    match operand.layout().ty.kind {
+                    match *operand.layout().ty.kind() {
                         ty::Closure(def_id, substs) => {
                             let instance = Instance::resolve_closure(
                                 fx.tcx,
@@ -706,8 +706,6 @@ fn trans_stmt<'tcx>(
                     lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
                 }
                 Rvalue::NullaryOp(NullOp::Box, content_ty) => {
-                    use rustc_hir::lang_items::ExchangeMallocFnLangItem;
-
                     let usize_type = fx.clif_type(fx.tcx.types.usize).unwrap();
                     let content_ty = fx.monomorphize(content_ty);
                     let layout = fx.layout_of(content_ty);
@@ -719,7 +717,11 @@ fn trans_stmt<'tcx>(
                     let box_layout = fx.layout_of(fx.tcx.mk_box(content_ty));
 
                     // Allocate space:
-                    let def_id = match fx.tcx.lang_items().require(ExchangeMallocFnLangItem) {
+                    let def_id = match fx
+                        .tcx
+                        .lang_items()
+                        .require(rustc_hir::LangItem::ExchangeMalloc)
+                    {
                         Ok(id) => id,
                         Err(s) => {
                             fx.tcx
@@ -868,7 +870,7 @@ fn codegen_array_len<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     place: CPlace<'tcx>,
 ) -> Value {
-    match place.layout().ty.kind {
+    match *place.layout().ty.kind() {
         ty::Array(_elem_ty, len) => {
             let len = fx
                 .monomorphize(&len)
@@ -907,11 +909,12 @@ pub(crate) fn trans_place<'tcx>(
                 min_length: _,
                 from_end,
             } => {
+                let offset: u64 = offset;
                 let index = if !from_end {
-                    fx.bcx.ins().iconst(fx.pointer_type, i64::from(offset))
+                    fx.bcx.ins().iconst(fx.pointer_type, offset as i64)
                 } else {
                     let len = codegen_array_len(fx, cplace);
-                    fx.bcx.ins().iadd_imm(len, -i64::from(offset))
+                    fx.bcx.ins().iadd_imm(len, -(offset as i64))
                 };
                 cplace = cplace.place_index(fx, index);
             }
@@ -919,13 +922,16 @@ pub(crate) fn trans_place<'tcx>(
                 // These indices are generated by slice patterns.
                 // slice[from:-to] in Python terms.
 
-                match cplace.layout().ty.kind {
+                let from: u64 = from;
+                let to: u64 = to;
+
+                match cplace.layout().ty.kind() {
                     ty::Array(elem_ty, _len) => {
                         assert!(!from_end, "array subslices are never `from_end`");
                         let elem_layout = fx.layout_of(elem_ty);
                         let ptr = cplace.to_ptr();
                         cplace = CPlace::for_ptr(
-                            ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * i64::from(from)),
+                            ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * (from as i64)),
                             fx.layout_of(fx.tcx.mk_array(elem_ty, u64::from(to) - u64::from(from))),
                         );
                     }
@@ -935,10 +941,8 @@ pub(crate) fn trans_place<'tcx>(
                         let (ptr, len) = cplace.to_ptr_maybe_unsized();
                         let len = len.unwrap();
                         cplace = CPlace::for_ptr_with_extra(
-                            ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * i64::from(from)),
-                            fx.bcx
-                                .ins()
-                                .iadd_imm(len, -(i64::from(from) + i64::from(to))),
+                            ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * (from as i64)),
+                            fx.bcx.ins().iadd_imm(len, -(from as i64 + to as i64)),
                             cplace.layout(),
                         );
                     }

@@ -59,15 +59,15 @@ pub(crate) fn codegen_binop<'tcx>(
 ) -> CValue<'tcx> {
     match bin_op {
         BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
-            match in_lhs.layout().ty.kind {
+            match in_lhs.layout().ty.kind() {
                 ty::Bool | ty::Uint(_) | ty::Int(_) | ty::Char => {
                     let signed = type_sign(in_lhs.layout().ty);
                     let lhs = in_lhs.load_scalar(fx);
                     let rhs = in_rhs.load_scalar(fx);
 
                     let (lhs, rhs) = if (bin_op == BinOp::Eq || bin_op == BinOp::Ne)
-                        && (in_lhs.layout().ty.kind == fx.tcx.types.i8.kind
-                            || in_lhs.layout().ty.kind == fx.tcx.types.i16.kind)
+                        && (in_lhs.layout().ty.kind() == fx.tcx.types.i8.kind()
+                            || in_lhs.layout().ty.kind() == fx.tcx.types.i16.kind())
                     {
                         // FIXME(CraneStation/cranelift#896) icmp_imm.i8/i16 with eq/ne for signed ints is implemented wrong.
                         (
@@ -86,7 +86,7 @@ pub(crate) fn codegen_binop<'tcx>(
         _ => {}
     }
 
-    match in_lhs.layout().ty.kind {
+    match in_lhs.layout().ty.kind() {
         ty::Bool => crate::num::trans_bool_binop(fx, bin_op, in_lhs, in_rhs),
         ty::Uint(_) | ty::Int(_) => crate::num::trans_int_binop(fx, bin_op, in_lhs, in_rhs),
         ty::Float(_) => crate::num::trans_float_binop(fx, bin_op, in_lhs, in_rhs),
@@ -373,7 +373,7 @@ pub(crate) fn trans_float_binop<'tcx>(
         BinOp::Mul => b.fmul(lhs, rhs),
         BinOp::Div => b.fdiv(lhs, rhs),
         BinOp::Rem => {
-            let name = match in_lhs.layout().ty.kind {
+            let name = match in_lhs.layout().ty.kind() {
                 ty::Float(FloatTy::F32) => "fmodf",
                 ty::Float(FloatTy::F64) => "fmod",
                 _ => bug!(),
