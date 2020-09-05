@@ -143,8 +143,13 @@ pub(crate) fn try_merge_imports(
     new: &ast::Use,
     merge_behaviour: MergeBehaviour,
 ) -> Option<ast::Use> {
-    // don't merge into re-exports
-    if old.visibility().and_then(|vis| vis.pub_token()).is_some() {
+    // don't merge imports with different visibilities
+    if old
+        .visibility()
+        .and_then(|vis| vis.pub_token())
+        .or_else(|| new.visibility().and_then(|vis| vis.pub_token()))
+        .is_some()
+    {
         return None;
     }
     let old_tree = old.use_tree()?;
