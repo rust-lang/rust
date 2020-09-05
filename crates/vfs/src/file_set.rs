@@ -26,38 +26,70 @@ impl FileSet {
         self.files.get(&path).copied()
     }
 
-    pub fn file_name_and_extension(&self, file: FileId) -> Option<(&str, Option<&str>)> {
-        self.paths[&file].file_name_and_extension()
-    }
-
-    pub fn list_files_with_extensions(
-        &self,
-        anchor: FileId,
-        anchor_relative_path: Option<&str>,
-    ) -> Vec<(&str, Option<&str>)> {
-        let anchor_directory = {
-            let path = self.paths[&anchor].clone();
-            match anchor_relative_path {
-                Some(anchor_relative_path) => path.join(anchor_relative_path),
-                None => path.parent(),
-            }
+    pub fn possible_sudmobule_names(&self, module_file: FileId) -> Vec<String> {
+        let directory_to_look_for_submodules = match self.get_directory_with_submodules(module_file)
+        {
+            Some(directory) => directory,
+            None => return Vec::new(),
         };
-
-        if let Some(anchor_directory) = anchor_directory {
-            self.paths
-                .iter()
-                .filter_map(|(_, path)| {
-                    if path.parent()? == anchor_directory {
-                        path.file_name_and_extension()
+        self.paths
+            .iter()
+            .filter_map(|(_, path)| {
+                if path.parent()? == directory_to_look_for_submodules {
+                    path.file_name_and_extension()
+                } else {
+                    None
+                }
+            })
+            .filter_map(|file_name_and_extension| match file_name_and_extension {
+                // TODO kb do not include the module file name itself, if present
+                // TODO kb wrong resolution for nesСпаted non-file modules (mod tests {mod <|>)
+                // TODO kb in src/bin when a module is included into another,
+                // the included file gets "moved" into a directory below and now cannot add any other modules
+                ("mod", Some("rs")) | ("lib", Some("rs")) | ("main", Some("rs")) => None,
+                (file_name, Some("rs")) => Some(file_name.to_owned()),
+                (subdirectory_name, None) => {
+                    let mod_rs_path =
+                        directory_to_look_for_submodules.join(subdirectory_name)?.join("mod.rs")?;
+                    if self.files.contains_key(&mod_rs_path) {
+                        Some(subdirectory_name.to_owned())
                     } else {
                         None
                     }
-                })
-                .collect()
-        } else {
-            Vec::new()
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn get_directory_with_submodules(&self, module_file: FileId) -> Option<VfsPath> {
+        let module_file_path = &self.paths[&module_file];
+        let module_directory_path = module_file_path.parent()?;
+        match module_file_path.file_name_and_extension() {
+            Some(("mod", Some("rs"))) | Some(("lib", Some("rs"))) | Some(("main", Some("rs"))) => {
+                Some(module_directory_path)
+            }
+            Some((regular_rust_file_name, Some("rs"))) => {
+                if matches!(
+                    (
+                        module_directory_path
+                            .parent()
+                            .as_ref()
+                            .and_then(|path| path.file_name_and_extension()),
+                        module_directory_path.file_name_and_extension(),
+                    ),
+                    (Some(("src", None)), Some(("bin", None)))
+                ) {
+                    // files in /src/bin/ can import each other directly
+                    Some(module_directory_path)
+                } else {
+                    module_directory_path.join(regular_rust_file_name)
+                }
+            }
+            _ => None,
         }
     }
+
     pub fn insert(&mut self, file_id: FileId, path: VfsPath) {
         self.files.insert(path.clone(), file_id);
         self.paths.insert(file_id, path);

@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use base_db::{FileLoader, SourceDatabase};
-use hir::{ModuleSource, Semantics, SemanticsScope, Type};
+use hir::{Semantics, SemanticsScope, Type};
 use ide_db::RootDatabase;
 use syntax::{
     algo::{find_covering_element, find_node_at_offset},
@@ -123,11 +123,9 @@ impl<'a> CompletionContext<'a> {
                     dbg!(mod_declaration_candidates);
                     // TODO kb exlude existing children from the candidates
                     let existing_children = current_module.children(db).collect::<Vec<_>>();
-                    dbg!(existing_children);
                     None::<Vec<String>>
                 })
                 .unwrap_or_default();
-            dbg!(module_names_for_import);
         };
 
         let krate = sema.to_module_def(position.file_id).map(|m| m.krate());

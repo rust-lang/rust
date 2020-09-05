@@ -167,29 +167,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     }
 
     fn possible_sudmobule_names(&self, module_file: FileId) -> Vec<String> {
-        let module_files = &self.source_root(module_file).file_set;
-        let possible_submodule_files = match module_files.file_name_and_extension(module_file) {
-            Some(("mod", Some("rs"))) | Some(("lib", Some("rs"))) => {
-                module_files.list_files_with_extensions(module_file, None)
-            }
-            // TODO kb for `src/bin/foo.rs`, we need to check for modules in `src/bin/`
-            Some((directory_with_module_name, Some("rs"))) => module_files
-                .list_files_with_extensions(
-                    module_file,
-                    Some(&format!("../{}/", directory_with_module_name)),
-                ),
-            // TODO kb also consider the case when there's no `../module_name.rs`, but `../module_name/mod.rs`
-            _ => Vec::new(),
-        };
-
-        possible_submodule_files
-            .into_iter()
-            .filter(|(_, extension)| extension == &Some("rs"))
-            .filter(|(file_name, _)| file_name != &"mod")
-            .filter(|(file_name, _)| file_name != &"lib")
-            .filter(|(file_name, _)| file_name != &"main")
-            .map(|(file_name, _)| file_name.to_owned())
-            .collect()
+        self.source_root(module_file).file_set.possible_sudmobule_names(module_file)
     }
 }
 
