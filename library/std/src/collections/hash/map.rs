@@ -2382,7 +2382,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// use std::rc::Rc;
     ///
     /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
-    /// let mut known_strings: Vec<Rc<String>> = Vec::new();
+    /// let known_strings: Vec<Rc<String>> = Vec::new();
     ///
     /// // Initialise known strings, run program, etc.
     ///
@@ -2390,7 +2390,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     ///
     /// fn reclaim_memory(map: &mut HashMap<Rc<String>, u32>, known_strings: &[Rc<String>] ) {
     ///     for s in known_strings {
-    ///         if let Entry::Occupied(entry) = map.entry(s.clone()) {
+    ///         if let Entry::Occupied(entry) = map.entry(Rc::clone(s)) {
     ///             // Replaces the entry's key with our version of it in `known_strings`.
     ///             entry.replace_key();
     ///         }
