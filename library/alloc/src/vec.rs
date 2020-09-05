@@ -2772,7 +2772,7 @@ impl From<&str> for Vec<u8> {
     }
 }
 
-#[stable(feature = "array_try_from_vec", since = "1.47.0")]
+#[stable(feature = "array_try_from_vec", since = "1.48.0")]
 impl<T, const N: usize> TryFrom<Vec<T>> for [T; N] {
     type Error = Vec<T>;
 
