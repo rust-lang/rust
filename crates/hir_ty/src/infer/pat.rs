@@ -70,7 +70,7 @@ impl<'a> InferenceContext<'a> {
             let matching_field = var_data.as_ref().and_then(|it| it.field(&subpat.name));
             if let Some(local_id) = matching_field {
                 let field_def = FieldId { parent: def.unwrap(), local_id };
-                self.result.record_field_pat_resolutions.insert(subpat.pat, field_def);
+                self.result.record_pat_field_resolutions.insert(subpat.pat, field_def);
             }
 
             let expected_ty =

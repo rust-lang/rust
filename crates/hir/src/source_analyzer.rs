@@ -179,13 +179,13 @@ impl SourceAnalyzer {
         Some((struct_field.into(), local))
     }
 
-    pub(crate) fn resolve_record_field_pat(
+    pub(crate) fn resolve_record_pat_field(
         &self,
         _db: &dyn HirDatabase,
         field: &ast::RecordPatField,
     ) -> Option<Field> {
         let pat_id = self.pat_id(&field.pat()?)?;
-        let struct_field = self.infer.as_ref()?.record_field_pat_resolution(pat_id)?;
+        let struct_field = self.infer.as_ref()?.record_pat_field_resolution(pat_id)?;
         Some(struct_field.into())
     }
 
