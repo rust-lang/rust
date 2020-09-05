@@ -1070,9 +1070,10 @@ impl<T> [T] {
         let (fst, snd) = self.split_at_mut(len * N);
         // SAFETY: We cast a slice of `len * N` elements into
         // a slice of `len` many `N` elements chunks.
-        let array_slice: &mut [[T; N]] =
-            unsafe { from_raw_parts_mut(fst.as_mut_ptr().cast(), len) };
-        ArrayChunksMut { iter: array_slice.iter_mut(), rem: snd }
+        unsafe {
+            let array_slice: &mut [[T; N]] = from_raw_parts_mut(fst.as_mut_ptr().cast(), len);
+            ArrayChunksMut { iter: array_slice.iter_mut(), rem: snd }
+        }
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the end
@@ -6028,6 +6029,12 @@ impl<'a, T, const N: usize> Iterator for ArrayChunksMut<'a, T, N> {
     fn last(self) -> Option<Self::Item> {
         self.iter.last()
     }
+
+    unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T; N] {
+        // SAFETY: The safety guarantees of `get_unchecked` are transferred to
+        // the caller.
+        unsafe { self.iter.get_unchecked(i) }
+    }
 }
 
 #[unstable(feature = "array_chunks", issue = "74985")]
@@ -6059,9 +6066,6 @@ impl<T, const N: usize> FusedIterator for ArrayChunksMut<'_, T, N> {}
 #[doc(hidden)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunksMut<'a, T, N> {
-    unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T; N] {
-        unsafe { self.iter.get_unchecked(i) }
-    }
     fn may_have_side_effect() -> bool {
         false
     }
