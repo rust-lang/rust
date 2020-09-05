@@ -439,7 +439,7 @@ mod tests {
 
     fn check(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = analysis_and_position(ra_fixture);
-        let url = analysis.external_docs(position).unwrap().unwrap();
+        let url = analysis.external_docs(position).unwrap().expect("could not find url for symbol");
 
         expect.assert_eq(&url)
     }
@@ -516,5 +516,30 @@ pub struct Foo {
 "#,
             expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#structfield.field"##]],
         );
+    }
+
+    // FIXME: ImportMap will return re-export paths instead of public module
+    // paths. The correct path to documentation will never be a re-export.
+    // This problem stops us from resolving stdlib items included in the prelude
+    // such as `Option::Some` correctly.
+    #[ignore = "ImportMap may return re-exports"]
+    #[test]
+    fn test_reexport_order() {
+        check(
+            r#"
+pub mod wrapper {
+    pub use module::Item;
+
+    pub mod module {
+        pub struct Item;
+    }
+}
+
+fn foo() {
+    let bar: wrapper::It<|>em;
+}
+        "#,
+            expect![[r#"https://docs.rs/test/*/test/wrapper/module/struct.Item.html"#]],
+        )
     }
 }
