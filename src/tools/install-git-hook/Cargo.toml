@@ -1,0 +1,5 @@
+[package]
+name = "install-git-hook"
+version = "0.1.0"
+authors = ["Cass Fridkin <cass@swag.lgbt>"]
+edition = "2018"

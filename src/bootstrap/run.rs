@@ -41,3 +41,27 @@ fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     }
     true
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct InstallGitHook;
+
+impl Step for InstallGitHook {
+    type Output = ();
+
+    /// Runs the `install-git-hook` tool.
+    ///
+    /// This tool in `src/tools` installs a git hook to automatically run
+    /// `tidy --bless` before each commit, so you don't forget to do it
+    fn run(self, builder: &Builder<'_>) {
+        builder.info("Installing git hook");
+        try_run(builder, &mut builder.tool_cmd(Tool::InstallGitHook).arg(&builder.src));
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/install-git-hook")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(InstallGitHook);
+    }
+}
