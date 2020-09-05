@@ -608,6 +608,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
 pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     maybe_stage_features(sess, krate);
+    check_incompatible_features(sess);
     let mut visitor = PostExpansionVisitor { sess, features: &sess.features_untracked() };
 
     let spans = sess.parse_sess.gated_spans.spans.borrow();
@@ -674,6 +675,39 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
                 option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)")
             )
             .emit();
+        }
+    }
+}
+
+fn check_incompatible_features(sess: &Session) {
+    let features = sess.features_untracked();
+
+    let declared_features = features
+        .declared_lang_features
+        .iter()
+        .copied()
+        .map(|(name, span, _)| (name, span))
+        .chain(features.declared_lib_features.iter().copied());
+
+    for (f1, f2) in rustc_feature::INCOMPATIBLE_FEATURES
+        .iter()
+        .filter(|&&(f1, f2)| features.enabled(f1) && features.enabled(f2))
+    {
+        if let Some((f1_name, f1_span)) = declared_features.clone().find(|(name, _)| name == f1) {
+            if let Some((f2_name, f2_span)) = declared_features.clone().find(|(name, _)| name == f2)
+            {
+                let spans = vec![f1_span, f2_span];
+                sess.struct_span_err(
+                    spans.clone(),
+                    &format!(
+                        "features `{}` and `{}` are incompatible, using them at the same time \
+                        is not allowed",
+                        f1_name, f2_name
+                    ),
+                )
+                .help("remove one of these features")
+                .emit();
+            }
         }
     }
 }
