@@ -47,7 +47,25 @@ pub struct SyncOnceCell<T> {
     once: Once,
     // Whether or not the value is initialized is tracked by `state_and_queue`.
     value: UnsafeCell<MaybeUninit<T>>,
-    // Make sure dropck understands we're dropping T in our Drop impl.
+    /// `PhantomData` to make sure dropck understands we're dropping T in our Drop impl.
+    ///
+    /// ```compile_fail,E0597
+    /// #![feature(once_cell)]
+    ///
+    /// use std::lazy::SyncOnceCell;
+    ///
+    /// struct A<'a>(&'a str);
+    ///
+    /// impl<'a> Drop for A<'a> {
+    ///     fn drop(&mut self) {}
+    /// }
+    ///
+    /// let cell = SyncOnceCell::new();
+    /// {
+    ///     let s = String::new();
+    ///     let _ = cell.set(A(&s));
+    /// }
+    /// ```
     _marker: PhantomData<T>,
 }
 
