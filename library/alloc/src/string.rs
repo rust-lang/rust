@@ -1585,6 +1585,32 @@ impl String {
         let slice = self.vec.into_boxed_slice();
         unsafe { from_boxed_utf8_unchecked(slice) }
     }
+
+    /// Consumes and leaks the `String`, returning a mutable reference `&'static mut str` to the
+    /// contents.
+    ///
+    /// This function is similar to the [`leak`] function on [`Box`].
+    ///
+    /// This function is mainly useful for data that lives for the remainder of
+    /// the program's life. Dropping the returned reference will cause a memory
+    /// leak.
+    ///
+    /// [`leak`]: Box::leak
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let my_string = String::from("HELLO!");
+    /// let static_ref: &'static mut str = my_string.leak();
+    /// static_ref.make_ascii_lowercase();
+    /// assert_eq!(static_ref, "hello!");
+    /// ```
+    #[inline]
+    pub fn leak(self) -> &'static mut str {
+        Box::leak(self.into_boxed_str())
+    }
 }
 
 impl FromUtf8Error {
