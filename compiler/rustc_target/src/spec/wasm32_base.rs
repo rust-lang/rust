@@ -83,6 +83,7 @@ pub fn options() -> TargetOptions {
         dll_prefix: String::new(),
         dll_suffix: ".wasm".to_string(),
         linker_is_gnu: false,
+        eh_frame_header: false,
 
         max_atomic_width: Some(64),
 
