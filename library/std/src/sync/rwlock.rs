@@ -165,7 +165,7 @@ impl<T: ?Sized> RwLock<T> {
     /// use std::thread;
     ///
     /// let lock = Arc::new(RwLock::new(1));
-    /// let c_lock = lock.clone();
+    /// let c_lock = Arc::clone(&lock);
     ///
     /// let n = lock.read().unwrap();
     /// assert_eq!(*n, 1);
@@ -321,7 +321,7 @@ impl<T: ?Sized> RwLock<T> {
     /// use std::thread;
     ///
     /// let lock = Arc::new(RwLock::new(0));
-    /// let c_lock = lock.clone();
+    /// let c_lock = Arc::clone(&lock);
     ///
     /// let _ = thread::spawn(move || {
     ///     let _lock = c_lock.write().unwrap();
