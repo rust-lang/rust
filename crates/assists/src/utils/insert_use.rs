@@ -138,7 +138,7 @@ pub(crate) fn insert_use(
     algo::insert_children(scope.as_syntax_node(), insert_position, to_insert)
 }
 
-fn try_merge_imports(
+pub(crate) fn try_merge_imports(
     old: &ast::Use,
     new: &ast::Use,
     merge_behaviour: MergeBehaviour,
@@ -161,7 +161,7 @@ fn use_tree_list_is_nested(tl: &ast::UseTreeList) -> bool {
 }
 
 // FIXME: currently this merely prepends the new tree into old, ideally it would insert the items in a sorted fashion
-pub fn try_merge_trees(
+pub(crate) fn try_merge_trees(
     old: &ast::UseTree,
     new: &ast::UseTree,
     merge_behaviour: MergeBehaviour,
@@ -278,7 +278,8 @@ fn first_path(path: &ast::Path) -> ast::Path {
 }
 
 fn segment_iter(path: &ast::Path) -> impl Iterator<Item = ast::PathSegment> + Clone {
-    path.syntax().children().flat_map(ast::PathSegment::cast)
+    // cant make use of SyntaxNode::siblings, because the returned Iterator is not clone
+    successors(first_segment(path), |p| p.parent_path().parent_path().and_then(|p| p.segment()))
 }
 
 #[derive(PartialEq, Eq)]
@@ -684,8 +685,18 @@ use std::io;",
         check_last(
             "foo::bar",
             r"use foo::bar::baz::Qux;",
-            r"use foo::bar::baz::Qux;
-use foo::bar;",
+            r"use foo::bar;
+use foo::bar::baz::Qux;",
+        );
+    }
+
+    #[test]
+    fn insert_short_before_long() {
+        check_none(
+            "foo::bar",
+            r"use foo::bar::baz::Qux;",
+            r"use foo::bar;
+use foo::bar::baz::Qux;",
         );
     }
 
