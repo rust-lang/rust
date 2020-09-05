@@ -23,6 +23,8 @@ fn test_arith_operation() {
     assert_eq!(i32_b & i32_b << 1, 0);
     assert_eq!(i32_b | i32_b << 1, 0x30303030);
     let i32_c: isize = 0x10101010;
-    assert_eq!(i32_c + i32_c * 2 / 3 * 2 + (i32_c - 7 % 3),
-               i32_c + i32_c * 2 / 3 * 2 + (i32_c - 7 % 3));
+    assert_eq!(
+        i32_c + i32_c * 2 / 3 * 2 + (i32_c - 7 % 3),
+        i32_c + i32_c * 2 / 3 * 2 + (i32_c - 7 % 3)
+    );
 }
