@@ -863,7 +863,12 @@ impl Build {
             && !target.contains("msvc")
         {
             Some(self.cc(target))
-        } else if can_use_lld && self.config.use_lld && self.build == target {
+        } else if target.contains("msvc")
+            && can_use_lld
+            && self.config.use_lld
+            && self.build == target
+        {
+            // Currently we support using LLD directly via `rust.use_lld` option only with MSVC
             Some(&self.initial_lld)
         } else {
             None
