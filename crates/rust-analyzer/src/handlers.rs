@@ -491,6 +491,7 @@ pub(crate) fn handle_runnables(
     }
 
     // Add `cargo check` and `cargo test` for all targets of the whole package
+    let config = &snap.config.runnables;
     match cargo_spec {
         Some(spec) => {
             for &cmd in ["check", "test"].iter() {
@@ -500,12 +501,14 @@ pub(crate) fn handle_runnables(
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
                         workspace_root: Some(spec.workspace_root.clone().into()),
+                        cargo_prefix: config.cargo_prefix.clone(),
                         cargo_args: vec![
                             cmd.to_string(),
                             "--package".to_string(),
                             spec.package.clone(),
                             "--all-targets".to_string(),
                         ],
+                        cargo_extra_args: config.cargo_extra_args.clone(),
                         executable_args: Vec::new(),
                         expect_test: None,
                     },
@@ -519,7 +522,9 @@ pub(crate) fn handle_runnables(
                 kind: lsp_ext::RunnableKind::Cargo,
                 args: lsp_ext::CargoRunnable {
                     workspace_root: None,
+                    cargo_prefix: config.cargo_prefix.clone(),
                     cargo_args: vec!["check".to_string(), "--workspace".to_string()],
+                    cargo_extra_args: config.cargo_extra_args.clone(),
                     executable_args: Vec::new(),
                     expect_test: None,
                 },
