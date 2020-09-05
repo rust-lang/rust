@@ -8,25 +8,47 @@
 
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, AssocItemContainer, AssocKind, TyCtxt};
+use rustc_middle::ty::{self, AssocItemContainer, AssocKind, TyCtxt, TypeFoldable};
 
 use rustc_hir::def_id::DefId;
+use rustc_hir::Unsafety;
 
 use rustc_span::symbol::sym;
 
 use std::fmt;
 use std::sync::Arc;
 
-use crate::chalk::lowering::LowerInto;
+use crate::chalk::lowering::{self, LowerInto};
 
 pub struct RustIrDatabase<'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-    pub interner: RustInterner<'tcx>,
+    pub(crate) interner: RustInterner<'tcx>,
+    pub(crate) restatic_placeholder: ty::Region<'tcx>,
+    pub(crate) reempty_placeholder: ty::Region<'tcx>,
 }
 
 impl fmt::Debug for RustIrDatabase<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "RustIrDatabase")
+    }
+}
+
+impl<'tcx> RustIrDatabase<'tcx> {
+    fn where_clauses_for(
+        &self,
+        def_id: DefId,
+        bound_vars: SubstsRef<'tcx>,
+    ) -> Vec<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>> {
+        let predicates = self.interner.tcx.predicates_of(def_id).predicates;
+        let mut regions_substitutor = lowering::RegionsSubstitutor::new(
+            self.interner.tcx,
+            self.restatic_placeholder,
+            self.reempty_placeholder,
+        );
+        predicates
+            .iter()
+            .map(|(wc, _)| wc.subst(self.interner.tcx, bound_vars))
+            .map(|wc| wc.fold_with(&mut regions_substitutor))
+            .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect()
     }
 }
 
@@ -40,7 +62,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         assoc_type_id: chalk_ir::AssocTypeId<RustInterner<'tcx>>,
     ) -> Arc<chalk_solve::rust_ir::AssociatedTyDatum<RustInterner<'tcx>>> {
         let def_id = assoc_type_id.0;
-        let assoc_item = self.tcx.associated_item(def_id);
+        let assoc_item = self.interner.tcx.associated_item(def_id);
         let trait_def_id = match assoc_item.container {
             AssocItemContainer::TraitContainer(def_id) => def_id,
             _ => unimplemented!("Not possible??"),
@@ -49,16 +71,12 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             AssocKind::Type => {}
             _ => unimplemented!("Not possible??"),
         }
-        let bound_vars = bound_vars_for_item(self.tcx, def_id);
+        let bound_vars = bound_vars_for_item(self.interner.tcx, def_id);
         let binders = binders_for(&self.interner, bound_vars);
         // FIXME(chalk): this really isn't right I don't think. The functions
         // for GATs are a bit hard to figure out. Are these supposed to be where
         // clauses or bounds?
-        let predicates = self.tcx.predicates_defined_on(def_id).predicates;
-        let where_clauses: Vec<_> = predicates
-            .iter()
-            .map(|(wc, _)| wc.subst(self.tcx, &bound_vars))
-            .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
+        let where_clauses = self.where_clauses_for(def_id, bound_vars);
 
         Arc::new(chalk_solve::rust_ir::AssociatedTyDatum {
             trait_id: chalk_ir::TraitId(trait_def_id),
@@ -76,16 +94,15 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         trait_id: chalk_ir::TraitId<RustInterner<'tcx>>,
     ) -> Arc<chalk_solve::rust_ir::TraitDatum<RustInterner<'tcx>>> {
         let def_id = trait_id.0;
-        let trait_def = self.tcx.trait_def(def_id);
+        let trait_def = self.interner.tcx.trait_def(def_id);
 
-        let bound_vars = bound_vars_for_item(self.tcx, def_id);
+        let bound_vars = bound_vars_for_item(self.interner.tcx, def_id);
         let binders = binders_for(&self.interner, bound_vars);
-        let predicates = self.tcx.predicates_defined_on(def_id).predicates;
-        let where_clauses: Vec<_> = predicates
-            .iter()
-            .map(|(wc, _)| wc.subst(self.tcx, &bound_vars))
-            .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
+
+        let where_clauses = self.where_clauses_for(def_id, bound_vars);
+
         let associated_ty_ids: Vec<_> = self
+            .interner
             .tcx
             .associated_items(def_id)
             .in_definition_order()
@@ -93,24 +110,47 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             .map(|i| chalk_ir::AssocTypeId(i.def_id))
             .collect();
 
-        let well_known =
-            if self.tcx.lang_items().sized_trait().map(|t| def_id == t).unwrap_or(false) {
-                Some(chalk_solve::rust_ir::WellKnownTrait::Sized)
-            } else if self.tcx.lang_items().copy_trait().map(|t| def_id == t).unwrap_or(false) {
-                Some(chalk_solve::rust_ir::WellKnownTrait::Copy)
-            } else if self.tcx.lang_items().clone_trait().map(|t| def_id == t).unwrap_or(false) {
-                Some(chalk_solve::rust_ir::WellKnownTrait::Clone)
-            } else if self.tcx.lang_items().drop_trait().map(|t| def_id == t).unwrap_or(false) {
-                Some(chalk_solve::rust_ir::WellKnownTrait::Drop)
-            } else if self.tcx.lang_items().fn_trait().map(|t| def_id == t).unwrap_or(false) {
-                Some(chalk_solve::rust_ir::WellKnownTrait::Fn)
-            } else if self.tcx.lang_items().fn_once_trait().map(|t| def_id == t).unwrap_or(false) {
-                Some(chalk_solve::rust_ir::WellKnownTrait::FnOnce)
-            } else if self.tcx.lang_items().fn_mut_trait().map(|t| def_id == t).unwrap_or(false) {
-                Some(chalk_solve::rust_ir::WellKnownTrait::FnMut)
-            } else {
-                None
-            };
+        let well_known = if self
+            .interner
+            .tcx
+            .lang_items()
+            .sized_trait()
+            .map(|t| def_id == t)
+            .unwrap_or(false)
+        {
+            Some(chalk_solve::rust_ir::WellKnownTrait::Sized)
+        } else if self.interner.tcx.lang_items().copy_trait().map(|t| def_id == t).unwrap_or(false)
+        {
+            Some(chalk_solve::rust_ir::WellKnownTrait::Copy)
+        } else if self.interner.tcx.lang_items().clone_trait().map(|t| def_id == t).unwrap_or(false)
+        {
+            Some(chalk_solve::rust_ir::WellKnownTrait::Clone)
+        } else if self.interner.tcx.lang_items().drop_trait().map(|t| def_id == t).unwrap_or(false)
+        {
+            Some(chalk_solve::rust_ir::WellKnownTrait::Drop)
+        } else if self.interner.tcx.lang_items().fn_trait().map(|t| def_id == t).unwrap_or(false) {
+            Some(chalk_solve::rust_ir::WellKnownTrait::Fn)
+        } else if self
+            .interner
+            .tcx
+            .lang_items()
+            .fn_once_trait()
+            .map(|t| def_id == t)
+            .unwrap_or(false)
+        {
+            Some(chalk_solve::rust_ir::WellKnownTrait::FnOnce)
+        } else if self
+            .interner
+            .tcx
+            .lang_items()
+            .fn_mut_trait()
+            .map(|t| def_id == t)
+            .unwrap_or(false)
+        {
+            Some(chalk_solve::rust_ir::WellKnownTrait::FnMut)
+        } else {
+            None
+        };
         Arc::new(chalk_solve::rust_ir::TraitDatum {
             id: trait_id,
             binders: chalk_ir::Binders::new(
@@ -121,7 +161,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 auto: trait_def.has_auto_impl,
                 marker: trait_def.is_marker,
                 upstream: !def_id.is_local(),
-                fundamental: self.tcx.has_attr(def_id, sym::fundamental),
+                fundamental: self.interner.tcx.has_attr(def_id, sym::fundamental),
                 non_enumerable: true,
                 coinductive: false,
             },
@@ -136,45 +176,50 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> Arc<chalk_solve::rust_ir::AdtDatum<RustInterner<'tcx>>> {
         let adt_def = adt_id.0;
 
-        let bound_vars = bound_vars_for_item(self.tcx, adt_def.did);
+        let bound_vars = bound_vars_for_item(self.interner.tcx, adt_def.did);
         let binders = binders_for(&self.interner, bound_vars);
 
-        let predicates = self.tcx.predicates_of(adt_def.did).predicates;
-        let where_clauses: Vec<_> = predicates
+        let where_clauses = self.where_clauses_for(adt_def.did, bound_vars);
+
+        let variants: Vec<_> = adt_def
+            .variants
             .iter()
-            .map(|(wc, _)| wc.subst(self.tcx, bound_vars))
-            .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner))
-            .collect();
-        let fields = match adt_def.adt_kind() {
-            ty::AdtKind::Struct | ty::AdtKind::Union => {
-                let variant = adt_def.non_enum_variant();
-                variant
+            .map(|variant| chalk_solve::rust_ir::AdtVariantDatum {
+                fields: variant
                     .fields
                     .iter()
-                    .map(|field| {
-                        self.tcx
-                            .type_of(field.did)
-                            .subst(self.tcx, bound_vars)
-                            .lower_into(&self.interner)
-                    })
-                    .collect()
-            }
-            // FIXME(chalk): handle enums; force_impl_for requires this
-            ty::AdtKind::Enum => vec![],
-        };
-        let struct_datum = Arc::new(chalk_solve::rust_ir::AdtDatum {
+                    .map(|field| field.ty(self.interner.tcx, bound_vars).lower_into(&self.interner))
+                    .collect(),
+            })
+            .collect();
+        Arc::new(chalk_solve::rust_ir::AdtDatum {
             id: adt_id,
             binders: chalk_ir::Binders::new(
                 binders,
-                chalk_solve::rust_ir::AdtDatumBound { fields, where_clauses },
+                chalk_solve::rust_ir::AdtDatumBound { variants, where_clauses },
             ),
             flags: chalk_solve::rust_ir::AdtFlags {
                 upstream: !adt_def.did.is_local(),
                 fundamental: adt_def.is_fundamental(),
                 phantom_data: adt_def.is_phantom_data(),
             },
-        });
-        struct_datum
+            kind: match adt_def.adt_kind() {
+                ty::AdtKind::Struct => chalk_solve::rust_ir::AdtKind::Struct,
+                ty::AdtKind::Union => chalk_solve::rust_ir::AdtKind::Union,
+                ty::AdtKind::Enum => chalk_solve::rust_ir::AdtKind::Enum,
+            },
+        })
+    }
+
+    fn adt_repr(
+        &self,
+        adt_id: chalk_ir::AdtId<RustInterner<'tcx>>,
+    ) -> chalk_solve::rust_ir::AdtRepr {
+        let adt_def = adt_id.0;
+        chalk_solve::rust_ir::AdtRepr {
+            repr_c: adt_def.repr.c(),
+            repr_packed: adt_def.repr.packed(),
+        }
     }
 
     fn fn_def_datum(
@@ -182,30 +227,25 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         fn_def_id: chalk_ir::FnDefId<RustInterner<'tcx>>,
     ) -> Arc<chalk_solve::rust_ir::FnDefDatum<RustInterner<'tcx>>> {
         let def_id = fn_def_id.0;
-        let bound_vars = bound_vars_for_item(self.tcx, def_id);
+        let bound_vars = bound_vars_for_item(self.interner.tcx, def_id);
         let binders = binders_for(&self.interner, bound_vars);
 
-        let predicates = self.tcx.predicates_defined_on(def_id).predicates;
-        let where_clauses: Vec<_> = predicates
-            .iter()
-            .map(|(wc, _)| wc.subst(self.tcx, &bound_vars))
-            .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
+        let where_clauses = self.where_clauses_for(def_id, bound_vars);
 
-        let sig = self.tcx.fn_sig(def_id);
-        let inputs_and_output = sig.inputs_and_output();
+        let sig = self.interner.tcx.fn_sig(def_id);
         let (inputs_and_output, iobinders, _) = crate::chalk::lowering::collect_bound_vars(
             &self.interner,
-            self.tcx,
-            &inputs_and_output,
+            self.interner.tcx,
+            &sig.inputs_and_output().subst(self.interner.tcx, bound_vars),
         );
 
         let argument_types = inputs_and_output[..inputs_and_output.len() - 1]
             .iter()
-            .map(|t| t.subst(self.tcx, &bound_vars).lower_into(&self.interner))
+            .map(|t| t.subst(self.interner.tcx, &bound_vars).lower_into(&self.interner))
             .collect();
 
         let return_type = inputs_and_output[inputs_and_output.len() - 1]
-            .subst(self.tcx, &bound_vars)
+            .subst(self.interner.tcx, &bound_vars)
             .lower_into(&self.interner);
 
         let bound = chalk_solve::rust_ir::FnDefDatumBound {
@@ -218,6 +258,11 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         Arc::new(chalk_solve::rust_ir::FnDefDatum {
             id: fn_def_id,
             abi: sig.abi(),
+            safety: match sig.unsafety() {
+                Unsafety::Normal => chalk_ir::Safety::Safe,
+                Unsafety::Unsafe => chalk_ir::Safety::Unsafe,
+            },
+            variadic: sig.c_variadic(),
             binders: chalk_ir::Binders::new(binders, bound),
         })
     }
@@ -227,17 +272,19 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         impl_id: chalk_ir::ImplId<RustInterner<'tcx>>,
     ) -> Arc<chalk_solve::rust_ir::ImplDatum<RustInterner<'tcx>>> {
         let def_id = impl_id.0;
-        let bound_vars = bound_vars_for_item(self.tcx, def_id);
+        let bound_vars = bound_vars_for_item(self.interner.tcx, def_id);
         let binders = binders_for(&self.interner, bound_vars);
 
-        let trait_ref = self.tcx.impl_trait_ref(def_id).expect("not an impl");
-        let trait_ref = trait_ref.subst(self.tcx, bound_vars);
+        let trait_ref = self.interner.tcx.impl_trait_ref(def_id).expect("not an impl");
+        let trait_ref = trait_ref.subst(self.interner.tcx, bound_vars);
+        let mut regions_substitutor = lowering::RegionsSubstitutor::new(
+            self.interner.tcx,
+            self.restatic_placeholder,
+            self.reempty_placeholder,
+        );
+        let trait_ref = trait_ref.fold_with(&mut regions_substitutor);
 
-        let predicates = self.tcx.predicates_of(def_id).predicates;
-        let where_clauses: Vec<_> = predicates
-            .iter()
-            .map(|(wc, _)| wc.subst(self.tcx, bound_vars))
-            .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
+        let where_clauses = self.where_clauses_for(def_id, bound_vars);
 
         let value = chalk_solve::rust_ir::ImplDatumBound {
             trait_ref: trait_ref.lower_into(&self.interner),
@@ -256,6 +303,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         &self,
         trait_id: chalk_ir::TraitId<RustInterner<'tcx>>,
         parameters: &[chalk_ir::GenericArg<RustInterner<'tcx>>],
+        _binders: &chalk_ir::CanonicalVarKinds<RustInterner<'tcx>>,
     ) -> Vec<chalk_ir::ImplId<RustInterner<'tcx>>> {
         let def_id = trait_id.0;
 
@@ -263,14 +311,20 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         // require us to be able to interconvert `Ty<'tcx>`, and we're
         // not there yet.
 
-        let all_impls = self.tcx.all_impls(def_id);
+        let all_impls = self.interner.tcx.all_impls(def_id);
         let matched_impls = all_impls.filter(|impl_def_id| {
             use chalk_ir::could_match::CouldMatch;
-            let trait_ref = self.tcx.impl_trait_ref(*impl_def_id).unwrap();
-            let bound_vars = bound_vars_for_item(self.tcx, *impl_def_id);
+            let trait_ref = self.interner.tcx.impl_trait_ref(*impl_def_id).unwrap();
+            let bound_vars = bound_vars_for_item(self.interner.tcx, *impl_def_id);
 
             let self_ty = trait_ref.self_ty();
-            let self_ty = self_ty.subst(self.tcx, bound_vars);
+            let self_ty = self_ty.subst(self.interner.tcx, bound_vars);
+            let mut regions_substitutor = lowering::RegionsSubstitutor::new(
+                self.interner.tcx,
+                self.restatic_placeholder,
+                self.reempty_placeholder,
+            );
+            let self_ty = self_ty.fold_with(&mut regions_substitutor);
             let lowered_ty = self_ty.lower_into(&self.interner);
 
             parameters[0].assert_ty_ref(&self.interner).could_match(&self.interner, &lowered_ty)
@@ -287,9 +341,9 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> bool {
         let trait_def_id = auto_trait_id.0;
         let adt_def = adt_id.0;
-        let all_impls = self.tcx.all_impls(trait_def_id);
+        let all_impls = self.interner.tcx.all_impls(trait_def_id);
         for impl_def_id in all_impls {
-            let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
+            let trait_ref = self.interner.tcx.impl_trait_ref(impl_def_id).unwrap();
             let self_ty = trait_ref.self_ty();
             match *self_ty.kind() {
                 ty::Adt(impl_adt_def, _) => {
@@ -308,7 +362,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         associated_ty_id: chalk_solve::rust_ir::AssociatedTyValueId<RustInterner<'tcx>>,
     ) -> Arc<chalk_solve::rust_ir::AssociatedTyValue<RustInterner<'tcx>>> {
         let def_id = associated_ty_id.0;
-        let assoc_item = self.tcx.associated_item(def_id);
+        let assoc_item = self.interner.tcx.associated_item(def_id);
         let impl_id = match assoc_item.container {
             AssocItemContainer::TraitContainer(def_id) => def_id,
             _ => unimplemented!("Not possible??"),
@@ -317,9 +371,9 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             AssocKind::Type => {}
             _ => unimplemented!("Not possible??"),
         }
-        let bound_vars = bound_vars_for_item(self.tcx, def_id);
+        let bound_vars = bound_vars_for_item(self.interner.tcx, def_id);
         let binders = binders_for(&self.interner, bound_vars);
-        let ty = self.tcx.type_of(def_id);
+        let ty = self.interner.tcx.type_of(def_id);
 
         Arc::new(chalk_solve::rust_ir::AssociatedTyValue {
             impl_id: chalk_ir::ImplId(impl_id),
@@ -346,76 +400,18 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         &self,
         opaque_ty_id: chalk_ir::OpaqueTyId<RustInterner<'tcx>>,
     ) -> Arc<chalk_solve::rust_ir::OpaqueTyDatum<RustInterner<'tcx>>> {
-        let bound_vars = bound_vars_for_item(self.tcx, opaque_ty_id.0);
+        let bound_vars = bound_vars_for_item(self.interner.tcx, opaque_ty_id.0);
         let binders = binders_for(&self.interner, bound_vars);
-        let predicates = self.tcx.predicates_defined_on(opaque_ty_id.0).predicates;
-        let where_clauses: Vec<_> = predicates
-            .iter()
-            .map(|(wc, _)| wc.subst(self.tcx, &bound_vars))
-            .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
+        let where_clauses = self.where_clauses_for(opaque_ty_id.0, bound_vars);
 
         let value = chalk_solve::rust_ir::OpaqueTyDatumBound {
-            bounds: chalk_ir::Binders::new(binders, where_clauses),
+            bounds: chalk_ir::Binders::new(binders.clone(), vec![]),
+            where_clauses: chalk_ir::Binders::new(binders, where_clauses),
         };
         Arc::new(chalk_solve::rust_ir::OpaqueTyDatum {
             opaque_ty_id,
-            bound: chalk_ir::Binders::new(chalk_ir::VariableKinds::new(&self.interner), value),
+            bound: chalk_ir::Binders::empty(&self.interner, value),
         })
-    }
-
-    /// Since Chalk can't handle all Rust types currently, we have to handle
-    /// some specially for now. Over time, these `Some` returns will change to
-    /// `None` and eventually this function will be removed.
-    fn force_impl_for(
-        &self,
-        well_known: chalk_solve::rust_ir::WellKnownTrait,
-        ty: &chalk_ir::TyData<RustInterner<'tcx>>,
-    ) -> Option<bool> {
-        use chalk_ir::TyData::*;
-        match well_known {
-            chalk_solve::rust_ir::WellKnownTrait::Sized => match ty {
-                Apply(apply) => match apply.name {
-                    chalk_ir::TypeName::Adt(chalk_ir::AdtId(adt_def)) => match adt_def.adt_kind() {
-                        ty::AdtKind::Struct | ty::AdtKind::Union => None,
-                        ty::AdtKind::Enum => {
-                            let constraint = self.tcx.adt_sized_constraint(adt_def.did);
-                            if !constraint.0.is_empty() { unimplemented!() } else { Some(true) }
-                        }
-                    },
-                    _ => None,
-                },
-                Dyn(_)
-                | Alias(_)
-                | Placeholder(_)
-                | Function(_)
-                | InferenceVar(_, _)
-                | BoundVar(_) => None,
-            },
-            chalk_solve::rust_ir::WellKnownTrait::Copy
-            | chalk_solve::rust_ir::WellKnownTrait::Clone => match ty {
-                Apply(apply) => match apply.name {
-                    chalk_ir::TypeName::Adt(chalk_ir::AdtId(adt_def)) => match adt_def.adt_kind() {
-                        ty::AdtKind::Struct | ty::AdtKind::Union => None,
-                        ty::AdtKind::Enum => {
-                            let constraint = self.tcx.adt_sized_constraint(adt_def.did);
-                            if !constraint.0.is_empty() { unimplemented!() } else { Some(true) }
-                        }
-                    },
-                    _ => None,
-                },
-                Dyn(_)
-                | Alias(_)
-                | Placeholder(_)
-                | Function(_)
-                | InferenceVar(_, _)
-                | BoundVar(_) => None,
-            },
-            chalk_solve::rust_ir::WellKnownTrait::Drop => None,
-            chalk_solve::rust_ir::WellKnownTrait::Fn => None,
-            chalk_solve::rust_ir::WellKnownTrait::FnMut => None,
-            chalk_solve::rust_ir::WellKnownTrait::FnOnce => None,
-            chalk_solve::rust_ir::WellKnownTrait::Unsize => None,
-        }
     }
 
     fn program_clauses_for_env(
@@ -431,20 +427,20 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> Option<chalk_ir::TraitId<RustInterner<'tcx>>> {
         use chalk_solve::rust_ir::WellKnownTrait::*;
         let def_id = match well_known_trait {
-            Sized => self.tcx.lang_items().sized_trait(),
-            Copy => self.tcx.lang_items().copy_trait(),
-            Clone => self.tcx.lang_items().clone_trait(),
-            Drop => self.tcx.lang_items().drop_trait(),
-            Fn => self.tcx.lang_items().fn_trait(),
-            FnMut => self.tcx.lang_items().fn_mut_trait(),
-            FnOnce => self.tcx.lang_items().fn_once_trait(),
-            Unsize => self.tcx.lang_items().unsize_trait(),
+            Sized => self.interner.tcx.lang_items().sized_trait(),
+            Copy => self.interner.tcx.lang_items().copy_trait(),
+            Clone => self.interner.tcx.lang_items().clone_trait(),
+            Drop => self.interner.tcx.lang_items().drop_trait(),
+            Fn => self.interner.tcx.lang_items().fn_trait(),
+            FnMut => self.interner.tcx.lang_items().fn_mut_trait(),
+            FnOnce => self.interner.tcx.lang_items().fn_once_trait(),
+            Unsize => self.interner.tcx.lang_items().unsize_trait(),
         };
         def_id.map(chalk_ir::TraitId)
     }
 
     fn is_object_safe(&self, trait_id: chalk_ir::TraitId<RustInterner<'tcx>>) -> bool {
-        self.tcx.is_object_safe(trait_id.0)
+        self.interner.tcx.is_object_safe(trait_id.0)
     }
 
     fn hidden_opaque_type(
@@ -452,7 +448,10 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         _id: chalk_ir::OpaqueTyId<RustInterner<'tcx>>,
     ) -> chalk_ir::Ty<RustInterner<'tcx>> {
         // FIXME(chalk): actually get hidden ty
-        self.tcx.mk_ty(ty::Tuple(self.tcx.intern_substs(&[]))).lower_into(&self.interner)
+        self.interner
+            .tcx
+            .mk_ty(ty::Tuple(self.interner.tcx.intern_substs(&[])))
+            .lower_into(&self.interner)
     }
 
     fn closure_kind(
@@ -460,7 +459,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         _closure_id: chalk_ir::ClosureId<RustInterner<'tcx>>,
         substs: &chalk_ir::Substitution<RustInterner<'tcx>>,
     ) -> chalk_solve::rust_ir::ClosureKind {
-        let kind = &substs.parameters(&self.interner)[substs.len(&self.interner) - 3];
+        let kind = &substs.as_slice(&self.interner)[substs.len(&self.interner) - 3];
         match kind.assert_ty_ref(&self.interner).data(&self.interner) {
             chalk_ir::TyData::Apply(apply) => match apply.name {
                 chalk_ir::TypeName::Scalar(scalar) => match scalar {
@@ -484,10 +483,10 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         substs: &chalk_ir::Substitution<RustInterner<'tcx>>,
     ) -> chalk_ir::Binders<chalk_solve::rust_ir::FnDefInputsAndOutputDatum<RustInterner<'tcx>>>
     {
-        let sig = &substs.parameters(&self.interner)[substs.len(&self.interner) - 2];
+        let sig = &substs.as_slice(&self.interner)[substs.len(&self.interner) - 2];
         match sig.assert_ty_ref(&self.interner).data(&self.interner) {
             chalk_ir::TyData::Function(f) => {
-                let substitution = f.substitution.parameters(&self.interner);
+                let substitution = f.substitution.as_slice(&self.interner);
                 let return_type =
                     substitution.last().unwrap().assert_ty_ref(&self.interner).clone();
                 // Closure arguments are tupled
@@ -506,7 +505,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 };
 
                 chalk_ir::Binders::new(
-                    chalk_ir::VariableKinds::from(
+                    chalk_ir::VariableKinds::from_iter(
                         &self.interner,
                         (0..f.num_binders).map(|_| chalk_ir::VariableKind::Lifetime),
                     ),
@@ -523,7 +522,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         substs: &chalk_ir::Substitution<RustInterner<'tcx>>,
     ) -> chalk_ir::Binders<chalk_ir::Ty<RustInterner<'tcx>>> {
         let inputs_and_output = self.closure_inputs_and_output(_closure_id, substs);
-        let tuple = substs.parameters(&self.interner).last().unwrap().assert_ty_ref(&self.interner);
+        let tuple = substs.as_slice(&self.interner).last().unwrap().assert_ty_ref(&self.interner);
         inputs_and_output.map_ref(|_| tuple.clone())
     }
 
@@ -532,8 +531,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         _closure_id: chalk_ir::ClosureId<RustInterner<'tcx>>,
         substs: &chalk_ir::Substitution<RustInterner<'tcx>>,
     ) -> chalk_ir::Substitution<RustInterner<'tcx>> {
-        let substitution = &substs.parameters(&self.interner)[0..substs.len(&self.interner) - 3];
-        chalk_ir::Substitution::from(&self.interner, substitution)
+        let substitution = &substs.as_slice(&self.interner)[0..substs.len(&self.interner) - 3];
+        chalk_ir::Substitution::from_iter(&self.interner, substitution)
     }
 }
 
@@ -573,7 +572,7 @@ fn binders_for<'tcx>(
     interner: &RustInterner<'tcx>,
     bound_vars: SubstsRef<'tcx>,
 ) -> chalk_ir::VariableKinds<RustInterner<'tcx>> {
-    chalk_ir::VariableKinds::from(
+    chalk_ir::VariableKinds::from_iter(
         interner,
         bound_vars.iter().map(|arg| match arg.unpack() {
             ty::subst::GenericArgKind::Lifetime(_re) => chalk_ir::VariableKind::Lifetime,

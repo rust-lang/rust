@@ -1,11 +1,15 @@
-error[E0277]: the trait bound `f64: Foo` is not satisfied
+error[E0277]: the trait bound `{float}: Foo` is not satisfied
   --> $DIR/type_wf.rs:18:13
    |
 LL | struct S<T: Foo> {
    | ---------------- required by `S`
 ...
 LL |     let s = S {
-   |             ^ the trait `Foo` is not implemented for `f64`
+   |             ^ the trait `Foo` is not implemented for `{float}`
+   |
+   = help: the following implementations were found:
+             <Option<T> as Foo>
+             <i32 as Foo>
 
 error: aborting due to previous error
 
