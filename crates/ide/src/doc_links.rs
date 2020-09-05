@@ -1,6 +1,4 @@
 //! Resolves and rewrites links in markdown documentation.
-//!
-//! Most of the implementation can be found in [`hir::doc_links`].
 
 use std::iter::once;
 
