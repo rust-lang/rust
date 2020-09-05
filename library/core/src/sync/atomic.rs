@@ -373,7 +373,7 @@ impl AtomicBool {
     /// assert_eq!(some_bool, false);
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_from_mut", issue = "none")]
+    #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut(v: &mut bool) -> &Self {
         // SAFETY: the mutable reference guarantees unique ownership, and
         // alignment of both `bool` and `Self` is 1.
@@ -950,7 +950,7 @@ impl<T> AtomicPtr<T> {
     /// assert_eq!(unsafe { *some_ptr }, 456);
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_from_mut", issue = "none")]
+    #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut(v: &mut *mut T) -> &Self {
         let [] = [(); align_of::<Self>() - align_of::<*mut T>()];
         // SAFETY:
@@ -1438,7 +1438,7 @@ assert_eq!(some_int, 100);
                 "),
                 #[inline]
                 $(#[cfg($from_mut_cfg)])?
-                #[unstable(feature = "atomic_from_mut", issue = "none")]
+                #[unstable(feature = "atomic_from_mut", issue = "76314")]
                 pub fn from_mut(v: &mut $int_type) -> &Self {
                     let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
                     // SAFETY:
