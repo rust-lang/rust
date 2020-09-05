@@ -1140,7 +1140,8 @@ fn detect_same_item_push<'tcx>(
     walk_expr(&mut same_item_push_visitor, body);
     if same_item_push_visitor.should_lint {
         if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push {
-            let ty = cx.typeck_results().expr_ty(pushed_item);
+            let vec_ty = cx.typeck_results().expr_ty(vec);
+            let ty = vec_ty.walk().nth(1).unwrap().expect_ty();
             if cx
                 .tcx
                 .lang_items()
