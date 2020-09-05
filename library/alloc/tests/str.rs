@@ -1921,3 +1921,11 @@ fn different_str_pattern_forwarding_lifetimes() {
 
     foo::<&str>("x");
 }
+
+#[test]
+fn test_str_concat() {
+    let a: String = "hello".to_string();
+    let b: String = "world".to_string();
+    let s: String = format!("{}{}", a, b);
+    assert_eq!(s.as_bytes()[9], 'd' as u8);
+}
