@@ -243,6 +243,8 @@ The Rust community congregates in a few places:
 If you are interested in contributing to the Rust project, please take a look
 at the [Getting Started][gettingstarted] guide in the [rustc-dev-guide].
 
+[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org
+
 ## License
 
 Rust is primarily distributed under the terms of both the MIT license
