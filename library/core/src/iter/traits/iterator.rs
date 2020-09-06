@@ -2076,10 +2076,10 @@ pub trait Iterator {
         #[inline]
         fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<(), ()> {
             move |(), x| {
-                if f(x) { ControlFlow::Continue(()) } else { ControlFlow::Break(()) }
+                if f(x) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
             }
         }
-        self.try_fold((), check(f)) == ControlFlow::Continue(())
+        self.try_fold((), check(f)) == ControlFlow::CONTINUE
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -2129,11 +2129,11 @@ pub trait Iterator {
         #[inline]
         fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<(), ()> {
             move |(), x| {
-                if f(x) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
+                if f(x) { ControlFlow::BREAK } else { ControlFlow::CONTINUE }
             }
         }
 
-        self.try_fold((), check(f)) == ControlFlow::Break(())
+        self.try_fold((), check(f)) == ControlFlow::BREAK
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -2191,7 +2191,7 @@ pub trait Iterator {
             mut predicate: impl FnMut(&T) -> bool,
         ) -> impl FnMut((), T) -> ControlFlow<(), T> {
             move |(), x| {
-                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
+                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
             }
         }
 
@@ -2226,7 +2226,7 @@ pub trait Iterator {
         ) -> impl FnMut((), T) -> ControlFlow<(), B> {
             move |(), x| match f(x) {
                 Some(x) => ControlFlow::Break(x),
-                None => ControlFlow::Continue(()),
+                None => ControlFlow::CONTINUE,
             }
         }
 
@@ -2268,7 +2268,7 @@ pub trait Iterator {
             R: Try<Ok = bool>,
         {
             move |(), x| match f(&x).into_result() {
-                Ok(false) => ControlFlow::Continue(()),
+                Ok(false) => ControlFlow::CONTINUE,
                 Ok(true) => ControlFlow::Break(Ok(x)),
                 Err(x) => ControlFlow::Break(Err(x)),
             }
