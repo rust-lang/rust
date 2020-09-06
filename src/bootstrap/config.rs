@@ -487,7 +487,7 @@ impl Config {
         config.missing_tools = false;
 
         // set by bootstrap.py
-        config.build = TargetSelection::from_user(&env::var("BUILD").expect("'BUILD' to be set"));
+        config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
         config.src = Config::path_from_python("SRC");
         config.out = Config::path_from_python("BUILD_DIR");
 

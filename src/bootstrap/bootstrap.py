@@ -1032,7 +1032,6 @@ def bootstrap(help_triggered):
     args = [build.bootstrap_binary()]
     args.extend(sys.argv[1:])
     env = os.environ.copy()
-    env["BUILD"] = build.build
     env["SRC"] = build.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
