@@ -1,13 +1,13 @@
-error[E0277]: the trait bound `U1: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `U1: Copy` is not satisfied
   --> $DIR/union-derive-clone.rs:5:10
    |
 LL | #[derive(Clone)]
-   |          ^^^^^ the trait `std::marker::Copy` is not implemented for `U1`
+   |          ^^^^^ the trait `Copy` is not implemented for `U1`
    | 
   ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL | pub struct AssertParamIsCopy<T: Copy + ?Sized> {
-   |                                 ---- required by this bound in `std::clone::AssertParamIsCopy`
+   |                                 ---- required by this bound in `AssertParamIsCopy`
    |
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -18,10 +18,10 @@ LL | union U5<T> {
    | -----------
    | |
    | method `clone` not found for this
-   | doesn't satisfy `U5<CloneNoCopy>: std::clone::Clone`
+   | doesn't satisfy `U5<CloneNoCopy>: Clone`
 ...
 LL | struct CloneNoCopy;
-   | ------------------- doesn't satisfy `CloneNoCopy: std::marker::Copy`
+   | ------------------- doesn't satisfy `CloneNoCopy: Copy`
 ...
 LL |     let w = u.clone();
    |               ^^^^^ method not found in `U5<CloneNoCopy>`
@@ -31,12 +31,12 @@ LL |     let w = u.clone();
 LL |     fn clone(&self) -> Self;
    |        -----
    |        |
-   |        the method is available for `std::sync::Arc<U5<CloneNoCopy>>` here
-   |        the method is available for `std::rc::Rc<U5<CloneNoCopy>>` here
+   |        the method is available for `Arc<U5<CloneNoCopy>>` here
+   |        the method is available for `Rc<U5<CloneNoCopy>>` here
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
-           `CloneNoCopy: std::marker::Copy`
-           which is required by `U5<CloneNoCopy>: std::clone::Clone`
+           `CloneNoCopy: Copy`
+           which is required by `U5<CloneNoCopy>: Clone`
 
 error: aborting due to 2 previous errors
 

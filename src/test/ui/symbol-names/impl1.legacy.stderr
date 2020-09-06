@@ -64,7 +64,7 @@ error: demangling-alt(<[&dyn impl1::Foo+Assoc = extern "C" fn(&u8, ::.)+impl1::A
 LL |             #[rustc_symbol_name]
    |             ^^^^^^^^^^^^^^^^^^^^
 
-error: def-path(<[&dyn Foo<Assoc = for<'r> extern "C" fn(&'r u8, ...)> + AutoTrait; 3] as main::{{closure}}#1::Bar>::method)
+error: def-path(<[&dyn Foo<Assoc = for<'r> extern "C" fn(&'r u8, ...)> + AutoTrait; 3] as Bar>::method)
   --> $DIR/impl1.rs:71:13
    |
 LL |             #[rustc_def_path]

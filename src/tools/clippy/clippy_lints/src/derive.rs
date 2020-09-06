@@ -224,7 +224,7 @@ fn check_hash_peq<'tcx>(
                         mess,
                         |diag| {
                             if let Some(local_def_id) = impl_id.as_local() {
-                                let hir_id = cx.tcx.hir().as_local_hir_id(local_def_id);
+                                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
                                 diag.span_note(
                                     cx.tcx.hir().span(hir_id),
                                     "`PartialEq` implemented here"
@@ -278,7 +278,7 @@ fn check_ord_partial_ord<'tcx>(
                         mess,
                         |diag| {
                             if let Some(local_def_id) = impl_id.as_local() {
-                                let hir_id = cx.tcx.hir().as_local_hir_id(local_def_id);
+                                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
                                 diag.span_note(
                                     cx.tcx.hir().span(hir_id),
                                     "`PartialOrd` implemented here"
@@ -299,20 +299,20 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &T
             return;
         }
 
-        match ty.kind {
+        match *ty.kind() {
             ty::Adt(def, _) if def.is_union() => return,
 
             // Some types are not Clone by default but could be cloned “by hand” if necessary
             ty::Adt(def, substs) => {
                 for variant in &def.variants {
                     for field in &variant.fields {
-                        if let ty::FnDef(..) = field.ty(cx.tcx, substs).kind {
+                        if let ty::FnDef(..) = field.ty(cx.tcx, substs).kind() {
                             return;
                         }
                     }
                     for subst in substs {
                         if let ty::subst::GenericArgKind::Type(subst) = subst.unpack() {
-                            if let ty::Param(_) = subst.kind {
+                            if let ty::Param(_) = subst.kind() {
                                 return;
                             }
                         }
@@ -341,7 +341,7 @@ fn check_unsafe_derive_deserialize<'tcx>(
     ty: Ty<'tcx>,
 ) {
     fn item_from_def_id<'tcx>(cx: &LateContext<'tcx>, def_id: DefId) -> &'tcx Item<'tcx> {
-        let hir_id = cx.tcx.hir().as_local_hir_id(def_id.expect_local());
+        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         cx.tcx.hir().expect_item(hir_id)
     }
 
@@ -353,9 +353,9 @@ fn check_unsafe_derive_deserialize<'tcx>(
 
     if_chain! {
         if match_path(&trait_ref.path, &paths::SERDE_DESERIALIZE);
-        if let ty::Adt(def, _) = ty.kind;
+        if let ty::Adt(def, _) = ty.kind();
         if let Some(local_def_id) = def.did.as_local();
-        let adt_hir_id = cx.tcx.hir().as_local_hir_id(local_def_id);
+        let adt_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
         if !is_allowed(cx, UNSAFE_DERIVE_DESERIALIZE, adt_hir_id);
         if cx.tcx.inherent_impls(def.did)
             .iter()

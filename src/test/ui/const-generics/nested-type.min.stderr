@@ -1,175 +1,32 @@
-error: using `[u8; _]` as const generic parameters is forbidden
+error: `[u8; _]` is forbidden as the type of a const generic parameter
   --> $DIR/nested-type.rs:7:21
    |
 LL |   struct Foo<const N: [u8; {
    |  _____________________^
+LL | |     struct Foo<const N: usize>;
 LL | |
-LL | |
-LL | |
+LL | |     impl<const N: usize> Foo<N> {
 ...  |
-LL | |     Foo::<17>::value()
+LL | |
 LL | | }]>;
    | |__^
    |
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error[E0391]: cycle detected when computing type of `Foo`
-  --> $DIR/nested-type.rs:7:1
+error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/nested-type.rs:16:5
    |
-LL | struct Foo<const N: [u8; {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: ...which requires computing type of `Foo::N`...
-  --> $DIR/nested-type.rs:7:18
-   |
-LL | struct Foo<const N: [u8; {
-   |                  ^
-note: ...which requires const-evaluating + checking `Foo::{{constant}}#0`...
-  --> $DIR/nested-type.rs:7:26
-   |
-LL |   struct Foo<const N: [u8; {
-   |  __________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     Foo::<17>::value()
-LL | | }]>;
-   | |_^
-note: ...which requires const-evaluating + checking `Foo::{{constant}}#0`...
-  --> $DIR/nested-type.rs:7:26
-   |
-LL |   struct Foo<const N: [u8; {
-   |  __________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     Foo::<17>::value()
-LL | | }]>;
-   | |_^
-note: ...which requires const-evaluating `Foo::{{constant}}#0`...
-  --> $DIR/nested-type.rs:7:26
-   |
-LL |   struct Foo<const N: [u8; {
-   |  __________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     Foo::<17>::value()
-LL | | }]>;
-   | |_^
-note: ...which requires type-checking `Foo::{{constant}}#0`...
-  --> $DIR/nested-type.rs:7:26
-   |
-LL |   struct Foo<const N: [u8; {
-   |  __________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     Foo::<17>::value()
-LL | | }]>;
-   | |_^
-note: ...which requires computing the variances of `Foo::{{constant}}#0::Foo`...
-  --> $DIR/nested-type.rs:11:5
-   |
-LL |     struct Foo<const N: usize>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which requires computing the variances for items in this crate...
-   = note: ...which again requires computing type of `Foo`, completing the cycle
-note: cycle used when collecting item types in top-level module
-  --> $DIR/nested-type.rs:3:1
-   |
-LL | / #![cfg_attr(full, feature(const_generics))]
-LL | | #![cfg_attr(full, allow(incomplete_features))]
-LL | | #![cfg_attr(min, feature(min_const_generics))]
-LL | |
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+LL |     Foo::<17>::value()
+   |     ^^^^^^^^^^^^^^^^^^
 
-error[E0391]: cycle detected when computing type of `Foo`
-  --> $DIR/nested-type.rs:7:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/nested-type.rs:16:5
    |
-LL | struct Foo<const N: [u8; {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: ...which requires computing type of `Foo::N`...
-  --> $DIR/nested-type.rs:7:18
-   |
-LL | struct Foo<const N: [u8; {
-   |                  ^
-note: ...which requires const-evaluating + checking `Foo::{{constant}}#0`...
-  --> $DIR/nested-type.rs:7:26
-   |
-LL |   struct Foo<const N: [u8; {
-   |  __________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     Foo::<17>::value()
-LL | | }]>;
-   | |_^
-note: ...which requires const-evaluating + checking `Foo::{{constant}}#0`...
-  --> $DIR/nested-type.rs:7:26
-   |
-LL |   struct Foo<const N: [u8; {
-   |  __________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     Foo::<17>::value()
-LL | | }]>;
-   | |_^
-note: ...which requires const-evaluating `Foo::{{constant}}#0`...
-  --> $DIR/nested-type.rs:7:26
-   |
-LL |   struct Foo<const N: [u8; {
-   |  __________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     Foo::<17>::value()
-LL | | }]>;
-   | |_^
-note: ...which requires type-checking `Foo::{{constant}}#0`...
-  --> $DIR/nested-type.rs:7:26
-   |
-LL |   struct Foo<const N: [u8; {
-   |  __________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     Foo::<17>::value()
-LL | | }]>;
-   | |_^
-note: ...which requires computing the variances of `Foo::{{constant}}#0::Foo`...
-  --> $DIR/nested-type.rs:11:5
-   |
-LL |     struct Foo<const N: usize>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which requires computing the variances for items in this crate...
-   = note: ...which again requires computing type of `Foo`, completing the cycle
-note: cycle used when collecting item types in top-level module
-  --> $DIR/nested-type.rs:3:1
-   |
-LL | / #![cfg_attr(full, feature(const_generics))]
-LL | | #![cfg_attr(full, allow(incomplete_features))]
-LL | | #![cfg_attr(min, feature(min_const_generics))]
-LL | |
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+LL |     Foo::<17>::value()
+   |     ^^^^^^^^^^^^^^^^^^ calling non-const function `Foo::{{constant}}#0::Foo::<17_usize>::value`
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0391`.
+Some errors have detailed explanations: E0015, E0080.
+For more information about an error, try `rustc --explain E0015`.

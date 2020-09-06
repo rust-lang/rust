@@ -24,5 +24,5 @@ struct A {
 
 fn main() {
     let a = A {v: box B{v: None} as Box<dyn Foo + Send>};
-    //~^ ERROR `std::rc::Rc<std::cell::RefCell<A>>` cannot be sent between threads safely
+    //~^ ERROR `Rc<RefCell<A>>` cannot be sent between threads safely
 }

@@ -2,7 +2,7 @@ error[E0507]: cannot move out of `*t` which is behind a shared reference
   --> $DIR/trivial-bounds-leak-copy.rs:9:5
    |
 LL |     *t
-   |     ^^ move occurs because `*t` has type `std::string::String`, which does not implement the `Copy` trait
+   |     ^^ move occurs because `*t` has type `String`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

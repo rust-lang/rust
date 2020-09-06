@@ -50,11 +50,11 @@
 //! The [`alloc`](alloc/index.html) module defines the low-level interface to the
 //! default global allocator. It is not compatible with the libc allocator API.
 //!
-//! [`Arc`]: sync/index.html
-//! [`Box`]: boxed/index.html
-//! [`Cell`]: ../core/cell/index.html
-//! [`Rc`]: rc/index.html
-//! [`RefCell`]: ../core/cell/index.html
+//! [`Arc`]: sync
+//! [`Box`]: boxed
+//! [`Cell`]: core::cell
+//! [`Rc`]: rc
+//! [`RefCell`]: core::cell
 
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
@@ -80,6 +80,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(btree_drain_filter)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
@@ -93,15 +94,20 @@
 #![feature(container_error_extra)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
+#![feature(exclusive_range_pattern)]
 #![feature(extend_one)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(fundamental)]
+#![feature(inplace_iteration)]
 #![feature(internal_uninit_const)]
 #![feature(lang_items)]
 #![feature(layout_for_ptr)]
 #![feature(libc)]
+#![feature(map_first_last)]
+#![feature(map_into_keys_values)]
 #![feature(negative_impls)]
+#![feature(never_type)]
 #![feature(new_uninit)]
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
@@ -109,11 +115,11 @@
 #![feature(or_patterns)]
 #![feature(pattern)]
 #![feature(ptr_internals)]
-#![feature(ptr_offset_from)]
 #![feature(raw_ref_op)]
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]
 #![feature(min_specialization)]
+#![feature(slice_check_range)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
 #![feature(staged_api)]
@@ -130,9 +136,10 @@
 #![feature(slice_partition_dedup)]
 #![feature(maybe_uninit_extra, maybe_uninit_slice)]
 #![feature(alloc_layout_extra)]
+#![feature(trusted_random_access)]
 #![feature(try_trait)]
+#![feature(type_alias_impl_trait)]
 #![feature(associated_type_bounds)]
-
 // Allow testing this library
 
 #[cfg(test)]

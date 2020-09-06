@@ -20,15 +20,19 @@ pub fn check(root_path: &Path, bad: &mut bool) {
     let mut skip = |path: &Path| {
         let file_name = path.file_name().unwrap_or_default();
         if path.is_dir() {
-            super::filter_dirs(path) ||
-            path.ends_with("src/test") ||
-            path.ends_with("src/doc") ||
-            path.ends_with("library/std") || // FIXME?
-            (file_name == "tests" || file_name == "benches") && !is_core(path)
+            super::filter_dirs(path)
+                || path.ends_with("src/test")
+                || path.ends_with("src/doc")
+                || (file_name == "tests" || file_name == "benches") && !is_core(path)
         } else {
             let extension = path.extension().unwrap_or_default();
             extension != "rs"
                 || (file_name == "tests.rs" || file_name == "benches.rs") && !is_core(path)
+                // UI tests with different names
+                || path.ends_with("src/thread/local/dynamic_tests.rs")
+                || path.ends_with("src/sync/mpsc/sync_tests.rs")
+                // Has copyright banner
+                || path.ends_with("src/sys/cloudabi/abi/cloudabi.rs")
         }
     };
 

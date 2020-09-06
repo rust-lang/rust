@@ -19,9 +19,9 @@ trait UncheckedCopy: Sized {
     // This Output is said to be Copy. Yet we default to Self
     // and it's accepted, not knowing if Self ineed is Copy
     type Output: Copy
-    //~^ ERROR the trait bound `Self: std::marker::Copy` is not satisfied
+    //~^ ERROR the trait bound `Self: Copy` is not satisfied
     + Deref<Target = str>
-    //~^ ERROR the trait bound `Self: std::ops::Deref` is not satisfied
+    //~^ ERROR the trait bound `Self: Deref` is not satisfied
     + AddAssign<&'static str>
     //~^ ERROR cannot add-assign `&'static str` to `Self`
     + From<Self>
@@ -40,9 +40,9 @@ trait UncheckedCopy: Sized {
 
 impl<T> UncheckedCopy for T {}
 //~^ ERROR `T` doesn't implement `std::fmt::Display`
-//~| ERROR the trait bound `T: std::ops::Deref` is not satisfied
+//~| ERROR the trait bound `T: Deref` is not satisfied
 //~| ERROR cannot add-assign `&'static str` to `T`
-//~| ERROR the trait bound `T: std::marker::Copy` is not satisfied
+//~| ERROR the trait bound `T: Copy` is not satisfied
 
 fn bug<T: UncheckedCopy>(origin: T) {
     let origin = T::make_origin(origin);

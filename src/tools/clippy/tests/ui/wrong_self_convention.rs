@@ -1,3 +1,4 @@
+// edition:2018
 #![warn(clippy::wrong_self_convention)]
 #![warn(clippy::wrong_pub_self_convention)]
 #![allow(dead_code)]
@@ -73,5 +74,17 @@ mod issue4293 {
         fn into_t1(self: Box<T>) {}
         fn into_t2(self: Rc<T>) {}
         fn into_t3(self: Arc<T>) {}
+    }
+}
+
+// False positive for async (see #4037)
+mod issue4037 {
+    pub struct Foo;
+    pub struct Bar;
+
+    impl Foo {
+        pub async fn into_bar(self) -> Bar {
+            Bar
+        }
     }
 }

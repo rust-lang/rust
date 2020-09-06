@@ -1,7 +1,8 @@
+// ignore-tidy-linelength
 // aux-build:make-macro.rs
 // aux-build:meta-macro.rs
 // edition:2018
-// compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
+// compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene -Z trim-diagnostic-paths=no
 // check-pass
 // normalize-stdout-test "\d+#" -> "0#"
 //

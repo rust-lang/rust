@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     type Bar = impl Baz<Self, Self>;
    |                ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
-   = note: expected type `std::ops::FnOnce<(&X,)>`
-              found type `std::ops::FnOnce<(&X,)>`
+   = note: expected type `FnOnce<(&X,)>`
+              found type `FnOnce<(&X,)>`
 
 error: aborting due to previous error
 

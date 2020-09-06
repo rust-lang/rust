@@ -1,0 +1,41 @@
+PRINT-BANG INPUT (DISPLAY): self
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "self",
+                span: $DIR/capture-macro-rules-invoke.rs:26:24: 26:28 (#CTXT),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:11:21: 11:26 (#CTXT),
+    },
+]
+PRINT-BANG INPUT (DISPLAY): (a, b)
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Ident {
+                        ident: "a",
+                        span: $DIR/capture-macro-rules-invoke.rs:29:27: 29:28 (#CTXT),
+                    },
+                    Punct {
+                        ch: ',',
+                        spacing: Alone,
+                        span: $DIR/capture-macro-rules-invoke.rs:29:28: 29:29 (#CTXT),
+                    },
+                    Ident {
+                        ident: "b",
+                        span: $DIR/capture-macro-rules-invoke.rs:29:30: 29:31 (#CTXT),
+                    },
+                ],
+                span: $DIR/capture-macro-rules-invoke.rs:29:26: 29:32 (#CTXT),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:17:21: 17:25 (#CTXT),
+    },
+]

@@ -87,7 +87,7 @@ pub fn format(build: &Build, check: bool) {
                 .lines()
                 .filter(|entry| entry.starts_with("??"))
                 .map(|entry| {
-                    entry.split(" ").nth(1).expect("every git status entry should list a path")
+                    entry.split(' ').nth(1).expect("every git status entry should list a path")
                 });
             for untracked_path in untracked_paths {
                 eprintln!("skip untracked path {} during rustfmt invocations", untracked_path);

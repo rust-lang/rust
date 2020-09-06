@@ -9,9 +9,9 @@
 #![feature(nll)]
 #![feature(or_patterns)]
 #![feature(test)]
-#![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
+#![feature(once_cell)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -64,13 +64,13 @@ mod docfs;
 mod doctree;
 #[macro_use]
 mod error;
+mod doctest;
 mod fold;
 crate mod formats;
 pub mod html;
 mod json;
 mod markdown;
 mod passes;
-mod test;
 mod theme;
 mod visit_ast;
 mod visit_lib;
@@ -153,7 +153,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "passes",
                 "list of passes to also run, you might want to pass it multiple times; a value of \
-                        `list` will print available passes",
+                 `list` will print available passes",
                 "PASSES",
             )
         }),
@@ -183,7 +183,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "html-in-header",
                 "files to include inline in the <head> section of a rendered Markdown file \
-                        or generated documentation",
+                 or generated documentation",
                 "FILES",
             )
         }),
@@ -192,7 +192,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "html-before-content",
                 "files to include inline between <body> and the content of a rendered \
-                        Markdown file or generated documentation",
+                 Markdown file or generated documentation",
                 "FILES",
             )
         }),
@@ -201,7 +201,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "html-after-content",
                 "files to include inline between the content and </body> of a rendered \
-                        Markdown file or generated documentation",
+                 Markdown file or generated documentation",
                 "FILES",
             )
         }),
@@ -210,7 +210,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "markdown-before-content",
                 "files to include inline between <body> and the content of a rendered \
-                        Markdown file or generated documentation",
+                 Markdown file or generated documentation",
                 "FILES",
             )
         }),
@@ -219,7 +219,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "markdown-after-content",
                 "files to include inline between the content and </body> of a rendered \
-                        Markdown file or generated documentation",
+                 Markdown file or generated documentation",
                 "FILES",
             )
         }),
@@ -234,8 +234,8 @@ fn opts() -> Vec<RustcOptGroup> {
                 "e",
                 "extend-css",
                 "To add some CSS rules with a given file to generate doc with your \
-                        own theme. However, your theme might break if the rustdoc's generated HTML \
-                        changes, so be careful!",
+                 own theme. However, your theme might break if the rustdoc's generated HTML \
+                 changes, so be careful!",
                 "PATH",
             )
         }),
@@ -248,7 +248,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "playground-url",
                 "URL to send code snippets to, may be reset by --markdown-playground-url \
-                        or `#![doc(html_playground_url=...)]`",
+                 or `#![doc(html_playground_url=...)]`",
                 "URL",
             )
         }),
@@ -281,7 +281,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "resource-suffix",
                 "suffix to add to CSS and JavaScript files, e.g., \"light.css\" will become \
-                      \"light-suffix.css\"",
+                 \"light-suffix.css\"",
                 "PATH",
             )
         }),
@@ -343,7 +343,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "static-root-path",
                 "Path string to force loading static files from in output pages. \
-                        If not set, uses combinations of '../' to reach the documentation root.",
+                 If not set, uses combinations of '../' to reach the documentation root.",
                 "PATH",
             )
         }),
@@ -472,11 +472,11 @@ fn run_renderer<T: formats::FormatRenderer>(
 }
 
 fn main_options(options: config::Options) -> MainResult {
-    let diag = core::new_handler(options.error_format, None, &options.debugging_options);
+    let diag = core::new_handler(options.error_format, None, &options.debugging_opts);
 
     match (options.should_test, options.markdown_input()) {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
-        (true, false) => return test::run(options),
+        (true, false) => return doctest::run(options),
         (false, true) => {
             return wrap_return(
                 &diag,
@@ -488,7 +488,7 @@ fn main_options(options: config::Options) -> MainResult {
 
     // need to move these items separately because we lose them by the time the closure is called,
     // but we can't crates the Handler ahead of time because it's not Send
-    let diag_opts = (options.error_format, options.edition, options.debugging_options.clone());
+    let diag_opts = (options.error_format, options.edition, options.debugging_opts.clone());
     let show_coverage = options.show_coverage;
 
     // First, parse the crate and extract all relevant information.
@@ -501,7 +501,7 @@ fn main_options(options: config::Options) -> MainResult {
     let crate_name = options.crate_name.clone();
     let crate_version = options.crate_version.clone();
     let output_format = options.output_format;
-    let (mut krate, renderinfo, renderopts) = core::run_core(options);
+    let (mut krate, renderinfo, renderopts, sess) = core::run_core(options);
 
     info!("finished with rustc");
 
@@ -524,11 +524,11 @@ fn main_options(options: config::Options) -> MainResult {
     let (error_format, edition, debugging_options) = diag_opts;
     let diag = core::new_handler(error_format, None, &debugging_options);
     match output_format {
-        None | Some(config::OutputFormat::Html) => {
+        None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
             run_renderer::<html::render::Context>(krate, renderopts, renderinfo, &diag, edition)
-        }
-        Some(config::OutputFormat::Json) => {
+        }),
+        Some(config::OutputFormat::Json) => sess.time("render_json", || {
             run_renderer::<json::JsonRenderer>(krate, renderopts, renderinfo, &diag, edition)
-        }
+        }),
     }
 }

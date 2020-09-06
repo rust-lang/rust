@@ -7,19 +7,19 @@ LL | #![feature(specialization)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
 
-error[E0277]: the trait bound `U: std::cmp::Eq` is not satisfied
+error[E0277]: the trait bound `U: Eq` is not satisfied
   --> $DIR/specialization-wfcheck.rs:7:17
    |
 LL | trait Foo<'a, T: Eq + 'a> { }
    |                  -- required by this bound in `Foo`
 LL | 
 LL | default impl<U> Foo<'static, U> for () {}
-   |                 ^^^^^^^^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `U`
+   |                 ^^^^^^^^^^^^^^^ the trait `Eq` is not implemented for `U`
    |
 help: consider restricting type parameter `U`
    |
-LL | default impl<U: std::cmp::Eq> Foo<'static, U> for () {}
-   |               ^^^^^^^^^^^^^^
+LL | default impl<U: Eq> Foo<'static, U> for () {}
+   |               ^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

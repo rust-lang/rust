@@ -39,6 +39,7 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
             "#method.sort_by_key",
             "#method.make_ascii_uppercase",
             "#method.make_ascii_lowercase",
+            "#method.get_unchecked_mut",
         ],
     ),
     // These try to link to std::collections, but are defined in alloc
@@ -172,10 +173,10 @@ fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Opti
         {
             return;
         }
-        let mut parts = url.splitn(2, "#");
+        let mut parts = url.splitn(2, '#');
         let url = parts.next().unwrap();
         let fragment = parts.next();
-        let mut parts = url.splitn(2, "?");
+        let mut parts = url.splitn(2, '?');
         let url = parts.next().unwrap();
 
         // Once we've plucked out the URL, parse it using our base url and
@@ -258,7 +259,7 @@ fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Opti
                 }
 
                 // These appear to be broken in mdbook right now?
-                if fragment.starts_with("-") {
+                if fragment.starts_with('-') {
                     return;
                 }
 
@@ -324,7 +325,7 @@ fn load_file(
 }
 
 fn maybe_redirect(source: &str) -> Option<String> {
-    const REDIRECT: &'static str = "<p>Redirecting to <a href=";
+    const REDIRECT: &str = "<p>Redirecting to <a href=";
 
     let mut lines = source.lines();
     let redirect_line = lines.nth(6)?;
@@ -345,11 +346,11 @@ fn with_attrs_in_source<F: FnMut(&str, usize, &str)>(contents: &str, attr: &str,
             // we can get away with using one pass.
             let is_base = line[..j].ends_with("<base");
             line = rest;
-            let pos_equals = match rest.find("=") {
+            let pos_equals = match rest.find('=') {
                 Some(i) => i,
                 None => continue,
             };
-            if rest[..pos_equals].trim_start_matches(" ") != "" {
+            if rest[..pos_equals].trim_start_matches(' ') != "" {
                 continue;
             }
 
@@ -361,7 +362,7 @@ fn with_attrs_in_source<F: FnMut(&str, usize, &str)>(contents: &str, attr: &str,
             };
             let quote_delim = rest.as_bytes()[pos_quote] as char;
 
-            if rest[..pos_quote].trim_start_matches(" ") != "" {
+            if rest[..pos_quote].trim_start_matches(' ') != "" {
                 continue;
             }
             let rest = &rest[pos_quote + 1..];

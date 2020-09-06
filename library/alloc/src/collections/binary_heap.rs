@@ -12,9 +12,9 @@
 //! to solve the [shortest path problem][sssp] on a [directed graph][dir_graph].
 //! It shows how to use [`BinaryHeap`] with custom types.
 //!
-//! [dijkstra]: http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
-//! [sssp]: http://en.wikipedia.org/wiki/Shortest_path_problem
-//! [dir_graph]: http://en.wikipedia.org/wiki/Directed_graph
+//! [dijkstra]: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
+//! [sssp]: https://en.wikipedia.org/wiki/Shortest_path_problem
+//! [dir_graph]: https://en.wikipedia.org/wiki/Directed_graph
 //! [`BinaryHeap`]: struct.BinaryHeap.html
 //!
 //! ```
@@ -145,13 +145,13 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::fmt;
-use core::iter::{FromIterator, FusedIterator, TrustedLen};
+use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
 use core::mem::{self, size_of, swap, ManuallyDrop};
 use core::ops::{Deref, DerefMut};
 use core::ptr;
 
 use crate::slice;
-use crate::vec::{self, Vec};
+use crate::vec::{self, AsIntoIter, Vec};
 
 use super::SpecExtend;
 
@@ -1172,6 +1172,27 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<T> SourceIter for IntoIter<T> {
+    type Source = IntoIter<T>;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut Self::Source {
+        self
+    }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I> InPlaceIterable for IntoIter<I> {}
+
+impl<I> AsIntoIter for IntoIter<I> {
+    type Item = I;
+
+    fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {
+        &mut self.iter
+    }
+}
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
 #[derive(Clone, Debug)]

@@ -8,6 +8,7 @@ fn configure(host: &[&str], target: &[&str]) -> Config {
     config.save_toolstates = None;
     config.skip_only_host_steps = false;
     config.dry_run = true;
+    config.ninja_in_file = false;
     // try to avoid spurious failures in dist where we create/delete each others file
     let dir = config
         .out
@@ -370,7 +371,7 @@ mod dist {
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(
             &Builder::get_step_descriptions(Kind::Build),
-            &["src/rustc".into(), "library/std".into()],
+            &["compiler/rustc".into(), "library/std".into()],
         );
 
         let a = TargetSelection::from_user("A");

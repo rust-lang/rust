@@ -3,6 +3,7 @@ FROM ubuntu:18.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
   clang \
   make \
+  ninja-build \
   file \
   curl \
   ca-certificates \
@@ -29,5 +30,5 @@ ENV \
 
 ENV HOSTS=x86_64-unknown-freebsd
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --enable-profiler --disable-docs
+ENV RUST_CONFIGURE_ARGS --enable-extended --enable-profiler --enable-sanitizers --disable-docs
 ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS

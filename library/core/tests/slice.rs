@@ -1630,7 +1630,6 @@ pub mod memchr {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_simple() {
     let bytes = [1u8, 2, 3, 4, 5, 6, 7];
     let (prefix, aligned, suffix) = unsafe { bytes.align_to::<u16>() };
@@ -1660,7 +1659,6 @@ fn test_align_to_zst() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_non_trivial() {
     #[repr(align(8))]
     struct U64(u64, u64);
@@ -1797,7 +1795,7 @@ fn test_copy_within() {
 }
 
 #[test]
-#[should_panic(expected = "src is out of bounds")]
+#[should_panic(expected = "range end index 14 out of range for slice of length 13")]
 fn test_copy_within_panics_src_too_long() {
     let mut bytes = *b"Hello, World!";
     // The length is only 13, so 14 is out of bounds.
@@ -1812,7 +1810,7 @@ fn test_copy_within_panics_dest_too_long() {
     bytes.copy_within(0..4, 10);
 }
 #[test]
-#[should_panic(expected = "src end is before src start")]
+#[should_panic(expected = "slice index starts at 2 but ends at 1")]
 fn test_copy_within_panics_src_inverted() {
     let mut bytes = *b"Hello, World!";
     // 2 is greater than 1, so this range is invalid.

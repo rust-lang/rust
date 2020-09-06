@@ -9,7 +9,7 @@ mod simplify;
 pub mod types;
 pub mod utils;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -17,6 +17,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
+use rustc_middle::bug;
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::fold::TypeFolder;
@@ -291,6 +292,22 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> GenericBound {
         match *self {
             hir::GenericBound::Outlives(lt) => GenericBound::Outlives(lt.clean(cx)),
+            hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
+                let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
+
+                let trait_ref = ty::TraitRef::identity(cx.tcx, def_id);
+
+                let generic_args = generic_args.clean(cx);
+                let bindings = match generic_args {
+                    GenericArgs::AngleBracketed { bindings, .. } => bindings,
+                    _ => bug!("clean: parenthesized `GenericBound::LangItemTrait`"),
+                };
+
+                GenericBound::TraitBound(
+                    PolyTrait { trait_: (trait_ref, &*bindings).clean(cx), generic_params: vec![] },
+                    hir::TraitBoundModifier::None,
+                )
+            }
             hir::GenericBound::Trait(ref t, modifier) => {
                 GenericBound::TraitBound(t.clean(cx), modifier)
             }
@@ -747,17 +764,17 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                 let param_idx = (|| {
                     match p.skip_binders() {
                         ty::PredicateAtom::Trait(pred, _constness) => {
-                            if let ty::Param(param) = pred.self_ty().kind {
+                            if let ty::Param(param) = pred.self_ty().kind() {
                                 return Some(param.index);
                             }
                         }
                         ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
-                            if let ty::Param(param) = ty.kind {
+                            if let ty::Param(param) = ty.kind() {
                                 return Some(param.index);
                             }
                         }
                         ty::PredicateAtom::Projection(p) => {
-                            if let ty::Param(param) = p.projection_ty.self_ty().kind {
+                            if let ty::Param(param) = p.projection_ty.self_ty().kind() {
                                 projection = Some(ty::Binder::bind(p));
                                 return Some(param.index);
                             }
@@ -1189,7 +1206,7 @@ impl Clean<Item> for ty::AssocItem {
                     let self_arg_ty = sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
                         decl.inputs.values[0].type_ = Generic(String::from("Self"));
-                    } else if let ty::Ref(_, ty, _) = self_arg_ty.kind {
+                    } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {
                         if ty == self_ty {
                             match decl.inputs.values[0].type_ {
                                 BorrowedRef { ref mut type_, .. } => {
@@ -1382,7 +1399,7 @@ impl Clean<Type> for hir::Ty<'_> {
                 if let Res::Def(DefKind::TyAlias, def_id) = path.res {
                     // Substitute private type aliases
                     if let Some(def_id) = def_id.as_local() {
-                        let hir_id = cx.tcx.hir().as_local_hir_id(def_id);
+                        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
                         if !cx.renderinfo.borrow().access_levels.is_exported(def_id.to_def_id()) {
                             alias = Some(&cx.tcx.hir().expect_item(hir_id).kind);
                         }
@@ -1494,7 +1511,7 @@ impl Clean<Type> for hir::Ty<'_> {
             TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 let mut res = Res::Err;
                 let ty = hir_ty_to_ty(cx.tcx, self);
-                if let ty::Projection(proj) = ty.kind {
+                if let ty::Projection(proj) = ty.kind() {
                     res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
                 }
                 let trait_path = hir::Path { span: self.span, res, segments: &[] };
@@ -1503,6 +1520,9 @@ impl Clean<Type> for hir::Ty<'_> {
                     self_type: box qself.clean(cx),
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.hir_id),
                 }
+            }
+            TyKind::Path(hir::QPath::LangItem(..)) => {
+                bug!("clean: requiring documentation of lang item")
             }
             TyKind::TraitObject(ref bounds, ref lifetime) => {
                 match bounds[0].clean(cx).trait_ {
@@ -1534,7 +1554,7 @@ impl Clean<Type> for hir::Ty<'_> {
 impl<'tcx> Clean<Type> for Ty<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
         debug!("cleaning type: {:?}", self);
-        match self.kind {
+        match *self.kind() {
             ty::Never => Never,
             ty::Bool => Primitive(PrimitiveType::Bool),
             ty::Char => Primitive(PrimitiveType::Char),

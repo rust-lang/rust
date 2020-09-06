@@ -11,10 +11,10 @@
 
 pub struct Dependent<const N: usize, const X: [u8; N]>([(); N]);
 //~^ ERROR: the type of const parameters must not depend on other generic parameters
-//[min]~^^ ERROR using `[u8; _]` as const generic parameters is forbidden
+//[min]~^^ ERROR `[u8; _]` is forbidden
 
 pub struct SelfDependent<const N: [u8; N]>;
 //~^ ERROR: the type of const parameters must not depend on other generic parameters
-//[min]~^^ ERROR using `[u8; _]` as const generic parameters is forbidden
+//[min]~^^ ERROR `[u8; _]` is forbidden
 
 fn main() {}

@@ -37,7 +37,7 @@ jobs:
       # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
       x86_64-apple:
         SCRIPT: ./x.py --stage 2 test
-        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.8
         MACOSX_STD_DEPLOYMENT_TARGET: 10.7
@@ -46,7 +46,7 @@ jobs:
 
       dist-x86_64-apple:
         SCRIPT: ./x.py dist
-        INITIAL_RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
+        INITIAL_RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.7
         NO_LLVM_ASSERTIONS: 1
@@ -55,7 +55,7 @@ jobs:
 
       dist-x86_64-apple-alt:
         SCRIPT: ./x.py dist
-        INITIAL_RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
+        INITIAL_RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.7
         NO_LLVM_ASSERTIONS: 1

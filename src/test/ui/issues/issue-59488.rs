@@ -29,6 +29,6 @@ fn main() {
     let i = Foo::Bar;
     assert_eq!(Foo::Bar, i);
     //~^ ERROR binary operation `==` cannot be applied to type `fn(usize) -> Foo {Foo::Bar}` [E0369]
-    //~| ERROR `fn(usize) -> Foo {Foo::Bar}` doesn't implement `std::fmt::Debug` [E0277]
-    //~| ERROR `fn(usize) -> Foo {Foo::Bar}` doesn't implement `std::fmt::Debug` [E0277]
+    //~| ERROR `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug` [E0277]
+    //~| ERROR `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug` [E0277]
 }

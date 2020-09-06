@@ -3,7 +3,7 @@
 fn main() {}
 
 type Underconstrained<T: std::fmt::Debug> = impl 'static;
-//~^ ERROR `U` doesn't implement `std::fmt::Debug`
+//~^ ERROR `U` doesn't implement `Debug`
 //~^^ ERROR: at least one trait must be specified
 
 // not a defining use, because it doesn't define *all* possible generics
@@ -12,7 +12,7 @@ fn underconstrained<U>(_: U) -> Underconstrained<U> {
 }
 
 type Underconstrained2<T: std::fmt::Debug> = impl 'static;
-//~^ ERROR `V` doesn't implement `std::fmt::Debug`
+//~^ ERROR `V` doesn't implement `Debug`
 //~^^ ERROR: at least one trait must be specified
 
 // not a defining use, because it doesn't define *all* possible generics

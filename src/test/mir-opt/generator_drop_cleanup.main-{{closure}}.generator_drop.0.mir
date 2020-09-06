@@ -14,7 +14,7 @@
     },
 } */
 
-fn main::{{closure}}#0(_1: *mut [generator@$DIR/generator-drop-cleanup.rs:10:15: 13:6 {std::string::String, ()}]) -> () {
+fn main::{{closure}}#0(_1: *mut [generator@$DIR/generator-drop-cleanup.rs:10:15: 13:6 {String, ()}]) -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     let mut _2: ();                      // in scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     let _3: std::string::String;         // in scope 0 at $DIR/generator-drop-cleanup.rs:11:13: 11:15

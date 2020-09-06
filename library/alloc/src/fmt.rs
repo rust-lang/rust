@@ -501,31 +501,23 @@
 //! it would internally pass around this structure until it has been determined
 //! where output should go to.
 //!
-//! [`usize`]: ../../std/primitive.usize.html
-//! [`isize`]: ../../std/primitive.isize.html
-//! [`i8`]: ../../std/primitive.i8.html
-//! [`Display`]: trait.Display.html
-//! [`Binary`]: trait.Binary.html
-//! [`fmt::Result`]: type.Result.html
-//! [`Result`]: ../../std/result/enum.Result.html
-//! [`std::fmt::Error`]: struct.Error.html
-//! [`Formatter`]: struct.Formatter.html
-//! [`write!`]: ../../std/macro.write.html
-//! [`Debug`]: trait.Debug.html
-//! [`format!`]: ../../std/macro.format.html
-//! [`to_string`]: ../../std/string/trait.ToString.html
-//! [`writeln!`]: ../../std/macro.writeln.html
+//! [`fmt::Result`]: Result
+//! [`Result`]: core::result::Result
+//! [`std::fmt::Error`]: Error
+//! [`write!`]: core::write
+//! [`write`]: core::write
+//! [`format!`]: crate::format
+//! [`to_string`]: crate::string::ToString
+//! [`writeln!`]: core::writeln
 //! [`write_fmt`]: ../../std/io/trait.Write.html#method.write_fmt
 //! [`std::io::Write`]: ../../std/io/trait.Write.html
 //! [`print!`]: ../../std/macro.print.html
 //! [`println!`]: ../../std/macro.println.html
 //! [`eprint!`]: ../../std/macro.eprint.html
 //! [`eprintln!`]: ../../std/macro.eprintln.html
-//! [`write!`]: ../../std/macro.write.html
-//! [`format_args!`]: ../../std/macro.format_args.html
-//! [`fmt::Arguments`]: struct.Arguments.html
-//! [`write`]: fn.write.html
-//! [`format`]: fn.format.html
+//! [`format_args!`]: core::format_args
+//! [`fmt::Arguments`]: Arguments
+//! [`format`]: crate::format
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -576,9 +568,8 @@ use crate::string;
 /// assert_eq!(s, "Hello, world!");
 /// ```
 ///
-/// [`Arguments`]: struct.Arguments.html
-/// [`format_args!`]: ../../std/macro.format_args.html
-/// [`format!`]: ../../std/macro.format.html
+/// [`format_args!`]: core::format_args
+/// [`format!`]: crate::format
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn format(args: Arguments<'_>) -> string::String {
     let capacity = args.estimated_capacity();

@@ -90,7 +90,7 @@ LL |     w.wrap.not_closure();
    |            |
    |            field, not a method
 
-error[E0599]: no method named `closure` found for struct `Obj<std::boxed::Box<(dyn std::ops::FnOnce() -> u32 + 'static)>>` in the current scope
+error[E0599]: no method named `closure` found for struct `Obj<Box<(dyn FnOnce() -> u32 + 'static)>>` in the current scope
   --> $DIR/issue-2392.rs:58:24
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {

@@ -96,7 +96,7 @@ fn is_explicit_request(builder: &Builder<'_>, path: &str) -> bool {
         .paths
         .iter()
         .map(components_simplified)
-        .any(|requested| requested.iter().copied().eq(path.split("/")))
+        .any(|requested| requested.iter().copied().eq(path.split('/')))
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -694,6 +694,7 @@ impl Step for UnstableBookGen {
         builder.remove_dir(&out);
         let mut cmd = builder.tool_cmd(Tool::UnstableBookGen);
         cmd.arg(builder.src.join("library"));
+        cmd.arg(builder.src.join("compiler"));
         cmd.arg(builder.src.join("src"));
         cmd.arg(out);
 

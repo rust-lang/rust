@@ -54,8 +54,7 @@
 //! below for more details.
 //!
 //! [`Some(Item)`]: Some
-//! [`Iterator`]: trait.Iterator.html
-//! [`next`]: trait.Iterator.html#tymethod.next
+//! [`next`]: Iterator::next
 //! [`TryIter`]: ../../std/sync/mpsc/struct.TryIter.html
 //!
 //! # The three forms of iteration
@@ -136,7 +135,7 @@
 //! methods like `nth` and `fold` if an iterator can compute them more efficiently without calling
 //! `next`.
 //!
-//! # for Loops and IntoIterator
+//! # `for` loops and `IntoIterator`
 //!
 //! Rust's `for` loop syntax is actually sugar for iterators. Here's a basic
 //! example of `for`:
@@ -159,8 +158,7 @@
 //! Let's take a look at that `for` loop again, and what the compiler converts
 //! it into:
 //!
-//! [`IntoIterator`]: trait.IntoIterator.html
-//! [`into_iter`]: trait.IntoIterator.html#tymethod.into_iter
+//! [`into_iter`]: IntoIterator::into_iter
 //!
 //! ```
 //! let values = vec![1, 2, 3, 4, 5];
@@ -222,9 +220,9 @@
 //! across versions of Rust, so you should avoid relying on the exact values
 //! returned by an iterator which panicked.
 //!
-//! [`map`]: trait.Iterator.html#method.map
-//! [`take`]: trait.Iterator.html#method.take
-//! [`filter`]: trait.Iterator.html#method.filter
+//! [`map`]: Iterator::map
+//! [`take`]: Iterator::take
+//! [`filter`]: Iterator::filter
 //!
 //! # Laziness
 //!
@@ -261,13 +259,13 @@
 //! }
 //! ```
 //!
-//! [`map`]: trait.Iterator.html#method.map
-//! [`for_each`]: trait.Iterator.html#method.for_each
+//! [`map`]: Iterator::map
+//! [`for_each`]: Iterator::for_each
 //!
 //! Another common way to evaluate an iterator is to use the [`collect`]
 //! method to produce a new collection.
 //!
-//! [`collect`]: trait.Iterator.html#method.collect
+//! [`collect`]: Iterator::collect
 //!
 //! # Infinity
 //!
@@ -305,12 +303,10 @@
 //! println!("The smallest number one is {}.", least);
 //! ```
 //!
-//! [`take`]: trait.Iterator.html#method.take
-//! [`min`]: trait.Iterator.html#method.min
+//! [`take`]: Iterator::take
+//! [`min`]: Iterator::min
 
 #![stable(feature = "rust1", since = "1.0.0")]
-
-use crate::ops::Try;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::Iterator;
@@ -346,16 +342,24 @@ pub use self::traits::{DoubleEndedIterator, Extend, FromIterator, IntoIterator};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{ExactSizeIterator, Product, Sum};
 
+#[unstable(issue = "none", feature = "inplace_iteration")]
+pub use self::traits::InPlaceIterable;
+
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::adapters::Cloned;
 #[stable(feature = "iter_copied", since = "1.36.0")]
 pub use self::adapters::Copied;
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::adapters::Flatten;
+
 #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 pub use self::adapters::MapWhile;
+#[unstable(issue = "none", feature = "inplace_iteration")]
+pub use self::adapters::SourceIter;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 pub use self::adapters::StepBy;
+#[unstable(feature = "trusted_random_access", issue = "none")]
+pub use self::adapters::TrustedRandomAccess;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{Chain, Cycle, Enumerate, Filter, FilterMap, Map, Rev, Zip};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -363,63 +367,9 @@ pub use self::adapters::{FlatMap, Peekable, Scan, Skip, SkipWhile, Take, TakeWhi
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{Fuse, Inspect};
 
-pub(crate) use self::adapters::{process_results, TrustedRandomAccess};
+pub(crate) use self::adapters::process_results;
 
 mod adapters;
 mod range;
 mod sources;
 mod traits;
-
-/// Used to make try_fold closures more like normal loops
-#[derive(PartialEq)]
-enum LoopState<C, B> {
-    Continue(C),
-    Break(B),
-}
-
-impl<C, B> Try for LoopState<C, B> {
-    type Ok = C;
-    type Error = B;
-    #[inline]
-    fn into_result(self) -> Result<Self::Ok, Self::Error> {
-        match self {
-            LoopState::Continue(y) => Ok(y),
-            LoopState::Break(x) => Err(x),
-        }
-    }
-    #[inline]
-    fn from_error(v: Self::Error) -> Self {
-        LoopState::Break(v)
-    }
-    #[inline]
-    fn from_ok(v: Self::Ok) -> Self {
-        LoopState::Continue(v)
-    }
-}
-
-impl<C, B> LoopState<C, B> {
-    #[inline]
-    fn break_value(self) -> Option<B> {
-        match self {
-            LoopState::Continue(..) => None,
-            LoopState::Break(x) => Some(x),
-        }
-    }
-}
-
-impl<R: Try> LoopState<R::Ok, R> {
-    #[inline]
-    fn from_try(r: R) -> Self {
-        match Try::into_result(r) {
-            Ok(v) => LoopState::Continue(v),
-            Err(v) => LoopState::Break(Try::from_error(v)),
-        }
-    }
-    #[inline]
-    fn into_try(self) -> R {
-        match self {
-            LoopState::Continue(v) => Try::from_ok(v),
-            LoopState::Break(v) => v,
-        }
-    }
-}

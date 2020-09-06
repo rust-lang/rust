@@ -1,5 +1,8 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
+#[cfg(test)]
+mod tests;
+
 use crate::cmp;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read};
 use crate::mem;
@@ -277,18 +280,5 @@ impl Drop for FileDesc {
         // something like EINTR), we might close another valid file descriptor
         // opened after we closed ours.
         let _ = unsafe { libc::close(self.fd) };
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{FileDesc, IoSlice};
-    use core::mem::ManuallyDrop;
-
-    #[test]
-    fn limit_vector_count() {
-        let stdout = ManuallyDrop::new(FileDesc { fd: 1 });
-        let bufs = (0..1500).map(|_| IoSlice::new(&[])).collect::<Vec<_>>();
-        assert!(stdout.write_vectored(&bufs).is_ok());
     }
 }

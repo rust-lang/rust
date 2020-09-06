@@ -25,8 +25,6 @@ thread_local! {
     //~| ERROR missing lifetime specifier
     //~| ERROR missing lifetime specifier
     //~| ERROR missing lifetime specifier
-    //~| ERROR the lifetime bound for this object type cannot be deduced from context
-    //~| ERROR the lifetime bound for this object type cannot be deduced from context
 }
 thread_local! {
     static c: RefCell<HashMap<i32, Vec<Vec<Qux<i32>>>>> = RefCell::new(HashMap::new());
@@ -39,8 +37,6 @@ thread_local! {
     //~| ERROR missing lifetime specifier
     //~| ERROR missing lifetime specifier
     //~| ERROR missing lifetime specifier
-    //~| ERROR the lifetime bound for this object type cannot be deduced from context
-    //~| ERROR the lifetime bound for this object type cannot be deduced from context
 }
 
 thread_local! {
@@ -52,9 +48,7 @@ thread_local! {
 }
 thread_local! {
     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-    //~^ ERROR the lifetime bound for this object type cannot be deduced from context
-    //~| ERROR the lifetime bound for this object type cannot be deduced from context
-    //~| ERROR wrong number of lifetime arguments: expected 2, found 1
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 1
     //~| ERROR wrong number of lifetime arguments: expected 2, found 1
     //~| ERROR wrong number of lifetime arguments: expected 2, found 1
     //~| ERROR wrong number of lifetime arguments: expected 2, found 1

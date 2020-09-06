@@ -1,12 +1,12 @@
-error[E0277]: expected a `std::ops::Fn<()>` closure, found `()`
+error[E0277]: expected a `Fn<()>` closure, found `()`
   --> $DIR/issue-22034.rs:8:16
    |
 LL |         &mut *(ptr as *mut dyn Fn())
    |                ^^^ expected an `Fn<()>` closure, found `()`
    |
-   = help: the trait `std::ops::Fn<()>` is not implemented for `()`
+   = help: the trait `Fn<()>` is not implemented for `()`
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
-   = note: required for the cast to the object type `dyn std::ops::Fn()`
+   = note: required for the cast to the object type `dyn Fn()`
 
 error: aborting due to previous error
 

@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::{self, Region, RegionVid, TypeFoldable};
 use rustc_trait_selection::traits::auto_trait::{self, AutoTraitResult};
 
@@ -454,7 +454,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
         // The `Sized` trait must be handled specially, since we only display it when
         // it is *not* required (i.e., '?Sized')
-        let sized_trait = self.cx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
+        let sized_trait = self.cx.tcx.require_lang_item(LangItem::Sized, None);
 
         let mut replacer = RegionReplacer { vid_to_region: &vid_to_region, tcx };
 
@@ -742,9 +742,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     fn is_fn_ty(&self, tcx: TyCtxt<'_>, ty: &Type) -> bool {
         match &ty {
             &&Type::ResolvedPath { ref did, .. } => {
-                *did == tcx.require_lang_item(lang_items::FnTraitLangItem, None)
-                    || *did == tcx.require_lang_item(lang_items::FnMutTraitLangItem, None)
-                    || *did == tcx.require_lang_item(lang_items::FnOnceTraitLangItem, None)
+                *did == tcx.require_lang_item(LangItem::Fn, None)
+                    || *did == tcx.require_lang_item(LangItem::FnMut, None)
+                    || *did == tcx.require_lang_item(LangItem::FnOnce, None)
             }
             _ => false,
         }

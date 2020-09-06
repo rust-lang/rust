@@ -1,22 +1,22 @@
-warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `foo::Foo`
+warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `Foo`
   --> $DIR/lint-uppercase-variables.rs:22:9
    |
 LL |         Foo => {}
-   |         ^^^ help: to match on the variant, qualify the path: `foo::Foo::Foo`
+   |         ^^^ help: to match on the variant, qualify the path: `Foo::Foo`
    |
    = note: `#[warn(bindings_with_variant_name)]` on by default
 
-warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `foo::Foo`
+warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `Foo`
   --> $DIR/lint-uppercase-variables.rs:28:9
    |
 LL |     let Foo = foo::Foo::Foo;
-   |         ^^^ help: to match on the variant, qualify the path: `foo::Foo::Foo`
+   |         ^^^ help: to match on the variant, qualify the path: `Foo::Foo`
 
-warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `foo::Foo`
+warning[E0170]: pattern binding `Foo` is named the same as one of the variants of the type `Foo`
   --> $DIR/lint-uppercase-variables.rs:33:17
    |
 LL |     fn in_param(Foo: foo::Foo) {}
-   |                 ^^^ help: to match on the variant, qualify the path: `foo::Foo::Foo`
+   |                 ^^^ help: to match on the variant, qualify the path: `Foo::Foo`
 
 warning: unused variable: `Foo`
   --> $DIR/lint-uppercase-variables.rs:22:9

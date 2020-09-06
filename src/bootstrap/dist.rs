@@ -162,7 +162,7 @@ impl Step for RustcDocs {
         let image = tmpdir(builder).join(format!("{}-{}-image", name, host.triple));
         let _ = fs::remove_dir_all(&image);
 
-        let dst = image.join("share/doc/rust/html");
+        let dst = image.join("share/doc/rust/html/rustc");
         t!(fs::create_dir_all(&dst));
         let src = builder.compiler_doc_out(host);
         builder.cp_r(&src, &dst);
@@ -181,7 +181,7 @@ impl Step for RustcDocs {
             .arg(format!("--package-name={}-{}", name, host.triple))
             .arg("--component-name=rustc-docs")
             .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--bulk-dirs=share/doc/rust/html");
+            .arg("--bulk-dirs=share/doc/rust/html/rustc");
 
         builder.info(&format!("Dist compiler docs ({})", host));
         let _time = timeit(builder);
@@ -226,7 +226,7 @@ fn make_win_dist(
         let idx = line.find(':').unwrap();
         let key = &line[..idx];
         let trim_chars: &[_] = &[' ', '='];
-        let value = line[(idx + 1)..].trim_start_matches(trim_chars).split(';').map(PathBuf::from);
+        let value = env::split_paths(line[(idx + 1)..].trim_start_matches(trim_chars));
 
         if key == "programs" {
             bin_path.extend(value);
@@ -647,6 +647,7 @@ impl Step for DebuggerScripts {
 
             cp_debugger_script("lldb_lookup.py");
             cp_debugger_script("lldb_providers.py");
+            cp_debugger_script("lldb_commands")
         }
     }
 }
@@ -1096,7 +1097,7 @@ impl Step for PlainSourceTarball {
             "Cargo.toml",
             "Cargo.lock",
         ];
-        let src_dirs = ["src", "library"];
+        let src_dirs = ["src", "compiler", "library"];
 
         copy_src_dirs(builder, &builder.src, &src_dirs, &[], &plain_dst_src);
 

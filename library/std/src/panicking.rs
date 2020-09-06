@@ -60,6 +60,14 @@ extern "C" fn __rust_drop_panic() -> ! {
     rtabort!("Rust panics must be rethrown");
 }
 
+/// This function is called by the panic runtime if it catches an exception
+/// object which does not correspond to a Rust panic.
+#[cfg(not(test))]
+#[rustc_std_internal_symbol]
+extern "C" fn __rust_foreign_exception() -> ! {
+    rtabort!("Rust cannot catch foreign exceptions");
+}
+
 #[derive(Copy, Clone)]
 enum Hook {
     Default,

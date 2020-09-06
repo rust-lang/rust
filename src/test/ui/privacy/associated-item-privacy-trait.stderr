@@ -1,4 +1,4 @@
-error: type `for<'r> fn(&'r priv_trait::Pub) {<priv_trait::Pub as priv_trait::PrivTr>::method}` is private
+error: type `for<'r> fn(&'r priv_trait::Pub) {<priv_trait::Pub as PrivTr>::method}` is private
   --> $DIR/associated-item-privacy-trait.rs:17:21
    |
 LL |         let value = <Pub as PrivTr>::method;
@@ -9,7 +9,7 @@ LL |     priv_trait::mac!();
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `for<'r> fn(&'r priv_trait::Pub) {<priv_trait::Pub as priv_trait::PrivTr>::method}` is private
+error: type `for<'r> fn(&'r priv_trait::Pub) {<priv_trait::Pub as PrivTr>::method}` is private
   --> $DIR/associated-item-privacy-trait.rs:19:9
    |
 LL |         value;
@@ -20,7 +20,7 @@ LL |     priv_trait::mac!();
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `for<'r> fn(&'r Self) {<Self as priv_trait::PrivTr>::method}` is private
+error: type `for<'r> fn(&'r Self) {<Self as PrivTr>::method}` is private
   --> $DIR/associated-item-privacy-trait.rs:21:13
    |
 LL |         Pub.method();
@@ -53,7 +53,7 @@ LL |     priv_trait::mac!();
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: trait `priv_trait::PrivTr` is private
+error: trait `PrivTr` is private
   --> $DIR/associated-item-privacy-trait.rs:27:34
    |
 LL |         pub type InSignatureTy = <Pub as PrivTr>::AssocTy;
@@ -64,7 +64,7 @@ LL |     priv_trait::mac!();
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: trait `priv_trait::PrivTr` is private
+error: trait `PrivTr` is private
   --> $DIR/associated-item-privacy-trait.rs:29:34
    |
 LL |         pub trait InSignatureTr: PrivTr {}
@@ -75,7 +75,7 @@ LL |     priv_trait::mac!();
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: trait `priv_trait::PrivTr` is private
+error: trait `PrivTr` is private
   --> $DIR/associated-item-privacy-trait.rs:31:14
    |
 LL |         impl PrivTr for u8 {}

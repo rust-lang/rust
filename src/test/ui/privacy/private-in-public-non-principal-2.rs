@@ -10,5 +10,5 @@ mod m {
 
 fn main() {
     m::leak_dyn_nonprincipal();
-    //~^ ERROR trait `m::PrivNonPrincipal` is private
+    //~^ ERROR trait `PrivNonPrincipal` is private
 }

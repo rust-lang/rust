@@ -47,7 +47,7 @@ use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
 use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
+use core::ops::{self, Add, AddAssign, Index, IndexMut, Range, RangeBounds};
 use core::ptr;
 use core::str::{lossy, pattern::Pattern};
 
@@ -268,8 +268,8 @@ use crate::vec::Vec;
 ///
 /// Here, there's no need to allocate more memory inside the loop.
 ///
-/// [`str`]: type@str
-/// [`&str`]: type@str
+/// [`str`]: prim@str
+/// [`&str`]: prim@str
 /// [`Deref`]: core::ops::Deref
 /// [`as_str()`]: String::as_str
 #[derive(PartialOrd, Eq, Ord)]
@@ -296,7 +296,7 @@ pub struct String {
 ///
 /// [`Utf8Error`]: core::str::Utf8Error
 /// [`std::str`]: core::str
-/// [`&str`]: str
+/// [`&str`]: prim@str
 /// [`utf8_error`]: Self::utf8_error
 ///
 /// # Examples
@@ -472,7 +472,7 @@ impl String {
     ///
     /// [`from_utf8_unchecked`]: String::from_utf8_unchecked
     /// [`Vec<u8>`]: crate::vec::Vec
-    /// [`&str`]: str
+    /// [`&str`]: prim@str
     /// [`into_bytes`]: String::into_bytes
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1506,23 +1506,15 @@ impl String {
         // of the vector version. The data is just plain bytes.
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
-        let len = self.len();
-        let start = match range.start_bound() {
-            Included(&n) => n,
-            Excluded(&n) => n + 1,
-            Unbounded => 0,
-        };
-        let end = match range.end_bound() {
-            Included(&n) => n + 1,
-            Excluded(&n) => n,
-            Unbounded => len,
-        };
+        let Range { start, end } = self.as_bytes().check_range(range);
+        assert!(self.is_char_boundary(start));
+        assert!(self.is_char_boundary(end));
 
         // Take out two simultaneous borrows. The &mut String won't be accessed
         // until iteration is over, in Drop.
         let self_ptr = self as *mut _;
-        // slicing does the appropriate bounds checks
-        let chars_iter = self[start..end].chars();
+        // SAFETY: `check_range` and `is_char_boundary` do the appropriate bounds checks.
+        let chars_iter = unsafe { self.get_unchecked(start..end) }.chars();
 
         Drain { start, end, iter: chars_iter, string: self_ptr }
     }
@@ -1575,6 +1567,8 @@ impl String {
     /// Converts this `String` into a [`Box`]`<`[`str`]`>`.
     ///
     /// This will drop any excess capacity.
+    ///
+    /// [`str`]: prim@str
     ///
     /// # Examples
     ///
@@ -1644,7 +1638,7 @@ impl FromUtf8Error {
     /// on using it.
     ///
     /// [`std::str`]: core::str
-    /// [`&str`]: str
+    /// [`&str`]: prim@str
     ///
     /// # Examples
     ///

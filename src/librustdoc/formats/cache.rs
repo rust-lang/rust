@@ -16,7 +16,7 @@ use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
 use crate::html::render::cache::{extern_location, get_index_search_type, ExternalLocation};
 use crate::html::render::IndexItem;
-use crate::html::render::{plain_summary_line, shorten};
+use crate::html::render::{plain_text_summary, shorten};
 
 thread_local!(crate static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
 
@@ -313,7 +313,7 @@ impl DocFolder for Cache {
                             ty: item.type_(),
                             name: s.to_string(),
                             path: path.join("::"),
-                            desc: shorten(plain_summary_line(item.doc_value())),
+                            desc: shorten(plain_text_summary(item.doc_value())),
                             parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item),

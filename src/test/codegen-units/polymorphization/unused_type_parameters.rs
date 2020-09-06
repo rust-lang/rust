@@ -1,5 +1,4 @@
 // compile-flags:-Zpolymorphize=on -Zprint-mono-items=lazy -Copt-level=1
-// ignore-tidy-linelength
 
 #![crate_type = "rlib"]
 
@@ -10,44 +9,44 @@ mod functions {
     // Function doesn't have any type parameters to be unused.
     pub fn no_parameters() {}
 
-//~ MONO_ITEM fn unused_type_parameters::functions[0]::no_parameters[0]
+//~ MONO_ITEM fn functions::no_parameters
 
     // Function has an unused type parameter.
     pub fn unused<T>() {
     }
 
-//~ MONO_ITEM fn unused_type_parameters::functions[0]::unused[0]<T>
+//~ MONO_ITEM fn functions::unused::<T>
 
     // Function uses type parameter in value of a binding.
     pub fn used_binding_value<T: Default>() {
         let _: T = Default::default();
     }
 
-//~ MONO_ITEM fn unused_type_parameters::functions[0]::used_binding_value[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::functions[0]::used_binding_value[0]<u64>
+//~ MONO_ITEM fn functions::used_binding_value::<u32>
+//~ MONO_ITEM fn functions::used_binding_value::<u64>
 
     // Function uses type parameter in type of a binding.
     pub fn used_binding_type<T>() {
         let _: Option<T> = None;
     }
 
-//~ MONO_ITEM fn unused_type_parameters::functions[0]::used_binding_type[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::functions[0]::used_binding_type[0]<u64>
+//~ MONO_ITEM fn functions::used_binding_type::<u32>
+//~ MONO_ITEM fn functions::used_binding_type::<u64>
 
     // Function uses type parameter in argument.
     pub fn used_argument<T>(_: T) {
     }
 
-//~ MONO_ITEM fn unused_type_parameters::functions[0]::used_argument[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::functions[0]::used_argument[0]<u64>
+//~ MONO_ITEM fn functions::used_argument::<u32>
+//~ MONO_ITEM fn functions::used_argument::<u64>
 //
     // Function uses type parameter in substitutions to another function.
     pub fn used_substs<T>() {
         unused::<T>()
     }
 
-//~ MONO_ITEM fn unused_type_parameters::functions[0]::used_substs[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::functions[0]::used_substs[0]<u64>
+//~ MONO_ITEM fn functions::used_substs::<u32>
+//~ MONO_ITEM fn functions::used_substs::<u64>
 }
 
 
@@ -57,7 +56,7 @@ mod closures {
         let _ = || {};
     }
 
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::no_parameters[0]
+//~ MONO_ITEM fn closures::no_parameters
 
     // Function has an unused type parameter in parent and closure.
     pub fn unused<T>() -> u32 {
@@ -65,8 +64,8 @@ mod closures {
         add_one(3)
     }
 
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::unused[0]::{{closure}}[0]<T, i8, extern "rust-call" fn((u32)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::unused[0]<T>
+//~ MONO_ITEM fn closures::unused::<T>::{{closure}}#0
+//~ MONO_ITEM fn closures::unused::<T>
 
     // Function has an unused type parameter in closure, but not in parent.
     pub fn used_parent<T: Default>() -> u32 {
@@ -75,9 +74,9 @@ mod closures {
         add_one(3)
     }
 
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_parent[0]::{{closure}}[0]<T, i8, extern "rust-call" fn((u32)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_parent[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_parent[0]<u64>
+//~ MONO_ITEM fn closures::used_parent::<T>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_parent::<u32>
+//~ MONO_ITEM fn closures::used_parent::<u64>
 
     // Function uses type parameter in value of a binding in closure.
     pub fn used_binding_value<T: Default>() -> T {
@@ -89,10 +88,10 @@ mod closures {
         x()
     }
 
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_binding_value[0]::{{closure}}[0]<u32, i8, extern "rust-call" fn(()) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_binding_value[0]::{{closure}}[0]<u64, i8, extern "rust-call" fn(()) -> u64, ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_binding_value[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_binding_value[0]<u64>
+//~ MONO_ITEM fn closures::used_binding_value::<u32>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_binding_value::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_binding_value::<u32>
+//~ MONO_ITEM fn closures::used_binding_value::<u64>
 
     // Function uses type parameter in type of a binding in closure.
     pub fn used_binding_type<T>() -> Option<T> {
@@ -104,10 +103,10 @@ mod closures {
         x()
     }
 
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_binding_type[0]::{{closure}}[0]<u32, i8, extern "rust-call" fn(()) -> core::option[0]::Option[0]<u32>, ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_binding_type[0]::{{closure}}[0]<u64, i8, extern "rust-call" fn(()) -> core::option[0]::Option[0]<u64>, ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_binding_type[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_binding_type[0]<u64>
+//~ MONO_ITEM fn closures::used_binding_type::<u32>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_binding_type::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_binding_type::<u32>
+//~ MONO_ITEM fn closures::used_binding_type::<u64>
 
     // Function and closure uses type parameter in argument.
     pub fn used_argument<T>(t: T) -> u32 {
@@ -115,10 +114,10 @@ mod closures {
         x(t)
     }
 
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_argument[0]::{{closure}}[0]<u32, i8, extern "rust-call" fn((u32)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_argument[0]::{{closure}}[0]<u64, i8, extern "rust-call" fn((u64)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_argument[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_argument[0]<u64>
+//~ MONO_ITEM fn closures::used_argument::<u32>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_argument::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_argument::<u32>
+//~ MONO_ITEM fn closures::used_argument::<u64>
 
     // Closure uses type parameter in argument.
     pub fn used_argument_closure<T: Default>() -> u32 {
@@ -127,10 +126,10 @@ mod closures {
         x(t)
     }
 
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_argument_closure[0]::{{closure}}[0]<u32, i8, extern "rust-call" fn((u32)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_argument_closure[0]::{{closure}}[0]<u64, i8, extern "rust-call" fn((u64)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_argument_closure[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_argument_closure[0]<u64>
+//~ MONO_ITEM fn closures::used_argument_closure::<u32>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_argument_closure::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_argument_closure::<u32>
+//~ MONO_ITEM fn closures::used_argument_closure::<u64>
 
     // Closure uses type parameter as upvar.
     pub fn used_upvar<T: Default>() -> T {
@@ -139,10 +138,10 @@ mod closures {
         y()
     }
 
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_upvar[0]::{{closure}}[0]<u32, i32, extern "rust-call" fn(()) -> u32, (u32)>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_upvar[0]::{{closure}}[0]<u64, i32, extern "rust-call" fn(()) -> u64, (u64)>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_upvar[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_upvar[0]<u64>
+//~ MONO_ITEM fn closures::used_upvar::<u32>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_upvar::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_upvar::<u32>
+//~ MONO_ITEM fn closures::used_upvar::<u64>
 
     // Closure uses type parameter in substitutions to another function.
     pub fn used_substs<T>() {
@@ -150,10 +149,10 @@ mod closures {
         x()
     }
 
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_substs[0]::{{closure}}[0]<u32, i8, extern "rust-call" fn(()), ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_substs[0]::{{closure}}[0]<u64, i8, extern "rust-call" fn(()), ()>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_substs[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::closures[0]::used_substs[0]<u64>
+//~ MONO_ITEM fn closures::used_substs::<u32>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_substs::<u64>::{{closure}}#0
+//~ MONO_ITEM fn closures::used_substs::<u32>
+//~ MONO_ITEM fn closures::used_substs::<u64>
 }
 
 mod methods {
@@ -164,29 +163,29 @@ mod methods {
         pub fn unused_impl() {
         }
 
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::unused_impl[0]<F>
+//~ MONO_ITEM fn methods::Foo::<F>::unused_impl
 
         // Function has an unused type parameter from impl and fn.
         pub fn unused_both<G: Default>() {
         }
 
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::unused_both[0]<F, G>
+//~ MONO_ITEM fn methods::Foo::<F>::unused_both::<G>
 
         // Function uses type parameter from impl.
         pub fn used_impl() {
             let _: F = Default::default();
         }
 
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::used_impl[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::used_impl[0]<u64>
+//~ MONO_ITEM fn methods::Foo::<u32>::used_impl
+//~ MONO_ITEM fn methods::Foo::<u64>::used_impl
 
         // Function uses type parameter from impl.
         pub fn used_fn<G: Default>() {
             let _: G = Default::default();
         }
 
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::used_fn[0]<F, u32>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::used_fn[0]<F, u64>
+//~ MONO_ITEM fn methods::Foo::<F>::used_fn::<u32>
+//~ MONO_ITEM fn methods::Foo::<F>::used_fn::<u64>
 
         // Function uses type parameter from impl.
         pub fn used_both<G: Default>() {
@@ -194,16 +193,16 @@ mod methods {
             let _: G = Default::default();
         }
 
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::used_both[0]<u32, u32>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::used_both[0]<u64, u64>
+//~ MONO_ITEM fn methods::Foo::<u32>::used_both::<u32>
+//~ MONO_ITEM fn methods::Foo::<u64>::used_both::<u64>
 
         // Function uses type parameter in substitutions to another function.
         pub fn used_substs() {
             super::functions::unused::<F>()
         }
 
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::used_substs[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::used_substs[0]<u64>
+//~ MONO_ITEM fn methods::Foo::<u32>::used_substs
+//~ MONO_ITEM fn methods::Foo::<u64>::used_substs
 
         // Function has an unused type parameter from impl and fn.
         pub fn closure_unused_all<G: Default>() -> u32 {
@@ -211,8 +210,8 @@ mod methods {
             add_one(3)
         }
 
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_unused_all[0]::{{closure}}[0]<F, G, i8, extern "rust-call" fn((u32)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_unused_all[0]<F, G>
+//~ MONO_ITEM fn methods::Foo::<F>::closure_unused_all::<G>::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<F>::closure_unused_all::<G>
 
         // Function uses type parameter from impl and fn in closure.
         pub fn closure_used_both<G: Default>() -> u32 {
@@ -225,10 +224,10 @@ mod methods {
             add_one(3)
         }
 
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_both[0]::{{closure}}[0]<u32, u32, i8, extern "rust-call" fn((u32)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_both[0]::{{closure}}[0]<u64, u64, i8, extern "rust-call" fn((u32)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_both[0]<u32, u32>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_both[0]<u64, u64>
+//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_both::<u32>::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_both::<u64>::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_both::<u32>
+//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_both::<u64>
 
         // Function uses type parameter from fn in closure.
         pub fn closure_used_fn<G: Default>() -> u32 {
@@ -240,10 +239,10 @@ mod methods {
             add_one(3)
         }
 
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_fn[0]::{{closure}}[0]<F, u32, i8, extern "rust-call" fn((u32)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_fn[0]::{{closure}}[0]<F, u64, i8, extern "rust-call" fn((u32)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_fn[0]<F, u32>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_fn[0]<F, u64>
+//~ MONO_ITEM fn methods::Foo::<F>::closure_used_fn::<u32>::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<F>::closure_used_fn::<u64>::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<F>::closure_used_fn::<u32>
+//~ MONO_ITEM fn methods::Foo::<F>::closure_used_fn::<u64>
 
         // Function uses type parameter from impl in closure.
         pub fn closure_used_impl<G: Default>() -> u32 {
@@ -255,10 +254,10 @@ mod methods {
             add_one(3)
         }
 
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_impl[0]::{{closure}}[0]<u32, G, i8, extern "rust-call" fn((u32)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_impl[0]::{{closure}}[0]<u64, G, i8, extern "rust-call" fn((u32)) -> u32, ()>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_impl[0]<u32, G>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_impl[0]<u64, G>
+//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_impl::<G>::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_impl::<G>::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_impl::<G>
+//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_impl::<G>
 
         // Closure uses type parameter in substitutions to another function.
         pub fn closure_used_substs() {
@@ -266,10 +265,10 @@ mod methods {
             x()
         }
 
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_substs[0]::{{closure}}[0]<u32, i8, extern "rust-call" fn(()), ()>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_substs[0]::{{closure}}[0]<u64, i8, extern "rust-call" fn(()), ()>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_substs[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::methods[0]::{{impl}}[0]::closure_used_substs[0]<u64>
+//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_substs::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_substs::{{closure}}#0
+//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_substs
+//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_substs
     }
 }
 
@@ -306,8 +305,8 @@ fn dispatch<T: Default>() {
     let _ = methods::Foo::<T>::closure_used_substs();
 }
 
-//~ MONO_ITEM fn unused_type_parameters::dispatch[0]<u32>
-//~ MONO_ITEM fn unused_type_parameters::dispatch[0]<u64>
+//~ MONO_ITEM fn dispatch::<u32>
+//~ MONO_ITEM fn dispatch::<u64>
 
 pub fn foo() {
     // Generate two copies of each function to check that where the type parameter is unused,
@@ -316,8 +315,8 @@ pub fn foo() {
     dispatch::<u64>();
 }
 
-//~ MONO_ITEM fn unused_type_parameters::foo[0] @@ unused_type_parameters-cgu.0[External]
+//~ MONO_ITEM fn foo @@ unused_type_parameters-cgu.0[External]
 
 // These are all the items that aren't relevant to the test.
-//~ MONO_ITEM fn core::default[0]::{{impl}}[6]::default[0]
-//~ MONO_ITEM fn core::default[0]::{{impl}}[7]::default[0]
+//~ MONO_ITEM fn <u32 as std::default::Default>::default
+//~ MONO_ITEM fn <u64 as std::default::Default>::default

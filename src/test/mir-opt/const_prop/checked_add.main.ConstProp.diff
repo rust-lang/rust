@@ -12,64 +12,21 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/checked_add.rs:5:9: 5:10
 -         _2 = CheckedAdd(const 1_u32, const 1_u32); // scope 0 at $DIR/checked_add.rs:5:18: 5:23
-+         _2 = (const 2_u32, const false); // scope 0 at $DIR/checked_add.rs:5:18: 5:23
-                                           // ty::Const
-                                           // + ty: u32
--                                          // + val: Value(Scalar(0x00000001))
-+                                          // + val: Value(Scalar(0x00000002))
-                                           // mir::Constant
--                                          // + span: $DIR/checked_add.rs:5:18: 5:19
--                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
-+                                          // + span: $DIR/checked_add.rs:5:18: 5:23
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
-                                           // ty::Const
--                                          // + ty: u32
--                                          // + val: Value(Scalar(0x00000001))
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x00))
-                                           // mir::Constant
--                                          // + span: $DIR/checked_add.rs:5:22: 5:23
--                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
 -         assert(!move (_2.1: bool), "attempt to compute `{} + {}` which would overflow", const 1_u32, const 1_u32) -> bb1; // scope 0 at $DIR/checked_add.rs:5:18: 5:23
-+                                          // + span: $DIR/checked_add.rs:5:18: 5:23
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-+         assert(!const false, "attempt to compute `{} + {}` which would overflow", const 1_u32, const 1_u32) -> bb1; // scope 0 at $DIR/checked_add.rs:5:18: 5:23
-                                           // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x00))
++         _2 = const (2_u32, false);       // scope 0 at $DIR/checked_add.rs:5:18: 5:23
++                                          // ty::Const
++                                          // + ty: (u32, bool)
++                                          // + val: Value(ByRef { alloc: Allocation { bytes: [2, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [31], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } })
 +                                          // mir::Constant
 +                                          // + span: $DIR/checked_add.rs:5:18: 5:23
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-+                                          // ty::Const
-                                           // + ty: u32
-                                           // + val: Value(Scalar(0x00000001))
-                                           // mir::Constant
-                                           // + span: $DIR/checked_add.rs:5:18: 5:19
-                                           // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
-                                           // ty::Const
-                                           // + ty: u32
-                                           // + val: Value(Scalar(0x00000001))
-                                           // mir::Constant
-                                           // + span: $DIR/checked_add.rs:5:22: 5:23
-                                           // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
++                                          // + literal: Const { ty: (u32, bool), val: Value(ByRef { alloc: Allocation { bytes: [2, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [31], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
++         assert(!const false, "attempt to compute `{} + {}` which would overflow", const 1_u32, const 1_u32) -> bb1; // scope 0 at $DIR/checked_add.rs:5:18: 5:23
       }
   
       bb1: {
 -         _1 = move (_2.0: u32);           // scope 0 at $DIR/checked_add.rs:5:18: 5:23
 +         _1 = const 2_u32;                // scope 0 at $DIR/checked_add.rs:5:18: 5:23
-+                                          // ty::Const
-+                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x00000002))
-+                                          // mir::Constant
-+                                          // + span: $DIR/checked_add.rs:5:18: 5:23
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
           _0 = const ();                   // scope 0 at $DIR/checked_add.rs:4:11: 6:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/checked_add.rs:4:11: 6:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // scope 0 at $DIR/checked_add.rs:6:1: 6:2
           return;                          // scope 0 at $DIR/checked_add.rs:6:2: 6:2
       }

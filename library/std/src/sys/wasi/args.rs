@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::wasi::ffi::OsStrExt;

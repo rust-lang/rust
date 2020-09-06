@@ -16,7 +16,7 @@ struct Config {
 }
 
 struct B<const CFG: Config> {
-    //[min]~^ ERROR using `Config` as const generic parameters is forbidden
+    //[min]~^ ERROR `Config` is forbidden
     arr: [u8; CFG.arr_size],
     //[full]~^ ERROR constant expression depends on a generic parameter
     //[min]~^^ ERROR generic parameters must not be used inside of non trivial

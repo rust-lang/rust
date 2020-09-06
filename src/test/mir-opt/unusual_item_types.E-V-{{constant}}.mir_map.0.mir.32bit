@@ -5,12 +5,6 @@ E::V::{{constant}}#0: isize = {
 
     bb0: {
         _0 = const 5_isize;              // scope 0 at $DIR/unusual-item-types.rs:22:9: 22:10
-                                         // ty::Const
-                                         // + ty: isize
-                                         // + val: Value(Scalar(0x00000005))
-                                         // mir::Constant
-                                         // + span: $DIR/unusual-item-types.rs:22:9: 22:10
-                                         // + literal: Const { ty: isize, val: Value(Scalar(0x00000005)) }
         return;                          // scope 0 at $DIR/unusual-item-types.rs:22:9: 22:10
     }
 

@@ -7,9 +7,9 @@ LL |     fn iceman(c: Vec<[i32]>) {}
   ::: $SRC_DIR/alloc/src/vec.rs:LL:COL
    |
 LL | pub struct Vec<T> {
-   |                - required by this bound in `std::vec::Vec`
+   |                - required by this bound in `Vec`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[i32]`
+   = help: the trait `Sized` is not implemented for `[i32]`
 
 error: aborting due to previous error
 

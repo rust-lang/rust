@@ -172,6 +172,7 @@
 //! [`Vec<T>`]: vec::Vec
 //! [`atomic`]: sync::atomic
 //! [`for`]: ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
+//! [`str`]: prim@str
 //! [`mpsc`]: sync::mpsc
 //! [`std::cmp`]: cmp
 //! [`std::slice`]: slice
@@ -208,7 +209,7 @@
 #![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
-    feature(slice_index_methods, coerce_unsized, sgx_platform, ptr_wrapping_offset_from)
+    feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
 #![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"), feature(fixed_size_array))]
 // std is implemented with unstable features, many of which are internal
@@ -237,7 +238,9 @@
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
 #![feature(const_fn_transmute)]
+#![feature(const_ipv6)]
 #![feature(const_raw_ptr_deref)]
+#![feature(const_ipv4)]
 #![feature(container_error_extra)]
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
@@ -246,7 +249,7 @@
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
 #![feature(doc_masked)]
-#![cfg_attr(not(bootstrap), feature(doc_spotlight))]
+#![feature(doc_spotlight)]
 #![feature(dropck_eyepatch)]
 #![feature(duration_constants)]
 #![feature(exact_size_is_empty)]

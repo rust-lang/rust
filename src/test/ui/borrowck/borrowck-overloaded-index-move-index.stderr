@@ -26,7 +26,7 @@ error[E0382]: use of moved value: `s`
   --> $DIR/borrowck-overloaded-index-move-index.rs:53:7
    |
 LL |     let mut s = "hello".to_string();
-   |         ----- move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
+   |         ----- move occurs because `s` has type `String`, which does not implement the `Copy` trait
 ...
 LL |     println!("{}", f[s]);
    |                      - value moved here

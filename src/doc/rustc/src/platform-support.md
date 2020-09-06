@@ -118,7 +118,7 @@ target | std | host | notes
 `thumbv7neon-unknown-linux-gnueabihf` | ✓ |  | Thumb2-mode ARMv7a Linux with NEON (kernel 4.4, glibc 2.23)
 `thumbv8m.base-none-eabi` | * |  | ARMv8-M Baseline
 `thumbv8m.main-none-eabi` | * |  | ARMv8-M Mainline
-`thumbv8m.main-none-eabihf` | * |  | ARMv8-M Baseline, hardfloat
+`thumbv8m.main-none-eabihf` | * |  | ARMv8-M Mainline, hardfloat
 `wasm32-unknown-emscripten` | ✓ |  | WebAssembly via Emscripten
 `wasm32-unknown-unknown` | ✓ |  | WebAssembly
 `wasm32-wasi` | ✓ |  | WebAssembly with WASI
@@ -128,7 +128,6 @@ target | std | host | notes
 `x86_64-linux-android` | ✓ |  | 64-bit x86 Android
 `x86_64-rumprun-netbsd` | ✓ |  | 64-bit NetBSD Rump Kernel
 `x86_64-sun-solaris` | ✓ |  | 64-bit Solaris 10/11, illumos
-`x86_64-unknown-cloudabi` | ✓ |  | 64-bit CloudABI
 `x86_64-unknown-freebsd` | ✓ | ✓ | 64-bit FreeBSD
 `x86_64-unknown-illumos` | ✓ | ✓ | illumos
 `x86_64-unknown-linux-gnux32` | ✓ |  | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
@@ -166,7 +165,7 @@ target | std | host | notes
 `armv7-wrs-vxworks-eabihf` | ? |  |
 `armv7a-none-eabihf` | * | | ARM Cortex-A, hardfloat
 `armv7s-apple-ios` | ✓[^apple] |  |
-`avr-unknown-unknown` | ? |  | AVR
+`avr-unknown-gnu-atmega328` | ✗ |  | AVR. Requires `-Z build-std=core`
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓[^apple] |  | 32-bit x86 iOS
 `i686-apple-darwin` | ✓ | ✓ | 32-bit OSX (10.7+, Lion+)
@@ -205,9 +204,10 @@ target | std | host | notes
 `thumbv4t-none-eabi` | * |  | ARMv4T T32
 `x86_64-apple-ios-macabi` | ✓[^apple] |  | Apple Catalyst
 `x86_64-apple-tvos` | *[^apple] | | x86 64-bit tvOS
-`x86_64-linux-kernel` | ? |  | Linux kernel modules
+`x86_64-linux-kernel` | * |  | Linux kernel modules
 `x86_64-pc-solaris` | ? |  |
 `x86_64-pc-windows-msvc` | ✓ |  | 64-bit Windows XP support
+`x86_64-unknown-cloudabi` | ✓ |  | 64-bit CloudABI
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
 `x86_64-unknown-hermit` | ? |  |

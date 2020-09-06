@@ -2,18 +2,18 @@ error[E0308]: mismatched types
   --> $DIR/issue-5216.rs:3:21
    |
 LL | pub static C: S = S(f);
-   |                     ^ expected struct `std::boxed::Box`, found fn item
+   |                     ^ expected struct `Box`, found fn item
    |
-   = note: expected struct `std::boxed::Box<(dyn std::ops::FnMut() + 'static)>`
+   = note: expected struct `Box<(dyn FnMut() + 'static)>`
              found fn item `fn() {f}`
 
 error[E0308]: mismatched types
   --> $DIR/issue-5216.rs:8:19
    |
 LL | pub static D: T = g;
-   |                   ^ expected struct `std::boxed::Box`, found fn item
+   |                   ^ expected struct `Box`, found fn item
    |
-   = note: expected struct `std::boxed::Box<(dyn std::ops::FnMut() + 'static)>`
+   = note: expected struct `Box<(dyn FnMut() + 'static)>`
              found fn item `fn() {g}`
 
 error: aborting due to 2 previous errors

@@ -15,9 +15,9 @@ fn main() {
     if let Some(mut x) = s {
         x = S;
     }
-    foo(s); //~ ERROR use of moved value: `s`
+    foo(s); //~ ERROR use of partially moved value: `s`
     let mut e = E::V { s: S };
     let E::V { s: mut x } = e;
     x = S;
-    bar(e); //~ ERROR use of moved value: `e`
+    bar(e); //~ ERROR use of partially moved value: `e`
 }

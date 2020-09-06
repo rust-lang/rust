@@ -1,5 +1,4 @@
-use crate::iter::LoopState;
-use crate::ops::Try;
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator able to yield elements from both ends.
 ///
@@ -149,7 +148,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// This is the reverse version of [`try_fold()`]: it takes elements
     /// starting from the back of the iterator.
     ///
-    /// [`try_fold()`]: trait.Iterator.html#method.try_fold
+    /// [`try_fold()`]: Iterator::try_fold
     ///
     /// # Examples
     ///
@@ -214,7 +213,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// Folding is useful whenever you have a collection of something, and want
     /// to produce a single value from it.
     ///
-    /// [`fold()`]: trait.Iterator.html#method.fold
+    /// [`fold()`]: Iterator::fold
     ///
     /// # Examples
     ///
@@ -309,9 +308,9 @@ pub trait DoubleEndedIterator: Iterator {
         #[inline]
         fn check<T>(
             mut predicate: impl FnMut(&T) -> bool,
-        ) -> impl FnMut((), T) -> LoopState<(), T> {
+        ) -> impl FnMut((), T) -> ControlFlow<(), T> {
             move |(), x| {
-                if predicate(&x) { LoopState::Break(x) } else { LoopState::Continue(()) }
+                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
             }
         }
 

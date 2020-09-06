@@ -1,7 +1,7 @@
 //! The Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for `clean`.
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -323,7 +323,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
 
         let res_hir_id = match res_did.as_local() {
-            Some(n) => tcx.hir().as_local_hir_id(n),
+            Some(n) => tcx.hir().local_def_id_to_hir_id(n),
             None => return false,
         };
 

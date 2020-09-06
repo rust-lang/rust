@@ -29,8 +29,7 @@
 /// to the same boxed integer value, not five references pointing to independently
 /// boxed integers.
 ///
-/// [`Vec`]: ../std/vec/struct.Vec.html
-/// [`Clone`]: ../std/clone/trait.Clone.html
+/// [`Vec`]: crate::vec::Vec
 #[cfg(not(test))]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -81,11 +80,11 @@ macro_rules! vec {
 /// To convert a single value to a string, use the [`to_string`] method. This
 /// will use the [`Display`] formatting trait.
 ///
-/// [fmt]: ../std/fmt/index.html
+/// [fmt]: core::fmt
 /// [`print!`]: ../std/macro.print.html
-/// [`write!`]: ../std/macro.write.html
-/// [`to_string`]: ../std/string/trait.ToString.html
-/// [`Display`]: ../std/fmt/trait.Display.html
+/// [`write!`]: core::write
+/// [`to_string`]: crate::string::ToString
+/// [`Display`]: core::fmt::Display
 ///
 /// # Panics
 ///

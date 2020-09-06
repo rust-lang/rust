@@ -19,8 +19,8 @@ LL |     fn bar(_: Option<u8>);
 LL |     fn bar(_: Option<u16>) {}
    |               ^^^^^^^^^^^ expected `u8`, found `u16`
    |
-   = note: expected fn pointer `fn(std::option::Option<u8>)`
-              found fn pointer `fn(std::option::Option<u16>)`
+   = note: expected fn pointer `fn(Option<u8>)`
+              found fn pointer `fn(Option<u16>)`
 
 error[E0053]: method `baz` has an incompatible type for trait
   --> $DIR/issue-35869.rs:15:15

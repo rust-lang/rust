@@ -260,15 +260,15 @@ error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:27:20
    |
 LL |             Fn(u8),
-   |             ------ fn(u8) -> m::n::Z {m::n::Z::Fn} defined here
+   |             ------ fn(u8) -> Z {Z::Fn} defined here
 ...
 LL |         let _: Z = Z::Fn;
-   |                -   ^^^^^ expected enum `m::n::Z`, found fn item
+   |                -   ^^^^^ expected enum `Z`, found fn item
    |                |
    |                expected due to this
    |
-   = note: expected enum `m::n::Z`
-           found fn item `fn(u8) -> m::n::Z {m::n::Z::Fn}`
+   = note: expected enum `Z`
+           found fn item `fn(u8) -> Z {Z::Fn}`
 help: use parentheses to instantiate this tuple variant
    |
 LL |         let _: Z = Z::Fn(_);
@@ -294,15 +294,15 @@ error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:43:16
    |
 LL |         Fn(u8),
-   |         ------ fn(u8) -> m::E {m::E::Fn} defined here
+   |         ------ fn(u8) -> E {E::Fn} defined here
 ...
 LL |     let _: E = m::E::Fn;
-   |            -   ^^^^^^^^ expected enum `m::E`, found fn item
+   |            -   ^^^^^^^^ expected enum `E`, found fn item
    |            |
    |            expected due to this
    |
-   = note: expected enum `m::E`
-           found fn item `fn(u8) -> m::E {m::E::Fn}`
+   = note: expected enum `E`
+           found fn item `fn(u8) -> E {E::Fn}`
 help: use parentheses to instantiate this tuple variant
    |
 LL |     let _: E = m::E::Fn(_);
@@ -328,15 +328,15 @@ error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:51:16
    |
 LL |         Fn(u8),
-   |         ------ fn(u8) -> m::E {m::E::Fn} defined here
+   |         ------ fn(u8) -> E {E::Fn} defined here
 ...
 LL |     let _: E = E::Fn;
-   |            -   ^^^^^ expected enum `m::E`, found fn item
+   |            -   ^^^^^ expected enum `E`, found fn item
    |            |
    |            expected due to this
    |
-   = note: expected enum `m::E`
-           found fn item `fn(u8) -> m::E {m::E::Fn}`
+   = note: expected enum `E`
+           found fn item `fn(u8) -> E {E::Fn}`
 help: use parentheses to instantiate this tuple variant
    |
 LL |     let _: E = E::Fn(_);

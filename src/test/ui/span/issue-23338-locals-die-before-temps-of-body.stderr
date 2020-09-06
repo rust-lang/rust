@@ -10,7 +10,7 @@ LL | }
    | -
    | |
    | `y` dropped here while still borrowed
-   | ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `std::cell::Ref<'_, std::string::String>`
+   | ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `Ref<'_, String>`
    |
    = note: the temporary is part of an expression at the end of a block;
            consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
@@ -28,7 +28,7 @@ LL |         y.borrow().clone()
    |         borrowed value does not live long enough
    |         a temporary with access to the borrow is created here ...
 LL |     };
-   |     -- ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `std::cell::Ref<'_, std::string::String>`
+   |     -- ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `Ref<'_, String>`
    |     |
    |     `y` dropped here while still borrowed
    |

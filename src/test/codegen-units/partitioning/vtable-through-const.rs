@@ -28,7 +28,7 @@ mod mod1 {
         fn do_something_else(&self, x: T) -> T { x }
     }
 
-    //~ MONO_ITEM fn vtable_through_const::mod1[0]::id[0]<i64> @@ vtable_through_const-mod1.volatile[Internal]
+    //~ MONO_ITEM fn mod1::id::<i64> @@ vtable_through_const-mod1.volatile[Internal]
     fn id<T>(x: T) -> T { x }
 
     // These are referenced, so they produce mono-items (see start())
@@ -43,8 +43,8 @@ mod mod1 {
         fn do_something_else(&self) {}
     }
 
-    //~ MONO_ITEM fn vtable_through_const::mod1[0]::Trait2[0]::do_something[0]<u32> @@ vtable_through_const-mod1.volatile[Internal]
-    //~ MONO_ITEM fn vtable_through_const::mod1[0]::Trait2[0]::do_something_else[0]<u32> @@ vtable_through_const-mod1.volatile[Internal]
+    //~ MONO_ITEM fn <u32 as mod1::Trait2>::do_something @@ vtable_through_const-mod1.volatile[Internal]
+    //~ MONO_ITEM fn <u32 as mod1::Trait2>::do_something_else @@ vtable_through_const-mod1.volatile[Internal]
     impl Trait2 for u32 {}
 
     pub trait Trait2Gen<T> {
@@ -63,30 +63,30 @@ mod mod1 {
     pub const ID_I64: fn(i64) -> i64 = id::<i64>;
 }
 
-//~ MONO_ITEM fn vtable_through_const::start[0]
+//~ MONO_ITEM fn start
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<u32> @@ vtable_through_const[Internal]
+    //~ MONO_ITEM fn std::intrinsics::drop_in_place::<u32> - shim(None) @@ vtable_through_const[Internal]
 
     // Since Trait1::do_something() is instantiated via its default implementation,
     // it is considered a generic and is instantiated here only because it is
     // referenced in this module.
-    //~ MONO_ITEM fn vtable_through_const::mod1[0]::Trait1[0]::do_something_else[0]<u32> @@ vtable_through_const-mod1.volatile[External]
+    //~ MONO_ITEM fn <u32 as mod1::Trait1>::do_something_else @@ vtable_through_const-mod1.volatile[External]
 
     // Although it is never used, Trait1::do_something_else() has to be
     // instantiated locally here too, otherwise the <&u32 as &Trait1> vtable
     // could not be fully constructed.
-    //~ MONO_ITEM fn vtable_through_const::mod1[0]::Trait1[0]::do_something[0]<u32> @@ vtable_through_const-mod1.volatile[External]
+    //~ MONO_ITEM fn <u32 as mod1::Trait1>::do_something @@ vtable_through_const-mod1.volatile[External]
     mod1::TRAIT1_REF.do_something();
 
     // Same as above
-    //~ MONO_ITEM fn vtable_through_const::mod1[0]::{{impl}}[1]::do_something[0]<u8> @@ vtable_through_const-mod1.volatile[External]
-    //~ MONO_ITEM fn vtable_through_const::mod1[0]::{{impl}}[1]::do_something_else[0]<u8> @@ vtable_through_const-mod1.volatile[External]
-    //~ MONO_ITEM fn vtable_through_const::mod1[0]::{{impl}}[3]::do_something[0]<u8> @@ vtable_through_const-mod1.volatile[Internal]
-    //~ MONO_ITEM fn vtable_through_const::mod1[0]::{{impl}}[3]::do_something_else[0]<u8> @@ vtable_through_const-mod1.volatile[Internal]
+    //~ MONO_ITEM fn <u32 as mod1::Trait1Gen<u8>>::do_something @@ vtable_through_const-mod1.volatile[External]
+    //~ MONO_ITEM fn <u32 as mod1::Trait1Gen<u8>>::do_something_else @@ vtable_through_const-mod1.volatile[External]
+    //~ MONO_ITEM fn <u32 as mod1::Trait2Gen<u8>>::do_something @@ vtable_through_const-mod1.volatile[Internal]
+    //~ MONO_ITEM fn <u32 as mod1::Trait2Gen<u8>>::do_something_else @@ vtable_through_const-mod1.volatile[Internal]
     mod1::TRAIT1_GEN_REF.do_something(0u8);
 
-    //~ MONO_ITEM fn vtable_through_const::mod1[0]::id[0]<char> @@ vtable_through_const-mod1.volatile[External]
+    //~ MONO_ITEM fn mod1::id::<char> @@ vtable_through_const-mod1.volatile[External]
     mod1::ID_CHAR('x');
 
     0

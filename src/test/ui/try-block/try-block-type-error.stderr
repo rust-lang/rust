@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<std::option::Option<f32> as std::ops::Try>::Ok == {integer}`
+error[E0271]: type mismatch resolving `<Option<f32> as Try>::Ok == {integer}`
   --> $DIR/try-block-type-error.rs:10:9
    |
 LL |         42
@@ -7,7 +7,7 @@ LL |         42
    |         expected `f32`, found integer
    |         help: use a float literal: `42.0`
 
-error[E0271]: type mismatch resolving `<std::option::Option<i32> as std::ops::Try>::Ok == ()`
+error[E0271]: type mismatch resolving `<Option<i32> as Try>::Ok == ()`
   --> $DIR/try-block-type-error.rs:16:5
    |
 LL |     };

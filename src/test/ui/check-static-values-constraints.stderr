@@ -105,7 +105,7 @@ error[E0507]: cannot move out of static item `x`
 LL |     let y = { static x: Box<isize> = box 3; x };
    |                                             ^
    |                                             |
-   |                                             move occurs because `x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |                                             move occurs because `x` has type `Box<isize>`, which does not implement the `Copy` trait
    |                                             help: consider borrowing here: `&x`
 
 error[E0010]: allocations are not allowed in statics

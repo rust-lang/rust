@@ -6,7 +6,7 @@
 #![cfg_attr(min, feature(min_const_generics))]
 
 struct Const<const V: [usize; 1]> {}
-//[min]~^ using `[usize; 1]` as const generic parameters is forbidden
+//[min]~^ ERROR `[usize; 1]` is forbidden
 
 fn main() {
     let mut x = Const::<{ [3] }> {};

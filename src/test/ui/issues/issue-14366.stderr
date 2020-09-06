@@ -4,8 +4,8 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL |     let _x = "test" as &dyn (::std::any::Any);
    |              ^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: required for the cast to the object type `dyn std::any::Any`
+   = help: the trait `Sized` is not implemented for `str`
+   = note: required for the cast to the object type `dyn Any`
 
 error: aborting due to previous error
 

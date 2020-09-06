@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use crate::cmp;
 use crate::convert::{TryFrom, TryInto};
 use crate::ffi::CString;
@@ -585,8 +588,8 @@ impl UdpSocket {
 
     pub fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         let mreq = c::ip_mreq {
-            imr_multiaddr: *multiaddr.as_inner(),
-            imr_interface: *interface.as_inner(),
+            imr_multiaddr: multiaddr.into_inner(),
+            imr_interface: interface.into_inner(),
         };
         setsockopt(&self.inner, c::IPPROTO_IP, c::IP_ADD_MEMBERSHIP, mreq)
     }
@@ -601,8 +604,8 @@ impl UdpSocket {
 
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         let mreq = c::ip_mreq {
-            imr_multiaddr: *multiaddr.as_inner(),
-            imr_interface: *interface.as_inner(),
+            imr_multiaddr: multiaddr.into_inner(),
+            imr_interface: interface.into_inner(),
         };
         setsockopt(&self.inner, c::IPPROTO_IP, c::IP_DROP_MEMBERSHIP, mreq)
     }
@@ -670,28 +673,5 @@ impl fmt::Debug for UdpSocket {
 
         let name = if cfg!(windows) { "socket" } else { "fd" };
         res.field(name, &self.inner.as_inner()).finish()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::collections::HashMap;
-
-    #[test]
-    fn no_lookup_host_duplicates() {
-        let mut addrs = HashMap::new();
-        let lh = match LookupHost::try_from(("localhost", 0)) {
-            Ok(lh) => lh,
-            Err(e) => panic!("couldn't resolve `localhost': {}", e),
-        };
-        for sa in lh {
-            *addrs.entry(sa).or_insert(0) += 1;
-        }
-        assert_eq!(
-            addrs.iter().filter(|&(_, &v)| v > 1).collect::<Vec<_>>(),
-            vec![],
-            "There should be no duplicate localhost entries"
-        );
     }
 }

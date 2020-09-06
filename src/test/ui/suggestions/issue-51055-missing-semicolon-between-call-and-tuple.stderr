@@ -2,7 +2,7 @@ error[E0618]: expected function, found `bool`
   --> $DIR/issue-51055-missing-semicolon-between-call-and-tuple.rs:4:5
    |
 LL |   fn vindictive() -> bool { true }
-   |   -------------------------------- `vindictive` defined here returns `bool`
+   |   ----------------------- `vindictive` defined here returns `bool`
 ...
 LL |       vindictive()
    |       -^^^^^^^^^^^- help: try adding a semicolon: `;`

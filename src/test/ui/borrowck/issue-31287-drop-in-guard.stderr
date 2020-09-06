@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `a`
   --> $DIR/issue-31287-drop-in-guard.rs:5:9
    |
 LL |     let a = Some("...".to_owned());
-   |         - move occurs because `a` has type `std::option::Option<std::string::String>`, which does not implement the `Copy` trait
+   |         - move occurs because `a` has type `Option<String>`, which does not implement the `Copy` trait
 LL |     let b = match a {
 LL |         Some(_) if { drop(a); false } => None,
    |                           - value moved here

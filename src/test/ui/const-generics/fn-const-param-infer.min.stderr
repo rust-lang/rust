@@ -3,9 +3,6 @@ error: using function pointers as const generic parameters is forbidden
    |
 LL | struct Checked<const F: fn(usize) -> bool>;
    |                         ^^^^^^^^^^^^^^^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-   = note: more complex types are supported with `#[feature(const_generics)]`
 
 error: aborting due to previous error
 

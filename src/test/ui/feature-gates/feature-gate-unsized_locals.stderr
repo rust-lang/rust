@@ -1,10 +1,10 @@
-error[E0277]: the size for values of type `(dyn std::ops::FnOnce() + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `(dyn FnOnce() + 'static)` cannot be known at compilation time
   --> $DIR/feature-gate-unsized_locals.rs:1:6
    |
 LL | fn f(f: dyn FnOnce()) {}
    |      ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `(dyn std::ops::FnOnce() + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn FnOnce() + 'static)`
    = help: unsized locals are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |

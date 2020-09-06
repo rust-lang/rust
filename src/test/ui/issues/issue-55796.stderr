@@ -9,7 +9,7 @@ note: first, the lifetime cannot outlive the lifetime `'a` as defined on the tra
    |
 LL | pub trait Graph<'a> {
    |                 ^^
-note: ...so that the type `std::iter::Map<<Self as Graph<'a>>::EdgesIter, [closure@$DIR/issue-55796.rs:16:40: 16:54]>` will meet its required lifetime bounds
+note: ...so that the type `Map<<Self as Graph<'a>>::EdgesIter, [closure@$DIR/issue-55796.rs:16:40: 16:54]>` will meet its required lifetime bounds
   --> $DIR/issue-55796.rs:16:9
    |
 LL |         Box::new(self.out_edges(u).map(|e| e.target()))
@@ -20,8 +20,8 @@ note: ...so that the expression is assignable
    |
 LL |         Box::new(self.out_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected `std::boxed::Box<(dyn std::iter::Iterator<Item = <Self as Graph<'a>>::Node> + 'static)>`
-              found `std::boxed::Box<dyn std::iter::Iterator<Item = <Self as Graph<'a>>::Node>>`
+   = note: expected `Box<(dyn Iterator<Item = <Self as Graph<'a>>::Node> + 'static)>`
+              found `Box<dyn Iterator<Item = <Self as Graph<'a>>::Node>>`
 
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/issue-55796.rs:21:9
@@ -34,7 +34,7 @@ note: first, the lifetime cannot outlive the lifetime `'a` as defined on the tra
    |
 LL | pub trait Graph<'a> {
    |                 ^^
-note: ...so that the type `std::iter::Map<<Self as Graph<'a>>::EdgesIter, [closure@$DIR/issue-55796.rs:21:39: 21:53]>` will meet its required lifetime bounds
+note: ...so that the type `Map<<Self as Graph<'a>>::EdgesIter, [closure@$DIR/issue-55796.rs:21:39: 21:53]>` will meet its required lifetime bounds
   --> $DIR/issue-55796.rs:21:9
    |
 LL |         Box::new(self.in_edges(u).map(|e| e.target()))
@@ -45,8 +45,8 @@ note: ...so that the expression is assignable
    |
 LL |         Box::new(self.in_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected `std::boxed::Box<(dyn std::iter::Iterator<Item = <Self as Graph<'a>>::Node> + 'static)>`
-              found `std::boxed::Box<dyn std::iter::Iterator<Item = <Self as Graph<'a>>::Node>>`
+   = note: expected `Box<(dyn Iterator<Item = <Self as Graph<'a>>::Node> + 'static)>`
+              found `Box<dyn Iterator<Item = <Self as Graph<'a>>::Node>>`
 
 error: aborting due to 2 previous errors
 

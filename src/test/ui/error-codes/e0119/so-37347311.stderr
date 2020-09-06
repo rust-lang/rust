@@ -5,7 +5,7 @@ LL | impl<S: Storage> From<S::Error> for MyError<S> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
-           - impl<T> std::convert::From<T> for T;
+           - impl<T> From<T> for T;
 
 error: aborting due to previous error
 

@@ -1,4 +1,4 @@
-error[E0560]: struct `rmeta_meta::Foo` has no field named `field2`
+error[E0560]: struct `Foo` has no field named `field2`
   --> $DIR/rmeta_meta_main.rs:13:19
    |
 LL |     let _ = Foo { field2: 42 };

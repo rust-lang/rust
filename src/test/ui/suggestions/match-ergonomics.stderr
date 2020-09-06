@@ -12,17 +12,17 @@ LL |         [&v] => {},
    = note:   expected type `i32`
            found reference `&_`
 
-error[E0529]: expected an array or slice, found `std::vec::Vec<i32>`
+error[E0529]: expected an array or slice, found `Vec<i32>`
   --> $DIR/match-ergonomics.rs:8:9
    |
 LL |         [&v] => {},
-   |         ^^^^ pattern cannot match with input type `std::vec::Vec<i32>`
+   |         ^^^^ pattern cannot match with input type `Vec<i32>`
 
-error[E0529]: expected an array or slice, found `std::vec::Vec<i32>`
+error[E0529]: expected an array or slice, found `Vec<i32>`
   --> $DIR/match-ergonomics.rs:20:9
    |
 LL |         [v] => {},
-   |         ^^^ pattern cannot match with input type `std::vec::Vec<i32>`
+   |         ^^^ pattern cannot match with input type `Vec<i32>`
 
 error[E0308]: mismatched types
   --> $DIR/match-ergonomics.rs:29:9

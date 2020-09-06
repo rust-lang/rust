@@ -56,9 +56,9 @@ use crate::ptr;
 /// working with [pinned] data, where reusing the memory without calling the destructor could lead
 /// to Undefined Behaviour.
 ///
-/// [`mem::zeroed`]: fn.zeroed.html
-/// [`MaybeUninit<T>`]: union.MaybeUninit.html
-/// [pinned]: ../pin/index.html
+/// [`mem::zeroed`]: crate::mem::zeroed
+/// [`MaybeUninit<T>`]: crate::mem::MaybeUninit
+/// [pinned]: crate::pin
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[lang = "manually_drop"]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -74,8 +74,12 @@ impl<T> ManuallyDrop<T> {
     ///
     /// ```rust
     /// use std::mem::ManuallyDrop;
-    /// ManuallyDrop::new(Box::new(()));
+    /// let mut x = ManuallyDrop::new(String::from("Hello World!"));
+    /// x.truncate(5); // You can still safely operate on the value
+    /// assert_eq!(*x, "Hello");
+    /// // But `Drop` will not be run here
     /// ```
+    #[must_use = "if you don't need the wrapper, you can use `mem::forget` instead"]
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[rustc_const_stable(feature = "const_manually_drop", since = "1.36.0")]
     #[inline(always)]
@@ -116,8 +120,6 @@ impl<T> ManuallyDrop<T> {
     /// leaving the state of this container unchanged.
     /// It is your responsibility to ensure that this `ManuallyDrop` is not used again.
     ///
-    /// [`ManuallyDrop::drop`]: #method.drop
-    /// [`ManuallyDrop::into_inner`]: #method.into_inner
     #[must_use = "if you don't need the value, you can use `ManuallyDrop::drop` instead"]
     #[stable(feature = "manually_drop_take", since = "1.42.0")]
     #[inline]
@@ -148,9 +150,7 @@ impl<T: ?Sized> ManuallyDrop<T> {
     /// This is normally prevented by the type system, but users of `ManuallyDrop` must
     /// uphold those guarantees without assistance from the compiler.
     ///
-    /// [`ManuallyDrop::into_inner`]: #method.into_inner
-    /// [`ptr::drop_in_place`]: ../ptr/fn.drop_in_place.html
-    /// [pinned]: ../pin/index.html
+    /// [pinned]: crate::pin
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
     pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {

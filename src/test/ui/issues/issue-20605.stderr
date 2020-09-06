@@ -1,11 +1,11 @@
-error[E0277]: the size for values of type `dyn std::iter::Iterator<Item = &'a mut u8>` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Iterator<Item = &'a mut u8>` cannot be known at compilation time
   --> $DIR/issue-20605.rs:2:17
    |
 LL |     for item in *things { *item = 0 }
    |                 ^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `dyn std::iter::Iterator<Item = &'a mut u8>`
-   = note: required by `std::iter::IntoIterator::into_iter`
+   = help: the trait `Sized` is not implemented for `dyn Iterator<Item = &'a mut u8>`
+   = note: required by `into_iter`
 
 error: aborting due to previous error
 

@@ -1,0 +1,64 @@
+    1|       |#![allow(unused_assignments)]
+    2|       |
+    3|       |fn main() {
+    4|       |    let mut countdown = 0;
+    5|      2|    if true {
+                     ^1
+    6|      2|        countdown = 10;
+    7|      2|    }
+    8|       |
+    9|      2|    if countdown > 7 {
+                     ^1
+   10|      2|        countdown -= 4;
+                      ^1
+   11|      2|    } else if countdown > 2 {
+                         ^0 ^0
+   12|      0|        if countdown < 1 || countdown > 5 || countdown != 9 {
+   13|      0|            countdown = 0;
+   14|      0|        }
+   15|      0|        countdown -= 5;
+   16|      0|    } else {
+   17|      0|        return;
+   18|      0|    }
+   19|      0|
+   20|      0|    let mut countdown = 0;
+   21|      2|    if true {
+                     ^1
+   22|      2|        countdown = 10;
+   23|      2|    }
+   24|      0|
+   25|      2|    if countdown > 7 {
+                     ^1
+   26|      2|        countdown -= 4;
+                      ^1
+   27|      2|    } else if countdown > 2 {
+                         ^0 ^0
+   28|      0|        if countdown < 1 || countdown > 5 || countdown != 9 {
+   29|      0|            countdown = 0;
+   30|      0|        }
+   31|      0|        countdown -= 5;
+   32|      0|    } else {
+   33|      0|        return;
+   34|      0|    }
+   35|      0|
+   36|      0|    let mut countdown = 0;
+   37|      2|    if true {
+                     ^1
+   38|      2|        countdown = 10;
+   39|      2|    }
+   40|      0|
+   41|      2|    if countdown > 7 {
+                     ^1
+   42|      2|        countdown -= 4;
+                      ^1
+   43|      2|    } else if countdown > 2 {
+                         ^0 ^0
+   44|      0|        if countdown < 1 || countdown > 5 || countdown != 9 {
+   45|      0|            countdown = 0;
+   46|      0|        }
+   47|      0|        countdown -= 5;
+   48|      0|    } else {
+   49|      0|        return;
+   50|      0|    }
+   51|      1|}
+

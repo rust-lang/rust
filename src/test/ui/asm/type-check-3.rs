@@ -12,9 +12,9 @@ fn main() {
         asm!("{}", in(reg) 0i128);
         //~^ ERROR type `i128` cannot be used with this register class
         asm!("{}", in(reg) _mm_setzero_ps());
-        //~^ ERROR type `std::arch::x86_64::__m128` cannot be used with this register class
+        //~^ ERROR type `__m128` cannot be used with this register class
         asm!("{}", in(reg) _mm256_setzero_ps());
-        //~^ ERROR type `std::arch::x86_64::__m256` cannot be used with this register class
+        //~^ ERROR type `__m256` cannot be used with this register class
         asm!("{}", in(xmm_reg) 0u8);
         //~^ ERROR type `u8` cannot be used with this register class
         asm!("{:e}", in(reg) 0i32);

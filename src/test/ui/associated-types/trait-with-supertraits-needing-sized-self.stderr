@@ -7,12 +7,12 @@ LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self>
   ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
 LL | pub trait Add<Rhs = Self> {
-   |               --- required by this bound in `std::ops::Add`
+   |               --- required by this bound in `Add`
    |
 help: consider further restricting `Self`
    |
-LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> + std::marker::Sized {}
-   |                                                                                                ^^^^^^^^^^^^^^^^^^^^
+LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> + Sized {}
+   |                                                                                                ^^^^^^^
 
 error: aborting due to previous error
 

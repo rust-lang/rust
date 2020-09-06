@@ -84,27 +84,20 @@
 //! assert_eq!(b"test", output.stdout.as_slice());
 //! ```
 //!
-//! [`abort`]: fn.abort.html
-//! [`exit`]: fn.exit.html
+//! [`spawn`]: Command::spawn
+//! [`output`]: Command::output
 //!
-//! [`Command`]: struct.Command.html
-//! [`spawn`]: struct.Command.html#method.spawn
-//! [`output`]: struct.Command.html#method.output
+//! [`stdout`]: Command::stdout
+//! [`stdin`]: Command::stdin
+//! [`stderr`]: Command::stderr
 //!
-//! [`Child`]: struct.Child.html
-//! [`ChildStdin`]: struct.ChildStdin.html
-//! [`ChildStdout`]: struct.ChildStdout.html
-//! [`ChildStderr`]: struct.ChildStderr.html
-//! [`Stdio`]: struct.Stdio.html
-//!
-//! [`stdout`]: struct.Command.html#method.stdout
-//! [`stdin`]: struct.Command.html#method.stdin
-//! [`stderr`]: struct.Command.html#method.stderr
-//!
-//! [`Write`]: ../io/trait.Write.html
-//! [`Read`]: ../io/trait.Read.html
+//! [`Write`]: io::Write
+//! [`Read`]: io::Read
 
 #![stable(feature = "process", since = "1.0.0")]
+
+#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten", target_env = "sgx"))))]
+mod tests;
 
 use crate::io::prelude::*;
 
@@ -130,13 +123,13 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// run, even after the `Child` handle to the child process has gone out of
 /// scope.
 ///
-/// Calling [`wait`](#method.wait) (or other functions that wrap around it) will make
+/// Calling [`wait`] (or other functions that wrap around it) will make
 /// the parent process wait until the child has actually exited before
 /// continuing.
 ///
 /// # Warning
 ///
-/// On some system, calling [`wait`] or similar is necessary for the OS to
+/// On some systems, calling [`wait`] or similar is necessary for the OS to
 /// release resources. A process that terminated but has not been waited on is
 /// still around as a "zombie". Leaving too many zombies around may exhaust
 /// global resources (for example process IDs).
@@ -162,25 +155,44 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// assert!(ecode.success());
 /// ```
 ///
-/// [`Command`]: struct.Command.html
-/// [`Drop`]: ../../core/ops/trait.Drop.html
-/// [`wait`]: #method.wait
+/// [`wait`]: Child::wait
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Child {
     handle: imp::Process,
 
     /// The handle for writing to the child's standard input (stdin), if it has
-    /// been captured.
+    /// been captured. To avoid partially moving
+    /// the `child` and thus blocking yourself from calling
+    /// functions on `child` while using `stdin`,
+    /// you might find it helpful:
+    ///
+    /// ```compile_fail,E0425
+    /// let stdin = child.stdin.take().unwrap();
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub stdin: Option<ChildStdin>,
 
     /// The handle for reading from the child's standard output (stdout), if it
-    /// has been captured.
+    /// has been captured. You might find it helpful to do
+    ///
+    /// ```compile_fail,E0425
+    /// let stdout = child.stdout.take().unwrap();
+    /// ```
+    ///
+    /// to avoid partially moving the `child` and thus blocking yourself from calling
+    /// functions on `child` while using `stdout`.
     #[stable(feature = "process", since = "1.0.0")]
     pub stdout: Option<ChildStdout>,
 
     /// The handle for reading from the child's standard error (stderr), if it
-    /// has been captured.
+    /// has been captured. You might find it helpful to do
+    ///
+    /// ```compile_fail,E0425
+    /// let stderr = child.stderr.take().unwrap();
+    /// ```
+    ///
+    /// to avoid partially moving the `child` and thus blocking yourself from calling
+    /// functions on `child` while using `stderr`.
     #[stable(feature = "process", since = "1.0.0")]
     pub stderr: Option<ChildStderr>,
 }
@@ -227,9 +239,8 @@ impl fmt::Debug for Child {
 /// file handle will be closed. If the child process was blocked on input prior
 /// to being dropped, it will become unblocked after dropping.
 ///
-/// [`Child`]: struct.Child.html
-/// [`stdin`]: struct.Child.html#structfield.stdin
-/// [dropped]: ../ops/trait.Drop.html
+/// [`stdin`]: Child::stdin
+/// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
     inner: AnonPipe,
@@ -286,9 +297,8 @@ impl fmt::Debug for ChildStdin {
 /// When an instance of `ChildStdout` is [dropped], the `ChildStdout`'s
 /// underlying file handle will be closed.
 ///
-/// [`Child`]: struct.Child.html
-/// [`stdout`]: struct.Child.html#structfield.stdout
-/// [dropped]: ../ops/trait.Drop.html
+/// [`stdout`]: Child::stdout
+/// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
     inner: AnonPipe,
@@ -347,9 +357,8 @@ impl fmt::Debug for ChildStdout {
 /// When an instance of `ChildStderr` is [dropped], the `ChildStderr`'s
 /// underlying file handle will be closed.
 ///
-/// [`Child`]: struct.Child.html
-/// [`stderr`]: struct.Child.html#structfield.stderr
-/// [dropped]: ../ops/trait.Drop.html
+/// [`stderr`]: Child::stderr
+/// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
     inner: AnonPipe,
@@ -522,7 +531,7 @@ impl Command {
     ///
     /// To pass multiple arguments see [`args`].
     ///
-    /// [`args`]: #method.args
+    /// [`args`]: Command::args
     ///
     /// # Examples
     ///
@@ -547,7 +556,7 @@ impl Command {
     ///
     /// To pass a single argument see [`arg`].
     ///
-    /// [`arg`]: #method.arg
+    /// [`arg`]: Command::arg
     ///
     /// # Examples
     ///
@@ -700,7 +709,7 @@ impl Command {
     ///         .expect("ls command failed to start");
     /// ```
     ///
-    /// [`canonicalize`]: ../fs/fn.canonicalize.html
+    /// [`canonicalize`]: crate::fs::canonicalize
     #[stable(feature = "process", since = "1.0.0")]
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Command {
         self.inner.cwd(dir.as_ref().as_ref());
@@ -712,8 +721,8 @@ impl Command {
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
     ///
-    /// [`inherit`]: struct.Stdio.html#method.inherit
-    /// [`piped`]: struct.Stdio.html#method.piped
+    /// [`inherit`]: Stdio::inherit
+    /// [`piped`]: Stdio::piped
     ///
     /// # Examples
     ///
@@ -738,8 +747,8 @@ impl Command {
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
     ///
-    /// [`inherit`]: struct.Stdio.html#method.inherit
-    /// [`piped`]: struct.Stdio.html#method.piped
+    /// [`inherit`]: Stdio::inherit
+    /// [`piped`]: Stdio::piped
     ///
     /// # Examples
     ///
@@ -764,8 +773,8 @@ impl Command {
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
     ///
-    /// [`inherit`]: struct.Stdio.html#method.inherit
-    /// [`piped`]: struct.Stdio.html#method.piped
+    /// [`inherit`]: Stdio::inherit
+    /// [`piped`]: Stdio::piped
     ///
     /// # Examples
     ///
@@ -893,10 +902,8 @@ impl AsInnerMut<imp::Command> for Command {
 /// [`Command`], or the [`wait_with_output`] method of a [`Child`]
 /// process.
 ///
-/// [`Command`]: struct.Command.html
-/// [`Child`]: struct.Child.html
-/// [`output`]: struct.Command.html#method.output
-/// [`wait_with_output`]: struct.Child.html#method.wait_with_output
+/// [`output`]: Command::output
+/// [`wait_with_output`]: Child::wait_with_output
 #[derive(PartialEq, Eq, Clone)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Output {
@@ -939,10 +946,9 @@ impl fmt::Debug for Output {
 /// Describes what to do with a standard I/O stream for a child process when
 /// passed to the [`stdin`], [`stdout`], and [`stderr`] methods of [`Command`].
 ///
-/// [`stdin`]: struct.Command.html#method.stdin
-/// [`stdout`]: struct.Command.html#method.stdout
-/// [`stderr`]: struct.Command.html#method.stderr
-/// [`Command`]: struct.Command.html
+/// [`stdin`]: Command::stdin
+/// [`stdout`]: Command::stdout
+/// [`stderr`]: Command::stderr
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Stdio(imp::Stdio);
 
@@ -1206,10 +1212,8 @@ impl From<fs::File> for Stdio {
 /// status is exposed through the [`status`] method, or the [`wait`] method
 /// of a [`Child`] process.
 ///
-/// [`Command`]: struct.Command.html
-/// [`Child`]: struct.Child.html
-/// [`status`]: struct.Command.html#method.status
-/// [`wait`]: struct.Child.html#method.wait
+/// [`status`]: Command::status
+/// [`wait`]: Child::wait
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
@@ -1294,8 +1298,8 @@ impl fmt::Display for ExitStatus {
 /// For the platform's canonical successful and unsuccessful codes, see
 /// the [`SUCCESS`] and [`FAILURE`] associated items.
 ///
-/// [`SUCCESS`]: #associatedconstant.SUCCESS
-/// [`FAILURE`]: #associatedconstant.FAILURE
+/// [`SUCCESS`]: ExitCode::SUCCESS
+/// [`FAILURE`]: ExitCode::FAILURE
 ///
 /// **Warning**: While various forms of this were discussed in [RFC #1937],
 /// it was ultimately cut from that RFC, and thus this type is more subject
@@ -1349,9 +1353,9 @@ impl Child {
     /// }
     /// ```
     ///
-    /// [`ErrorKind`]: ../io/enum.ErrorKind.html
-    /// [`InvalidInput`]: ../io/enum.ErrorKind.html#variant.InvalidInput
-    /// [`Other`]: ../io/enum.ErrorKind.html#variant.Other
+    /// [`ErrorKind`]: io::ErrorKind
+    /// [`InvalidInput`]: io::ErrorKind::InvalidInput
+    /// [`Other`]: io::ErrorKind::Other
     #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
         self.handle.kill()
@@ -1616,8 +1620,7 @@ pub fn exit(code: i32) -> ! {
 /// }
 /// ```
 ///
-/// [`panic!`]: ../../std/macro.panic.html
-/// [panic hook]: ../../std/panic/fn.set_hook.html
+/// [panic hook]: crate::panic::set_hook
 #[stable(feature = "process_abort", since = "1.17.0")]
 pub fn abort() -> ! {
     crate::sys::abort_internal();
@@ -1700,413 +1703,5 @@ impl Termination for ExitCode {
     #[inline]
     fn report(self) -> i32 {
         self.0.as_i32()
-    }
-}
-
-#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten", target_env = "sgx"))))]
-mod tests {
-    use crate::io::prelude::*;
-
-    use super::{Command, Output, Stdio};
-    use crate::io::ErrorKind;
-    use crate::str;
-
-    // FIXME(#10380) these tests should not all be ignored on android.
-
-    #[test]
-    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
-    fn smoke() {
-        let p = if cfg!(target_os = "windows") {
-            Command::new("cmd").args(&["/C", "exit 0"]).spawn()
-        } else {
-            Command::new("true").spawn()
-        };
-        assert!(p.is_ok());
-        let mut p = p.unwrap();
-        assert!(p.wait().unwrap().success());
-    }
-
-    #[test]
-    #[cfg_attr(target_os = "android", ignore)]
-    fn smoke_failure() {
-        match Command::new("if-this-is-a-binary-then-the-world-has-ended").spawn() {
-            Ok(..) => panic!(),
-            Err(..) => {}
-        }
-    }
-
-    #[test]
-    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
-    fn exit_reported_right() {
-        let p = if cfg!(target_os = "windows") {
-            Command::new("cmd").args(&["/C", "exit 1"]).spawn()
-        } else {
-            Command::new("false").spawn()
-        };
-        assert!(p.is_ok());
-        let mut p = p.unwrap();
-        assert!(p.wait().unwrap().code() == Some(1));
-        drop(p.wait());
-    }
-
-    #[test]
-    #[cfg(unix)]
-    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
-    fn signal_reported_right() {
-        use crate::os::unix::process::ExitStatusExt;
-
-        let mut p =
-            Command::new("/bin/sh").arg("-c").arg("read a").stdin(Stdio::piped()).spawn().unwrap();
-        p.kill().unwrap();
-        match p.wait().unwrap().signal() {
-            Some(9) => {}
-            result => panic!("not terminated by signal 9 (instead, {:?})", result),
-        }
-    }
-
-    pub fn run_output(mut cmd: Command) -> String {
-        let p = cmd.spawn();
-        assert!(p.is_ok());
-        let mut p = p.unwrap();
-        assert!(p.stdout.is_some());
-        let mut ret = String::new();
-        p.stdout.as_mut().unwrap().read_to_string(&mut ret).unwrap();
-        assert!(p.wait().unwrap().success());
-        return ret;
-    }
-
-    #[test]
-    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
-    fn stdout_works() {
-        if cfg!(target_os = "windows") {
-            let mut cmd = Command::new("cmd");
-            cmd.args(&["/C", "echo foobar"]).stdout(Stdio::piped());
-            assert_eq!(run_output(cmd), "foobar\r\n");
-        } else {
-            let mut cmd = Command::new("echo");
-            cmd.arg("foobar").stdout(Stdio::piped());
-            assert_eq!(run_output(cmd), "foobar\n");
-        }
-    }
-
-    #[test]
-    #[cfg_attr(any(windows, target_os = "android", target_os = "vxworks"), ignore)]
-    fn set_current_dir_works() {
-        let mut cmd = Command::new("/bin/sh");
-        cmd.arg("-c").arg("pwd").current_dir("/").stdout(Stdio::piped());
-        assert_eq!(run_output(cmd), "/\n");
-    }
-
-    #[test]
-    #[cfg_attr(any(windows, target_os = "android", target_os = "vxworks"), ignore)]
-    fn stdin_works() {
-        let mut p = Command::new("/bin/sh")
-            .arg("-c")
-            .arg("read line; echo $line")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn()
-            .unwrap();
-        p.stdin.as_mut().unwrap().write("foobar".as_bytes()).unwrap();
-        drop(p.stdin.take());
-        let mut out = String::new();
-        p.stdout.as_mut().unwrap().read_to_string(&mut out).unwrap();
-        assert!(p.wait().unwrap().success());
-        assert_eq!(out, "foobar\n");
-    }
-
-    #[test]
-    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
-    fn test_process_status() {
-        let mut status = if cfg!(target_os = "windows") {
-            Command::new("cmd").args(&["/C", "exit 1"]).status().unwrap()
-        } else {
-            Command::new("false").status().unwrap()
-        };
-        assert!(status.code() == Some(1));
-
-        status = if cfg!(target_os = "windows") {
-            Command::new("cmd").args(&["/C", "exit 0"]).status().unwrap()
-        } else {
-            Command::new("true").status().unwrap()
-        };
-        assert!(status.success());
-    }
-
-    #[test]
-    fn test_process_output_fail_to_start() {
-        match Command::new("/no-binary-by-this-name-should-exist").output() {
-            Err(e) => assert_eq!(e.kind(), ErrorKind::NotFound),
-            Ok(..) => panic!(),
-        }
-    }
-
-    #[test]
-    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
-    fn test_process_output_output() {
-        let Output { status, stdout, stderr } = if cfg!(target_os = "windows") {
-            Command::new("cmd").args(&["/C", "echo hello"]).output().unwrap()
-        } else {
-            Command::new("echo").arg("hello").output().unwrap()
-        };
-        let output_str = str::from_utf8(&stdout).unwrap();
-
-        assert!(status.success());
-        assert_eq!(output_str.trim().to_string(), "hello");
-        assert_eq!(stderr, Vec::new());
-    }
-
-    #[test]
-    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
-    fn test_process_output_error() {
-        let Output { status, stdout, stderr } = if cfg!(target_os = "windows") {
-            Command::new("cmd").args(&["/C", "mkdir ."]).output().unwrap()
-        } else {
-            Command::new("mkdir").arg("./").output().unwrap()
-        };
-
-        assert!(status.code() == Some(1));
-        assert_eq!(stdout, Vec::new());
-        assert!(!stderr.is_empty());
-    }
-
-    #[test]
-    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
-    fn test_finish_once() {
-        let mut prog = if cfg!(target_os = "windows") {
-            Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
-        } else {
-            Command::new("false").spawn().unwrap()
-        };
-        assert!(prog.wait().unwrap().code() == Some(1));
-    }
-
-    #[test]
-    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
-    fn test_finish_twice() {
-        let mut prog = if cfg!(target_os = "windows") {
-            Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
-        } else {
-            Command::new("false").spawn().unwrap()
-        };
-        assert!(prog.wait().unwrap().code() == Some(1));
-        assert!(prog.wait().unwrap().code() == Some(1));
-    }
-
-    #[test]
-    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
-    fn test_wait_with_output_once() {
-        let prog = if cfg!(target_os = "windows") {
-            Command::new("cmd").args(&["/C", "echo hello"]).stdout(Stdio::piped()).spawn().unwrap()
-        } else {
-            Command::new("echo").arg("hello").stdout(Stdio::piped()).spawn().unwrap()
-        };
-
-        let Output { status, stdout, stderr } = prog.wait_with_output().unwrap();
-        let output_str = str::from_utf8(&stdout).unwrap();
-
-        assert!(status.success());
-        assert_eq!(output_str.trim().to_string(), "hello");
-        assert_eq!(stderr, Vec::new());
-    }
-
-    #[cfg(all(unix, not(target_os = "android")))]
-    pub fn env_cmd() -> Command {
-        Command::new("env")
-    }
-    #[cfg(target_os = "android")]
-    pub fn env_cmd() -> Command {
-        let mut cmd = Command::new("/system/bin/sh");
-        cmd.arg("-c").arg("set");
-        cmd
-    }
-
-    #[cfg(windows)]
-    pub fn env_cmd() -> Command {
-        let mut cmd = Command::new("cmd");
-        cmd.arg("/c").arg("set");
-        cmd
-    }
-
-    #[test]
-    #[cfg_attr(target_os = "vxworks", ignore)]
-    fn test_override_env() {
-        use crate::env;
-
-        // In some build environments (such as chrooted Nix builds), `env` can
-        // only be found in the explicitly-provided PATH env variable, not in
-        // default places such as /bin or /usr/bin. So we need to pass through
-        // PATH to our sub-process.
-        let mut cmd = env_cmd();
-        cmd.env_clear().env("RUN_TEST_NEW_ENV", "123");
-        if let Some(p) = env::var_os("PATH") {
-            cmd.env("PATH", &p);
-        }
-        let result = cmd.output().unwrap();
-        let output = String::from_utf8_lossy(&result.stdout).to_string();
-
-        assert!(
-            output.contains("RUN_TEST_NEW_ENV=123"),
-            "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}",
-            output
-        );
-    }
-
-    #[test]
-    #[cfg_attr(target_os = "vxworks", ignore)]
-    fn test_add_to_env() {
-        let result = env_cmd().env("RUN_TEST_NEW_ENV", "123").output().unwrap();
-        let output = String::from_utf8_lossy(&result.stdout).to_string();
-
-        assert!(
-            output.contains("RUN_TEST_NEW_ENV=123"),
-            "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}",
-            output
-        );
-    }
-
-    #[test]
-    #[cfg_attr(target_os = "vxworks", ignore)]
-    fn test_capture_env_at_spawn() {
-        use crate::env;
-
-        let mut cmd = env_cmd();
-        cmd.env("RUN_TEST_NEW_ENV1", "123");
-
-        // This variable will not be present if the environment has already
-        // been captured above.
-        env::set_var("RUN_TEST_NEW_ENV2", "456");
-        let result = cmd.output().unwrap();
-        env::remove_var("RUN_TEST_NEW_ENV2");
-
-        let output = String::from_utf8_lossy(&result.stdout).to_string();
-
-        assert!(
-            output.contains("RUN_TEST_NEW_ENV1=123"),
-            "didn't find RUN_TEST_NEW_ENV1 inside of:\n\n{}",
-            output
-        );
-        assert!(
-            output.contains("RUN_TEST_NEW_ENV2=456"),
-            "didn't find RUN_TEST_NEW_ENV2 inside of:\n\n{}",
-            output
-        );
-    }
-
-    // Regression tests for #30858.
-    #[test]
-    fn test_interior_nul_in_progname_is_error() {
-        match Command::new("has-some-\0\0s-inside").spawn() {
-            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
-            Ok(_) => panic!(),
-        }
-    }
-
-    #[test]
-    fn test_interior_nul_in_arg_is_error() {
-        match Command::new("echo").arg("has-some-\0\0s-inside").spawn() {
-            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
-            Ok(_) => panic!(),
-        }
-    }
-
-    #[test]
-    fn test_interior_nul_in_args_is_error() {
-        match Command::new("echo").args(&["has-some-\0\0s-inside"]).spawn() {
-            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
-            Ok(_) => panic!(),
-        }
-    }
-
-    #[test]
-    fn test_interior_nul_in_current_dir_is_error() {
-        match Command::new("echo").current_dir("has-some-\0\0s-inside").spawn() {
-            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
-            Ok(_) => panic!(),
-        }
-    }
-
-    // Regression tests for #30862.
-    #[test]
-    #[cfg_attr(target_os = "vxworks", ignore)]
-    fn test_interior_nul_in_env_key_is_error() {
-        match env_cmd().env("has-some-\0\0s-inside", "value").spawn() {
-            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
-            Ok(_) => panic!(),
-        }
-    }
-
-    #[test]
-    #[cfg_attr(target_os = "vxworks", ignore)]
-    fn test_interior_nul_in_env_value_is_error() {
-        match env_cmd().env("key", "has-some-\0\0s-inside").spawn() {
-            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
-            Ok(_) => panic!(),
-        }
-    }
-
-    /// Tests that process creation flags work by debugging a process.
-    /// Other creation flags make it hard or impossible to detect
-    /// behavioral changes in the process.
-    #[test]
-    #[cfg(windows)]
-    fn test_creation_flags() {
-        use crate::os::windows::process::CommandExt;
-        use crate::sys::c::{BOOL, DWORD, INFINITE};
-        #[repr(C, packed)]
-        struct DEBUG_EVENT {
-            pub event_code: DWORD,
-            pub process_id: DWORD,
-            pub thread_id: DWORD,
-            // This is a union in the real struct, but we don't
-            // need this data for the purposes of this test.
-            pub _junk: [u8; 164],
-        }
-
-        extern "system" {
-            fn WaitForDebugEvent(lpDebugEvent: *mut DEBUG_EVENT, dwMilliseconds: DWORD) -> BOOL;
-            fn ContinueDebugEvent(
-                dwProcessId: DWORD,
-                dwThreadId: DWORD,
-                dwContinueStatus: DWORD,
-            ) -> BOOL;
-        }
-
-        const DEBUG_PROCESS: DWORD = 1;
-        const EXIT_PROCESS_DEBUG_EVENT: DWORD = 5;
-        const DBG_EXCEPTION_NOT_HANDLED: DWORD = 0x80010001;
-
-        let mut child = Command::new("cmd")
-            .creation_flags(DEBUG_PROCESS)
-            .stdin(Stdio::piped())
-            .spawn()
-            .unwrap();
-        child.stdin.take().unwrap().write_all(b"exit\r\n").unwrap();
-        let mut events = 0;
-        let mut event = DEBUG_EVENT { event_code: 0, process_id: 0, thread_id: 0, _junk: [0; 164] };
-        loop {
-            if unsafe { WaitForDebugEvent(&mut event as *mut DEBUG_EVENT, INFINITE) } == 0 {
-                panic!("WaitForDebugEvent failed!");
-            }
-            events += 1;
-
-            if event.event_code == EXIT_PROCESS_DEBUG_EVENT {
-                break;
-            }
-
-            if unsafe {
-                ContinueDebugEvent(event.process_id, event.thread_id, DBG_EXCEPTION_NOT_HANDLED)
-            } == 0
-            {
-                panic!("ContinueDebugEvent failed!");
-            }
-        }
-        assert!(events > 0);
-    }
-
-    #[test]
-    fn test_command_implements_send_sync() {
-        fn take_send_sync_type<T: Send + Sync>(_: T) {}
-        take_send_sync_type(Command::new(""))
     }
 }

@@ -34,15 +34,7 @@ LL |     Foo { x: () }.y
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
-  --> $DIR/min_const_fn_unsafe_bad.rs:1:77
-   |
-LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } }
-   |                                                                             ^^^ dereference of raw pointer
-   |
-   = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+error: aborting due to 4 previous errors
 
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0133, E0658, E0723.
-For more information about an error, try `rustc --explain E0133`.
+Some errors have detailed explanations: E0658, E0723.
+For more information about an error, try `rustc --explain E0658`.

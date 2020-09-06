@@ -7,11 +7,11 @@
 //! There are several functions and structs in this module that have a
 //! counterpart ending in `os`. Those ending in `os` will return an [`OsString`]
 //! and those without will return a [`String`].
-//!
-//! [`OsString`]: ../../std/ffi/struct.OsString.html
-//! [`String`]: ../string/struct.String.html
 
 #![stable(feature = "env", since = "1.0.0")]
+
+#[cfg(test)]
+mod tests;
 
 use crate::error::Error;
 use crate::ffi::{OsStr, OsString};
@@ -30,9 +30,6 @@ use crate::sys::os as os_imp;
 ///
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
-///
-/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
-/// [`Err`]: ../../std/result/enum.Result.html#method.err
 ///
 /// # Examples
 ///
@@ -54,8 +51,6 @@ pub fn current_dir() -> io::Result<PathBuf> {
 ///
 /// Returns an [`Err`] if the operation fails.
 ///
-/// [`Err`]: ../../std/result/enum.Result.html#method.err
-///
 /// # Examples
 ///
 /// ```
@@ -73,10 +68,9 @@ pub fn set_current_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
-/// This structure is created by the [`std::env::vars`] function. See its
-/// documentation for more.
+/// This structure is created by [`env::vars()`]. See its documentation for more.
 ///
-/// [`std::env::vars`]: fn.vars.html
+/// [`env::vars()`]: vars
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Vars {
     inner: VarsOs,
@@ -84,10 +78,9 @@ pub struct Vars {
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
-/// This structure is created by the [`std::env::vars_os`] function. See
-/// its documentation for more.
+/// This structure is created by [`env::vars_os()`]. See its documentation for more.
 ///
-/// [`std::env::vars_os`]: fn.vars_os.html
+/// [`env::vars_os()`]: vars_os
 #[stable(feature = "env", since = "1.0.0")]
 pub struct VarsOs {
     inner: os_imp::Env,
@@ -103,10 +96,8 @@ pub struct VarsOs {
 /// # Panics
 ///
 /// While iterating, the returned iterator will panic if any key or value in the
-/// environment is not valid unicode. If this is not desired, consider using the
-/// [`env::vars_os`] function.
-///
-/// [`env::vars_os`]: fn.vars_os.html
+/// environment is not valid unicode. If this is not desired, consider using
+/// [`env::vars_os()`].
 ///
 /// # Examples
 ///
@@ -119,6 +110,8 @@ pub struct VarsOs {
 ///     println!("{}: {}", key, value);
 /// }
 /// ```
+///
+/// [`env::vars_os()`]: vars_os
 #[stable(feature = "env", since = "1.0.0")]
 pub fn vars() -> Vars {
     Vars { inner: vars_os() }
@@ -222,8 +215,6 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 /// Fetches the environment variable `key` from the current process, returning
 /// [`None`] if the variable isn't set.
 ///
-/// [`None`]: ../option/enum.Option.html#variant.None
-///
 /// # Panics
 ///
 /// This function may panic if `key` is empty, contains an ASCII equals sign
@@ -252,9 +243,9 @@ fn _var_os(key: &OsStr) -> Option<OsString> {
 }
 
 /// The error type for operations interacting with environment variables.
-/// Possibly returned from the [`env::var`] function.
+/// Possibly returned from [`env::var()`].
 ///
-/// [`env::var`]: fn.var.html
+/// [`env::var()`]: var
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[stable(feature = "env", since = "1.0.0")]
 pub enum VarError {
@@ -379,11 +370,10 @@ fn _remove_var(k: &OsStr) {
 ///
 /// The iterator element type is [`PathBuf`].
 ///
-/// This structure is created by the [`std::env::split_paths`] function. See its
+/// This structure is created by [`env::split_paths()`]. See its
 /// documentation for more.
 ///
-/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
-/// [`std::env::split_paths`]: fn.split_paths.html
+/// [`env::split_paths()`]: split_paths
 #[stable(feature = "env", since = "1.0.0")]
 pub struct SplitPaths<'a> {
     inner: os_imp::SplitPaths<'a>,
@@ -410,8 +400,6 @@ pub struct SplitPaths<'a> {
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
-///
-/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths<'_> {
     SplitPaths { inner: os_imp::split_paths(unparsed.as_ref()) }
@@ -436,9 +424,9 @@ impl fmt::Debug for SplitPaths<'_> {
 }
 
 /// The error type for operations on the `PATH` variable. Possibly returned from
-/// the [`env::join_paths`] function.
+/// [`env::join_paths()`].
 ///
-/// [`env::join_paths`]: fn.join_paths.html
+/// [`env::join_paths()`]: join_paths
 #[derive(Debug)]
 #[stable(feature = "env", since = "1.0.0")]
 pub struct JoinPathsError {
@@ -450,13 +438,9 @@ pub struct JoinPathsError {
 ///
 /// # Errors
 ///
-/// Returns an [`Err`][err] (containing an error message) if one of the input
+/// Returns an [`Err`] (containing an error message) if one of the input
 /// [`Path`]s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
-///
-/// [`Path`]: ../../std/path/struct.Path.html
-/// [`OsString`]: ../../std/ffi/struct.OsString.html
-/// [err]: ../../std/result/enum.Result.html#variant.Err
 ///
 /// # Examples
 ///
@@ -477,7 +461,8 @@ pub struct JoinPathsError {
 /// }
 /// ```
 ///
-/// Joining a path containing a colon on a Unix-like platform results in an error:
+/// Joining a path containing a colon on a Unix-like platform results in an
+/// error:
 ///
 /// ```
 /// # if cfg!(unix) {
@@ -489,8 +474,8 @@ pub struct JoinPathsError {
 /// # }
 /// ```
 ///
-/// Using `env::join_paths` with [`env::split_paths`] to append an item to the `PATH` environment
-/// variable:
+/// Using `env::join_paths()` with [`env::split_paths()`] to append an item to
+/// the `PATH` environment variable:
 ///
 /// ```
 /// use std::env;
@@ -508,7 +493,7 @@ pub struct JoinPathsError {
 /// }
 /// ```
 ///
-/// [`env::split_paths`]: fn.split_paths.html
+/// [`env::split_paths()`]: split_paths
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 where
@@ -681,15 +666,14 @@ pub fn current_exe() -> io::Result<PathBuf> {
 /// An iterator over the arguments of a process, yielding a [`String`] value for
 /// each argument.
 ///
-/// This struct is created by the [`std::env::args`] function. See its
-/// documentation for more.
+/// This struct is created by [`env::args()`]. See its documentation
+/// for more.
 ///
 /// The first element is traditionally the path of the executable, but it can be
 /// set to arbitrary text, and may not even exist. This means this property
 /// should not be relied upon for security purposes.
 ///
-/// [`String`]: ../string/struct.String.html
-/// [`std::env::args`]: ./fn.args.html
+/// [`env::args()`]: args
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Args {
     inner: ArgsOs,
@@ -698,15 +682,14 @@ pub struct Args {
 /// An iterator over the arguments of a process, yielding an [`OsString`] value
 /// for each argument.
 ///
-/// This struct is created by the [`std::env::args_os`] function. See its
-/// documentation for more.
+/// This struct is created by [`env::args_os()`]. See its documentation
+/// for more.
 ///
 /// The first element is traditionally the path of the executable, but it can be
 /// set to arbitrary text, and may not even exist. This means this property
 /// should not be relied upon for security purposes.
 ///
-/// [`OsString`]: ../ffi/struct.OsString.html
-/// [`std::env::args_os`]: ./fn.args_os.html
+/// [`env::args_os()`]: args_os
 #[stable(feature = "env", since = "1.0.0")]
 pub struct ArgsOs {
     inner: sys::args::Args,
@@ -744,8 +727,6 @@ pub struct ArgsOs {
 ///     println!("{}", argument);
 /// }
 /// ```
-///
-/// [`args_os`]: ./fn.args_os.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn args() -> Args {
     Args { inner: args_os() }
@@ -964,113 +945,4 @@ pub mod consts {
     /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
     pub const EXE_EXTENSION: &str = os::EXE_EXTENSION;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use crate::path::Path;
-
-    #[test]
-    #[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
-    fn test_self_exe_path() {
-        let path = current_exe();
-        assert!(path.is_ok());
-        let path = path.unwrap();
-
-        // Hard to test this function
-        assert!(path.is_absolute());
-    }
-
-    #[test]
-    fn test() {
-        assert!((!Path::new("test-path").is_absolute()));
-
-        #[cfg(not(target_env = "sgx"))]
-        current_dir().unwrap();
-    }
-
-    #[test]
-    #[cfg(windows)]
-    fn split_paths_windows() {
-        use crate::path::PathBuf;
-
-        fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
-            split_paths(unparsed).collect::<Vec<_>>()
-                == parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
-        }
-
-        assert!(check_parse("", &mut [""]));
-        assert!(check_parse(r#""""#, &mut [""]));
-        assert!(check_parse(";;", &mut ["", "", ""]));
-        assert!(check_parse(r"c:\", &mut [r"c:\"]));
-        assert!(check_parse(r"c:\;", &mut [r"c:\", ""]));
-        assert!(check_parse(r"c:\;c:\Program Files\", &mut [r"c:\", r"c:\Program Files\"]));
-        assert!(check_parse(r#"c:\;c:\"foo"\"#, &mut [r"c:\", r"c:\foo\"]));
-        assert!(check_parse(
-            r#"c:\;c:\"foo;bar"\;c:\baz"#,
-            &mut [r"c:\", r"c:\foo;bar\", r"c:\baz"]
-        ));
-    }
-
-    #[test]
-    #[cfg(unix)]
-    fn split_paths_unix() {
-        use crate::path::PathBuf;
-
-        fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
-            split_paths(unparsed).collect::<Vec<_>>()
-                == parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
-        }
-
-        assert!(check_parse("", &mut [""]));
-        assert!(check_parse("::", &mut ["", "", ""]));
-        assert!(check_parse("/", &mut ["/"]));
-        assert!(check_parse("/:", &mut ["/", ""]));
-        assert!(check_parse("/:/usr/local", &mut ["/", "/usr/local"]));
-    }
-
-    #[test]
-    #[cfg(unix)]
-    fn join_paths_unix() {
-        use crate::ffi::OsStr;
-
-        fn test_eq(input: &[&str], output: &str) -> bool {
-            &*join_paths(input.iter().cloned()).unwrap() == OsStr::new(output)
-        }
-
-        assert!(test_eq(&[], ""));
-        assert!(test_eq(&["/bin", "/usr/bin", "/usr/local/bin"], "/bin:/usr/bin:/usr/local/bin"));
-        assert!(test_eq(&["", "/bin", "", "", "/usr/bin", ""], ":/bin:::/usr/bin:"));
-        assert!(join_paths(["/te:st"].iter().cloned()).is_err());
-    }
-
-    #[test]
-    #[cfg(windows)]
-    fn join_paths_windows() {
-        use crate::ffi::OsStr;
-
-        fn test_eq(input: &[&str], output: &str) -> bool {
-            &*join_paths(input.iter().cloned()).unwrap() == OsStr::new(output)
-        }
-
-        assert!(test_eq(&[], ""));
-        assert!(test_eq(&[r"c:\windows", r"c:\"], r"c:\windows;c:\"));
-        assert!(test_eq(&["", r"c:\windows", "", "", r"c:\", ""], r";c:\windows;;;c:\;"));
-        assert!(test_eq(&[r"c:\te;st", r"c:\"], r#""c:\te;st";c:\"#));
-        assert!(join_paths([r#"c:\te"st"#].iter().cloned()).is_err());
-    }
-
-    #[test]
-    fn args_debug() {
-        assert_eq!(
-            format!("Args {{ inner: {:?} }}", args().collect::<Vec<_>>()),
-            format!("{:?}", args())
-        );
-        assert_eq!(
-            format!("ArgsOs {{ inner: {:?} }}", args_os().collect::<Vec<_>>()),
-            format!("{:?}", args_os())
-        );
-    }
 }

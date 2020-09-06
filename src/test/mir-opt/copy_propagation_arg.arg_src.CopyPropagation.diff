@@ -13,12 +13,6 @@
           StorageLive(_2);                 // scope 0 at $DIR/copy_propagation_arg.rs:28:9: 28:10
           _2 = _1;                         // scope 0 at $DIR/copy_propagation_arg.rs:28:13: 28:14
           _1 = const 123_i32;              // scope 1 at $DIR/copy_propagation_arg.rs:29:5: 29:12
-                                           // ty::Const
-                                           // + ty: i32
-                                           // + val: Value(Scalar(0x0000007b))
-                                           // mir::Constant
-                                           // + span: $DIR/copy_propagation_arg.rs:29:9: 29:12
-                                           // + literal: Const { ty: i32, val: Value(Scalar(0x0000007b)) }
           _0 = _2;                         // scope 1 at $DIR/copy_propagation_arg.rs:30:5: 30:6
           StorageDead(_2);                 // scope 0 at $DIR/copy_propagation_arg.rs:31:1: 31:2
           return;                          // scope 0 at $DIR/copy_propagation_arg.rs:31:2: 31:2

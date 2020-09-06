@@ -14,8 +14,7 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{once, repeat_with, FromIterator, FusedIterator};
 use core::mem::{self, replace, ManuallyDrop};
-use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{Index, IndexMut, RangeBounds, Try};
+use core::ops::{Index, IndexMut, Range, RangeBounds, Try};
 use core::ptr::{self, NonNull};
 use core::slice;
 
@@ -47,10 +46,17 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (64 - 1); // Largest possible power of 
 /// push onto the back in this manner, and iterating over `VecDeque` goes front
 /// to back.
 ///
+/// Since `VecDeque` is a ring buffer, its elements are not necessarily contiguous
+/// in memory. If you want to access the elements as a single slice, such as for
+/// efficient sorting, you can use [`make_contiguous`]. It rotates the `VecDeque`
+/// so that its elements do not wrap, and returns a mutable slice to the
+/// now-contiguous element sequence.
+///
 /// [`push_back`]: #method.push_back
 /// [`pop_front`]: #method.pop_front
 /// [`extend`]: #method.extend
 /// [`append`]: #method.append
+/// [`make_contiguous`]: #method.make_contiguous
 #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VecDeque<T> {
@@ -678,7 +684,7 @@ impl<T> VecDeque<T> {
     }
 
     /// Tries to reserve the minimum capacity for exactly `additional` more elements to
-    /// be inserted in the given `VecDeque<T>`. After calling `reserve_exact`,
+    /// be inserted in the given `VecDeque<T>`. After calling `try_reserve_exact`,
     /// capacity will be greater than or equal to `self.len() + additional`.
     /// Does nothing if the capacity is already sufficient.
     ///
@@ -720,7 +726,7 @@ impl<T> VecDeque<T> {
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the given `VecDeque<T>`. The collection may reserve more space to avoid
-    /// frequent reallocations. After calling `reserve`, capacity will be
+    /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional`. Does nothing if
     /// capacity is already sufficient.
     ///
@@ -1083,24 +1089,18 @@ impl<T> VecDeque<T> {
         self.tail == self.head
     }
 
-    fn range_start_end<R>(&self, range: R) -> (usize, usize)
+    fn range_tail_head<R>(&self, range: R) -> (usize, usize)
     where
         R: RangeBounds<usize>,
     {
-        let len = self.len();
-        let start = match range.start_bound() {
-            Included(&n) => n,
-            Excluded(&n) => n + 1,
-            Unbounded => 0,
-        };
-        let end = match range.end_bound() {
-            Included(&n) => n + 1,
-            Excluded(&n) => n,
-            Unbounded => len,
-        };
-        assert!(start <= end, "lower bound was too large");
-        assert!(end <= len, "upper bound was too large");
-        (start, end)
+        // SAFETY: This buffer is only used to check the range. It might be partially
+        // uninitialized, but `check_range` needs a contiguous slice.
+        // https://github.com/rust-lang/rust/pull/75207#discussion_r471193682
+        let buffer = unsafe { slice::from_raw_parts(self.ptr(), self.len()) };
+        let Range { start, end } = buffer.check_range(range);
+        let tail = self.wrap_add(self.tail, start);
+        let head = self.wrap_add(self.tail, end);
+        (tail, head)
     }
 
     /// Creates an iterator that covers the specified range in the `VecDeque`.
@@ -1131,9 +1131,7 @@ impl<T> VecDeque<T> {
     where
         R: RangeBounds<usize>,
     {
-        let (start, end) = self.range_start_end(range);
-        let tail = self.wrap_add(self.tail, start);
-        let head = self.wrap_add(self.tail, end);
+        let (tail, head) = self.range_tail_head(range);
         Iter {
             tail,
             head,
@@ -1174,9 +1172,7 @@ impl<T> VecDeque<T> {
     where
         R: RangeBounds<usize>,
     {
-        let (start, end) = self.range_start_end(range);
-        let tail = self.wrap_add(self.tail, start);
-        let head = self.wrap_add(self.tail, end);
+        let (tail, head) = self.range_tail_head(range);
         IterMut {
             tail,
             head,
@@ -1230,7 +1226,7 @@ impl<T> VecDeque<T> {
         // When finished, the remaining data will be copied back to cover the hole,
         // and the head/tail values will be restored correctly.
         //
-        let (start, end) = self.range_start_end(range);
+        let (drain_tail, drain_head) = self.range_tail_head(range);
 
         // The deque's elements are parted into three segments:
         // * self.tail  -> drain_tail
@@ -1248,8 +1244,6 @@ impl<T> VecDeque<T> {
         //        T   t   h   H
         // [. . . o o x x o o . . .]
         //
-        let drain_tail = self.wrap_add(self.tail, start);
-        let drain_head = self.wrap_add(self.tail, end);
         let head = self.head;
 
         // "forget" about the values after the start of the drain until after
@@ -2188,8 +2182,6 @@ impl<T> VecDeque<T> {
     /// Sorting the content of a deque.
     ///
     /// ```
-    /// #![feature(deque_make_contiguous)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::with_capacity(15);
@@ -2210,8 +2202,6 @@ impl<T> VecDeque<T> {
     /// Getting immutable access to the contiguous slice.
     ///
     /// ```rust
-    /// #![feature(deque_make_contiguous)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -2228,7 +2218,7 @@ impl<T> VecDeque<T> {
     ///     assert_eq!(slice, &[3, 2, 1] as &[_]);
     /// }
     /// ```
-    #[unstable(feature = "deque_make_contiguous", issue = "70929")]
+    #[stable(feature = "deque_make_contiguous", since = "1.48.0")]
     pub fn make_contiguous(&mut self) -> &mut [T] {
         if self.is_contiguous() {
             let tail = self.tail;

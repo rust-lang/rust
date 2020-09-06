@@ -47,7 +47,7 @@ pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str
 fn create_lint(lint: &LintData) -> io::Result<()> {
     let (pass_type, pass_lifetimes, pass_import, context_import) = match lint.pass {
         "early" => ("EarlyLintPass", "", "use rustc_ast::ast::*;", "EarlyContext"),
-        "late" => ("LateLintPass", "<'_, '_>", "use rustc_hir::*;", "LateContext"),
+        "late" => ("LateLintPass", "<'_>", "use rustc_hir::*;", "LateContext"),
         _ => {
             unreachable!("`pass_type` should only ever be `early` or `late`!");
         },

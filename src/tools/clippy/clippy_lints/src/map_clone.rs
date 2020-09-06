@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                         match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
                                 if ident_eq(name, inner) {
-                                    if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind {
+                                    if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
                                         lint(cx, e.span, args[0].span, true);
                                     }
                                 }
@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                                     && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
 
                                     let obj_ty = cx.typeck_results().expr_ty(&obj[0]);
-                                    if let ty::Ref(_, ty, _) = obj_ty.kind {
+                                    if let ty::Ref(_, ty, _) = obj_ty.kind() {
                                         let copy = is_copy(cx, ty);
                                         lint(cx, e.span, args[0].span, copy);
                                     } else {
@@ -111,8 +111,8 @@ fn lint_needless_cloning(cx: &LateContext<'_>, root: Span, receiver: Span) {
         cx,
         MAP_CLONE,
         root.trim_start(receiver).unwrap(),
-        "You are needlessly cloning iterator elements",
-        "Remove the `map` call",
+        "you are needlessly cloning iterator elements",
+        "remove the `map` call",
         String::new(),
         Applicability::MachineApplicable,
     )
@@ -125,8 +125,8 @@ fn lint(cx: &LateContext<'_>, replace: Span, root: Span, copied: bool) {
             cx,
             MAP_CLONE,
             replace,
-            "You are using an explicit closure for copying elements",
-            "Consider calling the dedicated `copied` method",
+            "you are using an explicit closure for copying elements",
+            "consider calling the dedicated `copied` method",
             format!(
                 "{}.copied()",
                 snippet_with_applicability(cx, root, "..", &mut applicability)
@@ -138,8 +138,8 @@ fn lint(cx: &LateContext<'_>, replace: Span, root: Span, copied: bool) {
             cx,
             MAP_CLONE,
             replace,
-            "You are using an explicit closure for cloning elements",
-            "Consider calling the dedicated `cloned` method",
+            "you are using an explicit closure for cloning elements",
+            "consider calling the dedicated `cloned` method",
             format!(
                 "{}.cloned()",
                 snippet_with_applicability(cx, root, "..", &mut applicability)

@@ -21,7 +21,7 @@ pub mod sugg;
 pub mod usage;
 pub use self::attrs::*;
 pub use self::diagnostics::*;
-pub use self::hir_utils::{both, over, SpanlessEq, SpanlessHash};
+pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
 
 use std::borrow::Cow;
 use std::mem;
@@ -42,7 +42,8 @@ use rustc_hir::{
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, layout::IntegerExt, Ty, TyCtxt, TypeFoldable};
 use rustc_mir::const_eval;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
@@ -128,7 +129,7 @@ pub fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
 
 /// Checks if type is struct, enum or union type with the given def path.
 pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::Adt(adt, _) => match_def_path(cx, adt.did, path),
         _ => false,
     }
@@ -136,8 +137,16 @@ pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
 
 /// Checks if the type is equal to a diagnostic item
 pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
+        _ => false,
+    }
+}
+
+/// Checks if the type is equal to a lang item
+pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
+    match ty.kind() {
+        ty::Adt(adt, _) => cx.tcx.lang_items().require(lang_item).unwrap() == adt.did,
         _ => false,
     }
 }
@@ -163,6 +172,7 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
     match *path {
         QPath::Resolved(_, ref path) => path.segments.last().expect("A path must have at least one segment"),
         QPath::TypeRelative(_, ref seg) => seg,
+        QPath::LangItem(..) => panic!("last_path_segment: lang item has no path segments"),
     }
 }
 
@@ -170,6 +180,7 @@ pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment
     match *path {
         QPath::Resolved(_, ref path) => path.segments.get(0),
         QPath::TypeRelative(_, ref seg) => Some(seg),
+        QPath::LangItem(..) => None,
     }
 }
 
@@ -196,6 +207,7 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
             },
             _ => false,
         },
+        QPath::LangItem(..) => false,
     }
 }
 
@@ -277,7 +289,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<def::Res> {
 pub fn qpath_res(cx: &LateContext<'_>, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
     match qpath {
         hir::QPath::Resolved(_, path) => path.res,
-        hir::QPath::TypeRelative(..) => {
+        hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
             if cx.tcx.has_typeck_results(id.owner.to_def_id()) {
                 cx.tcx.typeck(id.owner.to_def_id().expect_local()).qpath_res(qpath, id)
             } else {
@@ -563,7 +575,7 @@ pub fn snippet_block<'a, T: LintContext>(
 }
 
 /// Same as `snippet_block`, but adapts the applicability level by the rules of
-/// `snippet_with_applicabiliy`.
+/// `snippet_with_applicability`.
 pub fn snippet_block_with_applicability<'a, T: LintContext>(
     cx: &T,
     span: Span,
@@ -742,7 +754,7 @@ pub fn walk_ptrs_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
 
 /// Returns the base type for references and raw pointers.
 pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
-    match ty.kind {
+    match ty.kind() {
         ty::Ref(_, ty, _) => walk_ptrs_ty(ty),
         _ => ty,
     }
@@ -752,7 +764,7 @@ pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
 /// depth.
 pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
     fn inner(ty: Ty<'_>, depth: usize) -> (Ty<'_>, usize) {
-        match ty.kind {
+        match ty.kind() {
             ty::Ref(_, ty, _) => inner(ty, depth + 1),
             _ => (ty, depth),
         }
@@ -855,9 +867,17 @@ pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId) -> Ty<'tcx> 
     cx.tcx.erase_late_bound_regions(&ret_ty)
 }
 
+/// Walks into `ty` and returns `true` if any inner type is the same as `other_ty`
+pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
+    ty.walk().any(|inner| match inner.unpack() {
+        GenericArgKind::Type(inner_ty) => ty::TyS::same_type(other_ty, inner_ty),
+        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+    })
+}
+
 /// Returns `true` if the given type is an `unsafe` function.
 pub fn type_is_unsafe_function<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::FnDef(..) | ty::FnPtr(_) => ty.fn_sig(cx.tcx).unsafety() == Unsafety::Unsafe,
         _ => false,
     }
@@ -922,7 +942,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
             is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats.iter().map(|pat| &**pat))
         },
         PatKind::Slice(ref head, ref middle, ref tail) => {
-            match &cx.typeck_results().node_type(pat.hir_id).kind {
+            match &cx.typeck_results().node_type(pat.hir_id).kind() {
                 ty::Slice(..) => {
                     // [..] is the only irrefutable slice pattern.
                     !head.is_empty() || middle.is_none() || !tail.is_empty()
@@ -1136,12 +1156,12 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
         &paths::RECEIVER,
     ];
 
-    let ty_to_check = match probably_ref_ty.kind {
+    let ty_to_check = match probably_ref_ty.kind() {
         ty::Ref(_, ty_to_check, _) => ty_to_check,
         _ => probably_ref_ty,
     };
 
-    let def_id = match ty_to_check.kind {
+    let def_id = match ty_to_check.kind() {
         ty::Array(..) => return Some("array"),
         ty::Slice(..) => return Some("slice"),
         ty::Adt(adt, _) => adt.did,
@@ -1257,7 +1277,7 @@ pub fn must_use_attr(attrs: &[Attribute]) -> Option<&Attribute> {
 
 // Returns whether the type has #[must_use] attribute
 pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::Adt(ref adt, _) => must_use_attr(&cx.tcx.get_attrs(adt.did)).is_some(),
         ty::Foreign(ref did) => must_use_attr(&cx.tcx.get_attrs(*did)).is_some(),
         ty::Slice(ref ty)
@@ -1293,7 +1313,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-// check if expr is calling method or function with #[must_use] attribyte
+// check if expr is calling method or function with #[must_use] attribute
 pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let did = match expr.kind {
         ExprKind::Call(ref path, _) => if_chain! {
@@ -1389,31 +1409,49 @@ pub fn run_lints(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bo
 /// Returns true iff the given type is a primitive (a bool or char, any integer or floating-point
 /// number type, a str, or an array, slice, or tuple of those types).
 pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
-        ty::Ref(_, inner, _) if inner.kind == ty::Str => true,
+        ty::Ref(_, inner, _) if *inner.kind() == ty::Str => true,
         ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
         ty::Tuple(inner_types) => inner_types.types().all(is_recursively_primitive_type),
         _ => false,
     }
 }
 
-/// Returns true iff the given expression is a slice of primitives (as defined in the
-/// `is_recursively_primitive_type` function).
-pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+/// Returns Option<String> where String is a textual representation of the type encapsulated in the
+/// slice iff the given expression is a slice of primitives (as defined in the
+/// `is_recursively_primitive_type` function) and None otherwise.
+pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
-    match expr_type.kind {
-        ty::Slice(ref element_type)
-        | ty::Ref(
-            _,
-            ty::TyS {
-                kind: ty::Slice(ref element_type),
-                ..
-            },
-            _,
-        ) => is_recursively_primitive_type(element_type),
+    let expr_kind = expr_type.kind();
+    let is_primitive = match expr_kind {
+        ty::Slice(element_type) => is_recursively_primitive_type(element_type),
+        ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), &ty::Slice(_)) => {
+            if let ty::Slice(element_type) = inner_ty.kind() {
+                is_recursively_primitive_type(element_type)
+            } else {
+                unreachable!()
+            }
+        }
         _ => false,
+    };
+
+    if is_primitive {
+        // if we have wrappers like Array, Slice or Tuple, print these
+        // and get the type enclosed in the slice ref
+        match expr_type.peel_refs().walk().nth(1).unwrap().expect_ty().kind() {
+            ty::Slice(..) => return Some("slice".into()),
+            ty::Array(..) => return Some("array".into()),
+            ty::Tuple(..) => return Some("tuple".into()),
+            _ => {
+                // is_recursively_primitive_type() should have taken care
+                // of the rest and we can rely on the type that is found
+                let refs_peeled = expr_type.peel_refs();
+                return Some(refs_peeled.walk().last().unwrap().to_string());
+            },
+        }
     }
+    None
 }
 
 #[macro_export]

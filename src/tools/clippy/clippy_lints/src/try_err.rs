@@ -4,7 +4,7 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, MatchSource};
+use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
             if let ExprKind::Match(ref match_arg, _, MatchSource::TryDesugar) = expr.kind;
             if let ExprKind::Call(ref match_fun, ref try_args) = match_arg.kind;
             if let ExprKind::Path(ref match_fun_path) = match_fun.kind;
-            if match_qpath(match_fun_path, &paths::TRY_INTO_RESULT);
+            if matches!(match_fun_path, QPath::LangItem(LangItem::TryIntoResult, _));
             if let Some(ref try_arg) = try_args.get(0);
             if let ExprKind::Call(ref err_fun, ref err_args) = try_arg.kind;
             if let Some(ref err_arg) = err_args.get(0);
@@ -132,7 +132,7 @@ fn find_return_type<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx ExprKind<'_>) -> O
 /// Extracts the error type from Result<T, E>.
 fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     if_chain! {
-        if let ty::Adt(_, subst) = ty.kind;
+        if let ty::Adt(_, subst) = ty.kind();
         if is_type_diagnostic_item(cx, ty, sym!(result_type));
         let err_ty = subst.type_at(1);
         then {
@@ -146,11 +146,11 @@ fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
 /// Extracts the error type from Poll<Result<T, E>>.
 fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     if_chain! {
-        if let ty::Adt(def, subst) = ty.kind;
+        if let ty::Adt(def, subst) = ty.kind();
         if match_def_path(cx, def.did, &paths::POLL);
         let ready_ty = subst.type_at(0);
 
-        if let ty::Adt(ready_def, ready_subst) = ready_ty.kind;
+        if let ty::Adt(ready_def, ready_subst) = ready_ty.kind();
         if cx.tcx.is_diagnostic_item(sym!(result_type), ready_def.did);
         let err_ty = ready_subst.type_at(1);
 
@@ -165,15 +165,15 @@ fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<
 /// Extracts the error type from Poll<Option<Result<T, E>>>.
 fn poll_option_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     if_chain! {
-        if let ty::Adt(def, subst) = ty.kind;
+        if let ty::Adt(def, subst) = ty.kind();
         if match_def_path(cx, def.did, &paths::POLL);
         let ready_ty = subst.type_at(0);
 
-        if let ty::Adt(ready_def, ready_subst) = ready_ty.kind;
+        if let ty::Adt(ready_def, ready_subst) = ready_ty.kind();
         if cx.tcx.is_diagnostic_item(sym!(option_type), ready_def.did);
         let some_ty = ready_subst.type_at(0);
 
-        if let ty::Adt(some_def, some_subst) = some_ty.kind;
+        if let ty::Adt(some_def, some_subst) = some_ty.kind();
         if cx.tcx.is_diagnostic_item(sym!(result_type), some_def.did);
         let err_ty = some_subst.type_at(1);
 

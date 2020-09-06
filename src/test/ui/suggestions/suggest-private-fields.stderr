@@ -1,14 +1,14 @@
-error[E0560]: struct `xc::B` has no field named `aa`
+error[E0560]: struct `B` has no field named `aa`
   --> $DIR/suggest-private-fields.rs:15:9
    |
 LL |         aa: 20,
    |         ^^ help: a field with a similar name exists: `a`
 
-error[E0560]: struct `xc::B` has no field named `bb`
+error[E0560]: struct `B` has no field named `bb`
   --> $DIR/suggest-private-fields.rs:17:9
    |
 LL |         bb: 20,
-   |         ^^ `xc::B` does not have this field
+   |         ^^ `B` does not have this field
    |
    = note: available fields are: `a`
 

@@ -7,7 +7,7 @@ LL | fn bar<T: Sync>(_: T) {}
 LL |     bar(&x);
    |     ^^^ `NoSync` cannot be shared between threads safely
    |
-   = help: within `&Foo`, the trait `std::marker::Sync` is not implemented for `NoSync`
+   = help: within `&Foo`, the trait `Sync` is not implemented for `NoSync`
    = note: required because it appears within the type `Foo`
    = note: required because it appears within the type `&Foo`
 

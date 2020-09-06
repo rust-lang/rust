@@ -1,4 +1,4 @@
-error: type `somedep::S` from private dependency 'somedep' in public interface
+error: type `S` from private dependency 'somedep' in public interface
   --> $DIR/public-and-private.rs:10:5
    |
 LL |     pub field: somedep::S,

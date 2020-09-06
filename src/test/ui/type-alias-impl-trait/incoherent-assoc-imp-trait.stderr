@@ -5,8 +5,8 @@ LL | impl<F> FnOnce<()> for &F {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
-           - impl<A, F> std::ops::FnOnce<A> for &F
-             where F: std::ops::Fn<A>, F: ?Sized;
+           - impl<A, F> FnOnce<A> for &F
+             where F: Fn<A>, F: ?Sized;
 
 error[E0210]: type parameter `F` must be used as the type parameter for some local type (e.g., `MyStruct<F>`)
   --> $DIR/incoherent-assoc-imp-trait.rs:10:6

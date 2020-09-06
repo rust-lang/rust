@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/error-should-say-copy-not-pod.rs:6:17
    |
 LL | fn check_bound<T:Copy>(_: T) {}
    |                  ---- required by this bound in `check_bound`
 ...
 LL |     check_bound("nocopy".to_string());
-   |                 ^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
+   |                 ^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
 
 error: aborting due to previous error
 

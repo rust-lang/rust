@@ -7,10 +7,10 @@ LL |     // Test that constructing the `visible_parent_map` (in `cstore_impl.rs`
 LL |     std::cell::Cell::new(0)
    |     ^^^^^^^^^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
    |     |
-   |     expected `()`, found struct `std::cell::Cell`
+   |     expected `()`, found struct `Cell`
    |
    = note: expected unit type `()`
-                 found struct `std::cell::Cell<{integer}>`
+                 found struct `Cell<{integer}>`
 
 error: aborting due to previous error
 

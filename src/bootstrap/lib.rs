@@ -323,10 +323,7 @@ pub enum Mode {
 
 impl Mode {
     pub fn is_tool(&self) -> bool {
-        match self {
-            Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd => true,
-            _ => false,
-        }
+        matches!(self, Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd)
     }
 }
 
@@ -653,7 +650,7 @@ impl Build {
             }
         } else {
             let base = self.llvm_out(self.config.build).join("build");
-            let base = if !self.config.ninja && self.config.build.contains("msvc") {
+            let base = if !self.ninja() && self.config.build.contains("msvc") {
                 if self.config.llvm_optimize {
                     if self.config.llvm_release_debuginfo {
                         base.join("RelWithDebInfo")
@@ -857,12 +854,21 @@ impl Build {
         if let Some(linker) = self.config.target_config.get(&target).and_then(|c| c.linker.as_ref())
         {
             Some(linker)
+        } else if target.contains("vxworks") {
+            // need to use CXX compiler as linker to resolve the exception functions
+            // that are only existed in CXX libraries
+            Some(self.cxx[&target].path())
         } else if target != self.config.build
             && util::use_host_linker(target)
             && !target.contains("msvc")
         {
             Some(self.cc(target))
-        } else if can_use_lld && self.config.use_lld && self.build == target {
+        } else if target.contains("msvc")
+            && can_use_lld
+            && self.config.use_lld
+            && self.build == target
+        {
+            // Currently we support using LLD directly via `rust.use_lld` option only with MSVC
             Some(&self.initial_lld)
         } else {
             None
@@ -1326,6 +1332,43 @@ impl Build {
             return;
         }
         fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
+    }
+
+    /// Returns if config.ninja is enabled, and checks for ninja existence,
+    /// exiting with a nicer error message if not.
+    fn ninja(&self) -> bool {
+        let mut cmd_finder = crate::sanity::Finder::new();
+
+        if self.config.ninja_in_file {
+            // Some Linux distros rename `ninja` to `ninja-build`.
+            // CMake can work with either binary name.
+            if cmd_finder.maybe_have("ninja-build").is_none()
+                && cmd_finder.maybe_have("ninja").is_none()
+            {
+                eprintln!(
+                    "
+Couldn't find required command: ninja
+You should install ninja, or set ninja=false in config.toml
+"
+                );
+                std::process::exit(1);
+            }
+        }
+
+        // If ninja isn't enabled but we're building for MSVC then we try
+        // doubly hard to enable it. It was realized in #43767 that the msbuild
+        // CMake generator for MSVC doesn't respect configuration options like
+        // disabling LLVM assertions, which can often be quite important!
+        //
+        // In these cases we automatically enable Ninja if we find it in the
+        // environment.
+        if !self.config.ninja_in_file && self.config.build.contains("msvc") {
+            if cmd_finder.maybe_have("ninja").is_some() {
+                return true;
+            }
+        }
+
+        self.config.ninja_in_file
     }
 }
 

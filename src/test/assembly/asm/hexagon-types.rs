@@ -13,6 +13,10 @@ macro_rules! asm {
     () => {};
 }
 #[rustc_builtin_macro]
+macro_rules! concat {
+    () => {};
+}
+#[rustc_builtin_macro]
 macro_rules! stringify {
     () => {};
 }
@@ -46,6 +50,23 @@ macro_rules! check {
 
             let y;
             asm!("{} = {}", out($class) y, in($class) x);
+            y
+        }
+    };
+}
+
+macro_rules! check_reg {
+    ($func:ident $ty:ident $reg:tt) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            // Hack to avoid function merging
+            extern "Rust" {
+                fn dont_merge(s: &str);
+            }
+            dont_merge(stringify!($func));
+
+            let y;
+            asm!(concat!($reg, " = ", $reg), lateout($reg) y, in($reg) x);
             y
         }
     };
@@ -100,7 +121,7 @@ pub unsafe fn packet() {
     }}", out(reg) _, in(reg) &val);
 }
 
-// CHECK-LABEL: ptr:
+// CHECK-LABEL: reg_ptr:
 // CHECK: InlineAsm Start
 // CHECK: r{{[0-9]+}} = r{{[0-9]+}}
 // CHECK: InlineAsm End
@@ -129,3 +150,33 @@ check!(reg_i8 i8 reg);
 // CHECK: r{{[0-9]+}} = r{{[0-9]+}}
 // CHECK: InlineAsm End
 check!(reg_i16 i16 reg);
+
+// CHECK-LABEL: r0_ptr:
+// CHECK: InlineAsm Start
+// CHECK: r0 = r0
+// CHECK: InlineAsm End
+check_reg!(r0_ptr ptr "r0");
+
+// CHECK-LABEL: r0_f32:
+// CHECK: InlineAsm Start
+// CHECK: r0 = r0
+// CHECK: InlineAsm End
+check_reg!(r0_f32 f32 "r0");
+
+// CHECK-LABEL: r0_i32:
+// CHECK: InlineAsm Start
+// CHECK: r0 = r0
+// CHECK: InlineAsm End
+check_reg!(r0_i32 i32 "r0");
+
+// CHECK-LABEL: r0_i8:
+// CHECK: InlineAsm Start
+// CHECK: r0 = r0
+// CHECK: InlineAsm End
+check_reg!(r0_i8 i8 "r0");
+
+// CHECK-LABEL: r0_i16:
+// CHECK: InlineAsm Start
+// CHECK: r0 = r0
+// CHECK: InlineAsm End
+check_reg!(r0_i16 i16 "r0");

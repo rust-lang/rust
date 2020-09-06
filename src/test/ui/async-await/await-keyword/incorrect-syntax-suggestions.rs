@@ -14,7 +14,7 @@ async fn foo2() -> Result<(), ()> {
 }
 async fn foo3() -> Result<(), ()> {
     let _ = await bar()?; //~ ERROR incorrect use of `await`
-    //~^ ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
+    //~^ ERROR the `?` operator can only be applied to values that implement `Try`
     Ok(())
 }
 async fn foo21() -> Result<(), ()> {
@@ -62,7 +62,7 @@ fn foo10() -> Result<(), ()> {
 fn foo11() -> Result<(), ()> {
     let _ = await bar()?; //~ ERROR `await` is only allowed inside `async` functions and blocks
     //~^ ERROR incorrect use of `await`
-    //~| ERROR the `?` operator can only be applied to values that implement `std::ops::Try`
+    //~| ERROR the `?` operator can only be applied to values that implement `Try`
     Ok(())
 }
 fn foo12() -> Result<(), ()> {

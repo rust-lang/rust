@@ -3,28 +3,31 @@ use std::default::Default;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
+use std::lazy::SyncOnceCell as OnceCell;
 use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
 
-use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
+use rustc_ast::{self as ast, AttrStyle};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::stability;
+use rustc_middle::ty::{AssocKind, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
+use smallvec::{smallvec, SmallVec};
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
@@ -115,7 +118,7 @@ impl Item {
         self.attrs.collapsed_doc_value()
     }
 
-    pub fn links(&self) -> Vec<(String, String)> {
+    pub fn links(&self) -> Vec<RenderedLink> {
         self.attrs.links(&self.def_id.krate)
     }
 
@@ -279,10 +282,19 @@ pub enum ItemEnum {
 }
 
 impl ItemEnum {
-    pub fn is_associated(&self) -> bool {
+    pub fn is_type_alias(&self) -> bool {
         match *self {
             ItemEnum::TypedefItem(_, _) | ItemEnum::AssocTypeItem(_, _) => true,
             _ => false,
+        }
+    }
+
+    pub fn as_assoc_kind(&self) -> Option<AssocKind> {
+        match *self {
+            ItemEnum::AssocConstItem(..) => Some(AssocKind::Const),
+            ItemEnum::AssocTypeItem(..) => Some(AssocKind::Type),
+            ItemEnum::TyMethodItem(..) | ItemEnum::MethodItem(..) => Some(AssocKind::Fn),
+            _ => None,
         }
     }
 }
@@ -413,14 +425,42 @@ pub struct Attributes {
     pub cfg: Option<Arc<Cfg>>,
     pub span: Option<rustc_span::Span>,
     /// map from Rust paths to resolved defs and potential URL fragments
-    pub links: Vec<(String, Option<DefId>, Option<String>)>,
+    pub links: Vec<ItemLink>,
     pub inner_docs: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+/// A link that has not yet been rendered.
+///
+/// This link will be turned into a rendered link by [`Attributes::links`]
+pub struct ItemLink {
+    /// The original link written in the markdown
+    pub(crate) link: String,
+    /// The link text displayed in the HTML.
+    ///
+    /// This may not be the same as `link` if there was a disambiguator
+    /// in an intra-doc link (e.g. \[`fn@f`\])
+    pub(crate) link_text: String,
+    pub(crate) did: Option<DefId>,
+    /// The url fragment to append to the link
+    pub(crate) fragment: Option<String>,
+}
+
+pub struct RenderedLink {
+    /// The text the link was original written as.
+    ///
+    /// This could potentially include disambiguators and backticks.
+    pub(crate) original_text: String,
+    /// The text to display in the HTML
+    pub(crate) new_text: String,
+    /// The URL to put in the `href`
+    pub(crate) href: String,
 }
 
 impl Attributes {
     /// Extracts the content from an attribute `#[doc(cfg(content))]`.
     pub fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
-        use rustc_ast::ast::NestedMetaItem::MetaItem;
+        use rustc_ast::NestedMetaItem::MetaItem;
 
         if let ast::MetaItemKind::List(ref nmis) = mi.kind {
             if nmis.len() == 1 {
@@ -593,21 +633,25 @@ impl Attributes {
     /// Gets links as a vector
     ///
     /// Cache must be populated before call
-    pub fn links(&self, krate: &CrateNum) -> Vec<(String, String)> {
+    pub fn links(&self, krate: &CrateNum) -> Vec<RenderedLink> {
         use crate::html::format::href;
         use crate::html::render::CURRENT_DEPTH;
 
         self.links
             .iter()
-            .filter_map(|&(ref s, did, ref fragment)| {
-                match did {
+            .filter_map(|ItemLink { link: s, link_text, did, fragment }| {
+                match *did {
                     Some(did) => {
                         if let Some((mut href, ..)) = href(did) {
                             if let Some(ref fragment) = *fragment {
                                 href.push_str("#");
                                 href.push_str(fragment);
                             }
-                            Some((s.clone(), href))
+                            Some(RenderedLink {
+                                original_text: s.clone(),
+                                new_text: link_text.clone(),
+                                href,
+                            })
                         } else {
                             None
                         }
@@ -627,16 +671,17 @@ impl Attributes {
                             };
                             // This is a primitive so the url is done "by hand".
                             let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
-                            Some((
-                                s.clone(),
-                                format!(
+                            Some(RenderedLink {
+                                original_text: s.clone(),
+                                new_text: link_text.clone(),
+                                href: format!(
                                     "{}{}std/primitive.{}.html{}",
                                     url,
                                     if !url.ends_with('/') { "/" } else { "" },
                                     &fragment[..tail],
                                     &fragment[tail..]
                                 ),
-                            ))
+                            })
                         } else {
                             panic!("This isn't a primitive?!");
                         }
@@ -698,7 +743,7 @@ pub enum GenericBound {
 
 impl GenericBound {
     pub fn maybe_sized(cx: &DocContext<'_>) -> GenericBound {
-        let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
+        let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = cx.tcx.intern_substs(&[]);
         let path = external_path(cx, cx.tcx.item_name(did), Some(did), false, vec![], empty);
         inline::record_extern_fqn(cx, did, TypeKind::Trait);
@@ -1262,6 +1307,86 @@ impl PrimitiveType {
             Fn => "fn",
             Never => "never",
         }
+    }
+
+    pub fn impls(&self, tcx: TyCtxt<'_>) -> &'static SmallVec<[DefId; 4]> {
+        Self::all_impls(tcx).get(self).expect("missing impl for primitive type")
+    }
+
+    pub fn all_impls(tcx: TyCtxt<'_>) -> &'static FxHashMap<PrimitiveType, SmallVec<[DefId; 4]>> {
+        static CELL: OnceCell<FxHashMap<PrimitiveType, SmallVec<[DefId; 4]>>> = OnceCell::new();
+
+        CELL.get_or_init(move || {
+            use self::PrimitiveType::*;
+
+            /// A macro to create a FxHashMap.
+            ///
+            /// Example:
+            ///
+            /// ```
+            /// let letters = map!{"a" => "b", "c" => "d"};
+            /// ```
+            ///
+            /// Trailing commas are allowed.
+            /// Commas between elements are required (even if the expression is a block).
+            macro_rules! map {
+                ($( $key: expr => $val: expr ),* $(,)*) => {{
+                    let mut map = ::rustc_data_structures::fx::FxHashMap::default();
+                    $( map.insert($key, $val); )*
+                    map
+                }}
+            }
+
+            let single = |a: Option<DefId>| a.into_iter().collect();
+            let both = |a: Option<DefId>, b: Option<DefId>| -> SmallVec<_> {
+                a.into_iter().chain(b).collect()
+            };
+
+            let lang_items = tcx.lang_items();
+            map! {
+                Isize => single(lang_items.isize_impl()),
+                I8 => single(lang_items.i8_impl()),
+                I16 => single(lang_items.i16_impl()),
+                I32 => single(lang_items.i32_impl()),
+                I64 => single(lang_items.i64_impl()),
+                I128 => single(lang_items.i128_impl()),
+                Usize => single(lang_items.usize_impl()),
+                U8 => single(lang_items.u8_impl()),
+                U16 => single(lang_items.u16_impl()),
+                U32 => single(lang_items.u32_impl()),
+                U64 => single(lang_items.u64_impl()),
+                U128 => single(lang_items.u128_impl()),
+                F32 => both(lang_items.f32_impl(), lang_items.f32_runtime_impl()),
+                F64 => both(lang_items.f64_impl(), lang_items.f64_runtime_impl()),
+                Char => single(lang_items.char_impl()),
+                Bool => single(lang_items.bool_impl()),
+                Str => both(lang_items.str_impl(), lang_items.str_alloc_impl()),
+                Slice => {
+                    lang_items
+                        .slice_impl()
+                        .into_iter()
+                        .chain(lang_items.slice_u8_impl())
+                        .chain(lang_items.slice_alloc_impl())
+                        .chain(lang_items.slice_u8_alloc_impl())
+                        .collect()
+                },
+                Array => single(lang_items.array_impl()),
+                Tuple => smallvec![],
+                Unit => smallvec![],
+                RawPointer => {
+                    lang_items
+                        .const_ptr_impl()
+                        .into_iter()
+                        .chain(lang_items.mut_ptr_impl())
+                        .chain(lang_items.const_slice_ptr_impl())
+                        .chain(lang_items.mut_slice_ptr_impl())
+                        .collect()
+                },
+                Reference => smallvec![],
+                Fn => smallvec![],
+                Never => smallvec![],
+            }
+        })
     }
 
     pub fn to_url_str(&self) -> &'static str {

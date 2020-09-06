@@ -5,8 +5,8 @@ LL | unsafe impl Send for &'static [NotSync] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
-           - impl<T> std::marker::Send for &T
-             where T: std::marker::Sync, T: ?Sized;
+           - impl<T> Send for &T
+             where T: Sync, T: ?Sized;
    = note: upstream crates may add a new impl of trait `std::marker::Sync` for type `[NotSync]` in future versions
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
@@ -20,7 +20,7 @@ LL | unsafe impl Send for (MyType, MyType) {}
    |
    = note: define and implement a trait or new type instead
 
-error[E0321]: cross-crate traits with a default impl, like `std::marker::Send`, can only be implemented for a struct/enum type, not `&'static NotSync`
+error[E0321]: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type, not `&'static NotSync`
   --> $DIR/coherence-impls-send.rs:19:1
    |
 LL | unsafe impl Send for &'static NotSync {}

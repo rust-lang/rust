@@ -261,7 +261,24 @@ macro_rules! check {
             dont_merge(stringify!($func));
 
             let y;
-            asm!(concat!($mov, " {}, {}"), out($class) y, in($class) x);
+            asm!(concat!($mov, " {}, {}"), lateout($class) y, in($class) x);
+            y
+        }
+    };
+}
+
+macro_rules! check_reg {
+    ($func:ident $ty:ident $reg:tt $mov:literal) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            // Hack to avoid function merging
+            extern "Rust" {
+                fn dont_merge(s: &str);
+            }
+            dont_merge(stringify!($func));
+
+            let y;
+            asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
             y
         }
     };
@@ -692,3 +709,383 @@ check!(kreg_i64 i64 kreg "kmovq");
 // CHECK: kmovq k{{[0-9]+}}, k{{[0-9]+}}
 // CHECK: #NO_APP
 check!(kreg_ptr ptr kreg "kmovq");
+
+// CHECK-LABEL: eax_i16:
+// CHECK: #APP
+// CHECK: mov eax, eax
+// CHECK: #NO_APP
+check_reg!(eax_i16 i16 "eax" "mov");
+
+// CHECK-LABEL: eax_i32:
+// CHECK: #APP
+// CHECK: mov eax, eax
+// CHECK: #NO_APP
+check_reg!(eax_i32 i32 "eax" "mov");
+
+// CHECK-LABEL: eax_f32:
+// CHECK: #APP
+// CHECK: mov eax, eax
+// CHECK: #NO_APP
+check_reg!(eax_f32 f32 "eax" "mov");
+
+// x86_64-LABEL: eax_i64:
+// x86_64: #APP
+// x86_64: mov eax, eax
+// x86_64: #NO_APP
+#[cfg(x86_64)]
+check_reg!(eax_i64 i64 "eax" "mov");
+
+// x86_64-LABEL: eax_f64:
+// x86_64: #APP
+// x86_64: mov eax, eax
+// x86_64: #NO_APP
+#[cfg(x86_64)]
+check_reg!(eax_f64 f64 "eax" "mov");
+
+// CHECK-LABEL: eax_ptr:
+// CHECK: #APP
+// CHECK: mov eax, eax
+// CHECK: #NO_APP
+check_reg!(eax_ptr ptr "eax" "mov");
+
+// CHECK-LABEL: ah_byte:
+// CHECK: #APP
+// CHECK: mov ah, ah
+// CHECK: #NO_APP
+check_reg!(ah_byte i8 "ah" "mov");
+
+// CHECK-LABEL: xmm0_i32:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_i32 i32 "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_f32:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_f32 f32 "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_i64:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_i64 i64 "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_f64:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_f64 f64 "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_ptr:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_ptr ptr "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_i8x16:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_i8x16 i8x16 "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_i16x8:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_i16x8 i16x8 "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_i32x4:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_i32x4 i32x4 "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_i64x2:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_i64x2 i64x2 "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_f32x4:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_f32x4 f32x4 "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_f64x2:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_f64x2 f64x2 "xmm0" "movaps");
+
+// CHECK-LABEL: ymm0_i32:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_i32 i32 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_f32:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_f32 f32 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_i64:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_i64 i64 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_f64:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_f64 f64 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_ptr:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_ptr ptr "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_i8x16:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_i8x16 i8x16 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_i16x8:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_i16x8 i16x8 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_i32x4:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_i32x4 i32x4 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_i64x2:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_i64x2 i64x2 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_f32x4:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_f32x4 f32x4 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_f64x2:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_f64x2 f64x2 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_i8x32:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_i8x32 i8x32 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_i16x16:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_i16x16 i16x16 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_i32x8:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_i32x8 i32x8 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_i64x4:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_i64x4 i64x4 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_f32x8:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_f32x8 f32x8 "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_f64x4:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_f64x4 f64x4 "ymm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i32:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i32 i32 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f32:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f32 f32 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i64:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i64 i64 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f64:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f64 f64 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_ptr:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_ptr ptr "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i8x16:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i8x16 i8x16 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i16x8:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i16x8 i16x8 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i32x4:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i32x4 i32x4 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i64x2:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i64x2 i64x2 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f32x4:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f32x4 f32x4 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f64x2:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f64x2 f64x2 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i8x32:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i8x32 i8x32 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i16x16:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i16x16 i16x16 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i32x8:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i32x8 i32x8 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i64x4:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i64x4 i64x4 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f32x8:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f32x8 f32x8 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f64x4:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f64x4 f64x4 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i8x64:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i8x64 i8x64 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i16x32:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i16x32 i16x32 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i32x16:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i32x16 i32x16 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_i64x8:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_i64x8 i64x8 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f32x16:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f32x16 f32x16 "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_f64x8:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_f64x8 f64x8 "zmm0" "vmovaps");
+
+// CHECK-LABEL: k1_i8:
+// CHECK: #APP
+// CHECK: kmovb k1, k1
+// CHECK: #NO_APP
+check_reg!(k1_i8 i8 "k1" "kmovb");
+
+// CHECK-LABEL: k1_i16:
+// CHECK: #APP
+// CHECK: kmovw k1, k1
+// CHECK: #NO_APP
+check_reg!(k1_i16 i16 "k1" "kmovw");
+
+// CHECK-LABEL: k1_i32:
+// CHECK: #APP
+// CHECK: kmovd k1, k1
+// CHECK: #NO_APP
+check_reg!(k1_i32 i32 "k1" "kmovd");
+
+// CHECK-LABEL: k1_i64:
+// CHECK: #APP
+// CHECK: kmovq k1, k1
+// CHECK: #NO_APP
+check_reg!(k1_i64 i64 "k1" "kmovq");
+
+// CHECK-LABEL: k1_ptr:
+// CHECK: #APP
+// CHECK: kmovq k1, k1
+// CHECK: #NO_APP
+check_reg!(k1_ptr ptr "k1" "kmovq");

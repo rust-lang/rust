@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>coverage_of_if_else - Code Regions</title>
+    <style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+            hue-rotate(calc(var(--index) * 25deg))
+            saturate(calc(100% - (var(--index) * 2%)))
+            brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+    </style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 2"><span class="line"><span class="code" style="--layer: 0">fn main() {</span></span>
+<span class="line"><span class="code" style="--layer: 0">    let mut countdown = 0;</span></span>
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="bb2: ../instrument-coverage/coverage_of_if_else.rs:5:5: 7:6:
+    5:5-7:6: FalseEdge: falseEdge -&gt; [real: bb4, imaginary: bb3]"><span class="annotation">@2</span></span></span><span class="code even" style="--layer: 2" title="bb4: ../instrument-coverage/coverage_of_if_else.rs:5:5: 7:6:
+    6:9-6:23: Assign: _1 = const 10_i32
+    5:13-7:6: Assign: _2 = const ()
+    5:5-7:6: Goto: goto -&gt; bb5"><span class="annotation">@4</span></span><span class="code even" style="--layer: 3" title="bb3: ../instrument-coverage/coverage_of_if_else.rs:5:5: 7:6:
+    5:5-7:6: Assign: _2 = const ()
+    5:5-7:6: Goto: goto -&gt; bb5"><span class="annotation">@3:</span> if </span><span class="code even" style="--layer: 4" title="bb0: ../instrument-coverage/coverage_of_if_else.rs:5:8: 5:12:
+    4:9-4:22: StorageLive: StorageLive(_1)
+    4:25-4:26: Assign: _1 = const 0_i32
+    4:9-4:22: FakeRead: FakeRead(ForLet, _1)
+    5:5-7:6: StorageLive: StorageLive(_2)
+    5:8-5:12: StorageLive: StorageLive(_3)
+    5:8-5:12: Assign: _3 = const true
+    5:8-5:12: FakeRead: FakeRead(ForMatchedPlace, _3)
+    5:5-7:6: SwitchInt: switchInt(_3) -&gt; [false: bb3, otherwise: bb2]"><span class="annotation">@0:</span> true</span><span class="code even" style="--layer: 3" title="bb3: ../instrument-coverage/coverage_of_if_else.rs:5:5: 7:6:
+    5:5-7:6: Assign: _2 = const ()
+    5:5-7:6: Goto: goto -&gt; bb5"><span class="annotation">@3:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 3" title="bb3: ../instrument-coverage/coverage_of_if_else.rs:5:5: 7:6:
+    5:5-7:6: Assign: _2 = const ()
+    5:5-7:6: Goto: goto -&gt; bb5">        countdown = 10;</span></span>
+<span class="line"><span class="code even" style="--layer: 3" title="bb3: ../instrument-coverage/coverage_of_if_else.rs:5:5: 7:6:
+    5:5-7:6: Assign: _2 = const ()
+    5:5-7:6: Goto: goto -&gt; bb5">    }</span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="bb6: ../instrument-coverage/coverage_of_if_else.rs:9:5: 18:6:
+    9:5-18:6: FalseEdge: falseEdge -&gt; [real: bb8, imaginary: bb7]"><span class="annotation">@6</span></span></span><span class="code even" style="--layer: 2" title="bb9: ../instrument-coverage/coverage_of_if_else.rs:9:5: 18:6:
+    10:9-10:23: Assign: _1 = move (_7.0: i32)
+    9:22-11:6: Assign: _4 = const ()
+    9:5-18:6: Goto: goto -&gt; bb28"><span class="annotation">@9</span></span><span class="code even" style="--layer: 3" title="bb25: ../instrument-coverage/coverage_of_if_else.rs:9:5: 18:6:
+    15:9-15:23: Assign: _1 = move (_19.0: i32)
+    11:29-16:6: Assign: _4 = const ()
+    18:5-18:6: StorageDead: StorageDead(_8)
+    9:5-18:6: Goto: goto -&gt; bb28"><span class="annotation">@25:</span> if </span><span class="code even" style="--layer: 4" title="bb5: ../instrument-coverage/coverage_of_if_else.rs:9:8: 9:21:
+    7:5-7:6: StorageDead: StorageDead(_3)
+    7:5-7:6: StorageDead: StorageDead(_2)
+    9:5-18:6: StorageLive: StorageLive(_4)
+    9:8-9:21: StorageLive: StorageLive(_5)
+    9:8-9:17: StorageLive: StorageLive(_6)
+    9:8-9:17: Assign: _6 = _1
+    9:8-9:21: Assign: _5 = Gt(move _6, const 7_i32)
+    9:20-9:21: StorageDead: StorageDead(_6)
+    9:8-9:21: FakeRead: FakeRead(ForMatchedPlace, _5)
+    9:5-18:6: SwitchInt: switchInt(_5) -&gt; [false: bb7, otherwise: bb6]"><span class="annotation">@5:</span> countdown &gt; 7</span><span class="code even" style="--layer: 3" title="bb25: ../instrument-coverage/coverage_of_if_else.rs:9:5: 18:6:
+    15:9-15:23: Assign: _1 = move (_19.0: i32)
+    11:29-16:6: Assign: _4 = const ()
+    18:5-18:6: StorageDead: StorageDead(_8)
+    9:5-18:6: Goto: goto -&gt; bb28"><span class="annotation">@25:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 3" title="bb25: ../instrument-coverage/coverage_of_if_else.rs:9:5: 18:6:
+    15:9-15:23: Assign: _1 = move (_19.0: i32)
+    11:29-16:6: Assign: _4 = const ()
+    18:5-18:6: StorageDead: StorageDead(_8)
+    9:5-18:6: Goto: goto -&gt; bb28">        </span><span class="code odd" style="--layer: 4" title="bb8: ../instrument-coverage/coverage_of_if_else.rs:10:9: 10:23:
+    10:9-10:23: Assign: _7 = CheckedSub(_1, const 4_i32)
+    10:9-10:23: Assert: assert(!move (_7.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _1, const 4_i32) -&gt; [success: bb9, unwind: bb1]"><span class="annotation">@8:</span> countdown -= 4</span><span class="code even" style="--layer: 3" title="bb25: ../instrument-coverage/coverage_of_if_else.rs:9:5: 18:6:
+    15:9-15:23: Assign: _1 = move (_19.0: i32)
+    11:29-16:6: Assign: _4 = const ()
+    18:5-18:6: StorageDead: StorageDead(_8)
+    9:5-18:6: Goto: goto -&gt; bb28"><span class="annotation">@25:</span> ;</span></span>
+<span class="line"><span class="code even" style="--layer: 3" title="bb25: ../instrument-coverage/coverage_of_if_else.rs:9:5: 18:6:
+    15:9-15:23: Assign: _1 = move (_19.0: i32)
+    11:29-16:6: Assign: _4 = const ()
+    18:5-18:6: StorageDead: StorageDead(_8)
+    9:5-18:6: Goto: goto -&gt; bb28">    } else </span><span class="code even" style="--layer: 4" title="bb10: ../instrument-coverage/coverage_of_if_else.rs:11:12: 18:6:
+    11:12-18:6: FalseEdge: falseEdge -&gt; [real: bb12, imaginary: bb11]"><span class="annotation">@10:</span> if </span><span class="code even" style="--layer: 5" title="bb7: ../instrument-coverage/coverage_of_if_else.rs:11:15: 11:28:
+    11:15-11:28: StorageLive: StorageLive(_8)
+    11:15-11:24: StorageLive: StorageLive(_9)
+    11:15-11:24: Assign: _9 = _1
+    11:15-11:28: Assign: _8 = Gt(move _9, const 2_i32)
+    11:27-11:28: StorageDead: StorageDead(_9)
+    11:15-11:28: FakeRead: FakeRead(ForMatchedPlace, _8)
+    11:12-18:6: SwitchInt: switchInt(_8) -&gt; [false: bb11, otherwise: bb10]"><span class="annotation">@7:</span> countdown &gt; 2</span><span class="code even" style="--layer: 4" title="bb10: ../instrument-coverage/coverage_of_if_else.rs:11:12: 18:6:
+    11:12-18:6: FalseEdge: falseEdge -&gt; [real: bb12, imaginary: bb11]"><span class="annotation">@10:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 4" title="bb10: ../instrument-coverage/coverage_of_if_else.rs:11:12: 18:6:
+    11:12-18:6: FalseEdge: falseEdge -&gt; [real: bb12, imaginary: bb11]">        </span><span class="code odd" style="--layer: 5" title="bb22: ../instrument-coverage/coverage_of_if_else.rs:12:9: 14:10:
+    12:9-14:10: Assign: _10 = const ()
+    12:9-14:10: Goto: goto -&gt; bb24"><span class="annotation">@22</span></span><span class="code even" style="--layer: 6" title="bb23: ../instrument-coverage/coverage_of_if_else.rs:12:9: 14:10:
+    13:13-13:26: Assign: _1 = const 0_i32
+    12:61-14:10: Assign: _10 = const ()
+    12:9-14:10: Goto: goto -&gt; bb24"><span class="annotation">@23</span></span><span class="code even" style="--layer: 7" title="bb21: ../instrument-coverage/coverage_of_if_else.rs:12:9: 14:10:
+    12:9-14:10: FalseEdge: falseEdge -&gt; [real: bb23, imaginary: bb22]"><span class="annotation">@21:</span> if </span><span class="code even" style="--layer: 8" title="bb14: ../instrument-coverage/coverage_of_if_else.rs:12:12: 12:60:
+    12:12-12:60: Assign: _11 = const false
+    12:12-12:60: Goto: goto -&gt; bb16"><span class="annotation">@14</span></span><span class="code even" style="--layer: 9" title="bb15: ../instrument-coverage/coverage_of_if_else.rs:12:12: 12:60:
+    12:46-12:60: StorageLive: StorageLive(_17)
+    12:46-12:55: StorageLive: StorageLive(_18)
+    12:46-12:55: Assign: _18 = _1
+    12:46-12:60: Assign: _17 = Ne(move _18, const 9_i32)
+    12:59-12:60: StorageDead: StorageDead(_18)
+    12:12-12:60: SwitchInt: switchInt(move _17) -&gt; [false: bb14, otherwise: bb13]"><span class="annotation">@15</span></span><span class="code even" style="--layer: 10" title="bb16: ../instrument-coverage/coverage_of_if_else.rs:12:12: 12:60:
+    12:59-12:60: StorageDead: StorageDead(_17)
+    12:59-12:60: StorageDead: StorageDead(_12)
+    12:12-12:60: FakeRead: FakeRead(ForMatchedPlace, _11)
+    12:9-14:10: SwitchInt: switchInt(_11) -&gt; [false: bb22, otherwise: bb21]"><span class="annotation">@16</span></span><span class="code even" style="--layer: 11" title="bb13: ../instrument-coverage/coverage_of_if_else.rs:12:12: 12:60:
+    12:12-12:60: Assign: _11 = const true
+    12:12-12:60: Goto: goto -&gt; bb16"><span class="annotation">@13</span></span><span class="code even" style="--layer: 12" title="bb20: ../instrument-coverage/coverage_of_if_else.rs:12:12: 12:60:
+    12:41-12:42: StorageDead: StorageDead(_15)
+    12:41-12:42: StorageDead: StorageDead(_13)
+    12:12-12:60: SwitchInt: switchInt(move _12) -&gt; [false: bb15, otherwise: bb13]"><span class="annotation">@20</span></span><span class="code even" style="--layer: 13" title="bb12: ../instrument-coverage/coverage_of_if_else.rs:12:12: 12:60:
+    12:9-14:10: StorageLive: StorageLive(_10)
+    12:12-12:60: StorageLive: StorageLive(_11)
+    12:12-12:42: StorageLive: StorageLive(_12)
+    12:12-12:25: StorageLive: StorageLive(_13)
+    12:12-12:21: StorageLive: StorageLive(_14)
+    12:12-12:21: Assign: _14 = _1
+    12:12-12:25: Assign: _13 = Lt(move _14, const 1_i32)
+    12:24-12:25: StorageDead: StorageDead(_14)
+    12:12-12:42: SwitchInt: switchInt(move _13) -&gt; [false: bb19, otherwise: bb17]"><span class="annotation">@12</span></span><span class="code even" style="--layer: 14" title="bb18: ../instrument-coverage/coverage_of_if_else.rs:12:12: 12:42:
+    12:12-12:42: Assign: _12 = const false
+    12:12-12:42: Goto: goto -&gt; bb20"><span class="annotation">@18</span></span><span class="code even" style="--layer: 15" title="bb19: ../instrument-coverage/coverage_of_if_else.rs:12:12: 12:42:
+    12:29-12:42: StorageLive: StorageLive(_15)
+    12:29-12:38: StorageLive: StorageLive(_16)
+    12:29-12:38: Assign: _16 = _1
+    12:29-12:42: Assign: _15 = Gt(move _16, const 5_i32)
+    12:41-12:42: StorageDead: StorageDead(_16)
+    12:12-12:42: SwitchInt: switchInt(move _15) -&gt; [false: bb18, otherwise: bb17]"><span class="annotation">@19</span></span><span class="code even" style="--layer: 16" title="bb17: ../instrument-coverage/coverage_of_if_else.rs:12:12: 12:42:
+    12:12-12:42: Assign: _12 = const true
+    12:12-12:42: Goto: goto -&gt; bb20"><span class="annotation">@17:</span> countdown &lt; 1 || countdown &gt; 5</span><span class="code even" style="--layer: 13" title="bb12: ../instrument-coverage/coverage_of_if_else.rs:12:12: 12:60:
+    12:9-14:10: StorageLive: StorageLive(_10)
+    12:12-12:60: StorageLive: StorageLive(_11)
+    12:12-12:42: StorageLive: StorageLive(_12)
+    12:12-12:25: StorageLive: StorageLive(_13)
+    12:12-12:21: StorageLive: StorageLive(_14)
+    12:12-12:21: Assign: _14 = _1
+    12:12-12:25: Assign: _13 = Lt(move _14, const 1_i32)
+    12:24-12:25: StorageDead: StorageDead(_14)
+    12:12-12:42: SwitchInt: switchInt(move _13) -&gt; [false: bb19, otherwise: bb17]"><span class="annotation">@12:</span>  || countdown != 9</span><span class="code even" style="--layer: 7" title="bb21: ../instrument-coverage/coverage_of_if_else.rs:12:9: 14:10:
+    12:9-14:10: FalseEdge: falseEdge -&gt; [real: bb23, imaginary: bb22]"><span class="annotation">@21:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 7" title="bb21: ../instrument-coverage/coverage_of_if_else.rs:12:9: 14:10:
+    12:9-14:10: FalseEdge: falseEdge -&gt; [real: bb23, imaginary: bb22]">            countdown = 0;</span></span>
+<span class="line"><span class="code even" style="--layer: 7" title="bb21: ../instrument-coverage/coverage_of_if_else.rs:12:9: 14:10:
+    12:9-14:10: FalseEdge: falseEdge -&gt; [real: bb23, imaginary: bb22]">        </span><span class="code odd" style="--layer: 8" title="bb24: ../instrument-coverage/coverage_of_if_else.rs:14:9: 15:23:
+    14:9-14:10: StorageDead: StorageDead(_11)
+    14:9-14:10: StorageDead: StorageDead(_10)
+    15:9-15:23: Assign: _19 = CheckedSub(_1, const 5_i32)
+    15:9-15:23: Assert: assert(!move (_19.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _1, const 5_i32) -&gt; [success: bb25, unwind: bb1]"><span class="annotation">@24:</span> }</span></span>
+<span class="line"><span class="code odd" style="--layer: 8" title="bb24: ../instrument-coverage/coverage_of_if_else.rs:14:9: 15:23:
+    14:9-14:10: StorageDead: StorageDead(_11)
+    14:9-14:10: StorageDead: StorageDead(_10)
+    15:9-15:23: Assign: _19 = CheckedSub(_1, const 5_i32)
+    15:9-15:23: Assert: assert(!move (_19.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _1, const 5_i32) -&gt; [success: bb25, unwind: bb1]">        countdown -= 5</span><span class="code even" style="--layer: 4" title="bb10: ../instrument-coverage/coverage_of_if_else.rs:11:12: 18:6:
+    11:12-18:6: FalseEdge: falseEdge -&gt; [real: bb12, imaginary: bb11]"><span class="annotation">@10:</span> ;</span></span>
+<span class="line"><span class="code even" style="--layer: 4" title="bb10: ../instrument-coverage/coverage_of_if_else.rs:11:12: 18:6:
+    11:12-18:6: FalseEdge: falseEdge -&gt; [real: bb12, imaginary: bb11]">    } else {</span></span>
+<span class="line"><span class="code even" style="--layer: 4" title="bb10: ../instrument-coverage/coverage_of_if_else.rs:11:12: 18:6:
+    11:12-18:6: FalseEdge: falseEdge -&gt; [real: bb12, imaginary: bb11]">        </span><span class="code even" style="--layer: 5" title="bb27: ../instrument-coverage/coverage_of_if_else.rs:17:9: 51:2:
+    51:1-51:2: StorageDead: StorageDead(_1)
+    17:9-17:15: Goto: goto -&gt; bb26"><span class="annotation">@27</span></span><span class="code even" style="--layer: 6" title="bb11: ../instrument-coverage/coverage_of_if_else.rs:17:9: 18:6:
+    17:9-17:15: Assign: _0 = const ()
+    18:5-18:6: StorageDead: StorageDead(_8)
+    18:5-18:6: StorageDead: StorageDead(_5)
+    18:5-18:6: StorageDead: StorageDead(_4)
+    17:9-17:15: Goto: goto -&gt; bb27"><span class="annotation">@11:</span> return;</span></span>
+<span class="line"><span class="code even" style="--layer: 6" title="bb11: ../instrument-coverage/coverage_of_if_else.rs:17:9: 18:6:
+    17:9-17:15: Assign: _0 = const ()
+    18:5-18:6: StorageDead: StorageDead(_8)
+    18:5-18:6: StorageDead: StorageDead(_5)
+    18:5-18:6: StorageDead: StorageDead(_4)
+    17:9-17:15: Goto: goto -&gt; bb27">    }</span><span class="code even" style="--layer: 5" title="bb27: ../instrument-coverage/coverage_of_if_else.rs:17:9: 51:2:
+    51:1-51:2: StorageDead: StorageDead(_1)
+    17:9-17:15: Goto: goto -&gt; bb26"><span class="annotation">@27:</span> </span></span>
+<span class="line"><span class="code even" style="--layer: 5" title="bb27: ../instrument-coverage/coverage_of_if_else.rs:17:9: 51:2:
+    51:1-51:2: StorageDead: StorageDead(_1)
+    17:9-17:15: Goto: goto -&gt; bb26"></span></span>
+<span class="line"><span class="code even" style="--layer: 5" title="bb27: ../instrument-coverage/coverage_of_if_else.rs:17:9: 51:2:
+    51:1-51:2: StorageDead: StorageDead(_1)
+    17:9-17:15: Goto: goto -&gt; bb26">    let mut countdown = 0;</span></span>
+<span class="line"><span class="code even" style="--layer: 5" title="bb27: ../instrument-coverage/coverage_of_if_else.rs:17:9: 51:2:
+    51:1-51:2: StorageDead: StorageDead(_1)
+    17:9-17:15: Goto: goto -&gt; bb26">    </span><span class="code odd" style="--layer: 6" title="bb30: ../instrument-coverage/coverage_of_if_else.rs:21:5: 23:6:
+    21:5-23:6: Assign: _22 = const ()
+    21:5-23:6: Goto: goto -&gt; bb32"><span class="annotation">@30</span></span><span class="code even" style="--layer: 7" title="bb31: ../instrument-coverage/coverage_of_if_else.rs:21:5: 23:6:
+    22:9-22:23: Assign: _21 = const 10_i32
+    21:13-23:6: Assign: _22 = const ()
+    21:5-23:6: Goto: goto -&gt; bb32"><span class="annotation">@31</span></span><span class="code even" style="--layer: 8" title="bb29: ../instrument-coverage/coverage_of_if_else.rs:21:5: 23:6:
+    21:5-23:6: FalseEdge: falseEdge -&gt; [real: bb31, imaginary: bb30]"><span class="annotation">@29:</span> if </span><span class="code even" style="--layer: 9" title="bb28: ../instrument-coverage/coverage_of_if_else.rs:21:8: 21:12:
+    18:5-18:6: StorageDead: StorageDead(_5)
+    18:5-18:6: StorageDead: StorageDead(_4)
+    20:9-20:22: StorageLive: StorageLive(_21)
+    20:25-20:26: Assign: _21 = const 0_i32
+    20:9-20:22: FakeRead: FakeRead(ForLet, _21)
+    21:5-23:6: StorageLive: StorageLive(_22)
+    21:8-21:12: StorageLive: StorageLive(_23)
+    21:8-21:12: Assign: _23 = const true
+    21:8-21:12: FakeRead: FakeRead(ForMatchedPlace, _23)
+    21:5-23:6: SwitchInt: switchInt(_23) -&gt; [false: bb30, otherwise: bb29]"><span class="annotation">@28:</span> true</span><span class="code even" style="--layer: 8" title="bb29: ../instrument-coverage/coverage_of_if_else.rs:21:5: 23:6:
+    21:5-23:6: FalseEdge: falseEdge -&gt; [real: bb31, imaginary: bb30]"><span class="annotation">@29:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 8" title="bb29: ../instrument-coverage/coverage_of_if_else.rs:21:5: 23:6:
+    21:5-23:6: FalseEdge: falseEdge -&gt; [real: bb31, imaginary: bb30]">        countdown = 10;</span></span>
+<span class="line"><span class="code even" style="--layer: 8" title="bb29: ../instrument-coverage/coverage_of_if_else.rs:21:5: 23:6:
+    21:5-23:6: FalseEdge: falseEdge -&gt; [real: bb31, imaginary: bb30]">    }</span><span class="code even" style="--layer: 5" title="bb27: ../instrument-coverage/coverage_of_if_else.rs:17:9: 51:2:
+    51:1-51:2: StorageDead: StorageDead(_1)
+    17:9-17:15: Goto: goto -&gt; bb26"><span class="annotation">@27:</span> </span></span>
+<span class="line"><span class="code even" style="--layer: 5" title="bb27: ../instrument-coverage/coverage_of_if_else.rs:17:9: 51:2:
+    51:1-51:2: StorageDead: StorageDead(_1)
+    17:9-17:15: Goto: goto -&gt; bb26"></span></span>
+<span class="line"><span class="code even" style="--layer: 5" title="bb27: ../instrument-coverage/coverage_of_if_else.rs:17:9: 51:2:
+    51:1-51:2: StorageDead: StorageDead(_1)
+    17:9-17:15: Goto: goto -&gt; bb26">    </span><span class="code even" style="--layer: 6" title="bb33: ../instrument-coverage/coverage_of_if_else.rs:25:5: 34:6:
+    25:5-34:6: FalseEdge: falseEdge -&gt; [real: bb35, imaginary: bb34]"><span class="annotation">@33</span></span><span class="code even" style="--layer: 7" title="bb52: ../instrument-coverage/coverage_of_if_else.rs:25:5: 34:6:
+    31:9-31:23: Assign: _21 = move (_39.0: i32)
+    27:29-32:6: Assign: _24 = const ()
+    34:5-34:6: StorageDead: StorageDead(_28)
+    25:5-34:6: Goto: goto -&gt; bb53"><span class="annotation">@52</span></span><span class="code even" style="--layer: 8" title="bb36: ../instrument-coverage/coverage_of_if_else.rs:25:5: 34:6:
+    26:9-26:23: Assign: _21 = move (_27.0: i32)
+    25:22-27:6: Assign: _24 = const ()
+    25:5-34:6: Goto: goto -&gt; bb53"><span class="annotation">@36:</span> if </span><span class="code even" style="--layer: 9" title="bb32: ../instrument-coverage/coverage_of_if_else.rs:25:8: 25:21:
+    23:5-23:6: StorageDead: StorageDead(_23)
+    23:5-23:6: StorageDead: StorageDead(_22)
+    25:5-34:6: StorageLive: StorageLive(_24)
+    25:8-25:21: StorageLive: StorageLive(_25)
+    25:8-25:17: StorageLive: StorageLive(_26)
+    25:8-25:17: Assign: _26 = _21
+    25:8-25:21: Assign: _25 = Gt(move _26, const 7_i32)
+    25:20-25:21: StorageDead: StorageDead(_26)
+    25:8-25:21: FakeRead: FakeRead(ForMatchedPlace, _25)
+    25:5-34:6: SwitchInt: switchInt(_25) -&gt; [false: bb34, otherwise: bb33]"><span class="annotation">@32:</span> countdown &gt; 7</span><span class="code even" style="--layer: 8" title="bb36: ../instrument-coverage/coverage_of_if_else.rs:25:5: 34:6:
+    26:9-26:23: Assign: _21 = move (_27.0: i32)
+    25:22-27:6: Assign: _24 = const ()
+    25:5-34:6: Goto: goto -&gt; bb53"><span class="annotation">@36:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 8" title="bb36: ../instrument-coverage/coverage_of_if_else.rs:25:5: 34:6:
+    26:9-26:23: Assign: _21 = move (_27.0: i32)
+    25:22-27:6: Assign: _24 = const ()
+    25:5-34:6: Goto: goto -&gt; bb53">        </span><span class="code odd" style="--layer: 9" title="bb35: ../instrument-coverage/coverage_of_if_else.rs:26:9: 26:23:
+    26:9-26:23: Assign: _27 = CheckedSub(_21, const 4_i32)
+    26:9-26:23: Assert: assert(!move (_27.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _21, const 4_i32) -&gt; [success: bb36, unwind: bb1]"><span class="annotation">@35:</span> countdown -= 4</span><span class="code even" style="--layer: 8" title="bb36: ../instrument-coverage/coverage_of_if_else.rs:25:5: 34:6:
+    26:9-26:23: Assign: _21 = move (_27.0: i32)
+    25:22-27:6: Assign: _24 = const ()
+    25:5-34:6: Goto: goto -&gt; bb53"><span class="annotation">@36:</span> ;</span></span>
+<span class="line"><span class="code even" style="--layer: 8" title="bb36: ../instrument-coverage/coverage_of_if_else.rs:25:5: 34:6:
+    26:9-26:23: Assign: _21 = move (_27.0: i32)
+    25:22-27:6: Assign: _24 = const ()
+    25:5-34:6: Goto: goto -&gt; bb53">    } else </span><span class="code even" style="--layer: 9" title="bb37: ../instrument-coverage/coverage_of_if_else.rs:27:12: 34:6:
+    27:12-34:6: FalseEdge: falseEdge -&gt; [real: bb39, imaginary: bb38]"><span class="annotation">@37:</span> if </span><span class="code even" style="--layer: 10" title="bb34: ../instrument-coverage/coverage_of_if_else.rs:27:15: 27:28:
+    27:15-27:28: StorageLive: StorageLive(_28)
+    27:15-27:24: StorageLive: StorageLive(_29)
+    27:15-27:24: Assign: _29 = _21
+    27:15-27:28: Assign: _28 = Gt(move _29, const 2_i32)
+    27:27-27:28: StorageDead: StorageDead(_29)
+    27:15-27:28: FakeRead: FakeRead(ForMatchedPlace, _28)
+    27:12-34:6: SwitchInt: switchInt(_28) -&gt; [false: bb38, otherwise: bb37]"><span class="annotation">@34:</span> countdown &gt; 2</span><span class="code even" style="--layer: 9" title="bb37: ../instrument-coverage/coverage_of_if_else.rs:27:12: 34:6:
+    27:12-34:6: FalseEdge: falseEdge -&gt; [real: bb39, imaginary: bb38]"><span class="annotation">@37:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 9" title="bb37: ../instrument-coverage/coverage_of_if_else.rs:27:12: 34:6:
+    27:12-34:6: FalseEdge: falseEdge -&gt; [real: bb39, imaginary: bb38]">        </span><span class="code odd" style="--layer: 10" title="bb48: ../instrument-coverage/coverage_of_if_else.rs:28:9: 30:10:
+    28:9-30:10: FalseEdge: falseEdge -&gt; [real: bb50, imaginary: bb49]"><span class="annotation">@48</span></span><span class="code even" style="--layer: 11" title="bb50: ../instrument-coverage/coverage_of_if_else.rs:28:9: 30:10:
+    29:13-29:26: Assign: _21 = const 0_i32
+    28:61-30:10: Assign: _30 = const ()
+    28:9-30:10: Goto: goto -&gt; bb51"><span class="annotation">@50</span></span><span class="code even" style="--layer: 12" title="bb49: ../instrument-coverage/coverage_of_if_else.rs:28:9: 30:10:
+    28:9-30:10: Assign: _30 = const ()
+    28:9-30:10: Goto: goto -&gt; bb51"><span class="annotation">@49:</span> if </span><span class="code even" style="--layer: 13" title="bb39: ../instrument-coverage/coverage_of_if_else.rs:28:12: 28:60:
+    28:9-30:10: StorageLive: StorageLive(_30)
+    28:12-28:60: StorageLive: StorageLive(_31)
+    28:12-28:42: StorageLive: StorageLive(_32)
+    28:12-28:25: StorageLive: StorageLive(_33)
+    28:12-28:21: StorageLive: StorageLive(_34)
+    28:12-28:21: Assign: _34 = _21
+    28:12-28:25: Assign: _33 = Lt(move _34, const 1_i32)
+    28:24-28:25: StorageDead: StorageDead(_34)
+    28:12-28:42: SwitchInt: switchInt(move _33) -&gt; [false: bb46, otherwise: bb44]"><span class="annotation">@39</span></span><span class="code even" style="--layer: 14" title="bb47: ../instrument-coverage/coverage_of_if_else.rs:28:12: 28:60:
+    28:41-28:42: StorageDead: StorageDead(_35)
+    28:41-28:42: StorageDead: StorageDead(_33)
+    28:12-28:60: SwitchInt: switchInt(move _32) -&gt; [false: bb42, otherwise: bb40]"><span class="annotation">@47</span></span><span class="code even" style="--layer: 15" title="bb40: ../instrument-coverage/coverage_of_if_else.rs:28:12: 28:60:
+    28:12-28:60: Assign: _31 = const true
+    28:12-28:60: Goto: goto -&gt; bb43"><span class="annotation">@40</span></span><span class="code even" style="--layer: 16" title="bb43: ../instrument-coverage/coverage_of_if_else.rs:28:12: 28:60:
+    28:59-28:60: StorageDead: StorageDead(_37)
+    28:59-28:60: StorageDead: StorageDead(_32)
+    28:12-28:60: FakeRead: FakeRead(ForMatchedPlace, _31)
+    28:9-30:10: SwitchInt: switchInt(_31) -&gt; [false: bb49, otherwise: bb48]"><span class="annotation">@43</span></span><span class="code even" style="--layer: 17" title="bb42: ../instrument-coverage/coverage_of_if_else.rs:28:12: 28:60:
+    28:46-28:60: StorageLive: StorageLive(_37)
+    28:46-28:55: StorageLive: StorageLive(_38)
+    28:46-28:55: Assign: _38 = _21
+    28:46-28:60: Assign: _37 = Ne(move _38, const 9_i32)
+    28:59-28:60: StorageDead: StorageDead(_38)
+    28:12-28:60: SwitchInt: switchInt(move _37) -&gt; [false: bb41, otherwise: bb40]"><span class="annotation">@42</span></span><span class="code even" style="--layer: 18" title="bb41: ../instrument-coverage/coverage_of_if_else.rs:28:12: 28:60:
+    28:12-28:60: Assign: _31 = const false
+    28:12-28:60: Goto: goto -&gt; bb43"><span class="annotation">@41</span></span><span class="code even" style="--layer: 19" title="bb46: ../instrument-coverage/coverage_of_if_else.rs:28:12: 28:42:
+    28:29-28:42: StorageLive: StorageLive(_35)
+    28:29-28:38: StorageLive: StorageLive(_36)
+    28:29-28:38: Assign: _36 = _21
+    28:29-28:42: Assign: _35 = Gt(move _36, const 5_i32)
+    28:41-28:42: StorageDead: StorageDead(_36)
+    28:12-28:42: SwitchInt: switchInt(move _35) -&gt; [false: bb45, otherwise: bb44]"><span class="annotation">@46</span></span><span class="code even" style="--layer: 20" title="bb45: ../instrument-coverage/coverage_of_if_else.rs:28:12: 28:42:
+    28:12-28:42: Assign: _32 = const false
+    28:12-28:42: Goto: goto -&gt; bb47"><span class="annotation">@45</span></span><span class="code even" style="--layer: 21" title="bb44: ../instrument-coverage/coverage_of_if_else.rs:28:12: 28:42:
+    28:12-28:42: Assign: _32 = const true
+    28:12-28:42: Goto: goto -&gt; bb47"><span class="annotation">@44:</span> countdown &lt; 1 || countdown &gt; 5</span><span class="code even" style="--layer: 18" title="bb41: ../instrument-coverage/coverage_of_if_else.rs:28:12: 28:60:
+    28:12-28:60: Assign: _31 = const false
+    28:12-28:60: Goto: goto -&gt; bb43"><span class="annotation">@41:</span>  || countdown != 9</span><span class="code even" style="--layer: 12" title="bb49: ../instrument-coverage/coverage_of_if_else.rs:28:9: 30:10:
+    28:9-30:10: Assign: _30 = const ()
+    28:9-30:10: Goto: goto -&gt; bb51"><span class="annotation">@49:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 12" title="bb49: ../instrument-coverage/coverage_of_if_else.rs:28:9: 30:10:
+    28:9-30:10: Assign: _30 = const ()
+    28:9-30:10: Goto: goto -&gt; bb51">            countdown = 0;</span></span>
+<span class="line"><span class="code even" style="--layer: 12" title="bb49: ../instrument-coverage/coverage_of_if_else.rs:28:9: 30:10:
+    28:9-30:10: Assign: _30 = const ()
+    28:9-30:10: Goto: goto -&gt; bb51">        </span><span class="code odd" style="--layer: 13" title="bb51: ../instrument-coverage/coverage_of_if_else.rs:30:9: 31:23:
+    30:9-30:10: StorageDead: StorageDead(_31)
+    30:9-30:10: StorageDead: StorageDead(_30)
+    31:9-31:23: Assign: _39 = CheckedSub(_21, const 5_i32)
+    31:9-31:23: Assert: assert(!move (_39.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _21, const 5_i32) -&gt; [success: bb52, unwind: bb1]"><span class="annotation">@51:</span> }</span></span>
+<span class="line"><span class="code odd" style="--layer: 13" title="bb51: ../instrument-coverage/coverage_of_if_else.rs:30:9: 31:23:
+    30:9-30:10: StorageDead: StorageDead(_31)
+    30:9-30:10: StorageDead: StorageDead(_30)
+    31:9-31:23: Assign: _39 = CheckedSub(_21, const 5_i32)
+    31:9-31:23: Assert: assert(!move (_39.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _21, const 5_i32) -&gt; [success: bb52, unwind: bb1]">        countdown -= 5</span><span class="code even" style="--layer: 9" title="bb37: ../instrument-coverage/coverage_of_if_else.rs:27:12: 34:6:
+    27:12-34:6: FalseEdge: falseEdge -&gt; [real: bb39, imaginary: bb38]"><span class="annotation">@37:</span> ;</span></span>
+<span class="line"><span class="code even" style="--layer: 9" title="bb37: ../instrument-coverage/coverage_of_if_else.rs:27:12: 34:6:
+    27:12-34:6: FalseEdge: falseEdge -&gt; [real: bb39, imaginary: bb38]">    } else {</span></span>
+<span class="line"><span class="code even" style="--layer: 9" title="bb37: ../instrument-coverage/coverage_of_if_else.rs:27:12: 34:6:
+    27:12-34:6: FalseEdge: falseEdge -&gt; [real: bb39, imaginary: bb38]">        </span><span class="code even" style="--layer: 10" title="bb38: ../instrument-coverage/coverage_of_if_else.rs:33:9: 51:2:
+    33:9-33:15: Assign: _0 = const ()
+    34:5-34:6: StorageDead: StorageDead(_28)
+    34:5-34:6: StorageDead: StorageDead(_25)
+    34:5-34:6: StorageDead: StorageDead(_24)
+    51:1-51:2: StorageDead: StorageDead(_21)
+    33:9-33:15: Goto: goto -&gt; bb27"><span class="annotation">@38:</span> return;</span></span>
+<span class="line"><span class="code even" style="--layer: 10" title="bb38: ../instrument-coverage/coverage_of_if_else.rs:33:9: 51:2:
+    33:9-33:15: Assign: _0 = const ()
+    34:5-34:6: StorageDead: StorageDead(_28)
+    34:5-34:6: StorageDead: StorageDead(_25)
+    34:5-34:6: StorageDead: StorageDead(_24)
+    51:1-51:2: StorageDead: StorageDead(_21)
+    33:9-33:15: Goto: goto -&gt; bb27">    }</span></span>
+<span class="line"><span class="code even" style="--layer: 10" title="bb38: ../instrument-coverage/coverage_of_if_else.rs:33:9: 51:2:
+    33:9-33:15: Assign: _0 = const ()
+    34:5-34:6: StorageDead: StorageDead(_28)
+    34:5-34:6: StorageDead: StorageDead(_25)
+    34:5-34:6: StorageDead: StorageDead(_24)
+    51:1-51:2: StorageDead: StorageDead(_21)
+    33:9-33:15: Goto: goto -&gt; bb27"></span></span>
+<span class="line"><span class="code even" style="--layer: 10" title="bb38: ../instrument-coverage/coverage_of_if_else.rs:33:9: 51:2:
+    33:9-33:15: Assign: _0 = const ()
+    34:5-34:6: StorageDead: StorageDead(_28)
+    34:5-34:6: StorageDead: StorageDead(_25)
+    34:5-34:6: StorageDead: StorageDead(_24)
+    51:1-51:2: StorageDead: StorageDead(_21)
+    33:9-33:15: Goto: goto -&gt; bb27">    let mut countdown = 0;</span></span>
+<span class="line"><span class="code even" style="--layer: 10" title="bb38: ../instrument-coverage/coverage_of_if_else.rs:33:9: 51:2:
+    33:9-33:15: Assign: _0 = const ()
+    34:5-34:6: StorageDead: StorageDead(_28)
+    34:5-34:6: StorageDead: StorageDead(_25)
+    34:5-34:6: StorageDead: StorageDead(_24)
+    51:1-51:2: StorageDead: StorageDead(_21)
+    33:9-33:15: Goto: goto -&gt; bb27">    </span><span class="code even" style="--layer: 11" title="bb56: ../instrument-coverage/coverage_of_if_else.rs:37:5: 39:6:
+    38:9-38:23: Assign: _41 = const 10_i32
+    37:13-39:6: Assign: _42 = const ()
+    37:5-39:6: Goto: goto -&gt; bb57"><span class="annotation">@56</span></span><span class="code even" style="--layer: 12" title="bb54: ../instrument-coverage/coverage_of_if_else.rs:37:5: 39:6:
+    37:5-39:6: FalseEdge: falseEdge -&gt; [real: bb56, imaginary: bb55]"><span class="annotation">@54</span></span><span class="code even" style="--layer: 13" title="bb55: ../instrument-coverage/coverage_of_if_else.rs:37:5: 39:6:
+    37:5-39:6: Assign: _42 = const ()
+    37:5-39:6: Goto: goto -&gt; bb57"><span class="annotation">@55:</span> if </span><span class="code even" style="--layer: 14" title="bb53: ../instrument-coverage/coverage_of_if_else.rs:37:8: 37:12:
+    34:5-34:6: StorageDead: StorageDead(_25)
+    34:5-34:6: StorageDead: StorageDead(_24)
+    36:9-36:22: StorageLive: StorageLive(_41)
+    36:25-36:26: Assign: _41 = const 0_i32
+    36:9-36:22: FakeRead: FakeRead(ForLet, _41)
+    37:5-39:6: StorageLive: StorageLive(_42)
+    37:8-37:12: StorageLive: StorageLive(_43)
+    37:8-37:12: Assign: _43 = const true
+    37:8-37:12: FakeRead: FakeRead(ForMatchedPlace, _43)
+    37:5-39:6: SwitchInt: switchInt(_43) -&gt; [false: bb55, otherwise: bb54]"><span class="annotation">@53:</span> true</span><span class="code even" style="--layer: 13" title="bb55: ../instrument-coverage/coverage_of_if_else.rs:37:5: 39:6:
+    37:5-39:6: Assign: _42 = const ()
+    37:5-39:6: Goto: goto -&gt; bb57"><span class="annotation">@55:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 13" title="bb55: ../instrument-coverage/coverage_of_if_else.rs:37:5: 39:6:
+    37:5-39:6: Assign: _42 = const ()
+    37:5-39:6: Goto: goto -&gt; bb57">        countdown = 10;</span></span>
+<span class="line"><span class="code even" style="--layer: 13" title="bb55: ../instrument-coverage/coverage_of_if_else.rs:37:5: 39:6:
+    37:5-39:6: Assign: _42 = const ()
+    37:5-39:6: Goto: goto -&gt; bb57">    }</span><span class="code even" style="--layer: 10" title="bb38: ../instrument-coverage/coverage_of_if_else.rs:33:9: 51:2:
+    33:9-33:15: Assign: _0 = const ()
+    34:5-34:6: StorageDead: StorageDead(_28)
+    34:5-34:6: StorageDead: StorageDead(_25)
+    34:5-34:6: StorageDead: StorageDead(_24)
+    51:1-51:2: StorageDead: StorageDead(_21)
+    33:9-33:15: Goto: goto -&gt; bb27"><span class="annotation">@38:</span> </span></span>
+<span class="line"><span class="code even" style="--layer: 10" title="bb38: ../instrument-coverage/coverage_of_if_else.rs:33:9: 51:2:
+    33:9-33:15: Assign: _0 = const ()
+    34:5-34:6: StorageDead: StorageDead(_28)
+    34:5-34:6: StorageDead: StorageDead(_25)
+    34:5-34:6: StorageDead: StorageDead(_24)
+    51:1-51:2: StorageDead: StorageDead(_21)
+    33:9-33:15: Goto: goto -&gt; bb27"></span></span>
+<span class="line"><span class="code even" style="--layer: 10" title="bb38: ../instrument-coverage/coverage_of_if_else.rs:33:9: 51:2:
+    33:9-33:15: Assign: _0 = const ()
+    34:5-34:6: StorageDead: StorageDead(_28)
+    34:5-34:6: StorageDead: StorageDead(_25)
+    34:5-34:6: StorageDead: StorageDead(_24)
+    51:1-51:2: StorageDead: StorageDead(_21)
+    33:9-33:15: Goto: goto -&gt; bb27">    </span><span class="code odd" style="--layer: 11" title="bb61: ../instrument-coverage/coverage_of_if_else.rs:41:5: 50:6:
+    42:9-42:23: Assign: _41 = move (_46.0: i32)
+    41:22-43:6: Assign: _0 = const ()
+    41:5-50:6: Goto: goto -&gt; bb78"><span class="annotation">@61</span></span><span class="code even" style="--layer: 12" title="bb58: ../instrument-coverage/coverage_of_if_else.rs:41:5: 50:6:
+    41:5-50:6: FalseEdge: falseEdge -&gt; [real: bb60, imaginary: bb59]"><span class="annotation">@58</span></span><span class="code even" style="--layer: 13" title="bb77: ../instrument-coverage/coverage_of_if_else.rs:41:5: 50:6:
+    47:9-47:23: Assign: _41 = move (_58.0: i32)
+    43:29-48:6: Assign: _0 = const ()
+    50:5-50:6: StorageDead: StorageDead(_47)
+    41:5-50:6: Goto: goto -&gt; bb78"><span class="annotation">@77:</span> if </span><span class="code even" style="--layer: 14" title="bb57: ../instrument-coverage/coverage_of_if_else.rs:41:8: 41:21:
+    39:5-39:6: StorageDead: StorageDead(_43)
+    39:5-39:6: StorageDead: StorageDead(_42)
+    41:8-41:21: StorageLive: StorageLive(_44)
+    41:8-41:17: StorageLive: StorageLive(_45)
+    41:8-41:17: Assign: _45 = _41
+    41:8-41:21: Assign: _44 = Gt(move _45, const 7_i32)
+    41:20-41:21: StorageDead: StorageDead(_45)
+    41:8-41:21: FakeRead: FakeRead(ForMatchedPlace, _44)
+    41:5-50:6: SwitchInt: switchInt(_44) -&gt; [false: bb59, otherwise: bb58]"><span class="annotation">@57:</span> countdown &gt; 7</span><span class="code even" style="--layer: 13" title="bb77: ../instrument-coverage/coverage_of_if_else.rs:41:5: 50:6:
+    47:9-47:23: Assign: _41 = move (_58.0: i32)
+    43:29-48:6: Assign: _0 = const ()
+    50:5-50:6: StorageDead: StorageDead(_47)
+    41:5-50:6: Goto: goto -&gt; bb78"><span class="annotation">@77:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 13" title="bb77: ../instrument-coverage/coverage_of_if_else.rs:41:5: 50:6:
+    47:9-47:23: Assign: _41 = move (_58.0: i32)
+    43:29-48:6: Assign: _0 = const ()
+    50:5-50:6: StorageDead: StorageDead(_47)
+    41:5-50:6: Goto: goto -&gt; bb78">        </span><span class="code odd" style="--layer: 14" title="bb60: ../instrument-coverage/coverage_of_if_else.rs:42:9: 42:23:
+    42:9-42:23: Assign: _46 = CheckedSub(_41, const 4_i32)
+    42:9-42:23: Assert: assert(!move (_46.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _41, const 4_i32) -&gt; [success: bb61, unwind: bb1]"><span class="annotation">@60:</span> countdown -= 4</span><span class="code even" style="--layer: 13" title="bb77: ../instrument-coverage/coverage_of_if_else.rs:41:5: 50:6:
+    47:9-47:23: Assign: _41 = move (_58.0: i32)
+    43:29-48:6: Assign: _0 = const ()
+    50:5-50:6: StorageDead: StorageDead(_47)
+    41:5-50:6: Goto: goto -&gt; bb78"><span class="annotation">@77:</span> ;</span></span>
+<span class="line"><span class="code even" style="--layer: 13" title="bb77: ../instrument-coverage/coverage_of_if_else.rs:41:5: 50:6:
+    47:9-47:23: Assign: _41 = move (_58.0: i32)
+    43:29-48:6: Assign: _0 = const ()
+    50:5-50:6: StorageDead: StorageDead(_47)
+    41:5-50:6: Goto: goto -&gt; bb78">    } else </span><span class="code even" style="--layer: 14" title="bb62: ../instrument-coverage/coverage_of_if_else.rs:43:12: 50:6:
+    43:12-50:6: FalseEdge: falseEdge -&gt; [real: bb64, imaginary: bb63]"><span class="annotation">@62:</span> if </span><span class="code even" style="--layer: 15" title="bb59: ../instrument-coverage/coverage_of_if_else.rs:43:15: 43:28:
+    43:15-43:28: StorageLive: StorageLive(_47)
+    43:15-43:24: StorageLive: StorageLive(_48)
+    43:15-43:24: Assign: _48 = _41
+    43:15-43:28: Assign: _47 = Gt(move _48, const 2_i32)
+    43:27-43:28: StorageDead: StorageDead(_48)
+    43:15-43:28: FakeRead: FakeRead(ForMatchedPlace, _47)
+    43:12-50:6: SwitchInt: switchInt(_47) -&gt; [false: bb63, otherwise: bb62]"><span class="annotation">@59:</span> countdown &gt; 2</span><span class="code even" style="--layer: 14" title="bb62: ../instrument-coverage/coverage_of_if_else.rs:43:12: 50:6:
+    43:12-50:6: FalseEdge: falseEdge -&gt; [real: bb64, imaginary: bb63]"><span class="annotation">@62:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 14" title="bb62: ../instrument-coverage/coverage_of_if_else.rs:43:12: 50:6:
+    43:12-50:6: FalseEdge: falseEdge -&gt; [real: bb64, imaginary: bb63]">        </span><span class="code odd" style="--layer: 15" title="bb75: ../instrument-coverage/coverage_of_if_else.rs:44:9: 46:10:
+    45:13-45:26: Assign: _41 = const 0_i32
+    44:61-46:10: Assign: _49 = const ()
+    44:9-46:10: Goto: goto -&gt; bb76"><span class="annotation">@75</span></span><span class="code even" style="--layer: 16" title="bb74: ../instrument-coverage/coverage_of_if_else.rs:44:9: 46:10:
+    44:9-46:10: Assign: _49 = const ()
+    44:9-46:10: Goto: goto -&gt; bb76"><span class="annotation">@74</span></span><span class="code even" style="--layer: 17" title="bb73: ../instrument-coverage/coverage_of_if_else.rs:44:9: 46:10:
+    44:9-46:10: FalseEdge: falseEdge -&gt; [real: bb75, imaginary: bb74]"><span class="annotation">@73:</span> if </span><span class="code even" style="--layer: 18" title="bb67: ../instrument-coverage/coverage_of_if_else.rs:44:12: 44:60:
+    44:46-44:60: StorageLive: StorageLive(_56)
+    44:46-44:55: StorageLive: StorageLive(_57)
+    44:46-44:55: Assign: _57 = _41
+    44:46-44:60: Assign: _56 = Ne(move _57, const 9_i32)
+    44:59-44:60: StorageDead: StorageDead(_57)
+    44:12-44:60: SwitchInt: switchInt(move _56) -&gt; [false: bb66, otherwise: bb65]"><span class="annotation">@67</span></span><span class="code even" style="--layer: 19" title="bb68: ../instrument-coverage/coverage_of_if_else.rs:44:12: 44:60:
+    44:59-44:60: StorageDead: StorageDead(_56)
+    44:59-44:60: StorageDead: StorageDead(_51)
+    44:12-44:60: FakeRead: FakeRead(ForMatchedPlace, _50)
+    44:9-46:10: SwitchInt: switchInt(_50) -&gt; [false: bb74, otherwise: bb73]"><span class="annotation">@68</span></span><span class="code even" style="--layer: 20" title="bb65: ../instrument-coverage/coverage_of_if_else.rs:44:12: 44:60:
+    44:12-44:60: Assign: _50 = const true
+    44:12-44:60: Goto: goto -&gt; bb68"><span class="annotation">@65</span></span><span class="code even" style="--layer: 21" title="bb72: ../instrument-coverage/coverage_of_if_else.rs:44:12: 44:60:
+    44:41-44:42: StorageDead: StorageDead(_54)
+    44:41-44:42: StorageDead: StorageDead(_52)
+    44:12-44:60: SwitchInt: switchInt(move _51) -&gt; [false: bb67, otherwise: bb65]"><span class="annotation">@72</span></span><span class="code even" style="--layer: 22" title="bb64: ../instrument-coverage/coverage_of_if_else.rs:44:12: 44:60:
+    44:9-46:10: StorageLive: StorageLive(_49)
+    44:12-44:60: StorageLive: StorageLive(_50)
+    44:12-44:42: StorageLive: StorageLive(_51)
+    44:12-44:25: StorageLive: StorageLive(_52)
+    44:12-44:21: StorageLive: StorageLive(_53)
+    44:12-44:21: Assign: _53 = _41
+    44:12-44:25: Assign: _52 = Lt(move _53, const 1_i32)
+    44:24-44:25: StorageDead: StorageDead(_53)
+    44:12-44:42: SwitchInt: switchInt(move _52) -&gt; [false: bb71, otherwise: bb69]"><span class="annotation">@64</span></span><span class="code even" style="--layer: 23" title="bb66: ../instrument-coverage/coverage_of_if_else.rs:44:12: 44:60:
+    44:12-44:60: Assign: _50 = const false
+    44:12-44:60: Goto: goto -&gt; bb68"><span class="annotation">@66</span></span><span class="code even" style="--layer: 24" title="bb69: ../instrument-coverage/coverage_of_if_else.rs:44:12: 44:42:
+    44:12-44:42: Assign: _51 = const true
+    44:12-44:42: Goto: goto -&gt; bb72"><span class="annotation">@69</span></span><span class="code even" style="--layer: 25" title="bb71: ../instrument-coverage/coverage_of_if_else.rs:44:12: 44:42:
+    44:29-44:42: StorageLive: StorageLive(_54)
+    44:29-44:38: StorageLive: StorageLive(_55)
+    44:29-44:38: Assign: _55 = _41
+    44:29-44:42: Assign: _54 = Gt(move _55, const 5_i32)
+    44:41-44:42: StorageDead: StorageDead(_55)
+    44:12-44:42: SwitchInt: switchInt(move _54) -&gt; [false: bb70, otherwise: bb69]"><span class="annotation">@71</span></span><span class="code even" style="--layer: 26" title="bb70: ../instrument-coverage/coverage_of_if_else.rs:44:12: 44:42:
+    44:12-44:42: Assign: _51 = const false
+    44:12-44:42: Goto: goto -&gt; bb72"><span class="annotation">@70:</span> countdown &lt; 1 || countdown &gt; 5</span><span class="code even" style="--layer: 23" title="bb66: ../instrument-coverage/coverage_of_if_else.rs:44:12: 44:60:
+    44:12-44:60: Assign: _50 = const false
+    44:12-44:60: Goto: goto -&gt; bb68"><span class="annotation">@66:</span>  || countdown != 9</span><span class="code even" style="--layer: 17" title="bb73: ../instrument-coverage/coverage_of_if_else.rs:44:9: 46:10:
+    44:9-46:10: FalseEdge: falseEdge -&gt; [real: bb75, imaginary: bb74]"><span class="annotation">@73:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 17" title="bb73: ../instrument-coverage/coverage_of_if_else.rs:44:9: 46:10:
+    44:9-46:10: FalseEdge: falseEdge -&gt; [real: bb75, imaginary: bb74]">            countdown = 0;</span></span>
+<span class="line"><span class="code even" style="--layer: 17" title="bb73: ../instrument-coverage/coverage_of_if_else.rs:44:9: 46:10:
+    44:9-46:10: FalseEdge: falseEdge -&gt; [real: bb75, imaginary: bb74]">        </span><span class="code odd" style="--layer: 18" title="bb76: ../instrument-coverage/coverage_of_if_else.rs:46:9: 47:23:
+    46:9-46:10: StorageDead: StorageDead(_50)
+    46:9-46:10: StorageDead: StorageDead(_49)
+    47:9-47:23: Assign: _58 = CheckedSub(_41, const 5_i32)
+    47:9-47:23: Assert: assert(!move (_58.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _41, const 5_i32) -&gt; [success: bb77, unwind: bb1]"><span class="annotation">@76:</span> }</span></span>
+<span class="line"><span class="code odd" style="--layer: 18" title="bb76: ../instrument-coverage/coverage_of_if_else.rs:46:9: 47:23:
+    46:9-46:10: StorageDead: StorageDead(_50)
+    46:9-46:10: StorageDead: StorageDead(_49)
+    47:9-47:23: Assign: _58 = CheckedSub(_41, const 5_i32)
+    47:9-47:23: Assert: assert(!move (_58.1: bool), &quot;attempt to compute `{} - {}` which would overflow&quot;, _41, const 5_i32) -&gt; [success: bb77, unwind: bb1]">        countdown -= 5</span><span class="code even" style="--layer: 14" title="bb62: ../instrument-coverage/coverage_of_if_else.rs:43:12: 50:6:
+    43:12-50:6: FalseEdge: falseEdge -&gt; [real: bb64, imaginary: bb63]"><span class="annotation">@62:</span> ;</span></span>
+<span class="line"><span class="code even" style="--layer: 14" title="bb62: ../instrument-coverage/coverage_of_if_else.rs:43:12: 50:6:
+    43:12-50:6: FalseEdge: falseEdge -&gt; [real: bb64, imaginary: bb63]">    } else {</span></span>
+<span class="line"><span class="code even" style="--layer: 14" title="bb62: ../instrument-coverage/coverage_of_if_else.rs:43:12: 50:6:
+    43:12-50:6: FalseEdge: falseEdge -&gt; [real: bb64, imaginary: bb63]">        </span><span class="code even" style="--layer: 15" title="bb63: ../instrument-coverage/coverage_of_if_else.rs:49:9: 51:2:
+    49:9-49:15: Assign: _0 = const ()
+    50:5-50:6: StorageDead: StorageDead(_47)
+    51:1-51:2: StorageDead: StorageDead(_41)
+    51:1-51:2: StorageDead: StorageDead(_21)
+    51:1-51:2: StorageDead: StorageDead(_1)
+    51:1-51:2: StorageDead: StorageDead(_44)
+    49:9-49:15: Goto: goto -&gt; bb26"><span class="annotation">@63:</span> return;</span></span>
+<span class="line"><span class="code even" style="--layer: 15" title="bb63: ../instrument-coverage/coverage_of_if_else.rs:49:9: 51:2:
+    49:9-49:15: Assign: _0 = const ()
+    50:5-50:6: StorageDead: StorageDead(_47)
+    51:1-51:2: StorageDead: StorageDead(_41)
+    51:1-51:2: StorageDead: StorageDead(_21)
+    51:1-51:2: StorageDead: StorageDead(_1)
+    51:1-51:2: StorageDead: StorageDead(_44)
+    49:9-49:15: Goto: goto -&gt; bb26">    }</span><span class="code even" style="--layer: 16" title="bb78: ../instrument-coverage/coverage_of_if_else.rs:51:1: 51:2:
+    51:1-51:2: StorageDead: StorageDead(_41)
+    51:1-51:2: StorageDead: StorageDead(_21)
+    51:1-51:2: StorageDead: StorageDead(_1)
+    51:1-51:2: StorageDead: StorageDead(_44)
+    51:2-51:2: Goto: goto -&gt; bb26"><span class="annotation">@78:</span> }</span><span><span class="code even" style="--layer: 1" title="bb26: ../instrument-coverage/coverage_of_if_else.rs:51:2: 51:2:
+    51:2-51:2: Return: return"><span class="annotation">@26</span></span></span></span></div>
+</body>
+</html>

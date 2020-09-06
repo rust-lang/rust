@@ -65,12 +65,6 @@ fn main() -> () {
         StorageDead(_7);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:29:6: 29:7
         StorageDead(_6);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:29:6: 29:7
         _0 = const ();                   // scope 0 at $DIR/uninhabited_enum_branching.rs:19:11: 30:2
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/uninhabited_enum_branching.rs:19:11: 30:2
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         return;                          // scope 0 at $DIR/uninhabited_enum_branching.rs:30:2: 30:2
     }
 }

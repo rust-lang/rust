@@ -49,7 +49,7 @@ error[E0512]: cannot transmute between types of different sizes, or dependently-
 LL |     let _: i32 = transmute(x);
    |                  ^^^^^^^^^
    |
-   = note: source type: `std::option::Option<T>` (size can vary because of T)
+   = note: source type: `Option<T>` (size can vary because of T)
    = note: target type: `i32` (32 bits)
 
 error: aborting due to 6 previous errors

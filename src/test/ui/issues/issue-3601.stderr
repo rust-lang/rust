@@ -5,7 +5,7 @@ LL |         box NodeKind::Element(ed) => match ed.kind {
    |                                            ^^^^^^^ pattern `Box(_)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `std::boxed::Box<ElementKind>`
+   = note: the matched value is of type `Box<ElementKind>`
 
 error: aborting due to previous error
 

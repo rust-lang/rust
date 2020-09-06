@@ -230,7 +230,7 @@ fn key_returns_borrow(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(def_id) = utils::fn_def_id(cx, expr) {
         let output = cx.tcx.fn_sig(def_id).output();
         let ty = output.skip_binder();
-        return matches!(ty.kind, ty::Ref(..))
+        return matches!(ty.kind(), ty::Ref(..))
             || ty.walk().any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)));
     }
 

@@ -32,9 +32,6 @@ pub use iter::IntoIter;
 /// Note that the traits [`AsRef`] and [`AsMut`] provide similar methods for types that
 /// may not be fixed-size arrays. Implementors should prefer those traits
 /// instead.
-///
-/// [`AsRef`]: ../convert/trait.AsRef.html
-/// [`AsMut`]: ../convert/trait.AsMut.html
 #[unstable(feature = "fixed_size_array", issue = "27778")]
 pub unsafe trait FixedSizeArray<T> {
     /// Converts the array to immutable slice
@@ -365,7 +362,6 @@ macro_rules! array_impl_default {
 
 array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
 
-#[cfg(not(bootstrap))]
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
     /// Returns an array of the same size as `self`, with function `f` applied to each element
@@ -414,7 +410,7 @@ impl<T, const N: usize> [T; N] {
         }
         let mut dst = MaybeUninit::uninit_array::<N>();
         let mut guard: Guard<U, N> =
-            Guard { dst: MaybeUninit::first_ptr_mut(&mut dst), initialized: 0 };
+            Guard { dst: MaybeUninit::slice_as_mut_ptr(&mut dst), initialized: 0 };
         for (src, dst) in IntoIter::new(self).zip(&mut dst) {
             dst.write(f(src));
             guard.initialized += 1;
@@ -425,5 +421,18 @@ impl<T, const N: usize> [T; N] {
         // SAFETY: At this point we've properly initialized the whole array
         // and we just need to cast it to the correct type.
         unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
+    }
+
+    /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
+    #[unstable(feature = "array_methods", issue = "76118")]
+    pub fn as_slice(&self) -> &[T] {
+        self
+    }
+
+    /// Returns a mutable slice containing the entire array. Equivalent to
+    /// `&mut s[..]`.
+    #[unstable(feature = "array_methods", issue = "76118")]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        self
     }
 }

@@ -7,7 +7,7 @@ LL | struct Foo;
 LL |     f.bat(1.0);
    |       ^^^ help: there is an associated function with a similar name: `bar`
 
-error[E0599]: no method named `is_emtpy` found for struct `std::string::String` in the current scope
+error[E0599]: no method named `is_emtpy` found for struct `String` in the current scope
   --> $DIR/suggest-methods.rs:21:15
    |
 LL |     let _ = s.is_emtpy();

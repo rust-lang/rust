@@ -1,7 +1,7 @@
 fn main() {
     match "foo".to_string() {
         ['f', 'o', ..] => {}
-        //~^ ERROR expected an array or slice, found `std::string::String`
+        //~^ ERROR expected an array or slice, found `String`
         _ => { }
     };
 

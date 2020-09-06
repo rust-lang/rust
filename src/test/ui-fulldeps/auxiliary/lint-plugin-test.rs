@@ -14,7 +14,7 @@ extern crate rustc_session;
 
 use rustc_driver::plugin::Registry;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
-use rustc_ast::ast;
+use rustc_ast as ast;
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
 
 declare_lint_pass!(Pass => [TEST_LINT]);

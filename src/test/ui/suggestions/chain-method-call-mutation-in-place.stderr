@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/chain-method-call-mutation-in-place.rs:3:5
+   |
+LL | fn foo(mut s: String) -> String {
+   |                          ------ expected `String` because of return type
+LL |     s.push_str("asdf")
+   |     ^^^^^^^^^^^^^^^^^^ expected struct `String`, found `()`
+   |
+note: method `push_str` modifies its receiver in-place
+  --> $DIR/chain-method-call-mutation-in-place.rs:3:7
+   |
+LL |     s.push_str("asdf")
+   |     - ^^^^^^^^ this call modifies `s` in-place
+   |     |
+   |     you probably want to use this value after calling the method...
+   = note: ...instead of the `()` output of method `push_str`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

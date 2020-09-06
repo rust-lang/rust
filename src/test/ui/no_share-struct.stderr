@@ -7,7 +7,7 @@ LL | fn bar<T: Sync>(_: T) {}
 LL |     bar(x);
    |         ^ `Foo` cannot be shared between threads safely
    |
-   = help: the trait `std::marker::Sync` is not implemented for `Foo`
+   = help: the trait `Sync` is not implemented for `Foo`
 
 error: aborting due to previous error
 

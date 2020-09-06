@@ -182,7 +182,9 @@ mod same_sized_members_clash {
             y: f32,
             z: f32,
         }
-        extern "C" { fn origin() -> Point3; }
+        extern "C" {
+            fn origin() -> Point3;
+        }
     }
     mod b {
         #[repr(C)]
@@ -191,8 +193,9 @@ mod same_sized_members_clash {
             y: i32,
             z: i32, // NOTE: Incorrectly redeclared as i32
         }
-        extern "C" { fn origin() -> Point3; }
-        //~^ WARN `origin` redeclared with a different signature
+        extern "C" {
+            fn origin() -> Point3; //~ WARN `origin` redeclared with a different signature
+        }
     }
 }
 
@@ -258,6 +261,78 @@ mod non_zero_and_non_null {
     }
 }
 
+// See #75739
+mod non_zero_transparent {
+    mod a1 {
+        use std::num::NonZeroUsize;
+        extern "C" {
+            fn f1() -> NonZeroUsize;
+        }
+    }
+
+    mod b1 {
+        #[repr(transparent)]
+        struct X(NonZeroUsize);
+        use std::num::NonZeroUsize;
+        extern "C" {
+            fn f1() -> X;
+        }
+    }
+
+    mod a2 {
+        use std::num::NonZeroUsize;
+        extern "C" {
+            fn f2() -> NonZeroUsize;
+        }
+    }
+
+    mod b2 {
+        #[repr(transparent)]
+        struct X1(NonZeroUsize);
+
+        #[repr(transparent)]
+        struct X(X1);
+
+        use std::num::NonZeroUsize;
+        extern "C" {
+            // Same case as above, but with two layers of newtyping.
+            fn f2() -> X;
+        }
+    }
+
+    mod a3 {
+        #[repr(transparent)]
+        struct X(core::ptr::NonNull<i32>);
+
+        use std::num::NonZeroUsize;
+        extern "C" {
+            fn f3() -> X;
+        }
+    }
+
+    mod b3 {
+        extern "C" {
+            fn f3() -> core::ptr::NonNull<i32>;
+        }
+    }
+
+    mod a4 {
+        #[repr(transparent)]
+        enum E {
+            X(std::num::NonZeroUsize),
+        }
+        extern "C" {
+            fn f4() -> E;
+        }
+    }
+
+    mod b4 {
+        extern "C" {
+            fn f4() -> std::num::NonZeroUsize;
+        }
+    }
+}
+
 mod null_optimised_enums {
     mod a {
         extern "C" {
@@ -282,6 +357,29 @@ mod null_optimised_enums {
             //~^ WARN `option_non_zero_usize_incorrect` redeclared with a different signature
             fn option_non_null_ptr_incorrect() -> *const isize;
             //~^ WARN `option_non_null_ptr_incorrect` redeclared with a different signature
+        }
+    }
+}
+
+#[allow(improper_ctypes)]
+mod unknown_layout {
+    mod a {
+        extern "C" {
+            pub fn generic(l: Link<u32>);
+        }
+        pub struct Link<T> {
+            pub item: T,
+            pub next: *const Link<T>,
+        }
+    }
+
+    mod b {
+        extern "C" {
+            pub fn generic(l: Link<u32>);
+        }
+        pub struct Link<T> {
+            pub item: T,
+            pub next: *const Link<T>,
         }
     }
 }

@@ -128,7 +128,7 @@ fn verify_ty_bound<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, source: Source) {
                 diag.span_label(const_kw_span, "make this a static item (maybe with lazy_static)");
             },
             Source::Assoc { ty: ty_span, .. } => {
-                if ty.flags.intersects(TypeFlags::HAS_FREE_LOCAL_NAMES) {
+                if ty.flags().intersects(TypeFlags::HAS_FREE_LOCAL_NAMES) {
                     diag.span_label(ty_span, &format!("consider requiring `{}` to be `Copy`", ty));
                 }
             },
@@ -211,8 +211,21 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                             needs_check_adjustment = false;
                         },
                         ExprKind::Field(..) => {
-                            dereferenced_expr = parent_expr;
                             needs_check_adjustment = true;
+
+                            // Check whether implicit dereferences happened;
+                            // if so, no need to go further up
+                            // because of the same reason as the `ExprKind::Unary` case.
+                            if cx
+                                .typeck_results()
+                                .expr_adjustments(dereferenced_expr)
+                                .iter()
+                                .any(|adj| matches!(adj.kind, Adjust::Deref(_)))
+                            {
+                                break;
+                            }
+
+                            dereferenced_expr = parent_expr;
                         },
                         ExprKind::Index(e, _) if ptr::eq(&**e, cur_expr) => {
                             // `e[i]` => desugared to `*Index::index(&e, i)`,
