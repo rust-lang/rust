@@ -217,6 +217,16 @@ mod dist {
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
             ]
         );
+        assert_eq!(
+            first(builder.cache.all::<compile::Std>()),
+            &[
+                compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
+                compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
+            ],
+        );
         assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
     }
 
