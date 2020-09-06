@@ -35,8 +35,8 @@ impl Bar for Foo {
 }
 
 impl Foo {
-    fn baz(mut self) -> i32 {
-        self.x
+    fn baz(mut self, f: Foo) -> i32 {
+        f.baz(self)
     }
 
     fn qux(&mut self) {
@@ -54,8 +54,8 @@ struct FooCopy {
 }
 
 impl FooCopy {
-    fn baz(self) -> u32 {
-        self.x
+    fn baz(self, f: FooCopy) -> u32 {
+        f.baz(self)
     }
 
     fn qux(&mut self) {
@@ -118,14 +118,15 @@ fn main() {
     y;
 
     let mut foo = Foo { x, y: x };
+    let foo2 = foo.clone();
     foo.quop();
     foo.qux();
-    foo.baz();
+    foo.baz(foo2);
 
     let mut copy = FooCopy { x };
     copy.quop();
     copy.qux();
-    copy.baz();
+    copy.baz(copy);
 }
 
 enum Option<T> {

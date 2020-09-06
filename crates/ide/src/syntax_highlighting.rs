@@ -13,8 +13,8 @@ use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, HasFormatSpecifier},
     AstNode, AstToken, Direction, NodeOrToken, SyntaxElement,
-    SyntaxKind::*,
-    TextRange, WalkEvent, T,
+    SyntaxKind::{self, *},
+    SyntaxNode, TextRange, WalkEvent, T,
 };
 
 use crate::FileId;
@@ -454,6 +454,23 @@ fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
     Some(TextRange::new(range_start, range_end))
 }
 
+/// Returns true if the parent nodes of `node` all match the `SyntaxKind`s in `kinds` exactly.
+fn parents_match(mut node: SyntaxNode, mut kinds: &[SyntaxKind]) -> bool {
+    while let (Some(parent), [kind, rest @ ..]) = (&node.parent(), kinds) {
+        if parent.kind() != *kind {
+            return false;
+        }
+
+        // FIXME: Would be nice to get parent out of the match, but binding by-move and by-value
+        // in the same pattern is unstable: rust-lang/rust#68354.
+        node = node.parent().unwrap();
+        kinds = rest;
+    }
+
+    // Only true if we matched all expected kinds
+    kinds.len() == 0
+}
+
 fn highlight_element(
     sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
@@ -521,6 +538,26 @@ fn highlight_element(
                             };
 
                             let mut h = highlight_def(db, def);
+
+                            // When lvalues are passed as arguments and they're not Copy, then mark
+                            // them as Consuming.
+                            if parents_match(
+                                name_ref.syntax().clone(),
+                                &[PATH_SEGMENT, PATH, PATH_EXPR, ARG_LIST],
+                            ) {
+                                let lvalue_ty = if let Definition::Local(local) = &def {
+                                    Some(local.ty(db))
+                                } else if let Definition::SelfType(impl_def) = &def {
+                                    Some(impl_def.target_ty(db))
+                                } else {
+                                    None
+                                };
+                                if let Some(lvalue_ty) = lvalue_ty {
+                                    if !lvalue_ty.is_copy(db) {
+                                        h |= HighlightModifier::Consuming;
+                                    }
+                                }
+                            }
 
                             if let Some(parent) = name_ref.syntax().parent() {
                                 if matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD) {
