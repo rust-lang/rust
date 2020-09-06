@@ -37,6 +37,26 @@ fn test_timed_wait_timeout(clock_id: i32) {
         );
         let elapsed_time = current_time.elapsed().as_millis();
         assert!(900 <= elapsed_time && elapsed_time <= 1300);
+
+        let invalid_timeout_1 = libc::timespec { tv_sec: now.tv_sec + 1, tv_nsec: 1_000_000_000 };
+        assert_eq!(
+            libc::pthread_cond_timedwait(
+                &mut cond as *mut _,
+                &mut mutex as *mut _,
+                &invalid_timeout_1
+            ),
+            libc::EINVAL
+        );
+        let invalid_timeout_2 = libc::timespec { tv_sec: now.tv_sec + 1, tv_nsec: -1 };
+        assert_eq!(
+            libc::pthread_cond_timedwait(
+                &mut cond as *mut _,
+                &mut mutex as *mut _,
+                &invalid_timeout_2
+            ),
+            libc::EINVAL
+        );
+
         assert_eq!(libc::pthread_mutex_unlock(&mut mutex as *mut _), 0);
         assert_eq!(libc::pthread_mutex_destroy(&mut mutex as *mut _), 0);
         assert_eq!(libc::pthread_cond_destroy(&mut cond as *mut _), 0);

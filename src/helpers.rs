@@ -1,6 +1,7 @@
 use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::num::NonZeroUsize;
+use std::time::Duration;
 
 use log::trace;
 
@@ -40,6 +41,9 @@ fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId
             None
         })
 }
+
+/// This error indicates that the value in a `timespec` C struct was invalid.
+pub struct TimespecError;
 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Gets an instance for a path.
@@ -511,6 +515,39 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         assert!(op_place.layout.size >= offset + layout.size);
         let value_place = op_place.offset(offset, MemPlaceMeta::None, layout, this)?;
         this.write_scalar(value, value_place.into())
+    }
+
+    /// Parse a `timespec` struct and return it as a `std::time::Duration`. The outer `Result` is
+    /// for interpreter errors encountered while reading memory, and the inner `Result` indicates
+    /// whether the value in the `timespec` struct is invalid. Some libc functions will return
+    /// `EINVAL` if the struct's value is invalid.
+    fn read_timespec(
+        &mut self,
+        timespec_ptr_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, Result<Duration, TimespecError>> {
+        let this = self.eval_context_mut();
+        let tp = this.deref_operand(timespec_ptr_op)?;
+        let seconds_place = this.mplace_field(tp, 0)?;
+        let seconds_scalar = this.read_scalar(seconds_place.into())?;
+        let seconds = seconds_scalar.to_machine_isize(this)?;
+        let nanoseconds_place = this.mplace_field(tp, 1)?;
+        let nanoseconds_scalar = this.read_scalar(nanoseconds_place.into())?;
+        let nanoseconds = nanoseconds_scalar.to_machine_isize(this)?;
+
+        let seconds: u64 = if let Ok(s) = seconds.try_into() {
+            s
+        } else {
+            return Ok(Err(TimespecError));
+        };
+        let nanoseconds: u32 = if let Ok(ns) = nanoseconds.try_into() {
+            if ns >= 1_000_000_000 {
+                return Ok(Err(TimespecError));
+            }
+            ns
+        } else {
+            return Ok(Err(TimespecError));
+        };
+        Ok(Ok(Duration::new(seconds, nanoseconds)))
     }
 }
 
