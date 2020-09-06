@@ -130,6 +130,9 @@ pub fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
 }
 
 /// Checks if type is struct, enum or union type with the given def path.
+///
+/// If the type is a diagnostic item, use `is_type_diagnostic_item` instead.
+/// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
 pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.kind() {
         ty::Adt(adt, _) => match_def_path(cx, adt.did, path),
@@ -138,6 +141,8 @@ pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
 }
 
 /// Checks if the type is equal to a diagnostic item
+///
+/// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
 pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
     match ty.kind() {
         ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
