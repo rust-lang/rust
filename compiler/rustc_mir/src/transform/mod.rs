@@ -453,8 +453,9 @@ fn run_optimization_passes<'tcx>(
 
     // The main optimizations that we do on MIR.
     let optimizations: &[&dyn MirPass<'tcx>] = &[
-        &instcombine::InstCombine,
         &match_branches::MatchBranchSimplification,
+        // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
+        &instcombine::InstCombine,
         &const_prop::ConstProp,
         &simplify_branches::SimplifyBranches::new("after-const-prop"),
         &simplify_comparison_integral::SimplifyComparisonIntegral,
