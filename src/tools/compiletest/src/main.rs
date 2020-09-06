@@ -163,7 +163,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
-    let cdb = analyze_cdb(matches.opt_str("cdb"), &target);
+    let (cdb, cdb_version) = analyze_cdb(matches.opt_str("cdb"), &target);
     let (gdb, gdb_version, gdb_native_rust) =
         analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
     let (lldb_version, lldb_native_rust) = matches
@@ -216,6 +216,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
+        cdb_version,
         gdb,
         gdb_version,
         gdb_native_rust,
@@ -773,8 +774,30 @@ fn find_cdb(target: &str) -> Option<OsString> {
 }
 
 /// Returns Path to CDB
-fn analyze_cdb(cdb: Option<String>, target: &str) -> Option<OsString> {
-    cdb.map(OsString::from).or_else(|| find_cdb(target))
+fn analyze_cdb(cdb: Option<String>, target: &str) -> (Option<OsString>, Option<[u16; 4]>) {
+    let cdb = cdb.map(OsString::from).or_else(|| find_cdb(target));
+
+    let mut version = None;
+    if let Some(cdb) = cdb.as_ref() {
+        if let Ok(output) = Command::new(cdb).arg("/version").output() {
+            if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
+                version = extract_cdb_version(&first_line);
+            }
+        }
+    }
+
+    (cdb, version)
+}
+
+fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
+    // Example full_version_line: "cdb version 10.0.18362.1"
+    let version = full_version_line.rsplit(' ').next()?;
+    let mut components = version.split('.');
+    let major: u16 = components.next().unwrap().parse().unwrap();
+    let minor: u16 = components.next().unwrap().parse().unwrap();
+    let patch: u16 = components.next().unwrap_or("0").parse().unwrap();
+    let build: u16 = components.next().unwrap_or("0").parse().unwrap();
+    Some([major, minor, patch, build])
 }
 
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)
