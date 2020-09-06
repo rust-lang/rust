@@ -180,14 +180,14 @@ should still read the rest of the section:
 | `x.py build --keep-stage 1 library/std` | Build the 1st stage of the compiler and skips rebuilding the standard library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
 | `x.py test [--keep-stage 1]` | Run the test suite using the stage1 compiler |
 | `x.py test --bless [--keep-stage 1]` | Run the test suite using the stage1 compiler _and_ update expected test output. |
-| `x.py build --stage 2 src/rustc` | Do a full 2-stage build. You almost never want to do this. |
+| `x.py build --stage 2 compiler/rustc` | Do a full 2-stage build. You almost never want to do this. |
 | `x.py test --stage 2` | Do a full 2-stage build and run all tests. You almost never want to do this. |
 
 To do a full 2-stage build of the whole compiler, you should run this (after
 updating `config.toml` as mentioned above):
 
 ```sh
-./x.py build --stage 2 src/rustc
+./x.py build --stage 2 compiler/rustc
 ```
 
 In the process, this will also necessarily build the standard libraries, and it
