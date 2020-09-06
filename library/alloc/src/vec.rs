@@ -120,6 +120,9 @@ use crate::raw_vec::RawVec;
 /// assert_eq!(vec, [0, 0, 0, 0, 0]);
 /// ```
 ///
+/// For more information, see
+/// [Capacity and Reallocation](#capacity-and-reallocation).
+///
 /// Use a `Vec<T>` as an efficient stack:
 ///
 /// ```
