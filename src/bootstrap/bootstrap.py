@@ -714,7 +714,6 @@ class RustBuild(object):
         # See also: <https://github.com/rust-lang/rust/issues/70208>.
         if "CARGO_BUILD_TARGET" in env:
             del env["CARGO_BUILD_TARGET"]
-        env["RUSTC_BOOTSTRAP"] = '1'
         env["CARGO_TARGET_DIR"] = build_dir
         env["RUSTC"] = self.rustc()
         env["LD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
