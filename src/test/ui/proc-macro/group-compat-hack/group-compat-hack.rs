@@ -13,18 +13,37 @@ extern crate std;
 // place of a `None`-delimited group. This allows us to maintain
 // backwards compatibility for older versions of these crates.
 
-include!("js-sys/src/lib.rs");
-include!("time-macros-impl/src/lib.rs");
+mod no_version {
+    include!("js-sys/src/lib.rs");
+    include!("time-macros-impl/src/lib.rs");
 
-macro_rules! other {
-    ($name:ident) => {
-        #[my_macro] struct Three($name);
+    macro_rules! other {
+        ($name:ident) => {
+            #[my_macro] struct Three($name);
+        }
     }
-}
 
-fn main() {
     struct Foo;
     impl_macros!(Foo);
     arrays!(Foo);
     other!(Foo);
 }
+
+mod with_version {
+    include!("js-sys-0.3.17/src/lib.rs");
+    include!("time-macros-impl-0.1.0/src/lib.rs");
+
+    macro_rules! other {
+        ($name:ident) => {
+            #[my_macro] struct Three($name);
+        }
+    }
+
+    struct Foo;
+    impl_macros!(Foo);
+    arrays!(Foo);
+    other!(Foo);
+}
+
+
+fn main() {}
