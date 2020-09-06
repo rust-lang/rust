@@ -1808,7 +1808,7 @@ fn lint_or_fun_call<'tcx>(
                     _ => (),
                 }
 
-                if match_type(cx, ty, &paths::VEC) {
+                if is_type_diagnostic_item(cx, ty, sym!(vec_type)) {
                     return;
                 }
             }
