@@ -3357,8 +3357,9 @@ mod private_slice_index {
     on(T = "str", label = "string indices are ranges of `usize`",),
     on(
         all(any(T = "str", T = "&str", T = "std::string::String"), _Self = "{integer}"),
-        note = "you can use `.chars().nth()` or `.bytes().nth()`
-see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"
+        note = "you can use `.chars().nth()` or `.bytes().nth()`\n\
+                for more information, see chapter 8 in The Book: \
+                <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"
     ),
     message = "the type `{T}` cannot be indexed by `{Self}`",
     label = "slice indices are of type `usize` or ranges of `usize`"
