@@ -235,6 +235,27 @@ mod kernel_copy {
         fn properties(&self) -> CopyParams;
     }
 
+    impl<T> CopyRead for &mut T where T: CopyRead {
+        fn drain_to<W: Write>(&mut self, writer: &mut W, limit: u64) -> Result<u64> {
+            (**self).drain_to(writer, limit)
+        }
+
+        fn min_limit(&self) -> u64 {
+            (**self).min_limit()
+        }
+
+        fn properties(&self) -> CopyParams {
+            (**self).properties()
+        }
+    }
+
+    impl<T> CopyWrite for &mut T where T: CopyWrite {
+        fn properties(&self) -> CopyParams {
+            (**self).properties()
+        }
+    }
+
+
     impl CopyRead for File {
         fn properties(&self) -> CopyParams {
             CopyParams(fd_to_meta(self), Some(self.as_raw_fd()))
