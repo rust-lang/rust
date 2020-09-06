@@ -4,7 +4,7 @@ mod injection;
 #[cfg(test)]
 mod tests;
 
-use hir::{Name, Semantics, VariantDef};
+use hir::{Local, Name, Semantics, VariantDef};
 use ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -14,7 +14,7 @@ use syntax::{
     ast::{self, HasFormatSpecifier},
     AstNode, AstToken, Direction, NodeOrToken, SyntaxElement,
     SyntaxKind::{self, *},
-    SyntaxNode, TextRange, WalkEvent, T,
+    SyntaxNode, SyntaxToken, TextRange, WalkEvent, T,
 };
 
 use crate::FileId;
@@ -455,7 +455,7 @@ fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
 }
 
 /// Returns true if the parent nodes of `node` all match the `SyntaxKind`s in `kinds` exactly.
-fn parents_match(mut node: SyntaxNode, mut kinds: &[SyntaxKind]) -> bool {
+fn parents_match(mut node: NodeOrToken<SyntaxNode, SyntaxToken>, mut kinds: &[SyntaxKind]) -> bool {
     while let (Some(parent), [kind, rest @ ..]) = (&node.parent(), kinds) {
         if parent.kind() != *kind {
             return false;
@@ -463,12 +463,21 @@ fn parents_match(mut node: SyntaxNode, mut kinds: &[SyntaxKind]) -> bool {
 
         // FIXME: Would be nice to get parent out of the match, but binding by-move and by-value
         // in the same pattern is unstable: rust-lang/rust#68354.
-        node = node.parent().unwrap();
+        node = node.parent().unwrap().into();
         kinds = rest;
     }
 
     // Only true if we matched all expected kinds
     kinds.len() == 0
+}
+
+fn is_consumed_lvalue(
+    node: NodeOrToken<SyntaxNode, SyntaxToken>,
+    local: &Local,
+    db: &RootDatabase,
+) -> bool {
+    // When lvalues are passed as arguments and they're not Copy, then mark them as Consuming.
+    parents_match(node, &[PATH_SEGMENT, PATH, PATH_EXPR, ARG_LIST]) && !local.ty(db).is_copy(db)
 }
 
 fn highlight_element(
@@ -539,23 +548,9 @@ fn highlight_element(
 
                             let mut h = highlight_def(db, def);
 
-                            // When lvalues are passed as arguments and they're not Copy, then mark
-                            // them as Consuming.
-                            if parents_match(
-                                name_ref.syntax().clone(),
-                                &[PATH_SEGMENT, PATH, PATH_EXPR, ARG_LIST],
-                            ) {
-                                let lvalue_ty = if let Definition::Local(local) = &def {
-                                    Some(local.ty(db))
-                                } else if let Definition::SelfType(impl_def) = &def {
-                                    Some(impl_def.target_ty(db))
-                                } else {
-                                    None
-                                };
-                                if let Some(lvalue_ty) = lvalue_ty {
-                                    if !lvalue_ty.is_copy(db) {
-                                        h |= HighlightModifier::Consuming;
-                                    }
+                            if let Definition::Local(local) = &def {
+                                if is_consumed_lvalue(name_ref.syntax().clone().into(), local, db) {
+                                    h |= HighlightModifier::Consuming;
                                 }
                             }
 
@@ -682,21 +677,30 @@ fn highlight_element(
                         .and_then(ast::SelfParam::cast)
                         .and_then(|p| p.mut_token())
                         .is_some();
-                    // closure to enforce lazyness
-                    let self_path = || {
-                        sema.resolve_path(&element.parent()?.parent().and_then(ast::Path::cast)?)
-                    };
+                    let self_path = &element
+                        .parent()
+                        .as_ref()
+                        .and_then(SyntaxNode::parent)
+                        .and_then(ast::Path::cast)
+                        .and_then(|p| sema.resolve_path(&p));
+                    let mut h = HighlightTag::SelfKeyword.into();
                     if self_param_is_mut
-                        || matches!(self_path(),
+                        || matches!(self_path,
                             Some(hir::PathResolution::Local(local))
                                 if local.is_self(db)
                                     && (local.is_mut(db) || local.ty(db).is_mutable_reference())
                         )
                     {
-                        HighlightTag::SelfKeyword | HighlightModifier::Mutable
-                    } else {
-                        HighlightTag::SelfKeyword.into()
+                        h |= HighlightModifier::Mutable
                     }
+
+                    if let Some(hir::PathResolution::Local(local)) = self_path {
+                        if is_consumed_lvalue(element, &local, db) {
+                            h |= HighlightModifier::Consuming;
+                        }
+                    }
+
+                    h
                 }
                 T![ref] => element
                     .parent()
