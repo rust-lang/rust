@@ -863,13 +863,17 @@ impl Build {
             && !target.contains("msvc")
         {
             Some(self.cc(target))
-        } else if target.contains("msvc") && self.config.use_lld && self.build == target {
-            // `rust.use_lld` means using LLD directly only for MSVC, for other targets it only
-            // adds `-fuse-ld=lld` to already selected linker.
+        } else if self.config.use_lld && !self.is_fuse_ld_lld(target) && self.build == target {
             Some(&self.initial_lld)
         } else {
             None
         }
+    }
+
+    // LLD is used through `-fuse-ld=lld` rather than directly.
+    // Only MSVC targets use LLD directly at the moment.
+    fn is_fuse_ld_lld(&self, target: TargetSelection) -> bool {
+        self.config.use_lld && !target.contains("msvc")
     }
 
     /// Returns if this target should statically link the C runtime, if specified

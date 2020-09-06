@@ -603,7 +603,7 @@ impl Step for RustdocTheme {
         if let Some(linker) = builder.linker(self.compiler.host) {
             cmd.env("RUSTDOC_LINKER", linker);
         }
-        if builder.config.use_lld && !self.compiler.host.contains("msvc") {
+        if builder.is_fuse_ld_lld(self.compiler.host) {
             cmd.env("RUSTDOC_FUSE_LD_LLD", "1");
         }
         try_run(builder, &mut cmd);
@@ -1070,14 +1070,14 @@ impl Step for Compiletest {
 
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
-        if builder.config.use_lld && !compiler.host.triple.contains("msvc") {
+        if builder.is_fuse_ld_lld(compiler.host) {
             hostflags.push("-Clink-args=-fuse-ld=lld".to_string());
         }
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
-        if builder.config.use_lld && !target.contains("msvc") {
+        if builder.is_fuse_ld_lld(target) {
             targetflags.push("-Clink-args=-fuse-ld=lld".to_string());
         }
         cmd.arg("--target-rustcflags").arg(targetflags.join(" "));

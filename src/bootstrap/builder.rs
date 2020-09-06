@@ -758,7 +758,7 @@ impl<'a> Builder<'a> {
         if let Some(linker) = self.linker(compiler.host) {
             cmd.env("RUSTDOC_LINKER", linker);
         }
-        if self.config.use_lld && !compiler.host.contains("msvc") {
+        if self.is_fuse_ld_lld(compiler.host) {
             cmd.env("RUSTDOC_FUSE_LD_LLD", "1");
         }
         cmd
@@ -1047,7 +1047,7 @@ impl<'a> Builder<'a> {
         if let Some(host_linker) = self.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
         }
-        if self.config.use_lld && !compiler.host.contains("msvc") {
+        if self.is_fuse_ld_lld(compiler.host) {
             cargo.env("RUSTC_HOST_FUSE_LD_LLD", "1");
         }
 
@@ -1055,8 +1055,7 @@ impl<'a> Builder<'a> {
             let target = crate::envify(&target.triple);
             cargo.env(&format!("CARGO_TARGET_{}_LINKER", target), target_linker);
         }
-
-        if self.config.use_lld && !target.contains("msvc") {
+        if self.is_fuse_ld_lld(target) {
             rustflags.arg("-Clink-args=-fuse-ld=lld");
         }
 
