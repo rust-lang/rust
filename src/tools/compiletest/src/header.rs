@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 use tracing::*;
 
 use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PassMode};
-use crate::extract_gdb_version;
 use crate::util;
+use crate::{extract_cdb_version, extract_gdb_version};
 
 #[cfg(test)]
 mod tests;
@@ -105,6 +105,10 @@ impl EarlyProps {
                     props.ignore = true;
                 }
 
+                if config.debugger == Some(Debugger::Cdb) && ignore_cdb(config, ln) {
+                    props.ignore = true;
+                }
+
                 if config.debugger == Some(Debugger::Gdb) && ignore_gdb(config, ln) {
                     props.ignore = true;
                 }
@@ -131,6 +135,21 @@ impl EarlyProps {
 
         return props;
 
+        fn ignore_cdb(config: &Config, line: &str) -> bool {
+            if let Some(actual_version) = config.cdb_version {
+                if let Some(min_version) = line.strip_prefix("min-cdb-version:").map(str::trim) {
+                    let min_version = extract_cdb_version(min_version).unwrap_or_else(|| {
+                        panic!("couldn't parse version range: {:?}", min_version);
+                    });
+
+                    // Ignore if actual version is smaller than the minimum
+                    // required version
+                    return actual_version < min_version;
+                }
+            }
+            false
+        }
+
         fn ignore_gdb(config: &Config, line: &str) -> bool {
             if let Some(actual_version) = config.gdb_version {
                 if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
@@ -142,8 +161,8 @@ impl EarlyProps {
                     if start_ver != end_ver {
                         panic!("Expected single GDB version")
                     }
-                    // Ignore if actual version is smaller the minimum required
-                    // version
+                    // Ignore if actual version is smaller than the minimum
+                    // required version
                     return actual_version < start_ver;
                 } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
                     let (min_version, max_version) =
