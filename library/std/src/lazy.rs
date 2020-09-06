@@ -6,6 +6,7 @@ mod tests;
 use crate::{
     cell::{Cell, UnsafeCell},
     fmt,
+    marker::PhantomData,
     mem::{self, MaybeUninit},
     ops::{Deref, Drop},
     panic::{RefUnwindSafe, UnwindSafe},
@@ -46,6 +47,26 @@ pub struct SyncOnceCell<T> {
     once: Once,
     // Whether or not the value is initialized is tracked by `state_and_queue`.
     value: UnsafeCell<MaybeUninit<T>>,
+    /// `PhantomData` to make sure dropck understands we're dropping T in our Drop impl.
+    ///
+    /// ```compile_fail,E0597
+    /// #![feature(once_cell)]
+    ///
+    /// use std::lazy::SyncOnceCell;
+    ///
+    /// struct A<'a>(&'a str);
+    ///
+    /// impl<'a> Drop for A<'a> {
+    ///     fn drop(&mut self) {}
+    /// }
+    ///
+    /// let cell = SyncOnceCell::new();
+    /// {
+    ///     let s = String::new();
+    ///     let _ = cell.set(A(&s));
+    /// }
+    /// ```
+    _marker: PhantomData<T>,
 }
 
 // Why do we need `T: Send`?
@@ -119,7 +140,11 @@ impl<T> SyncOnceCell<T> {
     /// Creates a new empty cell.
     #[unstable(feature = "once_cell", issue = "74465")]
     pub const fn new() -> SyncOnceCell<T> {
-        SyncOnceCell { once: Once::new(), value: UnsafeCell::new(MaybeUninit::uninit()) }
+        SyncOnceCell {
+            once: Once::new(),
+            value: UnsafeCell::new(MaybeUninit::uninit()),
+            _marker: PhantomData,
+        }
     }
 
     /// Gets the reference to the underlying value.
