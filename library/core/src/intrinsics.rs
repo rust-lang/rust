@@ -831,7 +831,7 @@ extern "rust-intrinsic" {
     /// Gets a reference to a static `Location` indicating where it was called.
     ///
     /// Consider using [`crate::panic::Location::caller`] instead.
-    #[rustc_const_unstable(feature = "const_caller_location", issue = "47809")]
+    #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
 
     /// Moves a value out of scope without running drop glue.
