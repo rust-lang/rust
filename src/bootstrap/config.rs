@@ -273,10 +273,8 @@ struct TomlConfig {
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Build {
     build: Option<String>,
-    #[serde(default)]
-    host: Vec<String>,
-    #[serde(default)]
-    target: Vec<String>,
+    host: Option<Vec<String>>,
+    target: Option<Vec<String>>,
     // This is ignored, the rust code always gets the build directory from the `BUILD_DIR` env variable
     build_dir: Option<String>,
     cargo: Option<String>,
@@ -505,11 +503,6 @@ impl Config {
             config.out = dir;
         }
 
-        // If --target was specified but --host wasn't specified, don't run any host-only tests.
-        let has_hosts = !flags.host.is_empty();
-        let has_targets = !flags.target.is_empty();
-        config.skip_only_host_steps = !has_hosts && has_targets;
-
         let toml = file
             .map(|file| {
                 let contents = t!(fs::read_to_string(&file));
@@ -528,25 +521,28 @@ impl Config {
             .unwrap_or_else(TomlConfig::default);
 
         let build = toml.build.clone().unwrap_or_default();
-        // set by bootstrap.py
-        config.hosts.push(config.build);
-        for host in build.host.iter().map(|h| TargetSelection::from_user(h)) {
-            if !config.hosts.contains(&host) {
-                config.hosts.push(host);
-            }
-        }
-        for target in config
-            .hosts
-            .iter()
-            .copied()
-            .chain(build.target.iter().map(|h| TargetSelection::from_user(h)))
-        {
-            if !config.targets.contains(&target) {
-                config.targets.push(target);
-            }
-        }
-        config.hosts = if !flags.host.is_empty() { flags.host } else { config.hosts };
-        config.targets = if !flags.target.is_empty() { flags.target } else { config.targets };
+
+        // If --target was specified but --host wasn't specified, don't run any host-only tests.
+        let has_hosts = build.host.is_some() || flags.host.is_some();
+        let has_targets = build.target.is_some() || flags.target.is_some();
+        config.skip_only_host_steps = !has_hosts && has_targets;
+
+        config.hosts = if let Some(arg_host) = flags.host.clone() {
+            arg_host
+        } else if let Some(file_host) = build.host {
+            file_host.iter().map(|h| TargetSelection::from_user(h)).collect()
+        } else {
+            vec![config.build]
+        };
+        config.targets = if let Some(arg_target) = flags.target.clone() {
+            arg_target
+        } else if let Some(file_target) = build.target {
+            file_target.iter().map(|h| TargetSelection::from_user(h)).collect()
+        } else {
+            // If target is *not* configured, then default to the host
+            // toolchains.
+            config.hosts.clone()
+        };
 
         config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
