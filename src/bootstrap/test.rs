@@ -601,7 +601,10 @@ impl Step for RustdocTheme {
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
         if let Some(linker) = builder.linker(self.compiler.host) {
-            cmd.env("RUSTC_TARGET_LINKER", linker);
+            cmd.env("RUSTDOC_LINKER", linker);
+        }
+        if builder.config.use_lld && !self.compiler.host.contains("msvc") {
+            cmd.env("RUSTDOC_FUSE_LD_LLD", "1");
         }
         try_run(builder, &mut cmd);
     }

@@ -756,7 +756,10 @@ impl<'a> Builder<'a> {
         cmd.env_remove("MFLAGS");
 
         if let Some(linker) = self.linker(compiler.host) {
-            cmd.env("RUSTC_TARGET_LINKER", linker);
+            cmd.env("RUSTDOC_LINKER", linker);
+        }
+        if self.config.use_lld && !compiler.host.contains("msvc") {
+            cmd.env("RUSTDOC_FUSE_LD_LLD", "1");
         }
         cmd
     }
@@ -1043,6 +1046,9 @@ impl<'a> Builder<'a> {
 
         if let Some(host_linker) = self.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
+        }
+        if self.config.use_lld && !compiler.host.contains("msvc") {
+            cargo.env("RUSTC_HOST_FUSE_LD_LLD", "1");
         }
 
         if let Some(target_linker) = self.linker(target) {
