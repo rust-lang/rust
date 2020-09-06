@@ -310,7 +310,7 @@ pub trait DoubleEndedIterator: Iterator {
             mut predicate: impl FnMut(&T) -> bool,
         ) -> impl FnMut((), T) -> ControlFlow<(), T> {
             move |(), x| {
-                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
+                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
             }
         }
 
