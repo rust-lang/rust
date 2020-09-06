@@ -83,6 +83,8 @@ impl CheckAttrVisitor<'tcx> {
                     self.check_link_name(hir_id, attr, span, target);
                 } else if self.tcx.sess.check_name(attr, sym::link_section) {
                     self.check_link_section(hir_id, attr, span, target);
+                } else if self.tcx.sess.check_name(attr, sym::no_mangle) {
+                    self.check_no_mangle(hir_id, attr, span, target);
                 }
                 true
             };
@@ -404,6 +406,27 @@ impl CheckAttrVisitor<'tcx> {
             Target::Static | Target::Fn | Target::Method(..) => {}
             _ => {
                 // FIXME: #[link_section] was previously allowed on non-functions/statics and some
+                // crates used this, so only emit a warning.
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("attribute should be applied to a function or static")
+                        .warn(
+                            "this was previously accepted by the compiler but is \
+                             being phased out; it will become a hard error in \
+                             a future release!",
+                        )
+                        .span_label(*span, "not a function or static")
+                        .emit();
+                });
+            }
+        }
+    }
+
+    /// Checks if `#[no_mangle]` is applied to a function or static.
+    fn check_no_mangle(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
+        match target {
+            Target::Static | Target::Fn | Target::Method(..) => {}
+            _ => {
+                // FIXME: #[no_mangle] was previously allowed on non-functions/statics and some
                 // crates used this, so only emit a warning.
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
                     lint.build("attribute should be applied to a function or static")

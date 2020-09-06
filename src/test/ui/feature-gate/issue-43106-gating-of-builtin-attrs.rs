@@ -372,16 +372,31 @@ mod automatically_derived {
 }
 
 #[no_mangle]
+//~^ WARN attribute should be applied to a function or static [unused_attributes]
+//~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 mod no_mangle {
+    //~^ NOTE not a function or static
     mod inner { #![no_mangle] }
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
 
     #[no_mangle] fn f() { }
 
     #[no_mangle] struct S;
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
 
     #[no_mangle] type T = S;
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
 
     #[no_mangle] impl S { }
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
 }
 
 #[should_panic]
