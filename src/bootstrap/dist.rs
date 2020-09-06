@@ -605,7 +605,9 @@ impl Step for DebuggerScripts {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(DebuggerScripts {
-            sysroot: run.builder.sysroot(run.builder.compiler(run.builder.top_stage, run.host)),
+            sysroot: run
+                .builder
+                .sysroot(run.builder.compiler(run.builder.top_stage, run.build_triple())),
             host: run.target,
         });
     }

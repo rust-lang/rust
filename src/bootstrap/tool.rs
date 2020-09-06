@@ -469,8 +469,9 @@ impl Step for Rustdoc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder
-            .ensure(Rustdoc { compiler: run.builder.compiler(run.builder.top_stage, run.host) });
+        run.builder.ensure(Rustdoc {
+            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+        });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
