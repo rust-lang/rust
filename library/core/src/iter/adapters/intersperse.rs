@@ -1,4 +1,6 @@
-use crate::iter::Fuse;
+use crate::ops::Try;
+
+use super::Peekable;
 
 /// An iterator adapter that places a separator between all elements.
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "none")]
@@ -7,9 +9,9 @@ pub struct Intersperse<I: Iterator>
 where
     I::Item: Clone,
 {
-    element: I::Item,
-    iter: Fuse<I>,
-    peek: Option<I::Item>,
+    separator: I::Item,
+    iter: Peekable<I>,
+    needs_sep: bool,
 }
 
 impl<I: Iterator> Intersperse<I>
@@ -17,8 +19,7 @@ where
     I::Item: Clone,
 {
     pub(in crate::iter) fn new(iter: I, separator: I::Item) -> Self {
-        let mut iter = iter.fuse();
-        Self { peek: iter.next(), iter, element: separator }
+        Self { iter: iter.peekable(), separator, needs_sep: false }
     }
 }
 
@@ -32,11 +33,12 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        if let Some(item) = self.peek.take() {
-            Some(item)
+        if self.needs_sep && self.iter.peek().is_some() {
+            self.needs_sep = false;
+            Some(self.separator.clone())
         } else {
-            self.peek = Some(self.iter.next()?);
-            Some(self.element.clone())
+            self.needs_sep = true;
+            self.iter.next()
         }
     }
 
@@ -47,26 +49,53 @@ where
     {
         let mut accum = init;
 
-        if let Some(x) = self.peek.take() {
-            accum = f(accum, x);
+        // Use `peek()` first to avoid calling `next()` on an empty iterator.
+        if !self.needs_sep || self.iter.peek().is_some() {
+            if let Some(x) = self.iter.next() {
+                accum = f(accum, x);
+            }
         }
 
-        let element = &self.element;
+        let element = &self.separator;
 
-        self.iter.fold(accum, |accum, x| {
-            let accum = f(accum, element.clone());
-            let accum = f(accum, x);
+        self.iter.fold(accum, |mut accum, x| {
+            accum = f(accum, element.clone());
+            accum = f(accum, x);
             accum
         })
     }
 
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        let mut accum = init;
+
+        // Use `peek()` first to avoid calling `next()` on an empty iterator.
+        if !self.needs_sep || self.iter.peek().is_some() {
+            if let Some(x) = self.iter.next() {
+                accum = f(accum, x)?;
+            }
+        }
+
+        let element = &self.separator;
+
+        self.iter.try_fold(accum, |mut accum, x| {
+            accum = f(accum, element.clone())?;
+            accum = f(accum, x)?;
+            Try::from_ok(accum)
+        })
+    }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // We'll yield the whole `self.iter`, and just as many separators, as well as (if present)
-        // `self.peek`.
         let (lo, hi) = self.iter.size_hint();
-        let has_peek = self.peek.is_some() as usize;
-        let lo = lo.saturating_add(lo).saturating_add(has_peek);
-        let hi = hi.and_then(|hi| hi.checked_add(hi)).and_then(|hi| hi.checked_add(has_peek));
+        let next_is_elem = !self.needs_sep;
+        let lo = lo.saturating_add(lo).saturating_sub(next_is_elem as usize);
+        let hi = hi
+            .and_then(|hi| hi.checked_add(hi))
+            .and_then(|hi| hi.checked_sub(next_is_elem as usize));
         (lo, hi)
     }
 }
