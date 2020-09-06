@@ -402,6 +402,29 @@ fn test_zip_unzip() {
 }
 
 #[test]
+fn test_cmp() {
+    let x: &[isize] = &[1, 2, 3, 4, 5];
+    let cmp: &[isize] = &[1, 2, 3, 4, 5];
+    assert_eq!(&x[..], cmp);
+    let cmp: &[isize] = &[3, 4, 5];
+    assert_eq!(&x[2..], cmp);
+    let cmp: &[isize] = &[1, 2, 3];
+    assert_eq!(&x[..3], cmp);
+    let cmp: &[isize] = &[2, 3, 4];
+    assert_eq!(&x[1..4], cmp);
+
+    let x: Vec<isize> = vec![1, 2, 3, 4, 5];
+    let cmp: &[isize] = &[1, 2, 3, 4, 5];
+    assert_eq!(&x[..], cmp);
+    let cmp: &[isize] = &[3, 4, 5];
+    assert_eq!(&x[2..], cmp);
+    let cmp: &[isize] = &[1, 2, 3];
+    assert_eq!(&x[..3], cmp);
+    let cmp: &[isize] = &[2, 3, 4];
+    assert_eq!(&x[1..4], cmp);
+}
+
+#[test]
 fn test_vec_truncate_drop() {
     static mut DROPS: u32 = 0;
     struct Elem(i32);
