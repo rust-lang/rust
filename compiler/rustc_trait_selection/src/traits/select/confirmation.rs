@@ -126,7 +126,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let tcx = self.tcx();
 
             let bound_self_ty = self.infcx.shallow_resolve(obligation.self_ty());
-            let (def_id, substs) = match bound_self_ty.skip_binder().kind {
+            let (def_id, substs) = match *bound_self_ty.skip_binder().kind() {
                 ty::Projection(proj) => (proj.item_def_id, proj.substs),
                 ty::Opaque(def_id, substs) => (def_id, substs),
                 _ => bug!("projection candidate for unexpected type: {:?}", bound_self_ty),
@@ -158,7 +158,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }),
             );
 
-            if let ty::Projection(..) = bound_self_ty.skip_binder().kind {
+            if let ty::Projection(..) = bound_self_ty.skip_binder().kind() {
                 for predicate in tcx.predicates_of(def_id).instantiate_own(tcx, substs).predicates {
                     let normalized = normalize_with_depth_to(
                         self,

@@ -916,8 +916,8 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
 
     let self_ty = obligation_trait_ref.self_ty();
     let object_ty = selcx.infcx().shallow_resolve(self_ty);
-    let data = match object_ty.kind {
-        ty::Dynamic(ref data, ..) => data,
+    let data = match object_ty.kind() {
+        ty::Dynamic(data, ..) => data,
         ty::Infer(ty::TyVar(_)) => {
             // If the self-type is an inference variable, then it MAY wind up
             // being an object type, so induce an ambiguity.
