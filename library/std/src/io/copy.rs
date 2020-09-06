@@ -173,22 +173,6 @@ mod kernel_copy {
                     )
                     .map(|bytes_copied| bytes_copied + bytes_flushed)
                 }
-                (CopyParams(reader_meta, Some(readfd)), CopyParams(writer_meta, Some(writefd)))
-                    if reader_meta.is_fifo() || writer_meta.is_fifo() =>
-                {
-                    // splice
-                    let bytes_flushed = flush()?;
-                    let max_write = reader.min_limit();
-                    let (mut reader, mut writer) =
-                        unsafe { (fd_as_file(readfd), fd_as_file(writefd)) };
-                    crate::sys::fs::sendfile_splice(
-                        crate::sys::fs::SpliceMode::Splice,
-                        &mut reader,
-                        &mut writer,
-                        max_write,
-                    )
-                    .map(|bytes_sent| bytes_sent + bytes_flushed)
-                }
                 (
                     CopyParams(FdMeta::Metadata(reader_meta), Some(readfd)),
                     CopyParams(_, Some(writefd)),
@@ -205,6 +189,22 @@ mod kernel_copy {
                         &mut reader,
                         &mut writer,
                         min(len, max_write),
+                    )
+                        .map(|bytes_sent| bytes_sent + bytes_flushed)
+                }
+                (CopyParams(reader_meta, Some(readfd)), CopyParams(writer_meta, Some(writefd)))
+                    if reader_meta.is_fifo() || writer_meta.is_fifo() =>
+                {
+                    // splice
+                    let bytes_flushed = flush()?;
+                    let max_write = reader.min_limit();
+                    let (mut reader, mut writer) =
+                        unsafe { (fd_as_file(readfd), fd_as_file(writefd)) };
+                    crate::sys::fs::sendfile_splice(
+                        crate::sys::fs::SpliceMode::Splice,
+                        &mut reader,
+                        &mut writer,
+                        max_write,
                     )
                     .map(|bytes_sent| bytes_sent + bytes_flushed)
                 }
