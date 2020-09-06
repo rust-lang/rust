@@ -368,9 +368,11 @@
 #backtrace = true
 
 # Whether to always use incremental compilation when building rustc
-#incremental = false
+# Defaults to `false`, but it's recommended that contributors set it to `true`.
+incremental = true
 
 # Build a multi-threaded rustc
+# FIXME(#75760): Some UI tests fail when this option is enabled.
 #parallel-compiler = false
 
 # The default linker that will be hard-coded into the generated compiler for
