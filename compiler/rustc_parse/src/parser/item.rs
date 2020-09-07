@@ -1639,7 +1639,8 @@ impl<'a> Parser<'a> {
     pub(super) fn check_fn_front_matter(&mut self) -> bool {
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
-        const QUALS: [Symbol; 4] = [kw::Const, kw::Async, kw::Unsafe, kw::Extern];
+        // `pub` is added in case users got confused with the ordering like `async pub fn`.
+        const QUALS: [Symbol; 5] = [kw::Pub, kw::Const, kw::Async, kw::Unsafe, kw::Extern];
         self.check_keyword(kw::Fn) // Definitely an `fn`.
             // `$qual fn` or `$qual $qual`:
             || QUALS.iter().any(|&kw| self.check_keyword(kw))
@@ -1668,6 +1669,7 @@ impl<'a> Parser<'a> {
     /// FnFrontMatter = FnQual "fn" ;
     /// ```
     pub(super) fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
+        let sp_start = self.token.span;
         let constness = self.parse_constness();
         let asyncness = self.parse_asyncness();
         let unsafety = self.parse_unsafety();
@@ -1681,8 +1683,27 @@ impl<'a> Parser<'a> {
             // It is possible for `expect_one_of` to recover given the contents of
             // `self.expected_tokens`, therefore, do not use `self.unexpected()` which doesn't
             // account for this.
-            if !self.expect_one_of(&[], &[])? {
-                unreachable!()
+            match self.expect_one_of(&[], &[]) {
+                Ok(true) => {}
+                Ok(false) => unreachable!(),
+                Err(mut err) => {
+                    // Recover incorrect visibility order such as `async pub`.
+                    if self.check_keyword(kw::Pub) {
+                        let sp = sp_start.to(self.prev_token.span);
+                        if let Ok(snippet) = self.span_to_snippet(sp) {
+                            let vis = self.parse_visibility(FollowedByType::No)?;
+                            let vs = pprust::vis_to_string(&vis);
+                            let vs = vs.trim_end();
+                            err.span_suggestion(
+                                sp_start.to(self.prev_token.span),
+                                &format!("visibility `{}` must come before `{}`", vs, snippet),
+                                format!("{} {}", vs, snippet),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                    }
+                    return Err(err);
+                }
             }
         }
 
