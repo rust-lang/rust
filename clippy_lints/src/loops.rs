@@ -1131,6 +1131,10 @@ fn detect_same_item_push<'tcx>(
     body: &'tcx Expr<'_>,
     _: &'tcx Expr<'_>,
 ) {
+    if !matches!(pat.kind, PatKind::Wild) {
+        return;
+    }
+
     // Determine whether it is safe to lint the body
     let mut same_item_push_visitor = SameItemPushVisitor {
         should_lint: true,
@@ -1149,8 +1153,8 @@ fn detect_same_item_push<'tcx>(
                 .map_or(false, |id| implements_trait(cx, ty, id, &[]))
             {
                 // Make sure that the push does not involve possibly mutating values
-                if let PatKind::Wild = pat.kind {
-                    if let ExprKind::Path(ref qpath) = pushed_item.kind {
+                match pushed_item.kind {
+                    ExprKind::Path(ref qpath) => {
                         match qpath_res(cx, qpath, pushed_item.hir_id) {
                             // immutable bindings that are initialized with literal or constant
                             Res::Local(hir_id) => {
@@ -1161,7 +1165,7 @@ fn detect_same_item_push<'tcx>(
                                     if !matches!(bind_ann, BindingAnnotation::RefMut | BindingAnnotation::Mutable);
                                     let parent_node = cx.tcx.hir().get_parent_node(hir_id);
                                     if let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node);
-                                    if let rustc_hir::Local { init: Some(init), .. } = parent_let_expr;
+                                    if let Some(init) = parent_let_expr.init;
                                     then {
                                         match init.kind {
                                             // immutable bindings that are initialized with literal
@@ -1181,10 +1185,9 @@ fn detect_same_item_push<'tcx>(
                             Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item),
                             _ => {},
                         }
-                    } else if let ExprKind::Lit(..) = pushed_item.kind {
-                        // literal
-                        emit_lint(cx, vec, pushed_item);
-                    }
+                    },
+                    ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item),
+                    _ => {},
                 }
             }
         }
