@@ -427,7 +427,7 @@ pub trait MetadataExt {
     /// ```no_run
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
-    ///  use std::io;
+    /// use std::io;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;

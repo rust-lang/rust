@@ -75,6 +75,42 @@ fn test_zst_capacity() {
 }
 
 #[test]
+fn test_indexing() {
+    let v: Vec<isize> = vec![10, 20];
+    assert_eq!(v[0], 10);
+    assert_eq!(v[1], 20);
+    let mut x: usize = 0;
+    assert_eq!(v[x], 10);
+    assert_eq!(v[x + 1], 20);
+    x = x + 1;
+    assert_eq!(v[x], 20);
+    assert_eq!(v[x - 1], 10);
+}
+
+#[test]
+fn test_debug_fmt() {
+    let vec1: Vec<isize> = vec![];
+    assert_eq!("[]", format!("{:?}", vec1));
+
+    let vec2 = vec![0, 1];
+    assert_eq!("[0, 1]", format!("{:?}", vec2));
+
+    let slice: &[isize] = &[4, 5];
+    assert_eq!("[4, 5]", format!("{:?}", slice));
+}
+
+#[test]
+fn test_push() {
+    let mut v = vec![];
+    v.push(1);
+    assert_eq!(v, [1]);
+    v.push(2);
+    assert_eq!(v, [1, 2]);
+    v.push(3);
+    assert_eq!(v, [1, 2, 3]);
+}
+
+#[test]
 fn test_extend() {
     let mut v = Vec::new();
     let mut w = Vec::new();
@@ -120,6 +156,18 @@ fn test_extend() {
 }
 
 #[test]
+fn test_extend_from_slice() {
+    let a: Vec<isize> = vec![1, 2, 3, 4, 5];
+    let b: Vec<isize> = vec![6, 7, 8, 9, 0];
+
+    let mut v: Vec<isize> = a;
+
+    v.extend_from_slice(&b);
+
+    assert_eq!(v, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
+}
+
+#[test]
 fn test_extend_ref() {
     let mut v = vec![1, 2];
     v.extend(&[3, 4, 5]);
@@ -132,6 +180,14 @@ fn test_extend_ref() {
 
     assert_eq!(v.len(), 7);
     assert_eq!(v, [1, 2, 3, 4, 5, 6, 7]);
+}
+
+#[test]
+fn test_slice_from_ref() {
+    let values = vec![1, 2, 3, 4, 5];
+    let slice = &values[1..3];
+
+    assert_eq!(slice, [2, 3]);
 }
 
 #[test]
@@ -343,6 +399,29 @@ fn test_zip_unzip() {
     assert_eq!((1, 4), (left[0], right[0]));
     assert_eq!((2, 5), (left[1], right[1]));
     assert_eq!((3, 6), (left[2], right[2]));
+}
+
+#[test]
+fn test_cmp() {
+    let x: &[isize] = &[1, 2, 3, 4, 5];
+    let cmp: &[isize] = &[1, 2, 3, 4, 5];
+    assert_eq!(&x[..], cmp);
+    let cmp: &[isize] = &[3, 4, 5];
+    assert_eq!(&x[2..], cmp);
+    let cmp: &[isize] = &[1, 2, 3];
+    assert_eq!(&x[..3], cmp);
+    let cmp: &[isize] = &[2, 3, 4];
+    assert_eq!(&x[1..4], cmp);
+
+    let x: Vec<isize> = vec![1, 2, 3, 4, 5];
+    let cmp: &[isize] = &[1, 2, 3, 4, 5];
+    assert_eq!(&x[..], cmp);
+    let cmp: &[isize] = &[3, 4, 5];
+    assert_eq!(&x[2..], cmp);
+    let cmp: &[isize] = &[1, 2, 3];
+    assert_eq!(&x[..3], cmp);
+    let cmp: &[isize] = &[2, 3, 4];
+    assert_eq!(&x[1..4], cmp);
 }
 
 #[test]

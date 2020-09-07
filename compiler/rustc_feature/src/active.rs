@@ -605,3 +605,8 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::lazy_normalization_consts,
     sym::specialization,
 ];
+
+/// Some features are not allowed to be used together at the same time, if
+/// the two are present, produce an error
+pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] =
+    &[(sym::const_generics, sym::min_const_generics)];

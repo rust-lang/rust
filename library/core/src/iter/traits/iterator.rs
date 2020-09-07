@@ -809,7 +809,7 @@ pub trait Iterator {
         Enumerate::new(self)
     }
 
-    /// Creates an iterator which can use `peek` to look at the next element of
+    /// Creates an iterator which can use [`peek`] to look at the next element of
     /// the iterator without consuming it.
     ///
     /// Adds a [`peek`] method to an iterator. See its documentation for
@@ -1992,7 +1992,7 @@ pub trait Iterator {
 
     /// The same as [`fold()`], but uses the first element in the
     /// iterator as the initial value, folding every subsequent element into it.
-    /// If the iterator is empty, return `None`; otherwise, return the result
+    /// If the iterator is empty, return [`None`]; otherwise, return the result
     /// of the fold.
     ///
     /// [`fold()`]: Iterator::fold
@@ -2076,10 +2076,10 @@ pub trait Iterator {
         #[inline]
         fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<(), ()> {
             move |(), x| {
-                if f(x) { ControlFlow::Continue(()) } else { ControlFlow::Break(()) }
+                if f(x) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
             }
         }
-        self.try_fold((), check(f)) == ControlFlow::Continue(())
+        self.try_fold((), check(f)) == ControlFlow::CONTINUE
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -2129,11 +2129,11 @@ pub trait Iterator {
         #[inline]
         fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<(), ()> {
             move |(), x| {
-                if f(x) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
+                if f(x) { ControlFlow::BREAK } else { ControlFlow::CONTINUE }
             }
         }
 
-        self.try_fold((), check(f)) == ControlFlow::Break(())
+        self.try_fold((), check(f)) == ControlFlow::BREAK
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -2191,7 +2191,7 @@ pub trait Iterator {
             mut predicate: impl FnMut(&T) -> bool,
         ) -> impl FnMut((), T) -> ControlFlow<(), T> {
             move |(), x| {
-                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
+                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
             }
         }
 
@@ -2226,7 +2226,7 @@ pub trait Iterator {
         ) -> impl FnMut((), T) -> ControlFlow<(), B> {
             move |(), x| match f(x) {
                 Some(x) => ControlFlow::Break(x),
-                None => ControlFlow::Continue(()),
+                None => ControlFlow::CONTINUE,
             }
         }
 
@@ -2268,7 +2268,7 @@ pub trait Iterator {
             R: Try<Ok = bool>,
         {
             move |(), x| match f(&x).into_result() {
-                Ok(false) => ControlFlow::Continue(()),
+                Ok(false) => ControlFlow::CONTINUE,
                 Ok(true) => ControlFlow::Break(Ok(x)),
                 Err(x) => ControlFlow::Break(Err(x)),
             }
@@ -2821,7 +2821,7 @@ pub trait Iterator {
         Product::product(self)
     }
 
-    /// Lexicographically compares the elements of this `Iterator` with those
+    /// Lexicographically compares the elements of this [`Iterator`] with those
     /// of another.
     ///
     /// # Examples
@@ -2843,7 +2843,7 @@ pub trait Iterator {
         self.cmp_by(other, |x, y| x.cmp(&y))
     }
 
-    /// Lexicographically compares the elements of this `Iterator` with those
+    /// Lexicographically compares the elements of this [`Iterator`] with those
     /// of another with respect to the specified comparison function.
     ///
     /// # Examples
@@ -2895,7 +2895,7 @@ pub trait Iterator {
         }
     }
 
-    /// Lexicographically compares the elements of this `Iterator` with those
+    /// Lexicographically compares the elements of this [`Iterator`] with those
     /// of another.
     ///
     /// # Examples
@@ -2919,7 +2919,7 @@ pub trait Iterator {
         self.partial_cmp_by(other, |x, y| x.partial_cmp(&y))
     }
 
-    /// Lexicographically compares the elements of this `Iterator` with those
+    /// Lexicographically compares the elements of this [`Iterator`] with those
     /// of another with respect to the specified comparison function.
     ///
     /// # Examples
@@ -2980,7 +2980,7 @@ pub trait Iterator {
         }
     }
 
-    /// Determines if the elements of this `Iterator` are equal to those of
+    /// Determines if the elements of this [`Iterator`] are equal to those of
     /// another.
     ///
     /// # Examples
@@ -2999,7 +2999,7 @@ pub trait Iterator {
         self.eq_by(other, |x, y| x == y)
     }
 
-    /// Determines if the elements of this `Iterator` are equal to those of
+    /// Determines if the elements of this [`Iterator`] are equal to those of
     /// another with respect to the specified equality function.
     ///
     /// # Examples
@@ -3040,7 +3040,7 @@ pub trait Iterator {
         }
     }
 
-    /// Determines if the elements of this `Iterator` are unequal to those of
+    /// Determines if the elements of this [`Iterator`] are unequal to those of
     /// another.
     ///
     /// # Examples
@@ -3059,7 +3059,7 @@ pub trait Iterator {
         !self.eq(other)
     }
 
-    /// Determines if the elements of this `Iterator` are lexicographically
+    /// Determines if the elements of this [`Iterator`] are lexicographically
     /// less than those of another.
     ///
     /// # Examples
@@ -3080,7 +3080,7 @@ pub trait Iterator {
         self.partial_cmp(other) == Some(Ordering::Less)
     }
 
-    /// Determines if the elements of this `Iterator` are lexicographically
+    /// Determines if the elements of this [`Iterator`] are lexicographically
     /// less or equal to those of another.
     ///
     /// # Examples
@@ -3101,7 +3101,7 @@ pub trait Iterator {
         matches!(self.partial_cmp(other), Some(Ordering::Less | Ordering::Equal))
     }
 
-    /// Determines if the elements of this `Iterator` are lexicographically
+    /// Determines if the elements of this [`Iterator`] are lexicographically
     /// greater than those of another.
     ///
     /// # Examples
@@ -3122,7 +3122,7 @@ pub trait Iterator {
         self.partial_cmp(other) == Some(Ordering::Greater)
     }
 
-    /// Determines if the elements of this `Iterator` are lexicographically
+    /// Determines if the elements of this [`Iterator`] are lexicographically
     /// greater than or equal to those of another.
     ///
     /// # Examples

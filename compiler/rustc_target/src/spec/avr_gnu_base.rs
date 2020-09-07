@@ -45,6 +45,8 @@ pub fn target(target_cpu: String) -> TargetResult {
             late_link_args: vec![(LinkerFlavor::Gcc, vec!["-lgcc".to_owned()])]
                 .into_iter()
                 .collect(),
+            max_atomic_width: Some(0),
+            atomic_cas: false,
             ..TargetOptions::default()
         },
     })

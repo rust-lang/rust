@@ -1273,7 +1273,7 @@ where
         ) -> impl FnMut((), T) -> ControlFlow<(), B> + '_ {
             move |(), x| match f(x) {
                 Some(x) => ControlFlow::Break(x),
-                None => ControlFlow::Continue(()),
+                None => ControlFlow::CONTINUE,
             }
         }
 
@@ -1772,7 +1772,7 @@ impl<I: Iterator> Peekable<I> {
         self.peeked.get_or_insert_with(|| iter.next()).as_ref()
     }
 
-    /// Consume the next value of this iterator if a condition is true.
+    /// Consume and return the next value of this iterator if a condition is true.
     ///
     /// If `func` returns `true` for the next value of this iterator, consume and return it.
     /// Otherwise, return `None`.
@@ -1812,7 +1812,7 @@ impl<I: Iterator> Peekable<I> {
         }
     }
 
-    /// Consume the next item if it is equal to `expected`.
+    /// Consume and return the next item if it is equal to `expected`.
     ///
     /// # Example
     /// Consume a number if it's equal to 0.
@@ -1827,10 +1827,10 @@ impl<I: Iterator> Peekable<I> {
     /// assert_eq!(iter.next(), Some(1));
     /// ```
     #[unstable(feature = "peekable_next_if", issue = "72480")]
-    pub fn next_if_eq<R>(&mut self, expected: &R) -> Option<I::Item>
+    pub fn next_if_eq<T>(&mut self, expected: &T) -> Option<I::Item>
     where
-        R: ?Sized,
-        I::Item: PartialEq<R>,
+        T: ?Sized,
+        I::Item: PartialEq<T>,
     {
         self.next_if(|next| next == expected)
     }
