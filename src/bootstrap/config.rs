@@ -488,7 +488,9 @@ impl Config {
 
         // set by bootstrap.py
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
-        config.src = Config::path_from_python("SRC");
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        // Undo `src/bootstrap`
+        config.src = manifest_dir.parent().unwrap().parent().unwrap().to_owned();
         config.out = Config::path_from_python("BUILD_DIR");
 
         config.initial_rustc = Config::path_from_python("RUSTC");
