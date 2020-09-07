@@ -14,7 +14,7 @@ use super::{
 
 /// Complete mod declaration, i.e. `mod <|> ;`
 pub(super) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let mod_under_caret = match &ctx.mod_under_caret {
+    let mod_under_caret = match &ctx.mod_declaration_under_caret {
         Some(mod_under_caret) if mod_under_caret.item_list().is_some() => return None,
         Some(mod_under_caret) => mod_under_caret,
         None => return None,
