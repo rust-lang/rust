@@ -4,6 +4,7 @@ use super::NoMatchData;
 use super::{CandidateSource, ImplSource, TraitSource};
 
 use crate::check::FnCtxt;
+use crate::errors::MethodCallOnUnknownType;
 use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 
@@ -11,7 +12,6 @@ use rustc_ast as ast;
 use rustc_ast::util::lev_distance::{find_best_match_for_name, lev_distance};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_infer::infer::canonical::OriginalQueryValues;
@@ -376,14 +376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
                 if self.tcx.sess.rust_2018() {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        span,
-                        E0699,
-                        "the type of this value must be known to call a method on a raw pointer on \
-                         it"
-                    )
-                    .emit();
+                    self.tcx.sess.emit_err(MethodCallOnUnknownType { span });
                 } else {
                     self.tcx.struct_span_lint_hir(
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,

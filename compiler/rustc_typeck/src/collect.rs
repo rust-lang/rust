@@ -18,6 +18,7 @@ use crate::astconv::{AstConv, SizedByDefault};
 use crate::bounds::Bounds;
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::constrained_generic_params as cgp;
+use crate::errors;
 use crate::middle::resolve_lifetime as rl;
 use rustc_ast as ast;
 use rustc_ast::MetaItemKind;
@@ -834,16 +835,11 @@ fn convert_variant(
             let fid = tcx.hir().local_def_id(f.hir_id);
             let dup_span = seen_fields.get(&f.ident.normalize_to_macros_2_0()).cloned();
             if let Some(prev_span) = dup_span {
-                struct_span_err!(
-                    tcx.sess,
-                    f.span,
-                    E0124,
-                    "field `{}` is already declared",
-                    f.ident
-                )
-                .span_label(f.span, "field already declared")
-                .span_label(prev_span, format!("`{}` first declared here", f.ident))
-                .emit();
+                tcx.sess.emit_err(errors::FieldAlreadyDeclared {
+                    field_name: f.ident,
+                    span: f.span,
+                    prev_span,
+                });
             } else {
                 seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
             }
