@@ -1205,16 +1205,27 @@ pub fn check_type_bounds<'tcx>(
     // ParamEnv for normalization specifically.
     let normalize_param_env = {
         let mut predicates = param_env.caller_bounds().iter().collect::<Vec<_>>();
-        predicates.push(
-            ty::Binder::dummy(ty::ProjectionPredicate {
-                projection_ty: ty::ProjectionTy {
-                    item_def_id: trait_ty.def_id,
-                    substs: rebased_substs,
-                },
-                ty: impl_ty_value,
-            })
-            .to_predicate(tcx),
-        );
+        match impl_ty_value.kind() {
+            ty::Projection(proj)
+                if proj.item_def_id == trait_ty.def_id && proj.substs == rebased_substs =>
+            {
+                // Don't include this predicate if the projected type is
+                // exactly the same as the projection. This can occur in
+                // (somewhat dubious) code like this:
+                //
+                // impl<T> X for T where T: X { type Y = <T as X>::Y; }
+            }
+            _ => predicates.push(
+                ty::Binder::dummy(ty::ProjectionPredicate {
+                    projection_ty: ty::ProjectionTy {
+                        item_def_id: trait_ty.def_id,
+                        substs: rebased_substs,
+                    },
+                    ty: impl_ty_value,
+                })
+                .to_predicate(tcx),
+            ),
+        };
         ty::ParamEnv::new(tcx.intern_predicates(&predicates), Reveal::UserFacing)
     };
 
