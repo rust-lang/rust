@@ -42,9 +42,6 @@ fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId
         })
 }
 
-/// This error indicates that the value in a `timespec` C struct was invalid.
-pub struct TimespecError;
-
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Gets an instance for a path.
     fn resolve_path(&self, path: &[&str]) -> ty::Instance<'tcx> {
@@ -517,14 +514,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.write_scalar(value, value_place.into())
     }
 
-    /// Parse a `timespec` struct and return it as a `std::time::Duration`. The outer `Result` is
-    /// for interpreter errors encountered while reading memory, and the inner `Result` indicates
-    /// whether the value in the `timespec` struct is invalid. Some libc functions will return
-    /// `EINVAL` if the struct's value is invalid.
+    /// Parse a `timespec` struct and return it as a `std::time::Duration`. It returns `None`
+    /// if the value in the `timespec` struct is invalid. Some libc functions will return
+    /// `EINVAL` in this case.
     fn read_timespec(
         &mut self,
         timespec_ptr_op: OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, Result<Duration, TimespecError>> {
+    ) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
         let tp = this.deref_operand(timespec_ptr_op)?;
         let seconds_place = this.mplace_field(tp, 0)?;
@@ -537,17 +533,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let seconds: u64 = if let Ok(s) = seconds.try_into() {
             s
         } else {
-            return Ok(Err(TimespecError));
+            // tv_sec must be non-negative.
+            return Ok(None);
         };
         let nanoseconds: u32 = if let Ok(ns) = nanoseconds.try_into() {
             if ns >= 1_000_000_000 {
-                return Ok(Err(TimespecError));
+                // tv_nsec must not be greater than 999,999,999.
+                return Ok(None);
             }
             ns
         } else {
-            return Ok(Err(TimespecError));
+            // tv_nsec must be non-negative.
+            return Ok(None);
         };
-        Ok(Ok(Duration::new(seconds, nanoseconds)))
+        Ok(Some(Duration::new(seconds, nanoseconds)))
     }
 }
 

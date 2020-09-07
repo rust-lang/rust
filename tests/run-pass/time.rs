@@ -8,6 +8,7 @@ fn duration_sanity(diff: Duration) {
     assert!(diff.as_millis() < 500);
 }
 
+// Thus far, only `libc::nanosleep`, is implemented, not `c::Sleep`.
 #[cfg(unix)]
 fn test_sleep() {
     let before = Instant::now();

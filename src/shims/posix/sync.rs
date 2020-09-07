@@ -1,7 +1,6 @@
 use std::time::SystemTime;
 
 use crate::*;
-use helpers::TimespecError;
 use stacked_borrows::Tag;
 use thread::Time;
 
@@ -700,8 +699,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Extract the timeout.
         let clock_id = cond_get_clock_id(this, cond_op)?.to_i32()?;
         let duration = match this.read_timespec(abstime_op)? {
-            Ok(duration) => duration,
-            Err(TimespecError) => {
+            Some(duration) => duration,
+            None => {
                 let einval = this.eval_libc("EINVAL")?;
                 this.write_scalar(einval, dest)?;
                 return Ok(());

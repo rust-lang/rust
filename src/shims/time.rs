@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 
 use crate::stacked_borrows::Tag;
 use crate::*;
-use helpers::{immty_from_int_checked, immty_from_uint_checked, TimespecError};
+use helpers::{immty_from_int_checked, immty_from_uint_checked};
 use thread::Time;
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
@@ -191,14 +191,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("nanosleep")?;
 
         let duration = match this.read_timespec(req_op)? {
-            Ok(duration) => duration,
-            Err(TimespecError) => {
+            Some(duration) => duration,
+            None => {
                 let einval = this.eval_libc("EINVAL")?;
                 this.set_last_error(einval)?;
                 return Ok(-1);
             }
         };
-        let timeout_time = Time::RealTime(SystemTime::now().checked_add(duration).unwrap());
+        let timeout_time = Time::Monotonic(Instant::now().checked_add(duration).unwrap());
 
         let active_thread = this.get_active_thread();
         this.block_thread(active_thread);
