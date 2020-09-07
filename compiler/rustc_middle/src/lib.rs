@@ -50,7 +50,6 @@
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
 #![feature(hash_raw_entry)]
-#![feature(int_error_matching)]
 #![recursion_limit = "512"]
 
 #[macro_use]
