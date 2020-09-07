@@ -6,7 +6,7 @@ be hacking on `rustc`, you'll want to tweak the configuration of the compiler.
 The default configuration is oriented towards running the compiler as a user,
 not a developer.
 
-For instructions on how to install python and other prerequisites,
+For instructions on how to install Python and other prerequisites,
 see [the next page](./prerequisites.md).
 
 ## Get the source code
