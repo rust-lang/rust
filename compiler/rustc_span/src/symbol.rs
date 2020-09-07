@@ -415,6 +415,7 @@ symbols! {
         decl_macro,
         declare_lint_pass,
         decode,
+        default_alloc_error_handler,
         default_lib_allocator,
         default_type_parameter_fallback,
         default_type_params,

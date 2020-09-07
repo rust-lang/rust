@@ -538,8 +538,9 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
         let mut modules = backend.new_metadata(tcx, &llmod_id);
-        tcx.sess
-            .time("write_allocator_module", || backend.codegen_allocator(tcx, &mut modules, kind));
+        tcx.sess.time("write_allocator_module", || {
+            backend.codegen_allocator(tcx, &mut modules, kind, tcx.lang_items().oom().is_some())
+        });
 
         Some(ModuleCodegen { name: llmod_id, module_llvm: modules, kind: ModuleKind::Allocator })
     } else {
