@@ -2813,7 +2813,7 @@ impl<T, const N: usize> TryFrom<Vec<T>> for [T; N] {
         // SAFETY: `.set_len(0)` is always sound.
         unsafe { vec.set_len(0) };
 
-        // SAFETY: A `Vec`'s pointer is always aligned property, and
+        // SAFETY: A `Vec`'s pointer is always aligned properly, and
         // the alignment the array needs is the same as the items.
         // We checked earlier that we have sufficient items.
         // The items will not double-drop as the `set_len`
