@@ -297,10 +297,10 @@ impl std::ops::Deref for Validator<'a, 'tcx> {
 struct Unpromotable;
 
 impl<'tcx> Validator<'_, 'tcx> {
-    //! Determines if this code could be executed at runtime and thus is subject to codegen.
-    //! That means even unused constants need to be evaluated.
-    //!
-    //! `const_kind` should not be used in this file other than through this method!
+    /// Determines if this code could be executed at runtime and thus is subject to codegen.
+    /// That means even unused constants need to be evaluated.
+    ///
+    /// `const_kind` should not be used in this file other than through this method!
     fn maybe_runtime(&self) -> bool {
         match self.const_kind {
             None | Some(hir::ConstContext::ConstFn) => true,
