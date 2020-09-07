@@ -50,7 +50,7 @@ use std::env;
 use std::process;
 
 use rustc_errors::ErrorReported;
-use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
+use rustc_session::config::{make_crate_type_option, nightly_options, ErrorOutputType, RustcOptGroup};
 use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
 
@@ -404,6 +404,10 @@ fn opts() -> Vec<RustcOptGroup> {
 
 fn usage(argv0: &str) {
     let mut options = getopts::Options::new();
+    println!("rustdoc usage is documented online https://doc.rust-lang.org/rustdoc/");
+    if nightly_options::is_nightly_build() {
+        println!("nightly rustdoc includes additional features https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/");
+    }
     for option in opts() {
         (option.apply)(&mut options);
     }
