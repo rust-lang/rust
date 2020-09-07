@@ -1,5 +1,7 @@
 #![warn(clippy::same_item_push)]
 
+const VALUE: u8 = 7;
+
 fn mutate_increment(x: &mut u8) -> u8 {
     *x += 1;
     *x
@@ -85,5 +87,41 @@ fn main() {
     let mut vec12: Vec<u8> = Vec::new();
     for a in vec_a {
         vec12.push(2u8.pow(a.kind));
+    }
+
+    // Fix #5902
+    let mut vec13: Vec<u8> = Vec::new();
+    let mut item = 0;
+    for _ in 0..10 {
+        vec13.push(item);
+        item += 10;
+    }
+
+    // Fix #5979
+    let mut vec14: Vec<std::fs::File> = Vec::new();
+    for _ in 0..10 {
+        vec14.push(std::fs::File::open("foobar").unwrap());
+    }
+    // Fix #5979
+    #[derive(Clone)]
+    struct S {}
+
+    trait T {}
+    impl T for S {}
+
+    let mut vec15: Vec<Box<dyn T>> = Vec::new();
+    for _ in 0..10 {
+        vec15.push(Box::new(S {}));
+    }
+
+    let mut vec16 = Vec::new();
+    for _ in 0..20 {
+        vec16.push(VALUE);
+    }
+
+    let mut vec17 = Vec::new();
+    let item = VALUE;
+    for _ in 0..20 {
+        vec17.push(item);
     }
 }

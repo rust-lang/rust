@@ -826,7 +826,7 @@ struct FixedOffsetVar<'hir> {
 }
 
 fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'_>) -> bool {
-    let is_slice = match ty.kind {
+    let is_slice = match ty.kind() {
         ty::Ref(_, subty, _) => is_slice_like(cx, subty),
         ty::Slice(..) | ty::Array(..) => true,
         _ => false,
@@ -1003,7 +1003,7 @@ fn detect_manual_memcpy<'tcx>(
         start: Some(start),
         end: Some(end),
         limits,
-    }) = higher::range(cx, arg)
+    }) = higher::range(arg)
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, _, _) = pat.kind {
@@ -1140,23 +1140,95 @@ fn detect_same_item_push<'tcx>(
     walk_expr(&mut same_item_push_visitor, body);
     if same_item_push_visitor.should_lint {
         if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push {
-            // Make sure that the push does not involve possibly mutating values
-            if mutated_variables(pushed_item, cx).map_or(false, |mutvars| mutvars.is_empty()) {
+            let vec_ty = cx.typeck_results().expr_ty(vec);
+            let ty = vec_ty.walk().nth(1).unwrap().expect_ty();
+            if cx
+                .tcx
+                .lang_items()
+                .clone_trait()
+                .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+            {
+                // Make sure that the push does not involve possibly mutating values
                 if let PatKind::Wild = pat.kind {
                     let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
                     let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
-
-                    span_lint_and_help(
-                        cx,
-                        SAME_ITEM_PUSH,
-                        vec.span,
-                        "it looks like the same item is being pushed into this Vec",
-                        None,
-                        &format!(
-                            "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
-                            item_str, vec_str, item_str
-                        ),
-                    )
+                    if let ExprKind::Path(ref qpath) = pushed_item.kind {
+                        match qpath_res(cx, qpath, pushed_item.hir_id) {
+                            // immutable bindings that are initialized with literal or constant
+                            Res::Local(hir_id) => {
+                                if_chain! {
+                                    let node = cx.tcx.hir().get(hir_id);
+                                    if let Node::Binding(pat) = node;
+                                    if let PatKind::Binding(bind_ann, ..) = pat.kind;
+                                    if !matches!(bind_ann, BindingAnnotation::RefMut | BindingAnnotation::Mutable);
+                                    let parent_node = cx.tcx.hir().get_parent_node(hir_id);
+                                    if let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node);
+                                    if let rustc_hir::Local { init: Some(init), .. } = parent_let_expr;
+                                    then {
+                                        match init.kind {
+                                            // immutable bindings that are initialized with literal
+                                            ExprKind::Lit(..) => {
+                                                span_lint_and_help(
+                                                    cx,
+                                                    SAME_ITEM_PUSH,
+                                                    vec.span,
+                                                    "it looks like the same item is being pushed into this Vec",
+                                                    None,
+                                                    &format!(
+                                                        "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
+                                                        item_str, vec_str, item_str
+                                                    ),
+                                                )
+                                            },
+                                            // immutable bindings that are initialized with constant
+                                            ExprKind::Path(ref path) => {
+                                                if let Res::Def(DefKind::Const, ..) = qpath_res(cx, path, init.hir_id) {
+                                                    span_lint_and_help(
+                                                        cx,
+                                                        SAME_ITEM_PUSH,
+                                                        vec.span,
+                                                        "it looks like the same item is being pushed into this Vec",
+                                                        None,
+                                                        &format!(
+                                                            "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
+                                                            item_str, vec_str, item_str
+                                                        ),
+                                                    )
+                                                }
+                                            }
+                                            _ => {},
+                                        }
+                                    }
+                                }
+                            },
+                            // constant
+                            Res::Def(DefKind::Const, ..) => span_lint_and_help(
+                                cx,
+                                SAME_ITEM_PUSH,
+                                vec.span,
+                                "it looks like the same item is being pushed into this Vec",
+                                None,
+                                &format!(
+                                    "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
+                                    item_str, vec_str, item_str
+                                ),
+                            ),
+                            _ => {},
+                        }
+                    } else if let ExprKind::Lit(..) = pushed_item.kind {
+                        // literal
+                        span_lint_and_help(
+                            cx,
+                            SAME_ITEM_PUSH,
+                            vec.span,
+                            "it looks like the same item is being pushed into this Vec",
+                            None,
+                            &format!(
+                                "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
+                                item_str, vec_str, item_str
+                            ),
+                        )
+                    }
                 }
             }
         }
@@ -1177,7 +1249,7 @@ fn check_for_loop_range<'tcx>(
         start: Some(start),
         ref end,
         limits,
-    }) = higher::range(cx, arg)
+    }) = higher::range(arg)
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, ident, _) = pat.kind {
@@ -1355,7 +1427,7 @@ fn is_end_eq_array_len<'tcx>(
     if_chain! {
         if let ExprKind::Lit(ref lit) = end.kind;
         if let ast::LitKind::Int(end_int, _) = lit.node;
-        if let ty::Array(_, arr_len_const) = indexed_ty.kind;
+        if let ty::Array(_, arr_len_const) = indexed_ty.kind();
         if let Some(arr_len) = arr_len_const.try_eval_usize(cx.tcx, cx.param_env);
         then {
             return match limits {
@@ -1592,7 +1664,7 @@ fn check_for_loop_over_map_kv<'tcx>(
     if let PatKind::Tuple(ref pat, _) = pat.kind {
         if pat.len() == 2 {
             let arg_span = arg.span;
-            let (new_pat_span, kind, ty, mutbl) = match cx.typeck_results().expr_ty(arg).kind {
+            let (new_pat_span, kind, ty, mutbl) = match *cx.typeck_results().expr_ty(arg).kind() {
                 ty::Ref(_, ty, mutbl) => match (&pat[0].kind, &pat[1].kind) {
                     (key, _) if pat_is_wild(key, body) => (pat[1].span, "value", ty, mutbl),
                     (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", ty, Mutability::Not),
@@ -1679,7 +1751,7 @@ fn check_for_mut_range_bound(cx: &LateContext<'_>, arg: &Expr<'_>, body: &Expr<'
         start: Some(start),
         end: Some(end),
         ..
-    }) = higher::range(cx, arg)
+    }) = higher::range(arg)
     {
         let mut_ids = vec![check_for_mutability(cx, start), check_for_mutability(cx, end)];
         if mut_ids[0].is_some() || mut_ids[1].is_some() {
@@ -1920,7 +1992,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 for expr in args {
                     let ty = self.cx.typeck_results().expr_ty_adjusted(expr);
                     self.prefer_mutable = false;
-                    if let ty::Ref(_, _, mutbl) = ty.kind {
+                    if let ty::Ref(_, _, mutbl) = *ty.kind() {
                         if mutbl == Mutability::Mut {
                             self.prefer_mutable = true;
                         }
@@ -1932,7 +2004,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
                     self.prefer_mutable = false;
-                    if let ty::Ref(_, _, mutbl) = ty.kind {
+                    if let ty::Ref(_, _, mutbl) = *ty.kind() {
                         if mutbl == Mutability::Mut {
                             self.prefer_mutable = true;
                         }
@@ -2030,7 +2102,7 @@ fn is_ref_iterable_type(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 
 fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
-    match ty.kind {
+    match ty.kind() {
         ty::Array(_, n) => n
             .try_eval_usize(cx.tcx, cx.param_env)
             .map_or(false, |val| (0..=32).contains(&val)),
