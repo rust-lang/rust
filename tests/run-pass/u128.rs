@@ -1,4 +1,5 @@
-fn b<T>(t: T) -> T { t }
+#![feature(test)]
+use std::hint::black_box as b;
 
 fn main() {
     let x: u128 = 0xFFFF_FFFF_FFFF_FFFF__FFFF_FFFF_FFFF_FFFF;

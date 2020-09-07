@@ -1,5 +1,8 @@
-#![feature(stmt_expr_attributes)]
+// compile-flags: -Zmir-opt-level=0
+// FIXME: Using opt-level 2 here makes the test take forever (https://github.com/rust-lang/rust/issues/76433).
+#![feature(stmt_expr_attributes, test)]
 use std::fmt::Debug;
+use std::hint::black_box;
 
 // Helper function to avoid promotion so that this tests "run-time" casts, not CTFE.
 // Doesn't make a big difference when running this in Miri, but it means we can compare this
@@ -338,10 +341,6 @@ fn ops() {
 
 /// Tests taken from rustc test suite.
 ///
-
-// Poor-man's black-box
-#[inline(never)]
-fn black_box<T>(x: T) -> T { x }
 
 macro_rules! test {
     ($val:expr, $src_ty:ident -> $dest_ty:ident, $expected:expr) => (
