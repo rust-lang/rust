@@ -13,7 +13,7 @@ use crate::completion::{
 };
 
 pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    if ctx.mod_is_prev {
+    if ctx.mod_under_caret.is_some() {
         return None;
     }
 

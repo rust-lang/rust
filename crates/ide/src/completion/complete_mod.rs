@@ -5,15 +5,22 @@ use hir::{Module, ModuleSource};
 use ide_db::RootDatabase;
 use rustc_hash::FxHashSet;
 
-use super::{completion_context::CompletionContext, completion_item::Completions};
+use crate::{CompletionItem, CompletionItemKind};
+
+use super::{
+    completion_context::CompletionContext, completion_item::CompletionKind,
+    completion_item::Completions,
+};
 
 /// Complete mod declaration, i.e. `mod <|> ;`
 pub(super) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let _p = profile::span("completion::complete_mod");
+    let mod_under_caret = match &ctx.mod_under_caret {
+        Some(mod_under_caret) if mod_under_caret.item_list().is_some() => return None,
+        Some(mod_under_caret) => mod_under_caret,
+        None => return None,
+    };
 
-    if !ctx.mod_is_prev {
-        return None;
-    }
+    let _p = profile::span("completion::complete_mod");
 
     let current_module = ctx.scope.module()?;
 
@@ -36,7 +43,7 @@ pub(super) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
             module_declaration_source_file.file_id.original_file(ctx.db)
         });
 
-    let mod_declaration_candidates = source_root
+    source_root
         .iter()
         .filter(|submodule_candidate_file| submodule_candidate_file != &module_definition_file)
         .filter(|submodule_candidate_file| {
@@ -66,10 +73,16 @@ pub(super) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
             _ => None,
         })
         .filter(|name| !existing_mod_declarations.contains(name))
-        .collect::<Vec<_>>();
-    dbg!(mod_declaration_candidates);
-
-    // TODO kb actually add the results
+        .for_each(|submodule_name| {
+            let mut label = submodule_name;
+            if mod_under_caret.semicolon_token().is_none() {
+                label.push(';')
+            }
+            acc.add(
+                CompletionItem::new(CompletionKind::Magic, ctx.source_range(), &label)
+                    .kind(CompletionItemKind::Module),
+            )
+        });
 
     Some(())
 }
