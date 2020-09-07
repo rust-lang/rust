@@ -265,7 +265,6 @@
 #![feature(hash_raw_entry)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
-#![feature(int_error_matching)]
 #![feature(integer_atomics)]
 #![feature(into_future)]
 #![feature(lang_items)]
