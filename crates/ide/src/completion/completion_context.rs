@@ -19,7 +19,7 @@ use crate::{
             has_bind_pat_parent, has_block_expr_parent, has_field_list_parent,
             has_impl_as_prev_sibling, has_impl_parent, has_item_list_or_source_file_parent,
             has_ref_parent, has_trait_as_prev_sibling, has_trait_parent, if_is_prev,
-            is_in_loop_body, is_match_arm, unsafe_is_prev,
+            is_in_loop_body, is_match_arm, mod_is_prev, unsafe_is_prev,
         },
         CompletionConfig,
     },
@@ -77,6 +77,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_path_type: bool,
     pub(super) has_type_args: bool,
     pub(super) attribute_under_caret: Option<ast::Attr>,
+    pub(super) mod_is_prev: bool,
     pub(super) unsafe_is_prev: bool,
     pub(super) if_is_prev: bool,
     pub(super) block_expr_parent: bool,
@@ -152,6 +153,7 @@ impl<'a> CompletionContext<'a> {
             has_type_args: false,
             dot_receiver_is_ambiguous_float_literal: false,
             attribute_under_caret: None,
+            mod_is_prev: false,
             unsafe_is_prev: false,
             in_loop_body: false,
             ref_pat_parent: false,
@@ -238,7 +240,8 @@ impl<'a> CompletionContext<'a> {
         self.trait_as_prev_sibling = has_trait_as_prev_sibling(syntax_element.clone());
         self.is_match_arm = is_match_arm(syntax_element.clone());
         self.has_item_list_or_source_file_parent =
-            has_item_list_or_source_file_parent(syntax_element);
+            has_item_list_or_source_file_parent(syntax_element.clone());
+        self.mod_is_prev = mod_is_prev(syntax_element);
     }
 
     fn fill(

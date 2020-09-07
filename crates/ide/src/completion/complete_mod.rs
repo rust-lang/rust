@@ -9,6 +9,12 @@ use super::{completion_context::CompletionContext, completion_item::Completions}
 
 /// Complete mod declaration, i.e. `mod <|> ;`
 pub(super) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
+    let _p = profile::span("completion::complete_mod");
+
+    if !ctx.mod_is_prev {
+        return None;
+    }
+
     let current_module = ctx.scope.module()?;
 
     let module_definition_file =
@@ -63,7 +69,7 @@ pub(super) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
         .collect::<Vec<_>>();
     dbg!(mod_declaration_candidates);
 
-    // TODO kb exlude existing children from the candidates
+    // TODO kb actually add the results
 
     Some(())
 }

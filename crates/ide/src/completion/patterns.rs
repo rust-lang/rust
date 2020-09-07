@@ -115,6 +115,16 @@ pub(crate) fn if_is_prev(element: SyntaxElement) -> bool {
         .filter(|it| it.kind() == IF_KW)
         .is_some()
 }
+
+// TODO kb generify?
+pub(crate) fn mod_is_prev(element: SyntaxElement) -> bool {
+    element
+        .into_token()
+        .and_then(|it| previous_non_trivia_token(it))
+        .filter(|it| it.kind() == MOD_KW)
+        .is_some()
+}
+
 #[test]
 fn test_if_is_prev() {
     check_pattern_is_applicable(r"if l<|>", if_is_prev);
