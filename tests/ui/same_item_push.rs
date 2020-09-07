@@ -1,5 +1,7 @@
 #![warn(clippy::same_item_push)]
 
+const VALUE: u8 = 7;
+
 fn mutate_increment(x: &mut u8) -> u8 {
     *x += 1;
     *x
@@ -110,5 +112,16 @@ fn main() {
     let mut vec15: Vec<Box<dyn T>> = Vec::new();
     for _ in 0..10 {
         vec15.push(Box::new(S {}));
+    }
+
+    let mut vec16 = Vec::new();
+    for _ in 0..20 {
+        vec16.push(VALUE);
+    }
+
+    let mut vec17 = Vec::new();
+    let item = VALUE;
+    for _ in 0..20 {
+        vec17.push(item);
     }
 }
