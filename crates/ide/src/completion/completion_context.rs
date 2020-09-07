@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
-use base_db::{FileLoader, SourceDatabase};
-use hir::{ModuleSource, Semantics, SemanticsScope, Type};
+use base_db::SourceDatabase;
+use hir::{Semantics, SemanticsScope, Type};
 use ide_db::RootDatabase;
 use syntax::{
     algo::{find_covering_element, find_node_at_offset},
@@ -112,6 +112,7 @@ impl<'a> CompletionContext<'a> {
         };
         let fake_ident_token =
             file_with_fake_ident.syntax().token_at_offset(position.offset).right_biased().unwrap();
+
         let krate = sema.to_module_def(position.file_id).map(|m| m.krate());
         let original_token =
             original_file.syntax().token_at_offset(position.offset).left_biased()?;

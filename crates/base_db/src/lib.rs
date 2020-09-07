@@ -96,7 +96,6 @@ pub trait FileLoader {
     /// `#[path = "C://no/way"]`
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId>;
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
-    fn possible_sudmobule_names(&self, module_file: FileId) -> Vec<String>;
 }
 
 /// Database which stores all significant input facts: source code and project
@@ -156,92 +155,13 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     }
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
         // FIXME: this *somehow* should be platform agnostic...
-        // self.source_root(anchor)
-        let source_root = self.source_root(anchor);
+        let source_root = self.0.file_source_root(anchor);
+        let source_root = self.0.source_root(source_root);
         source_root.file_set.resolve_path(anchor, path)
     }
 
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         let source_root = self.0.file_source_root(file_id);
         self.0.source_root_crates(source_root)
-    }
-
-    fn possible_sudmobule_names(&self, module_file: FileId) -> Vec<String> {
-        possible_sudmobule_names(&self.source_root(module_file).file_set, module_file)
-    }
-}
-
-impl<T: SourceDatabaseExt> FileLoaderDelegate<&'_ T> {
-    fn source_root(&self, anchor: FileId) -> Arc<SourceRoot> {
-        let source_root = self.0.file_source_root(anchor);
-        self.0.source_root(source_root)
-    }
-}
-
-fn possible_sudmobule_names(module_files: &FileSet, module_file: FileId) -> Vec<String> {
-    let directory_to_look_for_submodules = match module_files
-        .path_for_file(&module_file)
-        .and_then(|module_file_path| get_directory_with_submodules(module_file_path))
-    {
-        Some(directory) => directory,
-        None => return Vec::new(),
-    };
-    module_files
-        .iter()
-        .filter(|submodule_file| submodule_file != &module_file)
-        .filter_map(|submodule_file| {
-            let submodule_path = module_files.path_for_file(&submodule_file)?;
-            if submodule_path.parent()? == directory_to_look_for_submodules {
-                submodule_path.file_name_and_extension()
-            } else {
-                None
-            }
-        })
-        .filter_map(|file_name_and_extension| {
-            match file_name_and_extension {
-                // TODO kb wrong resolution for nested non-file modules (mod tests { mod <|> })
-                // TODO kb in src/bin when a module is included into another,
-                // the included file gets "moved" into a directory below and now cannot add any other modules
-                ("mod", Some("rs")) | ("lib", Some("rs")) | ("main", Some("rs")) => None,
-                (file_name, Some("rs")) => Some(file_name.to_owned()),
-                (subdirectory_name, None) => {
-                    let mod_rs_path =
-                        directory_to_look_for_submodules.join(subdirectory_name)?.join("mod.rs")?;
-                    if module_files.file_for_path(&mod_rs_path).is_some() {
-                        Some(subdirectory_name.to_owned())
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            }
-        })
-        .collect()
-}
-
-fn get_directory_with_submodules(module_file_path: &VfsPath) -> Option<VfsPath> {
-    let module_directory_path = module_file_path.parent()?;
-    match module_file_path.file_name_and_extension()? {
-        ("mod", Some("rs")) | ("lib", Some("rs")) | ("main", Some("rs")) => {
-            Some(module_directory_path)
-        }
-        (regular_rust_file_name, Some("rs")) => {
-            if matches!(
-                (
-                    module_directory_path
-                        .parent()
-                        .as_ref()
-                        .and_then(|path| path.file_name_and_extension()),
-                    module_directory_path.file_name_and_extension(),
-                ),
-                (Some(("src", None)), Some(("bin", None)))
-            ) {
-                // files in /src/bin/ can import each other directly
-                Some(module_directory_path)
-            } else {
-                module_directory_path.join(regular_rust_file_name)
-            }
-        }
-        _ => None,
     }
 }
