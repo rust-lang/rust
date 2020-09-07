@@ -1799,6 +1799,19 @@ pub unsafe fn vqtbx4q_p8(a: poly8x16_t, t: poly8x16x4_t, idx: uint8x16_t) -> pol
     ))
 }
 
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_f32(addr: *const f32) -> float32x4_t {
+    use crate::core_arch::simd::f32x4;
+    transmute(f32x4::new(
+        *addr,
+        *addr.offset(1),
+        *addr.offset(2),
+        *addr.offset(3),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::core_arch::aarch64::test_support::*;
@@ -1806,6 +1819,16 @@ mod tests {
     use crate::core_arch::{aarch64::neon::*, aarch64::*, simd::*};
     use std::mem::transmute;
     use stdarch_test::simd_test;
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_f32() {
+        let e = f32x4::new(1., 2., 3., 4.);
+        let f = [0., 1., 2., 3., 4.];
+        // do a load that has 4 byte alignment to make sure we're not
+        // over aligning it
+        let r: f32x4 = transmute(vld1q_f32(f[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vpaddq_s16() {
