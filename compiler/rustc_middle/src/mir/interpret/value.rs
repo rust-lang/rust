@@ -14,7 +14,7 @@ use super::{sign_extend, truncate, AllocId, Allocation, InterpResult, Pointer, P
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Clone, HashStable)]
-pub struct RawConst<'tcx> {
+pub struct ConstAlloc<'tcx> {
     // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
     pub alloc_id: AllocId,

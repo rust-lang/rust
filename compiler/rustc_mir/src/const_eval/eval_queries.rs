@@ -2,7 +2,7 @@ use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr, Memory
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, Immediate, InternKind,
-    InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RawConst, RefTracking, Scalar,
+    InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, ConstAlloc, RefTracking, Scalar,
     ScalarMaybeUninit, StackPopCleanup,
 };
 
@@ -184,9 +184,9 @@ pub(super) fn op_to_const<'tcx>(
     }
 }
 
-fn turn_into_const<'tcx>(
+fn turn_into_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
-    constant: RawConst<'tcx>,
+    constant: ConstAlloc<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ConstValue<'tcx> {
     let cid = key.value;
@@ -237,7 +237,7 @@ pub fn eval_to_const_value_provider<'tcx>(
         });
     }
 
-    tcx.eval_to_allocation_raw(key).map(|val| turn_into_const(tcx, val, key))
+    tcx.eval_to_allocation_raw(key).map(|val| turn_into_const_value(tcx, val, key))
 }
 
 pub fn eval_to_allocation_raw_provider<'tcx>(
@@ -402,7 +402,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 ))
             } else {
                 // Convert to raw constant
-                Ok(RawConst { alloc_id: mplace.ptr.assert_ptr().alloc_id, ty: mplace.layout.ty })
+                Ok(ConstAlloc { alloc_id: mplace.ptr.assert_ptr().alloc_id, ty: mplace.layout.ty })
             }
         }
     }

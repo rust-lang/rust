@@ -713,7 +713,7 @@ rustc_queries! {
         query eval_to_allocation_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> EvalToAllocationRawResult<'tcx> {
             desc { |tcx|
-                "const-evaluating `{}`",
+                "const-evaluating + checking `{}`",
                 key.value.display(tcx)
             }
         }
@@ -727,7 +727,7 @@ rustc_queries! {
         query eval_to_const_value(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> EvalToConstValueResult<'tcx> {
             desc { |tcx|
-                "const-evaluating + checking `{}`",
+                "simplifying constant for the type system `{}`",
                 key.value.display(tcx)
             }
             cache_on_disk_if(_, opt_result) {
