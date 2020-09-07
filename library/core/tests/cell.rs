@@ -304,6 +304,30 @@ fn cell_into_inner() {
 }
 
 #[test]
+fn cell_exterior() {
+    #[derive(Copy, Clone)]
+    #[allow(dead_code)]
+    struct Point {
+        x: isize,
+        y: isize,
+        z: isize,
+    }
+
+    fn f(p: &Cell<Point>) {
+        assert_eq!(p.get().z, 12);
+        p.set(Point { x: 10, y: 11, z: 13 });
+        assert_eq!(p.get().z, 13);
+    }
+
+    let a = Point { x: 10, y: 11, z: 12 };
+    let b = &Cell::new(a);
+    assert_eq!(b.get().z, 12);
+    f(b);
+    assert_eq!(a.z, 12);
+    assert_eq!(b.get().z, 13);
+}
+
+#[test]
 fn refcell_default() {
     let cell: RefCell<u64> = Default::default();
     assert_eq!(0, *cell.borrow());
