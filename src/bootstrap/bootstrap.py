@@ -1035,12 +1035,8 @@ def bootstrap(help_triggered):
     env["BOOTSTRAP_PYTHON"] = sys.executable
     env["BUILD_DIR"] = build.build_dir
     env["RUSTC_BOOTSTRAP"] = '1'
-    env["CARGO"] = build.cargo()
-    env["RUSTC"] = build.rustc()
     if toml_path:
         env["BOOTSTRAP_CONFIG"] = toml_path
-    if build.rustfmt():
-        env["RUSTFMT"] = build.rustfmt()
     run(args, env=env, verbose=build.verbose)
 
 
