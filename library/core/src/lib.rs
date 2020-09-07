@@ -220,52 +220,41 @@ pub mod ptr;
 /* Core language traits */
 
 pub mod borrow;
-#[cfg(not(test))] // See #65860
 pub mod clone;
-#[cfg(not(test))] // See #65860
 pub mod cmp;
 pub mod convert;
-#[cfg(not(test))] // See #65860
 pub mod default;
-#[cfg(not(test))] // See #65860
 pub mod marker;
 pub mod ops;
 
 /* Core types and methods on primitives */
 
 pub mod any;
-#[cfg(not(test))] // See #65860
 pub mod array;
 pub mod ascii;
 pub mod cell;
 pub mod char;
 pub mod ffi;
-#[cfg(not(test))] // See #65860
 pub mod iter;
 #[unstable(feature = "once_cell", issue = "74465")]
 pub mod lazy;
 pub mod option;
 pub mod panic;
 pub mod panicking;
-#[cfg(not(test))] // See #65860
 pub mod pin;
 pub mod raw;
 pub mod result;
 pub mod sync;
 
-#[cfg(not(test))] // See #65860
 pub mod fmt;
-#[cfg(not(test))] // See #65860
 pub mod hash;
 pub mod slice;
-#[cfg(not(test))] // See #65860
 pub mod str;
 pub mod time;
 
 pub mod unicode;
 
 /* Async */
-#[cfg(not(test))] // See #65860
 pub mod future;
 pub mod task;
 
