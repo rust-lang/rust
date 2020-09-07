@@ -31,14 +31,19 @@
 // occurrences in the source text.
 
 // check-pass
+// ignore-tidy-linelength
 
 #![feature(test, plugin_registrar)]
 #![warn(unused_attributes, unknown_lints)]
+//~^ NOTE the lint level is defined here
+//~| NOTE the lint level is defined here
 
 // Exception, a gated and deprecated attribute.
 
-#![plugin_registrar] //~ WARN unused attribute
+#![plugin_registrar]
+//~^ WARN unused attribute
 //~| WARN use of deprecated attribute
+//~| HELP may be removed in a future compiler version
 
 // UNGATED WHITE-LISTED BUILT-IN ATTRIBUTES
 
@@ -72,7 +77,7 @@
 #![doc = "2400"]
 #![cold]
 #![export_name = "2200"]
-// see issue-43106-gating-of-inline.rs
+// see issue-43106-gating-of-builtin-attrs-error.rs
 #![link()]
 #![link_name = "1900"]
 #![link_section = "1800"]
@@ -88,12 +93,18 @@
 #![crate_name = "0900"]
 #![crate_type = "bin"] // cannot pass "0800" here
 
-#![crate_id = "10"] //~ WARN use of deprecated attribute
+#![crate_id = "10"]
+//~^ WARN use of deprecated attribute
+//~| HELP remove this attribute
 
 // FIXME(#44232) we should warn that this isn't used.
-#![feature(rust1)] //~ WARN no longer requires an attribute to enable
+#![feature(rust1)]
+//~^ WARN no longer requires an attribute to enable
+//~| NOTE `#[warn(stable_features)]` on by default
 
-#![no_start] //~ WARN use of deprecated attribute
+#![no_start]
+//~^ WARN use of deprecated attribute
+//~| HELP remove this attribute
 
 // (cannot easily gating state of crate-level #[no_main]; but non crate-level is below at "0400")
 #![no_builtins]
@@ -217,24 +228,30 @@ mod macro_export {
 #[plugin_registrar]
 //~^ WARN unused attribute
 //~| WARN use of deprecated attribute
+//~| HELP may be removed in a future compiler version
 mod plugin_registrar {
     mod inner { #![plugin_registrar] }
     //~^ WARN unused attribute
     //~| WARN use of deprecated attribute
+    //~| HELP may be removed in a future compiler version
+    //~| NOTE `#[warn(deprecated)]` on by default
 
     // for `fn f()` case, see gated-plugin_registrar.rs
 
     #[plugin_registrar] struct S;
     //~^ WARN unused attribute
     //~| WARN use of deprecated attribute
+    //~| HELP may be removed in a future compiler version
 
     #[plugin_registrar] type T = S;
     //~^ WARN unused attribute
     //~| WARN use of deprecated attribute
+    //~| HELP may be removed in a future compiler version
 
     #[plugin_registrar] impl S { }
     //~^ WARN unused attribute
     //~| WARN use of deprecated attribute
+    //~| HELP may be removed in a future compiler version
 }
 
 #[main]
@@ -355,35 +372,31 @@ mod automatically_derived {
 }
 
 #[no_mangle]
+//~^ WARN attribute should be applied to a function or static [unused_attributes]
+//~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 mod no_mangle {
+    //~^ NOTE not a function or static
     mod inner { #![no_mangle] }
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
 
     #[no_mangle] fn f() { }
 
     #[no_mangle] struct S;
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
 
     #[no_mangle] type T = S;
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
 
     #[no_mangle] impl S { }
-}
-
-#[no_link]
-//~^ WARN unused attribute
-mod no_link {
-    mod inner { #![no_link] }
-    //~^ WARN unused attribute
-
-    #[no_link] fn f() { }
-    //~^ WARN unused attribute
-
-    #[no_link] struct S;
-    //~^ WARN unused attribute
-
-    #[no_link]type T = S;
-    //~^ WARN unused attribute
-
-    #[no_link] impl S { }
-    //~^ WARN unused attribute
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
 }
 
 #[should_panic]
@@ -468,6 +481,7 @@ mod reexport_test_harness_main {
 mod macro_escape {
     mod inner { #![macro_escape] }
     //~^ WARN `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
+    //~| HELP try an outer attribute: `#[macro_use]`
 
     #[macro_escape] fn f() { }
     //~^ WARN unused attribute
@@ -525,30 +539,102 @@ mod doc {
 }
 
 #[cold]
+//~^ WARN attribute should be applied to a function
+//~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 mod cold {
+    //~^ NOTE not a function
+
     mod inner { #![cold] }
+    //~^ WARN attribute should be applied to a function
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function
 
     #[cold] fn f() { }
 
     #[cold] struct S;
+    //~^ WARN attribute should be applied to a function
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function
 
     #[cold] type T = S;
+    //~^ WARN attribute should be applied to a function
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function
 
     #[cold] impl S { }
+    //~^ WARN attribute should be applied to a function
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function
 }
 
-#[export_name = "2200"]
-mod export_name {
-    mod inner { #![export_name="2200"] }
+#[link_name = "1900"]
+//~^ WARN attribute should be applied to a foreign function or static [unused_attributes]
+//~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+mod link_name {
+    //~^ NOTE not a foreign function or static
 
-    #[export_name = "2200"] fn f() { }
+    #[link_name = "1900"]
+    //~^ WARN attribute should be applied to a foreign function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| HELP try `#[link(name = "1900")]` instead
+    extern { }
+    //~^ NOTE not a foreign function or static
 
-    #[export_name = "2200"] struct S;
+    mod inner { #![link_name="1900"] }
+    //~^ WARN attribute should be applied to a foreign function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a foreign function or static
 
-    #[export_name = "2200"] type T = S;
+    #[link_name = "1900"] fn f() { }
+    //~^ WARN attribute should be applied to a foreign function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a foreign function or static
 
-    #[export_name = "2200"] impl S { }
+    #[link_name = "1900"] struct S;
+    //~^ WARN attribute should be applied to a foreign function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a foreign function or static
+
+    #[link_name = "1900"] type T = S;
+    //~^ WARN attribute should be applied to a foreign function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a foreign function or static
+
+    #[link_name = "1900"] impl S { }
+    //~^ WARN attribute should be applied to a foreign function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a foreign function or static
 }
+
+#[link_section = "1800"]
+//~^ WARN attribute should be applied to a function or static [unused_attributes]
+//~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+mod link_section {
+    //~^ NOTE not a function or static
+
+    mod inner { #![link_section="1800"] }
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
+
+    #[link_section = "1800"] fn f() { }
+
+    #[link_section = "1800"] struct S;
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
+
+    #[link_section = "1800"] type T = S;
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
+
+    #[link_section = "1800"] impl S { }
+    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| NOTE not a function or static
+}
+
 
 // Note that this is a `check-pass` test, so it
 // will never invoke the linker. These are here nonetheless to point
@@ -566,32 +652,6 @@ mod link {
     #[link()] type T = S;
 
     #[link()] impl S { }
-}
-
-#[link_name = "1900"]
-mod link_name {
-    mod inner { #![link_name="1900"] }
-
-    #[link_name = "1900"] fn f() { }
-
-    #[link_name = "1900"] struct S;
-
-    #[link_name = "1900"] type T = S;
-
-    #[link_name = "1900"] impl S { }
-}
-
-#[link_section = "1800"]
-mod link_section {
-    mod inner { #![link_section="1800"] }
-
-    #[link_section = "1800"] fn f() { }
-
-    #[link_section = "1800"] struct S;
-
-    #[link_section = "1800"] type T = S;
-
-    #[link_section = "1800"] impl S { }
 }
 
 struct StructForDeprecated;
