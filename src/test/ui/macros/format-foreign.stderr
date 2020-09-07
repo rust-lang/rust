@@ -45,10 +45,10 @@ LL |         {}!\n
    |
 
 error: argument never used
-  --> $DIR/format-foreign.rs:12:30
+  --> $DIR/format-foreign.rs:12:15
    |
 LL |     println!("{} %f", "one", 2.0);
-   |              -------         ^^^ argument never used
+   |              -^^----         ^^^ argument never used
    |              |
    |              formatting specifier missing
 

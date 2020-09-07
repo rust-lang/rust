@@ -1090,6 +1090,7 @@ pub fn expand_preparsed_format_args(
     if !errs.is_empty() {
         let args_used = cx.arg_types.len() - errs_len;
         let args_unused = errs_len;
+        let found_fmt_specs = &cx.arg_spans;
 
         let mut diag = {
             if let [(sp, msg)] = &errs[..] {
@@ -1097,13 +1098,13 @@ pub fn expand_preparsed_format_args(
                 diag.span_label(*sp, *msg);
                 diag
             } else {
-                let mut diag = cx.ecx.struct_span_err(
-                    errs.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
-                    "multiple unused formatting arguments",
-                );
+                let mut diag = cx
+                    .ecx
+                    .struct_span_err(errs.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
+                     "multiple unused formatting arguments");
                 diag.span_label(cx.fmtsp, "multiple missing formatting specifiers");
-                for (sp, msg) in errs {
-                    diag.span_label(sp, msg);
+                for (sp, msg) in &errs {
+                    diag.span_label(*sp, *msg);
                 }
                 diag
             }
@@ -1177,6 +1178,46 @@ pub fn expand_preparsed_format_args(
         }
         if !found_foreign && errs_len == 1 {
             diag.span_label(cx.fmtsp, "formatting specifier missing");
+        }
+        if !found_foreign && found_fmt_specs.is_empty() {
+            diag.note("format specifiers use curly braces: `{}`");
+        }
+
+        if !found_foreign && !found_fmt_specs.is_empty() {
+            let mut note_span: MultiSpan = cx.arg_spans.clone().into();
+            let used_args = cx
+                .arg_types
+                .iter()
+                .enumerate()
+                .filter(|(_i, ty)| !ty.is_empty())
+                .map(|(i, _)| {
+                    (cx.args[i].span, i)
+                })
+                .collect::<Vec<_>>();
+
+            let names_reversed: FxHashMap<usize, Symbol> = cx.names.iter().map(|(symbol, pos)| {
+                (*pos, *symbol)
+            }).collect();
+
+            for (span, index) in &used_args {
+                let mut fmt_arg_type = "positional";
+                let mut fmt_arg_ident = (*index).to_string();
+
+                if let Some(&symbol) = names_reversed.get(index) {
+                    fmt_arg_type = "named";
+                    fmt_arg_ident = symbol.to_ident_string();
+                }
+
+                note_span.push_span_label(*span, format!("used {} formatting argument `{}`", fmt_arg_type, fmt_arg_ident));
+
+                // for each reference to a formatting argument(identified by index), get the span of its formatting specifier
+                // for &ref in &cx.arg_index_map[*index] {
+                //     let sp = &cx.arg_spans[ref];
+                //     note_span.push_span_label(*sp, format!("{} argument `{}` used here: ",fmt_arg_type, fmt_arg_ident));
+                // }
+            }
+
+            diag.span_note(note_span, "the following existing formatting specifiers are used");
         }
 
         diag.emit();

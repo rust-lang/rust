@@ -1,8 +1,8 @@
 error: named argument never used
-  --> $DIR/format-args-capture-missing-variables.rs:10:51
+  --> $DIR/format-args-capture-missing-variables.rs:10:14
    |
 LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
-   |             -------------------                   ^ named argument never used
+   |             -^^^^^^^^-^^^^^^^^-                   ^ named argument never used
    |             |
    |             formatting specifier missing
 
