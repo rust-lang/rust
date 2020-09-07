@@ -323,6 +323,16 @@ impl Socket {
         Ok(raw != 0)
     }
 
+    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
+        let boolean: libc::c_int = if passcred { 1 } else { 0 };
+        setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, boolean)
+    }
+
+    pub fn passcred(&self) -> io::Result<bool> {
+        let passcred: libc::c_int = getsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED)?;
+        Ok(passcred != 0)
+    }
+
     #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as libc::c_int;
