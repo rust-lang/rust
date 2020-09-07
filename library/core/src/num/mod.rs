@@ -5293,43 +5293,38 @@ pub struct ParseIntError {
 }
 
 /// Enum to store the various types of errors that can cause parsing an integer to fail.
-#[unstable(
-    feature = "int_error_matching",
-    reason = "it can be useful to match errors when making error messages \
-              for integer parsing",
-    issue = "22639"
-)]
+#[stable(feature = "int_error_matching", since = "1.47.0")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum IntErrorKind {
     /// Value being parsed is empty.
     ///
     /// Among other causes, this variant will be constructed when parsing an empty string.
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
     Empty,
     /// Contains an invalid digit.
     ///
     /// Among other causes, this variant will be constructed when parsing a string that
     /// contains a letter.
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
     InvalidDigit,
     /// Integer is too large to store in target integer type.
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
     Overflow,
     /// Integer is too small to store in target integer type.
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
     Underflow,
     /// Value was Zero
     ///
     /// This variant will be emitted when the parsing string has a value of zero, which
     /// would be illegal for non-zero types.
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
     Zero,
 }
 
 impl ParseIntError {
     /// Outputs the detailed cause of parsing an integer failing.
-    #[unstable(
-        feature = "int_error_matching",
-        reason = "it can be useful to match errors when making error messages \
-                  for integer parsing",
-        issue = "22639"
-    )]
+    #[stable(feature = "int_error_matching", since = "1.47.0")]
     pub fn kind(&self) -> &IntErrorKind {
         &self.kind
     }
