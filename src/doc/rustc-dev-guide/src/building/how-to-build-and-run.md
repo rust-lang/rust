@@ -80,50 +80,8 @@ effectively deal with the repo for various common tasks.
 This chapter focuses on the basics to be productive, but
 if you want to learn more about `x.py`, read its README.md
 [here](https://github.com/rust-lang/rust/blob/master/src/bootstrap/README.md).
-
-## Bootstrapping
-
-One thing to keep in mind is that `rustc` is a _bootstrapping_
-compiler. That is, since `rustc` is written in Rust, we need to use an
-older version of the compiler to compile the newer version. In
-particular, the newer version of the compiler and some of the artifacts needed
-to build it, such as `std` and other tooling, may use some unstable features
-internally, requiring a specific version which understands these unstable
-features.
-
-The result is that compiling `rustc` is done in stages:
-
-- **Stage 0:** the stage0 compiler is usually (you can configure `x.py` to use
-  something else) the current _beta_ `rustc` compiler and its associated dynamic
-  libraries (which `x.py` will download for you). This stage0 compiler is then
-  used only to compile `rustbuild`, `std`, and `rustc`. When compiling
-  `rustc`, this stage0 compiler uses the freshly compiled `std`.
-  There are two concepts at play here: a compiler (with its set of dependencies)
-  and its 'target' or 'object' libraries (`std` and `rustc`).
-  Both are staged, but in a staggered manner.
-- **Stage 1:** the code in your clone (for new version) is then
-  compiled with the stage0 compiler to produce the stage1 compiler.
-  However, it was built with an older compiler (stage0), so to
-  optimize the stage1 compiler we go to next the stage.
-  - In theory, the stage1 compiler is functionally identical to the
-    stage2 compiler, but in practice there are subtle differences. In
-    particular, the stage1 compiler itself was built by stage0 and
-    hence not by the source in your working directory: this means that
-    the symbol names used in the compiler source may not match the
-    symbol names that would have been made by the stage1 compiler. This is
-    important when using dynamic linking and the lack of ABI compatibility
-    between versions. This primarily manifests when tests try to link with any
-    of the `rustc_*` crates or use the (now deprecated) plugin infrastructure.
-    These tests are marked with `ignore-stage1`.
-- **Stage 2:** we rebuild our stage1 compiler with itself to produce
-  the stage2 compiler (i.e. it builds itself) to have all the _latest
-  optimizations_. (By default, we copy the stage1 libraries for use by
-  the stage2 compiler, since they ought to be identical.)
-- _(Optional)_ **Stage 3**: to sanity check our new compiler, we
-  can build the libraries with the stage2 compiler. The result ought
-  to be identical to before, unless something has broken.
-
-To read more about the bootstrap process, [read this chapter][bootstrap].
+To read more about the bootstrap process and why `x.py` is necessary,
+[read this chapter][bootstrap].
 
 [bootstrap]: ./bootstrapping.md
 
