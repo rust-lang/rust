@@ -69,9 +69,9 @@ def rustdoc_object_hook(obj):
     # No need to convert paths, index and external_crates keys to ids, since
     # they are the target of resolution, and never a source itself.
     if "id" in obj and obj["id"]:
-        obj["id"] = ID(id)
+        obj["id"] = ID(obj["id"])
     if "root" in obj:
-        obj["root"] = ID(id)
+        obj["root"] = ID(obj["root"])
     if "items" in obj:
         obj["items"] = [ID(id) for id in obj["items"]]
     if "variants" in obj:
@@ -102,4 +102,5 @@ def main(expected_fpath, actual_fpath):
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Usage: `compare.py expected.json actual.json`")
-    main(sys.argv[1], sys.argv[2])
+    else:
+        main(sys.argv[1], sys.argv[2])

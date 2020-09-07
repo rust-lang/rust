@@ -26,8 +26,10 @@ impl From<clean::Item> for Item {
             deprecation,
         } = item;
         Item {
+            id: def_id.into(),
             crate_id: def_id.krate.as_u32(),
             name,
+            stripped: inner == clean::StrippedItem(_),
             source: source.into(),
             visibility: visibility.into(),
             docs: attrs.collapsed_doc_value().unwrap_or_default(),
@@ -183,12 +185,21 @@ impl From<clean::ItemEnum> for ItemEnum {
     }
 }
 
+fn remove_stripped(items: &[clean::Item]) -> Vec<Id> {
+    items
+        .into_iter()
+        .filter_map(|i| {
+            if let clean::StrippedItem(_) = i.inner {
+                return None;
+            }
+            Some(i.def_id.into())
+        })
+        .collect()
+}
+
 impl From<clean::Module> for Module {
     fn from(module: clean::Module) -> Self {
-        Module {
-            is_crate: module.is_crate,
-            items: module.items.into_iter().map(|i| i.def_id.into()).collect(),
-        }
+        Module { is_crate: module.is_crate, items: remove_stripped(&module.items) }
     }
 }
 
@@ -199,8 +210,8 @@ impl From<clean::Struct> for Struct {
             struct_type: struct_type.into(),
             generics: generics.into(),
             fields_stripped,
-            fields: fields.into_iter().map(|i| i.def_id.into()).collect(),
-            impls: Vec::new(), // Added in JsonRenderer::insert
+            fields: remove_stripped(&fields),
+            impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
 }
@@ -212,8 +223,8 @@ impl From<clean::Union> for Struct {
             struct_type: struct_type.into(),
             generics: generics.into(),
             fields_stripped,
-            fields: fields.into_iter().map(|i| i.def_id.into()).collect(),
-            impls: Vec::new(), // Added in JsonRenderer::insert
+            fields: remove_stripped(&fields),
+            impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
 }
@@ -399,10 +410,10 @@ impl From<clean::Trait> for Trait {
         Trait {
             is_auto: auto,
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
-            items: items.into_iter().map(|i| i.def_id.into()).collect(),
+            items: remove_stripped(&items),
             generics: generics.into(),
             bounds: bounds.into_iter().map(Into::into).collect(),
-            implementors: Vec::new(), // Added in JsonRenderer::insert
+            implementors: Vec::new(), // Added in JsonRenderer::item
         }
     }
 }
@@ -426,7 +437,7 @@ impl From<clean::Impl> for Impl {
             provided_trait_methods: provided_trait_methods.into_iter().collect(),
             trait_: trait_.map(Into::into),
             for_: for_.into(),
-            items: items.into_iter().map(|i| i.def_id.into()).collect(),
+            items: remove_stripped(&items),
             negative: polarity == Some(clean::ImplPolarity::Negative),
             synthetic,
             blanket_impl: blanket_impl.map(Into::into),
@@ -465,8 +476,8 @@ impl From<clean::Enum> for Enum {
         Enum {
             generics: generics.into(),
             variants_stripped,
-            variants: variants.into_iter().map(|i| i.def_id.into()).collect(),
-            impls: Vec::new(), // Added in JsonRenderer::insert
+            variants: remove_stripped(&variants.into_iter().collect::<Vec<_>>()),
+            impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
 }
@@ -478,7 +489,7 @@ impl From<clean::VariantStruct> for Struct {
             struct_type: struct_type.into(),
             generics: Default::default(),
             fields_stripped,
-            fields: fields.into_iter().map(|i| i.def_id.into()).collect(),
+            fields: remove_stripped(&fields),
             impls: Vec::new(),
         }
     }
@@ -490,7 +501,7 @@ impl From<clean::Variant> for Variant {
         match variant.kind {
             CLike => Variant::Plain,
             Tuple(t) => Variant::Tuple(t.into_iter().map(Into::into).collect()),
-            Struct(s) => Variant::Struct(s.fields.into_iter().map(|i| i.def_id.into()).collect()),
+            Struct(s) => Variant::Struct(remove_stripped(&s.fields)),
         }
     }
 }
@@ -562,7 +573,7 @@ impl From<clean::TraitAlias> for TraitAlias {
     fn from(alias: clean::TraitAlias) -> Self {
         TraitAlias {
             generics: alias.generics.into(),
-            bounds: alias.bounds.into_iter().map(Into::into).collect(),
+            params: alias.bounds.into_iter().map(Into::into).collect(),
         }
     }
 }

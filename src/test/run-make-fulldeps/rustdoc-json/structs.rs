@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-pub struct Normal {}
+pub struct PlainEmpty {}
 
-pub struct Tuple();
+pub struct Tuple(u32, String);
 
 pub struct Unit;
 

@@ -78,13 +78,14 @@ impl JsonRenderer {
         cache
             .traits
             .iter()
-            .filter_map(|(id, trait_item)| {
+            .filter_map(|(&id, trait_item)| {
                 // only need to synthesize items for external traits
                 if !id.is_local() {
                     trait_item.items.clone().into_iter().for_each(|i| self.item(i, cache).unwrap());
                     Some((
-                        (*id).into(),
+                        id.into(),
                         types::Item {
+                            id: id.into(),
                             crate_id: id.krate.as_u32(),
                             name: cache
                                 .paths
@@ -138,8 +139,17 @@ impl FormatRenderer for JsonRenderer {
     /// the hashmap because certain items (traits and types) need to have their mappings for trait
     /// implementations filled out before they're inserted.
     fn item(&mut self, item: clean::Item, cache: &Cache) -> Result<(), Error> {
+        if let clean::StrippedItem(_) = item.inner {
+            return Ok(());
+        }
+
         // Flatten items that recursively store other items
-        item.inner.inner_items().for_each(|i| self.item(i.clone(), cache).unwrap());
+        item.inner.inner_items().for_each(|i| {
+            if let clean::StrippedItem(_) = i.inner {
+            } else {
+                self.item(i.clone(), cache).unwrap()
+            }
+        });
 
         let id = item.def_id;
         let mut new_item: types::Item = item.into();

@@ -89,7 +89,7 @@ def check_type(ty):
                 for ty in args["parenthesized"]["inputs"]:
                     check_type(ty)
                 if args["parenthesized"]["output"]:
-                    ckeck_ty(args["parenthesized"]["output"])
+                    check_type(args["parenthesized"]["output"])
         if not valid_id(ty["inner"]["id"]):
             print("Type contained an invalid ID:", ty["inner"]["id"])
             sys.exit(1)
@@ -150,8 +150,12 @@ while work_list:
     elif item["kind"] == "typedef":
         check_type(item["inner"]["type"])
         check_generics(item["inner"]["generics"])
-    elif item["kind"] in ("opaque_ty", "trait_alias"):
+    elif item["kind"] == "opaque_ty":
         check_generics(item["inner"]["generics"])
+        for bound in item["inner"]["bounds"]:
+            check_generic_bound(bound)
+    elif item["kind"] == "trait_alias":
+        check_generics(item["inner"]["params"])
         for bound in item["inner"]["bounds"]:
             check_generic_bound(bound)
     elif item["kind"] == "trait":

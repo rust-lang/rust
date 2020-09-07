@@ -55,11 +55,16 @@ pub struct ItemSummary {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Item {
+    /// The unique identifier of this item. Can be used to find this item in various mappings.
+    pub id: Id,
     /// This can be used as a key to the `external_crates` map of [`Crate`] to see which crate
     /// this item came from.
     pub crate_id: u32,
     /// Some items such as impls don't have names.
     pub name: Option<String>,
+    /// Whether this item is meant to be omitted from the generated documentation due to `#doc(hidden)`,
+    /// because it is private, or because it was inlined.
+    pub stripped: bool,
     /// The source location of this item (absent if it came from a macro expansion or inline
     /// assembly).
     pub source: Option<Span>,
@@ -198,14 +203,14 @@ pub enum ItemEnum {
 
     FunctionItem(Function),
 
-    TypedefItem(Typedef),
-    OpaqueTyItem(OpaqueTy),
-    ConstantItem(Constant),
-
     TraitItem(Trait),
     TraitAliasItem(TraitAlias),
     MethodItem(Method),
     ImplItem(Impl),
+
+    TypedefItem(Typedef),
+    OpaqueTyItem(OpaqueTy),
+    ConstantItem(Constant),
 
     StaticItem(Static),
 
@@ -225,9 +230,6 @@ pub enum ItemEnum {
         bounds: Vec<GenericBound>,
         default: Option<Type>,
     },
-
-    /// An item that has been stripped by a rustdoc pass
-    StrippedItem(Box<ItemEnum>),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -418,7 +420,7 @@ pub struct Trait {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TraitAlias {
     pub generics: Generics,
-    pub bounds: Vec<GenericBound>,
+    pub params: Vec<GenericBound>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
