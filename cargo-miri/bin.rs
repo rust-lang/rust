@@ -5,7 +5,6 @@ use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
@@ -50,7 +49,16 @@ struct CrateRunInfo {
     /// The command-line arguments.
     args: Vec<OsString>,
     /// The environment.
-    env: HashMap<OsString, OsString>,
+    env: Vec<(OsString, OsString)>,
+}
+
+impl CrateRunInfo {
+    /// Gather all the information we need.
+    fn collect(args: env::ArgsOs) -> Self {
+        let args = args.collect();
+        let env = env::vars_os().collect();
+        CrateRunInfo { args, env }
+    }
 }
 
 fn show_help() {
@@ -126,6 +134,11 @@ fn cargo() -> Command {
 
 fn xargo_check() -> Command {
     Command::new(env::var_os("XARGO_CHECK").unwrap_or_else(|| OsString::from("xargo-check")))
+}
+
+fn exec(mut cmd: Command) -> ! {
+    let exit_status = cmd.status().expect("failed to run command");
+    std::process::exit(exit_status.code().unwrap_or(-1))
 }
 
 fn xargo_version() -> Option<(u32, u32, u32)> {
@@ -349,17 +362,16 @@ path = "lib.rs"
     }
 }
 
-fn phase_cargo_miri(mut args: env::Args) {
+fn phase_cargo_miri(mut args: env::ArgsOs) {
     // Require a subcommand before any flags.
     // We cannot know which of those flags take arguments and which do not,
     // so we cannot detect subcommands later.
-    let subcommand = match args.next().as_deref() {
+    let subcommand = match args.next().as_deref().and_then(|s| s.to_str()) {
         Some("test") => MiriCommand::Test,
         Some("run") => MiriCommand::Run,
         Some("setup") => MiriCommand::Setup,
         // Invalid command.
-        None => show_error(format!("`cargo miri` must be immediately followed by `test`, `run`, or `setup`.")),
-        Some(s) => show_error(format!("unknown command `{}`", s)),
+        _ => show_error(format!("`cargo miri` must be immediately followed by `test`, `run`, or `setup`.")),
     };
     let verbose = has_arg_flag("-v");
 
@@ -413,13 +425,10 @@ fn phase_cargo_miri(mut args: env::Args) {
         cmd.env("MIRI_VERBOSE", ""); // this makes `inside_cargo_rustc` verbose.
         eprintln!("+ {:?}", cmd);
     }
-    let exit_status =
-        cmd.spawn().expect("could not run cargo").wait().expect("failed to wait for cargo?");
-
-    std::process::exit(exit_status.code().unwrap_or(-1))
+    exec(cmd)
 }
 
-fn phase_cargo_rustc(mut args: env::Args) {
+fn phase_cargo_rustc(args: env::ArgsOs) {
     /// Determines if we are being invoked (as rustc) to build a crate for
     /// the "target" architecture, in contrast to the "host" architecture.
     /// Host crates are for build scripts and proc macros and still need to
@@ -454,7 +463,7 @@ fn phase_cargo_rustc(mut args: env::Args) {
         // like we want them.
         // Instead of compiling, we write JSON into the output file with all the relevant command-line flags
         // and environment variables; this is sued alter when cargo calls us again in the CARGO_TARGET_RUNNER phase.
-        let info = CrateRunInfo { args: Vec::new(), env: HashMap::new() };
+        let info = CrateRunInfo::collect(args);
 
         let mut path = PathBuf::from(get_arg_flag_value("--out-dir").unwrap());
         path.push(format!(
@@ -464,14 +473,12 @@ fn phase_cargo_rustc(mut args: env::Args) {
             // (and cargo passes this before the filename so it should be unique)
             get_arg_flag_value("extra-filename").unwrap_or(String::new()),
         ));
-        eprintln!("Miri is supposed to run {}", path.display());
 
         let file = File::create(&path)
             .unwrap_or_else(|_| show_error(format!("Cannot create {}", path.display())));
         let file = BufWriter::new(file);
         serde_json::ser::to_writer(file, &info)
             .unwrap_or_else(|_| show_error(format!("Cannot write to {}", path.display())));
-
         return;
     }
 
@@ -498,17 +505,11 @@ fn phase_cargo_rustc(mut args: env::Args) {
     if verbose {
         eprintln!("+ {:?}", cmd);
     }
-    match cmd.status() {
-        Ok(exit) =>
-            if !exit.success() {
-                std::process::exit(exit.code().unwrap_or(42));
-            },
-        Err(e) => panic!("error running {:?}:\n{:?}", cmd, e),
-    }
+    exec(cmd)
 }
 
-fn phase_cargo_runner(binary: &str, args: env::Args) {
-    eprintln!("Asked to execute {}, args: {:?}", binary, args.collect::<Vec<_>>());
+fn phase_cargo_runner(binary: &str, args: env::ArgsOs) {
+    let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
 
     let file = File::open(binary)
         .unwrap_or_else(|_| show_error(format!("File {:?} not found, or cargo-miri invoked incorrectly", binary)));
@@ -516,6 +517,24 @@ fn phase_cargo_runner(binary: &str, args: env::Args) {
     let info: CrateRunInfo = serde_json::from_reader(file)
         .unwrap_or_else(|_| show_error(format!("File {:?} does not contain valid JSON", binary)));
     // FIXME: remove the file.
+
+    let mut cmd = miri();
+    // Forward rustc arguments,with our sysroot.
+    cmd.args(info.args);
+    let sysroot =
+        env::var_os("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
+    cmd.arg("--sysroot");
+    cmd.arg(sysroot);
+
+    // Then pass binary arguments.
+    cmd.arg("--");
+    cmd.args(args);
+
+    // Run it.
+    if verbose {
+        eprintln!("+ {:?}", cmd);
+    }
+    exec(cmd)
 }
 
 fn main() {
@@ -529,7 +548,7 @@ fn main() {
         return;
     }
 
-    let mut args = std::env::args();
+    let mut args = std::env::args_os();
     // Skip binary name.
     args.next().unwrap();
 
@@ -540,7 +559,8 @@ fn main() {
     //   binary crates for later interpretation.
     // - When we are executed due to CARGO_TARGET_RUNNER, we start interpretation based on the
     //   flags that were stored earlier.
-    match &*args.next().unwrap() {
+    // FIXME: report errors for these unwraps.
+    match &*args.next().unwrap().to_str().unwrap() {
         "miri" => phase_cargo_miri(args),
         "rustc" => phase_cargo_rustc(args),
         binary => phase_cargo_runner(binary, args),
