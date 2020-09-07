@@ -147,3 +147,156 @@ fn module_chain_to_containing_module_file(
 
     path
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::completion::{test_utils::completion_list, CompletionKind};
+    use expect_test::{expect, Expect};
+
+    fn check(ra_fixture: &str, expect: Expect) {
+        let actual = completion_list(ra_fixture, CompletionKind::Magic);
+        expect.assert_eq(&actual);
+    }
+
+    #[test]
+    fn lib_module_completion() {
+        check(
+            r#"
+            //- /lib.rs
+            mod <|>
+            //- /foo.rs
+            fn foo() {}
+            //- /foo/ignored_foo.rs
+            fn ignored_foo() {}
+            //- /bar/mod.rs
+            fn bar() {}
+            //- /bar/ignored_bar.rs
+            fn ignored_bar() {}
+        "#,
+            expect![[r#"
+                md bar;
+                md foo;
+            "#]],
+        );
+    }
+
+    #[test]
+    fn main_module_completion() {
+        check(
+            r#"
+            //- /main.rs
+            mod <|>
+            //- /foo.rs
+            fn foo() {}
+            //- /foo/ignored_foo.rs
+            fn ignored_foo() {}
+            //- /bar/mod.rs
+            fn bar() {}
+            //- /bar/ignored_bar.rs
+            fn ignored_bar() {}
+        "#,
+            expect![[r#"
+                md bar;
+                md foo;
+            "#]],
+        );
+    }
+
+    #[test]
+    fn main_test_module_completion() {
+        check(
+            r#"
+            //- /main.rs
+            mod tests {
+                mod <|>;
+            }
+            //- /tests/foo.rs
+            fn foo() {}
+        "#,
+            expect![[r#"
+                md foo
+            "#]],
+        );
+    }
+
+    #[test]
+    fn directly_nested_module_completion() {
+        check(
+            r#"
+            //- /lib.rs
+            mod foo;
+            //- /foo.rs
+            mod <|>;
+            //- /foo/bar.rs
+            fn bar() {}
+            //- /foo/bar/ignored_bar.rs
+            fn ignored_bar() {}
+            //- /foo/baz/mod.rs
+            fn baz() {}
+            //- /foo/moar/ignored_moar.rs
+            fn ignored_moar() {}
+        "#,
+            expect![[r#"
+                md bar
+                md baz
+            "#]],
+        );
+    }
+
+    #[test]
+    fn nested_in_source_module_completion() {
+        check(
+            r#"
+            //- /lib.rs
+            mod foo;
+            //- /foo.rs
+            mod bar {
+                mod <|>
+            }
+            //- /foo/bar/baz.rs
+            fn baz() {}
+        "#,
+            expect![[r#"
+                md baz;
+            "#]],
+        );
+    }
+
+    // FIXME binart modules are not picked up in tests
+    // #[test]
+    // fn regular_bin_module_completion() {
+    //     check(
+    //         r#"
+    //         //- /src/main.rs
+    //         fn main() {}
+    //         //- /src/main/foo.rs
+    //         mod <|>
+    //         //- /src/main/bar.rs
+    //         fn bar() {}
+    //         //- /src/main/bar/bar_ignored.rs
+    //         fn bar_ignored() {}
+    //     "#,
+    //         expect![[r#"
+    //             md bar;
+    //         "#]],
+    //     );
+    // }
+
+    #[test]
+    fn already_declared_bin_module_completion_omitted() {
+        check(
+            r#"
+            //- /src/main.rs
+            fn main() {}
+            //- /src/main/foo.rs
+            mod <|>
+            //- /src/main/bar.rs
+            mod foo;
+            fn bar() {}
+            //- /src/main/bar/bar_ignored.rs
+            fn bar_ignored() {}
+        "#,
+            expect![[r#""#]],
+        );
+    }
+}
