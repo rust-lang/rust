@@ -2,6 +2,7 @@
 // Make sure we find these even with many checks disabled.
 // compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 
+#[inline(never)]
 fn dont_optimize<T>(x: T) -> T { x }
 
 fn main() {
