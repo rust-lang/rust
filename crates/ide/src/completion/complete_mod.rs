@@ -51,26 +51,26 @@ pub(super) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
         })
         .filter_map(|submodule_file| {
             let submodule_path = source_root.path_for_file(&submodule_file)?;
-            if !is_special_rust_file_path(&submodule_path)
-                && submodule_path.parent()? == directory_to_look_for_submodules
-            {
-                submodule_path.file_name_and_extension()
-            } else {
-                None
-            }
-        })
-        .filter_map(|submodule_file_name_and_extension| match submodule_file_name_and_extension {
-            (file_name, Some("rs")) => Some(file_name.to_owned()),
-            (subdirectory_name, None) => {
-                let mod_rs_path =
-                    directory_to_look_for_submodules.join(subdirectory_name)?.join("mod.rs")?;
-                if source_root.file_for_path(&mod_rs_path).is_some() {
-                    Some(subdirectory_name.to_owned())
-                } else {
-                    None
+            let directory_with_submodule = submodule_path.parent()?;
+            match submodule_path.file_name_and_extension()? {
+                ("lib", Some("rs")) | ("main", Some("rs")) => None,
+                ("mod", Some("rs")) => {
+                    if directory_with_submodule.parent()? == directory_to_look_for_submodules {
+                        match directory_with_submodule.file_name_and_extension()? {
+                            (directory_name, None) => Some(directory_name.to_owned()),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    }
                 }
+                (file_name, Some("rs"))
+                    if directory_with_submodule == directory_to_look_for_submodules =>
+                {
+                    Some(file_name.to_owned())
+                }
+                _ => None,
             }
-            _ => None,
         })
         .filter(|name| !existing_mod_declarations.contains(name))
         .for_each(|submodule_name| {
@@ -87,41 +87,34 @@ pub(super) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
     Some(())
 }
 
-fn is_special_rust_file_path(path: &VfsPath) -> bool {
-    matches!(
-        path.file_name_and_extension(),
-        Some(("mod", Some("rs"))) | Some(("lib", Some("rs"))) | Some(("main", Some("rs")))
-    )
-}
-
 fn directory_to_look_for_submodules(
     module: Module,
     db: &RootDatabase,
     module_file_path: &VfsPath,
 ) -> Option<VfsPath> {
-    let module_directory_path = module_file_path.parent()?;
-    let base_directory = if is_special_rust_file_path(module_file_path) {
-        Some(module_directory_path)
-    } else if let (regular_rust_file_name, Some("rs")) =
-        module_file_path.file_name_and_extension()?
-    {
-        if matches!(
-            (
-                module_directory_path
-                    .parent()
-                    .as_ref()
-                    .and_then(|path| path.file_name_and_extension()),
-                module_directory_path.file_name_and_extension(),
-            ),
-            (Some(("src", None)), Some(("bin", None)))
-        ) {
-            // files in /src/bin/ can import each other directly
-            Some(module_directory_path)
-        } else {
-            module_directory_path.join(regular_rust_file_name)
+    let directory_with_module_path = module_file_path.parent()?;
+    let base_directory = match module_file_path.file_name_and_extension()? {
+        ("mod", Some("rs")) | ("lib", Some("rs")) | ("main", Some("rs")) => {
+            Some(directory_with_module_path)
         }
-    } else {
-        None
+        (regular_rust_file_name, Some("rs")) => {
+            if matches!(
+                (
+                    directory_with_module_path
+                        .parent()
+                        .as_ref()
+                        .and_then(|path| path.file_name_and_extension()),
+                    directory_with_module_path.file_name_and_extension(),
+                ),
+                (Some(("src", None)), Some(("bin", None)))
+            ) {
+                // files in /src/bin/ can import each other directly
+                Some(directory_with_module_path)
+            } else {
+                directory_with_module_path.join(regular_rust_file_name)
+            }
+        }
+        _ => None,
     }?;
 
     let mut resulting_path = base_directory;
