@@ -2,7 +2,6 @@ use super::*;
 use crate::io::prelude::*;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
 use crate::iter::FromIterator;
-use crate::mem;
 use crate::sys::unix::ext::io::AsRawFd;
 use crate::sys_common::io::test::tmpdir;
 use crate::thread;
@@ -513,16 +512,7 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
     let bsock1 = or_panic!(UnixDatagram::bind(&path1));
     let bsock2 = or_panic!(UnixDatagram::bind(&path2));
 
-    unsafe {
-        let optval: libc::c_int = 1;
-        libc::setsockopt(
-            bsock2.as_raw_fd(),
-            libc::SOL_SOCKET,
-            libc::SO_PASSCRED,
-            &optval as *const _ as *const _,
-            mem::size_of::<libc::c_int>() as u32,
-        );
-    }
+    or_panic!(bsock2.set_passcred(true));
 
     let mut buf1 = [1; 8];
     let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];

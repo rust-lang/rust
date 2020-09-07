@@ -366,6 +366,66 @@ impl UnixStream {
         self.0.set_nonblocking(nonblocking)
     }
 
+    /// Moves the socket to pass unix credentials as control message in [`SocketAncillary`].
+    ///
+    /// Set the socket option `SO_PASSCRED`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_ancillary_data)]
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     socket.set_passcred(true).expect("Couldn't set passcred");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(
+        doc,
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "ios",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_env = "uclibc",
+    ))]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
+        self.0.set_passcred(passcred)
+    }
+
+    /// Get the current value of the socket for passing unix credentials in [`SocketAncillary`].
+    /// This value can be change by [`set_passcred`].
+    ///
+    /// Get the socket option `SO_PASSCRED`.
+    ///
+    /// [`set_passcred`]: UnixStream::set_passcred
+    #[cfg(any(
+        doc,
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "ios",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_env = "uclibc",
+    ))]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "none")]
+    pub fn passcred(&self) -> io::Result<bool> {
+        self.0.passcred()
+    }
+
     /// Returns the value of the `SO_ERROR` option.
     ///
     /// # Examples
