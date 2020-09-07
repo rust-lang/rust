@@ -290,9 +290,10 @@ impl VirtualPath {
     // FIXME: Currently VirtualPath does is unable to distinguish a directory from a file
     // hence this method will return `Some("directory_name", None)` for a directory
     pub fn file_name_and_extension(&self) -> Option<(&str, Option<&str>)> {
-        let file_name = match self.0.rfind('/') {
-            Some(position) => &self.0[position + 1..],
-            None => &self.0,
+        let file_path = if self.0.ends_with('/') { &self.0[..&self.0.len() - 1] } else { &self.0 };
+        let file_name = match file_path.rfind('/') {
+            Some(position) => &file_path[position + 1..],
+            None => file_path,
         };
 
         if file_name.is_empty() {
@@ -308,5 +309,39 @@ impl VirtualPath {
                 (Some(file_stem), extension) => Some((file_stem, extension)),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn virtual_path_extensions() {
+        assert_eq!(VirtualPath("/".to_string()).file_name_and_extension(), None);
+        assert_eq!(
+            VirtualPath("/directory".to_string()).file_name_and_extension(),
+            Some(("directory", None))
+        );
+        assert_eq!(
+            VirtualPath("/directory/".to_string()).file_name_and_extension(),
+            Some(("directory", None))
+        );
+        assert_eq!(
+            VirtualPath("/directory/file".to_string()).file_name_and_extension(),
+            Some(("file", None))
+        );
+        assert_eq!(
+            VirtualPath("/directory/.file".to_string()).file_name_and_extension(),
+            Some((".file", None))
+        );
+        assert_eq!(
+            VirtualPath("/directory/.file.rs".to_string()).file_name_and_extension(),
+            Some((".file", Some("rs")))
+        );
+        assert_eq!(
+            VirtualPath("/directory/file.rs".to_string()).file_name_and_extension(),
+            Some(("file", Some("rs")))
+        );
     }
 }
