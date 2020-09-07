@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use base_db::{FileLoader, SourceDatabase};
-use hir::{Semantics, SemanticsScope, Type};
+use hir::{ModuleSource, Semantics, SemanticsScope, Type};
 use ide_db::RootDatabase;
 use syntax::{
     algo::{find_covering_element, find_node_at_offset},
@@ -112,22 +112,6 @@ impl<'a> CompletionContext<'a> {
         };
         let fake_ident_token =
             file_with_fake_ident.syntax().token_at_offset(position.offset).right_biased().unwrap();
-        {
-            let module_names_for_import = sema
-                .to_module_def(position.file_id)
-                .and_then(|current_module| {
-                    let definition_source = current_module.definition_source(db);
-                    let module_definition_source_file = definition_source.file_id.original_file(db);
-                    let mod_declaration_candidates =
-                        db.possible_sudmobule_names(module_definition_source_file);
-                    dbg!(mod_declaration_candidates);
-                    // TODO kb exlude existing children from the candidates
-                    let existing_children = current_module.children(db).collect::<Vec<_>>();
-                    None::<Vec<String>>
-                })
-                .unwrap_or_default();
-        };
-
         let krate = sema.to_module_def(position.file_id).map(|m| m.krate());
         let original_token =
             original_file.syntax().token_at_offset(position.offset).left_biased()?;

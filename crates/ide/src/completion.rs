@@ -19,6 +19,7 @@ mod complete_unqualified_path;
 mod complete_postfix;
 mod complete_macro_in_item_position;
 mod complete_trait_impl;
+mod complete_mod;
 
 use ide_db::RootDatabase;
 
@@ -124,6 +125,7 @@ pub(crate) fn completions(
     complete_postfix::complete_postfix(&mut acc, &ctx);
     complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
     complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
+    complete_mod::complete_mod(&mut acc, &ctx);
 
     Some(acc)
 }

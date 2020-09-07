@@ -199,7 +199,7 @@ fn possible_sudmobule_names(module_files: &FileSet, module_file: FileId) -> Vec<
         })
         .filter_map(|file_name_and_extension| {
             match file_name_and_extension {
-                // TODO kb wrong resolution for nested non-file modules (mod tests {mod <|>)
+                // TODO kb wrong resolution for nested non-file modules (mod tests { mod <|> })
                 // TODO kb in src/bin when a module is included into another,
                 // the included file gets "moved" into a directory below and now cannot add any other modules
                 ("mod", Some("rs")) | ("lib", Some("rs")) | ("main", Some("rs")) => None,
