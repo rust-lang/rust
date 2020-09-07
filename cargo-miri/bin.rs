@@ -1,10 +1,13 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 use rustc_version::VersionMeta;
 
@@ -39,6 +42,15 @@ enum MiriCommand {
     Run,
     Test,
     Setup,
+}
+
+/// The inforamtion Miri needs to run a crate. Stored as JSON when the crate is "compiled".
+#[derive(Serialize, Deserialize)]
+struct CrateRunInfo {
+    /// The command-line arguments.
+    args: Vec<OsString>,
+    /// The environment.
+    env: HashMap<OsString, OsString>,
 }
 
 fn show_help() {
@@ -442,15 +454,24 @@ fn phase_cargo_rustc(mut args: env::Args) {
         // like we want them.
         // Instead of compiling, we write JSON into the output file with all the relevant command-line flags
         // and environment variables; this is sued alter when cargo calls us again in the CARGO_TARGET_RUNNER phase.
-        let filename = format!(
-            "{}/{}{}",
-            get_arg_flag_value("--out-dir").unwrap(),
+        let info = CrateRunInfo { args: Vec::new(), env: HashMap::new() };
+
+        let mut path = PathBuf::from(get_arg_flag_value("--out-dir").unwrap());
+        path.push(format!(
+            "{}{}",
             get_arg_flag_value("--crate-name").unwrap(),
             // This is technically a `-C` flag but the prefix seems unique enough...
             // (and cargo passes this before the filename so it should be unique)
             get_arg_flag_value("extra-filename").unwrap_or(String::new()),
-        );
-        eprintln!("Miri is supposed to run {}", filename);
+        ));
+        eprintln!("Miri is supposed to run {}", path.display());
+
+        let file = File::create(&path)
+            .unwrap_or_else(|_| show_error(format!("Cannot create {}", path.display())));
+        let file = BufWriter::new(file);
+        serde_json::ser::to_writer(file, &info)
+            .unwrap_or_else(|_| show_error(format!("Cannot write to {}", path.display())));
+
         return;
     }
 
@@ -488,6 +509,13 @@ fn phase_cargo_rustc(mut args: env::Args) {
 
 fn phase_cargo_runner(binary: &str, args: env::Args) {
     eprintln!("Asked to execute {}, args: {:?}", binary, args.collect::<Vec<_>>());
+
+    let file = File::open(binary)
+        .unwrap_or_else(|_| show_error(format!("File {:?} not found, or cargo-miri invoked incorrectly", binary)));
+    let file = BufReader::new(file);
+    let info: CrateRunInfo = serde_json::from_reader(file)
+        .unwrap_or_else(|_| show_error(format!("File {:?} does not contain valid JSON", binary)));
+    // FIXME: remove the file.
 }
 
 fn main() {
