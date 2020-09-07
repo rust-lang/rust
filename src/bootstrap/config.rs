@@ -291,7 +291,7 @@ struct Build {
     build_dir: Option<String>,
     cargo: Option<String>,
     rustc: Option<String>,
-    rustfmt: Option<String>, /* allow bootstrap.py to use rustfmt key */
+    rustfmt: Option<PathBuf>,
     docs: Option<bool>,
     compiler_docs: Option<bool>,
     submodules: Option<bool>,
@@ -493,9 +493,8 @@ impl Config {
         config.src = manifest_dir.parent().unwrap().parent().unwrap().to_owned();
         config.out = Config::path_from_python("BUILD_DIR");
 
-        config.initial_rustc = Config::path_from_python("RUSTC");
-        config.initial_cargo = Config::path_from_python("CARGO");
-        config.initial_rustfmt = env::var_os("RUSTFMT").map(Config::normalize_python_path);
+        config.initial_cargo = PathBuf::from(env!("CARGO"));
+        config.initial_rustc = PathBuf::from(env!("RUSTC"));
 
         config
     }
@@ -584,6 +583,9 @@ impl Config {
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
         config.tools = build.tools;
+        if build.rustfmt.is_some() {
+            config.initial_rustfmt = build.rustfmt;
+        }
         set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
         set(&mut config.profiler, build.profiler);
@@ -838,11 +840,14 @@ impl Config {
             set(&mut config.missing_tools, t.missing_tools);
         }
 
+        // Cargo does not provide a RUSTFMT environment variable, so we
+        // synthesize it manually. Note that we also later check the config.toml
+        // and set this to that path if necessary.
+        let rustfmt = config.initial_rustc.with_file_name(exe("rustfmt", config.build));
+        config.initial_rustfmt = if rustfmt.exists() { Some(rustfmt) } else { None };
+
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
-
-        set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
-        set(&mut config.initial_cargo, build.cargo.map(PathBuf::from));
 
         config.llvm_skip_rebuild = llvm_skip_rebuild.unwrap_or(false);
 
