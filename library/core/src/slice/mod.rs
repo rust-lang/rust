@@ -398,7 +398,7 @@ impl<T> [T] {
     ///
     /// [`Index::index`]: ops::Index::index
     #[track_caller]
-    #[unstable(feature = "slice_check_range", issue = "none")]
+    #[unstable(feature = "slice_check_range", issue = "76393")]
     pub fn check_range<R: RangeBounds<usize>>(&self, range: R) -> Range<usize> {
         let start = match range.start_bound() {
             Bound::Included(&start) => start,
