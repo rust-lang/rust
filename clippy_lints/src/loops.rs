@@ -1150,8 +1150,6 @@ fn detect_same_item_push<'tcx>(
             {
                 // Make sure that the push does not involve possibly mutating values
                 if let PatKind::Wild = pat.kind {
-                    let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
-                    let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
                     if let ExprKind::Path(ref qpath) = pushed_item.kind {
                         match qpath_res(cx, qpath, pushed_item.hir_id) {
                             // immutable bindings that are initialized with literal or constant
@@ -1167,33 +1165,11 @@ fn detect_same_item_push<'tcx>(
                                     then {
                                         match init.kind {
                                             // immutable bindings that are initialized with literal
-                                            ExprKind::Lit(..) => {
-                                                span_lint_and_help(
-                                                    cx,
-                                                    SAME_ITEM_PUSH,
-                                                    vec.span,
-                                                    "it looks like the same item is being pushed into this Vec",
-                                                    None,
-                                                    &format!(
-                                                        "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
-                                                        item_str, vec_str, item_str
-                                                    ),
-                                                )
-                                            },
+                                            ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item),
                                             // immutable bindings that are initialized with constant
                                             ExprKind::Path(ref path) => {
                                                 if let Res::Def(DefKind::Const, ..) = qpath_res(cx, path, init.hir_id) {
-                                                    span_lint_and_help(
-                                                        cx,
-                                                        SAME_ITEM_PUSH,
-                                                        vec.span,
-                                                        "it looks like the same item is being pushed into this Vec",
-                                                        None,
-                                                        &format!(
-                                                            "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
-                                                            item_str, vec_str, item_str
-                                                        ),
-                                                    )
+                                                    emit_lint(cx, vec, pushed_item);
                                                 }
                                             }
                                             _ => {},
@@ -1202,36 +1178,33 @@ fn detect_same_item_push<'tcx>(
                                 }
                             },
                             // constant
-                            Res::Def(DefKind::Const, ..) => span_lint_and_help(
-                                cx,
-                                SAME_ITEM_PUSH,
-                                vec.span,
-                                "it looks like the same item is being pushed into this Vec",
-                                None,
-                                &format!(
-                                    "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
-                                    item_str, vec_str, item_str
-                                ),
-                            ),
+                            Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item),
                             _ => {},
                         }
                     } else if let ExprKind::Lit(..) = pushed_item.kind {
                         // literal
-                        span_lint_and_help(
-                            cx,
-                            SAME_ITEM_PUSH,
-                            vec.span,
-                            "it looks like the same item is being pushed into this Vec",
-                            None,
-                            &format!(
-                                "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
-                                item_str, vec_str, item_str
-                            ),
-                        )
+                        emit_lint(cx, vec, pushed_item);
                     }
                 }
             }
         }
+    }
+
+    fn emit_lint(cx: &LateContext<'_>, vec: &Expr<'_>, pushed_item: &Expr<'_>) {
+        let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
+        let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
+
+        span_lint_and_help(
+            cx,
+            SAME_ITEM_PUSH,
+            vec.span,
+            "it looks like the same item is being pushed into this Vec",
+            None,
+            &format!(
+                "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
+                item_str, vec_str, item_str
+            ),
+        )
     }
 }
 
