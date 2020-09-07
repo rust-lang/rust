@@ -1868,6 +1868,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "measureme"
+version = "0.8.0"
+source = "git+https://github.com/michaelwoerister/measureme.git?branch=paged_sinks#26d150475c8d83613beffe970d1c18dd2494f607"
+dependencies = [
+ "memmap",
+ "parking_lot 0.11.0",
+ "rustc-hash",
+]
+
+[[package]]
 name = "memchr"
 version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2954,7 +2964,7 @@ dependencies = [
  "jobserver",
  "lazy_static",
  "libc",
- "measureme",
+ "measureme 0.7.1",
  "parking_lot 0.10.2",
  "rustc-ap-rustc_graphviz",
  "rustc-ap-rustc_index",
@@ -3358,7 +3368,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "libc",
- "measureme",
+ "measureme 0.8.0",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3423,7 +3433,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc",
- "measureme",
+ "measureme 0.8.0",
  "parking_lot 0.10.2",
  "rustc-hash",
  "rustc-rayon",
@@ -3726,7 +3736,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "chalk-ir",
- "measureme",
+ "measureme 0.8.0",
  "polonius-engine",
  "rustc-rayon-core",
  "rustc_apfloat",

@@ -100,12 +100,12 @@ use parking_lot::RwLock;
 cfg_if! {
     if #[cfg(any(windows, target_os = "wasi"))] {
         /// FileSerializationSink is faster on Windows
-        type SerializationSink = measureme::FileSerializationSink;
+        type SerializationSink = measureme::FileSinkConfig;
     } else if #[cfg(target_arch = "wasm32")] {
         type SerializationSink = measureme::ByteVecSink;
     } else {
         /// MmapSerializatioSink is faster on macOS and Linux
-        type SerializationSink = measureme::MmapSerializationSink;
+        type SerializationSink = measureme::PagedSinkConfig;
     }
 }
 
@@ -400,7 +400,7 @@ impl SelfProfiler {
         output_directory: &Path,
         crate_name: Option<&str>,
         event_filters: &Option<Vec<String>>,
-    ) -> Result<SelfProfiler, Box<dyn Error>> {
+    ) -> Result<SelfProfiler, Box<dyn Error + 'static + Send + Sync>> {
         fs::create_dir_all(output_directory)?;
 
         let crate_name = crate_name.unwrap_or("unknown-crate");
