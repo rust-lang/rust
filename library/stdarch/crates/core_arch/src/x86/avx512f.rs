@@ -1132,7 +1132,12 @@ pub unsafe fn _mm512_maskz_sqrt_pd(k: __mmask8, a: __m512d) -> __m512d {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vfmadd))] //vfmadd132ps or vfmadd213ps or vfmadd231ps
 pub unsafe fn _mm512_fmadd_ps(a: __m512, b: __m512, c: __m512) -> __m512 {
-    transmute(vfmadd132ps(a.as_f32x16(), b.as_f32x16(), c.as_f32x16(), _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmadd132ps(
+        a.as_f32x16(),
+        b.as_f32x16(),
+        c.as_f32x16(),
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1176,7 +1181,12 @@ pub unsafe fn _mm512_mask3_fmadd_ps(a: __m512, b: __m512, c: __m512, k: __mmask1
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vfmadd))] //vfmadd132pd or vfmadd213pd or vfmadd231pd
 pub unsafe fn _mm512_fmadd_pd(a: __m512d, b: __m512d, c: __m512d) -> __m512d {
-    transmute(vfmadd132pd(a.as_f64x8(), b.as_f64x8(), c.as_f64x8(), _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmadd132pd(
+        a.as_f64x8(),
+        b.as_f64x8(),
+        c.as_f64x8(),
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1222,9 +1232,13 @@ pub unsafe fn _mm512_mask3_fmadd_pd(a: __m512d, b: __m512d, c: __m512d, k: __mma
 pub unsafe fn _mm512_fmsub_ps(a: __m512, b: __m512, c: __m512) -> __m512 {
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f32x16());
-    transmute(vfmadd132ps(a.as_f32x16(), b.as_f32x16(), sub, _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmadd132ps(
+        a.as_f32x16(),
+        b.as_f32x16(),
+        sub,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
-
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
@@ -1269,7 +1283,12 @@ pub unsafe fn _mm512_mask3_fmsub_ps(a: __m512, b: __m512, c: __m512, k: __mmask1
 pub unsafe fn _mm512_fmsub_pd(a: __m512d, b: __m512d, c: __m512d) -> __m512d {
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f64x8());
-    transmute(vfmadd132pd(a.as_f64x8(), b.as_f64x8(), sub, _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmadd132pd(
+        a.as_f64x8(),
+        b.as_f64x8(),
+        sub,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1313,7 +1332,12 @@ pub unsafe fn _mm512_mask3_fmsub_pd(a: __m512d, b: __m512d, c: __m512d, k: __mma
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vfmadd))] //vfmaddsub132ps or vfmaddsub213ps or vfmaddsub231ps
 pub unsafe fn _mm512_fmaddsub_ps(a: __m512, b: __m512, c: __m512) -> __m512 {
-    transmute(vfmaddsub213ps(a.as_f32x16(), b.as_f32x16(), c.as_f32x16(), _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmaddsub213ps(
+        a.as_f32x16(),
+        b.as_f32x16(),
+        c.as_f32x16(),
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1357,7 +1381,12 @@ pub unsafe fn _mm512_mask3_fmaddsub_ps(a: __m512, b: __m512, c: __m512, k: __mma
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vfmadd))] //vfmaddsub132pd or vfmaddsub213pd or vfmaddsub231pd
 pub unsafe fn _mm512_fmaddsub_pd(a: __m512d, b: __m512d, c: __m512d) -> __m512d {
-    transmute(vfmaddsub213pd(a.as_f64x8(), b.as_f64x8(), c.as_f64x8(), _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmaddsub213pd(
+        a.as_f64x8(),
+        b.as_f64x8(),
+        c.as_f64x8(),
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1403,7 +1432,12 @@ pub unsafe fn _mm512_mask3_fmaddsub_pd(a: __m512d, b: __m512d, c: __m512d, k: __
 pub unsafe fn _mm512_fmsubadd_ps(a: __m512, b: __m512, c: __m512) -> __m512 {
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f32x16());
-    transmute(vfmaddsub213ps(a.as_f32x16(), b.as_f32x16(), sub, _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmaddsub213ps(
+        a.as_f32x16(),
+        b.as_f32x16(),
+        sub,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1449,7 +1483,12 @@ pub unsafe fn _mm512_mask3_fmsubadd_ps(a: __m512, b: __m512, c: __m512, k: __mma
 pub unsafe fn _mm512_fmsubadd_pd(a: __m512d, b: __m512d, c: __m512d) -> __m512d {
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f64x8());
-    transmute(vfmaddsub213pd(a.as_f64x8(), b.as_f64x8(), sub, _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmaddsub213pd(
+        a.as_f64x8(),
+        b.as_f64x8(),
+        sub,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1495,7 +1534,12 @@ pub unsafe fn _mm512_mask3_fmsubadd_pd(a: __m512d, b: __m512d, c: __m512d, k: __
 pub unsafe fn _mm512_fnmadd_ps(a: __m512, b: __m512, c: __m512) -> __m512 {
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, a.as_f32x16());
-    transmute(vfmadd132ps(sub, b.as_f32x16(), c.as_f32x16(), _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmadd132ps(
+        sub,
+        b.as_f32x16(),
+        c.as_f32x16(),
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1541,7 +1585,12 @@ pub unsafe fn _mm512_mask3_fnmadd_ps(a: __m512, b: __m512, c: __m512, k: __mmask
 pub unsafe fn _mm512_fnmadd_pd(a: __m512d, b: __m512d, c: __m512d) -> __m512d {
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, a.as_f64x8());
-    transmute(vfmadd132pd(sub, b.as_f64x8(), c.as_f64x8(), _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmadd132pd(
+        sub,
+        b.as_f64x8(),
+        c.as_f64x8(),
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1588,7 +1637,12 @@ pub unsafe fn _mm512_fnmsub_ps(a: __m512, b: __m512, c: __m512) -> __m512 {
     let zero: f32x16 = mem::zeroed();
     let suba = simd_sub(zero, a.as_f32x16());
     let subc = simd_sub(zero, c.as_f32x16());
-    transmute(vfmadd132ps(suba, b.as_f32x16(), subc, _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmadd132ps(
+        suba,
+        b.as_f32x16(),
+        subc,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1635,7 +1689,12 @@ pub unsafe fn _mm512_fnmsub_pd(a: __m512d, b: __m512d, c: __m512d) -> __m512d {
     let zero: f64x8 = mem::zeroed();
     let suba = simd_sub(zero, a.as_f64x8());
     let subc = simd_sub(zero, c.as_f64x8());
-    transmute(vfmadd132pd(suba, b.as_f64x8(), subc, _MM_FROUND_CUR_DIRECTION))
+    transmute(vfmadd132pd(
+        suba,
+        b.as_f64x8(),
+        subc,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -1710,7 +1769,13 @@ pub unsafe fn _mm512_add_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vaddps, rounding = 8))]
 #[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_add_round_ps(src: __m512, k: __mmask16, a: __m512, b: __m512, rounding: i32) -> __m512 {
+pub unsafe fn _mm512_mask_add_round_ps(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    rounding: i32,
+) -> __m512 {
     macro_rules! call {
         ($imm4:expr) => {
             vaddps(a.as_f32x16(), b.as_f32x16(), $imm4)
@@ -1734,7 +1799,12 @@ pub unsafe fn _mm512_mask_add_round_ps(src: __m512, k: __mmask16, a: __m512, b: 
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vaddps, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_add_round_ps(k: __mmask16, a: __m512, b: __m512, rounding: i32) -> __m512 {
+pub unsafe fn _mm512_maskz_add_round_ps(
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    rounding: i32,
+) -> __m512 {
     macro_rules! call {
         ($imm4:expr) => {
             vaddps(a.as_f32x16(), b.as_f32x16(), $imm4)
@@ -1783,7 +1853,13 @@ pub unsafe fn _mm512_add_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vaddpd, rounding = 8))]
 #[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_add_round_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+pub unsafe fn _mm512_mask_add_round_pd(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    rounding: i32,
+) -> __m512d {
     macro_rules! call {
         ($imm4:expr) => {
             vaddpd(a.as_f64x8(), b.as_f64x8(), $imm4)
@@ -1807,7 +1883,12 @@ pub unsafe fn _mm512_mask_add_round_pd(src: __m512d, k: __mmask8, a: __m512d, b:
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vaddpd, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_add_round_pd(k: __mmask8, a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+pub unsafe fn _mm512_maskz_add_round_pd(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    rounding: i32,
+) -> __m512d {
     macro_rules! call {
         ($imm4:expr) => {
             vaddpd(a.as_f64x8(), b.as_f64x8(), $imm4)
@@ -1856,7 +1937,13 @@ pub unsafe fn _mm512_sub_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vsubps, rounding = 8))]
 #[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_sub_round_ps(src: __m512, k: __mmask16, a: __m512, b: __m512, rounding: i32) -> __m512 {
+pub unsafe fn _mm512_mask_sub_round_ps(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    rounding: i32,
+) -> __m512 {
     macro_rules! call {
         ($imm4:expr) => {
             vsubps(a.as_f32x16(), b.as_f32x16(), $imm4)
@@ -1880,7 +1967,12 @@ pub unsafe fn _mm512_mask_sub_round_ps(src: __m512, k: __mmask16, a: __m512, b: 
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vsubps, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_sub_round_ps(k: __mmask16, a: __m512, b: __m512, rounding: i32) -> __m512 {
+pub unsafe fn _mm512_maskz_sub_round_ps(
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    rounding: i32,
+) -> __m512 {
     macro_rules! call {
         ($imm4:expr) => {
             vsubps(a.as_f32x16(), b.as_f32x16(), $imm4)
@@ -1929,7 +2021,13 @@ pub unsafe fn _mm512_sub_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vsubpd, rounding = 8))]
 #[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_sub_round_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+pub unsafe fn _mm512_mask_sub_round_pd(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    rounding: i32,
+) -> __m512d {
     macro_rules! call {
         ($imm4:expr) => {
             vsubpd(a.as_f64x8(), b.as_f64x8(), $imm4)
@@ -1953,7 +2051,12 @@ pub unsafe fn _mm512_mask_sub_round_pd(src: __m512d, k: __mmask8, a: __m512d, b:
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vsubpd, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_sub_round_pd(k: __mmask8, a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+pub unsafe fn _mm512_maskz_sub_round_pd(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    rounding: i32,
+) -> __m512d {
     macro_rules! call {
         ($imm4:expr) => {
             vsubpd(a.as_f64x8(), b.as_f64x8(), $imm4)
@@ -2002,7 +2105,13 @@ pub unsafe fn _mm512_mul_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmulps, rounding = 8))]
 #[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_mul_round_ps(src: __m512, k: __mmask16, a: __m512, b: __m512, rounding: i32) -> __m512 {
+pub unsafe fn _mm512_mask_mul_round_ps(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    rounding: i32,
+) -> __m512 {
     macro_rules! call {
         ($imm4:expr) => {
             vmulps(a.as_f32x16(), b.as_f32x16(), $imm4)
@@ -2026,7 +2135,12 @@ pub unsafe fn _mm512_mask_mul_round_ps(src: __m512, k: __mmask16, a: __m512, b: 
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmulps, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_mul_round_ps(k: __mmask16, a: __m512, b: __m512, rounding: i32) -> __m512 {
+pub unsafe fn _mm512_maskz_mul_round_ps(
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    rounding: i32,
+) -> __m512 {
     macro_rules! call {
         ($imm4:expr) => {
             vmulps(a.as_f32x16(), b.as_f32x16(), $imm4)
@@ -2075,7 +2189,13 @@ pub unsafe fn _mm512_mul_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmulpd, rounding = 8))]
 #[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_mul_round_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+pub unsafe fn _mm512_mask_mul_round_pd(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    rounding: i32,
+) -> __m512d {
     macro_rules! call {
         ($imm4:expr) => {
             vmulpd(a.as_f64x8(), b.as_f64x8(), $imm4)
@@ -2099,7 +2219,12 @@ pub unsafe fn _mm512_mask_mul_round_pd(src: __m512d, k: __mmask8, a: __m512d, b:
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmulpd, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_mul_round_pd(k: __mmask8, a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+pub unsafe fn _mm512_maskz_mul_round_pd(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    rounding: i32,
+) -> __m512d {
     macro_rules! call {
         ($imm4:expr) => {
             vmulpd(a.as_f64x8(), b.as_f64x8(), $imm4)
@@ -2148,7 +2273,13 @@ pub unsafe fn _mm512_div_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vdivps, rounding = 8))]
 #[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_div_round_ps(src: __m512, k: __mmask16, a: __m512, b: __m512, rounding: i32) -> __m512 {
+pub unsafe fn _mm512_mask_div_round_ps(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    rounding: i32,
+) -> __m512 {
     macro_rules! call {
         ($imm4:expr) => {
             vdivps(a.as_f32x16(), b.as_f32x16(), $imm4)
@@ -2172,7 +2303,12 @@ pub unsafe fn _mm512_mask_div_round_ps(src: __m512, k: __mmask16, a: __m512, b: 
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vdivps, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_div_round_ps(k: __mmask16, a: __m512, b: __m512, rounding: i32) -> __m512 {
+pub unsafe fn _mm512_maskz_div_round_ps(
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    rounding: i32,
+) -> __m512 {
     macro_rules! call {
         ($imm4:expr) => {
             vdivps(a.as_f32x16(), b.as_f32x16(), $imm4)
@@ -2221,7 +2357,13 @@ pub unsafe fn _mm512_div_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vdivpd, rounding = 8))]
 #[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_div_round_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+pub unsafe fn _mm512_mask_div_round_pd(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    rounding: i32,
+) -> __m512d {
     macro_rules! call {
         ($imm4:expr) => {
             vdivpd(a.as_f64x8(), b.as_f64x8(), $imm4)
@@ -2245,7 +2387,12 @@ pub unsafe fn _mm512_mask_div_round_pd(src: __m512d, k: __mmask8, a: __m512d, b:
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vdivpd, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_div_round_pd(k: __mmask8, a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+pub unsafe fn _mm512_maskz_div_round_pd(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    rounding: i32,
+) -> __m512d {
     macro_rules! call {
         ($imm4:expr) => {
             vdivpd(a.as_f64x8(), b.as_f64x8(), $imm4)
@@ -2294,7 +2441,12 @@ pub unsafe fn _mm512_sqrt_round_ps(a: __m512, rounding: i32) -> __m512 {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vsqrtps, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_mask_sqrt_round_ps(src: __m512, k: __mmask16, a: __m512, rounding: i32) -> __m512 {
+pub unsafe fn _mm512_mask_sqrt_round_ps(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+    rounding: i32,
+) -> __m512 {
     macro_rules! call {
         ($imm4:expr) => {
             vsqrtps(a.as_f32x16(), $imm4)
@@ -2367,7 +2519,12 @@ pub unsafe fn _mm512_sqrt_round_pd(a: __m512d, rounding: i32) -> __m512d {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vsqrtpd, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_mask_sqrt_round_pd(src: __m512d, k: __mmask8, a: __m512d, rounding: i32) -> __m512d {
+pub unsafe fn _mm512_mask_sqrt_round_pd(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    rounding: i32,
+) -> __m512d {
     macro_rules! call {
         ($imm4:expr) => {
             vsqrtpd(a.as_f64x8(), $imm4)
@@ -2419,14 +2576,19 @@ pub unsafe fn _mm512_maskz_sqrt_round_pd(k: __mmask8, a: __m512d, rounding: i32)
 pub unsafe fn _mm512_cvt_roundps_epi32(a: __m512, rounding: i32) -> __m512i {
     macro_rules! call {
         ($imm4:expr) => {
-            vcvtps2dq(a.as_f32x16(), _mm512_setzero_si512().as_i32x16(), 0b11111111_11111111, $imm4)
+            vcvtps2dq(
+                a.as_f32x16(),
+                _mm512_setzero_si512().as_i32x16(),
+                0b11111111_11111111,
+                $imm4,
+            )
         };
     }
     let r = constify_imm4_sae!(rounding, call);
     transmute(r)
 }
 
-/// Convert packed single-precision (32-bit) floating-point elements in a to packed 32-bit integers, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set). 
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed 32-bit integers, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// Rounding is done according to the rounding[3:0] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
@@ -2440,7 +2602,12 @@ pub unsafe fn _mm512_cvt_roundps_epi32(a: __m512, rounding: i32) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vcvtps2dq, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_mask_cvt_roundps_epi32(src: __m512i, k: __mmask16, a: __m512, rounding: i32) -> __m512i {
+pub unsafe fn _mm512_mask_cvt_roundps_epi32(
+    src: __m512i,
+    k: __mmask16,
+    a: __m512,
+    rounding: i32,
+) -> __m512i {
     macro_rules! call {
         ($imm4:expr) => {
             vcvtps2dq(a.as_f32x16(), src.as_i32x16(), k, $imm4)
@@ -2450,7 +2617,7 @@ pub unsafe fn _mm512_mask_cvt_roundps_epi32(src: __m512i, k: __mmask16, a: __m51
     transmute(r)
 }
 
-/// Convert packed single-precision (32-bit) floating-point elements in a to packed 32-bit integers, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set). 
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed 32-bit integers, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// Rounding is done according to the rounding[3:0] parameter, which can be one of:
 ///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
@@ -2491,7 +2658,12 @@ pub unsafe fn _mm512_maskz_cvt_roundps_epi32(k: __mmask16, a: __m512, rounding: 
 pub unsafe fn _mm512_cvt_roundps_epu32(a: __m512, rounding: i32) -> __m512i {
     macro_rules! call {
         ($imm4:expr) => {
-            vcvtps2udq(a.as_f32x16(), _mm512_setzero_si512().as_u32x16(), 0b11111111_11111111, $imm4)
+            vcvtps2udq(
+                a.as_f32x16(),
+                _mm512_setzero_si512().as_u32x16(),
+                0b11111111_11111111,
+                $imm4,
+            )
         };
     }
     let r = constify_imm4_sae!(rounding, call);
@@ -2512,7 +2684,12 @@ pub unsafe fn _mm512_cvt_roundps_epu32(a: __m512, rounding: i32) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vcvtps2udq, rounding = 8))]
 #[rustc_args_required_const(3)]
-pub unsafe fn _mm512_mask_cvt_roundps_epu32(src: __m512i, k: __mmask16, a: __m512, rounding: i32) -> __m512i {
+pub unsafe fn _mm512_mask_cvt_roundps_epu32(
+    src: __m512i,
+    k: __mmask16,
+    a: __m512,
+    rounding: i32,
+) -> __m512i {
     macro_rules! call {
         ($imm4:expr) => {
             vcvtps2udq(a.as_f32x16(), src.as_u32x16(), k, $imm4)
@@ -6232,9 +6409,9 @@ extern "C" {
     fn vsqrtpd(a: f64x8, rounding: i32) -> f64x8;
 
     #[link_name = "llvm.x86.avx512.vfmadd.ps.512"]
-    fn vfmadd132ps(a: f32x16, b: f32x16 ,c: f32x16, rounding: i32) -> f32x16;
+    fn vfmadd132ps(a: f32x16, b: f32x16, c: f32x16, rounding: i32) -> f32x16;
     #[link_name = "llvm.x86.avx512.vfmadd.pd.512"]
-    fn vfmadd132pd(a: f64x8, b: f64x8 ,c: f64x8, rounding: i32) -> f64x8;
+    fn vfmadd132pd(a: f64x8, b: f64x8, c: f64x8, rounding: i32) -> f64x8;
 
     #[link_name = "llvm.x86.avx512.vfmaddsub.ps.512"]
     fn vfmaddsub213ps(a: f32x16, b: f32x16, c: f32x16, d: i32) -> f32x16; //from clang
@@ -7668,14 +7845,14 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_fmadd_ps(a, b, c);
         let e = _mm512_setr_ps(
-            1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.
+            1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.,
         );
         assert_eq_m512(r, e);
     }
@@ -7686,16 +7863,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_mask_fmadd_ps(a, 0, b, c);
         assert_eq_m512(r, a);
         let r = _mm512_mask_fmadd_ps(a, 0b00000000_11111111, b, c);
         let e = _mm512_setr_ps(
-            1., 2., 3., 4., 5., 6., 7., 8., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 2., 3., 4., 5., 6., 7., 8., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         assert_eq_m512(r, e);
     }
@@ -7706,16 +7883,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_maskz_fmadd_ps(0, a, b, c);
         assert_eq_m512(r, _mm512_setzero_ps());
         let r = _mm512_maskz_fmadd_ps(0b00000000_11111111, a, b, c);
         let e = _mm512_setr_ps(
-            1., 2., 3., 4., 5., 6., 7., 8., 0., 0., 0., 0., 0., 0., 0., 0.
+            1., 2., 3., 4., 5., 6., 7., 8., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
         assert_eq_m512(r, e);
     }
@@ -7726,16 +7903,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.
+            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         let r = _mm512_mask3_fmadd_ps(a, b, c, 0);
         assert_eq_m512(r, c);
         let r = _mm512_mask3_fmadd_ps(a, b, c, 0b00000000_11111111);
         let e = _mm512_setr_ps(
-            1., 2., 3., 4., 5., 6., 7., 8., 2., 2., 2., 2., 2., 2., 2., 2.
+            1., 2., 3., 4., 5., 6., 7., 8., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         assert_eq_m512(r, e);
     }
@@ -7746,14 +7923,14 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_fmsub_ps(a, b, c);
         let e = _mm512_setr_ps(
-            -1., 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14.
+            -1., 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14.,
         );
         assert_eq_m512(r, e);
     }
@@ -7764,16 +7941,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_mask_fmsub_ps(a, 0, b, c);
         assert_eq_m512(r, a);
         let r = _mm512_mask_fmsub_ps(a, 0b00000000_11111111, b, c);
         let e = _mm512_setr_ps(
-            -1., 0., 1., 2., 3., 4., 5., 6., 1., 1., 1., 1., 1., 1., 1., 1.
+            -1., 0., 1., 2., 3., 4., 5., 6., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         assert_eq_m512(r, e);
     }
@@ -7784,16 +7961,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_maskz_fmsub_ps(0, a, b, c);
         assert_eq_m512(r, _mm512_setzero_ps());
         let r = _mm512_maskz_fmsub_ps(0b00000000_11111111, a, b, c);
         let e = _mm512_setr_ps(
-            -1., 0., 1., 2., 3., 4., 5., 6., 0., 0., 0., 0., 0., 0., 0., 0.
+            -1., 0., 1., 2., 3., 4., 5., 6., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
         assert_eq_m512(r, e);
     }
@@ -7804,16 +7981,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.
+            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         let r = _mm512_mask3_fmsub_ps(a, b, c, 0);
         assert_eq_m512(r, c);
         let r = _mm512_mask3_fmsub_ps(a, b, c, 0b00000000_11111111);
         let e = _mm512_setr_ps(
-            -1., 0., 1., 2., 3., 4., 5., 6., 2., 2., 2., 2., 2., 2., 2., 2.
+            -1., 0., 1., 2., 3., 4., 5., 6., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         assert_eq_m512(r, e);
     }
@@ -7824,14 +8001,14 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_fmaddsub_ps(a, b, c);
         let e = _mm512_setr_ps(
-            -1., 2., 1., 4., 3., 6., 5., 8., 7., 10., 9., 12., 11., 14., 13., 16.
+            -1., 2., 1., 4., 3., 6., 5., 8., 7., 10., 9., 12., 11., 14., 13., 16.,
         );
         assert_eq_m512(r, e);
     }
@@ -7842,16 +8019,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_mask_fmaddsub_ps(a, 0, b, c);
         assert_eq_m512(r, a);
         let r = _mm512_mask_fmaddsub_ps(a, 0b00000000_11111111, b, c);
         let e = _mm512_setr_ps(
-            -1., 2., 1., 4., 3., 6., 5., 8., 1., 1., 1., 1., 1., 1., 1., 1.
+            -1., 2., 1., 4., 3., 6., 5., 8., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         assert_eq_m512(r, e);
     }
@@ -7862,16 +8039,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_maskz_fmaddsub_ps(0, a, b, c);
         assert_eq_m512(r, _mm512_setzero_ps());
         let r = _mm512_maskz_fmaddsub_ps(0b00000000_11111111, a, b, c);
         let e = _mm512_setr_ps(
-            -1., 2., 1., 4., 3., 6., 5., 8., 0., 0., 0., 0., 0., 0., 0., 0.
+            -1., 2., 1., 4., 3., 6., 5., 8., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
         assert_eq_m512(r, e);
     }
@@ -7882,16 +8059,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.
+            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         let r = _mm512_mask3_fmaddsub_ps(a, b, c, 0);
         assert_eq_m512(r, c);
         let r = _mm512_mask3_fmaddsub_ps(a, b, c, 0b00000000_11111111);
         let e = _mm512_setr_ps(
-            -1., 2., 1., 4., 3., 6., 5., 8., 2., 2., 2., 2., 2., 2., 2., 2.
+            -1., 2., 1., 4., 3., 6., 5., 8., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         assert_eq_m512(r, e);
     }
@@ -7902,14 +8079,14 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_fmsubadd_ps(a, b, c);
         let e = _mm512_setr_ps(
-            1., 0., 3., 2., 5., 4., 7., 6., 9., 8., 11., 10., 13., 12., 15., 14.
+            1., 0., 3., 2., 5., 4., 7., 6., 9., 8., 11., 10., 13., 12., 15., 14.,
         );
         assert_eq_m512(r, e);
     }
@@ -7920,16 +8097,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_mask_fmsubadd_ps(a, 0, b, c);
         assert_eq_m512(r, a);
         let r = _mm512_mask_fmsubadd_ps(a, 0b00000000_11111111, b, c);
         let e = _mm512_setr_ps(
-            1., 0., 3., 2., 5., 4., 7., 6., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 0., 3., 2., 5., 4., 7., 6., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         assert_eq_m512(r, e);
     }
@@ -7940,16 +8117,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_maskz_fmsubadd_ps(0, a, b, c);
         assert_eq_m512(r, _mm512_setzero_ps());
         let r = _mm512_maskz_fmsubadd_ps(0b00000000_11111111, a, b, c);
         let e = _mm512_setr_ps(
-            1., 0., 3., 2., 5., 4., 7., 6., 0., 0., 0., 0., 0., 0., 0., 0.
+            1., 0., 3., 2., 5., 4., 7., 6., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
         assert_eq_m512(r, e);
     }
@@ -7960,16 +8137,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.
+            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         let r = _mm512_mask3_fmsubadd_ps(a, b, c, 0);
         assert_eq_m512(r, c);
         let r = _mm512_mask3_fmsubadd_ps(a, b, c, 0b00000000_11111111);
         let e = _mm512_setr_ps(
-            1., 0., 3., 2., 5., 4., 7., 6., 2., 2., 2., 2., 2., 2., 2., 2.
+            1., 0., 3., 2., 5., 4., 7., 6., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         assert_eq_m512(r, e);
     }
@@ -7980,14 +8157,14 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_fnmadd_ps(a, b, c);
         let e = _mm512_setr_ps(
-            1., 0., -1., -2., -3., -4., -5., -6., -7., -8., -9., -10., -11., -12., -13., -14.
+            1., 0., -1., -2., -3., -4., -5., -6., -7., -8., -9., -10., -11., -12., -13., -14.,
         );
         assert_eq_m512(r, e);
     }
@@ -7998,16 +8175,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_mask_fnmadd_ps(a, 0, b, c);
         assert_eq_m512(r, a);
         let r = _mm512_mask_fnmadd_ps(a, 0b00000000_11111111, b, c);
         let e = _mm512_setr_ps(
-            1., 0., -1., -2., -3., -4., -5., -6., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 0., -1., -2., -3., -4., -5., -6., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         assert_eq_m512(r, e);
     }
@@ -8018,16 +8195,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_maskz_fnmadd_ps(0, a, b, c);
         assert_eq_m512(r, _mm512_setzero_ps());
         let r = _mm512_maskz_fnmadd_ps(0b00000000_11111111, a, b, c);
         let e = _mm512_setr_ps(
-            1., 0., -1., -2., -3., -4., -5., -6., 0., 0., 0., 0., 0., 0., 0., 0.
+            1., 0., -1., -2., -3., -4., -5., -6., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
         assert_eq_m512(r, e);
     }
@@ -8038,16 +8215,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.
+            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         let r = _mm512_mask3_fnmadd_ps(a, b, c, 0);
         assert_eq_m512(r, c);
         let r = _mm512_mask3_fnmadd_ps(a, b, c, 0b00000000_11111111);
         let e = _mm512_setr_ps(
-            1., 0., -1., -2., -3., -4., -5., -6., 2., 2., 2., 2., 2., 2., 2., 2.
+            1., 0., -1., -2., -3., -4., -5., -6., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         assert_eq_m512(r, e);
     }
@@ -8058,14 +8235,14 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_fnmsub_ps(a, b, c);
         let e = _mm512_setr_ps(
-            -1., -2., -3., -4., -5., -6., -7., -8., -9., -10., -11., -12., -13., -14., -15., -16.
+            -1., -2., -3., -4., -5., -6., -7., -8., -9., -10., -11., -12., -13., -14., -15., -16.,
         );
         assert_eq_m512(r, e);
     }
@@ -8076,16 +8253,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_mask_fnmsub_ps(a, 0, b, c);
         assert_eq_m512(r, a);
         let r = _mm512_mask_fnmsub_ps(a, 0b00000000_11111111, b, c);
         let e = _mm512_setr_ps(
-            -1., -2., -3., -4., -5., -6., -7., -8., 1., 1., 1., 1., 1., 1., 1., 1.
+            -1., -2., -3., -4., -5., -6., -7., -8., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         assert_eq_m512(r, e);
     }
@@ -8096,16 +8273,16 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let r = _mm512_maskz_fnmsub_ps(0, a, b, c);
         assert_eq_m512(r, _mm512_setzero_ps());
         let r = _mm512_maskz_fnmsub_ps(0b00000000_11111111, a, b, c);
         let e = _mm512_setr_ps(
-            -1., -2., -3., -4., -5., -6., -7., -8., 0., 0., 0., 0., 0., 0., 0., 0.
+            -1., -2., -3., -4., -5., -6., -7., -8., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
         assert_eq_m512(r, e);
     }
@@ -8116,119 +8293,389 @@ mod tests {
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
         let b = _mm512_setr_ps(
-            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.
+            0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         let c = _mm512_setr_ps(
-            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.
+            1., 1., 1., 1., 1., 1., 1., 1., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         let r = _mm512_mask3_fnmsub_ps(a, b, c, 0);
         assert_eq_m512(r, c);
         let r = _mm512_mask3_fnmsub_ps(a, b, c, 0b00000000_11111111);
         let e = _mm512_setr_ps(
-            -1., -2., -3., -4., -5., -6., -7., -8., 2., 2., 2., 2., 2., 2., 2., 2.
+            -1., -2., -3., -4., -5., -6., -7., -8., 2., 2., 2., 2., 2., 2., 2., 2.,
         );
         assert_eq_m512(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_add_round_ps() {
-        let a = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007);
+        let a = _mm512_setr_ps(
+            0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
+        );
         let b = _mm512_set1_ps(-1.);
         let r = _mm512_add_round_ps(a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(-1., 0.5, 1., 2.5, 3., 4.5, 5., 6.5, 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.99999994);
+        let e = _mm512_setr_ps(
+            -1.,
+            0.5,
+            1.,
+            2.5,
+            3.,
+            4.5,
+            5.,
+            6.5,
+            7.,
+            8.5,
+            9.,
+            10.5,
+            11.,
+            12.5,
+            13.,
+            -0.99999994,
+        );
         assert_eq_m512(r, e);
         let r = _mm512_add_round_ps(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(-1., 0.5, 1., 2.5, 3., 4.5, 5., 6.5, 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.9999999);
+        let e = _mm512_setr_ps(
+            -1., 0.5, 1., 2.5, 3., 4.5, 5., 6.5, 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.9999999,
+        );
         assert_eq_m512(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_add_round_ps() {
-        let a = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007);
+        let a = _mm512_setr_ps(
+            0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
+        );
         let b = _mm512_set1_ps(-1.);
         let r = _mm512_mask_add_round_ps(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512(r, a);
-        let r = _mm512_mask_add_round_ps(a, 0b11111111_00000000, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.99999994);
+        let r = _mm512_mask_add_round_ps(
+            a,
+            0b11111111_00000000,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_setr_ps(
+            0.,
+            1.5,
+            2.,
+            3.5,
+            4.,
+            5.5,
+            6.,
+            7.5,
+            7.,
+            8.5,
+            9.,
+            10.5,
+            11.,
+            12.5,
+            13.,
+            -0.99999994,
+        );
         assert_eq_m512(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_maskz_add_round_ps() {
-        let a = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007);
+        let a = _mm512_setr_ps(
+            0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
+        );
         let b = _mm512_set1_ps(-1.);
         let r = _mm512_maskz_add_round_ps(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_add_round_ps(0b11111111_00000000, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(0., 0., 0., 0., 0., 0., 0., 0., 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.99999994);
+        let r = _mm512_maskz_add_round_ps(
+            0b11111111_00000000,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_setr_ps(
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            7.,
+            8.5,
+            9.,
+            10.5,
+            11.,
+            12.5,
+            13.,
+            -0.99999994,
+        );
         assert_eq_m512(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_sub_round_ps() {
-        let a = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007);
+        let a = _mm512_setr_ps(
+            0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
+        );
         let b = _mm512_set1_ps(1.);
         let r = _mm512_sub_round_ps(a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(-1., 0.5, 1., 2.5, 3., 4.5, 5., 6.5, 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.99999994);
+        let e = _mm512_setr_ps(
+            -1.,
+            0.5,
+            1.,
+            2.5,
+            3.,
+            4.5,
+            5.,
+            6.5,
+            7.,
+            8.5,
+            9.,
+            10.5,
+            11.,
+            12.5,
+            13.,
+            -0.99999994,
+        );
         assert_eq_m512(r, e);
         let r = _mm512_sub_round_ps(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(-1., 0.5, 1., 2.5, 3., 4.5, 5., 6.5, 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.9999999);
+        let e = _mm512_setr_ps(
+            -1., 0.5, 1., 2.5, 3., 4.5, 5., 6.5, 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.9999999,
+        );
         assert_eq_m512(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_sub_round_ps() {
-        let a = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007);
+        let a = _mm512_setr_ps(
+            0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
+        );
         let b = _mm512_set1_ps(1.);
         let r = _mm512_mask_sub_round_ps(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512(r, a);
-        let r = _mm512_mask_sub_round_ps(a, 0b11111111_00000000, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.99999994);
+        let r = _mm512_mask_sub_round_ps(
+            a,
+            0b11111111_00000000,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_setr_ps(
+            0.,
+            1.5,
+            2.,
+            3.5,
+            4.,
+            5.5,
+            6.,
+            7.5,
+            7.,
+            8.5,
+            9.,
+            10.5,
+            11.,
+            12.5,
+            13.,
+            -0.99999994,
+        );
         assert_eq_m512(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_maskz_sub_round_ps() {
-        let a = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007);
+        let a = _mm512_setr_ps(
+            0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
+        );
         let b = _mm512_set1_ps(1.);
         let r = _mm512_maskz_sub_round_ps(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_sub_round_ps(0b11111111_00000000, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(0., 0., 0., 0., 0., 0., 0., 0., 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.99999994);
+        let r = _mm512_maskz_sub_round_ps(
+            0b11111111_00000000,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_setr_ps(
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            7.,
+            8.5,
+            9.,
+            10.5,
+            11.,
+            12.5,
+            13.,
+            -0.99999994,
+        );
         assert_eq_m512(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mul_round_ps() {
-        let a = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14.,          0.00000000000000000000007);
+        let a = _mm512_setr_ps(
+            0.,
+            1.5,
+            2.,
+            3.5,
+            4.,
+            5.5,
+            6.,
+            7.5,
+            8.,
+            9.5,
+            10.,
+            11.5,
+            12.,
+            13.5,
+            14.,
+            0.00000000000000000000007,
+        );
         let b = _mm512_set1_ps(0.1);
         let r = _mm512_mul_round_ps(a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(0., 0.15, 0.2, 0.35, 0.4, 0.55, 0.6, 0.75, 0.8, 0.95, 1.0, 1.15, 1.2, 1.35, 1.4, 0.000000000000000000000007000001);
+        let e = _mm512_setr_ps(
+            0.,
+            0.15,
+            0.2,
+            0.35,
+            0.4,
+            0.55,
+            0.6,
+            0.75,
+            0.8,
+            0.95,
+            1.0,
+            1.15,
+            1.2,
+            1.35,
+            1.4,
+            0.000000000000000000000007000001,
+        );
         assert_eq_m512(r, e);
         let r = _mm512_mul_round_ps(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(0., 0.14999999, 0.2, 0.35, 0.4, 0.54999995, 0.59999996, 0.75, 0.8, 0.95, 1.0, 1.15, 1.1999999, 1.3499999, 1.4, 0.000000000000000000000007);
+        let e = _mm512_setr_ps(
+            0.,
+            0.14999999,
+            0.2,
+            0.35,
+            0.4,
+            0.54999995,
+            0.59999996,
+            0.75,
+            0.8,
+            0.95,
+            1.0,
+            1.15,
+            1.1999999,
+            1.3499999,
+            1.4,
+            0.000000000000000000000007,
+        );
         assert_eq_m512(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_mul_round_ps() {
-        let a = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14.,          0.00000000000000000000007);
+        let a = _mm512_setr_ps(
+            0.,
+            1.5,
+            2.,
+            3.5,
+            4.,
+            5.5,
+            6.,
+            7.5,
+            8.,
+            9.5,
+            10.,
+            11.5,
+            12.,
+            13.5,
+            14.,
+            0.00000000000000000000007,
+        );
         let b = _mm512_set1_ps(0.1);
         let r = _mm512_mask_mul_round_ps(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512(r, a);
-        let r = _mm512_mask_mul_round_ps(a, 0b11111111_00000000, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 0.8, 0.95, 1.0, 1.15, 1.2, 1.35, 1.4, 0.000000000000000000000007000001);
+        let r = _mm512_mask_mul_round_ps(
+            a,
+            0b11111111_00000000,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_setr_ps(
+            0.,
+            1.5,
+            2.,
+            3.5,
+            4.,
+            5.5,
+            6.,
+            7.5,
+            0.8,
+            0.95,
+            1.0,
+            1.15,
+            1.2,
+            1.35,
+            1.4,
+            0.000000000000000000000007000001,
+        );
         assert_eq_m512(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_maskz_mul_round_ps() {
-        let a = _mm512_setr_ps(0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14.,          0.00000000000000000000007);
+        let a = _mm512_setr_ps(
+            0.,
+            1.5,
+            2.,
+            3.5,
+            4.,
+            5.5,
+            6.,
+            7.5,
+            8.,
+            9.5,
+            10.,
+            11.5,
+            12.,
+            13.5,
+            14.,
+            0.00000000000000000000007,
+        );
         let b = _mm512_set1_ps(0.1);
         let r = _mm512_maskz_mul_round_ps(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_mul_round_ps(0b11111111_00000000, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(0., 0., 0., 0., 0., 0., 0., 0., 0.8, 0.95, 1.0, 1.15, 1.2, 1.35, 1.4, 0.000000000000000000000007000001);
+        let r = _mm512_maskz_mul_round_ps(
+            0b11111111_00000000,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_setr_ps(
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.8,
+            0.95,
+            1.0,
+            1.15,
+            1.2,
+            1.35,
+            1.4,
+            0.000000000000000000000007000001,
+        );
         assert_eq_m512(r, e);
     }
 
@@ -8250,8 +8697,17 @@ mod tests {
         let b = _mm512_set1_ps(3.);
         let r = _mm512_mask_div_round_ps(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512(r, a);
-        let r = _mm512_mask_div_round_ps(a, 0b11111111_00000000, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(1., 1., 1., 1., 1., 1., 1., 1., 0.33333334, 0.33333334, 0.33333334, 0.33333334, 0.33333334, 0.33333334, 0.33333334, 0.33333334);
+        let r = _mm512_mask_div_round_ps(
+            a,
+            0b11111111_00000000,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_setr_ps(
+            1., 1., 1., 1., 1., 1., 1., 1., 0.33333334, 0.33333334, 0.33333334, 0.33333334,
+            0.33333334, 0.33333334, 0.33333334, 0.33333334,
+        );
         assert_eq_m512(r, e);
     }
 
@@ -8261,18 +8717,26 @@ mod tests {
         let b = _mm512_set1_ps(3.);
         let r = _mm512_maskz_div_round_ps(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_div_round_ps(0b11111111_00000000, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(0., 0., 0., 0., 0., 0., 0., 0., 0.33333334, 0.33333334, 0.33333334, 0.33333334, 0.33333334, 0.33333334, 0.33333334, 0.33333334);
+        let r = _mm512_maskz_div_round_ps(
+            0b11111111_00000000,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_setr_ps(
+            0., 0., 0., 0., 0., 0., 0., 0., 0.33333334, 0.33333334, 0.33333334, 0.33333334,
+            0.33333334, 0.33333334, 0.33333334, 0.33333334,
+        );
         assert_eq_m512(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_sqrt_round_ps() {
         let a = _mm512_set1_ps(3.);
-        let r = _mm512_sqrt_round_ps(a, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
+        let r = _mm512_sqrt_round_ps(a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         let e = _mm512_set1_ps(1.7320508);
         assert_eq_m512(r, e);
-        let r = _mm512_sqrt_round_ps(a, _MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC);
+        let r = _mm512_sqrt_round_ps(a, _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
         let e = _mm512_set1_ps(1.7320509);
         assert_eq_m512(r, e);
     }
@@ -8282,8 +8746,16 @@ mod tests {
         let a = _mm512_set1_ps(3.);
         let r = _mm512_mask_sqrt_round_ps(a, 0, a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512(r, a);
-        let r = _mm512_mask_sqrt_round_ps(a, 0b11111111_00000000, a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(3., 3., 3., 3., 3., 3., 3., 3., 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508);
+        let r = _mm512_mask_sqrt_round_ps(
+            a,
+            0b11111111_00000000,
+            a,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_setr_ps(
+            3., 3., 3., 3., 3., 3., 3., 3., 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508,
+            1.7320508, 1.7320508, 1.7320508,
+        );
         assert_eq_m512(r, e);
     }
 
@@ -8292,14 +8764,23 @@ mod tests {
         let a = _mm512_set1_ps(3.);
         let r = _mm512_maskz_sqrt_round_ps(0, a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_sqrt_round_ps(0b11111111_00000000, a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
-        let e = _mm512_setr_ps(0., 0., 0., 0., 0., 0., 0., 0., 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508);
+        let r = _mm512_maskz_sqrt_round_ps(
+            0b11111111_00000000,
+            a,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_setr_ps(
+            0., 0., 0., 0., 0., 0., 0., 0., 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508,
+            1.7320508, 1.7320508, 1.7320508,
+        );
         assert_eq_m512(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_cvt_roundps_epi32() {
-        let a = _mm512_setr_ps(0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5);
+        let a = _mm512_setr_ps(
+            0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5,
+        );
         let r = _mm512_cvt_roundps_epi32(a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         let e = _mm512_setr_epi32(0, -2, 2, -4, 4, -6, 6, -8, 8, 10, 10, 12, 12, 14, 14, 16);
         assert_eq_m512i(r, e);
@@ -8310,53 +8791,83 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_cvt_roundps_epi32() {
-        let a = _mm512_setr_ps(0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5);
+        let a = _mm512_setr_ps(
+            0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5,
+        );
         let src = _mm512_set1_epi32(0);
-        let r = _mm512_mask_cvt_roundps_epi32(src, 0, a, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
+        let r =
+            _mm512_mask_cvt_roundps_epi32(src, 0, a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512i(r, src);
-        let r = _mm512_mask_cvt_roundps_epi32(src, 0b00000000_11111111, a, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
+        let r = _mm512_mask_cvt_roundps_epi32(
+            src,
+            0b00000000_11111111,
+            a,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
         let e = _mm512_setr_epi32(0, -2, 2, -4, 4, -6, 6, -8, 0, 0, 0, 0, 0, 0, 0, 0);
         assert_eq_m512i(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_maskz_cvt_roundps_epi32() {
-        let a = _mm512_setr_ps(0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5);
-        let r = _mm512_maskz_cvt_roundps_epi32(0, a, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
+        let a = _mm512_setr_ps(
+            0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5,
+        );
+        let r = _mm512_maskz_cvt_roundps_epi32(0, a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512i(r, _mm512_setzero_si512());
-        let r = _mm512_maskz_cvt_roundps_epi32(0b00000000_11111111, a, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
+        let r = _mm512_maskz_cvt_roundps_epi32(
+            0b00000000_11111111,
+            a,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
         let e = _mm512_setr_epi32(0, -2, 2, -4, 4, -6, 6, -8, 0, 0, 0, 0, 0, 0, 0, 0);
         assert_eq_m512i(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_cvt_roundps_epu32() {
-        let a = _mm512_setr_ps(0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5);
-        let r = _mm512_cvt_roundps_epu32(a, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
+        let a = _mm512_setr_ps(
+            0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5,
+        );
+        let r = _mm512_cvt_roundps_epu32(a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         let e = _mm512_setr_epi32(0, -1, 2, -1, 4, -1, 6, -1, 8, 10, 10, 12, 12, 14, 14, 16);
         assert_eq_m512i(r, e);
-        let r = _mm512_cvt_roundps_epu32(a, _MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC);
+        let r = _mm512_cvt_roundps_epu32(a, _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
         let e = _mm512_setr_epi32(0, -1, 2, -1, 4, -1, 6, -1, 8, 9, 10, 11, 12, 13, 14, 15);
         assert_eq_m512i(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_cvt_roundps_epu32() {
-        let a = _mm512_setr_ps(0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5);
+        let a = _mm512_setr_ps(
+            0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5,
+        );
         let src = _mm512_set1_epi32(0);
-        let r = _mm512_mask_cvt_roundps_epu32(src, 0, a, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
+        let r =
+            _mm512_mask_cvt_roundps_epu32(src, 0, a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512i(r, src);
-        let r = _mm512_mask_cvt_roundps_epu32(src, 0b00000000_11111111, a, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
+        let r = _mm512_mask_cvt_roundps_epu32(
+            src,
+            0b00000000_11111111,
+            a,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
         let e = _mm512_setr_epi32(0, -1, 2, -1, 4, -1, 6, -1, 0, 0, 0, 0, 0, 0, 0, 0);
         assert_eq_m512i(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_maskz_cvt_roundps_epu32() {
-        let a = _mm512_setr_ps(0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5);
-        let r = _mm512_maskz_cvt_roundps_epu32(0, a, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
+        let a = _mm512_setr_ps(
+            0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5,
+        );
+        let r = _mm512_maskz_cvt_roundps_epu32(0, a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
         assert_eq_m512i(r, _mm512_setzero_si512());
-        let r = _mm512_maskz_cvt_roundps_epu32(0b00000000_11111111, a, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
+        let r = _mm512_maskz_cvt_roundps_epu32(
+            0b00000000_11111111,
+            a,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
         let e = _mm512_setr_epi32(0, -1, 2, -1, 4, -1, 6, -1, 0, 0, 0, 0, 0, 0, 0, 0);
         assert_eq_m512i(r, e);
     }
