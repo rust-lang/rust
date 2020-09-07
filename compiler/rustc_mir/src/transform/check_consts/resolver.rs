@@ -165,23 +165,19 @@ where
     }
 }
 
-impl<Q> dataflow::BottomValue for FlowSensitiveAnalysis<'_, '_, '_, Q> {
-    const BOTTOM_VALUE: bool = false;
-}
-
 impl<Q> dataflow::AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {
-    type Idx = Local;
+    type Domain = BitSet<Local>;
 
     const NAME: &'static str = Q::ANALYSIS_NAME;
 
-    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
-        body.local_decls.len()
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        BitSet::new_empty(body.local_decls.len())
     }
 
-    fn initialize_start_block(&self, _body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, _body: &mir::Body<'tcx>, state: &mut Self::Domain) {
         self.transfer_function(state).initialize_state();
     }
 }
@@ -192,7 +188,7 @@ where
 {
     fn apply_statement_effect(
         &self,
-        state: &mut BitSet<Self::Idx>,
+        state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -201,7 +197,7 @@ where
 
     fn apply_terminator_effect(
         &self,
-        state: &mut BitSet<Self::Idx>,
+        state: &mut Self::Domain,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
@@ -210,7 +206,7 @@ where
 
     fn apply_call_return_effect(
         &self,
-        state: &mut BitSet<Self::Idx>,
+        state: &mut Self::Domain,
         block: BasicBlock,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],

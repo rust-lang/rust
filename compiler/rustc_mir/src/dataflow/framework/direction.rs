@@ -18,7 +18,7 @@ pub trait Direction {
     /// `effects.start()` must precede or equal `effects.end()` in this direction.
     fn apply_effects_in_range<A>(
         analysis: &A,
-        state: &mut BitSet<A::Idx>,
+        state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
         effects: RangeInclusive<EffectIndex>,
@@ -27,7 +27,7 @@ pub trait Direction {
 
     fn apply_effects_in_block<A>(
         analysis: &A,
-        state: &mut BitSet<A::Idx>,
+        state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
     ) where
@@ -55,9 +55,9 @@ pub trait Direction {
         tcx: TyCtxt<'tcx>,
         body: &mir::Body<'tcx>,
         dead_unwinds: Option<&BitSet<BasicBlock>>,
-        exit_state: &mut BitSet<A::Idx>,
+        exit_state: &mut A::Domain,
         block: (BasicBlock, &'_ mir::BasicBlockData<'tcx>),
-        propagate: impl FnMut(BasicBlock, &BitSet<A::Idx>),
+        propagate: impl FnMut(BasicBlock, &A::Domain),
     ) where
         A: Analysis<'tcx>;
 }
@@ -72,7 +72,7 @@ impl Direction for Backward {
 
     fn apply_effects_in_block<A>(
         analysis: &A,
-        state: &mut BitSet<A::Idx>,
+        state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
     ) where
@@ -112,7 +112,7 @@ impl Direction for Backward {
 
     fn apply_effects_in_range<A>(
         analysis: &A,
-        state: &mut BitSet<A::Idx>,
+        state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
         effects: RangeInclusive<EffectIndex>,
@@ -224,9 +224,9 @@ impl Direction for Backward {
         _tcx: TyCtxt<'tcx>,
         body: &mir::Body<'tcx>,
         dead_unwinds: Option<&BitSet<BasicBlock>>,
-        exit_state: &mut BitSet<A::Idx>,
+        exit_state: &mut A::Domain,
         (bb, _bb_data): (BasicBlock, &'_ mir::BasicBlockData<'tcx>),
-        mut propagate: impl FnMut(BasicBlock, &BitSet<A::Idx>),
+        mut propagate: impl FnMut(BasicBlock, &A::Domain),
     ) where
         A: Analysis<'tcx>,
     {
@@ -281,7 +281,7 @@ impl Direction for Forward {
 
     fn apply_effects_in_block<A>(
         analysis: &A,
-        state: &mut BitSet<A::Idx>,
+        state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
     ) where
@@ -321,7 +321,7 @@ impl Direction for Forward {
 
     fn apply_effects_in_range<A>(
         analysis: &A,
-        state: &mut BitSet<A::Idx>,
+        state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
         effects: RangeInclusive<EffectIndex>,
@@ -428,9 +428,9 @@ impl Direction for Forward {
         tcx: TyCtxt<'tcx>,
         body: &mir::Body<'tcx>,
         dead_unwinds: Option<&BitSet<BasicBlock>>,
-        exit_state: &mut BitSet<A::Idx>,
+        exit_state: &mut A::Domain,
         (bb, bb_data): (BasicBlock, &'_ mir::BasicBlockData<'tcx>),
-        mut propagate: impl FnMut(BasicBlock, &BitSet<A::Idx>),
+        mut propagate: impl FnMut(BasicBlock, &A::Domain),
     ) where
         A: Analysis<'tcx>,
     {
@@ -499,7 +499,7 @@ impl Direction for Forward {
                         // MIR building adds discriminants to the `values` array in the same order as they
                         // are yielded by `AdtDef::discriminants`. We rely on this to match each
                         // discriminant in `values` to its corresponding variant in linear time.
-                        let mut tmp = BitSet::new_empty(exit_state.domain_size());
+                        let mut tmp = analysis.bottom_value(body);
                         let mut discriminants = enum_def.discriminants(tcx);
                         for (value, target) in values.iter().zip(targets.iter().copied()) {
                             let (variant_idx, _) =
@@ -508,7 +508,7 @@ impl Direction for Forward {
                                          from that of `SwitchInt::values`",
                                 );
 
-                            tmp.overwrite(exit_state);
+                            tmp.clone_from(exit_state);
                             analysis.apply_discriminant_switch_effect(
                                 &mut tmp,
                                 bb,

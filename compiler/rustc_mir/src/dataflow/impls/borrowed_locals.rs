@@ -82,15 +82,15 @@ impl<K> AnalysisDomain<'tcx> for MaybeBorrowedLocals<K>
 where
     K: BorrowAnalysisKind<'tcx>,
 {
-    type Idx = Local;
-
+    type Domain = BitSet<Local>;
     const NAME: &'static str = K::ANALYSIS_NAME;
 
-    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
-        body.local_decls().len()
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = unborrowed
+        BitSet::new_empty(body.local_decls().len())
     }
 
-    fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
         // No locals are aliased on function entry
     }
 }
@@ -99,6 +99,8 @@ impl<K> GenKillAnalysis<'tcx> for MaybeBorrowedLocals<K>
 where
     K: BorrowAnalysisKind<'tcx>,
 {
+    type Idx = Local;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -126,11 +128,6 @@ where
         _dest_place: mir::Place<'tcx>,
     ) {
     }
-}
-
-impl<K> BottomValue for MaybeBorrowedLocals<K> {
-    // bottom = unborrowed
-    const BOTTOM_VALUE: bool = false;
 }
 
 /// A `Visitor` that defines the transfer function for `MaybeBorrowedLocals`.

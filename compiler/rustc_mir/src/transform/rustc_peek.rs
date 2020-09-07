@@ -1,4 +1,6 @@
-use rustc_ast as ast;
+use std::borrow::Borrow;
+
+use rustc_ast::ast;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -16,7 +18,7 @@ use crate::dataflow::impls::{
 use crate::dataflow::move_paths::{HasMoveData, MoveData};
 use crate::dataflow::move_paths::{LookupResult, MovePathIndex};
 use crate::dataflow::MoveDataParamEnv;
-use crate::dataflow::{Analysis, Results, ResultsCursor};
+use crate::dataflow::{Analysis, JoinSemiLattice, Results, ResultsCursor};
 
 pub struct SanityCheck;
 
@@ -248,25 +250,26 @@ pub trait RustcPeekAt<'tcx>: Analysis<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         place: mir::Place<'tcx>,
-        flow_state: &BitSet<Self::Idx>,
+        flow_state: &Self::Domain,
         call: PeekCall,
     );
 }
 
-impl<'tcx, A> RustcPeekAt<'tcx> for A
+impl<'tcx, A, D> RustcPeekAt<'tcx> for A
 where
-    A: Analysis<'tcx, Idx = MovePathIndex> + HasMoveData<'tcx>,
+    A: Analysis<'tcx, Domain = D> + HasMoveData<'tcx>,
+    D: JoinSemiLattice + Clone + Borrow<BitSet<MovePathIndex>>,
 {
     fn peek_at(
         &self,
         tcx: TyCtxt<'tcx>,
         place: mir::Place<'tcx>,
-        flow_state: &BitSet<Self::Idx>,
+        flow_state: &Self::Domain,
         call: PeekCall,
     ) {
         match self.move_data().rev_lookup.find(place.as_ref()) {
             LookupResult::Exact(peek_mpi) => {
-                let bit_state = flow_state.contains(peek_mpi);
+                let bit_state = flow_state.borrow().contains(peek_mpi);
                 debug!("rustc_peek({:?} = &{:?}) bit_state: {}", call.arg, place, bit_state);
                 if !bit_state {
                     tcx.sess.span_err(call.span, "rustc_peek: bit not set");

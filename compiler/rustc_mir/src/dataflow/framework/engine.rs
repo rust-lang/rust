@@ -1,5 +1,6 @@
 //! A solver for dataflow problems.
 
+use std::borrow::BorrowMut;
 use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
@@ -9,14 +10,16 @@ use rustc_data_structures::work_queue::WorkQueue;
 use rustc_graphviz as dot;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{self, traversal, BasicBlock};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 
+use super::fmt::DebugWithContext;
 use super::graphviz;
 use super::{
-    visit_results, Analysis, Direction, GenKillAnalysis, GenKillSet, ResultsCursor, ResultsVisitor,
+    visit_results, Analysis, Direction, GenKill, GenKillAnalysis, GenKillSet, JoinSemiLattice,
+    ResultsCursor, ResultsVisitor,
 };
 use crate::util::pretty::dump_enabled;
 
@@ -26,7 +29,7 @@ where
     A: Analysis<'tcx>,
 {
     pub analysis: A,
-    pub(super) entry_sets: IndexVec<BasicBlock, BitSet<A::Idx>>,
+    pub(super) entry_sets: IndexVec<BasicBlock, A::Domain>,
 }
 
 impl<A> Results<'tcx, A>
@@ -39,7 +42,7 @@ where
     }
 
     /// Gets the dataflow state for the given block.
-    pub fn entry_set_for_block(&self, block: BasicBlock) -> &BitSet<A::Idx> {
+    pub fn entry_set_for_block(&self, block: BasicBlock) -> &A::Domain {
         &self.entry_sets[block]
     }
 
@@ -47,7 +50,7 @@ where
         &self,
         body: &'mir mir::Body<'tcx>,
         blocks: impl IntoIterator<Item = BasicBlock>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = A::Domain>,
     ) {
         visit_results(body, blocks, self, vis)
     }
@@ -55,7 +58,7 @@ where
     pub fn visit_reachable_with(
         &self,
         body: &'mir mir::Body<'tcx>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = A::Domain>,
     ) {
         let blocks = mir::traversal::reachable(body);
         visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
@@ -64,7 +67,7 @@ where
     pub fn visit_in_rpo_with(
         &self,
         body: &'mir mir::Body<'tcx>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = A::Domain>,
     ) {
         let blocks = mir::traversal::reverse_postorder(body);
         visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
@@ -76,21 +79,27 @@ pub struct Engine<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    bits_per_block: usize,
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
     def_id: DefId,
     dead_unwinds: Option<&'a BitSet<BasicBlock>>,
-    entry_sets: IndexVec<BasicBlock, BitSet<A::Idx>>,
+    entry_sets: IndexVec<BasicBlock, A::Domain>,
     analysis: A,
 
     /// Cached, cumulative transfer functions for each block.
-    trans_for_block: Option<IndexVec<BasicBlock, GenKillSet<A::Idx>>>,
+    //
+    // FIXME(ecstaticmorse): This boxed `Fn` trait object is invoked inside a tight loop for
+    // gen/kill problems on cyclic CFGs. This is not ideal, but it doesn't seem to degrade
+    // performance in practice. I've tried a few ways to avoid this, but they have downsides. See
+    // the message for the commit that added this FIXME for more information.
+    apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
 }
 
-impl<A> Engine<'a, 'tcx, A>
+impl<A, D, T> Engine<'a, 'tcx, A>
 where
-    A: GenKillAnalysis<'tcx>,
+    A: GenKillAnalysis<'tcx, Idx = T, Domain = D>,
+    D: Clone + JoinSemiLattice + GenKill<T> + BorrowMut<BitSet<T>>,
+    T: Idx,
 {
     /// Creates a new `Engine` to solve a gen-kill dataflow problem.
     pub fn new_gen_kill(
@@ -109,22 +118,26 @@ where
 
         // Otherwise, compute and store the cumulative transfer function for each block.
 
-        let bits_per_block = analysis.bits_per_block(body);
-        let mut trans_for_block =
-            IndexVec::from_elem(GenKillSet::identity(bits_per_block), body.basic_blocks());
+        let identity = GenKillSet::identity(analysis.bottom_value(body).borrow().domain_size());
+        let mut trans_for_block = IndexVec::from_elem(identity, body.basic_blocks());
 
         for (block, block_data) in body.basic_blocks().iter_enumerated() {
             let trans = &mut trans_for_block[block];
             A::Direction::gen_kill_effects_in_block(&analysis, trans, block, block_data);
         }
 
-        Self::new(tcx, body, def_id, analysis, Some(trans_for_block))
+        let apply_trans = Box::new(move |bb: BasicBlock, state: &mut A::Domain| {
+            trans_for_block[bb].apply(state.borrow_mut());
+        });
+
+        Self::new(tcx, body, def_id, analysis, Some(apply_trans as Box<_>))
     }
 }
 
-impl<A> Engine<'a, 'tcx, A>
+impl<A, D> Engine<'a, 'tcx, A>
 where
-    A: Analysis<'tcx>,
+    A: Analysis<'tcx, Domain = D>,
+    D: Clone + JoinSemiLattice,
 {
     /// Creates a new `Engine` to solve a dataflow problem with an arbitrary transfer
     /// function.
@@ -145,32 +158,24 @@ where
         body: &'a mir::Body<'tcx>,
         def_id: DefId,
         analysis: A,
-        trans_for_block: Option<IndexVec<BasicBlock, GenKillSet<A::Idx>>>,
+        apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
     ) -> Self {
-        let bits_per_block = analysis.bits_per_block(body);
-
-        let bottom_value_set = if A::BOTTOM_VALUE {
-            BitSet::new_filled(bits_per_block)
-        } else {
-            BitSet::new_empty(bits_per_block)
-        };
-
-        let mut entry_sets = IndexVec::from_elem(bottom_value_set.clone(), body.basic_blocks());
+        let bottom_value = analysis.bottom_value(body);
+        let mut entry_sets = IndexVec::from_elem(bottom_value.clone(), body.basic_blocks());
         analysis.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
 
-        if A::Direction::is_backward() && entry_sets[mir::START_BLOCK] != bottom_value_set {
+        if A::Direction::is_backward() && entry_sets[mir::START_BLOCK] != bottom_value {
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
         Engine {
             analysis,
-            bits_per_block,
             tcx,
             body,
             def_id,
             dead_unwinds: None,
             entry_sets,
-            trans_for_block,
+            apply_trans_for_block,
         }
     }
 
@@ -185,16 +190,18 @@ where
     }
 
     /// Computes the fixpoint for this dataflow problem and returns it.
-    pub fn iterate_to_fixpoint(self) -> Results<'tcx, A> {
+    pub fn iterate_to_fixpoint(self) -> Results<'tcx, A>
+    where
+        A::Domain: DebugWithContext<A>,
+    {
         let Engine {
             analysis,
-            bits_per_block,
             body,
             dead_unwinds,
             def_id,
             mut entry_sets,
             tcx,
-            trans_for_block,
+            apply_trans_for_block,
             ..
         } = self;
 
@@ -213,14 +220,14 @@ where
             }
         }
 
-        let mut state = BitSet::new_empty(bits_per_block);
+        let mut state = analysis.bottom_value(body);
         while let Some(bb) = dirty_queue.pop() {
             let bb_data = &body[bb];
 
             // Apply the block transfer function, using the cached one if it exists.
-            state.overwrite(&entry_sets[bb]);
-            match &trans_for_block {
-                Some(trans_for_block) => trans_for_block[bb].apply(&mut state),
+            state.clone_from(&entry_sets[bb]);
+            match &apply_trans_for_block {
+                Some(apply) => apply(bb, &mut state),
                 None => A::Direction::apply_effects_in_block(&analysis, &mut state, bb, bb_data),
             }
 
@@ -231,8 +238,8 @@ where
                 dead_unwinds,
                 &mut state,
                 (bb, bb_data),
-                |target: BasicBlock, state: &BitSet<A::Idx>| {
-                    let set_changed = analysis.join(&mut entry_sets[target], state);
+                |target: BasicBlock, state: &A::Domain| {
+                    let set_changed = entry_sets[target].join(state);
                     if set_changed {
                         dirty_queue.insert(target);
                     }
@@ -242,7 +249,7 @@ where
 
         let results = Results { analysis, entry_sets };
 
-        let res = write_graphviz_results(tcx, def_id, &body, &results, trans_for_block);
+        let res = write_graphviz_results(tcx, def_id, &body, &results);
         if let Err(e) = res {
             warn!("Failed to write graphviz dataflow results: {}", e);
         }
@@ -260,10 +267,10 @@ fn write_graphviz_results<A>(
     def_id: DefId,
     body: &mir::Body<'tcx>,
     results: &Results<'tcx, A>,
-    block_transfer_functions: Option<IndexVec<BasicBlock, GenKillSet<A::Idx>>>,
 ) -> std::io::Result<()>
 where
     A: Analysis<'tcx>,
+    A::Domain: DebugWithContext<A>,
 {
     let attrs = match RustcMirAttrs::parse(tcx, def_id) {
         Ok(attrs) => attrs,
@@ -290,26 +297,15 @@ where
         None => return Ok(()),
     };
 
-    let bits_per_block = results.analysis.bits_per_block(body);
-
-    let mut formatter: Box<dyn graphviz::StateFormatter<'tcx, _>> = match attrs.formatter {
-        Some(sym::two_phase) => Box::new(graphviz::TwoPhaseDiff::new(bits_per_block)),
-        Some(sym::gen_kill) => {
-            if let Some(trans_for_block) = block_transfer_functions {
-                Box::new(graphviz::BlockTransferFunc::new(body, trans_for_block))
-            } else {
-                Box::new(graphviz::SimpleDiff::new(body, &results))
-            }
-        }
-
-        // Default to the `SimpleDiff` output style.
-        _ => Box::new(graphviz::SimpleDiff::new(body, &results)),
+    let style = match attrs.formatter {
+        Some(sym::two_phase) => graphviz::OutputStyle::BeforeAndAfter,
+        _ => graphviz::OutputStyle::AfterOnly,
     };
 
     debug!("printing dataflow results for {:?} to {}", def_id, path.display());
     let mut buf = Vec::new();
 
-    let graphviz = graphviz::Formatter::new(body, def_id, results, &mut *formatter);
+    let graphviz = graphviz::Formatter::new(body, def_id, results, style);
     dot::render_opts(&graphviz, &mut buf, &[dot::RenderOption::Monospace])?;
 
     if let Some(parent) = path.parent() {

@@ -4,6 +4,7 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 
 use rustc_index::bit_set::BitSet;
+use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
@@ -26,7 +27,7 @@ where
 {
     body: &'mir mir::Body<'tcx>,
     results: R,
-    state: BitSet<A::Idx>,
+    state: A::Domain,
 
     pos: CursorPosition,
 
@@ -46,17 +47,16 @@ where
 {
     /// Returns a new cursor that can inspect `results`.
     pub fn new(body: &'mir mir::Body<'tcx>, results: R) -> Self {
-        let bits_per_block = results.borrow().entry_set_for_block(mir::START_BLOCK).domain_size();
-
+        let bottom_value = results.borrow().analysis.bottom_value(body);
         ResultsCursor {
             body,
             results,
 
-            // Initialize to an empty `BitSet` and set `state_needs_reset` to tell the cursor that
+            // Initialize to the `bottom_value` and set `state_needs_reset` to tell the cursor that
             // it needs to reset to block entry before the first seek. The cursor position is
             // immaterial.
             state_needs_reset: true,
-            state: BitSet::new_empty(bits_per_block),
+            state: bottom_value,
             pos: CursorPosition::block_entry(mir::START_BLOCK),
 
             #[cfg(debug_assertions)]
@@ -68,21 +68,19 @@ where
         self.body
     }
 
-    /// Returns the `Analysis` used to generate the underlying results.
+    /// Returns the underlying `Results`.
+    pub fn results(&self) -> &Results<'tcx, A> {
+        &self.results.borrow()
+    }
+
+    /// Returns the `Analysis` used to generate the underlying `Results`.
     pub fn analysis(&self) -> &A {
         &self.results.borrow().analysis
     }
 
     /// Returns the dataflow state at the current location.
-    pub fn get(&self) -> &BitSet<A::Idx> {
+    pub fn get(&self) -> &A::Domain {
         &self.state
-    }
-
-    /// Returns `true` if the dataflow state at the current location contains the given element.
-    ///
-    /// Shorthand for `self.get().contains(elem)`
-    pub fn contains(&self, elem: A::Idx) -> bool {
-        self.state.contains(elem)
     }
 
     /// Resets the cursor to hold the entry set for the given basic block.
@@ -94,7 +92,7 @@ where
         #[cfg(debug_assertions)]
         assert!(self.reachable_blocks.contains(block));
 
-        self.state.overwrite(&self.results.borrow().entry_set_for_block(block));
+        self.state.clone_from(&self.results.borrow().entry_set_for_block(block));
         self.pos = CursorPosition::block_entry(block);
         self.state_needs_reset = false;
     }
@@ -202,9 +200,20 @@ where
     ///
     /// This can be used, e.g., to apply the call return effect directly to the cursor without
     /// creating an extra copy of the dataflow state.
-    pub fn apply_custom_effect(&mut self, f: impl FnOnce(&A, &mut BitSet<A::Idx>)) {
+    pub fn apply_custom_effect(&mut self, f: impl FnOnce(&A, &mut A::Domain)) {
         f(&self.results.borrow().analysis, &mut self.state);
         self.state_needs_reset = true;
+    }
+}
+
+impl<'mir, 'tcx, A, R, T> ResultsCursor<'mir, 'tcx, A, R>
+where
+    A: Analysis<'tcx, Domain = BitSet<T>>,
+    T: Idx,
+    R: Borrow<Results<'tcx, A>>,
+{
+    pub fn contains(&self, elem: T) -> bool {
+        self.get().contains(elem)
     }
 }
 
