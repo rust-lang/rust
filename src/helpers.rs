@@ -530,23 +530,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let nanoseconds_scalar = this.read_scalar(nanoseconds_place.into())?;
         let nanoseconds = nanoseconds_scalar.to_machine_isize(this)?;
 
-        let seconds: u64 = if let Ok(s) = seconds.try_into() {
-            s
-        } else {
+        Ok((move || {
             // tv_sec must be non-negative.
-            return Ok(None);
-        };
-        let nanoseconds: u32 = if let Ok(ns) = nanoseconds.try_into() {
-            if ns >= 1_000_000_000 {
-                // tv_nsec must not be greater than 999,999,999.
-                return Ok(None);
-            }
-            ns
-        } else {
+            let seconds: u64 = seconds.try_into().ok()?;
             // tv_nsec must be non-negative.
-            return Ok(None);
-        };
-        Ok(Some(Duration::new(seconds, nanoseconds)))
+            let nanoseconds: u32 = nanoseconds.try_into().ok()?;
+            if nanoseconds >= 1_000_000_000 {
+                // tv_nsec must not be greater than 999,999,999.
+                return None;
+            }
+            Some(Duration::new(seconds, nanoseconds))
+        })())
     }
 }
 
