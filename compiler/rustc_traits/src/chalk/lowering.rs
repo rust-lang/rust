@@ -767,7 +767,10 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
             | ty::PredicateAtom::ClosureKind(..)
             | ty::PredicateAtom::Subtype(..)
             | ty::PredicateAtom::ConstEvaluatable(..)
-            | ty::PredicateAtom::ConstEquate(..) => bug!("unexpected predicate {}", &self),
+            | ty::PredicateAtom::ConstEquate(..)
+            | ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                bug!("unexpected predicate {}", &self)
+            }
         }
     }
 }

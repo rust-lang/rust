@@ -24,11 +24,11 @@ LL |     foo((), drop)
 LL | pub fn drop<T>(_x: T) {}
    |             - required by this bound in `std::mem::drop`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `<() as Trait<'_>>::Item`
+   = help: the trait `Sized` is not implemented for `<() as Trait<'_>>::Item`
 help: consider further restricting the associated type
    |
-LL | fn main() where <() as Trait<'_>>::Item: std::marker::Sized {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn main() where <() as Trait<'_>>::Item: Sized {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

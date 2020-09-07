@@ -24,9 +24,9 @@ impl<'a, 'b> Lam<&'a &'b u8> for L2 {
 
 trait Case1 {
     type C: Clone + Iterator<Item: Send + Iterator<Item: for<'a> Lam<&'a u8, App: Debug>> + Sync>;
-    //~^ ERROR `<<Self as Case1>::C as std::iter::Iterator>::Item` is not an iterator
-    //~| ERROR `<<Self as Case1>::C as std::iter::Iterator>::Item` cannot be sent between threads safely
-    //~| ERROR `<<Self as Case1>::C as std::iter::Iterator>::Item` cannot be shared between threads safely
+    //~^ ERROR `<<Self as Case1>::C as Iterator>::Item` is not an iterator
+    //~| ERROR `<<Self as Case1>::C as Iterator>::Item` cannot be sent between threads safely
+    //~| ERROR `<<Self as Case1>::C as Iterator>::Item` cannot be shared between threads safely
 }
 
 pub struct S1;

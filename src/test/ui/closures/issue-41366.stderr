@@ -15,12 +15,12 @@ error[E0277]: the size for values of type `<u32 as T<'_>>::V` cannot be known at
 LL |     (&|_| ()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
    |        ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `<u32 as T<'_>>::V`
+   = help: the trait `Sized` is not implemented for `<u32 as T<'_>>::V`
    = help: unsized locals are gated as an unstable feature
 help: consider further restricting the associated type
    |
-LL | fn main() where <u32 as T<'_>>::V: std::marker::Sized {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn main() where <u32 as T<'_>>::V: Sized {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     (&|&_| ()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);

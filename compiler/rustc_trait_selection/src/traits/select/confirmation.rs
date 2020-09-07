@@ -125,29 +125,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.commit_unconditionally(|_| {
             let tcx = self.tcx();
 
-            let bound_self_ty = self.infcx.shallow_resolve(obligation.self_ty());
-            let (def_id, substs) = match *bound_self_ty.skip_binder().kind() {
+            let trait_predicate = self.infcx.shallow_resolve(obligation.predicate);
+            let placeholder_trait_predicate =
+                self.infcx().replace_bound_vars_with_placeholders(&trait_predicate);
+            let placeholder_self_ty = placeholder_trait_predicate.self_ty();
+            let (def_id, substs) = match *placeholder_self_ty.kind() {
                 ty::Projection(proj) => (proj.item_def_id, proj.substs),
                 ty::Opaque(def_id, substs) => (def_id, substs),
-                _ => bug!("projection candidate for unexpected type: {:?}", bound_self_ty),
+                _ => bug!("projection candidate for unexpected type: {:?}", placeholder_self_ty),
             };
 
             let candidate_predicate = tcx.item_bounds(def_id)[idx].subst(tcx, substs);
             let candidate = candidate_predicate
                 .to_opt_poly_trait_ref()
                 .expect("projection candidate is not a trait predicate");
-            let Normalized { value: candidate, mut obligations } = normalize_with_depth(
+            let mut obligations = Vec::new();
+            let candidate = normalize_with_depth_to(
                 self,
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
                 &candidate,
+                &mut obligations,
             );
 
             obligations.extend(
                 self.infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .sup(obligation.predicate.to_poly_trait_ref(), candidate)
+                    .sup(placeholder_trait_predicate.trait_ref.to_poly_trait_ref(), candidate)
                     .map(|InferOk { obligations, .. }| obligations)
                     .unwrap_or_else(|_| {
                         bug!(
@@ -158,7 +163,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }),
             );
 
-            if let ty::Projection(..) = bound_self_ty.skip_binder().kind() {
+            if let ty::Projection(..) = placeholder_self_ty.kind() {
                 for predicate in tcx.predicates_of(def_id).instantiate_own(tcx, substs).predicates {
                     let normalized = normalize_with_depth_to(
                         self,

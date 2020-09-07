@@ -1,13 +1,13 @@
-error[E0277]: the trait bound `T: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `T: Clone` is not satisfied
   --> $DIR/bounds-are-checked-2.rs:6:13
    |
 LL | type X<T> = impl Clone;
-   |             ^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `T`
+   |             ^^^^^^^^^^ the trait `Clone` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |
-LL | type X<T: std::clone::Clone> = impl Clone;
-   |         ^^^^^^^^^^^^^^^^^^^
+LL | type X<T: Clone> = impl Clone;
+   |         ^^^^^^^
 
 error: aborting due to previous error
 

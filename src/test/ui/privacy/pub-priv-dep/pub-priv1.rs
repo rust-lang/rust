@@ -32,9 +32,8 @@ impl PublicType {
 
 pub trait MyPubTrait {
     type Foo: OtherTrait;
-    //~^ ERROR trait `priv_dep::OtherTrait` from private dependency 'priv_dep' in public interface
 }
-//~^^^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
+//~^^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
 
 pub struct AllowedPrivType {
     #[allow(exported_private_dependencies)]

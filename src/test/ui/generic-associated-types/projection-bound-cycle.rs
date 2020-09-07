@@ -45,7 +45,7 @@ impl<T> Bar for T where T: Foo {
     // can use the bound on `Foo::Item` for this, but that requires
     // `wf(<T as Foo>::Item)`, which is an invalid cycle.
     type Assoc = OnlySized<<T as Foo>::Item>;
-    //~^ ERROR overflow evaluating the requirement `<T as Foo>::Item: std::marker::Sized`
+    //~^ ERROR overflow evaluating the requirement `<T as Foo>::Item: Sized`
 }
 
 fn foo<T: Print>() {

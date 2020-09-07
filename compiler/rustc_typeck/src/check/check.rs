@@ -4,13 +4,13 @@ use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_
 use super::*;
 
 use rustc_attr as attr;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemKind, Node};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::RegionVariableOrigin;
+use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
@@ -19,6 +19,8 @@ use rustc_session::config::EntryFnType;
 use rustc_span::symbol::sym;
 use rustc_span::{self, MultiSpan, Span};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::opaque_types::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 pub fn check_wf_new(tcx: TyCtxt<'_>) {
@@ -386,7 +388,9 @@ pub(super) fn check_opaque<'tcx>(
     origin: &hir::OpaqueTyOrigin,
 ) {
     check_opaque_for_inheriting_lifetimes(tcx, def_id, span);
-    tcx.ensure().type_of(def_id);
+    if tcx.type_of(def_id).references_error() {
+        return;
+    }
     if check_opaque_for_cycles(tcx, def_id, substs, span, origin).is_err() {
         return;
     }

@@ -20,7 +20,7 @@ LL |    Pin::new(&mut gen).resume(());
   ::: $SRC_DIR/core/src/ops/generator.rs:LL:COL
    |
 LL | pub enum GeneratorState<Y, R> {
-   |                         - required by this bound in `std::ops::GeneratorState`
+   |                         - required by this bound in `GeneratorState`
    |
    = help: the trait `Sized` is not implemented for `str`
 

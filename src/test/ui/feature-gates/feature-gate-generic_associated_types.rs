@@ -15,7 +15,7 @@ impl PointerFamily<u32> for Foo {
     //~^ ERROR generic associated types are unstable
     type Pointer2<U32> = Box<U32>;
     //~^ ERROR generic associated types are unstable
-    //~| ERROR the trait bound `U32: std::clone::Clone` is not satisfied
+    //~| ERROR the trait bound `U32: Clone` is not satisfied
 }
 
 trait Bar {

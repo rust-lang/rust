@@ -3,9 +3,6 @@ error: future cannot be sent between threads safely
    |
 LL | fn foo<T: Send, U>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
-LL |
-LL |     async { (ty, ty1) }
-   |     ------------------- this returned value is of type `impl Future`
    |
 note: captured value is not `Send`
   --> $DIR/issue-70818.rs:6:18

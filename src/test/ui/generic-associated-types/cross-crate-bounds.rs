@@ -13,7 +13,7 @@ pub struct FooImpl;
 
 impl Foo for FooImpl {
     type Bar = ();
-    //~^ ERROR the trait bound `(): std::convert::AsRef<()>` is not satisfied
+    //~^ ERROR the trait bound `(): AsRef<()>` is not satisfied
     fn foo(&self) -> Pin<Box<dyn Future<Output = Self::Bar> + '_>> {
         panic!()
     }

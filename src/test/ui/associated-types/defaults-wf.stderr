@@ -7,9 +7,9 @@ LL |     type Ty = Vec<[u8]>;
   ::: $SRC_DIR/alloc/src/vec.rs:LL:COL
    |
 LL | pub struct Vec<T> {
-   |                - required by this bound in `std::vec::Vec`
+   |                - required by this bound in `Vec`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = help: the trait `Sized` is not implemented for `[u8]`
 
 error: aborting due to previous error
 

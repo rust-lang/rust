@@ -20,7 +20,7 @@ where
     Self::Ty: Clone,
 {
     type Ty = NotClone;
-    //~^ ERROR the trait bound `NotClone: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `NotClone: Clone` is not satisfied
 }
 
 // Involved type parameters must fulfill all bounds required by defaults that mention them
@@ -85,7 +85,7 @@ where
 {
     type Bar = Vec<Self::Baz>;
     type Baz = T;
-    //~^ ERROR the trait bound `T: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `T: Clone` is not satisfied
 }
 
 // This one finally works, with `Clone` bounds on all assoc. types and the type

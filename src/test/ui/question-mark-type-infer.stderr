@@ -4,7 +4,8 @@ error[E0283]: type annotations needed
 LL |     l.iter().map(f).collect()?
    |                     ^^^^^^^ cannot infer type
    |
-   = note: cannot satisfy `<_ as Try>::Ok == _`
+   = note: cannot satisfy `_: Try`
+   = note: required by `into_result`
 help: consider specifying the type argument in the method call
    |
 LL |     l.iter().map(f).collect::<B>()?

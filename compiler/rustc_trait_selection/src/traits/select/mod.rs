@@ -1204,22 +1204,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if let ty::PredicateAtom::Trait(pred, _) = bound.skip_binders() {
                     let bound = ty::Binder::bind(pred.trait_ref);
                     if self.infcx.probe(|_| {
-                        if let Ok(normalized_trait) = self.match_projection(
+                        match self.match_projection(
                             obligation,
                             bound,
                             placeholder_trait_predicate.trait_ref,
                         ) {
-                            match normalized_trait {
-                                None => true,
-                                Some(normalized_trait)
-                                    if distinct_normalized_bounds.insert(normalized_trait) =>
-                                {
-                                    true
-                                }
-                                _ => false,
+                            Ok(None) => true,
+                            Ok(Some(normalized_trait))
+                                if distinct_normalized_bounds.insert(normalized_trait) =>
+                            {
+                                true
                             }
-                        } else {
-                            false
+                            _ => false,
                         }
                     }) {
                         return Some(idx);
