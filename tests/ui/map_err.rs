@@ -1,3 +1,4 @@
+#![warn(clippy::map_err_ignore)]
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt;

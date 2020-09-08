@@ -99,7 +99,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub MAP_ERR_IGNORE,
-    style,
+    pedantic,
     "`map_err` should not ignore the original error"
 }
 

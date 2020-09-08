@@ -1167,7 +1167,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "map_err_ignore",
-        group: "style",
+        group: "pedantic",
         desc: "`map_err` should not ignore the original error",
         deprecation: None,
         module: "map_err_ignore",
