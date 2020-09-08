@@ -1779,6 +1779,18 @@ pub unsafe fn vld1q_f32(addr: *const f32) -> float32x4_t {
     vld1q_v4f32(addr as *const u8, 4)
 }
 
+/// Load one single-element structure and Replicate to all lanes (of one register).
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
+pub unsafe fn vld1q_dup_f32(addr: *const f32) -> float32x4_t {
+    use crate::core_arch::simd::f32x4;
+    let v = *addr;
+    transmute(f32x4::new(v, v, v, v))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1811,6 +1823,14 @@ mod tests {
         // do a load that has 4 byte alignment to make sure we're not
         // over aligning it
         let r: f32x4 = transmute(vld1q_f32(f[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_dup_f32() {
+        let e = f32x4::new(1., 1., 1., 1.);
+        let f = [1., 2., 3., 4.];
+        let r: f32x4 = transmute(vld1q_dup_f32(f.as_ptr()));
         assert_eq!(r, e);
     }
 
