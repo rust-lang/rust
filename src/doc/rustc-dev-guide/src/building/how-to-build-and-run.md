@@ -18,7 +18,7 @@ git clone https://github.com/rust-lang/rust.git
 cd rust
 ```
 
-## Create a config.toml
+## Create a `config.toml`
 
 To start, copy [`config.toml.example`] to `config.toml`:
 
@@ -122,9 +122,7 @@ It is, in particular, very useful when you're doing some kind of
 "type-based refactoring", like renaming a method, or changing the
 signature of some function.
 
-<a name=command></a>
-
-Once you've created a config.toml, you are now ready to run
+Once you've created a `config.toml`, you are now ready to run
 `x.py`. There are a lot of options here, but let's start with what is
 probably the best "go to" command for building a local rust:
 
@@ -177,7 +175,7 @@ build. The **full** `rustc` build (what you get if you say `./x.py build
 ./x.py build library/core
 ```
 
-- Build the core and proc_macro libraries only
+- Build only the core and `proc_macro` libraries
 
 ```bash
 ./x.py build library/core library/proc_macro
@@ -186,7 +184,7 @@ build. The **full** `rustc` build (what you get if you say `./x.py build
 Sometimes you might just want to test if the part you’re working on can
 compile. Using these commands you can test that it compiles before doing
 a bigger build to make sure it works with the compiler. As shown before
-you can also pass flags at the end such as --stage.
+you can also pass flags at the end such as `--stage`.
 
 ## Creating a rustup toolchain
 
@@ -215,13 +213,13 @@ your local environment:
 
 ```bash
 $ rustc +stage1 -vV
-rustc 1.25.0-dev
+rustc 1.48.0-dev
 binary: rustc
 commit-hash: unknown
 commit-date: unknown
 host: x86_64-unknown-linux-gnu
-release: 1.25.0-dev
-LLVM version: 4.0
+release: 1.48.0-dev
+LLVM version: 11.0
 ```
 ## Other `x.py` commands
 
@@ -252,4 +250,5 @@ everything up then you only need to run one command!
 ./x.py clean
 ```
 
-`rm -rf build` works too, but then you have to rebuild LLVM.
+`rm -rf build` works too, but then you have to rebuild LLVM, which can take
+a long time (on the order of a half-hour).
