@@ -348,9 +348,19 @@ $EndFeature, "
             pub const MAX: Self = !Self::MIN;
         }
 
-        /// The size of this integer type in bits.
-        #[unstable(feature = "int_bits_const", issue = "none")]
-        pub const BITS: u32 = $BITS;
+        doc_comment! {
+            concat!("The size of this integer type in bits.
+
+# Examples
+
+```
+", $Feature, "#![feature(int_bits_const)]
+assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");",
+$EndFeature, "
+```"),
+            #[unstable(feature = "int_bits_const", issue = "none")]
+            pub const BITS: u32 = $BITS;
+        }
 
         doc_comment! {
             concat!("Converts a string slice in a given base to an integer.
@@ -2605,9 +2615,19 @@ $EndFeature, "
             pub const MAX: Self = !0;
         }
 
-        /// The size of this integer type in bits.
-        #[unstable(feature = "int_bits_const", issue = "none")]
-        pub const BITS: u32 = $BITS;
+        doc_comment! {
+            concat!("The size of this integer type in bits.
+
+# Examples
+
+```
+", $Feature, "#![feature(int_bits_const)]
+assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");",
+$EndFeature, "
+```"),
+            #[unstable(feature = "int_bits_const", issue = "none")]
+            pub const BITS: u32 = $BITS;
+        }
 
         doc_comment! {
             concat!("Converts a string slice in a given base to an integer.
