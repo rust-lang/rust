@@ -57,6 +57,10 @@ crate enum RegionNameHighlight {
     /// The anonymous region corresponds to a region where the type annotation is completely missing
     /// from the code, e.g. in a closure arguments `|x| { ... }`, where `x` is a reference.
     CannotMatchHirTy(Span, String),
+    /// The anonymous region corresponds to a region where the type annotation is completely missing
+    /// from the code, and *even if* we print out the full name of the type, the region name won't
+    /// be included. This currently occurs for opaque types like `impl Future`.
+    Occluded(Span, String),
 }
 
 impl RegionName {
@@ -87,7 +91,8 @@ impl RegionName {
             RegionNameSource::AnonRegionFromArgument(ref highlight) => match *highlight {
                 RegionNameHighlight::MatchedHirTy(span)
                 | RegionNameHighlight::MatchedAdtAndSegment(span)
-                | RegionNameHighlight::CannotMatchHirTy(span, _) => Some(span),
+                | RegionNameHighlight::CannotMatchHirTy(span, _)
+                | RegionNameHighlight::Occluded(span, _) => Some(span),
             },
         }
     }
@@ -122,6 +127,15 @@ impl RegionName {
                 RegionNameHighlight::MatchedAdtAndSegment(span),
             ) => {
                 diag.span_label(*span, format!("let's call this `{}`", self));
+            }
+            RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::Occluded(
+                span,
+                type_name,
+            )) => {
+                diag.span_label(
+                    *span,
+                    format!("lifetime `{}` appears in the type {}", self, type_name),
+                );
             }
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
                 diag.span_label(
@@ -349,19 +363,21 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             argument_index,
         );
 
-        self.get_argument_hir_ty_for_highlighting(argument_index)
+        let highlight = self
+            .get_argument_hir_ty_for_highlighting(argument_index)
             .and_then(|arg_hir_ty| self.highlight_if_we_can_match_hir_ty(fr, arg_ty, arg_hir_ty))
-            .or_else(|| {
+            .unwrap_or_else(|| {
                 // `highlight_if_we_cannot_match_hir_ty` needs to know the number we will give to
                 // the anonymous region. If it succeeds, the `synthesize_region_name` call below
                 // will increment the counter, "reserving" the number we just used.
                 let counter = *self.next_region_name.try_borrow().unwrap();
                 self.highlight_if_we_cannot_match_hir_ty(fr, arg_ty, span, counter)
-            })
-            .map(|highlight| RegionName {
-                name: self.synthesize_region_name(),
-                source: RegionNameSource::AnonRegionFromArgument(highlight),
-            })
+            });
+
+        Some(RegionName {
+            name: self.synthesize_region_name(),
+            source: RegionNameSource::AnonRegionFromArgument(highlight),
+        })
     }
 
     fn get_argument_hir_ty_for_highlighting(
@@ -399,7 +415,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         ty: Ty<'tcx>,
         span: Span,
         counter: usize,
-    ) -> Option<RegionNameHighlight> {
+    ) -> RegionNameHighlight {
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(needle_fr, counter);
         let type_name =
@@ -411,9 +427,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         );
         if type_name.find(&format!("'{}", counter)).is_some() {
             // Only add a label if we can confirm that a region was labelled.
-            Some(RegionNameHighlight::CannotMatchHirTy(span, type_name))
+            RegionNameHighlight::CannotMatchHirTy(span, type_name)
         } else {
-            None
+            RegionNameHighlight::Occluded(span, type_name)
         }
     }
 
