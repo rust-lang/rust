@@ -59,6 +59,14 @@ impl CrateRunInfo {
         let env = env::vars_os().collect();
         CrateRunInfo { args, env }
     }
+
+    fn store(&self, filename: &Path) {
+        let file = File::create(filename)
+            .unwrap_or_else(|_| show_error(format!("Cannot create `{}`", filename.display())));
+        let file = BufWriter::new(file);
+        serde_json::ser::to_writer(file, self)
+            .unwrap_or_else(|_| show_error(format!("Cannot write to `{}`", filename.display())));
+    }
 }
 
 fn show_help() {
@@ -482,18 +490,16 @@ fn phase_cargo_rustc(args: env::Args) {
         // Instead of compiling, we write JSON into the output file with all the relevant command-line flags
         // and environment variables; this is used when cargo calls us again in the CARGO_TARGET_RUNNER phase.
         let info = CrateRunInfo::collect(args);
-        // FIXME: Windows might need a ".exe" suffix.
         let filename = out_filename("", "");
-
         if verbose {
             eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
         }
 
-        let file = File::create(&filename)
-            .unwrap_or_else(|_| show_error(format!("Cannot create `{}`", filename.display())));
-        let file = BufWriter::new(file);
-        serde_json::ser::to_writer(file, &info)
-            .unwrap_or_else(|_| show_error(format!("Cannot write to `{}`", filename.display())));
+        info.store(&filename);
+        // For Windows, do the same thing again with `.exe` appended to the filename.
+        // (Need to do this here as cargo moves that "binary" to a different place before running it.)
+        info.store(&out_filename("", ".exe"));
+
         return;
     }
 
@@ -558,16 +564,11 @@ fn phase_cargo_rustc(args: env::Args) {
 fn phase_cargo_runner(binary: &str, binary_args: env::Args) {
     let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
 
-    // Strip extension from binary name (Windows adds ".exe").
-    let mut filename = PathBuf::from(binary);
-    filename.set_extension("");
-    let file = File::open(&filename)
+    let file = File::open(&binary)
         .unwrap_or_else(|_| show_error(format!("File {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary)));
     let file = BufReader::new(file);
     let info: CrateRunInfo = serde_json::from_reader(file)
         .unwrap_or_else(|_| show_error(format!("File {:?} does not contain valid JSON", binary)));
-    fs::remove_file(&filename)
-        .unwrap_or_else(|_| show_error(format!("Unable to remove file {:?}", binary)));
 
     let mut cmd = miri();
     // Forward rustc arguments. We need to patch "--extern" filenames because
@@ -593,10 +594,10 @@ fn phase_cargo_runner(binary: &str, binary_args: env::Args) {
     if let Ok(a) = env::var("MIRIFLAGS") {
         // This code is taken from `RUSTFLAGS` handling in cargo.
         let args = a
-                .split(' ')
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(str::to_string);
+            .split(' ')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string);
         cmd.args(args);
     }
 
