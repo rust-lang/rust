@@ -13,12 +13,10 @@ LL |     fn t3() -> [u8; std::mem::size_of::<Self>()] {}
    |                                         ^^^^
    |
 note: not a concrete type
-  --> $DIR/self-ty-in-const-1.rs:13:1
+  --> $DIR/self-ty-in-const-1.rs:13:9
    |
-LL | / impl<T> Bar<T> {
-LL | |     fn t3() -> [u8; std::mem::size_of::<Self>()] {}
-LL | | }
-   | |_^
+LL | impl<T> Bar<T> {
+   |         ^^^^^^
 
 error: aborting due to 2 previous errors
 

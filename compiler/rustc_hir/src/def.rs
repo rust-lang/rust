@@ -201,11 +201,13 @@ pub enum Res<Id = hir::HirId> {
     PrimTy(hir::PrimTy),
     /// `Self`, with both an optional trait and impl `DefId`.
     ///
-    /// HACK: impl self types also have an optional requirement to not mention
-    /// any generic parameters to allow the following with `min_const_generics`.
-    /// `impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()]`.
+    /// HACK(min_const_generics): impl self types also have an optional requirement to not mention
+    /// any generic parameters to allow the following with `min_const_generics`:
+    /// ```rust
+    /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] {} }
+    /// ```
     ///
-    /// Once `lazy_normalization_consts` is stable, this bodge can be removed again.
+    /// FIXME(lazy_normalization_consts): Remove this bodge once this feature is stable.
     SelfTy(Option<DefId> /* trait */, Option<(DefId, bool)> /* impl */),
     ToolMod, // e.g., `rustfmt` in `#[rustfmt::skip]`
 

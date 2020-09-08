@@ -5,14 +5,10 @@ LL |         let _: [u8; std::mem::size_of::<Self>()];
    |                                         ^^^^
    |
 note: not a concrete type
-  --> $DIR/self-ty-in-const-2.rs:15:1
+  --> $DIR/self-ty-in-const-2.rs:15:17
    |
-LL | / impl<T> Baz for Bar<T> {
-LL | |     fn hey() {
-LL | |         let _: [u8; std::mem::size_of::<Self>()];
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<T> Baz for Bar<T> {
+   |                 ^^^^^^
 
 error: aborting due to previous error
 

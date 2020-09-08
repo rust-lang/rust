@@ -1924,13 +1924,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // Try to evaluate any array length constants.
                 let normalized_ty = self.normalize_ty(span, tcx.at(span).type_of(def_id));
                 if forbid_generic && normalized_ty.needs_subst() {
-                    tcx.sess
-                        .struct_span_err(
-                            path.span,
-                            "generic `Self` types are currently not permitted in anonymous constants"
-                        )
-                        .span_note(tcx.def_span(def_id), "not a concrete type")
-                        .emit();
+                    let mut err = tcx.sess.struct_span_err(
+                        path.span,
+                        "generic `Self` types are currently not permitted in anonymous constants",
+                    );
+                    if let Some(hir::Node::Item(&hir::Item {
+                        kind: hir::ItemKind::Impl { self_ty, .. },
+                        ..
+                    })) = tcx.hir().get_if_local(def_id)
+                    {
+                        err.span_note(self_ty.span, "not a concrete type");
+                    }
+                    err.emit();
                     tcx.ty_error()
                 } else {
                     normalized_ty
