@@ -1,4 +1,5 @@
 // check-pass
+#![warn(const_evaluatable_unchecked)]
 
 const fn foo<T>() -> usize {
     if std::mem::size_of::<*mut T>() < 8 { // size of *mut T does not depend on T
