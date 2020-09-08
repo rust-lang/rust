@@ -2,6 +2,8 @@
 #![allow(unused_must_use)]
 #![warn(clippy::create_dir)]
 
+use std::fs::create_dir_all;
+
 fn create_dir() {}
 
 fn main() {
