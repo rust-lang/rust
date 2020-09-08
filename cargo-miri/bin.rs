@@ -136,9 +136,13 @@ fn xargo_check() -> Command {
     Command::new(env::var_os("XARGO_CHECK").unwrap_or_else(|| OsString::from("xargo-check")))
 }
 
-fn exec(mut cmd: Command) -> ! {
+/// Execute the command if it fails, fail this process with the same exit code.
+/// Otherwise, continue.
+fn exec(mut cmd: Command) {
     let exit_status = cmd.status().expect("failed to run command");
-    std::process::exit(exit_status.code().unwrap_or(-1))
+    if exit_status.success().not() {
+        std::process::exit(exit_status.code().unwrap_or(-1))
+    }
 }
 
 fn xargo_version() -> Option<(u32, u32, u32)> {
@@ -454,6 +458,20 @@ fn phase_cargo_rustc(args: env::Args) {
         (is_bin || is_test) && !print
     }
 
+    fn out_filename(prefix: &str, suffix: &str) -> PathBuf {
+        let mut path = PathBuf::from(get_arg_flag_value("--out-dir").unwrap());
+        path.push(format!(
+            "{}{}{}{}",
+            prefix,
+            get_arg_flag_value("--crate-name").unwrap(),
+            // This is technically a `-C` flag but the prefix seems unique enough...
+            // (and cargo passes this before the filename so it should be unique)
+            get_arg_flag_value("extra-filename").unwrap_or(String::new()),
+            suffix,
+        ));
+        path
+    }
+
     let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
     let target_crate = is_target_crate();
 
@@ -464,59 +482,57 @@ fn phase_cargo_rustc(args: env::Args) {
         // Instead of compiling, we write JSON into the output file with all the relevant command-line flags
         // and environment variables; this is used when cargo calls us again in the CARGO_TARGET_RUNNER phase.
         let info = CrateRunInfo::collect(args);
+        // FIXME: Windows might need a ".exe" suffix.
+        let filename = out_filename("", "");
 
-        let mut path = PathBuf::from(get_arg_flag_value("--out-dir").unwrap());
-        path.push(format!(
-            "{}{}",
-            get_arg_flag_value("--crate-name").unwrap(),
-            // This is technically a `-C` flag but the prefix seems unique enough...
-            // (and cargo passes this before the filename so it should be unique)
-            get_arg_flag_value("extra-filename").unwrap_or(String::new()),
-        ));
         if verbose {
-            eprintln!("[cargo-miri rustc] writing run info to {:?}", path.display());
+            eprintln!("[cargo-miri rustc] writing run info to {:?}", filename.display());
         }
 
-        let file = File::create(&path)
-            .unwrap_or_else(|_| show_error(format!("Cannot create {:?}", path.display())));
+        let file = File::create(&filename)
+            .unwrap_or_else(|_| show_error(format!("Cannot create {:?}", filename.display())));
         let file = BufWriter::new(file);
         serde_json::ser::to_writer(file, &info)
-            .unwrap_or_else(|_| show_error(format!("Cannot write to {:?}", path.display())));
+            .unwrap_or_else(|_| show_error(format!("Cannot write to {:?}", filename.display())));
         return;
     }
 
     let mut cmd = miri();
-    // Forward arguments, but (only for target crates!) remove "link" from "--emit" to make this a check-only build.
-    let emit_flag = "--emit";
-    for arg in args {
-        if target_crate && arg.starts_with(emit_flag) {
-            // Patch this argument. First, extract its value.
-            let val = &arg[emit_flag.len()..];
-            assert!(val.starts_with("="), "`cargo` should pass `--emit=X` as one argument");
-            let val = &val[1..];
-            let mut val: Vec<_> = val.split(',').collect();
-            // Now make sure "link" is not in there, but "metadata" is.
-            if let Some(i) = val.iter().position(|&s| s == "link") {
-                val.remove(i);
-                if !val.iter().any(|&s| s == "metadata") {
-                    val.push("metadata");
-                }
-            }
-            cmd.arg(format!("{}={}", emit_flag, val.join(",")));
-            // FIXME: due to this, the `.rlib` file does not get created and cargo re-triggers the build each time.
-        } else {
-            cmd.arg(arg);
-        }
-    }
-
-    // We make sure to only specify our custom Xargo sysroot for target crates - that is,
-    // crates which are needed for interpretation by Miri. proc-macros and build scripts
-    // should use the default sysroot.
+    let mut emit_link_hack = false;
+    // Arguments are treated very differently depending on whether this crate is
+    // for interpretation by Miri, or for use by a build script / proc macro.
     if target_crate {
+        // Forward arguments, butremove "link" from "--emit" to make this a check-only build.
+        let emit_flag = "--emit";
+        for arg in args {
+            if arg.starts_with(emit_flag) {
+                // Patch this argument. First, extract its value.
+                let val = &arg[emit_flag.len()..];
+                assert!(val.starts_with("="), "`cargo` should pass `--emit=X` as one argument");
+                let val = &val[1..];
+                let mut val: Vec<_> = val.split(',').collect();
+                // Now make sure "link" is not in there, but "metadata" is.
+                if let Some(i) = val.iter().position(|&s| s == "link") {
+                    emit_link_hack = true;
+                    val.remove(i);
+                    if !val.iter().any(|&s| s == "metadata") {
+                        val.push("metadata");
+                    }
+                }
+                cmd.arg(format!("{}={}", emit_flag, val.join(",")));
+            } else {
+                cmd.arg(arg);
+            }
+        }
+
+        // Use our custom sysroot.
         let sysroot =
             env::var_os("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
         cmd.arg("--sysroot");
         cmd.arg(sysroot);
+    } else {
+        // For host crates, just forward everything.
+        cmd.args(args);
     }
 
     // We want to compile, not interpret. We still use Miri to make sure the compiler version etc
@@ -527,7 +543,14 @@ fn phase_cargo_rustc(args: env::Args) {
     if verbose {
         eprintln!("[cargo-miri rustc] {:?}", cmd);
     }
-    exec(cmd)
+    exec(cmd);
+
+    // Create a stub .rlib file if "link" was requested by cargo.
+    if emit_link_hack {
+        // FIXME: is "lib" always right?
+        let filename = out_filename("lib", ".rlib");
+        File::create(filename).expect("Failed to create rlib file");
+    }
 }
 
 fn phase_cargo_runner(binary: &str, binary_args: env::Args) {
