@@ -18,7 +18,8 @@
           debug tail => _4;                // in scope 1 at $DIR/simplify_try_if_let.rs:23:18: 23:26
           let _8: std::ptr::NonNull<Node>; // in scope 1 at $DIR/simplify_try_if_let.rs:26:29: 26:39
           scope 2 {
-              debug other_head => _8;      // in scope 2 at $DIR/simplify_try_if_let.rs:26:29: 26:39
+-             debug other_head => _8;      // in scope 2 at $DIR/simplify_try_if_let.rs:26:29: 26:39
++             debug other_head => ((_9 as Some).0: std::ptr::NonNull<Node>); // in scope 2 at $DIR/simplify_try_if_let.rs:26:29: 26:39
               scope 3 {
               }
           }
@@ -65,11 +66,12 @@
           StorageLive(_8);                 // scope 1 at $DIR/simplify_try_if_let.rs:26:29: 26:39
           _8 = ((_5 as Some).0: std::ptr::NonNull<Node>); // scope 1 at $DIR/simplify_try_if_let.rs:26:29: 26:39
           StorageLive(_9);                 // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
-          StorageLive(_10);                // scope 3 at $DIR/simplify_try_if_let.rs:28:51: 28:61
-          _10 = _8;                        // scope 3 at $DIR/simplify_try_if_let.rs:28:51: 28:61
-          ((_9 as Some).0: std::ptr::NonNull<Node>) = move _10; // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
-          discriminant(_9) = 1;            // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
-          StorageDead(_10);                // scope 3 at $DIR/simplify_try_if_let.rs:28:61: 28:62
+-         StorageLive(_10);                // scope 3 at $DIR/simplify_try_if_let.rs:28:51: 28:61
+-         _10 = _8;                        // scope 3 at $DIR/simplify_try_if_let.rs:28:51: 28:61
+-         ((_9 as Some).0: std::ptr::NonNull<Node>) = move _10; // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
+-         discriminant(_9) = 1;            // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
+-         StorageDead(_10);                // scope 3 at $DIR/simplify_try_if_let.rs:28:61: 28:62
++         _9 = move _5;                    // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
           StorageLive(_11);                // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:38
           StorageLive(_12);                // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:29
           _12 = &mut _4;                   // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:29
