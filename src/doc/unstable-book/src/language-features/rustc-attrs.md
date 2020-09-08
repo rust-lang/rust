@@ -14,7 +14,7 @@ with `cargo check`) as an alternative to `rustc -Z print-type-sizes`
 that is way more verbose.
 
 Options provided by `#[rustc_layout(...)]` are `debug`, `size`, `align`,
-`abi`. Note that it only work best with sized type without generics.
+`abi`. Note that it only works on sized types without generics.
 
 ## Examples
 
