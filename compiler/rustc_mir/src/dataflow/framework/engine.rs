@@ -306,7 +306,11 @@ where
     let mut buf = Vec::new();
 
     let graphviz = graphviz::Formatter::new(body, def_id, results, style);
-    dot::render_opts(&graphviz, &mut buf, &[dot::RenderOption::Monospace])?;
+    let mut render_opts = vec![dot::RenderOption::Monospace];
+    if tcx.sess.opts.debugging_opts.graphviz_dark_mode {
+        render_opts.push(dot::RenderOption::DarkTheme);
+    }
+    dot::render_opts(&graphviz, &mut buf, &render_opts)?;
 
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
