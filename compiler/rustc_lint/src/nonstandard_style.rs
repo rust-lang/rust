@@ -31,6 +31,24 @@ pub fn method_context(cx: &LateContext<'_>, id: hir::HirId) -> MethodLateContext
 }
 
 declare_lint! {
+    /// The `non_camel_case_types` lint detects types, variants, traits and
+    /// type parameters that don't have camel case names.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// struct my_struct;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The preferred style for these identifiers is to use "camel case", such
+    /// as `MyStruct`, where the first letter should not be lowercase, and
+    /// should not use underscores between letters. Underscores are allowed at
+    /// the beginning and end of the identifier, as well as between
+    /// non-letters (such as `X86_64`).
     pub NON_CAMEL_CASE_TYPES,
     Warn,
     "types, variants, traits and type parameters should have camel case names"
@@ -161,6 +179,22 @@ impl EarlyLintPass for NonCamelCaseTypes {
 }
 
 declare_lint! {
+    /// The `non_snake_case` lint detects variables, methods, functions,
+    /// lifetime parameters and modules that don't have snake case names.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let MY_VALUE = 5;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The preferred style for these identifiers is to use "snake case",
+    /// where all the characters are in lowercase, with words separated with a
+    /// single underscore, such as `my_value`.
     pub NON_SNAKE_CASE,
     Warn,
     "variables, methods, functions, lifetime parameters and modules should have snake case names"
@@ -379,6 +413,21 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
 }
 
 declare_lint! {
+    /// The `non_upper_case_globals` lint detects static items that don't have
+    /// uppercase identifiers.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// static max_points: i32 = 5;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The preferred style is for static item names to use all uppercase
+    /// letters such as `MAX_POINTS`.
     pub NON_UPPER_CASE_GLOBALS,
     Warn,
     "static constants should have uppercase identifiers"
