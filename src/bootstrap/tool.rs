@@ -162,13 +162,15 @@ impl Step for ToolBuild {
                 "the following dependencies are duplicated although they \
                       have the same features enabled:"
             );
-            for (id, cur, prev) in duplicates.drain_filter(|(_, cur, prev)| cur.2 == prev.2) {
+            let (same, different): (Vec<_>, Vec<_>) =
+                duplicates.into_iter().partition(|(_, cur, prev)| cur.2 == prev.2);
+            for (id, cur, prev) in same {
                 println!("  {}", id);
                 // same features
                 println!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
             }
             println!("the following dependencies have different features:");
-            for (id, cur, prev) in duplicates {
+            for (id, cur, prev) in different {
                 println!("  {}", id);
                 let cur_features: HashSet<_> = cur.2.into_iter().collect();
                 let prev_features: HashSet<_> = prev.2.into_iter().collect();
