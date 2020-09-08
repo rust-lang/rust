@@ -1,5 +1,6 @@
 #![warn(clippy::borrow_interior_mutable_const)]
 #![allow(clippy::declare_interior_mutable_const, clippy::ref_in_deref)]
+#![allow(const_item_mutation)]
 
 use std::borrow::Cow;
 use std::cell::{Cell, UnsafeCell};
