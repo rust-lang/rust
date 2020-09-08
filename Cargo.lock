@@ -4087,6 +4087,7 @@ dependencies = [
  "rustc_hir_pretty",
  "rustc_index",
  "rustc_infer",
+ "rustc_macros",
  "rustc_middle",
  "rustc_session",
  "rustc_span",
