@@ -443,6 +443,15 @@ impl UnixStream {
     /// }
     /// ```
     #[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
+    #[cfg(any(
+        target_os = "android",
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "ios",
+        target_os = "macos",
+        target_os = "openbsd"
+    ))]
     pub fn peer_cred(&self) -> io::Result<UCred> {
         ucred::peer_cred(self)
     }
