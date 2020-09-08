@@ -37,6 +37,12 @@ LL | fn lifetime_param_2<'a, 'b>(_x: Ref<'a>, _y: &'b u8) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+  --> $DIR/needless_lifetimes.rs:86:1
+   |
+LL | fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/needless_lifetimes.rs:120:5
    |
 LL |     fn self_and_out<'s>(&'s self) -> &'s u8 {
@@ -96,5 +102,5 @@ error: explicit lifetimes given in parameter types where they could be elided (o
 LL |         fn needless_lt<'a>(_x: &'a u8) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 16 previous errors
+error: aborting due to 17 previous errors
 
