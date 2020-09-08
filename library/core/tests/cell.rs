@@ -328,6 +328,29 @@ fn cell_exterior() {
 }
 
 #[test]
+fn cell_does_not_clone() {
+    #[derive(Copy)]
+    #[allow(dead_code)]
+    struct Foo {
+        x: isize,
+    }
+
+    impl Clone for Foo {
+        fn clone(&self) -> Foo {
+            // Using Cell in any way should never cause clone() to be
+            // invoked -- after all, that would permit evil user code to
+            // abuse `Cell` and trigger crashes.
+
+            panic!();
+        }
+    }
+
+    let x = Cell::new(Foo { x: 22 });
+    let _y = x.get();
+    let _z = x.clone();
+}
+
+#[test]
 fn refcell_default() {
     let cell: RefCell<u64> = Default::default();
     assert_eq!(0, *cell.borrow());
