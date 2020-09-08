@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
-use std::mem::size_of;
 use std::ops::Bound::*;
 
 pub trait IntoCow<'a, B: ?Sized>
@@ -605,7 +604,7 @@ fn test_try_reserve() {
     // on 64-bit, we assume the OS will give an OOM for such a ridiculous size.
     // Any platform that succeeds for these requests is technically broken with
     // ptr::offset because LLVM is the worst.
-    let guards_against_isize = size_of::<usize>() < 8;
+    let guards_against_isize = usize::BITS < 64;
 
     {
         // Note: basic stuff is checked by test_reserve
@@ -686,7 +685,7 @@ fn test_try_reserve_exact() {
     const MAX_CAP: usize = isize::MAX as usize;
     const MAX_USIZE: usize = usize::MAX;
 
-    let guards_against_isize = size_of::<usize>() < 8;
+    let guards_against_isize = usize::BITS < 64;
 
     {
         let mut empty_string: String = String::new();
