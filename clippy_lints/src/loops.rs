@@ -1131,6 +1131,23 @@ fn detect_same_item_push<'tcx>(
     body: &'tcx Expr<'_>,
     _: &'tcx Expr<'_>,
 ) {
+    fn emit_lint(cx: &LateContext<'_>, vec: &Expr<'_>, pushed_item: &Expr<'_>) {
+        let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
+        let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
+
+        span_lint_and_help(
+            cx,
+            SAME_ITEM_PUSH,
+            vec.span,
+            "it looks like the same item is being pushed into this Vec",
+            None,
+            &format!(
+                "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
+                item_str, vec_str, item_str
+            ),
+        )
+    }
+
     if !matches!(pat.kind, PatKind::Wild) {
         return;
     }
@@ -1191,23 +1208,6 @@ fn detect_same_item_push<'tcx>(
                 }
             }
         }
-    }
-
-    fn emit_lint(cx: &LateContext<'_>, vec: &Expr<'_>, pushed_item: &Expr<'_>) {
-        let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
-        let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
-
-        span_lint_and_help(
-            cx,
-            SAME_ITEM_PUSH,
-            vec.span,
-            "it looks like the same item is being pushed into this Vec",
-            None,
-            &format!(
-                "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
-                item_str, vec_str, item_str
-            ),
-        )
     }
 }
 
