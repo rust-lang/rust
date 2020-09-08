@@ -1,8 +1,6 @@
 // Original implementation taken from rust-memchr.
 // Copyright 2015 Andrew Gallant, bluss and Nicolas Koch
 
-// ignore-tidy-undocumented-unsafe
-
 use crate::cmp;
 use crate::mem;
 
@@ -63,6 +61,8 @@ pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
 
     if len >= 2 * usize_bytes {
         while offset <= len - 2 * usize_bytes {
+            // SAFETY: offset + usize_bytes will never be out of bounds due to the bounds check above.
+            // All indexing is in range aligned_boundary to len - 2 * size_of::<usize>()
             unsafe {
                 let u = *(ptr.add(offset) as *const usize);
                 let v = *(ptr.add(offset + usize_bytes) as *const usize);
@@ -97,8 +97,13 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     let (min_aligned_offset, max_aligned_offset) = {
         // We call this just to obtain the length of the prefix and suffix.
         // In the middle we always process two chunks at once.
-        let (prefix, _, suffix) = unsafe { text.align_to::<(Chunk, Chunk)>() };
-        (prefix.len(), len - suffix.len())
+        let offset = ptr.align_offset(mem::align_of::<(Chunk, Chunk)>());
+        if offset > len {
+            (len, 0)
+        } else {
+            let (lower, rest) = text.split_at(offset);
+            (lower.len(), len - rest.align_to_offsets::<(Chunk, Chunk)>().1)
+        }
     };
 
     let mut offset = max_aligned_offset;
@@ -113,6 +118,8 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     let chunk_bytes = mem::size_of::<Chunk>();
 
     while offset > min_aligned_offset {
+        // SAFETY: offset will never be less than zero, guarenteed by the alignment check.
+        // All indexing is in range max_aligned_offset to min_aligned_offset.
         unsafe {
             let u = *(ptr.offset(offset as isize - 2 * chunk_bytes as isize) as *const Chunk);
             let v = *(ptr.offset(offset as isize - chunk_bytes as isize) as *const Chunk);
