@@ -11,6 +11,10 @@ fn increment(x: u8) -> u8 {
     x + 1
 }
 
+fn fun() -> usize {
+    42
+}
+
 fn main() {
     // Test for basic case
     let mut spaces = Vec::with_capacity(10);
@@ -123,5 +127,22 @@ fn main() {
     let item = VALUE;
     for _ in 0..20 {
         vec17.push(item);
+    }
+
+    let mut vec18 = Vec::new();
+    let item = 42;
+    let item = fun();
+    for _ in 0..20 {
+        vec18.push(item);
+    }
+
+    let mut vec19 = Vec::new();
+    let key = 1;
+    for _ in 0..20 {
+        let item = match key {
+            1 => 10,
+            _ => 0,
+        };
+        vec19.push(item);
     }
 }
