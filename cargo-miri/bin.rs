@@ -486,14 +486,14 @@ fn phase_cargo_rustc(args: env::Args) {
         let filename = out_filename("", "");
 
         if verbose {
-            eprintln!("[cargo-miri rustc] writing run info to {:?}", filename.display());
+            eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
         }
 
         let file = File::create(&filename)
-            .unwrap_or_else(|_| show_error(format!("Cannot create {:?}", filename.display())));
+            .unwrap_or_else(|_| show_error(format!("Cannot create `{}`", filename.display())));
         let file = BufWriter::new(file);
         serde_json::ser::to_writer(file, &info)
-            .unwrap_or_else(|_| show_error(format!("Cannot write to {:?}", filename.display())));
+            .unwrap_or_else(|_| show_error(format!("Cannot write to `{}`", filename.display())));
         return;
     }
 
@@ -502,7 +502,7 @@ fn phase_cargo_rustc(args: env::Args) {
     // Arguments are treated very differently depending on whether this crate is
     // for interpretation by Miri, or for use by a build script / proc macro.
     if target_crate {
-        // Forward arguments, butremove "link" from "--emit" to make this a check-only build.
+        // Forward arguments, but remove "link" from "--emit" to make this a check-only build.
         let emit_flag = "--emit";
         for arg in args {
             if arg.starts_with(emit_flag) {
@@ -547,8 +547,10 @@ fn phase_cargo_rustc(args: env::Args) {
 
     // Create a stub .rlib file if "link" was requested by cargo.
     if emit_link_hack {
-        // FIXME: is "lib" always right?
+        // Some platforms prepend "lib", some do not... let's just create both files.
         let filename = out_filename("lib", ".rlib");
+        File::create(filename).expect("Failed to create rlib file");
+        let filename = out_filename("", ".rlib");
         File::create(filename).expect("Failed to create rlib file");
     }
 }
@@ -556,12 +558,15 @@ fn phase_cargo_rustc(args: env::Args) {
 fn phase_cargo_runner(binary: &str, binary_args: env::Args) {
     let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
 
-    let file = File::open(binary)
+    // Strip extension from binary name (Windows adds ".exe").
+    let mut filename = PathBuf::from(binary);
+    filename.set_extension("");
+    let file = File::open(&filename)
         .unwrap_or_else(|_| show_error(format!("File {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary)));
     let file = BufReader::new(file);
     let info: CrateRunInfo = serde_json::from_reader(file)
         .unwrap_or_else(|_| show_error(format!("File {:?} does not contain valid JSON", binary)));
-    fs::remove_file(binary)
+    fs::remove_file(&filename)
         .unwrap_or_else(|_| show_error(format!("Unable to remove file {:?}", binary)));
 
     let mut cmd = miri();
