@@ -899,7 +899,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_
             return match res {
                 def::Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
                 // FIXME: check the constness of the arguments, see https://github.com/rust-lang/rust-clippy/pull/5682#issuecomment-638681210
-                def::Res::Def(DefKind::Fn, def_id) if has_no_arguments(cx, def_id) => {
+                def::Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) if has_no_arguments(cx, def_id) => {
                     const_eval::is_const_fn(cx.tcx, def_id)
                 },
                 def::Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
@@ -1432,7 +1432,7 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
             } else {
                 unreachable!()
             }
-        }
+        },
         _ => false,
     };
 

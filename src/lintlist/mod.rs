@@ -53,6 +53,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "assign_ops",
     },
     Lint {
+        name: "async_yields_async",
+        group: "correctness",
+        desc: "async blocks that return a type that can be awaited",
+        deprecation: None,
+        module: "async_yields_async",
+    },
+    Lint {
         name: "await_holding_lock",
         group: "pedantic",
         desc: "Inside an async function, holding a MutexGuard while calling await",

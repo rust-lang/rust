@@ -1,4 +1,4 @@
-error: this function has a large number of lines
+error: this function has too many lines (102/100)
   --> $DIR/functions_maxlines.rs:58:1
    |
 LL | / fn bad_lines() {

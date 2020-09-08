@@ -51,4 +51,12 @@ fn transmute_ptr_to_ptr() {
     let _: &GenericParam<&LifetimeParam<'static>> = unsafe { std::mem::transmute(&GenericParam { t: &lp }) };
 }
 
+// dereferencing raw pointers in const contexts, should not lint as it's unstable (issue 5959)
+const _: &() = {
+    struct ZST;
+    let zst = &ZST;
+
+    unsafe { std::mem::transmute::<&'static ZST, &'static ()>(zst) }
+};
+
 fn main() {}
