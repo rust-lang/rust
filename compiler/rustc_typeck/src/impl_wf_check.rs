@@ -187,7 +187,7 @@ fn enforce_impl_params_are_constrained(
     }
 
     // (*) This is a horrible concession to reality. I think it'd be
-    // better to just ban unconstrianed lifetimes outright, but in
+    // better to just ban unconstrained lifetimes outright, but in
     // practice people do non-hygenic macros like:
     //
     // ```
@@ -207,7 +207,7 @@ fn enforce_impl_params_are_constrained(
 }
 
 fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: &str) {
-    struct_span_err!(
+    let mut err = struct_span_err!(
         tcx.sess,
         span,
         E0207,
@@ -215,9 +215,17 @@ fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: &str) 
         impl trait, self type, or predicates",
         kind,
         name
-    )
-    .span_label(span, format!("unconstrained {} parameter", kind))
-    .emit();
+    );
+    err.span_label(span, format!("unconstrained {} parameter", kind));
+    if kind == "const" {
+        err.note(
+            "expressions using a const parameter must map each value to a distinct output value",
+        );
+        err.note(
+            "proving the result of expressions other than the parameter are unique is not supported",
+        );
+    }
+    err.emit();
 }
 
 /// Enforce that we do not have two items in an impl with the same name.
