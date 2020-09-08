@@ -1812,6 +1812,32 @@ pub unsafe fn vld1q_f32(addr: *const f32) -> float32x4_t {
     ))
 }
 
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_s32(addr: *const i32) -> int32x4_t {
+    use crate::core_arch::simd::i32x4;
+    transmute(i32x4::new(
+        *addr,
+        *addr.offset(1),
+        *addr.offset(2),
+        *addr.offset(3),
+    ))
+}
+
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_u32(addr: *const u32) -> uint32x4_t {
+    use crate::core_arch::simd::u32x4;
+    transmute(u32x4::new(
+        *addr,
+        *addr.offset(1),
+        *addr.offset(2),
+        *addr.offset(3),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::core_arch::aarch64::test_support::*;
@@ -1827,6 +1853,26 @@ mod tests {
         // do a load that has 4 byte alignment to make sure we're not
         // over aligning it
         let r: f32x4 = transmute(vld1q_f32(f[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s32() {
+        let e = i32x4::new(1, 2, 3, 4);
+        let f = [0, 1, 2, 3, 4];
+        // do a load that has 4 byte alignment to make sure we're not
+        // over aligning it
+        let r: i32x4 = transmute(vld1q_s32(f[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u32() {
+        let e = u32x4::new(1, 2, 3, 4);
+        let f = [0, 1, 2, 3, 4];
+        // do a load that has 4 byte alignment to make sure we're not
+        // over aligning it
+        let r: u32x4 = transmute(vld1q_u32(f[1..].as_ptr()));
         assert_eq!(r, e);
     }
 

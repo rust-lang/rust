@@ -219,6 +219,8 @@ extern "C" {
     ) -> int8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v4f32.p0i8")]
     fn vld1q_v4f32(addr: *const u8, align: u32) -> float32x4_t;
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v4i32.p0i8")]
+    fn vld1q_v4i32(addr: *const u8, align: u32) -> int32x4_t;
 }
 
 /// Absolute value (wrapping).
@@ -1775,6 +1777,26 @@ pub unsafe fn vld1q_u8(addr: *const u8) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[target_feature(enable = "v7")]
 #[cfg_attr(test, assert_instr("vld1.32"))]
+pub unsafe fn vld1q_s32(addr: *const i32) -> int32x4_t {
+    vld1q_v4i32(addr as *const u8, 4)
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon")]
+#[target_feature(enable = "v7")]
+#[cfg_attr(test, assert_instr("vld1.32"))]
+pub unsafe fn vld1q_u32(addr: *const u32) -> uint32x4_t {
+    transmute(vld1q_v4i32(addr as *const u8, 4))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon")]
+#[target_feature(enable = "v7")]
+#[cfg_attr(test, assert_instr("vld1.32"))]
 pub unsafe fn vld1q_f32(addr: *const f32) -> float32x4_t {
     vld1q_v4f32(addr as *const u8, 4)
 }
@@ -1823,6 +1845,28 @@ mod tests {
         // do a load that has 4 byte alignment to make sure we're not
         // over aligning it
         let r: f32x4 = transmute(vld1q_f32(f[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[cfg(target_arch = "arm")]
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_s32() {
+        let e = i32x4::new(1, 2, 3, 4);
+        let f = [0, 1, 2, 3, 4];
+        // do a load that has 4 byte alignment to make sure we're not
+        // over aligning it
+        let r: i32x4 = transmute(vld1q_s32(f[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[cfg(target_arch = "arm")]
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vld1q_u32() {
+        let e = u32x4::new(1, 2, 3, 4);
+        let f = [0, 1, 2, 3, 4];
+        // do a load that has 4 byte alignment to make sure we're not
+        // over aligning it
+        let r: u32x4 = transmute(vld1q_u32(f[1..].as_ptr()));
         assert_eq!(r, e);
     }
 
