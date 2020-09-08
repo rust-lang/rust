@@ -7,45 +7,40 @@ LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
    |             formatting specifier missing
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:4:13
+  --> $DIR/format-args-capture-missing-variables.rs:4:17
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
-   |             ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |                 ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `bar` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:4:13
+  --> $DIR/format-args-capture-missing-variables.rs:4:26
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
-   |             ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |                          ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:8:13
+  --> $DIR/format-args-capture-missing-variables.rs:8:14
    |
 LL |     format!("{foo}");
-   |             ^^^^^^^ not found in this scope
+   |              ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `valueb` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:10:13
+  --> $DIR/format-args-capture-missing-variables.rs:10:23
    |
 LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
-   |             ^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |                       ^^^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:14:13
+  --> $DIR/format-args-capture-missing-variables.rs:16:9
    |
-LL |       format!(r##"
-   |  _____________^
-LL | |
-LL | |         {foo}
-LL | |
-LL | |     "##);
-   | |_______^ not found in this scope
+LL |         {foo}
+   |         ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/format-args-capture-missing-variables.rs:21:12
+  --> $DIR/format-args-capture-missing-variables.rs:21:13
    |
 LL |     panic!("{foo} {bar}", bar=1);
-   |            ^^^^^^^^^^^^^ not found in this scope
+   |             ^^^^^ not found in this scope
 
 error: aborting due to 7 previous errors
 
