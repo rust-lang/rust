@@ -2,6 +2,7 @@ use crate::any::type_name;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem::ManuallyDrop;
+use crate::ptr;
 
 /// A wrapper type to construct uninitialized instances of `T`.
 ///
@@ -571,6 +572,28 @@ impl<T> MaybeUninit<T> {
             intrinsics::assert_inhabited::<T>();
             self.as_ptr().read()
         }
+    }
+
+    /// Drops the contained value in place.
+    ///
+    /// If you have ownership of the `MaybeUninit`, it is preferable to use
+    /// [`assume_init`] instead, which prevents duplicating the content.
+    ///
+    /// # Safety
+    ///
+    /// Calling this when the content is not yet fully initialized causes undefined
+    /// behavior: it is up to the caller to guarantee that the `MaybeUninit<T>` really
+    /// is in an initialized state.
+    ///
+    /// This function runs the destructor of the contained value in place.
+    /// Afterwards, the memory is considered uninitialized again, but remains unmodified.
+    ///
+    /// [`assume_init`]: MaybeUninit::assume_init
+    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
+    pub unsafe fn drop(&mut self) {
+        // SAFETY: the caller must guarantee that `self` is initialized.
+        // Dropping the value in place is safe if that is the case.
+        unsafe { ptr::drop_in_place(self.as_mut_ptr()) }
     }
 
     /// Gets a shared reference to the contained value.
