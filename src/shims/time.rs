@@ -4,6 +4,7 @@ use std::convert::TryFrom;
 use crate::stacked_borrows::Tag;
 use crate::*;
 use helpers::{immty_from_int_checked, immty_from_uint_checked};
+use thread::Time;
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
 pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Duration> {
@@ -176,5 +177,41 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.write_packed_immediates(info, &imms)?;
         Ok(0) // KERN_SUCCESS
+    }
+
+    fn nanosleep(
+        &mut self,
+        req_op: OpTy<'tcx, Tag>,
+        _rem: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        // Signal handlers are not supported, so rem will never be written to.
+
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("nanosleep")?;
+
+        let duration = match this.read_timespec(req_op)? {
+            Some(duration) => duration,
+            None => {
+                let einval = this.eval_libc("EINVAL")?;
+                this.set_last_error(einval)?;
+                return Ok(-1);
+            }
+        };
+        let timeout_time = Time::Monotonic(Instant::now().checked_add(duration).unwrap());
+
+        let active_thread = this.get_active_thread();
+        this.block_thread(active_thread);
+
+        this.register_timeout_callback(
+            active_thread,
+            timeout_time,
+            Box::new(move |ecx| {
+                ecx.unblock_thread(active_thread);
+                Ok(())
+            }),
+        );
+
+        Ok(0)
     }
 }

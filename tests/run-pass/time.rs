@@ -8,6 +8,15 @@ fn duration_sanity(diff: Duration) {
     assert!(diff.as_millis() < 500);
 }
 
+// Sleeping on Windows is not supported yet.
+#[cfg(unix)]
+fn test_sleep() {
+    let before = Instant::now();
+    std::thread::sleep(Duration::from_millis(100));
+    let after = Instant::now();
+    assert!((after - before).as_millis() >= 100);
+}
+
 fn main() {
     // Check `SystemTime`.
     let now1 = SystemTime::now();
@@ -36,4 +45,7 @@ fn main() {
     assert_eq!(now1 + diff, now2);
     assert_eq!(now2 - diff, now1);
     duration_sanity(diff);
+
+    #[cfg(unix)]
+    test_sleep();
 }

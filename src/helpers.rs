@@ -1,6 +1,7 @@
 use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::num::NonZeroUsize;
+use std::time::Duration;
 
 use log::trace;
 
@@ -511,6 +512,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         assert!(op_place.layout.size >= offset + layout.size);
         let value_place = op_place.offset(offset, MemPlaceMeta::None, layout, this)?;
         this.write_scalar(value, value_place.into())
+    }
+
+    /// Parse a `timespec` struct and return it as a `std::time::Duration`. It returns `None`
+    /// if the value in the `timespec` struct is invalid. Some libc functions will return
+    /// `EINVAL` in this case.
+    fn read_timespec(
+        &mut self,
+        timespec_ptr_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, Option<Duration>> {
+        let this = self.eval_context_mut();
+        let tp = this.deref_operand(timespec_ptr_op)?;
+        let seconds_place = this.mplace_field(tp, 0)?;
+        let seconds_scalar = this.read_scalar(seconds_place.into())?;
+        let seconds = seconds_scalar.to_machine_isize(this)?;
+        let nanoseconds_place = this.mplace_field(tp, 1)?;
+        let nanoseconds_scalar = this.read_scalar(nanoseconds_place.into())?;
+        let nanoseconds = nanoseconds_scalar.to_machine_isize(this)?;
+
+        Ok(try {
+            // tv_sec must be non-negative.
+            let seconds: u64 = seconds.try_into().ok()?;
+            // tv_nsec must be non-negative.
+            let nanoseconds: u32 = nanoseconds.try_into().ok()?;
+            if nanoseconds >= 1_000_000_000 {
+                // tv_nsec must not be greater than 999,999,999.
+                None?
+            }
+            Duration::new(seconds, nanoseconds)
+        })
     }
 }
 

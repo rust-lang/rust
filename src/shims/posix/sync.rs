@@ -1,10 +1,8 @@
-use std::convert::TryInto;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 use crate::*;
 use stacked_borrows::Tag;
 use thread::Time;
-
 
 // pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
 
@@ -698,25 +696,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let mutex_id = mutex_get_or_create_id(this, mutex_op)?;
         let active_thread = this.get_active_thread();
 
-        release_cond_mutex_and_block(this, active_thread, mutex_id)?;
-        this.condvar_wait(id, active_thread, mutex_id);
-
-        // We return success for now and override it in the timeout callback.
-        this.write_scalar(Scalar::from_i32(0), dest)?;
-
         // Extract the timeout.
         let clock_id = cond_get_clock_id(this, cond_op)?.to_i32()?;
-        let duration = {
-            let tp = this.deref_operand(abstime_op)?;
-            let seconds_place = this.mplace_field(tp, 0)?;
-            let seconds = this.read_scalar(seconds_place.into())?;
-            let nanoseconds_place = this.mplace_field(tp, 1)?;
-            let nanoseconds = this.read_scalar(nanoseconds_place.into())?;
-            let (seconds, nanoseconds) = (
-                seconds.to_machine_usize(this)?,
-                nanoseconds.to_machine_usize(this)?.try_into().unwrap(),
-            );
-            Duration::new(seconds, nanoseconds)
+        let duration = match this.read_timespec(abstime_op)? {
+            Some(duration) => duration,
+            None => {
+                let einval = this.eval_libc("EINVAL")?;
+                this.write_scalar(einval, dest)?;
+                return Ok(());
+            }
         };
 
         let timeout_time = if clock_id == this.eval_libc_i32("CLOCK_REALTIME")? {
@@ -726,6 +714,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             throw_unsup_format!("unsupported clock id: {}", clock_id);
         };
+
+        release_cond_mutex_and_block(this, active_thread, mutex_id)?;
+        this.condvar_wait(id, active_thread, mutex_id);
+
+        // We return success for now and override it in the timeout callback.
+        this.write_scalar(Scalar::from_i32(0), dest)?;
 
         // Register the timeout callback.
         this.register_timeout_callback(
@@ -740,8 +734,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 ecx.condvar_remove_waiter(id, active_thread);
 
                 // Set the return value: we timed out.
-                let timeout = ecx.eval_libc_i32("ETIMEDOUT")?;
-                ecx.write_scalar(Scalar::from_i32(timeout), dest)?;
+                let etimedout = ecx.eval_libc("ETIMEDOUT")?;
+                ecx.write_scalar(etimedout, dest)?;
 
                 Ok(())
             }),
