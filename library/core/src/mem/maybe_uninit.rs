@@ -576,8 +576,7 @@ impl<T> MaybeUninit<T> {
 
     /// Drops the contained value in place.
     ///
-    /// If you have ownership of the `MaybeUninit`, it is preferable to use
-    /// [`assume_init`] instead, which prevents duplicating the content.
+    /// If you have ownership of the `MaybeUninit`, you can use [`assume_init`] instead.
     ///
     /// # Safety
     ///
