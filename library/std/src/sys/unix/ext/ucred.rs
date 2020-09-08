@@ -6,7 +6,7 @@
 //       For reference, the link is here: https://github.com/tokio-rs/tokio-uds/pull/13
 //       Credit to Martin Habovštiak (GitHub username Kixunil) and contributors for this work.
 
-use libc::{gid_t, uid_t};
+use libc::{gid_t, pid_t, uid_t};
 
 /// Credentials for a UNIX process for credentials passing.
 #[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
@@ -14,6 +14,8 @@ use libc::{gid_t, uid_t};
 pub struct UCred {
     pub uid: uid_t,
     pub gid: gid_t,
+    // pid field is an option because it is not supported on some platforms.
+    pub pid: Option<pid_t>,
 }
 
 #[cfg(any(target_os = "android", target_os = "linux"))]
@@ -57,7 +59,7 @@ pub mod impl_linux {
             );
 
             if ret == 0 && ucred_size as usize == mem::size_of::<ucred>() {
-                Ok(UCred { uid: ucred.uid, gid: ucred.gid })
+                Ok(UCred { uid: ucred.uid, gid: ucred.gid, pid: Some(ucred.pid) })
             } else {
                 Err(io::Error::last_os_error())
             }
@@ -79,7 +81,7 @@ pub mod impl_bsd {
     use crate::os::unix::net::UnixStream;
 
     pub fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
-        let mut cred = UCred { uid: 1, gid: 1 };
+        let mut cred = UCred { uid: 1, gid: 1, pid: None };
         unsafe {
             let ret = libc::getpeereid(socket.as_raw_fd(), &mut cred.uid, &mut cred.gid);
 
