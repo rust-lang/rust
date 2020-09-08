@@ -10,3 +10,7 @@ byteorder = "1.0"
 [dev-dependencies]
 rand = { version = "0.7", features = ["small_rng"] }
 num_cpus = "1.10.1"
+
+[lib]
+test = false
+doctest = false # FIXME: doctests should be skipped automatically until we can run them...
