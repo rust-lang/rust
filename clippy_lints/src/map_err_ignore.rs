@@ -7,7 +7,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
     /// **What it does:** Checks for instances of `map_err(|_| Some::Enum)`
     ///
-    /// **Why is this bad?** This map_err throws away the original error rather than allowing the enum to bubble the original error
+    /// **Why is this bad?** This map_err throws away the original error rather than allowing the enum to contain and report the cause of the error
     ///
     /// **Known problems:** None.
     ///
@@ -133,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for MapErrIgnore {
                                     cx,
                                     MAP_ERR_IGNORE,
                                     body_span,
-                                    "`map_else(|_|...` ignores the original error",
+                                    "`map_err(|_|...` ignores the original error",
                                     None,
                                     "Consider wrapping the error in an enum variant",
                                 );

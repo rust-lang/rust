@@ -1,4 +1,4 @@
-error: `map_else(|_|...` ignores the original error
+error: `map_err(|_|...` ignores the original error
   --> $DIR/map_err.rs:21:32
    |
 LL |     println!("{:?}", x.map_err(|_| Errors::Ignored));
