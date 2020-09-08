@@ -23,7 +23,7 @@ The feature gate for the issue is `#![feature(FFF)]`.
 ### About tracking issues
 
 Tracking issues are used to record the overall progress of implementation.
-They are also uses as hubs connecting to other relevant issues, e.g., bugs or open design questions.
+They are also used as hubs connecting to other relevant issues, e.g., bugs or open design questions.
 A tracking issue is however *not* meant for large scale discussion, questions, or bug reports about a feature.
 Instead, open a dedicated issue for the specific matter and add the relevant feature gate label.
 
