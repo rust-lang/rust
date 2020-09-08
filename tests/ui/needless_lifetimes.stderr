@@ -102,5 +102,35 @@ error: explicit lifetimes given in parameter types where they could be elided (o
 LL |         fn needless_lt<'a>(_x: &'a u8) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 17 previous errors
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+  --> $DIR/needless_lifetimes.rs:271:9
+   |
+LL |         fn baz<'a>(&'a self) -> impl Foo + 'a {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+  --> $DIR/needless_lifetimes.rs:300:5
+   |
+LL |     fn impl_trait_elidable_nested_named_lifetimes<'a>(i: &'a i32, f: impl for<'b> Fn(&'b i32) -> &'b i32) -> &'a i32 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+  --> $DIR/needless_lifetimes.rs:303:5
+   |
+LL |     fn impl_trait_elidable_nested_anonymous_lifetimes<'a>(i: &'a i32, f: impl Fn(&i32) -> &i32) -> &'a i32 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+  --> $DIR/needless_lifetimes.rs:312:5
+   |
+LL |     fn generics_elidable<'a, T: Fn(&i32) -> &i32>(i: &'a i32, f: T) -> &'a i32 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+  --> $DIR/needless_lifetimes.rs:324:5
+   |
+LL |     fn where_clause_elidadable<'a, T>(i: &'a i32, f: T) -> &'a i32
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 22 previous errors
 
