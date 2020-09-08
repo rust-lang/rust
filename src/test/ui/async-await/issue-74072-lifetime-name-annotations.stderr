@@ -2,7 +2,7 @@ error[E0506]: cannot assign to `*x` because it is borrowed
   --> $DIR/issue-74072-lifetime-name-annotations.rs:9:5
    |
 LL | pub async fn async_fn(x: &mut i32) -> &i32 {
-   |                                       ---- return type of async function is &'1 i32
+   |                                       - let's call the lifetime of this reference `'1`
 LL |     let y = &*x;
    |             --- borrow of `*x` occurs here
 LL |     *x += 1;
@@ -25,6 +25,18 @@ LL |     })()
 error[E0506]: cannot assign to `*x` because it is borrowed
   --> $DIR/issue-74072-lifetime-name-annotations.rs:24:9
    |
+LL |     (async move || -> &i32 {
+   |                       - let's call the lifetime of this reference `'1`
+LL |         let y = &*x;
+   |                 --- borrow of `*x` occurs here
+LL |         *x += 1;
+   |         ^^^^^^^ assignment to borrowed `*x` occurs here
+LL |         y
+   |         - returning this value requires that `*x` is borrowed for `'1`
+
+error[E0506]: cannot assign to `*x` because it is borrowed
+  --> $DIR/issue-74072-lifetime-name-annotations.rs:32:9
+   |
 LL |         let y = &*x;
    |                 --- borrow of `*x` occurs here
 LL |         *x += 1;
@@ -34,6 +46,6 @@ LL |         y
 LL |     }
    |     - return type of async block is &'1 i32
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0506`.
