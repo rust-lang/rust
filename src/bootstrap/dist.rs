@@ -2499,3 +2499,85 @@ impl Step for LlvmTools {
         Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
     }
 }
+
+// Tarball intended for internal consumption to ease rustc/std development.
+//
+// Should not be considered stable by end users.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct RustDev {
+    pub target: TargetSelection,
+}
+
+impl Step for RustDev {
+    type Output = Option<PathBuf>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("rust-dev")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustDev { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+        let target = self.target;
+
+        builder.info(&format!("Dist RustDev ({})", target));
+        let _time = timeit(builder);
+        let src = builder.src.join("src/llvm-project/llvm");
+        let name = pkgname(builder, "rust-dev");
+
+        let tmp = tmpdir(builder);
+        let image = tmp.join("rust-dev-image");
+        drop(fs::remove_dir_all(&image));
+
+        // Prepare the image directory
+        let dst_bindir = image.join("bin");
+        t!(fs::create_dir_all(&dst_bindir));
+        let exe = builder.llvm_out(target).join("bin").join(exe("llvm-config", target));
+        builder.install(&exe, &dst_bindir, 0o755);
+        builder.install(&builder.llvm_filecheck(target), &dst_bindir, 0o755);
+
+        // Copy the include directory as well; needed mostly to build
+        // librustc_llvm properly (e.g., llvm-config.h is in here). But also
+        // just broadly useful to be able to link against the bundled LLVM.
+        builder.cp_r(&builder.llvm_out(target).join("include"), &image.join("include"));
+
+        // Copy libLLVM.so to the target lib dir as well, so the RPATH like
+        // `$ORIGIN/../lib` can find it. It may also be used as a dependency
+        // of `rustc-dev` to support the inherited `-lLLVM` when using the
+        // compiler libraries.
+        maybe_install_llvm(builder, target, &image.join("lib"));
+
+        // Prepare the overlay
+        let overlay = tmp.join("rust-dev-overlay");
+        drop(fs::remove_dir_all(&overlay));
+        builder.create_dir(&overlay);
+        builder.install(&src.join("README.txt"), &overlay, 0o644);
+        builder.install(&src.join("LICENSE.TXT"), &overlay, 0o644);
+        builder.create(&overlay.join("version"), &builder.rust_version());
+
+        // Generate the installer tarball
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+            .arg("--product-name=Rust")
+            .arg("--rel-manifest-dir=rustlib")
+            .arg("--success-message=rust-dev-installed.")
+            .arg("--image-dir")
+            .arg(&image)
+            .arg("--work-dir")
+            .arg(&tmpdir(builder))
+            .arg("--output-dir")
+            .arg(&distdir(builder))
+            .arg("--non-installed-overlay")
+            .arg(&overlay)
+            .arg(format!("--package-name={}-{}", name, target.triple))
+            .arg("--legacy-manifest-dirs=rustlib,cargo")
+            .arg("--component-name=rust-dev");
+
+        builder.run(&mut cmd);
+        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+    }
+}
