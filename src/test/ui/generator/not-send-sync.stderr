@@ -9,7 +9,7 @@ LL |     assert_send(|| {
    |
    = help: the trait `Sync` is not implemented for `Cell<i32>`
    = note: required because of the requirements on the impl of `Send` for `&Cell<i32>`
-   = note: required because it appears within the type `[generator@$DIR/not-send-sync.rs:16:17: 20:6 a:&Cell<i32> _]`
+   = note: required because it appears within the type `[generator@$DIR/not-send-sync.rs:16:17: 20:6 _]`
 
 error: generator cannot be shared between threads safely
   --> $DIR/not-send-sync.rs:9:5

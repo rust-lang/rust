@@ -7,7 +7,7 @@ LL |     let foo: fn(u8) -> u8 = |v: u8| { a += v; a };
    |              expected due to this
    |
    = note: expected fn pointer `fn(u8) -> u8`
-                 found closure `[closure@$DIR/closure-no-fn-1.rs:6:29: 6:50 a:_]`
+                 found closure `[closure@$DIR/closure-no-fn-1.rs:6:29: 6:50]`
 
 error: aborting due to previous error
 

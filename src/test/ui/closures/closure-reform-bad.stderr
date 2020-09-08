@@ -7,7 +7,7 @@ LL |     call_bare(f)
    |               ^ expected fn pointer, found closure
    |
    = note: expected fn pointer `for<'r> fn(&'r str)`
-                 found closure `[closure@$DIR/closure-reform-bad.rs:10:13: 10:50 string:_]`
+                 found closure `[closure@$DIR/closure-reform-bad.rs:10:13: 10:50]`
 
 error: aborting due to previous error
 
