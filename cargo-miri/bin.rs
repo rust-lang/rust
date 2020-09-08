@@ -462,7 +462,7 @@ fn phase_cargo_rustc(args: env::Args) {
         // But we cannot run it here, as cargo invoked us as a compiler -- our stdin and stdout are not
         // like we want them.
         // Instead of compiling, we write JSON into the output file with all the relevant command-line flags
-        // and environment variables; this is sued alter when cargo calls us again in the CARGO_TARGET_RUNNER phase.
+        // and environment variables; this is used when cargo calls us again in the CARGO_TARGET_RUNNER phase.
         let info = CrateRunInfo::collect(args);
 
         let mut path = PathBuf::from(get_arg_flag_value("--out-dir").unwrap());
