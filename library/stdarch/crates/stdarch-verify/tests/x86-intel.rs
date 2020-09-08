@@ -323,8 +323,6 @@ fn verify_all_signatures() {
             // take a signed-integer. This breaks `_MM_SHUFFLE` for
             // `_mm_shuffle_ps`:
             "_mm_shuffle_ps" => continue,
-            // FIXME(#867)
-            "_mm256_extract_epi8" | "_mm256_extract_epi16" => continue,
             _ => {}
         }
 
