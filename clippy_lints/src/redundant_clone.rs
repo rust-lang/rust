@@ -14,7 +14,6 @@ use rustc_middle::mir::{
     visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},
 };
 use rustc_middle::ty::{self, fold::TypeVisitor, Ty};
-use rustc_mir::dataflow::BottomValue;
 use rustc_mir::dataflow::{Analysis, AnalysisDomain, GenKill, GenKillAnalysis, ResultsCursor};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
@@ -411,14 +410,15 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
 struct MaybeStorageLive;
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeStorageLive {
-    type Idx = mir::Local;
+    type Domain = BitSet<mir::Local>;
     const NAME: &'static str = "maybe_storage_live";
 
-    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
-        body.local_decls.len()
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = dead
+        BitSet::new_empty(body.local_decls.len())
     }
 
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain) {
         for arg in body.args_iter() {
             state.insert(arg);
         }
@@ -426,6 +426,8 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeStorageLive {
 }
 
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeStorageLive {
+    type Idx = mir::Local;
+
     fn statement_effect(&self, trans: &mut impl GenKill<Self::Idx>, stmt: &mir::Statement<'tcx>, _: mir::Location) {
         match stmt.kind {
             mir::StatementKind::StorageLive(l) => trans.gen(l),
@@ -452,11 +454,6 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeStorageLive {
     ) {
         // Nothing to do when a call returns successfully
     }
-}
-
-impl BottomValue for MaybeStorageLive {
-    /// bottom = dead
-    const BOTTOM_VALUE: bool = false;
 }
 
 /// Collects the possible borrowers of each local.
