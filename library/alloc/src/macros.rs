@@ -102,6 +102,18 @@ macro_rules! vec {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! format {
+    // A faster path for simple format! calls.
+    ("{}", $($arg:tt,?)+) => {{
+        // It is possible to implement ToString manually, bypassing Display.
+        // However, "{}" formats in terms of Display. This wrapper enforces
+        // equally strict type boundaries even though we are calling ToString.
+        struct NeedsDisplay<T: $crate::fmt::Display> {
+            inner: T,
+        }
+        let fast = |t: NeedsDisplay<_> | $crate::string::ToString::to_string(t.inner);
+        // This TokenTree must resolve to a Displayable value to be valid.
+        fast(NeedsDisplay { inner: &{$($arg)*} })
+    }};
     ($($arg:tt)*) => {{
         let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
         res
