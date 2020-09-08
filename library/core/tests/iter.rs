@@ -379,7 +379,9 @@ fn test_zip_next_back_side_effects_exhausted() {
 #[derive(Debug)]
 struct CountClone(Cell<i32>);
 
-fn count_clone() -> CountClone { CountClone(Cell::new(0)) }
+fn count_clone() -> CountClone {
+    CountClone(Cell::new(0))
+}
 
 impl PartialEq<i32> for CountClone {
     fn eq(&self, rhs: &i32) -> bool {
@@ -401,7 +403,7 @@ fn test_zip_cloned_sideffectful() {
     let xs = [count_clone(), count_clone(), count_clone(), count_clone()];
     let ys = [count_clone(), count_clone()];
 
-    for _ in xs.iter().cloned().zip(ys.iter().cloned()) { }
+    for _ in xs.iter().cloned().zip(ys.iter().cloned()) {}
 
     assert_eq!(&xs, &[1, 1, 1, 0][..]);
     assert_eq!(&ys, &[1, 1][..]);
@@ -409,7 +411,7 @@ fn test_zip_cloned_sideffectful() {
     let xs = [count_clone(), count_clone()];
     let ys = [count_clone(), count_clone(), count_clone(), count_clone()];
 
-    for _ in xs.iter().cloned().zip(ys.iter().cloned()) { }
+    for _ in xs.iter().cloned().zip(ys.iter().cloned()) {}
 
     assert_eq!(&xs, &[1, 1][..]);
     assert_eq!(&ys, &[1, 1, 0, 0][..]);
@@ -420,7 +422,7 @@ fn test_zip_map_sideffectful() {
     let mut xs = [0; 6];
     let mut ys = [0; 4];
 
-    for _ in xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1)) { }
+    for _ in xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1)) {}
 
     assert_eq!(&xs, &[1, 1, 1, 1, 1, 0]);
     assert_eq!(&ys, &[1, 1, 1, 1]);
@@ -428,7 +430,7 @@ fn test_zip_map_sideffectful() {
     let mut xs = [0; 4];
     let mut ys = [0; 6];
 
-    for _ in xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1)) { }
+    for _ in xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1)) {}
 
     assert_eq!(&xs, &[1, 1, 1, 1]);
     assert_eq!(&ys, &[1, 1, 1, 1, 0, 0]);
