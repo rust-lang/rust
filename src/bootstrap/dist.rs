@@ -323,8 +323,8 @@ fn make_win_dist(
     // Warn windows-gnu users that the bundled GCC cannot compile C files
     builder.create(
         &target_bin_dir.join("GCC-WARNING.txt"),
-        "gcc.exe contained in this folder cannot be used for compiling C files - it is only\
-         used as a linker. In order to be able to compile projects containing C code use\
+        "gcc.exe contained in this folder cannot be used for compiling C files - it is only \
+         used as a linker. In order to be able to compile projects containing C code use \
          the GCC provided by MinGW or Cygwin.",
     );
 
