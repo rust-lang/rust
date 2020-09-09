@@ -177,3 +177,7 @@ impl<T: ?const Trait> Foo<T> {
         Self(t)
     }
 }
+
+// #4357
+type T = typeof(1);
+impl T for .. {}
