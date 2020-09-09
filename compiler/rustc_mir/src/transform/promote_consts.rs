@@ -584,6 +584,16 @@ impl<'tcx> Validator<'_, 'tcx> {
             // `validate_rvalue` upon access.
             Operand::Constant(c) => {
                 if let Some(def_id) = c.check_static_ptr(self.tcx) {
+                    // Only allow statics (not consts) to refer to other statics.
+                    // FIXME(eddyb) does this matter at all for promotion?
+                    // FIXME(RalfJung) it makes little sense to not promote this in `fn/`const fn`,
+                    // and in `const` this cannot occur anyway. The concern is that we might promote
+                    // even `let x = &STATIC` which would be useless.
+                    let is_static = matches!(self.const_kind, Some(hir::ConstContext::Static(_)));
+                    if !is_static {
+                        return Err(Unpromotable);
+                    }
+
                     let is_thread_local = self.tcx.is_thread_local_static(def_id);
                     if is_thread_local {
                         return Err(Unpromotable);
@@ -597,20 +607,20 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match *rvalue {
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) if self.maybe_runtime() => {
+            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
                 let operand_ty = operand.ty(self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                 match (cast_in, cast_out) {
                     (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
-                        // ptr-to-int casts are not promotable
+                        // ptr-to-int casts are not possible in consts and thus not promotable
                         return Err(Unpromotable);
                     }
                     _ => {}
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, _) if self.maybe_runtime() => {
+            Rvalue::BinaryOp(op, ref lhs, _) => {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind() {
                     assert!(
                         op == BinOp::Eq
@@ -622,7 +632,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             || op == BinOp::Offset
                     );
 
-                    // raw pointer operations are not allowed inside promoteds
+                    // raw pointer operations are not allowed inside consts and thus not promotable
                     return Err(Unpromotable);
                 }
             }
