@@ -99,3 +99,12 @@ compiler/rustc library/std
 
 If your target specification is already available in the bootstrap
 compiler, you can use it instead of the JSON file for both arguments.
+
+## Promoting a target from tier 2 (target) to tier 2 (host)
+
+There are two levels of tier 2 targets:
+a) Targets that are only cross-compiled (`rustup target add`)
+b) Targets that have a native toolchain (`rustup toolchain install`)
+
+For an example of promoting a target from cross-compiled to native,
+see [!75914](https://github.com/rust-lang/rust/pull/75914).
