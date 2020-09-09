@@ -208,7 +208,7 @@ pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError> {
 fn _var(key: &OsStr) -> Result<String, VarError> {
     match var_os(key) {
         Some(s) => s.into_string().map_err(VarError::NotUnicode),
-        None => Err(VarError::NotPresent),
+        None => Err(VarError::NotPresent(key.to_os_string())),
     }
 }
 
@@ -252,7 +252,7 @@ pub enum VarError {
     /// The specified environment variable was not present in the current
     /// process's environment.
     #[stable(feature = "env", since = "1.0.0")]
-    NotPresent,
+    NotPresent(OsString),
 
     /// The specified environment variable was found, but it did not contain
     /// valid unicode data. The found data is returned as a payload of this
@@ -265,7 +265,7 @@ pub enum VarError {
 impl fmt::Display for VarError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            VarError::NotPresent => write!(f, "environment variable not found"),
+            VarError::NotPresent(ref s) => write!(f, "environment variable {:?} not found", s),
             VarError::NotUnicode(ref s) => {
                 write!(f, "environment variable was not valid unicode: {:?}", s)
             }
@@ -278,7 +278,7 @@ impl Error for VarError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
         match *self {
-            VarError::NotPresent => "environment variable not found",
+            VarError::NotPresent(..) => "environment variable not found",
             VarError::NotUnicode(..) => "environment variable was not valid unicode",
         }
     }
