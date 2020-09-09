@@ -47,14 +47,14 @@ enum MiriCommand {
 #[derive(Serialize, Deserialize)]
 struct CrateRunInfo {
     /// The command-line arguments.
-    args: Vec<OsString>,
+    args: Vec<String>,
     /// The environment.
     env: Vec<(OsString, OsString)>,
 }
 
 impl CrateRunInfo {
     /// Gather all the information we need.
-    fn collect(args: env::ArgsOs) -> Self {
+    fn collect(args: env::Args) -> Self {
         let args = args.collect();
         let env = env::vars_os().collect();
         CrateRunInfo { args, env }
@@ -362,11 +362,11 @@ path = "lib.rs"
     }
 }
 
-fn phase_cargo_miri(mut args: env::ArgsOs) {
+fn phase_cargo_miri(mut args: env::Args) {
     // Require a subcommand before any flags.
     // We cannot know which of those flags take arguments and which do not,
     // so we cannot detect subcommands later.
-    let subcommand = match args.next().as_deref().and_then(|s| s.to_str()) {
+    let subcommand = match args.next().as_deref() {
         Some("test") => MiriCommand::Test,
         Some("run") => MiriCommand::Run,
         Some("setup") => MiriCommand::Setup,
@@ -423,12 +423,12 @@ fn phase_cargo_miri(mut args: env::ArgsOs) {
     // Run cargo.
     if verbose {
         cmd.env("MIRI_VERBOSE", ""); // this makes `inside_cargo_rustc` verbose.
-        eprintln!("+ {:?}", cmd);
+        eprintln!("[cargo-miri miri] {:?}", cmd);
     }
     exec(cmd)
 }
 
-fn phase_cargo_rustc(args: env::ArgsOs) {
+fn phase_cargo_rustc(args: env::Args) {
     /// Determines if we are being invoked (as rustc) to build a crate for
     /// the "target" architecture, in contrast to the "host" architecture.
     /// Host crates are for build scripts and proc macros and still need to
@@ -473,19 +473,41 @@ fn phase_cargo_rustc(args: env::ArgsOs) {
             // (and cargo passes this before the filename so it should be unique)
             get_arg_flag_value("extra-filename").unwrap_or(String::new()),
         ));
+        if verbose {
+            eprintln!("[cargo-miri rustc] writing run info to {:?}", path.display());
+        }
 
         let file = File::create(&path)
-            .unwrap_or_else(|_| show_error(format!("Cannot create {}", path.display())));
+            .unwrap_or_else(|_| show_error(format!("Cannot create {:?}", path.display())));
         let file = BufWriter::new(file);
         serde_json::ser::to_writer(file, &info)
-            .unwrap_or_else(|_| show_error(format!("Cannot write to {}", path.display())));
+            .unwrap_or_else(|_| show_error(format!("Cannot write to {:?}", path.display())));
         return;
     }
 
     let mut cmd = miri();
-    // Forward arguments.
-    cmd.args(args);
-    // FIXME: Make the build check-only!
+    // Forward arguments, but (only for target crates!) remove "link" from "--emit" to make this a check-only build.
+    let emit_flag = "--emit";
+    for arg in args {
+        if target_crate && arg.starts_with(emit_flag) {
+            // Patch this argument. First, extract its value.
+            let val = &arg[emit_flag.len()..];
+            assert!(val.starts_with("="), "`cargo` should pass `--emit=X` as one argument");
+            let val = &val[1..];
+            let mut val: Vec<_> = val.split(',').collect();
+            // Now make sure "link" is not in there, but "metadata" is.
+            if let Some(i) = val.iter().position(|&s| s == "link") {
+                val.remove(i);
+                if !val.iter().any(|&s| s == "metadata") {
+                    val.push("metadata");
+                }
+            }
+            cmd.arg(format!("{}={}", emit_flag, val.join(",")));
+            // FIXME: due to this, the `.rlib` file does not get created and cargo re-triggers the build each time.
+        } else {
+            cmd.arg(arg);
+        }
+    }
 
     // We make sure to only specify our custom Xargo sysroot for target crates - that is,
     // crates which are needed for interpretation by Miri. proc-macros and build scripts
@@ -503,36 +525,60 @@ fn phase_cargo_rustc(args: env::ArgsOs) {
 
     // Run it.
     if verbose {
-        eprintln!("+ {:?}", cmd);
+        eprintln!("[cargo-miri rustc] {:?}", cmd);
     }
     exec(cmd)
 }
 
-fn phase_cargo_runner(binary: &str, args: env::ArgsOs) {
+fn phase_cargo_runner(binary: &str, binary_args: env::Args) {
     let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
 
     let file = File::open(binary)
-        .unwrap_or_else(|_| show_error(format!("File {:?} not found, or cargo-miri invoked incorrectly", binary)));
+        .unwrap_or_else(|_| show_error(format!("File {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary)));
     let file = BufReader::new(file);
     let info: CrateRunInfo = serde_json::from_reader(file)
         .unwrap_or_else(|_| show_error(format!("File {:?} does not contain valid JSON", binary)));
-    // FIXME: remove the file.
+    fs::remove_file(binary)
+        .unwrap_or_else(|_| show_error(format!("Unable to remove file {:?}", binary)));
 
     let mut cmd = miri();
-    // Forward rustc arguments,with our sysroot.
-    cmd.args(info.args);
+    // Forward rustc arguments. We need to patch "--extern" filenames because
+    // we forced a check-only build without cargo knowing about that: replace `.rlib` suffix by `.rmeta`.
+    let mut args = info.args.into_iter();
+    let extern_flag = "--extern";
+    while let Some(arg) = args.next() {
+        if arg == extern_flag {
+            let next_arg = args.next().expect("`--extern` should be followed by a filename");
+            let next_arg = next_arg.strip_suffix(".rlib").expect("all extern filenames should end in `.rlib`");
+            cmd.arg(extern_flag);
+            cmd.arg(format!("{}.rmeta", next_arg));
+        } else {
+            cmd.arg(arg);
+        }
+    }
+    // Set sysroot.
     let sysroot =
         env::var_os("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
     cmd.arg("--sysroot");
     cmd.arg(sysroot);
+    // Respect `MIRIFLAGS`.
+    if let Ok(a) = env::var("MIRIFLAGS") {
+        // This code is taken from `RUSTFLAGS` handling in cargo.
+        let args = a
+                .split(' ')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string);
+        cmd.args(args);
+    }
 
     // Then pass binary arguments.
     cmd.arg("--");
-    cmd.args(args);
+    cmd.args(binary_args);
 
     // Run it.
     if verbose {
-        eprintln!("+ {:?}", cmd);
+        eprintln!("[cargo-miri runner] {:?}", cmd);
     }
     exec(cmd)
 }
@@ -548,7 +594,9 @@ fn main() {
         return;
     }
 
-    let mut args = std::env::args_os();
+    // Rustc does not support non-UTF-8 arguments so we make no attempt either.
+    // (We do support non-UTF-8 environment variables though.)
+    let mut args = std::env::args();
     // Skip binary name.
     args.next().unwrap();
 
@@ -559,10 +607,10 @@ fn main() {
     //   binary crates for later interpretation.
     // - When we are executed due to CARGO_TARGET_RUNNER, we start interpretation based on the
     //   flags that were stored earlier.
-    // FIXME: report errors for these unwraps.
-    match &*args.next().unwrap().to_str().unwrap() {
-        "miri" => phase_cargo_miri(args),
-        "rustc" => phase_cargo_rustc(args),
-        binary => phase_cargo_runner(binary, args),
+    match args.next().as_deref() {
+        Some("miri") => phase_cargo_miri(args),
+        Some("rustc") => phase_cargo_rustc(args),
+        Some(binary) => phase_cargo_runner(binary, args),
+        _ => show_error(format!("`cargo-miri` called without first argument; please only invoke this binary through `cargo miri`")),
     }
 }

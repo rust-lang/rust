@@ -21,13 +21,16 @@ def cargo_miri(cmd):
         args += ["--target", os.environ['MIRI_TEST_TARGET']]
     return args
 
-def test(name, cmd, stdout_ref, stderr_ref):
+def test(name, cmd, stdout_ref, stderr_ref, env={}):
     print("==> Testing `{}` <==".format(name))
     ## Call `cargo miri`, capture all output
+    p_env = os.environ.copy()
+    p_env.update(env)
     p = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        stderr=subprocess.PIPE,
+        env=p_env,
     )
     (stdout, stderr) = p.communicate()
     stdout = stdout.decode("UTF-8")
@@ -55,29 +58,31 @@ def test_cargo_miri_run():
         "stdout.ref", "stderr.ref"
     )
     test("cargo miri run (with arguments)",
-        cargo_miri("run") + ["--", "--", "hello world", '"hello world"'],
+        cargo_miri("run") + ["--", "hello world", '"hello world"'],
         "stdout.ref", "stderr.ref2"
     )
 
 def test_cargo_miri_test():
     test("cargo miri test",
-        cargo_miri("test") + ["--", "-Zmiri-seed=feed"],
-        "test.stdout.ref", "test.stderr.ref"
+        cargo_miri("test"),
+        "test.stdout.ref", "test.stderr.ref",
+        env={'MIRIFLAGS': "-Zmiri-seed=feed"},
     )
     test("cargo miri test (with filter)",
-        cargo_miri("test") + ["--", "--", "le1"],
+        cargo_miri("test") + ["--", "--format=pretty", "le1"],
         "test.stdout.ref2", "test.stderr.ref"
     )
     test("cargo miri test (without isolation)",
-        cargo_miri("test") + ["--", "-Zmiri-disable-isolation", "--", "num_cpus"],
-        "test.stdout.ref3", "test.stderr.ref"
+        cargo_miri("test") + ["--", "--format=pretty", "num_cpus"],
+        "test.stdout.ref3", "test.stderr.ref",
+        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
     test("cargo miri test (test target)",
-        cargo_miri("test") + ["--test", "test"],
+        cargo_miri("test") + ["--test", "test", "--", "--format=pretty"],
         "test.stdout.ref4", "test.stderr.ref"
     )
     test("cargo miri test (bin target)",
-        cargo_miri("test") + ["--bin", "cargo-miri-test"],
+        cargo_miri("test") + ["--bin", "cargo-miri-test", "--", "--format=pretty"],
         "test.stdout.ref5", "test.stderr.ref"
     )
 
