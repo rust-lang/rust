@@ -39,7 +39,11 @@ EOF
 TARGET=$(rustc --version --verbose | grep "^host:" | cut -d ' ' -f 2)
 SYSROOT=$(rustc --print sysroot)
 LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib
-MIRIDIR=$(readlink -e "$(dirname "$0")")
+MIRIDIR=$(dirname "$0")
+if readlink -e . >/dev/null; then
+    # This platform supports `readlink -e`.
+    MIRIDIR=$(readlink -e "$MIRIDIR")
+fi
 if ! test -d "$LIBDIR"; then
     echo "Something went wrong determining the library dir."
     echo "I got $LIBDIR but that does not exist."
