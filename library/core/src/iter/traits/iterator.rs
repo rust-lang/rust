@@ -1739,8 +1739,6 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// #![feature(iter_partition_in_place)]
-    ///
     /// let mut a = [1, 2, 3, 4, 5, 6, 7];
     ///
     /// // Partition in-place between evens and odds
@@ -1750,7 +1748,7 @@ pub trait Iterator {
     /// assert!(a[..i].iter().all(|&n| n % 2 == 0)); // evens
     /// assert!(a[i..].iter().all(|&n| n % 2 == 1)); // odds
     /// ```
-    #[unstable(feature = "iter_partition_in_place", reason = "new API", issue = "62543")]
+    #[stable(feature = "iter_partition_in_place", since = "1.48.0")]
     fn partition_in_place<'a, T: 'a, P>(mut self, ref mut predicate: P) -> usize
     where
         Self: Sized + DoubleEndedIterator<Item = &'a mut T>,
