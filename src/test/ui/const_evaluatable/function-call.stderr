@@ -1,14 +1,10 @@
 warning: cannot use constants which depend on generic parameters in types
-  --> $DIR/function-call.rs:13:17
+  --> $DIR/function-call.rs:14:17
    |
 LL |     let _ = [0; foo::<T>()];
    |                 ^^^^^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/function-call.rs:2:9
-   |
-LL | #![warn(const_evaluatable_unchecked)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(const_evaluatable_unchecked)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
 
