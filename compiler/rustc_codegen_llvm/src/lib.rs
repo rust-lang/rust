@@ -130,6 +130,13 @@ impl WriteBackendMethods for LlvmCodegenBackend {
             llvm::LLVMRustPrintPassTimings();
         }
     }
+    fn run_link(
+        cgcx: &CodegenContext<Self>,
+        diag_handler: &Handler,
+        modules: Vec<ModuleCodegen<Self::Module>>,
+    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+        back::write::link(cgcx, diag_handler, modules)
+    }
     fn run_fat_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLTOInput<Self>>,

@@ -881,13 +881,13 @@ impl From<Vec<NonZeroU8>> for CString {
         unsafe {
             // Transmute `Vec<NonZeroU8>` to `Vec<u8>`.
             let v: Vec<u8> = {
-                // Safety:
+                // SAFETY:
                 //   - transmuting between `NonZeroU8` and `u8` is sound;
                 //   - `alloc::Layout<NonZeroU8> == alloc::Layout<u8>`.
                 let (ptr, len, cap): (*mut NonZeroU8, _, _) = Vec::into_raw_parts(v);
                 Vec::from_raw_parts(ptr.cast::<u8>(), len, cap)
             };
-            // Safety: `v` cannot contain null bytes, given the type-level
+            // SAFETY: `v` cannot contain null bytes, given the type-level
             // invariant of `NonZeroU8`.
             CString::from_vec_unchecked(v)
         }

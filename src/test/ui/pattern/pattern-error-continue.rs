@@ -30,6 +30,6 @@ fn main() {
     //~| expected `char`, found `bool`
 
     match () {
-        E::V => {} //~ ERROR failed to resolve: use of undeclared type or module `E`
+        E::V => {} //~ ERROR failed to resolve: use of undeclared type `E`
     }
 }

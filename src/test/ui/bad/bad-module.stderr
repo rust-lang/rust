@@ -1,14 +1,14 @@
-error[E0433]: failed to resolve: use of undeclared type or module `thing`
+error[E0433]: failed to resolve: use of undeclared crate or module `thing`
   --> $DIR/bad-module.rs:2:15
    |
 LL |     let foo = thing::len(Vec::new());
-   |               ^^^^^ use of undeclared type or module `thing`
+   |               ^^^^^ use of undeclared crate or module `thing`
 
-error[E0433]: failed to resolve: use of undeclared type or module `foo`
+error[E0433]: failed to resolve: use of undeclared crate or module `foo`
   --> $DIR/bad-module.rs:5:15
    |
 LL |     let foo = foo::bar::baz();
-   |               ^^^ use of undeclared type or module `foo`
+   |               ^^^ use of undeclared crate or module `foo`
 
 error: aborting due to 2 previous errors
 

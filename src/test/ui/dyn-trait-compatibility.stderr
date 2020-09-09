@@ -1,14 +1,14 @@
-error[E0433]: failed to resolve: use of undeclared type or module `dyn`
+error[E0433]: failed to resolve: use of undeclared crate or module `dyn`
   --> $DIR/dyn-trait-compatibility.rs:3:11
    |
 LL | type A1 = dyn::dyn;
-   |           ^^^ use of undeclared type or module `dyn`
+   |           ^^^ use of undeclared crate or module `dyn`
 
-error[E0433]: failed to resolve: use of undeclared type or module `dyn`
+error[E0433]: failed to resolve: use of undeclared crate or module `dyn`
   --> $DIR/dyn-trait-compatibility.rs:9:23
    |
 LL | type A3 = dyn<<dyn as dyn>::dyn>;
-   |                       ^^^ use of undeclared type or module `dyn`
+   |                       ^^^ use of undeclared crate or module `dyn`
 
 error[E0412]: cannot find type `dyn` in this scope
   --> $DIR/dyn-trait-compatibility.rs:1:11

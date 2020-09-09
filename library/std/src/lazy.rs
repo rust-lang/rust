@@ -293,7 +293,7 @@ impl<T> SyncOnceCell<T> {
 
         debug_assert!(self.is_initialized());
 
-        // Safety: The inner value has been initialized
+        // SAFETY: The inner value has been initialized
         Ok(unsafe { self.get_unchecked() })
     }
 
@@ -316,7 +316,7 @@ impl<T> SyncOnceCell<T> {
     /// ```
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn into_inner(mut self) -> Option<T> {
-        // Safety: Safe because we immediately free `self` without dropping
+        // SAFETY: Safe because we immediately free `self` without dropping
         let inner = unsafe { self.take_inner() };
 
         // Don't drop this `SyncOnceCell`. We just moved out one of the fields, but didn't set
@@ -416,7 +416,7 @@ impl<T> SyncOnceCell<T> {
 
 unsafe impl<#[may_dangle] T> Drop for SyncOnceCell<T> {
     fn drop(&mut self) {
-        // Safety: The cell is being dropped, so it can't be accessed again.
+        // SAFETY: The cell is being dropped, so it can't be accessed again.
         // We also don't touch the `T`, which validates our usage of #[may_dangle].
         unsafe { self.take_inner() };
     }
