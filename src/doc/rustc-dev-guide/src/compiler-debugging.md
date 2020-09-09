@@ -263,7 +263,7 @@ $ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
 ## Viewing Spanview output (.html files)
 [viewing-spanview-output]: #viewing-spanview-output
 
-In addition to [graphviz output](#formatting-graphviz-output), MIR debugging
+In addition to [graphviz output](#formatting-graphviz-output-dot-files), MIR debugging
 flags include an option to generate a MIR representation called `Spanview` that
 uses HTML to highlight code regions in the original source code and display
 compiler metadata associated with each region.
