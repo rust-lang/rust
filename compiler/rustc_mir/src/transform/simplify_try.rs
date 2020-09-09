@@ -230,8 +230,8 @@ fn get_arm_identity_info<'a, 'tcx>(
             }
         }
     }
-
-    nop_stmts.sort();
+    // We sort primitive usize here so we can use unstable sort
+    nop_stmts.sort_unstable();
 
     // Use one of the statements we're going to discard between the point
     // where the storage location for the variant field becomes live and
