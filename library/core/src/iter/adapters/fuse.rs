@@ -530,7 +530,7 @@ where
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
         match self.iter {
-            // Safety: unsafe function forwarding to unsafe function with the same requirements
+            // SAFETY: unsafe function forwarding to unsafe function with the same requirements
             Some(ref mut iter) => unsafe { SourceIter::as_inner(iter) },
             // SAFETY: the specialized iterator never sets `None`
             None => unsafe { intrinsics::unreachable() },

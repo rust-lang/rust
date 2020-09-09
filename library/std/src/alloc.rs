@@ -149,7 +149,7 @@ impl System {
         }
     }
 
-    // Safety: Same as `AllocRef::grow`
+    // SAFETY: Same as `AllocRef::grow`
     #[inline]
     unsafe fn grow_impl(
         &mut self,

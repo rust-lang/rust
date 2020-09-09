@@ -474,7 +474,7 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn new(pointer: P) -> Pin<P> {
-        // Safety: the value pointed to is `Unpin`, and so has no requirements
+        // SAFETY: the value pointed to is `Unpin`, and so has no requirements
         // around pinning.
         unsafe { Pin::new_unchecked(pointer) }
     }

@@ -2388,7 +2388,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    // Safety: the following two methods require that the rotation amount
+    // SAFETY: the following two methods require that the rotation amount
     // be less than half the length of the deque.
     //
     // `wrap_copy` requires that `min(x, cap() - x) + copy_len <= cap()`,

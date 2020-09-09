@@ -3245,7 +3245,7 @@ fn is_ascii(s: &[u8]) -> bool {
             (word_ptr as usize) - (start as usize) == byte_pos
         );
 
-        // Safety: We know `word_ptr` is properly aligned (because of
+        // SAFETY: We know `word_ptr` is properly aligned (because of
         // `align_offset`), and we know that we have enough bytes between `word_ptr` and the end
         let word = unsafe { word_ptr.read() };
         if contains_nonascii(word) {
