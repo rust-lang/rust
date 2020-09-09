@@ -43,6 +43,12 @@ fn num_cpus() {
 }
 
 #[test]
+fn cargo_env() {
+    assert_eq!(env!("CARGO_PKG_NAME"), "cargo-miri-test");
+    env!("CARGO_BIN_EXE_cargo-miri-test"); // Asserts that this exists.
+}
+
+#[test]
 #[should_panic(expected="Explicit panic")]
 fn do_panic() { // In large, friendly letters :)
     panic!("Explicit panic from test!");

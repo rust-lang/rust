@@ -375,6 +375,16 @@ path = "lib.rs"
 }
 
 fn phase_cargo_miri(mut args: env::Args) {
+    // Check for version and help flags even when invoked as `cargo-miri`.
+    if has_arg_flag("--help") || has_arg_flag("-h") {
+        show_help();
+        return;
+    }
+    if has_arg_flag("--version") || has_arg_flag("-V") {
+        show_version();
+        return;
+    }
+
     // Require a subcommand before any flags.
     // We cannot know which of those flags take arguments and which do not,
     // so we cannot detect subcommands later.
@@ -570,6 +580,13 @@ fn phase_cargo_runner(binary: &str, binary_args: env::Args) {
     let info: CrateRunInfo = serde_json::from_reader(file)
         .unwrap_or_else(|_| show_error(format!("File {:?} does not contain valid JSON", binary)));
 
+    // Set missing env vars.
+    for (name, val) in info.env {
+        if env::var_os(&name).is_none() {
+            env::set_var(name, val);
+        }
+    }
+
     let mut cmd = miri();
     // Forward rustc arguments. We need to patch "--extern" filenames because
     // we forced a check-only build without cargo knowing about that: replace `.rlib` suffix by `.rmeta`.
@@ -613,16 +630,6 @@ fn phase_cargo_runner(binary: &str, binary_args: env::Args) {
 }
 
 fn main() {
-    // Check for version and help flags even when invoked as `cargo-miri`.
-    if has_arg_flag("--help") || has_arg_flag("-h") {
-        show_help();
-        return;
-    }
-    if has_arg_flag("--version") || has_arg_flag("-V") {
-        show_version();
-        return;
-    }
-
     // Rustc does not support non-UTF-8 arguments so we make no attempt either.
     // (We do support non-UTF-8 environment variables though.)
     let mut args = std::env::args();
