@@ -1195,7 +1195,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
             self.dec_strong();
             if self.strong() == 0 {
                 // destroy the contained object
-                ptr::drop_in_place(self.ptr.as_mut());
+                ptr::drop_in_place(Self::get_mut_unchecked(self));
 
                 // remove the implicit "strong weak" pointer now that we've
                 // destroyed the contents.
