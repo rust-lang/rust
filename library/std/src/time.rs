@@ -460,12 +460,13 @@ impl SystemTime {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::time::SystemTime;
     ///
     /// let sys_time = SystemTime::now();
-    /// let difference = sys_time.duration_since(sys_time)
-    ///                          .expect("Clock may have gone backwards");
+    /// let new_sys_time = SystemTime::now();
+    /// let difference = new_sys_time.duration_since(sys_time)
+    ///     .expect("Clock may have gone backwards");
     /// println!("{:?}", difference);
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]

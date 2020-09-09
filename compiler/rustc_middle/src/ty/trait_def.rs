@@ -167,7 +167,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Returns a vector containing all impls
+    /// Returns an iterator containing all impls
     pub fn all_impls(self, def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
         let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(def_id);
 

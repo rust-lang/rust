@@ -219,8 +219,7 @@ fn error_cannot_declare_mod_here<'a, T>(
 
 /// Derive a submodule path from the first found `#[path = "path_string"]`.
 /// The provided `dir_path` is joined with the `path_string`.
-// Public for rustfmt usage.
-pub fn submod_path_from_attr(
+pub(super) fn submod_path_from_attr(
     sess: &Session,
     attrs: &[Attribute],
     dir_path: &Path,
