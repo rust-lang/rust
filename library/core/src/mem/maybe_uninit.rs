@@ -520,8 +520,8 @@ impl<T> MaybeUninit<T> {
     /// this initialization invariant.
     ///
     /// Moreover, this leaves a copy of the same data behind in the `MaybeUninit<T>`. When using
-    /// multiple copies of the data (by calling `read` multiple times, or first
-    /// calling `read` and then [`assume_init`]), it is your responsibility
+    /// multiple copies of the data (by calling `assume_init_read` multiple times, or first
+    /// calling `assume_init_read` and then [`assume_init`]), it is your responsibility
     /// to ensure that that data may indeed be duplicated.
     ///
     /// [inv]: #initialization-invariant
@@ -537,16 +537,16 @@ impl<T> MaybeUninit<T> {
     ///
     /// let mut x = MaybeUninit::<u32>::uninit();
     /// x.write(13);
-    /// let x1 = unsafe { x.read() };
+    /// let x1 = unsafe { x.assume_init_read() };
     /// // `u32` is `Copy`, so we may read multiple times.
-    /// let x2 = unsafe { x.read() };
+    /// let x2 = unsafe { x.assume_init_read() };
     /// assert_eq!(x1, x2);
     ///
     /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninit();
     /// x.write(None);
-    /// let x1 = unsafe { x.read() };
+    /// let x1 = unsafe { x.assume_init_read() };
     /// // Duplicating a `None` value is okay, so we may read multiple times.
-    /// let x2 = unsafe { x.read() };
+    /// let x2 = unsafe { x.assume_init_read() };
     /// assert_eq!(x1, x2);
     /// ```
     ///
@@ -558,14 +558,14 @@ impl<T> MaybeUninit<T> {
     ///
     /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninit();
     /// x.write(Some(vec![0,1,2]));
-    /// let x1 = unsafe { x.read() };
-    /// let x2 = unsafe { x.read() };
+    /// let x1 = unsafe { x.assume_init_read() };
+    /// let x2 = unsafe { x.assume_init_read() };
     /// // We now created two copies of the same vector, leading to a double-free ⚠️ when
     /// // they both get dropped!
     /// ```
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
-    pub unsafe fn read(&self) -> T {
+    pub unsafe fn assume_init_read(&self) -> T {
         // SAFETY: the caller must guarantee that `self` is initialized.
         // Reading from `self.as_ptr()` is safe since `self` should be initialized.
         unsafe {
