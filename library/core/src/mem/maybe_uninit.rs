@@ -472,6 +472,8 @@ impl<T> MaybeUninit<T> {
     /// *immediate* undefined behavior, but will cause undefined behavior with most
     /// safe operations (including dropping it).
     ///
+    /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
+    ///
     /// # Examples
     ///
     /// Correct usage of this method:
@@ -593,6 +595,7 @@ impl<T> MaybeUninit<T> {
     /// `Vec<T>` however will cause undefined behaviour.
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
+    /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     pub unsafe fn assume_init_drop(&mut self) {
         // SAFETY: the caller must guarantee that `self` is initialized and
