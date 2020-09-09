@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Generics, HirId, Item, StructField, Variant};
+use rustc_hir::{Generics, HirId, Item, StructField, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability::{DeprecationEntry, Index};
@@ -538,7 +538,31 @@ impl Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl { of_trait: Some(ref t), items, .. } => {
+            hir::ItemKind::Impl { of_trait: Some(ref t), self_ty, items, .. } => {
+                // If this impl block has an #[unstable] attribute, give an
+                // error if all involved types and traits are stable, because
+                // it will have no effect.
+                // See: https://github.com/rust-lang/rust/issues/55436
+                if let (Some(Stability { level: attr::Unstable { .. }, .. }), _) =
+                    attr::find_stability(&self.tcx.sess, &item.attrs, item.span)
+                {
+                    let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
+                    c.visit_ty(self_ty);
+                    c.visit_trait_ref(t);
+                    if c.fully_stable {
+                        let span = item
+                            .attrs
+                            .iter()
+                            .find(|a| a.has_name(sym::unstable))
+                            .map_or(item.span, |a| a.span);
+                        self.tcx.sess.span_warn(
+                            span,
+                            "An `#[unstable]` annotation here has no effect. \
+                            See issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information.",
+                        );
+                    }
+                }
+
                 if let Res::Def(DefKind::Trait, trait_did) = t.path.res {
                     for impl_item_ref in items {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
@@ -595,6 +619,44 @@ impl Visitor<'tcx> for Checker<'tcx> {
             self.tcx.check_stability(def_id, Some(id), path.span)
         }
         intravisit::walk_path(self, path)
+    }
+}
+
+struct CheckTraitImplStable<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    fully_stable: bool,
+}
+
+impl Visitor<'tcx> for CheckTraitImplStable<'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _id: hir::HirId) {
+        if let Some(def_id) = path.res.opt_def_id() {
+            if let Some(stab) = self.tcx.lookup_stability(def_id) {
+                self.fully_stable &= stab.level.is_stable();
+            }
+        }
+        intravisit::walk_path(self, path)
+    }
+
+    fn visit_trait_ref(&mut self, t: &'tcx TraitRef<'tcx>) {
+        if let Res::Def(DefKind::Trait, trait_did) = t.path.res {
+            if let Some(stab) = self.tcx.lookup_stability(trait_did) {
+                self.fully_stable &= stab.level.is_stable();
+            }
+        }
+        intravisit::walk_trait_ref(self, t)
+    }
+
+    fn visit_ty(&mut self, t: &'tcx Ty<'tcx>) {
+        if let TyKind::Never = t.kind {
+            self.fully_stable = false;
+        }
+        intravisit::walk_ty(self, t)
     }
 }
 
