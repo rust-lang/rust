@@ -145,6 +145,23 @@ the code can be processed.
 
 Therefore, the resolution is performed in multiple stages.
 
+## Speculative crate loading
+
+To give useful errors, rustc suggests importing paths into scope if they're
+not found. How does it do this? It looks through every module of every crate
+and looks for possible matches. This even includes crates that haven't yet
+been loaded!
+
+Loading crates for import suggestions that haven't yet been loaded is called
+_speculative crate loading_, because any errors it encounters shouldn't be
+reported: resolve decided to load them, not the user. The function that does
+this is `lookup_import_candidates` and lives in
+`rustc_resolve/src/diagnostics.rs`.
+
+To tell the difference between speculative loads and loads initiated by the
+user, resolve passes around a `record_used` parameter, which is `false` when
+the load is speculative.
+
 ## TODO:
 
 This is a result of the first pass of learning the code. It is definitely
