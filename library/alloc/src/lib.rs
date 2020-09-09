@@ -106,6 +106,7 @@
 #![feature(libc)]
 #![feature(map_first_last)]
 #![feature(map_into_keys_values)]
+#![feature(maybe_uninit_ref)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(new_uninit)]
