@@ -181,6 +181,21 @@ mod tests {
     }
 
     #[test]
+    fn no_module_completion_with_module_body() {
+        check(
+            r#"
+            //- /lib.rs
+            mod <|> {
+
+            }
+            //- /foo.rs
+            fn foo() {}
+        "#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
     fn main_module_completion() {
         check(
             r#"
