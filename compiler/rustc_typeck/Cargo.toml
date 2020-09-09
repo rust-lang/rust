@@ -9,6 +9,7 @@ test = false
 doctest = false
 
 [dependencies]
+indexmap = "1.5.1"
 rustc_arena = { path = "../rustc_arena" }
 tracing = "0.1"
 rustc_macros = { path = "../rustc_macros" }

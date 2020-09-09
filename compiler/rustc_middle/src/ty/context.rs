@@ -415,6 +415,10 @@ pub struct TypeckResults<'tcx> {
     /// entire variable.
     pub closure_captures: ty::UpvarListMap,
 
+    /// Given the closure ID this map provides the list of
+    /// `Place`s and how/why are they captured by the closure.
+    pub closure_capture_information: ty::CaptureInformationMap<'tcx>,
+
     /// Stores the type, expression, span and optional scope span of all types
     /// that are live across the yield of this generator (if a generator).
     pub generator_interior_types: Vec<GeneratorInteriorTypeCause<'tcx>>,
@@ -442,6 +446,7 @@ impl<'tcx> TypeckResults<'tcx> {
             tainted_by_errors: None,
             concrete_opaque_types: Default::default(),
             closure_captures: Default::default(),
+            closure_capture_information: Default::default(),
             generator_interior_types: Default::default(),
         }
     }
@@ -676,6 +681,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
             tainted_by_errors,
             ref concrete_opaque_types,
             ref closure_captures,
+            ref closure_capture_information,
             ref generator_interior_types,
         } = *self;
 
@@ -709,6 +715,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
             tainted_by_errors.hash_stable(hcx, hasher);
             concrete_opaque_types.hash_stable(hcx, hasher);
             closure_captures.hash_stable(hcx, hasher);
+            closure_capture_information.hash_stable(hcx, hasher);
             generator_interior_types.hash_stable(hcx, hasher);
         })
     }

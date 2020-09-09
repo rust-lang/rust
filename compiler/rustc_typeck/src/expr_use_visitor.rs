@@ -56,6 +56,7 @@ pub enum MutateMode {
 // This is the code that actually walks the tree.
 pub struct ExprUseVisitor<'a, 'tcx> {
     mc: mc::MemCategorizationContext<'a, 'tcx>,
+    body_owner: LocalDefId,
     delegate: &'a mut dyn Delegate<'tcx>,
 }
 
@@ -93,6 +94,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     ) -> Self {
         ExprUseVisitor {
             mc: mc::MemCategorizationContext::new(infcx, param_env, body_owner, typeck_results),
+            body_owner,
             delegate,
         }
     }
@@ -505,7 +507,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("walk_pat(discr_place={:?}, pat={:?})", discr_place, pat);
 
         let tcx = self.tcx();
-        let ExprUseVisitor { ref mc, ref mut delegate } = *self;
+        let ExprUseVisitor { ref mc, body_owner: _, ref mut delegate } = *self;
         return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!("walk_pat: binding place={:?} pat={:?}", place, pat,);
@@ -542,45 +544,51 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }));
     }
 
-    fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>, fn_decl_span: Span) {
+    // FIXME(arora-aman):  fix the fn_decl_span
+    fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>, _fn_decl_span: Span) {
         debug!("walk_captures({:?})", closure_expr);
 
-        let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id);
-        if let Some(upvars) = self.tcx().upvars_mentioned(closure_def_id) {
-            for &var_id in upvars.keys() {
-                let upvar_id = ty::UpvarId {
-                    var_path: ty::UpvarPath { hir_id: var_id },
-                    closure_expr_id: closure_def_id,
+        // We are currently walking a closure that is within a given body
+        // We need to process all the captures for this closure.
+        let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id).to_def_id();
+        let upvars = self.tcx().upvars_mentioned(self.body_owner);
+        if let Some(closure_capture_information) =
+            self.mc.typeck_results.closure_capture_information.get(&closure_def_id)
+        {
+            for (place, capture_info) in closure_capture_information.iter() {
+                let var_hir_id = if let PlaceBase::Upvar(upvar_id) = place.base {
+                    upvar_id.var_path.hir_id
+                } else {
+                    continue;
+                    // FIXME(arora-aman): yell?
                 };
-                let upvar_capture = self.mc.typeck_results.upvar_capture(upvar_id);
-                let captured_place = return_if_err!(self.cat_captured_var(
-                    closure_expr.hir_id,
-                    fn_decl_span,
-                    var_id,
-                ));
-                match upvar_capture {
+
+                if !upvars.map_or(false, |upvars| upvars.contains_key(&var_hir_id)) {
+                    // The nested closure might be capturing our local variables
+                    // Since for the current body these aren't captures, we will ignore them.
+                    continue;
+                }
+
+                // The place is being captured by the enclosing closure
+                // FIXME(arora-aman) Make sure this is valid to do when called from clippy.
+                let upvar_id = ty::UpvarId::new(var_hir_id, self.body_owner);
+                let place_with_id = PlaceWithHirId::new(
+                    capture_info.expr_id.unwrap_or(closure_expr.hir_id),
+                    place.base_ty,
+                    PlaceBase::Upvar(upvar_id),
+                    place.projections.clone(),
+                );
+                match capture_info.capture_kind {
                     ty::UpvarCapture::ByValue(_) => {
-                        let mode = copy_or_move(&self.mc, &captured_place);
-                        self.delegate.consume(&captured_place, mode);
+                        let mode = copy_or_move(&self.mc, &place_with_id);
+                        self.delegate.consume(&place_with_id, mode);
                     }
                     ty::UpvarCapture::ByRef(upvar_borrow) => {
-                        self.delegate.borrow(&captured_place, upvar_borrow.kind);
+                        self.delegate.borrow(&place_with_id, upvar_borrow.kind);
                     }
                 }
             }
         }
-    }
-
-    fn cat_captured_var(
-        &mut self,
-        closure_hir_id: hir::HirId,
-        closure_span: Span,
-        var_id: hir::HirId,
-    ) -> mc::McResult<PlaceWithHirId<'tcx>> {
-        // Create the place for the variable being borrowed, from the
-        // perspective of the creator (parent) of the closure.
-        let var_ty = self.mc.node_ty(var_id)?;
-        self.mc.cat_res(closure_hir_id, closure_span, var_ty, Res::Local(var_id))
     }
 }
 
