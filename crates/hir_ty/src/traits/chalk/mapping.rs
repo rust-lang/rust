@@ -464,6 +464,18 @@ impl ToChalk for hir_def::ImplId {
     }
 }
 
+impl ToChalk for hir_def::AdtId {
+    type Chalk = AdtId;
+
+    fn to_chalk(self, _db: &dyn HirDatabase) -> Self::Chalk {
+        chalk_ir::AdtId(self.into())
+    }
+
+    fn from_chalk(_db: &dyn HirDatabase, id: AdtId) -> Self {
+        id.0
+    }
+}
+
 impl ToChalk for CallableDefId {
     type Chalk = FnDefId;
 
