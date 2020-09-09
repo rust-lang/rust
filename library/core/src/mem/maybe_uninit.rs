@@ -580,17 +580,23 @@ impl<T> MaybeUninit<T> {
     ///
     /// # Safety
     ///
-    /// Calling this when the content is not yet fully initialized causes undefined
-    /// behavior: it is up to the caller to guarantee that the `MaybeUninit<T>` really
-    /// is in an initialized state.
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is
+    /// in an initialized state. Calling this when the content is not yet fully
+    /// initialized causes undefined behavior.
     ///
-    /// This function runs the destructor of the contained value in place.
-    /// Afterwards, the memory is considered uninitialized again, but remains unmodified.
+    /// On top of that, all additional invariants of the type `T` must be
+    /// satisfied, as the `Drop` implementation of `T` (or its members) may
+    /// rely on this. For example, a `1`-initialized [`Vec<T>`] is considered
+    /// initialized (under the current implementation; this does not constitute
+    /// a stable guarantee) because the only requirement the compiler knows
+    /// about it is that the data pointer must be non-null. Dropping such a
+    /// `Vec<T>` however will cause undefined behaviour.
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     pub unsafe fn assume_init_drop(&mut self) {
-        // SAFETY: the caller must guarantee that `self` is initialized.
+        // SAFETY: the caller must guarantee that `self` is initialized and
+        // satisfies all invariants of `T`.
         // Dropping the value in place is safe if that is the case.
         unsafe { ptr::drop_in_place(self.as_mut_ptr()) }
     }
