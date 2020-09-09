@@ -305,7 +305,9 @@ pub mod guard {
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr, &mut stacksize), 0);
             ret = Some(stackaddr);
         }
-        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        if e == 0 || cfg!(not(target_env = "gnu")) {
+            assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        }
         ret
     }
 
@@ -446,7 +448,9 @@ pub mod guard {
                 Some(stackaddr..stackaddr + guardsize)
             };
         }
-        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        if e == 0 || cfg!(not(target_env = "gnu")) {
+            assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        }
         ret
     }
 }
