@@ -588,16 +588,32 @@ fn phase_cargo_runner(binary: &str, binary_args: env::Args) {
     }
 
     let mut cmd = miri();
-    // Forward rustc arguments. We need to patch "--extern" filenames because
-    // we forced a check-only build without cargo knowing about that: replace `.rlib` suffix by `.rmeta`.
+    // Forward rustc arguments.
+    // We need to patch "--extern" filenames because we forced a check-only
+    // build without cargo knowing about that: replace `.rlib` suffix by
+    // `.rmeta`.
+    // We also need to remove `--error-format` as cargo specifies that to be JSON,
+    // but when we run here, cargo does not interpret the JSON any more. `--json`
+    // then also nees to be dropped.
     let mut args = info.args.into_iter();
     let extern_flag = "--extern";
+    let error_format_flag = "--error-format";
+    let json_flag = "--json";
     while let Some(arg) = args.next() {
         if arg == extern_flag {
+            // `--extern` is always passed as a separate argument by cargo.
             let next_arg = args.next().expect("`--extern` should be followed by a filename");
             let next_arg = next_arg.strip_suffix(".rlib").expect("all extern filenames should end in `.rlib`");
             cmd.arg(extern_flag);
             cmd.arg(format!("{}.rmeta", next_arg));
+        } else if arg.starts_with(error_format_flag) {
+            let suffix = &arg[error_format_flag.len()..];
+            assert!(suffix.starts_with('='));
+            // Drop this argument.
+        } else if arg.starts_with(json_flag) {
+            let suffix = &arg[json_flag.len()..];
+            assert!(suffix.starts_with('='));
+            // Drop this argument.
         } else {
             cmd.arg(arg);
         }
