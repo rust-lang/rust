@@ -1,5 +1,4 @@
 use crate::utils::{is_expn_of, is_type_diagnostic_item, return_ty, span_lint_and_then};
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::Expr;
@@ -23,14 +22,14 @@ declare_clippy_lint! {
     ///     panic!("error");
     /// }
     /// ```
-    pub PANIC_IN_RESULT,
+    pub PANIC_IN_RESULT_FN,
     restriction,
     "functions of type `Result<..>` that contain `panic!()`, `todo!()` or `unreachable()` or `unimplemented()` "
 }
 
-declare_lint_pass!(PanicInResult => [PANIC_IN_RESULT]);
+declare_lint_pass!(PanicInResultFn  => [PANIC_IN_RESULT_FN]);
 
-impl<'tcx> LateLintPass<'tcx> for PanicInResult {
+impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -40,15 +39,10 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResult {
         span: Span,
         hir_id: hir::HirId,
     ) {
-        if let FnKind::Closure(_) = fn_kind {
-            return;
-        }
-        if_chain! {
-            if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type));
-            then
-            {
-                lint_impl_body(cx, span, body);
-            }
+        if !matches!(fn_kind, FnKind::Closure(_))
+            && is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type))
+        {
+            lint_impl_body(cx, span, body);
         }
     }
 }
@@ -61,10 +55,9 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnimplementedUnreachable {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if is_expn_of(expr.span, "unimplemented").is_some()
-            || is_expn_of(expr.span, "unreachable").is_some()
-            || is_expn_of(expr.span, "panic").is_some()
-            || is_expn_of(expr.span, "todo").is_some()
+        if ["unimplemented", "unreachable", "panic", "todo"]
+            .iter()
+            .any(|fun| is_expn_of(expr.span, fun).is_some())
         {
             self.result.push(expr.span);
         }
@@ -83,7 +76,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir
     if !panics.result.is_empty() {
         span_lint_and_then(
             cx,
-            PANIC_IN_RESULT,
+            PANIC_IN_RESULT_FN,
             impl_span,
             "used `unimplemented!()`, `unreachable!()`, `todo!()` or `panic!()` in a function that returns `Result`",
             move |diag| {

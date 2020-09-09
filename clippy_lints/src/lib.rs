@@ -267,7 +267,7 @@ mod open_options;
 mod option_env_unwrap;
 mod option_if_let_else;
 mod overflow_check_conditional;
-mod panic_in_result;
+mod panic_in_result_fn;
 mod panic_unimplemented;
 mod partialeq_ne_impl;
 mod path_buf_push_overwrite;
@@ -748,7 +748,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &option_env_unwrap::OPTION_ENV_UNWRAP,
         &option_if_let_else::OPTION_IF_LET_ELSE,
         &overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
-        &panic_in_result::PANIC_IN_RESULT,
+        &panic_in_result_fn::PANIC_IN_RESULT_FN,
         &panic_unimplemented::PANIC,
         &panic_unimplemented::PANIC_PARAMS,
         &panic_unimplemented::TODO,
@@ -1088,7 +1088,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box manual_async_fn::ManualAsyncFn);
     store.register_early_pass(|| box redundant_field_names::RedundantFieldNames);
     store.register_late_pass(|| box vec_resize_to_zero::VecResizeToZero);
-    store.register_late_pass(|| box panic_in_result::PanicInResult);
+    store.register_late_pass(|| box panic_in_result_fn::PanicInResultFn);
 
     let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
     store.register_early_pass(move || box non_expressive_names::NonExpressiveNames {
@@ -1132,7 +1132,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS),
         LintId::of(&missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS),
         LintId::of(&modulo_arithmetic::MODULO_ARITHMETIC),
-        LintId::of(&panic_in_result::PANIC_IN_RESULT),
+        LintId::of(&panic_in_result_fn::PANIC_IN_RESULT_FN),
         LintId::of(&panic_unimplemented::PANIC),
         LintId::of(&panic_unimplemented::TODO),
         LintId::of(&panic_unimplemented::UNIMPLEMENTED),

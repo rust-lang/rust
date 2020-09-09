@@ -1,4 +1,4 @@
-#![warn(clippy::panic_in_result)]
+#![warn(clippy::panic_in_result_fn)]
 
 struct A;
 
