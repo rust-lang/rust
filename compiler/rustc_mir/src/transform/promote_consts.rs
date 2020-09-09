@@ -374,7 +374,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                             // In theory, any zero-sized value could be borrowed
                             // mutably without consequences. However, only &mut []
-                            // is allowed right now, and only in functions.
+                            // is allowed right now.
                             if let ty::Array(_, len) = ty.kind() {
                                 match len.try_eval_usize(self.tcx, self.param_env) {
                                     Some(0) => {}
@@ -524,7 +524,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                 if let Some(did) = c.check_static_ptr(self.tcx) {
                                     // Evaluating a promoted may not read statics except if it got
                                     // promoted from a static (this is a CTFE check). So we
-                                    // can only promoted static accesses inside statics.
+                                    // can only promote static accesses inside statics.
                                     if let Some(hir::ConstContext::Static(..)) = self.const_kind {
                                         // The `is_empty` predicate is introduced to exclude the case
                                         // where the projection operations are [ .field, * ].
@@ -586,9 +586,10 @@ impl<'tcx> Validator<'_, 'tcx> {
                 if let Some(def_id) = c.check_static_ptr(self.tcx) {
                     // Only allow statics (not consts) to refer to other statics.
                     // FIXME(eddyb) does this matter at all for promotion?
-                    // FIXME(RalfJung) it makes little sense to not promote this in `fn/`const fn`,
-                    // and in `const` this cannot occur anyway. The concern is that we might promote
-                    // even `let x = &STATIC` which would be useless.
+                    // FIXME(RalfJung) it makes little sense to not promote this in `fn`/`const fn`,
+                    // and in `const` this cannot occur anyway. The only concern is that we might
+                    // promote even `let x = &STATIC` which would be useless, but this applies to
+                    // promotion inside statics as well.
                     let is_static = matches!(self.const_kind, Some(hir::ConstContext::Static(_)));
                     if !is_static {
                         return Err(Unpromotable);
@@ -681,7 +682,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
-                    // is allowed right now, and only in functions.
+                    // is allowed right now.
                     if let ty::Array(_, len) = ty.kind() {
                         match len.try_eval_usize(self.tcx, self.param_env) {
                             Some(0) => {}
