@@ -78,8 +78,8 @@ impl<K, V> LeafNode<K, V> {
         LeafNode {
             // As a general policy, we leave fields uninitialized if they can be, as this should
             // be both slightly faster and easier to track in Valgrind.
-            keys: [MaybeUninit::UNINIT; CAPACITY],
-            vals: [MaybeUninit::UNINIT; CAPACITY],
+            keys: MaybeUninit::uninit_array(),
+            vals: MaybeUninit::uninit_array(),
             parent: ptr::null(),
             parent_idx: MaybeUninit::uninit(),
             len: 0,
@@ -111,7 +111,7 @@ impl<K, V> InternalNode<K, V> {
     /// `len` of 0), there must be one initialized and valid edge. This function does not set up
     /// such an edge.
     unsafe fn new() -> Self {
-        InternalNode { data: unsafe { LeafNode::new() }, edges: [MaybeUninit::UNINIT; 2 * B] }
+        InternalNode { data: unsafe { LeafNode::new() }, edges: MaybeUninit::uninit_array() }
     }
 }
 
