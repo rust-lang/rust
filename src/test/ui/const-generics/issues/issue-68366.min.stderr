@@ -1,5 +1,13 @@
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/issue-68366.rs:12:37
+   |
+LL | impl <const N: usize> Collatz<{Some(N)}> {}
+   |                                     ^ non-trivial anonymous constants must not depend on the parameter `N`
+   |
+   = help: it is currently only allowed to use either `N` or `{ N }` as generic constants
+
 error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-68366.rs:10:13
+  --> $DIR/issue-68366.rs:12:13
    |
 LL | impl <const N: usize> Collatz<{Some(N)}> {}
    |             ^ unconstrained const parameter
@@ -8,7 +16,7 @@ LL | impl <const N: usize> Collatz<{Some(N)}> {}
    = note: proving the result of expressions other than the parameter are unique is not supported
 
 error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-68366.rs:15:12
+  --> $DIR/issue-68366.rs:18:12
    |
 LL | impl<const N: usize> Foo {}
    |            ^ unconstrained const parameter
@@ -16,6 +24,6 @@ LL | impl<const N: usize> Foo {}
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0207`.

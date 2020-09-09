@@ -1,4 +1,6 @@
-#![feature(const_generics)]
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 // All of these three items must be in `lib2` to reproduce the error
 

@@ -1,0 +1,10 @@
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/issue-62504.rs:19:25
+   |
+LL |         ArrayHolder([0; Self::SIZE])
+   |                         ^^^^^^^^^^ non-trivial anonymous constants must not depend on the parameter `Self`
+   |
+   = help: it is currently only allowed to use either `Self` or `{ Self }` as generic constants
+
+error: aborting due to previous error
+

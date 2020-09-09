@@ -1,8 +1,8 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-62220.rs:10:27
+  --> $DIR/issue-62504.rs:19:25
    |
-LL |     pub fn trunc(self) -> (TruncatedVector<T, { N }>, T) {
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         ArrayHolder([0; Self::SIZE])
+   |                         ^^^^^^^^^^
    |
    = note: this may fail depending on what value the parameter takes
 

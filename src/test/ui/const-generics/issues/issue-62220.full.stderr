@@ -1,8 +1,8 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-72819-generic-in-const-eval.rs:7:47
+  --> $DIR/issue-62220.rs:13:27
    |
-LL | where Assert::<{N < usize::max_value() / 2}>: IsTrue,
-   |                                               ^^^^^^
+LL |     pub fn trunc(self) -> (TruncatedVector<T, { N }>, T) {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this may fail depending on what value the parameter takes
 

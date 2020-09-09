@@ -1,11 +1,15 @@
-#![feature(const_generics)] //~ WARN the feature `const_generics` is incomplete
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 fn foo<const N: usize, const A: [u8; N]>() {}
 //~^ ERROR the type of const parameters must not
+//[min]~| ERROR `[u8; _]` is forbidden as the type of a const generic parameter
 
 fn main() {
     foo::<_, {[1]}>();
-    //~^ ERROR wrong number of const arguments
-    //~| ERROR wrong number of type arguments
-    //~| ERROR mismatched types
+    //[full]~^ ERROR wrong number of const arguments
+    //[full]~| ERROR wrong number of type arguments
+    //[full]~| ERROR mismatched types
 }

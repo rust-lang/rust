@@ -1,14 +1,17 @@
-#![allow(incomplete_features)]
-#![feature(const_generics)]
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 pub struct Vector<T, const N: usize>([T; N]);
 
 pub type TruncatedVector<T, const N: usize> = Vector<T, { N - 1 }>;
+//[min]~^ ERROR generic parameters must not be used inside of non trivial constant values
 
 impl<T, const N: usize> Vector<T, { N }> {
     /// Drop the last component and return the vector with one fewer dimension.
     pub fn trunc(self) -> (TruncatedVector<T, { N }>, T) {
-        //~^ ERROR constant expression depends on a generic parameter
+        //[full]~^ ERROR constant expression depends on a generic parameter
         unimplemented!()
     }
 }
