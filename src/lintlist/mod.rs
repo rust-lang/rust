@@ -923,7 +923,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "invalid_atomic_ordering",
         group: "correctness",
-        desc: "usage of invalid atomic ordering in atomic loads/stores and memory fences",
+        desc: "usage of invalid atomic ordering in atomic operations and memory fences",
         deprecation: None,
         module: "atomic_ordering",
     },

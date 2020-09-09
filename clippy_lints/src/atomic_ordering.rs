@@ -8,7 +8,8 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of invalid atomic
-    /// ordering in atomic loads/stores/exchanges and memory fences
+    /// ordering in atomic loads/stores/exchanges/updates and
+    /// memory fences.
     ///
     /// **Why is this bad?** Using an invalid atomic ordering
     /// will cause a panic at run-time.
@@ -32,10 +33,11 @@ declare_clippy_lint! {
     ///
     /// let _ = x.compare_exchange(false, false, Ordering::Relaxed, Ordering::SeqCst);
     /// let _ = x.compare_exchange_weak(false, true, Ordering::SeqCst, Ordering::Release);
+    /// let _ = x.fetch_update(Ordering::AcqRel, Ordering::AcqRel, |val| Some(val ^ val));
     /// ```
     pub INVALID_ATOMIC_ORDERING,
     correctness,
-    "usage of invalid atomic ordering in atomic loads/stores/exchanges ane memory fences"
+    "usage of invalid atomic ordering in atomic operations and memory fences"
 }
 
 declare_lint_pass!(AtomicOrdering => [INVALID_ATOMIC_ORDERING]);
@@ -142,8 +144,12 @@ fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind;
         let method = method_path.ident.name.as_str();
         if type_is_atomic(cx, &args[0]);
-        if method == "compare_exchange" || method == "compare_exchange_weak";
-        let failure_order_arg = &args[4];
+        if method == "compare_exchange" || method == "compare_exchange_weak" || method == "fetch_update";
+        let (success_order_arg, failure_order_arg) = if method == "fetch_update" {
+            (&args[1], &args[2])
+        } else {
+            (&args[3], &args[4])
+        };
         if let Some(fail_ordering_def_id) = opt_ordering_defid(cx, failure_order_arg);
         then {
             // Helper type holding on to some checking and error reporting data. Has
@@ -158,7 +164,7 @@ fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
             let acqrel = ("AcqRel", acquire.1, acquire.2);
             let search = [relaxed, acquire, seq_cst, release, acqrel];
 
-            let success_lint_info = opt_ordering_defid(cx, &args[3])
+            let success_lint_info = opt_ordering_defid(cx, success_order_arg)
                 .and_then(|success_ord_def_id| -> Option<OrdLintInfo> {
                     search
                         .iter()
