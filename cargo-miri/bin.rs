@@ -444,7 +444,7 @@ fn phase_cargo_miri(mut args: env::Args) {
 
     // Run cargo.
     if verbose {
-        cmd.env("MIRI_VERBOSE", ""); // this makes `inside_cargo_rustc` verbose.
+        cmd.env("MIRI_VERBOSE", ""); // This makes the other phases verbose.
         eprintln!("[cargo-miri miri] {:?}", cmd);
     }
     exec(cmd)
