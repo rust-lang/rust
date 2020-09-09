@@ -2462,6 +2462,32 @@ impl Drop for Drain<'_> {
     }
 }
 
+impl<'a> Drain<'a> {
+    /// Returns the remaining (sub)string of this iterator as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_drain_as_str)]
+    /// let mut s = String::from("abc");
+    /// let mut drain = s.drain(..);
+    /// assert_eq!(drain.as_str(), "abc");
+    /// let _ = drain.next().unwrap();
+    /// assert_eq!(drain.as_str(), "bc");
+    /// ```
+    #[unstable(feature = "string_drain_as_str", issue = "none")]
+    pub fn as_str(&self) -> &str {
+        self.iter.as_str()
+    }
+}
+
+#[unstable(feature = "string_drain_as_str", issue = "none")]
+impl<'a> AsRef<str> for Drain<'a> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
 #[stable(feature = "drain", since = "1.6.0")]
 impl Iterator for Drain<'_> {
     type Item = char;
