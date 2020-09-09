@@ -2439,7 +2439,7 @@ pub struct Drain<'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl fmt::Debug for Drain<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Drain { .. }")
+        f.debug_tuple("Drain").field(&self.as_str()).finish()
     }
 }
 
