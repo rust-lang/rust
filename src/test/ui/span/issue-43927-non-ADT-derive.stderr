@@ -1,4 +1,4 @@
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-43927-non-ADT-derive.rs:3:1
    |
 LL | #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
@@ -54,3 +54,4 @@ LL | #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
 
 error: aborting due to 7 previous errors
 
+For more information about this error, try `rustc --explain E0774`.

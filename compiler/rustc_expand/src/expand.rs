@@ -529,9 +529,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn error_derive_forbidden_on_non_adt(&self, derives: &[Path], item: &Annotatable) {
         let attr = self.cx.sess.find_by_name(item.attrs(), sym::derive);
         let span = attr.map_or(item.span(), |attr| attr.span);
-        let mut err = self
-            .cx
-            .struct_span_err(span, "`derive` may only be applied to structs, enums and unions");
+        let mut err = rustc_errors::struct_span_err!(
+            self.cx.sess,
+            span,
+            E0774,
+            "`derive` may only be applied to structs, enums and unions",
+        );
         if let Some(ast::Attribute { style: ast::AttrStyle::Inner, .. }) = attr {
             let trait_list = derives.iter().map(|t| pprust::path_to_string(t)).collect::<Vec<_>>();
             let suggestion = format!("#[derive({})]", trait_list.join(", "));

@@ -1,4 +1,4 @@
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/macros-in-extern-derive.rs:2:5
    |
 LL |     #[derive(Copy)]
@@ -6,3 +6,4 @@ LL |     #[derive(Copy)]
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0774`.

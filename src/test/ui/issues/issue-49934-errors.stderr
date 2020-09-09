@@ -1,4 +1,4 @@
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-49934-errors.rs:1:8
    |
 LL | fn foo<#[derive(Debug)] T>() {
@@ -10,7 +10,7 @@ error: expected an inert attribute, found a derive macro
 LL | fn foo<#[derive(Debug)] T>() {
    |                 ^^^^^
 
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-49934-errors.rs:5:9
    |
 LL |         #[derive(Debug)]
@@ -24,3 +24,4 @@ LL |         #[derive(Debug)]
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0774`.

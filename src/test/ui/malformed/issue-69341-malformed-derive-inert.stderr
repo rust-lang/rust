@@ -4,7 +4,7 @@ error: traits in `#[derive(...)]` don't accept arguments
 LL |     #[derive(parse())]
    |                   ^^ help: remove the arguments
 
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-69341-malformed-derive-inert.rs:8:5
    |
 LL |     path: (),
@@ -24,3 +24,4 @@ LL |     #[derive(parse())]
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0774`.

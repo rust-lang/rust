@@ -60,7 +60,7 @@ LL |     let a = pat_macro!();
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/trace_faulty_macros.rs:42:1
    |
 LL | #[derive(Debug)]
@@ -79,3 +79,4 @@ LL |     let a = pat_macro!();
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0774`.
