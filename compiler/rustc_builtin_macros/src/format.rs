@@ -132,7 +132,7 @@ fn parse_args<'a>(
     let mut p = ecx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        return Err(ecx.struct_span_err(sp, "requires at least a format string argument"));
+        return Err(ecx.sess.struct_span_err(sp, "requires at least a format string argument"));
     }
 
     let first_token = &p.token;
@@ -194,7 +194,8 @@ fn parse_args<'a>(
                 p.expect(&token::Eq)?;
                 let e = p.parse_expr()?;
                 if let Some(prev) = names.get(&ident.name) {
-                    ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", ident))
+                    ecx.sess
+                        .struct_span_err(e.span, &format!("duplicate argument named `{}`", ident))
                         .span_label(args[*prev].span, "previously here")
                         .span_label(e.span, "duplicate argument")
                         .emit();
@@ -212,7 +213,7 @@ fn parse_args<'a>(
             _ => {
                 let e = p.parse_expr()?;
                 if named {
-                    let mut err = ecx.struct_span_err(
+                    let mut err = ecx.sess.struct_span_err(
                         e.span,
                         "positional arguments cannot follow named arguments",
                     );
@@ -283,7 +284,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     _ => {
                         let fmtsp = self.fmtsp;
                         let sp = arg.format.ty_span.map(|sp| fmtsp.from_inner(sp));
-                        let mut err = self.ecx.struct_span_err(
+                        let mut err = self.ecx.sess.struct_span_err(
                             sp.unwrap_or(fmtsp),
                             &format!("unknown format trait `{}`", arg.format.ty),
                         );
@@ -371,7 +372,7 @@ impl<'a, 'b> Context<'a, 'b> {
         let count = self.pieces.len()
             + self.arg_with_formatting.iter().filter(|fmt| fmt.precision_span.is_some()).count();
         if self.names.is_empty() && !numbered_position_args && count != self.args.len() {
-            e = self.ecx.struct_span_err(
+            e = self.ecx.sess.struct_span_err(
                 sp,
                 &format!(
                     "{} positional argument{} in format string, but {}",
@@ -403,7 +404,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 format!("arguments {head} and {tail}", head = refs.join(", "), tail = reg)
             };
 
-            e = self.ecx.struct_span_err(
+            e = self.ecx.sess.struct_span_err(
                 sp,
                 &format!(
                     "invalid reference to positional {} ({})",
@@ -555,7 +556,7 @@ impl<'a, 'b> Context<'a, 'b> {
                             } else {
                                 self.fmtsp
                             };
-                            let mut err = self.ecx.struct_span_err(sp, &msg[..]);
+                            let mut err = self.ecx.sess.struct_span_err(sp, &msg[..]);
 
                             if capture_feature_enabled && !self.is_literal {
                                 err.note(&format!(
@@ -987,7 +988,8 @@ pub fn expand_preparsed_format_args(
     if !parser.errors.is_empty() {
         let err = parser.errors.remove(0);
         let sp = fmt_span.from_inner(err.span);
-        let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}", err.description));
+        let mut e =
+            ecx.sess.struct_span_err(sp, &format!("invalid format string: {}", err.description));
         e.span_label(sp, err.label + " in format string");
         if let Some(note) = err.note {
             e.note(&note);
@@ -1093,11 +1095,11 @@ pub fn expand_preparsed_format_args(
 
         let mut diag = {
             if let [(sp, msg)] = &errs[..] {
-                let mut diag = cx.ecx.struct_span_err(*sp, *msg);
+                let mut diag = cx.ecx.sess.struct_span_err(*sp, *msg);
                 diag.span_label(*sp, *msg);
                 diag
             } else {
-                let mut diag = cx.ecx.struct_span_err(
+                let mut diag = cx.ecx.sess.struct_span_err(
                     errs.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
                     "multiple unused formatting arguments",
                 );

@@ -121,8 +121,9 @@ fn parse_inline_asm<'a>(
                 let mut p2 = cx.new_parser_from_tts(tts.trees().take(first_colon).collect());
 
                 if p2.token == token::Eof {
-                    let mut err =
-                        cx.struct_span_err(sp, "macro requires a string literal as an argument");
+                    let mut err = cx
+                        .sess
+                        .struct_span_err(sp, "macro requires a string literal as an argument");
                     err.span_label(sp, "string literal required");
                     return Err(err);
                 }

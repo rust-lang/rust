@@ -27,13 +27,14 @@ fn parse_args<'a>(
     let mut p = ecx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        return Err(ecx.struct_span_err(sp, "requires at least a template string argument"));
+        return Err(ecx.sess.struct_span_err(sp, "requires at least a template string argument"));
     }
 
     // Detect use of the legacy llvm_asm! syntax (which used to be called asm!)
     if p.look_ahead(1, |t| *t == token::Colon || *t == token::ModSep) {
-        let mut err =
-            ecx.struct_span_err(sp, "the legacy LLVM-style asm! syntax is no longer supported");
+        let mut err = ecx
+            .sess
+            .struct_span_err(sp, "the legacy LLVM-style asm! syntax is no longer supported");
         err.note("consider migrating to the new asm! syntax specified in RFC 2873");
         err.note("alternatively, switch to llvm_asm! to keep your code working as it is");
 
@@ -67,7 +68,7 @@ fn parse_args<'a>(
         if !p.eat(&token::Comma) {
             if allow_templates {
                 // After a template string, we always expect *only* a comma...
-                let mut err = ecx.struct_span_err(p.token.span, "expected token: `,`");
+                let mut err = ecx.sess.struct_span_err(p.token.span, "expected token: `,`");
                 err.span_label(p.token.span, "expected `,`");
                 p.maybe_annotate_with_ascription(&mut err, false);
                 return Err(err);
@@ -142,6 +143,7 @@ fn parse_args<'a>(
                 ast::ExprKind::Path(..) => {}
                 _ => {
                     let err = ecx
+                        .sess
                         .struct_span_err(expr.span, "argument to `sym` must be a path expression");
                     return Err(err);
                 }
@@ -156,7 +158,7 @@ fn parse_args<'a>(
                 ast::ExprKind::MacCall(..) => {}
                 _ => {
                     let errstr = "expected operand, options, or additional template string";
-                    let mut err = ecx.struct_span_err(template.span, errstr);
+                    let mut err = ecx.sess.struct_span_err(template.span, errstr);
                     err.span_label(template.span, errstr);
                     return Err(err);
                 }
@@ -175,26 +177,30 @@ fn parse_args<'a>(
         // Validate the order of named, positional & explicit register operands and options. We do
         // this at the end once we have the full span of the argument available.
         if !args.options_spans.is_empty() {
-            ecx.struct_span_err(span, "arguments are not allowed after options")
+            ecx.sess
+                .struct_span_err(span, "arguments are not allowed after options")
                 .span_labels(args.options_spans.clone(), "previous options")
                 .span_label(span, "argument")
                 .emit();
         }
         if explicit_reg {
             if name.is_some() {
-                ecx.struct_span_err(span, "explicit register arguments cannot have names").emit();
+                ecx.sess
+                    .struct_span_err(span, "explicit register arguments cannot have names")
+                    .emit();
             }
             args.reg_args.insert(slot);
         } else if let Some(name) = name {
             if let Some(&prev) = args.named_args.get(&name) {
-                ecx.struct_span_err(span, &format!("duplicate argument named `{}`", name))
+                ecx.sess
+                    .struct_span_err(span, &format!("duplicate argument named `{}`", name))
                     .span_label(args.operands[prev].1, "previously here")
                     .span_label(span, "duplicate argument")
                     .emit();
                 continue;
             }
             if !args.reg_args.is_empty() {
-                let mut err = ecx.struct_span_err(
+                let mut err = ecx.sess.struct_span_err(
                     span,
                     "named arguments cannot follow explicit register arguments",
                 );
@@ -207,7 +213,7 @@ fn parse_args<'a>(
             args.named_args.insert(name, slot);
         } else {
             if !args.named_args.is_empty() || !args.reg_args.is_empty() {
-                let mut err = ecx.struct_span_err(
+                let mut err = ecx.sess.struct_span_err(
                     span,
                     "positional arguments cannot follow named arguments \
                      or explicit register arguments",
@@ -228,25 +234,28 @@ fn parse_args<'a>(
         && args.options.contains(ast::InlineAsmOptions::READONLY)
     {
         let spans = args.options_spans.clone();
-        ecx.struct_span_err(spans, "the `nomem` and `readonly` options are mutually exclusive")
+        ecx.sess
+            .struct_span_err(spans, "the `nomem` and `readonly` options are mutually exclusive")
             .emit();
     }
     if args.options.contains(ast::InlineAsmOptions::PURE)
         && args.options.contains(ast::InlineAsmOptions::NORETURN)
     {
         let spans = args.options_spans.clone();
-        ecx.struct_span_err(spans, "the `pure` and `noreturn` options are mutually exclusive")
+        ecx.sess
+            .struct_span_err(spans, "the `pure` and `noreturn` options are mutually exclusive")
             .emit();
     }
     if args.options.contains(ast::InlineAsmOptions::PURE)
         && !args.options.intersects(ast::InlineAsmOptions::NOMEM | ast::InlineAsmOptions::READONLY)
     {
         let spans = args.options_spans.clone();
-        ecx.struct_span_err(
-            spans,
-            "the `pure` option must be combined with either `nomem` or `readonly`",
-        )
-        .emit();
+        ecx.sess
+            .struct_span_err(
+                spans,
+                "the `pure` option must be combined with either `nomem` or `readonly`",
+            )
+            .emit();
     }
 
     let mut have_real_output = false;
@@ -266,14 +275,16 @@ fn parse_args<'a>(
         }
     }
     if args.options.contains(ast::InlineAsmOptions::PURE) && !have_real_output {
-        ecx.struct_span_err(
-            args.options_spans.clone(),
-            "asm with `pure` option must have at least one output",
-        )
-        .emit();
+        ecx.sess
+            .struct_span_err(
+                args.options_spans.clone(),
+                "asm with `pure` option must have at least one output",
+            )
+            .emit();
     }
     if args.options.contains(ast::InlineAsmOptions::NORETURN) && !outputs_sp.is_empty() {
         let err = ecx
+            .sess
             .struct_span_err(outputs_sp, "asm outputs are not allowed with the `noreturn` option");
 
         // Bail out now since this is likely to confuse MIR
@@ -445,7 +456,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
             let err = parser.errors.remove(0);
             let err_sp = template_span.from_inner(err.span);
             let msg = &format!("invalid asm template string: {}", err.description);
-            let mut e = ecx.struct_span_err(err_sp, msg);
+            let mut e = ecx.sess.struct_span_err(err_sp, msg);
             e.span_label(err_sp, err.label + " in asm template string");
             if let Some(note) = err.note {
                 e.note(&note);
@@ -476,7 +487,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
                                 || args.reg_args.contains(&idx)
                             {
                                 let msg = format!("invalid reference to argument at index {}", idx);
-                                let mut err = ecx.struct_span_err(span, &msg);
+                                let mut err = ecx.sess.struct_span_err(span, &msg);
                                 err.span_label(span, "from here");
 
                                 let positional_args = args.operands.len()
@@ -520,7 +531,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
                             Some(&idx) => Some(idx),
                             None => {
                                 let msg = format!("there is no argument named `{}`", name);
-                                ecx.struct_span_err(span, &msg[..]).emit();
+                                ecx.sess.struct_span_err(span, &msg[..]).emit();
                                 None
                             }
                         },
@@ -534,11 +545,12 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
                             .ty_span
                             .map(|sp| template_sp.from_inner(sp))
                             .unwrap_or(template_sp);
-                        ecx.struct_span_err(
-                            span,
-                            "asm template modifier must be a single character",
-                        )
-                        .emit();
+                        ecx.sess
+                            .struct_span_err(
+                                span,
+                                "asm template modifier must be a single character",
+                            )
+                            .emit();
                         modifier = None;
                     }
 
@@ -580,7 +592,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
         0 => {}
         1 => {
             let (sp, msg) = unused_operands.into_iter().next().unwrap();
-            let mut err = ecx.struct_span_err(sp, msg);
+            let mut err = ecx.sess.struct_span_err(sp, msg);
             err.span_label(sp, msg);
             err.help(&format!(
                 "if this argument is intentionally unused, \
@@ -590,7 +602,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
             err.emit();
         }
         _ => {
-            let mut err = ecx.struct_span_err(
+            let mut err = ecx.sess.struct_span_err(
                 unused_operands.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
                 "multiple unused asm arguments",
             );

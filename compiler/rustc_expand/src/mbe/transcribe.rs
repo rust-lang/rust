@@ -173,7 +173,7 @@ pub(super) fn transcribe<'a>(
             seq @ mbe::TokenTree::Sequence(..) => {
                 match lockstep_iter_size(&seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
-                        return Err(cx.struct_span_err(
+                        return Err(cx.sess.struct_span_err(
                             seq.span(), /* blame macro writer */
                             "attempted to repeat an expression containing no syntax variables \
                              matched as repeating at this depth",
@@ -185,7 +185,7 @@ pub(super) fn transcribe<'a>(
                         // happens when two meta-variables are used in the same repetition in a
                         // sequence, but they come from different sequence matchers and repeat
                         // different amounts.
-                        return Err(cx.struct_span_err(seq.span(), &msg[..]));
+                        return Err(cx.sess.struct_span_err(seq.span(), &msg[..]));
                     }
 
                     LockstepIterSize::Constraint(len, _) => {
@@ -203,7 +203,7 @@ pub(super) fn transcribe<'a>(
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.
-                                return Err(cx.struct_span_err(
+                                return Err(cx.sess.struct_span_err(
                                     sp.entire(),
                                     "this must repeat at least once",
                                 ));
@@ -245,7 +245,7 @@ pub(super) fn transcribe<'a>(
                         }
                     } else {
                         // We were unable to descend far enough. This is an error.
-                        return Err(cx.struct_span_err(
+                        return Err(cx.sess.struct_span_err(
                             sp, /* blame the macro writer */
                             &format!("variable '{}' is still repeating at this depth", ident),
                         ));

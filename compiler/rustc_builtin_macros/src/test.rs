@@ -78,11 +78,12 @@ pub fn expand_test_or_bench(
     let item = match item {
         Annotatable::Item(i) => i,
         other => {
-            cx.struct_span_err(
-                other.span(),
-                "`#[test]` attribute is only allowed on non associated functions",
-            )
-            .emit();
+            cx.sess
+                .struct_span_err(
+                    other.span(),
+                    "`#[test]` attribute is only allowed on non associated functions",
+                )
+                .emit();
             return vec![other];
         }
     };

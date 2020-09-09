@@ -318,8 +318,6 @@ impl<'a> StripUnconfigured<'a> {
 
     fn error_malformed_cfg_attr_missing(&self, span: Span) {
         self.sess
-            .parse_sess
-            .span_diagnostic
             .struct_span_err(span, "malformed `cfg_attr` attribute input")
             .span_suggestion(
                 span,
@@ -345,7 +343,7 @@ impl<'a> StripUnconfigured<'a> {
                 }
             };
             let error = |span, msg, suggestion: &str| {
-                let mut err = self.sess.parse_sess.span_diagnostic.struct_span_err(span, msg);
+                let mut err = self.sess.struct_span_err(span, msg);
                 if !suggestion.is_empty() {
                     err.span_suggestion(
                         span,

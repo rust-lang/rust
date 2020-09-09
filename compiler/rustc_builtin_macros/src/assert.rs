@@ -67,7 +67,8 @@ fn parse_assert<'a>(
     let mut parser = cx.new_parser_from_tts(stream);
 
     if parser.token == token::Eof {
-        let mut err = cx.struct_span_err(sp, "macro requires a boolean expression as an argument");
+        let mut err =
+            cx.sess.struct_span_err(sp, "macro requires a boolean expression as an argument");
         err.span_label(sp, "boolean expression required");
         return Err(err);
     }
@@ -82,7 +83,7 @@ fn parse_assert<'a>(
     //
     // Emit an error about semicolon and suggest removing it.
     if parser.token == token::Semi {
-        let mut err = cx.struct_span_err(sp, "macro requires an expression as an argument");
+        let mut err = cx.sess.struct_span_err(sp, "macro requires an expression as an argument");
         err.span_suggestion(
             parser.token.span,
             "try removing semicolon",
@@ -102,7 +103,7 @@ fn parse_assert<'a>(
     // Emit an error and suggest inserting a comma.
     let custom_message =
         if let token::Literal(token::Lit { kind: token::Str, .. }) = parser.token.kind {
-            let mut err = cx.struct_span_err(parser.token.span, "unexpected string literal");
+            let mut err = cx.sess.struct_span_err(parser.token.span, "unexpected string literal");
             let comma_span = parser.prev_token.span.shrink_to_hi();
             err.span_suggestion_short(
                 comma_span,

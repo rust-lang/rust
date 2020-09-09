@@ -25,7 +25,7 @@ impl base::ProcMacro for BangProcMacro {
     ) -> Result<TokenStream, ErrorReported> {
         let server = proc_macro_server::Rustc::new(ecx);
         self.client.run(&EXEC_STRATEGY, server, input, ecx.ecfg.proc_macro_backtrace).map_err(|e| {
-            let mut err = ecx.struct_span_err(span, "proc macro panicked");
+            let mut err = ecx.sess.struct_span_err(span, "proc macro panicked");
             if let Some(s) = e.as_str() {
                 err.help(&format!("message: {}", s));
             }
@@ -51,7 +51,7 @@ impl base::AttrProcMacro for AttrProcMacro {
         self.client
             .run(&EXEC_STRATEGY, server, annotation, annotated, ecx.ecfg.proc_macro_backtrace)
             .map_err(|e| {
-                let mut err = ecx.struct_span_err(span, "custom attribute panicked");
+                let mut err = ecx.sess.struct_span_err(span, "custom attribute panicked");
                 if let Some(s) = e.as_str() {
                     err.help(&format!("message: {}", s));
                 }
@@ -117,7 +117,7 @@ impl MultiItemModifier for ProcMacroDerive {
             match self.client.run(&EXEC_STRATEGY, server, input, ecx.ecfg.proc_macro_backtrace) {
                 Ok(stream) => stream,
                 Err(e) => {
-                    let mut err = ecx.struct_span_err(span, "proc-macro derive panicked");
+                    let mut err = ecx.sess.struct_span_err(span, "proc-macro derive panicked");
                     if let Some(s) = e.as_str() {
                         err.help(&format!("message: {}", s));
                     }
@@ -144,7 +144,7 @@ impl MultiItemModifier for ProcMacroDerive {
 
         // fail if there have been errors emitted
         if ecx.sess.parse_sess.span_diagnostic.err_count() > error_count_before {
-            ecx.struct_span_err(span, "proc-macro derive produced unparseable tokens").emit();
+            ecx.sess.struct_span_err(span, "proc-macro derive produced unparseable tokens").emit();
         }
 
         ExpandResult::Ready(items)
@@ -161,7 +161,8 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
         // 1) First let's ensure that it's a meta item.
         let nmis = match attr.meta_item_list() {
             None => {
-                cx.struct_span_err(attr.span, "malformed `derive` attribute input")
+                cx.sess
+                    .struct_span_err(attr.span, "malformed `derive` attribute input")
                     .span_suggestion(
                         attr.span,
                         "missing traits to be derived",
@@ -182,7 +183,8 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
             .filter_map(|nmi| match nmi {
                 NestedMetaItem::Literal(lit) => {
                     error_reported_filter_map = true;
-                    cx.struct_span_err(lit.span, "expected path to a trait, found literal")
+                    cx.sess
+                        .struct_span_err(lit.span, "expected path to a trait, found literal")
                         .help("for example, write `#[derive(Debug)]` for `Debug`")
                         .emit();
                     None
@@ -197,7 +199,8 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
                 let mut traits_dont_accept = |title, action| {
                     error_reported_map = true;
                     let sp = mi.span.with_lo(mi.path.span.hi());
-                    cx.struct_span_err(sp, title)
+                    cx.sess
+                        .struct_span_err(sp, title)
                         .span_suggestion(
                             sp,
                             action,

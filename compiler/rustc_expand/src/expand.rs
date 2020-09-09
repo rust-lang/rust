@@ -631,6 +631,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let expn_data = self.cx.current_expansion.id.expn_data();
         let suggested_limit = self.cx.ecfg.recursion_limit * 2;
         self.cx
+            .sess
             .struct_span_err(
                 expn_data.call_site,
                 &format!("recursion limit reached while expanding `{}`", expn_data.kind.descr()),
@@ -1703,6 +1704,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
                             if e.kind() == ErrorKind::InvalidData {
                                 self.cx
+                                    .sess
                                     .struct_span_err(
                                         lit.span,
                                         &format!("{} wasn't a utf-8 file", filename.display()),
@@ -1710,7 +1712,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                     .span_label(lit.span, "contains invalid utf-8")
                                     .emit();
                             } else {
-                                let mut err = self.cx.struct_span_err(
+                                let mut err = self.cx.sess.struct_span_err(
                                     lit.span,
                                     &format!("couldn't read {}: {}", filename.display(), e),
                                 );
@@ -1723,6 +1725,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 } else {
                     let mut err = self
                         .cx
+                        .sess
                         .struct_span_err(it.span(), "expected path to external documentation");
 
                     // Check if the user erroneously used `doc(include(...))` syntax.

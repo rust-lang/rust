@@ -1028,10 +1028,6 @@ impl<'a> ExtCtxt<'a> {
         self.current_expansion.id.expansion_cause()
     }
 
-    pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'a> {
-        self.sess.parse_sess.span_diagnostic.struct_span_err(sp, msg)
-    }
-
     /// Emit `msg` attached to `sp`, without immediately stopping
     /// compilation.
     ///
@@ -1100,7 +1096,7 @@ impl<'a> ExtCtxt<'a> {
                 FileName::Real(name) => name.into_local_path(),
                 FileName::DocTest(path, _) => path,
                 other => {
-                    return Err(self.struct_span_err(
+                    return Err(self.sess.struct_span_err(
                         span,
                         &format!("cannot resolve relative path in non-file source `{}`", other),
                     ));
@@ -1131,10 +1127,10 @@ pub fn expr_to_spanned_string<'a>(
         ast::ExprKind::Lit(ref l) => match l.kind {
             ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
             ast::LitKind::Err(_) => None,
-            _ => Some(cx.struct_span_err(l.span, err_msg)),
+            _ => Some(cx.sess.struct_span_err(l.span, err_msg)),
         },
         ast::ExprKind::Err => None,
-        _ => Some(cx.struct_span_err(expr.span, err_msg)),
+        _ => Some(cx.sess.struct_span_err(expr.span, err_msg)),
     })
 }
 

@@ -323,7 +323,7 @@ fn generic_extension<'cx>(
             },
             Error(err_sp, ref msg) => {
                 let span = err_sp.substitute_dummy(sp);
-                cx.struct_span_err(span, &msg).emit();
+                cx.sess.struct_span_err(span, &msg).emit();
                 return DummyResult::any(span);
             }
             ErrorReported => return DummyResult::any(sp),
@@ -337,7 +337,7 @@ fn generic_extension<'cx>(
 
     let (token, label) = best_failure.expect("ran no matchers");
     let span = token.span.substitute_dummy(sp);
-    let mut err = cx.struct_span_err(span, &parse_failure_msg(&token));
+    let mut err = cx.sess.struct_span_err(span, &parse_failure_msg(&token));
     err.span_label(span, label);
     if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
         err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");

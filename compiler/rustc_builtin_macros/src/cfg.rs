@@ -37,7 +37,7 @@ fn parse_cfg<'a>(
     let mut p = cx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        let mut err = cx.struct_span_err(sp, "macro requires a cfg-pattern as an argument");
+        let mut err = cx.sess.struct_span_err(sp, "macro requires a cfg-pattern as an argument");
         err.span_label(sp, "cfg-pattern required");
         return Err(err);
     }
@@ -47,7 +47,7 @@ fn parse_cfg<'a>(
     let _ = p.eat(&token::Comma);
 
     if !p.eat(&token::Eof) {
-        return Err(cx.struct_span_err(sp, "expected 1 cfg-pattern"));
+        return Err(cx.sess.struct_span_err(sp, "expected 1 cfg-pattern"));
     }
 
     Ok(cfg)
