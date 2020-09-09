@@ -589,7 +589,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
-    pub unsafe fn drop(&mut self) {
+    pub unsafe fn assume_init_drop(&mut self) {
         // SAFETY: the caller must guarantee that `self` is initialized.
         // Dropping the value in place is safe if that is the case.
         unsafe { ptr::drop_in_place(self.as_mut_ptr()) }
