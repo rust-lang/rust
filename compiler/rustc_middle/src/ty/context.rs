@@ -375,6 +375,7 @@ pub struct TypeckResults<'tcx> {
     pat_adjustments: ItemLocalMap<Vec<Ty<'tcx>>>,
 
     /// Borrows
+    /// FIXME: Remove this once the commit is ready.
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
 
     /// Records the reasons that we picked the kind of each closure;
@@ -416,6 +417,7 @@ pub struct TypeckResults<'tcx> {
     /// The upvarID contains the HIR node ID and it also contains the full path
     /// leading to the member of the struct or tuple that is used instead of the
     /// entire variable.
+    /// FIXME: Remove this once the commit is ready.
     pub closure_captures: ty::UpvarListMap,
 
     /// Stores the type, expression, span and optional scope span of all types

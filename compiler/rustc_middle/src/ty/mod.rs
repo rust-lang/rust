@@ -672,6 +672,15 @@ pub struct UpvarId {
     pub closure_expr_id: LocalDefId,
 }
 
+impl UpvarId {
+    pub new(var_hir_id: hir::HirId, closure_def_id: LocalDefId) {
+        UpvarId {
+            var_path: UpvarPath { hir_id: var_hir_id },
+            closure_def_id,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Debug, TyEncodable, TyDecodable, Copy, HashStable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
@@ -748,8 +757,20 @@ pub struct UpvarBorrow<'tcx> {
     pub region: ty::Region<'tcx>,
 }
 
+#[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, HashStable)]
+pub struct CaptureInfo<'tcx> {
+    /// Expr Id pointing to use that resulting in selecting the current capture kind
+    pub expr_id: Option<hir::HirId>,
+
+    /// Capture mode that was selected
+    /// FIXME: Maybe rename UpvarCapture to CaptureKind
+    pub capture_kind: UpvarCapture<'tcx>,
+}
+
 pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
+pub type CaptureInformationMap<'tcx> =
+    FxHashMap<DefId, FxIndexMap<HirPlace<'tcx>, CaptureInfo<'tcx>>>;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {
