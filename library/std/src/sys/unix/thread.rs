@@ -294,6 +294,7 @@ pub mod guard {
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
+        #[cfg(target_os = "freebsd")]
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
         #[cfg(target_os = "freebsd")]
         let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
@@ -305,7 +306,7 @@ pub mod guard {
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr, &mut stacksize), 0);
             ret = Some(stackaddr);
         }
-        if e == 0 || cfg!(not(target_env = "gnu")) {
+        if e == 0 || cfg!(target_os = "freebsd") {
             assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
         }
         ret
@@ -405,6 +406,7 @@ pub mod guard {
     pub unsafe fn current() -> Option<Guard> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
+        #[cfg(target_os = "freebsd")]
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
         #[cfg(target_os = "freebsd")]
         let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
@@ -448,7 +450,7 @@ pub mod guard {
                 Some(stackaddr..stackaddr + guardsize)
             };
         }
-        if e == 0 || cfg!(not(target_env = "gnu")) {
+        if e == 0 || cfg!(target_os = "freebsd") {
             assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
         }
         ret
