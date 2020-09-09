@@ -341,18 +341,6 @@ pub fn build_impl(
                 return;
             }
         }
-
-        // Skip foreign unstable traits from lists of trait implementations and
-        // such. This helps prevent dependencies of the standard library, for
-        // example, from getting documented as "traits `u32` implements" which
-        // isn't really too helpful.
-        if let Some(trait_did) = associated_trait {
-            if let Some(stab) = cx.tcx.lookup_stability(trait_did.def_id) {
-                if stab.level.is_unstable() {
-                    return;
-                }
-            }
-        }
     }
 
     let for_ = if let Some(did) = did.as_local() {
