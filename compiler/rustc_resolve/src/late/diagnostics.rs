@@ -1387,7 +1387,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         }
                     }
                 }
-                introduce_suggestion.push((*for_span, for_sugg.to_string()));
+                introduce_suggestion.push((*for_span, for_sugg));
                 introduce_suggestion.push((span, formatter(&lt_name)));
                 err.multipart_suggestion(&msg, introduce_suggestion, Applicability::MaybeIncorrect);
             }
