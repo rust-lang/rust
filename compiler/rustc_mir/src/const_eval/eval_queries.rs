@@ -1,8 +1,8 @@
 use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr, MemoryExtra};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, Immediate, InternKind,
-    InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, ConstAlloc, RefTracking, Scalar,
+    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, GlobalId, Immediate,
+    InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
     ScalarMaybeUninit, StackPopCleanup,
 };
 
