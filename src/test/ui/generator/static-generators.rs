@@ -12,7 +12,7 @@ fn main() {
         yield;
         assert_eq!(b as *const _, &a as *const _);
     };
-    // Safety: We shadow the original generator variable so have no safe API to
+    // SAFETY: We shadow the original generator variable so have no safe API to
     // move it after this point.
     let mut generator = unsafe { Pin::new_unchecked(&mut generator) };
     assert_eq!(generator.as_mut().resume(()), GeneratorState::Yielded(()));

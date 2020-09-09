@@ -12,7 +12,7 @@ pub struct MaybeTempDir {
 
 impl Drop for MaybeTempDir {
     fn drop(&mut self) {
-        // Safety: We are in the destructor, and no further access will
+        // SAFETY: We are in the destructor, and no further access will
         // occur.
         let dir = unsafe { ManuallyDrop::take(&mut self.dir) };
         if self.keep {
