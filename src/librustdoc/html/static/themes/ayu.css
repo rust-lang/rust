@@ -179,9 +179,6 @@ pre {
 .content span.externcrate, .content span.mod, .content a.mod {
 	color: #acccf9;
 }
-.content ul.crate a.crate {
-	font: 16px/1.6 "Fira Sans";
-}
 .content span.struct, .content a.struct {
 	color: #ffa0a5;
 }
