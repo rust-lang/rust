@@ -179,7 +179,8 @@ source.
   supposed to error out.
 * `compile-flags` passes extra command-line args to the compiler,
   e.g. `compile-flags -g` which forces debuginfo to be enabled.
-* `edition` controls the edition the test should be compiled with: `// edition:2018`
+* `edition` controls the edition the test should be compiled with (defaults to 2015).
+  Example usage: `// edition:2018`
 * `should-fail` indicates that the test should fail; used for "meta
   testing", where we test the compiletest program itself to check that
   it will generate errors in appropriate scenarios. This header is
