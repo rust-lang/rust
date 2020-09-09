@@ -845,7 +845,7 @@ impl<T: ?Sized> Rc<T> {
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
         // We are careful to *not* create a reference covering the "count" fields, as
-        // this would alias with reenterant access to the reference counts (e.g. by `Weak`).
+        // this would alias with concurrent access to the reference counts (e.g. by `Weak`).
         unsafe { &mut (*this.ptr.as_ptr()).value }
     }
 
@@ -2019,7 +2019,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// ```
     fn drop(&mut self) {
         let inner = if let Some(inner) = self.inner() { inner } else { return };
-        
+
         inner.dec_weak();
         // the weak count starts at 1, and will only go to zero if all
         // the strong pointers have disappeared.
@@ -2144,7 +2144,7 @@ trait RcInnerPtr {
     }
 }
 
-impl <T: ?Sized> RcInnerPtr for RcBox<T> {
+impl<T: ?Sized> RcInnerPtr for RcBox<T> {
     fn weak_ref(&self) -> &Cell<usize> {
         &self.weak
     }
