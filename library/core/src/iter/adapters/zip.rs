@@ -343,7 +343,7 @@ where
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut S {
-        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.a) }
     }
 }

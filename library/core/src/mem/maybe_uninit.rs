@@ -599,7 +599,7 @@ impl<T> MaybeUninit<T> {
     /// // Now that our `MaybeUninit<_>` is known to be initialized, it is okay to
     /// // create a shared reference to it:
     /// let x: &Vec<u32> = unsafe {
-    ///     // Safety: `x` has been initialized.
+    ///     // SAFETY: `x` has been initialized.
     ///     x.assume_init_ref()
     /// };
     /// assert_eq!(x, &vec![1, 2, 3]);
@@ -676,7 +676,7 @@ impl<T> MaybeUninit<T> {
     /// // To assert our buffer has been initialized without copying it, we upgrade
     /// // the `&mut MaybeUninit<[u8; 2048]>` to a `&mut [u8; 2048]`:
     /// let buf: &mut [u8; 2048] = unsafe {
-    ///     // Safety: `buf` has been initialized.
+    ///     // SAFETY: `buf` has been initialized.
     ///     buf.assume_init_mut()
     /// };
     ///
