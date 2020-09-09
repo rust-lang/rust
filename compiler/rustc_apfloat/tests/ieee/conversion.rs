@@ -435,35 +435,3 @@ fn convert() {
     assert!(test.bitwise_eq(x87_qnan));
     assert!(!loses_info);
 }
-
-#[test]
-fn round_to_integral() {
-    let t = Double::from_f64(-0.5);
-    assert_eq!(-0.0, t.round_to_integral(Round::TowardZero).value.to_f64());
-    assert_eq!(-1.0, t.round_to_integral(Round::TowardNegative).value.to_f64());
-    assert_eq!(-0.0, t.round_to_integral(Round::TowardPositive).value.to_f64());
-    assert_eq!(-0.0, t.round_to_integral(Round::NearestTiesToEven).value.to_f64());
-
-    let s = Double::from_f64(3.14);
-    assert_eq!(3.0, s.round_to_integral(Round::TowardZero).value.to_f64());
-    assert_eq!(3.0, s.round_to_integral(Round::TowardNegative).value.to_f64());
-    assert_eq!(4.0, s.round_to_integral(Round::TowardPositive).value.to_f64());
-    assert_eq!(3.0, s.round_to_integral(Round::NearestTiesToEven).value.to_f64());
-
-    let r = Double::largest();
-    assert_eq!(r.to_f64(), r.round_to_integral(Round::TowardZero).value.to_f64());
-    assert_eq!(r.to_f64(), r.round_to_integral(Round::TowardNegative).value.to_f64());
-    assert_eq!(r.to_f64(), r.round_to_integral(Round::TowardPositive).value.to_f64());
-    assert_eq!(r.to_f64(), r.round_to_integral(Round::NearestTiesToEven).value.to_f64());
-
-    let p = Double::ZERO.round_to_integral(Round::TowardZero).value;
-    assert_eq!(0.0, p.to_f64());
-    let p = (-Double::ZERO).round_to_integral(Round::TowardZero).value;
-    assert_eq!(-0.0, p.to_f64());
-    let p = Double::NAN.round_to_integral(Round::TowardZero).value;
-    assert!(p.to_f64().is_nan());
-    let p = Double::INFINITY.round_to_integral(Round::TowardZero).value;
-    assert!(p.to_f64().is_infinite() && p.to_f64() > 0.0);
-    let p = (-Double::INFINITY).round_to_integral(Round::TowardZero).value;
-    assert!(p.to_f64().is_infinite() && p.to_f64() < 0.0);
-}

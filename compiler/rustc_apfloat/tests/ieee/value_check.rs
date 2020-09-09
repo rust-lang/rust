@@ -1,5 +1,5 @@
 use rustc_apfloat::ieee::{Double, Single};
-use rustc_apfloat::{Float};
+use rustc_apfloat::Float;
 
 #[test]
 fn is_integer() {
@@ -123,4 +123,53 @@ fn is_signaling() {
     assert!((-Single::snan(None)).is_signaling());
     assert!(Single::snan(Some(payload)).is_signaling());
     assert!((-Single::snan(Some(payload))).is_signaling());
+}
+
+#[test]
+fn nan() {
+    fn nanbits<T: Float>(signaling: bool, negative: bool, fill: u128) -> u128 {
+        let x = if signaling { T::snan(Some(fill)) } else { T::qnan(Some(fill)) };
+        if negative { (-x).to_bits() } else { x.to_bits() }
+    }
+
+    assert_eq!(0x7fc00000, nanbits::<Single>(false, false, 0));
+    assert_eq!(0xffc00000, nanbits::<Single>(false, true, 0));
+    assert_eq!(0x7fc0ae72, nanbits::<Single>(false, false, 0xae72));
+    assert_eq!(0x7fffae72, nanbits::<Single>(false, false, 0xffffae72));
+    assert_eq!(0x7fa00000, nanbits::<Single>(true, false, 0));
+    assert_eq!(0xffa00000, nanbits::<Single>(true, true, 0));
+    assert_eq!(0x7f80ae72, nanbits::<Single>(true, false, 0xae72));
+    assert_eq!(0x7fbfae72, nanbits::<Single>(true, false, 0xffffae72));
+
+    assert_eq!(0x7ff8000000000000, nanbits::<Double>(false, false, 0));
+    assert_eq!(0xfff8000000000000, nanbits::<Double>(false, true, 0));
+    assert_eq!(0x7ff800000000ae72, nanbits::<Double>(false, false, 0xae72));
+    assert_eq!(0x7fffffffffffae72, nanbits::<Double>(false, false, 0xffffffffffffae72));
+    assert_eq!(0x7ff4000000000000, nanbits::<Double>(true, false, 0));
+    assert_eq!(0xfff4000000000000, nanbits::<Double>(true, true, 0));
+    assert_eq!(0x7ff000000000ae72, nanbits::<Double>(true, false, 0xae72));
+    assert_eq!(0x7ff7ffffffffae72, nanbits::<Double>(true, false, 0xffffffffffffae72));
+}
+
+#[test]
+fn neg() {
+    let one = "1.0".parse::<Single>().unwrap();
+    let neg_one = "-1.0".parse::<Single>().unwrap();
+    let zero = Single::ZERO;
+    let neg_zero = -Single::ZERO;
+    let inf = Single::INFINITY;
+    let neg_inf = -Single::INFINITY;
+    let qnan = Single::NAN;
+    let neg_qnan = -Single::NAN;
+
+    assert!(neg_one.bitwise_eq(-one));
+    assert!(one.bitwise_eq(-neg_one));
+    assert!(neg_zero.bitwise_eq(-zero));
+    assert!(zero.bitwise_eq(-neg_zero));
+    assert!(neg_inf.bitwise_eq(-inf));
+    assert!(inf.bitwise_eq(-neg_inf));
+    assert!(neg_inf.bitwise_eq(-inf));
+    assert!(inf.bitwise_eq(-neg_inf));
+    assert!(neg_qnan.bitwise_eq(-qnan));
+    assert!(qnan.bitwise_eq(-neg_qnan));
 }

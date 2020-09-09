@@ -1,6 +1,6 @@
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::unpack;
-use rustc_apfloat::{Category};
+use rustc_apfloat::Category;
 use rustc_apfloat::{Float, Status};
 
 #[test]
