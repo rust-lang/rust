@@ -26,7 +26,7 @@ pub type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub type OpaqueTyDatum = chalk_solve::rust_ir::OpaqueTyDatum<Interner>;
 
 impl chalk_ir::interner::Interner for Interner {
-    type InternedType = Box<chalk_ir::TyData<Self>>; // FIXME use Arc?
+    type InternedType = Arc<chalk_ir::TyData<Self>>;
     type InternedLifetime = chalk_ir::LifetimeData<Self>;
     type InternedConst = Arc<chalk_ir::ConstData<Self>>;
     type InternedConcreteConst = ();
@@ -34,7 +34,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
     type InternedSubstitution = Vec<GenericArg<Self>>;
-    type InternedProgramClause = chalk_ir::ProgramClauseData<Self>;
+    type InternedProgramClause = Arc<chalk_ir::ProgramClauseData<Self>>;
     type InternedProgramClauses = Arc<[chalk_ir::ProgramClause<Self>]>;
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
     type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
@@ -197,11 +197,11 @@ impl chalk_ir::interner::Interner for Interner {
         tls::with_current_program(|prog| Some(prog?.debug_quantified_where_clauses(clauses, fmt)))
     }
 
-    fn intern_ty(&self, ty: chalk_ir::TyData<Self>) -> Box<chalk_ir::TyData<Self>> {
-        Box::new(ty)
+    fn intern_ty(&self, ty: chalk_ir::TyData<Self>) -> Arc<chalk_ir::TyData<Self>> {
+        Arc::new(ty)
     }
 
-    fn ty_data<'a>(&self, ty: &'a Box<chalk_ir::TyData<Self>>) -> &'a chalk_ir::TyData<Self> {
+    fn ty_data<'a>(&self, ty: &'a Arc<chalk_ir::TyData<Self>>) -> &'a chalk_ir::TyData<Self> {
         ty
     }
 
@@ -230,7 +230,7 @@ impl chalk_ir::interner::Interner for Interner {
         constant
     }
 
-    fn const_eq(&self, _ty: &Box<chalk_ir::TyData<Self>>, _c1: &(), _c2: &()) -> bool {
+    fn const_eq(&self, _ty: &Arc<chalk_ir::TyData<Self>>, _c1: &(), _c2: &()) -> bool {
         true
     }
 
@@ -284,13 +284,13 @@ impl chalk_ir::interner::Interner for Interner {
     fn intern_program_clause(
         &self,
         data: chalk_ir::ProgramClauseData<Self>,
-    ) -> chalk_ir::ProgramClauseData<Self> {
-        data
+    ) -> Arc<chalk_ir::ProgramClauseData<Self>> {
+        Arc::new(data)
     }
 
     fn program_clause_data<'a>(
         &self,
-        clause: &'a chalk_ir::ProgramClauseData<Self>,
+        clause: &'a Arc<chalk_ir::ProgramClauseData<Self>>,
     ) -> &'a chalk_ir::ProgramClauseData<Self> {
         clause
     }

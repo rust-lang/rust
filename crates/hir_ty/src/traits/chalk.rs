@@ -244,13 +244,17 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         let id = from_chalk(self.db, trait_id);
         self.db.trait_data(id).name.to_string()
     }
-    // FIXME: lookup names
-    fn adt_name(&self, struct_id: chalk_ir::AdtId<Interner>) -> String {
-        let datum = self.db.struct_datum(self.krate, struct_id);
-        format!("{:?}", datum.name(&Interner))
+    fn adt_name(&self, adt_id: chalk_ir::AdtId<Interner>) -> String {
+        let id = from_chalk(self.db, adt_id);
+        match id {
+            hir_def::AdtId::StructId(id) => self.db.struct_data(id).name.to_string(),
+            hir_def::AdtId::EnumId(id) => self.db.enum_data(id).name.to_string(),
+            hir_def::AdtId::UnionId(id) => self.db.union_data(id).name.to_string(),
+        }
     }
     fn assoc_type_name(&self, assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
-        format!("Assoc_{}", assoc_ty_id.0)
+        let id = self.db.associated_ty_data(assoc_ty_id).name;
+        self.db.type_alias_data(id).name.to_string()
     }
     fn opaque_type_name(&self, opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
         format!("Opaque_{}", opaque_ty_id.0)
