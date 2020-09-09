@@ -105,7 +105,7 @@ cfg_if! {
         type SerializationSink = measureme::ByteVecSink;
     } else {
         /// MmapSerializatioSink is faster on macOS and Linux
-        type SerializationSink = measureme::PagedSinkConfig;
+        type SerializationSink = measureme::PagedSinkConfig2;
     }
 }
 

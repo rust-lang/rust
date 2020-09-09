@@ -6,7 +6,7 @@ use std::path::Path;
 /// List of allowed sources for packages.
 const ALLOWED_SOURCES: &[&str] = &[
     "\"registry+https://github.com/rust-lang/crates.io-index\"",
-    "\"git+https://github.com/michaelwoerister/measureme.git?branch=paged_sinks#c00409471a2d4ba17012303037fdf82952fea92b\"",
+    "\"git+https://github.com/michaelwoerister/measureme.git?branch=paged_sinks#26d150475c8d83613beffe970d1c18dd2494f607\"",
 ];
 
 /// Checks for external package sources. `root` is the path to the directory that contains the
