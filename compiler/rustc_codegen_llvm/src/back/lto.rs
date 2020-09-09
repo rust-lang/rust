@@ -346,14 +346,14 @@ fn fat_lto(
     Ok(LtoModuleCodegen::Fat { module: Some(module), _serialized_bitcode: serialized_bitcode })
 }
 
-struct Linker<'a>(&'a mut llvm::Linker<'a>);
+crate struct Linker<'a>(&'a mut llvm::Linker<'a>);
 
 impl Linker<'a> {
-    fn new(llmod: &'a llvm::Module) -> Self {
+    crate fn new(llmod: &'a llvm::Module) -> Self {
         unsafe { Linker(llvm::LLVMRustLinkerNew(llmod)) }
     }
 
-    fn add(&mut self, bytecode: &[u8]) -> Result<(), ()> {
+    crate fn add(&mut self, bytecode: &[u8]) -> Result<(), ()> {
         unsafe {
             if llvm::LLVMRustLinkerAdd(
                 self.0,
