@@ -129,7 +129,7 @@ mod mut_ptr;
 /// Additionally, if `T` is not [`Copy`], using the pointed-to value after
 /// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
 /// foo` counts as a use because it will cause the value to be dropped
-/// again. [`write`] can be used to overwrite data without causing it to be
+/// again. [`write()`] can be used to overwrite data without causing it to be
 /// dropped.
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
@@ -639,7 +639,7 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 /// `*src` can violate memory safety. Note that assigning to `*src` counts as a
 /// use because it will attempt to drop the value at `*src`.
 ///
-/// [`write`] can be used to overwrite data without causing it to be dropped.
+/// [`write()`] can be used to overwrite data without causing it to be dropped.
 ///
 /// ```
 /// use std::ptr;
@@ -878,7 +878,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// Overwrites a memory location with the given value without reading or
 /// dropping the old value.
 ///
-/// Unlike [`write`], the pointer may be unaligned.
+/// Unlike [`write()`], the pointer may be unaligned.
 ///
 /// `write_unaligned` does not drop the contents of `dst`. This is safe, but it
 /// could leak allocations or resources, so care should be taken not to overwrite
@@ -1085,7 +1085,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// Just like in C, whether an operation is volatile has no bearing whatsoever
 /// on questions involving concurrent access from multiple threads. Volatile
 /// accesses behave exactly like non-atomic accesses in that regard. In particular,
-/// a race between a [`write_volatile`] and any other operation (reading or writing)
+/// a race between a `write_volatile` and any other operation (reading or writing)
 /// on the same location is undefined behavior.
 ///
 /// # Examples
