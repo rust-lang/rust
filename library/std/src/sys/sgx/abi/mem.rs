@@ -104,3 +104,12 @@ pub fn unmapped_base() -> u64 {
 pub fn unmapped_size() -> u64 {
     unsafe { UNMAPPED_SIZE }
 }
+
+/// Returns whether the pointer is part of the unmapped memory range
+/// `p + len` must not overflow
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn is_unmapped_range(p: *const u8, len: usize) -> bool {
+    let start = p as u64;
+    let end = start + (len as u64);
+    start >= unmapped_base() && end <= unmapped_base() + unmapped_size() // unsafe ok: link-time constant
+}

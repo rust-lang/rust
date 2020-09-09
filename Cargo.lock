@@ -141,8 +141,11 @@ checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
 [[package]]
 name = "bitflags"
 version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
+source = "git+https://github.com/bitflags/bitflags#c2ba43141307a97484518ad7728534855e1a51f2"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-core",
+]
 
 [[package]]
 name = "bitmaps"
@@ -1220,8 +1223,7 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 [[package]]
 name = "fortanix-sgx-abi"
 version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c56c422ef86062869b2d57ae87270608dc5929969dd130a6e248979cf4fb6ca6"
+source = "git+https://github.com/fortanix/rust-sgx?branch=raoul/edmm#4d629550dfa71e6a5830fc914c1c2d40caa677a6"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
@@ -4865,6 +4867,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sgx-isa"
+version = "0.3.3"
+source = "git+https://github.com/fortanix/rust-sgx?branch=raoul/edmm#4d629550dfa71e6a5830fc914c1c2d40caa677a6"
+dependencies = [
+ "bitflags",
+ "compiler_builtins",
+ "rustc-std-workspace-core",
+]
+
+[[package]]
 name = "sha-1"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5018,6 +5030,7 @@ version = "0.0.0"
 dependencies = [
  "addr2line",
  "alloc",
+ "bitflags",
  "cfg-if 0.1.10",
  "compiler_builtins",
  "core",
@@ -5033,6 +5046,7 @@ dependencies = [
  "profiler_builtins",
  "rand 0.7.3",
  "rustc-demangle",
+ "sgx-isa",
  "unwind",
  "wasi",
 ]

@@ -40,6 +40,8 @@ dlmalloc = { version = "0.2.1", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
 fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
+sgx-isa = { version = "0.3.2", optional = false, features = ['rustc-dep-of-std', 'nightly'] }
+bitflags = { version = "1.2.1", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_os = "hermit"))'.dependencies]
 hermit-abi = { version = "0.1.17", features = ['rustc-dep-of-std'] }
