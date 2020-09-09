@@ -8,7 +8,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of invalid atomic
-    /// ordering in atomic loads/stores and memory fences.
+    /// ordering in atomic loads/stores/exchanges and memory fences
     ///
     /// **Why is this bad?** Using an invalid atomic ordering
     /// will cause a panic at run-time.
@@ -29,10 +29,13 @@ declare_clippy_lint! {
     ///
     /// atomic::fence(Ordering::Relaxed);
     /// atomic::compiler_fence(Ordering::Relaxed);
+    ///
+    /// let _ = x.compare_exchange(false, false, Ordering::Relaxed, Ordering::SeqCst);
+    /// let _ = x.compare_exchange_weak(false, true, Ordering::SeqCst, Ordering::Release);
     /// ```
     pub INVALID_ATOMIC_ORDERING,
     correctness,
-    "usage of invalid atomic ordering in atomic loads/stores and memory fences"
+    "usage of invalid atomic ordering in atomic loads/stores/exchanges ane memory fences"
 }
 
 declare_lint_pass!(AtomicOrdering => [INVALID_ATOMIC_ORDERING]);
@@ -127,9 +130,84 @@ fn check_memory_fence(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }
 }
 
+fn opt_ordering_defid(cx: &LateContext<'_>, ord_arg: &Expr<'_>) -> Option<DefId> {
+    if let ExprKind::Path(ref ord_qpath) = ord_arg.kind {
+        cx.qpath_res(ord_qpath, ord_arg.hir_id).opt_def_id()
+    } else {
+        None
+    }
+}
+fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if_chain! {
+        if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind;
+        let method = method_path.ident.name.as_str();
+        if type_is_atomic(cx, &args[0]);
+        if method == "compare_exchange" || method == "compare_exchange_weak";
+        let failure_order_arg = &args[4];
+        if let Some(fail_ordering_def_id) = opt_ordering_defid(cx, failure_order_arg);
+        then {
+            // Helper type holding on to some checking and error reporting data. Has
+            // - (success ordering name,
+            // - list of failure orderings forbidden by the success order,
+            // - suggestion message)
+            type OrdLintInfo = (&'static str, &'static [&'static str], &'static str);
+            let relaxed: OrdLintInfo = ("Relaxed", &["SeqCst", "Acquire"], "ordering mode `Relaxed`");
+            let acquire: OrdLintInfo = ("Acquire", &["SeqCst"], "ordering modes `Acquire` or `Relaxed`");
+            let seq_cst: OrdLintInfo = ("SeqCst", &[], "ordering modes `Acquire`, `SeqCst` or `Relaxed`");
+            let release = ("Release", relaxed.1, relaxed.2);
+            let acqrel = ("AcqRel", acquire.1, acquire.2);
+            let search = [relaxed, acquire, seq_cst, release, acqrel];
+
+            let success_lint_info = opt_ordering_defid(cx, &args[3])
+                .and_then(|success_ord_def_id| -> Option<OrdLintInfo> {
+                    search
+                        .iter()
+                        .find(|(ordering, ..)| {
+                            match_def_path(cx, success_ord_def_id,
+                                &["core", "sync", "atomic", "Ordering", ordering])
+                        })
+                        .copied()
+                });
+
+            if match_ordering_def_path(cx, fail_ordering_def_id, &["Release", "AcqRel"]) {
+                // If we don't know the success order is, use what we'd suggest
+                // if it were maximally permissive.
+                let suggested = success_lint_info.unwrap_or(seq_cst).2;
+                span_lint_and_help(
+                    cx,
+                    INVALID_ATOMIC_ORDERING,
+                    failure_order_arg.span,
+                    &format!(
+                        "{}'s failure ordering may not be `Release` or `AcqRel`",
+                        method,
+                    ),
+                    None,
+                    &format!("consider using {} instead", suggested),
+                );
+            } else if let Some((success_ord_name, bad_ords_given_success, suggested)) = success_lint_info {
+                if match_ordering_def_path(cx, fail_ordering_def_id, bad_ords_given_success) {
+                    span_lint_and_help(
+                        cx,
+                        INVALID_ATOMIC_ORDERING,
+                        failure_order_arg.span,
+                        &format!(
+                            "{}'s failure ordering may not stronger than the success ordering of `{}`",
+                            method,
+                            success_ord_name,
+                        ),
+                        None,
+                        &format!("consider using {} instead", suggested),
+                    );
+                }
+            }
+        }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for AtomicOrdering {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         check_atomic_load_store(cx, expr);
         check_memory_fence(cx, expr);
+        check_atomic_compare_exchange(cx, expr);
     }
 }
