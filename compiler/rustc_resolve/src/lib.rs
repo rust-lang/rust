@@ -2413,7 +2413,14 @@ impl<'a> Resolver<'a> {
                             (format!("maybe a missing crate `{}`?", ident), None)
                         }
                     } else if i == 0 {
-                        (format!("use of undeclared type or module `{}`", ident), None)
+                        if ident
+                            .name
+                            .with(|n| n.chars().next().map_or(false, |c| c.is_ascii_uppercase()))
+                        {
+                            (format!("use of undeclared type `{}`", ident), None)
+                        } else {
+                            (format!("use of undeclared crate or module `{}`", ident), None)
+                        }
                     } else {
                         let mut msg =
                             format!("could not find `{}` in `{}`", ident, path[i - 1].ident);
