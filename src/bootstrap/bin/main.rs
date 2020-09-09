@@ -40,7 +40,7 @@ fn main() {
 }
 
 fn check_version(config: &Config) -> Option<String> {
-    const VERSION: usize = 2;
+    const VERSION: usize = 3;
 
     let mut msg = String::new();
 

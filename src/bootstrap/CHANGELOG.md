@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 None.
 
+## [Version 3] - 2020-10-03
+
+- `x.py build` no longer builds tools by default. If you want all tools, use `build src/tools`. If you want only the default tools from before, specify them one by one: `x.py build src/tools/{rustdoc,cargo,...}`. [#77489](https://github.com/rust-lang/rust/pull/77489)
+
 ## [Version 2] - 2020-09-25
 
 - `host` now defaults to the value of `build` in all cases

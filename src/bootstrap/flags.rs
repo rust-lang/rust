@@ -483,7 +483,12 @@ Arguments:
         }
 
         let cmd = match subcommand.as_str() {
-            "build" | "b" => Subcommand::Build { paths },
+            "build" | "b" => {
+                if paths.is_empty() {
+                    paths.push(PathBuf::from("library/std"));
+                }
+                Subcommand::Build { paths }
+            }
             "check" | "c" => Subcommand::Check { paths },
             "clippy" => Subcommand::Clippy { paths },
             "fix" => Subcommand::Fix { paths },

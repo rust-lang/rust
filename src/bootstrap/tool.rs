@@ -311,7 +311,7 @@ macro_rules! bootstrap_tool {
             type Output = PathBuf;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.path($path)
+                run.path($path).path("src/tools")
             }
 
             fn make_run(run: RunConfig<'_>) {
