@@ -10,6 +10,7 @@ use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Binder, Const, Ty, TypeFoldable};
 use std::marker::PhantomData;
 
+use super::const_evaluatable;
 use super::project;
 use super::select::SelectionContext;
 use super::wf;
@@ -458,15 +459,15 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
 
                 ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
-                    match self.selcx.infcx().const_eval_resolve(
-                        obligation.param_env,
+                    match const_evaluatable::is_const_evaluatable(
+                        self.selcx.infcx(),
                         def_id,
                         substs,
-                        None,
-                        Some(obligation.cause.span),
+                        obligation.param_env,
+                        obligation.cause.span,
                     ) {
-                        Ok(_) => ProcessResult::Changed(vec![]),
-                        Err(err) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err))),
+                        Ok(()) => ProcessResult::Changed(vec![]),
+                        Err(e) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(e))),
                     }
                 }
 

@@ -186,6 +186,23 @@ pub struct Body<'tcx> {
     /// FIXME(oli-obk): rewrite the promoted during promotion to eliminate the cell components.
     pub ignore_interior_mut_in_const_validation: bool,
 
+    /// Does this body use generic parameters. This is used for the `ConstEvaluatable` check.
+    ///
+    /// Note that this does not actually mean that this body is not computable right now.
+    /// The repeat count in the following example is polymorphic, but can still be evaluated
+    /// without knowing anything about the type parameter `T`.
+    ///
+    /// ```rust
+    /// fn test<T>() {
+    ///     let _ = [0; std::mem::size_of::<*mut T>()];
+    /// }
+    /// ```
+    ///
+    /// **WARNING**: Do not change this flags after the MIR was originally created, even if an optimization
+    /// removed the last mention of all generic params. We do not want to rely on optimizations and
+    /// potentially allow things like `[u8; std::mem::size_of::<T>() * 0]` due to this.
+    pub is_polymorphic: bool,
+
     predecessor_cache: PredecessorCache,
 }
 
@@ -208,7 +225,7 @@ impl<'tcx> Body<'tcx> {
             local_decls.len()
         );
 
-        Body {
+        let mut body = Body {
             phase: MirPhase::Build,
             basic_blocks,
             source_scopes,
@@ -224,8 +241,11 @@ impl<'tcx> Body<'tcx> {
             span,
             required_consts: Vec::new(),
             ignore_interior_mut_in_const_validation: false,
+            is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
-        }
+        };
+        body.is_polymorphic = body.has_param_types_or_consts();
+        body
     }
 
     /// Returns a partially initialized MIR body containing only a list of basic blocks.
@@ -234,7 +254,7 @@ impl<'tcx> Body<'tcx> {
     /// is only useful for testing but cannot be `#[cfg(test)]` because it is used in a different
     /// crate.
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
-        Body {
+        let mut body = Body {
             phase: MirPhase::Build,
             basic_blocks,
             source_scopes: IndexVec::new(),
@@ -250,8 +270,11 @@ impl<'tcx> Body<'tcx> {
             generator_kind: None,
             var_debug_info: Vec::new(),
             ignore_interior_mut_in_const_validation: false,
+            is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
-        }
+        };
+        body.is_polymorphic = body.has_param_types_or_consts();
+        body
     }
 
     #[inline]

@@ -6,6 +6,7 @@ use self::EvaluationResult::*;
 use self::SelectionCandidate::*;
 
 use super::coherence::{self, Conflict};
+use super::const_evaluatable;
 use super::project;
 use super::project::normalize_with_depth_to;
 use super::util;
@@ -542,14 +543,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
-                match self.tcx().const_eval_resolve(
-                    obligation.param_env,
+                match const_evaluatable::is_const_evaluatable(
+                    self.infcx,
                     def_id,
                     substs,
-                    None,
-                    None,
+                    obligation.param_env,
+                    obligation.cause.span,
                 ) {
-                    Ok(_) => Ok(EvaluatedToOk),
+                    Ok(()) => Ok(EvaluatedToOk),
                     Err(ErrorHandled::TooGeneric) => Ok(EvaluatedToAmbig),
                     Err(_) => Ok(EvaluatedToErr),
                 }

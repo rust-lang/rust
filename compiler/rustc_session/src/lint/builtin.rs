@@ -539,6 +539,16 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    pub CONST_EVALUATABLE_UNCHECKED,
+    Warn,
+    "detects a generic constant is used in a type without a emitting a warning",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #76200 <https://github.com/rust-lang/rust/issues/76200>",
+        edition: None,
+    };
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -612,6 +622,7 @@ declare_lint_pass! {
         UNSAFE_OP_IN_UNSAFE_FN,
         INCOMPLETE_INCLUDE,
         CENUM_IMPL_DROP_CAST,
+        CONST_EVALUATABLE_UNCHECKED,
     ]
 }
 

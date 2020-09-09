@@ -7,6 +7,7 @@ pub mod auto_trait;
 mod chalk_fulfill;
 pub mod codegen;
 mod coherence;
+mod const_evaluatable;
 mod engine;
 pub mod error_reporting;
 mod fulfill;
