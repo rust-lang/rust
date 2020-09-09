@@ -134,7 +134,7 @@ mod mut_ptr;
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
-/// [valid]: #safety
+/// [valid]: self#safety
 ///
 /// # Examples
 ///
@@ -316,7 +316,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 ///
 /// Note that even if `T` has size `0`, the pointers must be non-NULL and properly aligned.
 ///
-/// [valid]: #safety
+/// [valid]: self#safety
 ///
 /// # Examples
 ///
@@ -394,7 +394,7 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is `0`,
 /// the pointers must be non-NULL and properly aligned.
 ///
-/// [valid]: #safety
+/// [valid]: self#safety
 ///
 /// # Examples
 ///
@@ -533,7 +533,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
-/// [valid]: #safety
+/// [valid]: self#safety
 ///
 /// # Examples
 ///
@@ -668,7 +668,7 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 /// assert_eq!(s, "bar");
 /// ```
 ///
-/// [valid]: #safety
+/// [valid]: self#safety
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
@@ -706,7 +706,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// Note that even if `T` has size `0`, the pointer must be non-NULL.
 ///
 /// [read-ownership]: read#ownership-of-the-returned-value
-/// [valid]: #safety
+/// [valid]: self#safety
 ///
 /// ## On `packed` structs
 ///
@@ -809,7 +809,7 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
-/// [valid]: #safety
+/// [valid]: self#safety
 ///
 /// # Examples
 ///
@@ -898,7 +898,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL.
 ///
-/// [valid]: #safety
+/// [valid]: self#safety
 ///
 /// ## On `packed` structs
 ///
@@ -1010,7 +1010,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
-/// [valid]: #safety
+/// [valid]: self#safety
 /// [read-ownership]: read#ownership-of-the-returned-value
 ///
 /// Just like in C, whether an operation is volatile has no bearing whatsoever
@@ -1080,7 +1080,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
-/// [valid]: #safety
+/// [valid]: self#safety
 ///
 /// Just like in C, whether an operation is volatile has no bearing whatsoever
 /// on questions involving concurrent access from multiple threads. Volatile
