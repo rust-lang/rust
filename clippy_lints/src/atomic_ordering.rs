@@ -18,22 +18,22 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust,no_run
-    /// # use std::sync::atomic::{self, AtomicBool, Ordering};
+    /// # use std::sync::atomic::{self, AtomicU8, Ordering};
     ///
-    /// let x = AtomicBool::new(true);
+    /// let x = AtomicU8::new(0);
     ///
     /// let _ = x.load(Ordering::Release);
     /// let _ = x.load(Ordering::AcqRel);
     ///
-    /// x.store(false, Ordering::Acquire);
-    /// x.store(false, Ordering::AcqRel);
+    /// x.store(1, Ordering::Acquire);
+    /// x.store(2, Ordering::AcqRel);
     ///
     /// atomic::fence(Ordering::Relaxed);
     /// atomic::compiler_fence(Ordering::Relaxed);
     ///
-    /// let _ = x.compare_exchange(false, false, Ordering::Relaxed, Ordering::SeqCst);
-    /// let _ = x.compare_exchange_weak(false, true, Ordering::SeqCst, Ordering::Release);
-    /// let _ = x.fetch_update(Ordering::AcqRel, Ordering::AcqRel, |val| Some(val ^ val));
+    /// let _ = x.compare_exchange(1, 2, Ordering::Relaxed, Ordering::SeqCst);
+    /// let _ = x.compare_exchange_weak(2, 3, Ordering::SeqCst, Ordering::Release);
+    /// let _ = x.fetch_update(Ordering::AcqRel, Ordering::AcqRel, |val| Some(val + val));
     /// ```
     pub INVALID_ATOMIC_ORDERING,
     correctness,
