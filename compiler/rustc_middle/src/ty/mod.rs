@@ -6,6 +6,7 @@ pub use self::IntVarValue::*;
 pub use self::Variance::*;
 
 use crate::hir::exports::ExportMap;
+use crate::hir::place::Place as HirPlace;
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
@@ -674,6 +675,12 @@ pub struct UpvarId {
     pub closure_expr_id: LocalDefId,
 }
 
+impl UpvarId {
+    pub fn new(var_hir_id: hir::HirId, closure_def_id: LocalDefId) -> UpvarId {
+        UpvarId { var_path: UpvarPath { hir_id: var_hir_id }, closure_expr_id: closure_def_id }
+    }
+}
+
 #[derive(Clone, PartialEq, Debug, TyEncodable, TyDecodable, Copy, HashStable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
@@ -756,8 +763,39 @@ pub struct UpvarBorrow<'tcx> {
     pub region: ty::Region<'tcx>,
 }
 
+#[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, HashStable)]
+pub struct CaptureInfo<'tcx> {
+    /// Expr Id pointing to use that resulting in selecting the current capture kind
+    pub expr_id: Option<hir::HirId>,
+
+    /// Capture mode that was selected
+    pub capture_kind: UpvarCapture<'tcx>,
+}
+
 pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
+
+/// Consider closure where s.str1 is captured via an ImmutableBorrow and s.str2 via a MutableBorrow
+///
+/// ```rust
+/// // Assume that thte HirId for the variable definition is `V1`
+/// let mut s = SomeStruct { str1: format!("s1"), str2: format!("s2") }
+///
+/// let fix_s = |new_s2| {
+///     // Assume that the HirId for the expression `s.str1` is `E1`
+///     println!("Updating SomeStruct with str1=", s.str1);
+///     // Assume that the HirId for the expression `*s.str2` is `E2`
+///     s.str2 = new_s2;
+/// }
+/// ```
+///
+/// For closure `fix_s`, (at a high level) the IndexMap will contain:
+///
+/// Place { V1, [ProjectionKind::Field(Index=0, Variant=0)] } : CaptureKind { E1, ImmutableBorrow }
+/// Place { V1, [ProjectionKind::Field(Index=1, Variant=0)] } : CaptureKind { E2, MutableBorrow }
+///
+pub type CaptureInformationMap<'tcx> =
+    FxHashMap<DefId, FxIndexMap<HirPlace<'tcx>, CaptureInfo<'tcx>>>;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {
