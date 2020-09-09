@@ -1,4 +1,6 @@
 use byteorder::{BigEndian, ByteOrder};
+#[cfg(unix)]
+use std::io::{self, BufRead};
 
 fn main() {
     // Exercise external crate, printing to stdout.
@@ -11,6 +13,22 @@ fn main() {
     for arg in std::env::args() {
         eprintln!("{}", arg);
     }
+
+    // If there were no arguments, access stdin.
+    if std::env::args().len() <= 1 {
+        #[cfg(unix)]
+        for line in io::stdin().lock().lines() {
+            let num: i32 = line.unwrap().parse().unwrap();
+            println!("{}", 2*num);
+        }
+        // On non-Unix, reading from stdin is not support. So we hard-code the right answer.
+        #[cfg(not(unix))]
+        {
+            println!("24");
+            println!("42");
+        }
+    }
+
 }
 
 #[cfg(test)]
