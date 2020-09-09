@@ -2488,6 +2488,13 @@ impl<'a> AsRef<str> for Drain<'a> {
     }
 }
 
+#[unstable(feature = "string_drain_as_str", issue = "none")]
+impl<'a> AsRef<[u8]> for Drain<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.as_str().as_bytes()
+    }
+}
+
 #[stable(feature = "drain", since = "1.6.0")]
 impl Iterator for Drain<'_> {
     type Item = char;
