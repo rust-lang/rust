@@ -52,11 +52,11 @@ pub(super) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
         .filter_map(|submodule_file| {
             let submodule_path = source_root.path_for_file(&submodule_file)?;
             let directory_with_submodule = submodule_path.parent()?;
-            match submodule_path.file_name_and_extension()? {
+            match submodule_path.name_and_extension()? {
                 ("lib", Some("rs")) | ("main", Some("rs")) => None,
                 ("mod", Some("rs")) => {
                     if directory_with_submodule.parent()? == directory_to_look_for_submodules {
-                        match directory_with_submodule.file_name_and_extension()? {
+                        match directory_with_submodule.name_and_extension()? {
                             (directory_name, None) => Some(directory_name.to_owned()),
                             _ => None,
                         }
@@ -93,7 +93,7 @@ fn directory_to_look_for_submodules(
     module_file_path: &VfsPath,
 ) -> Option<VfsPath> {
     let directory_with_module_path = module_file_path.parent()?;
-    let base_directory = match module_file_path.file_name_and_extension()? {
+    let base_directory = match module_file_path.name_and_extension()? {
         ("mod", Some("rs")) | ("lib", Some("rs")) | ("main", Some("rs")) => {
             Some(directory_with_module_path)
         }
@@ -103,8 +103,8 @@ fn directory_to_look_for_submodules(
                     directory_with_module_path
                         .parent()
                         .as_ref()
-                        .and_then(|path| path.file_name_and_extension()),
-                    directory_with_module_path.file_name_and_extension(),
+                        .and_then(|path| path.name_and_extension()),
+                    directory_with_module_path.name_and_extension(),
                 ),
                 (Some(("src", None)), Some(("bin", None)))
             ) {
