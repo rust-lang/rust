@@ -2481,14 +2481,14 @@ impl<'a> Drain<'a> {
     }
 }
 
-#[unstable(feature = "string_drain_as_str", issue = "none")]
+#[stable(feature = "string_drain_as_ref", since = "1.48.0")]
 impl<'a> AsRef<str> for Drain<'a> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-#[unstable(feature = "string_drain_as_str", issue = "none")]
+#[stable(feature = "string_drain_as_ref", since = "1.48.0")]
 impl<'a> AsRef<[u8]> for Drain<'a> {
     fn as_ref(&self) -> &[u8] {
         self.as_str().as_bytes()
