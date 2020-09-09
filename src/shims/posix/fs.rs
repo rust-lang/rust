@@ -28,6 +28,9 @@ trait FileDescriptor : std::fmt::Debug {
     fn read<'tcx>(&mut self, communicate_allowed: bool, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>>;
     fn write<'tcx>(&mut self, communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>>;
     fn seek<'tcx>(&mut self, communicate_allowed: bool, offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>>;
+    fn close<'tcx>(self: Box<Self>, _communicate_allowed: bool) -> InterpResult<'tcx, io::Result<i32>>;
+
+    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>>;
 }
 
 impl FileDescriptor for FileHandle {
@@ -48,6 +51,34 @@ impl FileDescriptor for FileHandle {
     fn seek<'tcx>(&mut self, communicate_allowed: bool, offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.seek(offset))
+    }
+
+    fn close<'tcx>(self: Box<Self>, communicate_allowed: bool) -> InterpResult<'tcx, io::Result<i32>> {
+        assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        // We sync the file if it was opened in a mode different than read-only.
+        if self.writable {
+            // `File::sync_all` does the checks that are done when closing a file. We do this to
+            // to handle possible errors correctly.
+            let result = self.file.sync_all().map(|_| 0i32);
+            // Now we actually close the file.
+            drop(self);
+            // And return the result.
+            Ok(result)
+        } else {
+            // We drop the file, this closes it but ignores any errors
+            // produced when closing it. This is done because
+            // `File::sync_all` cannot be done over files like
+            // `/dev/urandom` which are read-only. Check
+            // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439
+            // for a deeper discussion.
+            drop(self);
+            Ok(Ok(0))
+        }
+    }
+
+    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+        let duplicated = self.file.try_clone()?;
+        Ok(Box::new(FileHandle { file: duplicated, writable: self.writable }))
     }
 }
 
@@ -70,6 +101,14 @@ impl FileDescriptor for io::Stdin {
 
     fn seek<'tcx>(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
         throw_unsup_format!("cannot seek on stdin");
+    }
+
+    fn close<'tcx>(self: Box<Self>, _communicate_allowed: bool) -> InterpResult<'tcx, io::Result<i32>> {
+        throw_unsup_format!("stdin cannot be closed");
+    }
+
+    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+        Ok(Box::new(io::stdin()))
     }
 }
 
@@ -98,6 +137,14 @@ impl FileDescriptor for io::Stdout {
     fn seek<'tcx>(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
         throw_unsup_format!("cannot seek on stdout");
     }
+
+    fn close<'tcx>(self: Box<Self>, _communicate_allowed: bool) -> InterpResult<'tcx, io::Result<i32>> {
+        throw_unsup_format!("stdout cannot be closed");
+    }
+
+    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+        Ok(Box::new(io::stdout()))
+    }
 }
 
 impl FileDescriptor for io::Stderr {
@@ -118,6 +165,14 @@ impl FileDescriptor for io::Stderr {
     fn seek<'tcx>(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
         throw_unsup_format!("cannot seek on stderr");
     }
+
+    fn close<'tcx>(self: Box<Self>, _communicate_allowed: bool) -> InterpResult<'tcx, io::Result<i32>> {
+        throw_unsup_format!("stderr cannot be closed");
+    }
+
+    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+        Ok(Box::new(io::stderr()))
+    }
 }
 
 #[derive(Debug)]
@@ -137,18 +192,12 @@ impl<'tcx> Default for FileHandler {
     }
 }
 
-
-// fd numbers 0, 1, and 2 are reserved for stdin, stdout, and stderr
-const MIN_NORMAL_FILE_FD: i32 = 3;
-
 impl<'tcx> FileHandler {
-    fn insert_fd(&mut self, file_handle: FileHandle) -> i32 {
+    fn insert_fd(&mut self, file_handle: Box<dyn FileDescriptor>) -> i32 {
         self.insert_fd_with_min_fd(file_handle, 0)
     }
 
-    fn insert_fd_with_min_fd(&mut self, file_handle: FileHandle, min_fd: i32) -> i32 {
-        let min_fd = std::cmp::max(min_fd, MIN_NORMAL_FILE_FD);
-
+    fn insert_fd_with_min_fd(&mut self, file_handle: Box<dyn FileDescriptor>, min_fd: i32) -> i32 {
         // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
         // between used FDs, the find_map combinator will return it. If the first such unused FD
         // is after all other used FDs, the find_map combinator will return None, and we will use
@@ -173,7 +222,7 @@ impl<'tcx> FileHandler {
             self.handles.last_key_value().map(|(fd, _)| fd.checked_add(1).unwrap()).unwrap_or(min_fd)
         });
 
-        self.handles.insert(new_fd, Box::new(file_handle)).unwrap_none();
+        self.handles.insert(new_fd, file_handle).unwrap_none();
         new_fd
     }
 }
@@ -449,7 +498,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = options.open(&path).map(|file| {
             let fh = &mut this.machine.file_handler;
-            fh.insert_fd(FileHandle { file, writable })
+            fh.insert_fd(Box::new(FileHandle { file, writable }))
         });
 
         this.try_unwrap_io_result(fd)
@@ -489,22 +538,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // thus they can share the same implementation here.
             let &[_, _, start] = check_arg_count(args)?;
             let start = this.read_scalar(start)?.to_i32()?;
-            if fd < MIN_NORMAL_FILE_FD {
-                throw_unsup_format!("duplicating file descriptors for stdin, stdout, or stderr is not supported")
-            }
+
             let fh = &mut this.machine.file_handler;
-            let (file_result, writable) = match fh.handles.get(&fd) {
+
+            match fh.handles.get_mut(&fd) {
                 Some(file_descriptor) => {
-                    // FIXME: Support "dup" for all FDs(stdin, etc)
-                    let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
-                    (file.try_clone(), *writable)
+                    let dup_result = file_descriptor.dup();
+                    match dup_result {
+                        Ok(dup_fd) => Ok(fh.insert_fd_with_min_fd(dup_fd, start)),
+                        Err(e) => {
+                            this.set_last_error_from_io_error(e)?;
+                            Ok(-1)
+                        }
+                    }
                 },
                 None => return this.handle_not_found(),
-            };
-            let fd_result = file_result.map(|duplicated| {
-                fh.insert_fd_with_min_fd(FileHandle { file: duplicated, writable }, start)
-            });
-            this.try_unwrap_io_result(fd_result)
+            }
         } else if this.tcx.sess.target.target.target_os == "macos"
             && cmd == this.eval_libc_i32("F_FULLFSYNC")?
         {
@@ -530,26 +579,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.remove(&fd) {
-            // FIXME: Support `close` for all FDs(stdin, etc)
-            let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
-            // We sync the file if it was opened in a mode different than read-only.
-            if *writable {
-                // `File::sync_all` does the checks that are done when closing a file. We do this to
-                // to handle possible errors correctly.
-                let result = this.try_unwrap_io_result(file.sync_all().map(|_| 0i32));
-                // Now we actually close the file.
-                drop(file);
-                // And return the result.
-                result
-            } else {
-                // We drop the file, this closes it but ignores any errors produced when closing
-                // it. This is done because `File::sync_all` cannot be done over files like
-                // `/dev/urandom` which are read-only. Check
-                // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439 for a deeper
-                // discussion.
-                drop(file);
-                Ok(0)
-            }
+            let result = file_descriptor.close(this.machine.communicate)?;
+            this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
         }
