@@ -57,6 +57,20 @@ first build the new compiler with an older compiler and then use that to
 build the new compiler with itself. For development, you usually only want
 the `stage1` compiler: `x.py build library/std`.
 
+### Default stages
+
+`x.py` tries to be helpful and pick the stage you most likely meant for each subcommand.
+These defaults are as follows:
+
+- `doc`: `--stage 0`
+- `build`: `--stage 1`
+- `test`: `--stage 1`
+- `dist`: `--stage 2`
+- `install`: `--stage 2`
+- `bench`: `--stage 2`
+
+You can always override the stage by passing `--stage N` explicitly.
+
 ## Complications of bootstrapping
 
 Since the build system uses the current beta compiler to build the stage-1
