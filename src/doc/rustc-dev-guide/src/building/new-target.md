@@ -107,4 +107,4 @@ a) Targets that are only cross-compiled (`rustup target add`)
 b) Targets that have a native toolchain (`rustup toolchain install`)
 
 For an example of promoting a target from cross-compiled to native,
-see [75914](https://github.com/rust-lang/rust/pull/75914).
+see [#75914](https://github.com/rust-lang/rust/pull/75914).
