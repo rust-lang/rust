@@ -12,8 +12,10 @@ declare_clippy_lint! {
     /// `BtreeSet` rely on either the hash or the order of keys be unchanging,
     /// so having types with interior mutability is a bad idea.
     ///
-    /// **Known problems:** We don't currently account for `Rc` or `Arc`, so
-    /// this may yield false positives.
+    /// **Known problems:** It's correct to use a struct, that contains interior mutability,
+    /// as a key; when its `Hash` implementation doesn't access any these interior mutable types.
+    /// However, this lint is unable to recognise it so cause a false positive.
+    /// `bytes` ctate is a great example of this.
     ///
     /// **Example:**
     /// ```rust
