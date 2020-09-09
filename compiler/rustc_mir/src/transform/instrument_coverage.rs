@@ -309,7 +309,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         for coverage_region in coverage_regions {
             span_viewables.push(SpanViewable {
                 span: coverage_region.span,
-                title: format!("{}", coverage_region.blocks[0].index()),
+                id: format!("{}", coverage_region.blocks[0].index()),
                 tooltip: self.make_tooltip_text(coverage_region),
             });
         }
