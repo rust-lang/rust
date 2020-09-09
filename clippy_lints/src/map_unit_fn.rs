@@ -9,7 +9,7 @@ use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `option.map(f)` where f is a function
-    /// or closure that returns the unit type.
+    /// or closure that returns the unit type `()`.
     ///
     /// **Why is this bad?** Readability, this can be written more clearly with
     /// an if let statement
@@ -51,7 +51,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `result.map(f)` where f is a function
-    /// or closure that returns the unit type.
+    /// or closure that returns the unit type `()`.
     ///
     /// **Why is this bad?** Readability, this can be written more clearly with
     /// an if let statement
@@ -197,7 +197,7 @@ fn let_binding_name(cx: &LateContext<'_>, var_arg: &hir::Expr<'_>) -> String {
 #[must_use]
 fn suggestion_msg(function_type: &str, map_type: &str) -> String {
     format!(
-        "called `map(f)` on an `{0}` value where `f` is a {1} that returns the unit type",
+        "called `map(f)` on an `{0}` value where `f` is a {1} that returns the unit type `()`",
         map_type, function_type
     )
 }
