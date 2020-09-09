@@ -112,6 +112,14 @@ impl<T, E> Poll<Option<Result<T, E>>> {
 
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl<T> From<T> for Poll<T> {
+    /// Convert to a `Ready` variant.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// assert_eq!(Poll::from(true), Poll::Ready(true));
+    /// ```
     fn from(t: T) -> Poll<T> {
         Poll::Ready(t)
     }
