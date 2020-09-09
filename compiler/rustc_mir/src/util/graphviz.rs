@@ -55,7 +55,7 @@ where
     writeln!(w, "{} {}Mir_{} {{", kind, cluster, def_name)?;
 
     // Global graph properties
-    let font = r#"fontname="monospace""#;
+    let font = r#"fontname="Courier, monospace""#;
     let mut graph_attrs = vec![font];
     let mut content_attrs = vec![font];
 

@@ -634,7 +634,7 @@ where
     let mut graph_attrs = Vec::new();
     let mut content_attrs = Vec::new();
     if options.contains(&RenderOption::Monospace) {
-        let font = r#"fontname="monospace""#;
+        let font = r#"fontname="Courier, monospace""#;
         graph_attrs.push(font);
         content_attrs.push(font);
     };
