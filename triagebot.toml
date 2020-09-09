@@ -99,3 +99,9 @@ message_on_add = """\
 - Needs `I-nominated`?
 """
 message_on_remove = "Issue #{number}'s prioritization request has been removed."
+
+[github-releases]
+format = "rustc"
+project-name = "Rust"
+changelog-path = "RELEASES.md"
+changelog-branch = "master"
