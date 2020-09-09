@@ -689,6 +689,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             Traits(x) => Traits(x),
             VariadicMismatch(x) => VariadicMismatch(x),
             CyclicTy(t) => return tcx.lift(&t).map(|t| CyclicTy(t)),
+            CyclicConst(ct) => return tcx.lift(&ct).map(|ct| CyclicConst(ct)),
             ProjectionMismatched(x) => ProjectionMismatched(x),
             Sorts(ref x) => return tcx.lift(x).map(Sorts),
             ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch),
