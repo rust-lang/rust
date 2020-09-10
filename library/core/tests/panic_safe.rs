@@ -1,16 +1,18 @@
-// run-pass
 #![allow(dead_code)]
 
-use std::panic::{UnwindSafe, AssertUnwindSafe};
 use std::cell::RefCell;
-use std::sync::{Mutex, RwLock, Arc};
+use std::panic::{AssertUnwindSafe, UnwindSafe};
 use std::rc::Rc;
+use std::sync::{Arc, Mutex, RwLock};
 
-struct Foo { a: i32 }
+struct Foo {
+    a: i32,
+}
 
 fn assert<T: UnwindSafe + ?Sized>() {}
 
-fn main() {
+#[test]
+fn test_panic_safety_traits() {
     assert::<i32>();
     assert::<&i32>();
     assert::<*mut i32>();
@@ -32,13 +34,16 @@ fn main() {
     assert::<Arc<i32>>();
     assert::<Box<[u8]>>();
 
-    trait Trait: UnwindSafe {}
-    assert::<Box<dyn Trait>>();
+    {
+        trait Trait: UnwindSafe {}
+        assert::<Box<dyn Trait>>();
+    }
 
     fn bar<T>() {
         assert::<Mutex<T>>();
         assert::<RwLock<T>>();
     }
+
     fn baz<T: UnwindSafe>() {
         assert::<Box<T>>();
         assert::<Vec<T>>();

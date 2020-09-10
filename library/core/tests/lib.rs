@@ -78,6 +78,7 @@ mod nonzero;
 mod num;
 mod ops;
 mod option;
+mod panic_safe;
 mod pattern;
 mod ptr;
 mod result;
