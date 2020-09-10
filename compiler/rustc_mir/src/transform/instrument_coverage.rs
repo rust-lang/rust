@@ -353,7 +353,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                             if !INCLUDE_COVERAGE_STATEMENTS {
                                 continue;
                             }
-                            format!("unreachable")
+                            String::from("unreachable")
                         }
                     },
                     _ => format!("{:?}", statement),
