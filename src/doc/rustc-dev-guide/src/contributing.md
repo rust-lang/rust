@@ -490,7 +490,10 @@ are:
 * The [Rust Compiler Testing Docs][rctd]
 * For [@bors], [this cheat sheet][cheatsheet] is helpful
 * **Google!** is always helpful when programming :)
-* [Search Rust documentation][stddocs] to find types, traits, etc. quickly
+* [Search Rust documentation][stddocs] to find types, traits, etc. quickly.
+  You can also search by type signature! For example, searching for
+  `* -> vec` should find all functions that return a `Vec<T>`. _Hint:_ Find
+  more tips and keyboard shortcuts by typing `?` on any Rustdoc page!
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
 [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
