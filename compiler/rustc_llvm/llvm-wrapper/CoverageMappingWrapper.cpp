@@ -1,4 +1,4 @@
-#include "rustllvm.h"
+#include "LLVMWrapper.h"
 #include "llvm/ProfileData/Coverage/CoverageMapping.h"
 #include "llvm/ProfileData/Coverage/CoverageMappingWriter.h"
 #include "llvm/ProfileData/InstrProf.h"
