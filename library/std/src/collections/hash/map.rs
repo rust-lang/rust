@@ -497,6 +497,50 @@ impl<K, V, S> HashMap<K, V, S> {
         Drain { base: self.base.drain() }
     }
 
+    /// Creates an iterator which uses a closure to determine if an element should be removed.
+    ///
+    /// If the closure returns true, the element is removed from the map and yielded.
+    /// If the closure returns false, or panics, the element remains in the map and will not be
+    /// yielded.
+    ///
+    /// Note that `drain_filter` lets you mutate every value in the filter closure, regardless of
+    /// whether you choose to keep or remove it.
+    ///
+    /// If the iterator is only partially consumed or not consumed at all, each of the remaining
+    /// elements will still be subjected to the closure and removed and dropped if it returns true.
+    ///
+    /// It is unspecified how many more elements will be subjected to the closure
+    /// if a panic occurs in the closure, or a panic occurs while dropping an element,
+    /// or if the `DrainFilter` value is leaked.
+    ///
+    /// # Examples
+    ///
+    /// Splitting a map into even and odd keys, reusing the original map:
+    ///
+    /// ```
+    /// #![feature(hash_drain_filter)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
+    /// let drained: HashMap<i32, i32> = map.drain_filter(|k, _v| k % 2 == 0).collect();
+    ///
+    /// let mut evens = drained.keys().copied().collect::<Vec<_>>();
+    /// let mut odds = map.keys().copied().collect::<Vec<_>>();
+    /// evens.sort();
+    /// odds.sort();
+    ///
+    /// assert_eq!(evens, vec![0, 2, 4, 6]);
+    /// assert_eq!(odds, vec![1, 3, 5, 7]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_drain_filter", issue = "59618")]
+    pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, K, V, F>
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
+        DrainFilter { base: self.base.drain_filter(pred) }
+    }
+
     /// Clears the map, removing all key-value pairs. Keeps the allocated memory
     /// for reuse.
     ///
@@ -1190,6 +1234,19 @@ impl<'a, K, V> Drain<'a, K, V> {
     }
 }
 
+/// A draining, filtering iterator over the entries of a `HashMap`.
+///
+/// This `struct` is created by the [`drain_filter`] method on [`HashMap`].
+///
+/// [`drain_filter`]: HashMap::drain_filter
+#[unstable(feature = "hash_drain_filter", issue = "59618")]
+pub struct DrainFilter<'a, K, V, F>
+where
+    F: FnMut(&K, &mut V) -> bool,
+{
+    base: base::DrainFilter<'a, K, V, F>,
+}
+
 /// A mutable iterator over the values of a `HashMap`.
 ///
 /// This `struct` is created by the [`values_mut`] method on [`HashMap`]. See its
@@ -1247,7 +1304,7 @@ pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
     /// An occupied entry.
-    Occupied(RawOccupiedEntryMut<'a, K, V>),
+    Occupied(RawOccupiedEntryMut<'a, K, V, S>),
     /// A vacant entry.
     Vacant(RawVacantEntryMut<'a, K, V, S>),
 }
@@ -1255,8 +1312,8 @@ pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 /// A view into an occupied entry in a `HashMap`.
 /// It is part of the [`RawEntryMut`] enum.
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
-    base: base::RawOccupiedEntryMut<'a, K, V>,
+pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a, S: 'a> {
+    base: base::RawOccupiedEntryMut<'a, K, V, S>,
 }
 
 /// A view into a vacant entry in a `HashMap`.
@@ -1457,7 +1514,7 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V> RawOccupiedEntryMut<'a, K, V> {
+impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
     /// Gets a reference to the key in the entry.
     #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
@@ -1597,7 +1654,7 @@ impl<K: Debug, V: Debug, S> Debug for RawEntryMut<'_, K, V, S> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'_, K, V> {
+impl<K: Debug, V: Debug, S> Debug for RawOccupiedEntryMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawOccupiedEntryMut")
             .field("key", self.key())
@@ -1987,6 +2044,36 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+#[unstable(feature = "hash_drain_filter", issue = "59618")]
+impl<K, V, F> Iterator for DrainFilter<'_, K, V, F>
+where
+    F: FnMut(&K, &mut V) -> bool,
+{
+    type Item = (K, V);
+
+    #[inline]
+    fn next(&mut self) -> Option<(K, V)> {
+        self.base.next()
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.base.size_hint()
+    }
+}
+
+#[unstable(feature = "hash_drain_filter", issue = "59618")]
+impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
+
+#[unstable(feature = "hash_drain_filter", issue = "59618")]
+impl<'a, K, V, F> fmt::Debug for DrainFilter<'a, K, V, F>
+where
+    F: FnMut(&K, &mut V) -> bool,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("DrainFilter { .. }")
     }
 }
 
@@ -2698,7 +2785,7 @@ fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, 
 }
 
 #[inline]
-fn map_try_reserve_error(err: hashbrown::TryReserveError) -> TryReserveError {
+pub(super) fn map_try_reserve_error(err: hashbrown::TryReserveError) -> TryReserveError {
     match err {
         hashbrown::TryReserveError::CapacityOverflow => TryReserveError::CapacityOverflow,
         hashbrown::TryReserveError::AllocError { layout } => {
