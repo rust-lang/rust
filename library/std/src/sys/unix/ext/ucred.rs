@@ -43,24 +43,23 @@ pub mod impl_linux {
     use crate::os::unix::io::AsRawFd;
     use crate::os::unix::net::UnixStream;
     use crate::{io, mem};
+    use libc::{c_void, getsockopt, socklen_t, ucred, SOL_SOCKET, SO_PEERCRED};
 
     pub fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
-        use libc::{c_void, ucred};
-
         let ucred_size = mem::size_of::<ucred>();
 
         // Trivial sanity checks.
         assert!(mem::size_of::<u32>() <= mem::size_of::<usize>());
         assert!(ucred_size <= u32::MAX as usize);
 
-        let mut ucred_size = ucred_size as u32;
+        let mut ucred_size = ucred_size as socklen_t;
         let mut ucred: ucred = ucred { pid: 1, uid: 1, gid: 1 };
 
         unsafe {
-            let ret = libc::getsockopt(
+            let ret = getsockopt(
                 socket.as_raw_fd(),
-                libc::SOL_SOCKET,
-                libc::SO_PEERCRED,
+                SOL_SOCKET,
+                SO_PEERCRED,
                 &mut ucred as *mut ucred as *mut c_void,
                 &mut ucred_size,
             );
