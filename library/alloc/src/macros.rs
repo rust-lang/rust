@@ -64,6 +64,15 @@ macro_rules! vec {
     ($($x:expr,)*) => (vec![$($x),*])
 }
 
+// HACK(jubilee): Shim for specializing format! It is possible to manually
+// implement ToString, bypassing Display. "{}" normally formats in terms of
+// Display. NeedsDisplay enforces equally strict type boundarie.
+#[unstable(feature = "display_type_guard", issue = "none")]
+#[allow(dead_code)]
+struct NeedsDisplay<T: crate::fmt::Display> {
+    inner: T,
+}
+
 /// Creates a `String` using interpolation of runtime expressions.
 ///
 /// The first argument `format!` receives is a format string. This must be a string
@@ -99,17 +108,12 @@ macro_rules! vec {
 /// format!("hello {}", "world!");
 /// format!("x = {}, y = {y}", 10, y = 30);
 /// ```
+#[allow_internal_unstable(display_type_guard)]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! format {
     // A faster path for simple format! calls.
     ("{}", $($arg:tt,?)+) => {{
-        // It is possible to implement ToString manually, bypassing Display.
-        // However, "{}" formats in terms of Display. This wrapper enforces
-        // equally strict type boundaries even though we are calling ToString.
-        struct NeedsDisplay<T: $crate::fmt::Display> {
-            inner: T,
-        }
         let fast = |t: NeedsDisplay<_> | $crate::string::ToString::to_string(t.inner);
         // This TokenTree must resolve to a Displayable value to be valid.
         fast(NeedsDisplay { inner: &{$($arg)*} })
