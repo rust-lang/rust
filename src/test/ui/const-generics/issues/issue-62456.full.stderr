@@ -1,8 +1,8 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-62504.rs:18:25
+  --> $DIR/issue-62456.rs:7:20
    |
-LL |         ArrayHolder([0; Self::SIZE])
-   |                         ^^^^^^^^^^
+LL |     let _ = [0u64; N + 1];
+   |                    ^^^^^
    |
    = note: this may fail depending on what value the parameter takes
 

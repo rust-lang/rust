@@ -1,12 +1,14 @@
-// run-pass
-
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+// [full] run-pass
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 #[derive(PartialEq, Eq)]
 struct NoMatch;
 
 fn foo<const T: NoMatch>() -> bool {
+    //[min]~^ ERROR `NoMatch` is forbidden as the type of a const generic parameter
     true
 }
 

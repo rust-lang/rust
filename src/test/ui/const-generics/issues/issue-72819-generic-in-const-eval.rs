@@ -1,11 +1,14 @@
 // Regression test for #72819: ICE due to failure in resolving the const generic in `Arr`'s type
 // bounds.
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
-#![feature(const_generics)]
-#![allow(incomplete_features)]
 struct Arr<const N: usize>
 where Assert::<{N < usize::max_value() / 2}>: IsTrue,
-//~^ ERROR constant expression depends on a generic parameter
+//[full]~^ ERROR constant expression depends on a generic parameter
+//[min]~^^ ERROR generic parameters must not be used inside of non trivial constant values
 {
 }
 

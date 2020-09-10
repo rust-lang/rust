@@ -1,14 +1,5 @@
-warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-67185-2.rs:1:12
-   |
-LL | #![feature(const_generics)]
-   |            ^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-
 error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:15:1
+  --> $DIR/issue-67185-2.rs:17:1
    |
 LL | / trait Foo
 LL | |
@@ -26,7 +17,7 @@ LL | | }
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:15:1
+  --> $DIR/issue-67185-2.rs:17:1
    |
 LL | / trait Foo
 LL | |
@@ -44,7 +35,7 @@ LL | | }
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:25:6
+  --> $DIR/issue-67185-2.rs:27:6
    |
 LL | trait Foo
    |       --- required by a bound in this
@@ -60,7 +51,7 @@ LL | impl Foo for FooImpl {}
              <[u16; 4] as Bar>
 
 error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:25:6
+  --> $DIR/issue-67185-2.rs:27:6
    |
 LL | trait Foo
    |       --- required by a bound in this
@@ -76,7 +67,7 @@ LL | impl Foo for FooImpl {}
              <[u16; 4] as Bar>
 
 error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:29:14
+  --> $DIR/issue-67185-2.rs:31:14
    |
 LL | trait Foo
    |       --- required by a bound in this
@@ -92,7 +83,7 @@ LL | fn f(_: impl Foo) {}
              <[u16; 4] as Bar>
 
 error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:29:14
+  --> $DIR/issue-67185-2.rs:31:14
    |
 LL | trait Foo
    |       --- required by a bound in this
@@ -107,6 +98,6 @@ LL | fn f(_: impl Foo) {}
              <[[u16; 3]; 3] as Bar>
              <[u16; 4] as Bar>
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
