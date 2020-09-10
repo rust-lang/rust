@@ -2562,6 +2562,7 @@ fn fn_can_unwind(
     panic_strategy: PanicStrategy,
     codegen_fn_attr_flags: CodegenFnAttrFlags,
     call_conv: Conv,
+    abi: SpecAbi,
 ) -> bool {
     if panic_strategy != PanicStrategy::Unwind {
         // In panic=abort mode we assume nothing can unwind anywhere, so
@@ -2586,17 +2587,16 @@ fn fn_can_unwind(
             //
             //  2. A Rust item using a non-Rust ABI (like `extern "C" fn foo() { ... }`).
             //
-            // Foreign items (case 1) are assumed to not unwind; it is
-            // UB otherwise. (At least for now; see also
-            // rust-lang/rust#63909 and Rust RFC 2753.)
-            //
-            // Items defined in Rust with non-Rust ABIs (case 2) are also
-            // not supposed to unwind. Whether this should be enforced
-            // (versus stating it is UB) and *how* it would be enforced
-            // is currently under discussion; see rust-lang/rust#58794.
-            //
-            // In either case, we mark item as explicitly nounwind.
-            false
+            // In both of these cases, we should refer to the ABI to determine whether or not we
+            // should unwind. See Rust RFC 2945 for more information on this behavior, here:
+            // https://github.com/rust-lang/rfcs/blob/master/text/2945-c-unwind-abi.md
+            use SpecAbi::*;
+            match abi {
+                C { unwind } | Stdcall { unwind } | System { unwind } | Thiscall { unwind } => {
+                    unwind
+                }
+                _ => false,
+            }
         }
     }
 }
@@ -2823,7 +2823,12 @@ where
             c_variadic: sig.c_variadic,
             fixed_count: inputs.len(),
             conv,
-            can_unwind: fn_can_unwind(cx.tcx().sess.panic_strategy(), codegen_fn_attr_flags, conv),
+            can_unwind: fn_can_unwind(
+                cx.tcx().sess.panic_strategy(),
+                codegen_fn_attr_flags,
+                conv,
+                sig.abi,
+            ),
         };
         fn_abi.adjust_for_abi(cx, sig.abi);
         debug!("FnAbi::new_internal = {:?}", fn_abi);
