@@ -922,6 +922,8 @@ pub enum LocalInfo<'tcx> {
     User(ClearCrossCrate<BindingForm<'tcx>>),
     /// A temporary created that references the static with the given `DefId`.
     StaticRef { def_id: DefId, is_thread_local: bool },
+    /// A temporary created that references the const with the given `DefId`
+    ConstRef { def_id: DefId },
 }
 
 impl<'tcx> LocalDecl<'tcx> {

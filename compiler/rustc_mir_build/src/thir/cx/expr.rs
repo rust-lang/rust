@@ -247,6 +247,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         hir::ExprKind::Lit(ref lit) => ExprKind::Literal {
             literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, false),
             user_ty: None,
+            const_id: None,
         },
 
         hir::ExprKind::Binary(op, ref lhs, ref rhs) => {
@@ -306,6 +307,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                     ExprKind::Literal {
                         literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, true),
                         user_ty: None,
+                        const_id: None,
                     }
                 } else {
                     ExprKind::Unary { op: UnOp::Neg, arg: arg.to_ref() }
@@ -447,6 +449,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                                             kind: ExprKind::Literal {
                                                 literal: ty::Const::zero_sized(cx.tcx, ty),
                                                 user_ty,
+                                                const_id: None,
                                             },
                                         }
                                         .to_ref(),
@@ -473,6 +476,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                                             kind: ExprKind::Literal {
                                                 literal: ty::Const::zero_sized(cx.tcx, ty),
                                                 user_ty: None,
+                                                const_id: None,
                                             },
                                         }
                                         .to_ref(),
@@ -585,7 +589,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                             temp_lifetime,
                             ty: var_ty,
                             span: expr.span,
-                            kind: ExprKind::Literal { literal, user_ty: None },
+                            kind: ExprKind::Literal { literal, user_ty: None, const_id: None },
                         }
                         .to_ref()
                     };
@@ -714,7 +718,11 @@ fn method_callee<'a, 'tcx>(
         temp_lifetime,
         ty,
         span,
-        kind: ExprKind::Literal { literal: ty::Const::zero_sized(cx.tcx(), ty), user_ty },
+        kind: ExprKind::Literal {
+            literal: ty::Const::zero_sized(cx.tcx(), ty),
+            user_ty,
+            const_id: None,
+        },
     }
 }
 
@@ -777,6 +785,7 @@ fn convert_path_expr<'a, 'tcx>(
             ExprKind::Literal {
                 literal: ty::Const::zero_sized(cx.tcx, cx.typeck_results().node_type(expr.hir_id)),
                 user_ty,
+                const_id: None,
             }
         }
 
@@ -794,6 +803,7 @@ fn convert_path_expr<'a, 'tcx>(
                     .tcx
                     .mk_const(ty::Const { val, ty: cx.typeck_results().node_type(expr.hir_id) }),
                 user_ty: None,
+                const_id: Some(def_id),
             }
         }
 
@@ -810,6 +820,7 @@ fn convert_path_expr<'a, 'tcx>(
                     ty: cx.typeck_results().node_type(expr.hir_id),
                 }),
                 user_ty,
+                const_id: Some(def_id),
             }
         }
 

@@ -233,6 +233,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub CONST_ITEM_MUTATION,
+    Warn,
+    "detects attempts to mutate a `const` item",
+}
+
+declare_lint! {
     pub SAFE_PACKED_BORROWS,
     Warn,
     "safe borrows of fields of packed structs were erroneously allowed",
@@ -582,6 +588,7 @@ declare_lint_pass! {
         CONST_ERR,
         RENAMED_AND_REMOVED_LINTS,
         UNALIGNED_REFERENCES,
+        CONST_ITEM_MUTATION,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         LATE_BOUND_LIFETIME_ARGUMENTS,
