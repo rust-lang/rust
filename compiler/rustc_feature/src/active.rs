@@ -586,7 +586,7 @@ declare_features! (
     (active, if_let_guard, "1.47.0", Some(51114), None),
 
     /// Allows non trivial generic constants which have to be manually propageted upwards.
-    (active, const_evaluatable_checked, "1.48.0", Some(0), None),
+    (active, const_evaluatable_checked, "1.48.0", Some(76560), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

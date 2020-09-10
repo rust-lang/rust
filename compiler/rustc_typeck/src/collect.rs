@@ -1678,13 +1678,8 @@ fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicate
 
     if tcx.features().const_evaluatable_checked {
         let const_evaluatable = const_evaluatable_predicates_of(tcx, def_id, &result);
-        if result.predicates.is_empty() {
-            result.predicates = tcx.arena.alloc_from_iter(const_evaluatable);
-        } else {
-            result.predicates = tcx
-                .arena
-                .alloc_from_iter(result.predicates.iter().copied().chain(const_evaluatable));
-        }
+        result.predicates =
+            tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(const_evaluatable));
     }
 
     debug!("predicates_defined_on({:?}) = {:?}", def_id, result);

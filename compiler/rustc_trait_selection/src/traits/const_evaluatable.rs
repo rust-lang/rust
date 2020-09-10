@@ -73,10 +73,6 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
         }
     }
 
-    if concrete.is_ok() {
-        debug!("is_const_evaluatable: concrete ~~> ok");
-    } else {
-        debug!("is_const_evaluatable: concrete ~~> err");
-    }
+    debug!(?concrete, "is_const_evaluatable");
     concrete.map(drop)
 }
