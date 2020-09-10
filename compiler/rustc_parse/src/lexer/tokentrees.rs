@@ -262,7 +262,10 @@ impl<'a> TokenTreesReader<'a> {
             }
             _ => {
                 let tt = TokenTree::Token(self.token.take());
-                let is_joint = self.bump();
+                let mut is_joint = self.bump();
+                if !self.token.is_op() {
+                    is_joint = NonJoint;
+                }
                 Ok((tt, is_joint))
             }
         }
