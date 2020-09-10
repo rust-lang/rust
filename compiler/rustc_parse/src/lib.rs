@@ -109,7 +109,7 @@ pub fn maybe_new_parser_from_source_str(
 }
 
 /// Creates a new parser, handling errors as appropriate if the file doesn't exist.
-/// If a span is given, that is used on an error as the as the source of the problem.
+/// If a span is given, that is used on an error as the source of the problem.
 pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Span>) -> Parser<'a> {
     source_file_to_parser(sess, file_to_source_file(sess, path, sp))
 }
