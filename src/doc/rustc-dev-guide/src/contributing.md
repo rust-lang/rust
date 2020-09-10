@@ -453,17 +453,15 @@ If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 ## Out-of-tree Contributions
 
 There are a number of other ways to contribute to Rust that don't deal with
-rust-lang/rust.
+rust-lang/rust:
 
-Answer questions in the _Get Help!_ channels from the [Rust Discord
-server][rust-discord], on [users.rust-lang.org][users], or on
-[StackOverflow][so].
-
-Participate in the [RFC process](https://github.com/rust-lang/rfcs).
-
-Find a [requested community library][community-library], build it, and publish
-it to [Crates.io](http://crates.io). Easier said than done, but very, very
-valuable!
+* Answer questions in the _Get Help!_ channels on the [Rust Discord
+  server][rust-discord], on [users.rust-lang.org][users], or on
+  [StackOverflow][so].
+* Participate in the [RFC process](https://github.com/rust-lang/rfcs).
+* Find a [requested community library][community-library], build it, and publish
+  it to [Crates.io](http://crates.io). Easier said than done, but very, very
+  valuable!
 
 [rust-discord]: https://discord.gg/rust-lang
 [users]: https://users.rust-lang.org/
@@ -489,20 +487,26 @@ are:
 * [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
 * The [Rust Compiler Testing Docs][rctd]
 * For [@bors], [this cheat sheet][cheatsheet] is helpful
-* **Google!** is always helpful when programming :)
-* [Search Rust documentation][stddocs] to find types, traits, etc. quickly.
-  You can also search by type signature! For example, searching for
-  `* -> vec` should find all functions that return a `Vec<T>`. _Hint:_ Find
-  more tips and keyboard shortcuts by typing `?` on any Rustdoc page!
+* Google is always helpful when programming.
+  You can [search all Rust documentation][gsearchdocs] (the standard library,
+  the compiler, the books, the references, and the guides) to quickly find
+  information about the language and compiler.
+* You can also use Rustdoc's built-in search feature to find documentation on
+  types and functions within the crates you're looking at. You can also search
+  by type signature! For example, searching for `* -> vec` should find all
+  functions that return a `Vec<T>`.
+  _Hint:_ Find more tips and keyboard shortcuts by typing `?` on any Rustdoc
+  page!
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
 [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
 [gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
+[gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [stddocs]: https://doc.rust-lang.org/std
 [rif]: http://internals.rust-lang.org
 [rr]: https://doc.rust-lang.org/book/README.html
 [rustforge]: https://forge.rust-lang.org/
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
-[ro]: http://www.rustaceans.org/
+[ro]: https://www.rustaceans.org/
 [rctd]: https://rustc-dev-guide.rust-lang.org/tests/intro.html
 [cheatsheet]: https://buildbot2.rust-lang.org/homu/
