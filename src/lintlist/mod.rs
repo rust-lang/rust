@@ -754,6 +754,13 @@ vec![
         module: "drop_forget_ref",
     },
     Lint {
+        name: "from_iter_instead_of_collect",
+        group: "style",
+        desc: "use `.collect()` instead of `::from_iter()`",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "future_not_send",
         group: "nursery",
         desc: "public Futures must be Send",
