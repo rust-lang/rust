@@ -1,7 +1,7 @@
 # Identifiers in the Compiler
 
-If you have read the few previous chapters, you now know that the `rustc` uses
-many different intermediate representations to perform different kinds of analysis.
+If you have read the few previous chapters, you now know that `rustc` uses
+many different intermediate representations to perform different kinds of analyses.
 However, like in every data structure, you need a way to traverse the structure
 and refer to other elements. In this chapter, you will find information on the
 different identifiers `rustc` uses for each intermediate representation.
