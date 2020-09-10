@@ -175,15 +175,15 @@ fn main() {
         cfg.debug(false);
     }
 
-    build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));
-    cfg.file("../rustllvm/PassWrapper.cpp")
-        .file("../rustllvm/RustWrapper.cpp")
-        .file("../rustllvm/ArchiveWrapper.cpp")
-        .file("../rustllvm/CoverageMappingWrapper.cpp")
-        .file("../rustllvm/Linker.cpp")
+    build_helper::rerun_if_changed_anything_in_dir(Path::new("llvm-wrapper"));
+    cfg.file("llvm-wrapper/PassWrapper.cpp")
+        .file("llvm-wrapper/RustWrapper.cpp")
+        .file("llvm-wrapper/ArchiveWrapper.cpp")
+        .file("llvm-wrapper/CoverageMappingWrapper.cpp")
+        .file("llvm-wrapper/Linker.cpp")
         .cpp(true)
         .cpp_link_stdlib(None) // we handle this below
-        .compile("rustllvm");
+        .compile("llvm-wrapper");
 
     let (llvm_kind, llvm_link_arg) = detect_llvm_link();
 
@@ -259,7 +259,7 @@ fn main() {
     }
 
     // Some LLVM linker flags (-L and -l) may be needed even when linking
-    // librustc_llvm, for example when using static libc++, we may need to
+    // rustc_llvm, for example when using static libc++, we may need to
     // manually specify the library search path and -ldl -lpthread as link
     // dependencies.
     let llvm_linker_flags = tracked_env_var_os("LLVM_LINKER_FLAGS");
