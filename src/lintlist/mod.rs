@@ -68,6 +68,13 @@ vec![
         module: "await_holding_lock",
     },
     Lint {
+        name: "await_holding_refcell_ref",
+        group: "pedantic",
+        desc: "Inside an async function, holding a RefCell ref while calling await",
+        deprecation: None,
+        module: "await_holding_refcell_ref",
+    },
+    Lint {
         name: "bad_bit_mask",
         group: "correctness",
         desc: "expressions of the form `_ & mask == select` that will only ever return `true` or `false`",
