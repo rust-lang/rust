@@ -168,40 +168,20 @@ impl<K, V> Root<K, V> {
 
     /// Borrows and returns an immutable reference to the node owned by the root.
     pub fn node_as_ref(&self) -> NodeRef<marker::Immut<'_>, K, V, marker::LeafOrInternal> {
-        NodeRef {
-            height: self.height,
-            node: self.node.as_ptr(),
-            root: ptr::null(),
-            _marker: PhantomData,
-        }
+        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
     }
 
     /// Borrows and returns a mutable reference to the node owned by the root.
     pub fn node_as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::LeafOrInternal> {
-        NodeRef {
-            height: self.height,
-            node: self.node.as_ptr(),
-            root: self as *mut _,
-            _marker: PhantomData,
-        }
+        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
     }
 
     pub fn node_as_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, marker::LeafOrInternal> {
-        NodeRef {
-            height: self.height,
-            node: self.node.as_ptr(),
-            root: ptr::null(),
-            _marker: PhantomData,
-        }
+        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
     }
 
     pub fn into_ref(self) -> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
-        NodeRef {
-            height: self.height,
-            node: self.node.as_ptr(),
-            root: ptr::null(),
-            _marker: PhantomData,
-        }
+        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
     }
 
     /// Adds a new internal node with a single edge, pointing to the previous root, and make that
@@ -214,12 +194,8 @@ impl<K, V> Root<K, V> {
         self.node = BoxedNode::from_internal(new_node);
         self.height += 1;
 
-        let mut ret = NodeRef {
-            height: self.height,
-            node: self.node.as_ptr(),
-            root: self as *mut _,
-            _marker: PhantomData,
-        };
+        let mut ret =
+            NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData };
 
         unsafe {
             ret.reborrow_mut().first_edge().correct_parent_link();
@@ -228,11 +204,15 @@ impl<K, V> Root<K, V> {
         ret
     }
 
-    /// Removes the internal root node, using its first child as the new root.
-    /// As it is intended only to be called when the root has only one child,
-    /// no cleanup is done on any of the other children of the root.
+    /// Removes the internal root node, using its first child as the new root node.
+    /// As it is intended only to be called when the root node has only one child,
+    /// no cleanup is done on any of the other children.
     /// This decreases the height by 1 and is the opposite of `push_internal_level`.
-    /// Panics if there is no internal level, i.e. if the root is a leaf.
+    ///
+    /// Requires exclusive access to the `Root` object but not to the root node;
+    /// it will not invalidate existing handles or references to the root node.
+    ///
+    /// Panics if there is no internal level, i.e., if the root node is a leaf.
     pub fn pop_internal_level(&mut self) {
         assert!(self.height > 0);
 
@@ -276,8 +256,6 @@ pub struct NodeRef<BorrowType, K, V, Type> {
     /// The number of levels below the node.
     height: usize,
     node: NonNull<LeafNode<K, V>>,
-    // `root` is null unless the borrow type is `Mut`
-    root: *const Root<K, V>,
     _marker: PhantomData<(BorrowType, Type)>,
 }
 
@@ -342,7 +320,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
 
     /// Temporarily takes out another, immutable reference to the same node.
     fn reborrow(&self) -> NodeRef<marker::Immut<'_>, K, V, Type> {
-        NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
     /// Exposes the leaf "portion" of any leaf or internal node.
@@ -390,12 +368,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         let parent_as_leaf = unsafe { (*self.as_leaf_ptr()).parent as *const LeafNode<K, V> };
         if let Some(non_zero) = NonNull::new(parent_as_leaf as *mut _) {
             Ok(Handle {
-                node: NodeRef {
-                    height: self.height + 1,
-                    node: non_zero,
-                    root: self.root,
-                    _marker: PhantomData,
-                },
+                node: NodeRef { height: self.height + 1, node: non_zero, _marker: PhantomData },
                 idx: unsafe { usize::from(*(*self.as_leaf_ptr()).parent_idx.as_ptr()) },
                 _marker: PhantomData,
             })
@@ -465,21 +438,21 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// Unsafely asserts to the compiler some static information about whether this
     /// node is a `Leaf` or an `Internal`.
     unsafe fn cast_unchecked<NewType>(self) -> NodeRef<marker::Mut<'a>, K, V, NewType> {
-        NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
     /// Temporarily takes out another, mutable reference to the same node. Beware, as
     /// this method is very dangerous, doubly so since it may not immediately appear
     /// dangerous.
     ///
-    /// Because mutable pointers can roam anywhere around the tree and can even (through
-    /// `into_root_mut`) mess with the root of the tree, the result of `reborrow_mut`
-    /// can easily be used to make the original mutable pointer dangling, or, in the case
-    /// of a reborrowed handle, out of bounds.
-    // FIXME(@gereeter) consider adding yet another type parameter to `NodeRef` that restricts
-    // the use of `ascend` and `into_root_mut` on reborrowed pointers, preventing this unsafety.
+    /// Because mutable pointers can roam anywhere around the tree, the returned
+    /// pointer can easily be used to make the original pointer dangling, out of
+    /// bounds, or invalid under stacked borrow rules.
+    // FIXME(@gereeter) consider adding yet another type parameter to `NodeRef`
+    // that restricts the use of navigation methods on reborrowed pointers,
+    // preventing this unsafety.
     unsafe fn reborrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
-        NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
     /// Exposes the leaf "portion" of any leaf or internal node for writing.
@@ -522,12 +495,6 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
-    /// Gets a mutable reference to the root itself. This is useful primarily when the
-    /// height of the tree needs to be adjusted. Never call this on a reborrowed pointer.
-    pub fn into_root_mut(self) -> &'a mut Root<K, V> {
-        unsafe { &mut *(self.root as *mut Root<K, V>) }
-    }
-
     fn into_key_slice_mut(mut self) -> &'a mut [K] {
         // SAFETY: The keys of a node must always be initialized up to length.
         unsafe {
@@ -757,14 +724,12 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
             ForceResult::Leaf(NodeRef {
                 height: self.height,
                 node: self.node,
-                root: self.root,
                 _marker: PhantomData,
             })
         } else {
             ForceResult::Internal(NodeRef {
                 height: self.height,
                 node: self.node,
-                root: self.root,
                 _marker: PhantomData,
             })
         }
@@ -855,12 +820,7 @@ impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeT
     /// this method is very dangerous, doubly so since it may not immediately appear
     /// dangerous.
     ///
-    /// Because mutable pointers can roam anywhere around the tree and can even (through
-    /// `into_root_mut`) mess with the root of the tree, the result of `reborrow_mut`
-    /// can easily be used to make the original mutable pointer dangling, or, in the case
-    /// of a reborrowed handle, out of bounds.
-    // FIXME(@gereeter) consider adding yet another type parameter to `NodeRef` that restricts
-    // the use of `ascend` and `into_root_mut` on reborrowed pointers, preventing this unsafety.
+    /// For details, see `NodeRef::reborrow_mut`.
     pub unsafe fn reborrow_mut(
         &mut self,
     ) -> Handle<NodeRef<marker::Mut<'_>, K, V, NodeType>, HandleType> {
@@ -1106,7 +1066,6 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marke
         NodeRef {
             height: self.node.height - 1,
             node: unsafe { (&*(*internal_node).edges.get_unchecked(self.idx).as_ptr()).as_ptr() },
-            root: self.node.root,
             _marker: PhantomData,
         }
     }
@@ -1499,14 +1458,14 @@ unsafe fn move_edges<K, V>(
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Leaf> {
     /// Removes any static information asserting that this node is a `Leaf` node.
     pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     /// Removes any static information asserting that this node is an `Internal` node.
     pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 }
 
