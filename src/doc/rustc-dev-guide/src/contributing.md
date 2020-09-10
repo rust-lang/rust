@@ -67,40 +67,14 @@ in the appropriate provided template.
 
 ## Pull Requests
 
-Pull requests are the primary mechanism we use to change Rust. GitHub itself
-has some [great documentation][about-pull-requests] on using the Pull Request feature.
-We use the "fork and pull" model [described here][development-models], where
-contributors push changes to their personal fork and create pull requests to
+Pull requests (or PRs for short) are the primary mechanism we use to change Rust.
+GitHub itself has some [great documentation][about-pull-requests] on using the
+Pull Request feature. We use the "fork and pull" model [described here][development-models],
+where contributors push changes to their personal fork and create pull requests to
 bring those changes into the source repository.
 
 [about-pull-requests]: https://help.github.com/articles/about-pull-requests/
 [development-models]: https://help.github.com/articles/about-collaborative-development-models/
-
-Please make pull requests against the `master` branch.
-
-Rust follows a _no merge-commit policy_, meaning, when you encounter merge
-conflicts you are expected to always rebase instead of merge.  E.g. always use
-rebase when bringing the latest changes from the master branch to your feature
-branch.  Also, please make sure that fixup commits are squashed into other
-related commits with meaningful commit messages.
-
-GitHub allows [closing issues using keywords][closing-keywords]. This feature
-should be used to keep the issue tracker tidy. However, it is generally preferred
-to put the "closes #123" text in the PR description rather than the issue commit;
-particularly during rebasing, citing the issue number in the commit can "spam"
-the issue in question.
-
-[closing-keywords]: https://help.github.com/en/articles/closing-issues-using-keywords
-
-Please make sure your pull request is in compliance with Rust's style
-guidelines by running
-
-    $ ./x.py test tidy
-
-Make this check before every pull request (and every new commit in a pull
-request); you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
-before every push to make sure you never forget to make this check. The
-CI will also run tidy and will fail if tidy fails.
 
 All pull requests are reviewed by another person. We have a bot,
 [@rust-highfive][rust-highfive], that will automatically assign a random person
@@ -116,6 +90,21 @@ make a documentation change, add
 to the end of the pull request description, and [@rust-highfive][rust-highfive] will assign
 [@steveklabnik][steveklabnik] instead of a random person. This is entirely optional.
 
+In addition to being reviewed by a human, pull requests are automatically tested
+thanks to continuous integration (CI). Basically, every time you open and update
+a pull request, the CI builds the compiler and tests it against the
+[compiler test suite][rctd], and also performs other tests such as checking that
+your pull request is in compliance with Rust's style guidelines.
+
+Running continuous integration tests allows PR authors to catch mistakes early
+without going through a first review cycle, and also helps reviewers stay aware
+of the status of a particular pull request.
+
+Rust has plenty of CI capacity, and you should never have to worry about wasting
+computational resources each time you push a change. It is also perfectly fine
+(and even encouraged!) to use the CI to test your changes if it can help your
+productivity, e.g. if your machine is not very powerful.
+
 After someone has reviewed your pull request, they will leave an annotation
 on the pull request with an `r+`. It will look something like this:
 
@@ -123,25 +112,54 @@ on the pull request with an `r+`. It will look something like this:
 
 This tells [@bors], our lovable integration bot, that your pull request has
 been approved. The PR then enters the [merge queue][merge-queue], where [@bors]
-will run all the tests on every platform we support. If it all works out,
+will run *all* the tests on *every* platform we support. If it all works out,
 [@bors] will merge your code into `master` and close the pull request.
 
 Depending on the scale of the change, you may see a slightly different form of `r+`:
 
     @bors r+ rollup
 
-The additional `rollup` tells [@bors] that this change is eligible for to be
-"rolled up". Changes that are rolled up are tested and merged at the same time, to
+The additional `rollup` tells [@bors] that this change should always be "rolled up".
+Changes that are rolled up are tested and merged alongside other PRs, to
 speed the process up. Typically only small changes that are expected not to conflict
-with one another are rolled up.
+with one another are marked as "always roll up".
 
 [rust-highfive]: https://github.com/rust-highfive
 [steveklabnik]: https://github.com/steveklabnik
 [@bors]: https://github.com/bors
 [merge-queue]: https://buildbot2.rust-lang.org/homu/queue/rust
 
-Speaking of tests, Rust has a comprehensive test suite. More information about
-it can be found [here][rctd].
+### Opening a PR
+
+You are now ready to file a pull request? Great! Here are a few points you
+should be aware of.
+
+All pull requests should be filed against the `master` branch, except in very
+particular scenarios. Unless you know for sure that you should target another
+branch, `master` will be the right choice.
+
+Make sure your pull request is in compliance with Rust's style guidelines by running
+
+    $ ./x.py test tidy
+
+We recommand to make this check before every pull request (and every new commit
+in a pull request); you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
+before every push to make sure you never forget to make this check. The
+CI will also run tidy and will fail if tidy fails.
+
+Rust follows a _no merge-commit policy_, meaning, when you encounter merge
+conflicts you are expected to always rebase instead of merging.  E.g. always use
+rebase when bringing the latest changes from the master branch to your feature
+branch.  Also, please make sure that fixup commits are squashed into other
+related commits with meaningful commit messages.
+
+GitHub allows [closing issues using keywords][closing-keywords]. This feature
+should be used to keep the issue tracker tidy. However, it is generally preferred
+to put the "closes #123" text in the PR description rather than the issue commit;
+particularly during rebasing, citing the issue number in the commit can "spam"
+the issue in question.
+
+[closing-keywords]: https://help.github.com/en/articles/closing-issues-using-keywords
 
 ### External Dependencies (subtree)
 
