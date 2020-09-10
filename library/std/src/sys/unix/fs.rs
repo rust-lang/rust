@@ -1195,17 +1195,26 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let max_len = u64::MAX;
     let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
 
-    copy_regular_files(&mut reader, &mut writer, max_len)
+    return match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
+        CopyResult::Ended(result) => result,
+        CopyResult::Fallback(written) => {
+            // fallback is only > 0 on EOVERFLOW, which shouldn't happen
+            // because the copy loop starts at a file offset 0 and countns down from `len`
+            assert_eq!(0, written);
+            io::copy::generic_copy(&mut reader, &mut writer)
+        }
+    };
 }
 
 /// linux-specific implementation that will attempt to use copy_file_range for copy offloading
 /// as the name says, it only works on regular files
+///
+/// Callers must handle fallback to a generic copy loop.
+/// `Fallback` may indicate non-zero number of bytes already written
+/// if one of the files' cursor +`max_len` would exceed u64::MAX (`EOVERFLOW`).
+/// If the initial file offset was 0 then `Fallback` will only contain `0`.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub(crate) fn copy_regular_files(
-    reader: &mut crate::fs::File,
-    writer: &mut crate::fs::File,
-    max_len: u64,
-) -> io::Result<u64> {
+pub(crate) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult {
     use crate::cmp;
     use crate::sync::atomic::{AtomicBool, Ordering};
 
@@ -1228,14 +1237,18 @@ pub(crate) fn copy_regular_files(
     let mut written = 0u64;
     while written < max_len {
         let copy_result = if has_copy_file_range {
-            let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64) as usize;
+            let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64);
+            // cap to 2GB chunks in case u64::MAX is passed in as file size and the file has a non-zero offset
+            // this allows us to copy large chunks without hitting the limit,
+            // unless someone sets a file offset close to u64::MAX - 2GB, in which case the fallback would kick in
+            let bytes_to_copy = cmp::min(bytes_to_copy as usize, 0x8000_0000usize);
             let copy_result = unsafe {
                 // We actually don't have to adjust the offsets,
                 // because copy_file_range adjusts the file offset automatically
                 cvt(copy_file_range(
-                    reader.as_raw_fd(),
+                    reader,
                     ptr::null_mut(),
-                    writer.as_raw_fd(),
+                    writer,
                     ptr::null_mut(),
                     bytes_to_copy,
                     0,
@@ -1260,12 +1273,14 @@ pub(crate) fn copy_regular_files(
                 // - reading virtual files from the proc filesystem which appear to have 0 size
                 //   but are not empty. noted in coreutils to affect kernels at least up to 5.6.19.
                 // - copying from an overlay filesystem in docker. reported to occur on fedora 32.
-                return io::copy(reader, writer);
+                return CopyResult::Fallback(0);
             }
-            Ok(0) => return Ok(written), // reached EOF
+            Ok(0) => return CopyResult::Ended(Ok(written)), // reached EOF
             Ok(ret) => written += ret as u64,
             Err(err) => {
                 match err.raw_os_error() {
+                    // when file offset + max_length > u64::MAX
+                    Some(libc::EOVERFLOW) => return CopyResult::Fallback(written),
                     Some(
                         libc::ENOSYS | libc::EXDEV | libc::EINVAL | libc::EPERM | libc::EOPNOTSUPP,
                     ) => {
@@ -1276,43 +1291,55 @@ pub(crate) fn copy_regular_files(
                         // - copy_file_range is disallowed, for example by seccomp (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
                         assert_eq!(written, 0);
-                        return io::copy::generic_copy(reader, writer);
+                        return CopyResult::Fallback(0);
                     }
-                    _ => return Err(err),
+                    _ => return CopyResult::Ended(Err(err)),
                 }
             }
         }
     }
-    Ok(written)
+    CopyResult::Ended(Ok(written))
 }
 
+#[derive(PartialEq)]
 pub(crate) enum SpliceMode {
     Sendfile,
     Splice,
 }
 
+pub(crate) enum CopyResult {
+    Ended(io::Result<u64>),
+    Fallback(u64),
+}
+
 /// performs splice or sendfile between file descriptors
+/// Does _not_ fall back to a generic copy loop.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub(crate) fn sendfile_splice(
     mode: SpliceMode,
-    reader: &mut crate::fs::File,
-    writer: &mut crate::fs::File,
+    reader: RawFd,
+    writer: RawFd,
     len: u64,
-) -> io::Result<u64> {
+) -> CopyResult {
     let mut written = 0u64;
     while written < len {
         let chunk_size = crate::cmp::min(len - written, 0x7ffff000_u64) as usize;
 
         let result = match mode {
-            SpliceMode::Sendfile => cvt(unsafe {
-                libc::sendfile(writer.as_raw_fd(), reader.as_raw_fd(), ptr::null_mut(), chunk_size)
-            }),
+            SpliceMode::Sendfile => {
+                cvt(unsafe { libc::sendfile(writer, reader, ptr::null_mut(), chunk_size) })
+            }
             SpliceMode::Splice => cvt(unsafe {
                 libc::splice(
-                    reader.as_raw_fd(),
+                    reader,
                     ptr::null_mut(),
-                    writer.as_raw_fd(),
+                    writer,
                     ptr::null_mut(),
+                    // default pipe size is 64KiB. try to only fill/drain half of that capacity
+                    // so that the next loop iteration won't be put to sleep.
+                    // If reader and writer operate at the same pace they will experience fewer blocking waits.
+                    // This is only needed for splice since sendfile stays in kernel space when it has to block.
+                    //crate::cmp::min(32*1024, chunk_size),
                     chunk_size,
                     0,
                 )
@@ -1325,17 +1352,19 @@ pub(crate) fn sendfile_splice(
             Err(err) => {
                 match err.raw_os_error() {
                     Some(os_err) if os_err == libc::EINVAL => {
-                        // Try fallback io::copy if splice/sendfile do not support this particular
-                        // file descritor (EINVAL)
+                        // splice/sendfile do not support this particular file descritor (EINVAL)
                         assert_eq!(written, 0);
-                        return io::copy::generic_copy(reader, writer);
+                        return CopyResult::Fallback(0);
                     }
-                    _ => return Err(err),
+                    Some(os_err) if mode == SpliceMode::Sendfile && os_err == libc::EOVERFLOW => {
+                        return CopyResult::Fallback(written);
+                    }
+                    _ => return CopyResult::Ended(Err(err)),
                 }
             }
         }
     }
-    Ok(written)
+    CopyResult::Ended(Ok(written))
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]

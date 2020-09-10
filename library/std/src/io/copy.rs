@@ -99,6 +99,7 @@ mod kernel_copy {
     use crate::os::unix::fs::FileTypeExt;
     use crate::os::unix::io::{AsRawFd, FromRawFd, RawFd};
     use crate::process::{ChildStderr, ChildStdin, ChildStdout};
+    use crate::sys::fs::{copy_regular_files, sendfile_splice, CopyResult, SpliceMode};
 
     pub(super) fn copy_spec<R: Read + ?Sized, W: Write + ?Sized>(
         read: &mut R,
@@ -108,20 +109,55 @@ mod kernel_copy {
         SpecCopy::copy(copier)
     }
 
+    /// This type represents either the inferred `FileType` of a `RawFd` based on the source
+    /// type from which it was extracted or the actual metadata
+    ///
+    /// The methods on this type only provide hints, due to `AsRawFd` and `FromRawFd` the inferred
+    /// type may be wrong.
     enum FdMeta {
+        /// We obtained the FD from a type that can contain any type of `FileType` and queried the metadata
+        /// because it is cheaper than probing all possible syscalls (reader side)
         Metadata(Metadata),
         Socket,
         Pipe,
-        None,
+        /// We don't have any metadata, e.g. because the original type was `File` which can represent
+        /// any `FileType` and we did not query the metadata either since it did not seem beneficial
+        /// (writer side)
+        NoneObtained,
     }
 
     impl FdMeta {
-        fn is_fifo(&self) -> bool {
+        fn maybe_fifo(&self) -> bool {
             match self {
                 FdMeta::Metadata(meta) => meta.file_type().is_fifo(),
                 FdMeta::Socket => false,
                 FdMeta::Pipe => true,
-                FdMeta::None => false,
+                FdMeta::NoneObtained => true,
+            }
+        }
+
+        fn potential_sendfile_source(&self) -> bool {
+            match self {
+                // procfs erronously shows 0 length on non-empty readable files.
+                // and if a file is truly empty then a `read` syscall will determine that and skip the write syscall
+                // thus there would be benefit from attempting sendfile
+                FdMeta::Metadata(meta)
+                    if meta.file_type().is_file() && meta.len() > 0
+                        || meta.file_type().is_block_device() =>
+                {
+                    true
+                }
+                _ => false,
+            }
+        }
+
+        fn copy_file_range_candidate(&self) -> bool {
+            match self {
+                // copy_file_range will fail on empty procfs files. `read` can determine whether EOF has been reached
+                // without extra cost and skip the write, thus there is no benefit in attempting copy_file_range
+                FdMeta::Metadata(meta) if meta.is_file() && meta.len() > 0 => true,
+                FdMeta::NoneObtained => true,
+                _ => false,
             }
         }
     }
@@ -149,66 +185,65 @@ mod kernel_copy {
             let r_cfg = reader.properties();
             let w_cfg = writer.properties();
 
-            // before direct operations  on file descriptors ensure that all source and sink buffers are emtpy
+            // before direct operations on file descriptors ensure that all source and sink buffers are emtpy
             let mut flush = || -> crate::io::Result<u64> {
                 let bytes = reader.drain_to(writer, u64::MAX)?;
+                // BufWriter buffered bytes have already been accounted for in earlier write() calls
                 writer.flush()?;
                 Ok(bytes)
             };
 
-            match (r_cfg, w_cfg) {
-                (
-                    CopyParams(FdMeta::Metadata(reader_meta), Some(readfd)),
-                    CopyParams(FdMeta::Metadata(writer_meta), Some(writefd)),
-                ) if reader_meta.is_file() && writer_meta.is_file() => {
-                    let bytes_flushed = flush()?;
-                    let max_write = reader.min_limit();
-                    let (mut reader, mut writer) =
-                        unsafe { (fd_as_file(readfd), fd_as_file(writefd)) };
-                    let len = reader_meta.len();
-                    crate::sys::fs::copy_regular_files(
-                        &mut reader,
-                        &mut writer,
-                        min(len, max_write),
-                    )
-                    .map(|bytes_copied| bytes_copied + bytes_flushed)
-                }
-                (
-                    CopyParams(FdMeta::Metadata(reader_meta), Some(readfd)),
-                    CopyParams(_, Some(writefd)),
-                ) if reader_meta.is_file() => {
-                    // try sendfile, most modern systems it should work with any target as long as the source is a mmapable file.
-                    // in the rare cases where it's no supported the wrapper function will fall back to a normal copy loop
-                    let bytes_flushed = flush()?;
-                    let (mut reader, mut writer) =
-                        unsafe { (fd_as_file(readfd), fd_as_file(writefd)) };
-                    let len = reader_meta.len();
-                    let max_write = reader.min_limit();
-                    crate::sys::fs::sendfile_splice(
-                        crate::sys::fs::SpliceMode::Sendfile,
-                        &mut reader,
-                        &mut writer,
-                        min(len, max_write),
-                    )
-                        .map(|bytes_sent| bytes_sent + bytes_flushed)
-                }
-                (CopyParams(reader_meta, Some(readfd)), CopyParams(writer_meta, Some(writefd)))
-                    if reader_meta.is_fifo() || writer_meta.is_fifo() =>
+            let mut written = 0u64;
+
+            if let (CopyParams(input_meta, Some(readfd)), CopyParams(output_meta, Some(writefd))) =
+                (r_cfg, w_cfg)
+            {
+                written += flush()?;
+                let max_write = reader.min_limit();
+
+                if input_meta.copy_file_range_candidate() && output_meta.copy_file_range_candidate()
                 {
-                    // splice
-                    let bytes_flushed = flush()?;
-                    let max_write = reader.min_limit();
-                    let (mut reader, mut writer) =
-                        unsafe { (fd_as_file(readfd), fd_as_file(writefd)) };
-                    crate::sys::fs::sendfile_splice(
-                        crate::sys::fs::SpliceMode::Splice,
-                        &mut reader,
-                        &mut writer,
-                        max_write,
-                    )
-                    .map(|bytes_sent| bytes_sent + bytes_flushed)
+                    let result = copy_regular_files(readfd, writefd, max_write);
+
+                    match result {
+                        CopyResult::Ended(Ok(bytes_copied)) => return Ok(bytes_copied + written),
+                        CopyResult::Ended(err) => return err,
+                        CopyResult::Fallback(bytes) => written += bytes,
+                    }
                 }
-                _ => super::generic_copy(reader, writer),
+
+                // on modern kernels sendfile can copy from any mmapable type (some but not all regular files and block devices)
+                // to any writable file descriptor. On older kernels the writer side can only be a socket.
+                // So we just try and fallback if needed.
+                // If current file offsets + write sizes overflow it may also fail, we do not try to fix that and instead
+                // fall back to the generic copy loop.
+                if input_meta.potential_sendfile_source() {
+                    let result = sendfile_splice(SpliceMode::Sendfile, readfd, writefd, max_write);
+
+                    match result {
+                        CopyResult::Ended(Ok(bytes_copied)) => return Ok(bytes_copied + written),
+                        CopyResult::Ended(err) => return err,
+                        CopyResult::Fallback(bytes) => written += bytes,
+                    }
+                }
+
+                if input_meta.maybe_fifo() || output_meta.maybe_fifo() {
+                    let result = sendfile_splice(SpliceMode::Splice, readfd, writefd, max_write);
+
+                    match result {
+                        CopyResult::Ended(Ok(bytes_copied)) => return Ok(bytes_copied + written),
+                        CopyResult::Ended(err) => return err,
+                        CopyResult::Fallback(0) => { /* use fallback */ }
+                        CopyResult::Fallback(_) => {
+                            unreachable!("splice should not return > 0 bytes on the fallback path")
+                        }
+                    }
+                }
+            }
+
+            match super::generic_copy(reader, writer) {
+                Ok(bytes) => Ok(bytes + written),
+                err => err,
             }
         }
     }
@@ -235,7 +270,10 @@ mod kernel_copy {
         fn properties(&self) -> CopyParams;
     }
 
-    impl<T> CopyRead for &mut T where T: CopyRead {
+    impl<T> CopyRead for &mut T
+    where
+        T: CopyRead,
+    {
         fn drain_to<W: Write>(&mut self, writer: &mut W, limit: u64) -> Result<u64> {
             (**self).drain_to(writer, limit)
         }
@@ -249,12 +287,14 @@ mod kernel_copy {
         }
     }
 
-    impl<T> CopyWrite for &mut T where T: CopyWrite {
+    impl<T> CopyWrite for &mut T
+    where
+        T: CopyWrite,
+    {
         fn properties(&self) -> CopyParams {
             (**self).properties()
         }
     }
-
 
     impl CopyRead for File {
         fn properties(&self) -> CopyParams {
@@ -270,13 +310,13 @@ mod kernel_copy {
 
     impl CopyWrite for File {
         fn properties(&self) -> CopyParams {
-            CopyParams(fd_to_meta(self), Some(self.as_raw_fd()))
+            CopyParams(FdMeta::NoneObtained, Some(self.as_raw_fd()))
         }
     }
 
     impl CopyWrite for &File {
         fn properties(&self) -> CopyParams {
-            CopyParams(fd_to_meta(*self), Some(self.as_raw_fd()))
+            CopyParams(FdMeta::NoneObtained, Some(self.as_raw_fd()))
         }
     }
 
@@ -345,13 +385,13 @@ mod kernel_copy {
 
     impl CopyWrite for StdoutLock<'_> {
         fn properties(&self) -> CopyParams {
-            CopyParams(fd_to_meta(self), Some(self.as_raw_fd()))
+            CopyParams(FdMeta::NoneObtained, Some(self.as_raw_fd()))
         }
     }
 
     impl CopyWrite for StderrLock<'_> {
         fn properties(&self) -> CopyParams {
-            CopyParams(fd_to_meta(self), Some(self.as_raw_fd()))
+            CopyParams(FdMeta::NoneObtained, Some(self.as_raw_fd()))
         }
     }
 
@@ -411,11 +451,7 @@ mod kernel_copy {
         let file: ManuallyDrop<File> = ManuallyDrop::new(unsafe { File::from_raw_fd(fd) });
         match file.metadata() {
             Ok(meta) => FdMeta::Metadata(meta),
-            Err(_) => FdMeta::None,
+            Err(_) => FdMeta::NoneObtained,
         }
-    }
-
-    unsafe fn fd_as_file(fd: RawFd) -> ManuallyDrop<File> {
-        ManuallyDrop::new(File::from_raw_fd(fd))
     }
 }
