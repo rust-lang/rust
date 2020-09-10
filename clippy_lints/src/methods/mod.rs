@@ -1369,6 +1369,38 @@ declare_clippy_lint! {
     "using `.map(_).collect::<Result<(),_>()`, which can be replaced with `try_for_each`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for `from_iter()` function calls that implements `FromIterator`
+    /// trait.
+    ///
+    /// **Why is this bad?** Makes code less readable especially in method chaining.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// use std::iter::FromIterator;
+    ///
+    /// let five_fives = std::iter::repeat(5).take(5);
+    ///
+    /// let v = Vec::from_iter(five_fives);
+    ///
+    /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let five_fives = std::iter::repeat(5).take(5);
+    ///
+    /// let v: Vec<i32> = five_fives.collect();
+    ///
+    /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
+    /// ```
+    pub FROM_ITER_INSTEAD_OF_COLLECT,
+    style,
+    "use `.collect()` instead of `::from_iter()`"
+}
+
 declare_lint_pass!(Methods => [
     UNWRAP_USED,
     EXPECT_USED,
@@ -1419,6 +1451,7 @@ declare_lint_pass!(Methods => [
     OPTION_AS_REF_DEREF,
     UNNECESSARY_LAZY_EVALUATIONS,
     MAP_COLLECT_RESULT_UNIT,
+    FROM_ITER_INSTEAD_OF_COLLECT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
@@ -1505,6 +1538,14 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         }
 
         match expr.kind {
+            hir::ExprKind::Call(ref func, ref args) => {
+                if let hir::ExprKind::Path(path) = &func.kind {
+                    let path_segment = last_path_segment(path);
+                    if path_segment.ident.name.as_str() == "from_iter" {
+                        lint_from_iter(cx, expr, args);
+                    }
+                }
+            },
             hir::ExprKind::MethodCall(ref method_call, ref method_span, ref args, _) => {
                 lint_or_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
                 lint_expect_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
@@ -3829,6 +3870,24 @@ fn lint_filetype_is_file(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir
     let lint_msg = format!("`{}FileType::is_file()` only {} regular files", lint_unary, verb);
     let help_msg = format!("use `{}FileType::is_dir()` instead", help_unary);
     span_lint_and_help(cx, FILETYPE_IS_FILE, span, &lint_msg, None, &help_msg);
+}
+
+fn lint_from_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+    let ty = cx.typeck_results().expr_ty(expr);
+    let id = get_trait_def_id(cx, &paths::FROM_ITERATOR_TRAIT).unwrap();
+
+    if implements_trait(cx, ty, id, &[]) {
+        // `expr` implements `FromIterator` trait
+        let iter_expr = snippet(cx, args[0].span, "..");
+        span_lint_and_help(
+            cx,
+            FROM_ITER_INSTEAD_OF_COLLECT,
+            expr.span,
+            "use `.collect()` instead of `::from_iter()`",
+            None,
+            &format!("consider using `{}.collect()`", iter_expr),
+        );
+    }
 }
 
 fn fn_header_equals(expected: hir::FnHeader, actual: hir::FnHeader) -> bool {
