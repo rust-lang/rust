@@ -1,7 +1,7 @@
 use std::collections::BinaryHeap;
 use std::iter::Iterator;
 
-fn main() {
+fn zero_sized_push() {
     const N: usize = 8;
 
     for len in 0..N {
@@ -15,4 +15,23 @@ fn main() {
         assert_eq!(tester.iter().count(), len);
         tester.clear();
     }
+}
+
+fn drain() {
+    let mut heap = (0..128i32).collect::<BinaryHeap<_>>();
+
+    assert!(!heap.is_empty());
+
+    let mut sum = 0;
+    for x in heap.drain() {
+        sum += x;
+    }
+    assert_eq!(sum, 127*128/2);
+
+    assert!(heap.is_empty());
+}
+
+fn main() {
+    zero_sized_push();
+    drain();
 }

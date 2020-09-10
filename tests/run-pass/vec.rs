@@ -1,3 +1,17 @@
+// Gather all references from a mutable iterator and make sure Miri notices if
+// using them is dangerous.
+fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>) {
+    // Gather all those references.
+    let mut refs: Vec<&mut T> = iter.collect();
+    // Use them all. Twice, to be sure we got all interleavings.
+    for r in refs.iter_mut() {
+        std::mem::swap(dummy, r);
+    }
+    for r in refs {
+        std::mem::swap(dummy, r);
+    }
+}
+
 fn make_vec() -> Vec<u8> {
     let mut v = Vec::with_capacity(4);
     v.push(1);
@@ -53,6 +67,8 @@ fn vec_iter_and_mut() {
         *i += 1;
     }
     assert_eq!(v.iter().sum::<i32>(), 2+3+4+5);
+
+    test_all_refs(&mut 13, v.iter_mut());
 }
 
 fn vec_iter_and_mut_rev() {
