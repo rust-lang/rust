@@ -337,18 +337,13 @@ pub fn build_impl(
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
-            if !cx.renderinfo.borrow().access_levels.is_public(traitref.def_id) {
+            let did = traitref.def_id;
+            if !cx.renderinfo.borrow().access_levels.is_public(did) {
                 return;
             }
-        }
 
-        // Skip foreign unstable traits from lists of trait implementations and
-        // such. This helps prevent dependencies of the standard library, for
-        // example, from getting documented as "traits `u32` implements" which
-        // isn't really too helpful.
-        if let Some(trait_did) = associated_trait {
-            if let Some(stab) = cx.tcx.lookup_stability(trait_did.def_id) {
-                if stab.level.is_unstable() {
+            if let Some(stab) = tcx.lookup_stability(did) {
+                if stab.level.is_unstable() && stab.feature == sym::rustc_private {
                     return;
                 }
             }
@@ -371,6 +366,12 @@ pub fn build_impl(
         if let Some(did) = for_.def_id() {
             if !cx.renderinfo.borrow().access_levels.is_public(did) {
                 return;
+            }
+
+            if let Some(stab) = tcx.lookup_stability(did) {
+                if stab.level.is_unstable() && stab.feature == sym::rustc_private {
+                    return;
+                }
             }
         }
     }
