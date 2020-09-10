@@ -1,10 +1,17 @@
+#![allow(warnings)]
 use rustc_hir::def::DefKind;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::mir::abstract_const::{Node, NodeId};
 use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::{self, Rvalue, StatementKind, TerminatorKind};
+use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_session::lint;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
 pub fn is_const_evaluatable<'cx, 'tcx>(
@@ -16,18 +23,23 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 ) -> Result<(), ErrorHandled> {
     debug!("is_const_evaluatable({:?}, {:?})", def, substs);
     if infcx.tcx.features().const_evaluatable_checked {
-        // FIXME(const_evaluatable_checked): Actually look into generic constants to
-        // implement const equality.
-        for pred in param_env.caller_bounds() {
-            match pred.skip_binders() {
-                ty::PredicateAtom::ConstEvaluatable(b_def, b_substs) => {
-                    debug!("is_const_evaluatable: caller_bound={:?}, {:?}", b_def, b_substs);
-                    if b_def == def && b_substs == substs {
-                        debug!("is_const_evaluatable: caller_bound ~~> ok");
-                        return Ok(());
+        if let Some(ct) = AbstractConst::new(infcx.tcx, def, substs) {
+            for pred in param_env.caller_bounds() {
+                match pred.skip_binders() {
+                    ty::PredicateAtom::ConstEvaluatable(b_def, b_substs) => {
+                        debug!("is_const_evaluatable: caller_bound={:?}, {:?}", b_def, b_substs);
+                        if b_def == def && b_substs == substs {
+                            debug!("is_const_evaluatable: caller_bound ~~> ok");
+                            return Ok(());
+                        } else if AbstractConst::new(infcx.tcx, b_def, b_substs)
+                            .map_or(false, |b_ct| try_unify(infcx.tcx, ct, b_ct))
+                        {
+                            debug!("is_const_evaluatable: abstract_const ~~> ok");
+                            return Ok(());
+                        }
                     }
+                    _ => {} // don't care
                 }
-                _ => {} // don't care
             }
         }
     }
@@ -75,4 +87,224 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
     debug!(?concrete, "is_const_evaluatable");
     concrete.map(drop)
+}
+
+/// A tree representing an anonymous constant.
+///
+/// This is only able to represent a subset of `MIR`,
+/// and should not leak any information about desugarings.
+#[derive(Clone, Copy)]
+pub struct AbstractConst<'tcx> {
+    pub inner: &'tcx [Node<'tcx>],
+    pub substs: SubstsRef<'tcx>,
+}
+
+impl AbstractConst<'tcx> {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        def: ty::WithOptConstParam<DefId>,
+        substs: SubstsRef<'tcx>,
+    ) -> Option<AbstractConst<'tcx>> {
+        let inner = match (def.did.as_local(), def.const_param_did) {
+            (Some(did), Some(param_did)) => {
+                tcx.mir_abstract_const_of_const_arg((did, param_did))?
+            }
+            _ => tcx.mir_abstract_const(def.did)?,
+        };
+
+        Some(AbstractConst { inner, substs })
+    }
+
+    #[inline]
+    pub fn subtree(self, node: NodeId) -> AbstractConst<'tcx> {
+        AbstractConst { inner: &self.inner[..=node], substs: self.substs }
+    }
+
+    #[inline]
+    pub fn root(self) -> Node<'tcx> {
+        self.inner.last().copied().unwrap()
+    }
+}
+
+struct AbstractConstBuilder<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    body: &'a mir::Body<'tcx>,
+    nodes: Vec<Node<'tcx>>,
+    locals: IndexVec<mir::Local, NodeId>,
+    checked_op_locals: BitSet<mir::Local>,
+}
+
+impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>) -> Option<AbstractConstBuilder<'a, 'tcx>> {
+        if body.is_cfg_cyclic() {
+            return None;
+        }
+
+        Some(AbstractConstBuilder {
+            tcx,
+            body,
+            nodes: vec![],
+            locals: IndexVec::from_elem(NodeId::MAX, &body.local_decls),
+            checked_op_locals: BitSet::new_empty(body.local_decls.len()),
+        })
+    }
+
+    fn add_node(&mut self, n: Node<'tcx>) -> NodeId {
+        let len = self.nodes.len();
+        self.nodes.push(n);
+        len
+    }
+
+    fn operand_to_node(&mut self, op: &mir::Operand<'tcx>) -> Option<NodeId> {
+        debug!("operand_to_node: op={:?}", op);
+        const ZERO_FIELD: mir::Field = mir::Field::from_usize(0);
+        match op {
+            mir::Operand::Copy(p) | mir::Operand::Move(p) => {
+                if let Some(p) = p.as_local() {
+                    debug_assert!(!self.checked_op_locals.contains(p));
+                    Some(self.locals[p])
+                } else if let &[mir::ProjectionElem::Field(ZERO_FIELD, _)] = p.projection.as_ref() {
+                    // Only allow field accesses on the result of checked operations.
+                    if self.checked_op_locals.contains(p.local) {
+                        Some(self.locals[p.local])
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            mir::Operand::Constant(ct) => Some(self.add_node(Node::Leaf(ct.literal))),
+        }
+    }
+
+    fn check_binop(op: mir::BinOp) -> bool {
+        use mir::BinOp::*;
+        match op {
+            Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr | Eq | Lt | Le
+            | Ne | Ge | Gt => true,
+            Offset => false,
+        }
+    }
+
+    fn build(mut self) -> Option<&'tcx [Node<'tcx>]> {
+        let mut block = &self.body.basic_blocks()[mir::START_BLOCK];
+        loop {
+            debug!("AbstractConstBuilder: block={:?}", block);
+            for stmt in block.statements.iter() {
+                debug!("AbstractConstBuilder: stmt={:?}", stmt);
+                match stmt.kind {
+                    StatementKind::Assign(box (ref place, ref rvalue)) => {
+                        let local = place.as_local()?;
+                        match *rvalue {
+                            Rvalue::Use(ref operand) => {
+                                self.locals[local] = self.operand_to_node(operand)?;
+                            }
+                            Rvalue::BinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
+                                let lhs = self.operand_to_node(lhs)?;
+                                let rhs = self.operand_to_node(rhs)?;
+                                self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs));
+                                if op.is_checkable() {
+                                    bug!("unexpected unchecked checkable binary operation");
+                                }
+                            }
+                            Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs)
+                                if Self::check_binop(op) =>
+                            {
+                                let lhs = self.operand_to_node(lhs)?;
+                                let rhs = self.operand_to_node(rhs)?;
+                                self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs));
+                                self.checked_op_locals.insert(local);
+                            }
+                            _ => return None,
+                        }
+                    }
+                    _ => return None,
+                }
+            }
+
+            debug!("AbstractConstBuilder: terminator={:?}", block.terminator());
+            match block.terminator().kind {
+                TerminatorKind::Goto { target } => {
+                    block = &self.body.basic_blocks()[target];
+                }
+                TerminatorKind::Return => {
+                    warn!(?self.nodes);
+                    return { Some(self.tcx.arena.alloc_from_iter(self.nodes)) };
+                }
+                TerminatorKind::Assert { ref cond, expected: false, target, .. } => {
+                    let p = match cond {
+                        mir::Operand::Copy(p) | mir::Operand::Move(p) => p,
+                        mir::Operand::Constant(_) => bug!("Unexpected assert"),
+                    };
+
+                    const ONE_FIELD: mir::Field = mir::Field::from_usize(1);
+                    debug!("proj: {:?}", p.projection);
+                    if let &[mir::ProjectionElem::Field(ONE_FIELD, _)] = p.projection.as_ref() {
+                        // Only allow asserts checking the result of a checked operation.
+                        if self.checked_op_locals.contains(p.local) {
+                            block = &self.body.basic_blocks()[target];
+                            continue;
+                        }
+                    }
+
+                    return None;
+                }
+                _ => return None,
+            }
+        }
+    }
+}
+
+/// Builds an abstract const, do not use this directly, but use `AbstractConst::new` instead.
+pub(super) fn mir_abstract_const<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: ty::WithOptConstParam<LocalDefId>,
+) -> Option<&'tcx [Node<'tcx>]> {
+    if !tcx.features().const_evaluatable_checked {
+        None
+    } else {
+        let body = tcx.mir_const(def).borrow();
+        AbstractConstBuilder::new(tcx, &body)?.build()
+    }
+}
+
+pub fn try_unify<'tcx>(tcx: TyCtxt<'tcx>, a: AbstractConst<'tcx>, b: AbstractConst<'tcx>) -> bool {
+    match (a.root(), b.root()) {
+        (Node::Leaf(a_ct), Node::Leaf(b_ct)) => {
+            let a_ct = a_ct.subst(tcx, a.substs);
+            let b_ct = b_ct.subst(tcx, b.substs);
+            match (a_ct.val, b_ct.val) {
+                (ty::ConstKind::Param(a_param), ty::ConstKind::Param(b_param)) => {
+                    a_param == b_param
+                }
+                (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => a_val == b_val,
+                // If we have `fn a<const N: usize>() -> [u8; N + 1]` and `fn b<const M: usize>() -> [u8; 1 + M]`
+                // we do not want to use `assert_eq!(a(), b())` to infer that `N` and `M` have to be `1`. This
+                // means that we can't do anything with inference variables here.
+                (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => false,
+                // FIXME(const_evaluatable_checked): We may want to either actually try
+                // to evaluate `a_ct` and `b_ct` if they are are fully concrete or something like
+                // this, for now we just return false here.
+                _ => false,
+            }
+        }
+        (Node::Binop(a_op, al, ar), Node::Binop(b_op, bl, br)) if a_op == b_op => {
+            try_unify(tcx, a.subtree(al), b.subtree(bl))
+                && try_unify(tcx, a.subtree(ar), b.subtree(br))
+        }
+        (Node::UnaryOp(a_op, av), Node::UnaryOp(b_op, bv)) if a_op == b_op => {
+            try_unify(tcx, a.subtree(av), b.subtree(bv))
+        }
+        (Node::FunctionCall(a_f, a_args), Node::FunctionCall(b_f, b_args))
+            if a_args.len() == b_args.len() =>
+        {
+            try_unify(tcx, a.subtree(a_f), b.subtree(b_f))
+                && a_args
+                    .iter()
+                    .zip(b_args)
+                    .all(|(&an, &bn)| try_unify(tcx, a.subtree(an), b.subtree(bn)))
+        }
+        _ => false,
+    }
 }

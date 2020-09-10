@@ -40,6 +40,7 @@ use std::{iter, mem, option};
 use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
 
+pub mod abstract_const;
 pub mod coverage;
 pub mod interpret;
 pub mod mono;
