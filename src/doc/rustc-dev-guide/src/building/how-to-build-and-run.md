@@ -172,7 +172,7 @@ build. The **full** `rustc` build (what you get if you say `./x.py build
 - Build only the core library
 
 ```bash
-./x.py build library/core
+./x.py build --stage 0 library/core
 ```
 
 - Build only the core and `proc_macro` libraries
