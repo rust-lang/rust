@@ -1546,6 +1546,23 @@ static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
 };
 
 template<>
+struct Meta<unsigned int> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(IntType::Integer);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
+}
+};
+
+template<>
+struct Meta<unsigned int*> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(IntType::Integer).Only(0);
+    vd |= ValueData(IntType::Pointer);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
+}
+};
+
+template<>
 struct Meta<long int> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
     ValueData vd = ValueData(IntType::Integer);
