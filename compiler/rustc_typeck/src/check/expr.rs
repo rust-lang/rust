@@ -1241,42 +1241,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.sess.span_err(span, "union expressions should have exactly one field");
             }
         } else if check_completeness && !error_happened && !remaining_fields.is_empty() {
-            let len = remaining_fields.len();
-
-            let mut displayable_field_names =
-                remaining_fields.keys().map(|ident| ident.as_str()).collect::<Vec<_>>();
-
-            displayable_field_names.sort();
-
-            let truncated_fields_error = if len <= 3 {
-                String::new()
-            } else {
-                format!(" and {} other field{}", (len - 3), if len - 3 == 1 { "" } else { "s" })
-            };
-
-            let remaining_fields_names = displayable_field_names
+            let no_accessible_remaining_fields = remaining_fields
                 .iter()
-                .take(3)
-                .map(|n| format!("`{}`", n))
-                .collect::<Vec<_>>()
-                .join(", ");
+                .filter(|(_, (_, field))| {
+                    field.vis.is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
+                })
+                .next()
+                .is_none();
 
-            struct_span_err!(
-                tcx.sess,
-                span,
-                E0063,
-                "missing field{} {}{} in initializer of `{}`",
-                pluralize!(remaining_fields.len()),
-                remaining_fields_names,
-                truncated_fields_error,
-                adt_ty
-            )
-            .span_label(
-                span,
-                format!("missing {}{}", remaining_fields_names, truncated_fields_error),
-            )
-            .emit();
+            if no_accessible_remaining_fields {
+                self.report_no_accessible_fields(adt_ty, span);
+            } else {
+                self.report_missing_field(adt_ty, span, remaining_fields);
+            }
         }
+
         error_happened
     }
 
@@ -1291,6 +1270,79 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(ref base) = *base_expr {
             self.check_expr(&base);
         }
+    }
+
+    /// Report an error for a struct field expression when there are fields which aren't provided.
+    ///
+    /// ```ignore (diagnostic)
+    /// error: missing field `you_can_use_this_field` in initializer of `foo::Foo`
+    ///  --> src/main.rs:8:5
+    ///   |
+    /// 8 |     foo::Foo {};
+    ///   |     ^^^^^^^^ missing `you_can_use_this_field`
+    ///
+    /// error: aborting due to previous error
+    /// ```
+    fn report_missing_field(
+        &self,
+        adt_ty: Ty<'tcx>,
+        span: Span,
+        remaining_fields: FxHashMap<Ident, (usize, &ty::FieldDef)>,
+    ) {
+        let tcx = self.tcx;
+        let len = remaining_fields.len();
+
+        let mut displayable_field_names =
+            remaining_fields.keys().map(|ident| ident.as_str()).collect::<Vec<_>>();
+
+        displayable_field_names.sort();
+
+        let truncated_fields_error = if len <= 3 {
+            String::new()
+        } else {
+            format!(" and {} other field{}", (len - 3), if len - 3 == 1 { "" } else { "s" })
+        };
+
+        let remaining_fields_names = displayable_field_names
+            .iter()
+            .take(3)
+            .map(|n| format!("`{}`", n))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        struct_span_err!(
+            tcx.sess,
+            span,
+            E0063,
+            "missing field{} {}{} in initializer of `{}`",
+            pluralize!(remaining_fields.len()),
+            remaining_fields_names,
+            truncated_fields_error,
+            adt_ty
+        )
+        .span_label(span, format!("missing {}{}", remaining_fields_names, truncated_fields_error))
+        .emit();
+    }
+
+    /// Report an error for a struct field expression when there are no visible fields.
+    ///
+    /// ```ignore (diagnostic)
+    /// error: cannot construct `Foo` with struct literal syntax due to inaccessible fields
+    ///  --> src/main.rs:8:5
+    ///   |
+    /// 8 |     foo::Foo {};
+    ///   |     ^^^^^^^^
+    ///
+    /// error: aborting due to previous error
+    /// ```
+    fn report_no_accessible_fields(&self, adt_ty: Ty<'tcx>, span: Span) {
+        self.tcx.sess.span_err(
+            span,
+            &format!(
+                "cannot construct `{}` with struct literal syntax due to inaccessible fields",
+                adt_ty,
+            ),
+        );
     }
 
     fn report_unknown_field(
