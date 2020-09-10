@@ -128,3 +128,32 @@ function ciCommandSetEnv {
         exit 1
     fi
 }
+
+function ciStartGroup {
+    if [[ $# -ne 1 ]]; then
+        echo "usage: $0 <name>"
+        exit 1
+    fi
+    name="$1"
+
+    # Only run this on the CI platforms that support the feature. Losing
+    # support for this is not a big deal, logs would just be a bit harder to
+    # navigate.
+    if isGitHubActions; then
+        echo "::group::${name}"
+    fi
+}
+
+function ciEndGroup {
+    if [[ $# -ne 0 ]]; then
+        echo "usage: $0"
+        exit 1
+    fi
+
+    # Only run this on the CI platforms that support the feature. Losing
+    # support for this is not a big deal, logs would just be a bit harder to
+    # navigate.
+    if isGitHubActions; then
+        echo "::endgroup::"
+    fi
+}

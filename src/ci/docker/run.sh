@@ -40,6 +40,7 @@ source "$ci_dir/shared.sh"
 
 CACHE_DOMAIN="${CACHE_DOMAIN:-ci-caches.rust-lang.org}"
 
+ciStartGroup "Download or build the Docker image"
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
     if [ "$CI" != "" ]; then
       hash_key=/tmp/.docker-hash-key.txt
@@ -151,6 +152,7 @@ else
 
     exit 1
 fi
+ciEndGroup
 
 mkdir -p $HOME/.cargo
 mkdir -p $objdir/tmp
