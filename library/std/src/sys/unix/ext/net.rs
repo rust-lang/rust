@@ -24,11 +24,15 @@ use crate::mem;
 use crate::net::{self, Shutdown};
 use crate::os::unix::ffi::OsStrExt;
 use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use crate::os::unix::ucred;
 use crate::path::Path;
 use crate::sys::net::Socket;
 use crate::sys::{self, cvt};
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
 use crate::time::Duration;
+
+#[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
+pub use ucred::UCred;
 
 #[cfg(any(
     target_os = "linux",
@@ -403,6 +407,34 @@ impl UnixStream {
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(*self.0.as_inner(), addr, len) })
+    }
+
+    /// Gets the peer credentials for this UNIX domain socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(peer_credentials_unix_socket)]
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     let peer_cred = socket.peer_cred().expect("Couldn't get peer credentials");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
+    #[cfg(any(
+        target_os = "android",
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "ios",
+        target_os = "macos",
+        target_os = "openbsd"
+    ))]
+    pub fn peer_cred(&self) -> io::Result<UCred> {
+        ucred::peer_cred(self)
     }
 
     /// Sets the read timeout for the socket.
