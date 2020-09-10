@@ -1281,6 +1281,8 @@ impl Step for Compiletest {
             cmd.arg("--rustfix-coverage");
         }
 
+        cmd.env("BOOTSTRAP_CARGO", &builder.initial_cargo);
+
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 
         builder.info(&format!(

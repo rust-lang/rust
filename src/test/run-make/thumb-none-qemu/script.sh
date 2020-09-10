@@ -12,8 +12,8 @@ pushd $WORK_DIR
         # These come from the top-level Rust workspace, that this crate is not a
         # member of, but Cargo tries to load the workspace `Cargo.toml` anyway.
         env RUSTC_BOOTSTRAP=1 RUSTFLAGS="-C linker=arm-none-eabi-ld -C link-arg=-Tlink.x" \
-            $CARGO run --target $TARGET           | grep "x = 42"
+            $BOOTSTRAP_CARGO run --target $TARGET           | grep "x = 42"
         env RUSTC_BOOTSTRAP=1 RUSTFLAGS="-C linker=arm-none-eabi-ld -C link-arg=-Tlink.x" \
-            $CARGO run --target $TARGET --release | grep "x = 42"
+            $BOOTSTRAP_CARGO run --target $TARGET --release | grep "x = 42"
     popd
 popd

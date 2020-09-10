@@ -700,6 +700,10 @@ impl<'a> Builder<'a> {
         }
 
         add_dylib_path(lib_paths, &mut cmd);
+
+        // Provide a RUSTC for this command to use.
+        cmd.env("RUSTC", &self.initial_rustc);
+
         cmd
     }
 }
