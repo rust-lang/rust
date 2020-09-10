@@ -16,6 +16,7 @@ use rustc_middle::middle::stability::{DeprecationEntry, Index};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
+use rustc_session::lint::builtin::INEFFECTIVE_UNSTABLE_TRAIT_IMPL;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
@@ -539,27 +540,33 @@ impl Visitor<'tcx> for Checker<'tcx> {
             // individually as it's possible to have a stable trait with unstable
             // items.
             hir::ItemKind::Impl { of_trait: Some(ref t), self_ty, items, .. } => {
-                // If this impl block has an #[unstable] attribute, give an
-                // error if all involved types and traits are stable, because
-                // it will have no effect.
-                // See: https://github.com/rust-lang/rust/issues/55436
-                if let (Some(Stability { level: attr::Unstable { .. }, .. }), _) =
-                    attr::find_stability(&self.tcx.sess, &item.attrs, item.span)
-                {
-                    let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
-                    c.visit_ty(self_ty);
-                    c.visit_trait_ref(t);
-                    if c.fully_stable {
-                        let span = item
-                            .attrs
-                            .iter()
-                            .find(|a| a.has_name(sym::unstable))
-                            .map_or(item.span, |a| a.span);
-                        self.tcx.sess.span_err(
-                            span,
-                            "An `#[unstable]` annotation here has no effect. \
-                            See issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information.",
-                        );
+                if self.tcx.features().staged_api {
+                    // If this impl block has an #[unstable] attribute, give an
+                    // error if all involved types and traits are stable, because
+                    // it will have no effect.
+                    // See: https://github.com/rust-lang/rust/issues/55436
+                    if let (Some(Stability { level: attr::Unstable { .. }, .. }), _) =
+                        attr::find_stability(&self.tcx.sess, &item.attrs, item.span)
+                    {
+                        let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
+                        c.visit_ty(self_ty);
+                        c.visit_trait_ref(t);
+                        if c.fully_stable {
+                            let span = item
+                                .attrs
+                                .iter()
+                                .find(|a| a.has_name(sym::unstable))
+                                .map_or(item.span, |a| a.span);
+                            self.tcx.struct_span_lint_hir(
+                                INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+                                item.hir_id,
+                                span,
+                                |lint| lint.build(
+                                    "An `#[unstable]` annotation here has no effect. \
+                                    See issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information.",
+                                ).emit()
+                            );
+                        }
                     }
                 }
 
