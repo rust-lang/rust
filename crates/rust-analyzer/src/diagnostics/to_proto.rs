@@ -225,12 +225,43 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 
             // If error occurs from macro expansion, add related info pointing to
             // where the error originated
-            if !is_from_macro(&primary_span.file_name) && primary_span.expansion.is_some() {
-                related_information.push(lsp_types::DiagnosticRelatedInformation {
-                    location: location_naive(workspace_root, &primary_span),
-                    message: "Error originated from macro here".to_string(),
-                });
-            }
+            // Also, we would generate an additional diagnostic, so that exact place of macro
+            // will be highlighted in the error origin place.
+            let additional_diagnostic =
+                if !is_from_macro(&primary_span.file_name) && primary_span.expansion.is_some() {
+                    let in_macro_location = location_naive(workspace_root, &primary_span);
+
+                    // Add related information for the main disagnostic.
+                    related_information.push(lsp_types::DiagnosticRelatedInformation {
+                        location: in_macro_location.clone(),
+                        message: "Error originated from macro here".to_string(),
+                    });
+
+                    // For the additional in-macro diagnostic we add the inverse message pointing to the error location in code.
+                    let information_for_additional_diagnostic =
+                        vec![lsp_types::DiagnosticRelatedInformation {
+                            location: location.clone(),
+                            message: "Exact error occured here".to_string(),
+                        }];
+
+                    let diagnostic = lsp_types::Diagnostic {
+                        range: in_macro_location.range,
+                        severity,
+                        code: code.clone().map(lsp_types::NumberOrString::String),
+                        source: Some(source.clone()),
+                        message: message.clone(),
+                        related_information: Some(information_for_additional_diagnostic),
+                        tags: if tags.is_empty() { None } else { Some(tags.clone()) },
+                    };
+
+                    Some(MappedRustDiagnostic {
+                        url: in_macro_location.uri,
+                        diagnostic,
+                        fixes: fixes.clone(),
+                    })
+                } else {
+                    None
+                };
 
             let diagnostic = lsp_types::Diagnostic {
                 range: location.range,
@@ -246,8 +277,14 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 tags: if tags.is_empty() { None } else { Some(tags.clone()) },
             };
 
-            MappedRustDiagnostic { url: location.uri, diagnostic, fixes: fixes.clone() }
+            let main_diagnostic =
+                MappedRustDiagnostic { url: location.uri, diagnostic, fixes: fixes.clone() };
+            match additional_diagnostic {
+                None => vec![main_diagnostic],
+                Some(additional_diagnostic) => vec![main_diagnostic, additional_diagnostic],
+            }
         })
+        .flatten()
         .collect()
 }
 
