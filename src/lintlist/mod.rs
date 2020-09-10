@@ -298,6 +298,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "copy_iterator",
     },
     Lint {
+        name: "create_dir",
+        group: "restriction",
+        desc: "calling `std::fs::create_dir` instead of `std::fs::create_dir_all`",
+        deprecation: None,
+        module: "create_dir",
+    },
+    Lint {
         name: "crosspointer_transmute",
         group: "complexity",
         desc: "transmutes that have to or from types that are a pointer to the other",

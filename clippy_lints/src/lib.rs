@@ -170,6 +170,7 @@ mod collapsible_if;
 mod comparison_chain;
 mod copies;
 mod copy_iterator;
+mod create_dir;
 mod dbg_macro;
 mod default_trait_access;
 mod dereference;
@@ -513,6 +514,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &copies::MATCH_SAME_ARMS,
         &copies::SAME_FUNCTIONS_IN_IF_CONDITION,
         &copy_iterator::COPY_ITERATOR,
+        &create_dir::CREATE_DIR,
         &dbg_macro::DBG_MACRO,
         &default_trait_access::DEFAULT_TRAIT_ACCESS,
         &dereference::EXPLICIT_DEREF_METHODS,
@@ -1044,6 +1046,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box items_after_statements::ItemsAfterStatements);
     store.register_early_pass(|| box precedence::Precedence);
     store.register_early_pass(|| box needless_continue::NeedlessContinue);
+    store.register_late_pass(|| box create_dir::CreateDir);
     store.register_early_pass(|| box needless_arbitrary_self_type::NeedlessArbitrarySelfType);
     store.register_early_pass(|| box redundant_static_lifetimes::RedundantStaticLifetimes);
     store.register_late_pass(|| box cargo_common_metadata::CargoCommonMetadata);
@@ -1107,6 +1110,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
         LintId::of(&arithmetic::INTEGER_ARITHMETIC),
         LintId::of(&as_conversions::AS_CONVERSIONS),
+        LintId::of(&create_dir::CREATE_DIR),
         LintId::of(&dbg_macro::DBG_MACRO),
         LintId::of(&else_if_without_else::ELSE_IF_WITHOUT_ELSE),
         LintId::of(&exit::EXIT),
