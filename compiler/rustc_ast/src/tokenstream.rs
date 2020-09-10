@@ -403,8 +403,8 @@ impl Cursor {
         self.index = index;
     }
 
-    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
-        self.stream.0[self.index..].get(n).map(|(tree, _)| tree)
+    pub fn look_ahead(&self, n: usize) -> Option<TokenTree> {
+        self.stream.0[self.index..].get(n).map(|(tree, _)| tree.clone())
     }
 }
 
