@@ -78,6 +78,12 @@ pub trait Add<Rhs = Self> {
     type Output;
 
     /// Performs the `+` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!(12 + 1, 13);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn add(self, rhs: Rhs) -> Self::Output;
@@ -178,6 +184,12 @@ pub trait Sub<Rhs = Self> {
     type Output;
 
     /// Performs the `-` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!(12 - 1, 11);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn sub(self, rhs: Rhs) -> Self::Output;
@@ -300,6 +312,12 @@ pub trait Mul<Rhs = Self> {
     type Output;
 
     /// Performs the `*` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!(12 * 2, 24);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn mul(self, rhs: Rhs) -> Self::Output;
@@ -426,6 +444,12 @@ pub trait Div<Rhs = Self> {
     type Output;
 
     /// Performs the `/` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!(12 / 2, 6);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn div(self, rhs: Rhs) -> Self::Output;
@@ -513,6 +537,12 @@ pub trait Rem<Rhs = Self> {
     type Output;
 
     /// Performs the `%` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!(12 % 10, 2);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rem(self, rhs: Rhs) -> Self::Output;
@@ -612,6 +642,13 @@ pub trait Neg {
     type Output;
 
     /// Performs the unary `-` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let x: i32 = 12;
+    /// assert_eq!(-x, -12);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn neg(self) -> Self::Output;
@@ -673,6 +710,14 @@ neg_impl! { isize i8 i16 i32 i64 i128 f32 f64 }
 #[doc(alias = "+=")]
 pub trait AddAssign<Rhs = Self> {
     /// Performs the `+=` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut x: u32 = 12;
+    /// x += 1;
+    /// assert_eq!(x, 13);
+    /// ```
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn add_assign(&mut self, rhs: Rhs);
 }
@@ -731,6 +776,14 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[doc(alias = "-=")]
 pub trait SubAssign<Rhs = Self> {
     /// Performs the `-=` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut x: u32 = 12;
+    /// x -= 1;
+    /// assert_eq!(x, 11);
+    /// ```
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn sub_assign(&mut self, rhs: Rhs);
 }
@@ -780,6 +833,14 @@ sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[doc(alias = "*=")]
 pub trait MulAssign<Rhs = Self> {
     /// Performs the `*=` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut x: u32 = 12;
+    /// x *= 2;
+    /// assert_eq!(x, 24);
+    /// ```
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn mul_assign(&mut self, rhs: Rhs);
 }
@@ -829,6 +890,14 @@ mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[doc(alias = "/=")]
 pub trait DivAssign<Rhs = Self> {
     /// Performs the `/=` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut x: u32 = 12;
+    /// x /= 2;
+    /// assert_eq!(x, 6);
+    /// ```
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn div_assign(&mut self, rhs: Rhs);
 }
@@ -881,6 +950,14 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[doc(alias = "%=")]
 pub trait RemAssign<Rhs = Self> {
     /// Performs the `%=` operation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut x: u32 = 12;
+    /// x %= 10;
+    /// assert_eq!(x, 2);
+    /// ```
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn rem_assign(&mut self, rhs: Rhs);
 }
