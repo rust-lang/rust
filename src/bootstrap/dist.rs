@@ -1118,7 +1118,7 @@ impl Step for PlainSourceTarball {
             let mut cmd = Command::new(&builder.initial_cargo);
             cmd.arg("vendor")
                 .arg("--sync")
-                .arg(builder.src.join("./library/Cargo.yoml"))
+                .arg(builder.src.join("./library/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
                 .current_dir(&plain_dst_src);
