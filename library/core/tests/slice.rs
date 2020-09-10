@@ -1980,3 +1980,32 @@ fn test_is_sorted() {
     assert!(!["c", "bb", "aaa"].is_sorted());
     assert!(["c", "bb", "aaa"].is_sorted_by_key(|s| s.len()));
 }
+
+#[test]
+fn test_slice_run_destructors() {
+    use core::cell::Cell;
+
+    // Make sure that destructors get run on slice literals
+    struct Foo<'a> {
+        x: &'a Cell<isize>,
+    }
+
+    impl<'a> Drop for Foo<'a> {
+        fn drop(&mut self) {
+            self.x.set(self.x.get() + 1);
+        }
+    }
+
+    fn foo(x: &Cell<isize>) -> Foo<'_> {
+        Foo { x }
+    }
+
+    let x = &Cell::new(0);
+
+    {
+        let l = &[foo(x)];
+        assert_eq!(l[0].x.get(), 0);
+    }
+
+    assert_eq!(x.get(), 1);
+}
