@@ -2093,7 +2093,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 _ => String::new(),
             };
             if !s.is_empty() {
-                s.push_str(" ");
+                s.push(' ');
             }
             s
         };
