@@ -139,6 +139,7 @@ fn opt_ordering_defid(cx: &LateContext<'_>, ord_arg: &Expr<'_>) -> Option<DefId>
         None
     }
 }
+
 fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
         if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind;
@@ -197,7 +198,7 @@ fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
                         INVALID_ATOMIC_ORDERING,
                         failure_order_arg.span,
                         &format!(
-                            "{}'s failure ordering may not stronger than the success ordering of `{}`",
+                            "{}'s failure ordering may not be stronger than the success ordering of `{}`",
                             method,
                             success_ord_name,
                         ),
