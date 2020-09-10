@@ -329,6 +329,12 @@
 # Defaults to rust.debug-assertions value
 #debug-assertions-std = false
 
+# Whether or not to leave debug! and trace! calls in the rust binary.
+# Overrides the `debug-assertions` option, if defined.
+# 
+# Defaults to rust.debug-assertions value
+#debug-logging = true
+
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
 # `1` - line tables only - sufficient to generate backtraces that include line
