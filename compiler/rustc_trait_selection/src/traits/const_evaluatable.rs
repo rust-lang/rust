@@ -14,6 +14,24 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
 ) -> Result<(), ErrorHandled> {
+    debug!("is_const_evaluatable({:?}, {:?})", def, substs);
+    if infcx.tcx.features().const_evaluatable_checked {
+        // FIXME(const_evaluatable_checked): Actually look into generic constants to
+        // implement const equality.
+        for pred in param_env.caller_bounds() {
+            match pred.skip_binders() {
+                ty::PredicateAtom::ConstEvaluatable(b_def, b_substs) => {
+                    debug!("is_const_evaluatable: caller_bound={:?}, {:?}", b_def, b_substs);
+                    if b_def == def && b_substs == substs {
+                        debug!("is_const_evaluatable: caller_bound ~~> ok");
+                        return Ok(());
+                    }
+                }
+                _ => {} // don't care
+            }
+        }
+    }
+
     let future_compat_lint = || {
         if let Some(local_def_id) = def.did.as_local() {
             infcx.tcx.struct_span_lint_hir(
@@ -38,24 +56,23 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     // See #74595 for more details about this.
     let concrete = infcx.const_eval_resolve(param_env, def, substs, None, Some(span));
 
-    let def_kind = infcx.tcx.def_kind(def.did);
-    match def_kind {
-        DefKind::AnonConst => {
-            let mir_body = if let Some(def) = def.as_const_arg() {
-                infcx.tcx.optimized_mir_of_const_arg(def)
-            } else {
-                infcx.tcx.optimized_mir(def.did)
-            };
-            if mir_body.is_polymorphic && concrete.is_ok() {
-                future_compat_lint();
+    if concrete.is_ok() && substs.has_param_types_or_consts() {
+        match infcx.tcx.def_kind(def.did) {
+            DefKind::AnonConst => {
+                let mir_body = if let Some(def) = def.as_const_arg() {
+                    infcx.tcx.optimized_mir_of_const_arg(def)
+                } else {
+                    infcx.tcx.optimized_mir(def.did)
+                };
+
+                if mir_body.is_polymorphic {
+                    future_compat_lint();
+                }
             }
-        }
-        _ => {
-            if substs.has_param_types_or_consts() && concrete.is_ok() {
-                future_compat_lint();
-            }
+            _ => future_compat_lint(),
         }
     }
 
+    debug!(?concrete, "is_const_evaluatable");
     concrete.map(drop)
 }

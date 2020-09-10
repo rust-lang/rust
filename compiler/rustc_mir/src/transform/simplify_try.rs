@@ -674,7 +674,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
         y_bb_idx: BasicBlock,
     ) -> StatementEquality {
         let helper = |rhs: &Rvalue<'tcx>,
-                      place: &Box<Place<'tcx>>,
+                      place: &Place<'tcx>,
                       variant_index: &VariantIdx,
                       side_to_choose| {
             let place_type = place.ty(self.body, self.tcx).ty;

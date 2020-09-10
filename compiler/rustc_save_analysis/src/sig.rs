@@ -497,7 +497,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                     sig.text.push_str(&bounds_to_string(bounds));
                 }
                 // FIXME where clause
-                sig.text.push_str(";");
+                sig.text.push(';');
 
                 Ok(sig)
             }

@@ -150,8 +150,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Some(mut descr) => {
                 // Surround descr with `backticks`.
                 descr.reserve(2);
-                descr.insert_str(0, "`");
-                descr.push_str("`");
+                descr.insert(0, '`');
+                descr.push('`');
                 descr
             }
             None => "value".to_string(),
@@ -222,7 +222,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             if self.upvars[var_index].by_ref {
                                 buf.push_str(&name);
                             } else {
-                                buf.push_str(&format!("*{}", &name));
+                                buf.push('*');
+                                buf.push_str(&name);
                             }
                         } else {
                             if autoderef {
@@ -234,7 +235,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     &including_downcast,
                                 )?;
                             } else {
-                                buf.push_str(&"*");
+                                buf.push('*');
                                 self.append_place_to_string(
                                     PlaceRef { local, projection: proj_base },
                                     buf,
@@ -272,7 +273,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 autoderef,
                                 &including_downcast,
                             )?;
-                            buf.push_str(&format!(".{}", field_name));
+                            buf.push('.');
+                            buf.push_str(&field_name);
                         }
                     }
                     ProjectionElem::Index(index) => {
@@ -284,11 +286,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             autoderef,
                             &including_downcast,
                         )?;
-                        buf.push_str("[");
+                        buf.push('[');
                         if self.append_local_to_string(*index, buf).is_err() {
-                            buf.push_str("_");
+                            buf.push('_');
                         }
-                        buf.push_str("]");
+                        buf.push(']');
                     }
                     ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
                         autoderef = true;
@@ -301,7 +303,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             autoderef,
                             &including_downcast,
                         )?;
-                        buf.push_str(&"[..]");
+                        buf.push_str("[..]");
                     }
                 };
             }
@@ -648,7 +650,7 @@ impl UseSpans {
                     " in closure".to_string()
                 }
             }
-            _ => "".to_string(),
+            _ => String::new(),
         }
     }
 

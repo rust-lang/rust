@@ -1078,8 +1078,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut unmentioned_fields = variant
             .fields
             .iter()
-            .map(|field| field.ident.normalize_to_macros_2_0())
-            .filter(|ident| !used_fields.contains_key(&ident))
+            .map(|field| (field, field.ident.normalize_to_macros_2_0()))
+            .filter(|(_, ident)| !used_fields.contains_key(&ident))
             .collect::<Vec<_>>();
 
         let inexistent_fields_err = if !(inexistent_fields.is_empty() || variant.is_recovered()) {
@@ -1110,7 +1110,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.sess.struct_span_err(pat.span, "`..` cannot be used in union patterns").emit();
             }
         } else if !etc && !unmentioned_fields.is_empty() {
-            unmentioned_err = Some(self.error_unmentioned_fields(pat, &unmentioned_fields));
+            let no_accessible_unmentioned_fields = unmentioned_fields
+                .iter()
+                .filter(|(field, _)| {
+                    field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
+                })
+                .next()
+                .is_none();
+
+            if no_accessible_unmentioned_fields {
+                unmentioned_err = Some(self.error_no_accessible_fields(pat, &fields));
+            } else {
+                unmentioned_err = Some(self.error_unmentioned_fields(pat, &unmentioned_fields));
+            }
         }
         match (inexistent_fields_err, unmentioned_err) {
             (Some(mut i), Some(mut u)) => {
@@ -1173,7 +1185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         kind_name: &str,
         inexistent_fields: &[Ident],
-        unmentioned_fields: &mut Vec<Ident>,
+        unmentioned_fields: &mut Vec<(&ty::FieldDef, Ident)>,
         variant: &ty::VariantDef,
     ) -> DiagnosticBuilder<'tcx> {
         let tcx = self.tcx;
@@ -1215,7 +1227,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ),
             );
             if plural == "" {
-                let input = unmentioned_fields.iter().map(|field| &field.name);
+                let input = unmentioned_fields.iter().map(|(_, field)| &field.name);
                 let suggested_name = find_best_match_for_name(input, ident.name, None);
                 if let Some(suggested_name) = suggested_name {
                     err.span_suggestion(
@@ -1232,7 +1244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // `smart_resolve_context_dependent_help`.
                     if suggested_name.to_ident_string().parse::<usize>().is_err() {
                         // We don't want to throw `E0027` in case we have thrown `E0026` for them.
-                        unmentioned_fields.retain(|&x| x.name != suggested_name);
+                        unmentioned_fields.retain(|&(_, x)| x.name != suggested_name);
                     }
                 }
             }
@@ -1300,17 +1312,77 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         None
     }
 
+    /// Returns a diagnostic reporting a struct pattern which is missing an `..` due to
+    /// inaccessible fields.
+    ///
+    /// ```ignore (diagnostic)
+    /// error: pattern requires `..` due to inaccessible fields
+    ///   --> src/main.rs:10:9
+    ///    |
+    /// LL |     let foo::Foo {} = foo::Foo::default();
+    ///    |         ^^^^^^^^^^^
+    ///    |
+    /// help: add a `..`
+    ///    |
+    /// LL |     let foo::Foo { .. } = foo::Foo::default();
+    ///    |                  ^^^^^^
+    /// ```
+    fn error_no_accessible_fields(
+        &self,
+        pat: &Pat<'_>,
+        fields: &'tcx [hir::FieldPat<'tcx>],
+    ) -> DiagnosticBuilder<'tcx> {
+        let mut err = self
+            .tcx
+            .sess
+            .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
+
+        if let Some(field) = fields.last() {
+            err.span_suggestion_verbose(
+                field.span.shrink_to_hi(),
+                "ignore the inaccessible and unused fields",
+                ", ..".to_string(),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            let qpath_span = if let PatKind::Struct(qpath, ..) = &pat.kind {
+                qpath.span()
+            } else {
+                bug!("`error_no_accessible_fields` called on non-struct pattern");
+            };
+
+            // Shrink the span to exclude the `foo:Foo` in `foo::Foo { }`.
+            let span = pat.span.with_lo(qpath_span.shrink_to_hi().hi());
+            err.span_suggestion_verbose(
+                span,
+                "ignore the inaccessible and unused fields",
+                " { .. }".to_string(),
+                Applicability::MachineApplicable,
+            );
+        }
+        err
+    }
+
+    /// Returns a diagnostic reporting a struct pattern which does not mention some fields.
+    ///
+    /// ```ignore (diagnostic)
+    /// error[E0027]: pattern does not mention field `you_cant_use_this_field`
+    ///   --> src/main.rs:15:9
+    ///    |
+    /// LL |     let foo::Foo {} = foo::Foo::new();
+    ///    |         ^^^^^^^^^^^ missing field `you_cant_use_this_field`
+    /// ```
     fn error_unmentioned_fields(
         &self,
         pat: &Pat<'_>,
-        unmentioned_fields: &[Ident],
+        unmentioned_fields: &[(&ty::FieldDef, Ident)],
     ) -> DiagnosticBuilder<'tcx> {
         let field_names = if unmentioned_fields.len() == 1 {
-            format!("field `{}`", unmentioned_fields[0])
+            format!("field `{}`", unmentioned_fields[0].1)
         } else {
             let fields = unmentioned_fields
                 .iter()
-                .map(|name| format!("`{}`", name))
+                .map(|(_, name)| format!("`{}`", name))
                 .collect::<Vec<String>>()
                 .join(", ");
             format!("fields {}", fields)

@@ -990,12 +990,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.error_item_without_body(item.span, "function", msg, " { <body> }");
                 }
             }
-            ItemKind::ForeignMod(_) => {
+            ItemKind::ForeignMod(ForeignMod { unsafety, .. }) => {
                 let old_item = mem::replace(&mut self.extern_mod, Some(item));
                 self.invalid_visibility(
                     &item.vis,
                     Some("place qualifiers on individual foreign items instead"),
                 );
+                if let Unsafe::Yes(span) = unsafety {
+                    self.err_handler().span_err(span, "extern block cannot be declared unsafe");
+                }
                 visit::walk_item(self, item);
                 self.extern_mod = old_item;
                 return; // Avoid visiting again.
@@ -1029,7 +1032,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return;
             }
-            ItemKind::Mod(Mod { inline, .. }) => {
+            ItemKind::Mod(Mod { inline, unsafety, .. }) => {
+                if let Unsafe::Yes(span) = unsafety {
+                    self.err_handler().span_err(span, "module cannot be declared unsafe");
+                }
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
                 if !inline && !self.session.contains_name(&item.attrs, sym::path) {
                     self.check_mod_file_item_asciionly(item.ident);

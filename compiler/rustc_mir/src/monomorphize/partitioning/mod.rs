@@ -382,7 +382,7 @@ fn collect_and_partition_mono_items<'tcx>(
                 cgus.sort_by_key(|(name, _)| *name);
                 cgus.dedup();
                 for &(ref cgu_name, (linkage, _)) in cgus.iter() {
-                    output.push_str(" ");
+                    output.push(' ');
                     output.push_str(&cgu_name.as_str());
 
                     let linkage_abbrev = match linkage {
@@ -399,9 +399,9 @@ fn collect_and_partition_mono_items<'tcx>(
                         Linkage::Common => "Common",
                     };
 
-                    output.push_str("[");
+                    output.push('[');
                     output.push_str(linkage_abbrev);
-                    output.push_str("]");
+                    output.push(']');
                 }
                 output
             })

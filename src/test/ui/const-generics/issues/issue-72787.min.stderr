@@ -1,0 +1,57 @@
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/issue-72787.rs:11:17
+   |
+LL |     Condition<{ LHS <= RHS }>: True
+   |                 ^^^ non-trivial anonymous constants must not depend on the parameter `LHS`
+   |
+   = help: it is currently only allowed to use either `LHS` or `{ LHS }` as generic constants
+
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/issue-72787.rs:11:24
+   |
+LL |     Condition<{ LHS <= RHS }>: True
+   |                        ^^^ non-trivial anonymous constants must not depend on the parameter `RHS`
+   |
+   = help: it is currently only allowed to use either `RHS` or `{ RHS }` as generic constants
+
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/issue-72787.rs:26:25
+   |
+LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
+   |                         ^ non-trivial anonymous constants must not depend on the parameter `I`
+   |
+   = help: it is currently only allowed to use either `I` or `{ I }` as generic constants
+
+error: generic parameters must not be used inside of non trivial constant values
+  --> $DIR/issue-72787.rs:26:36
+   |
+LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
+   |                                    ^ non-trivial anonymous constants must not depend on the parameter `J`
+   |
+   = help: it is currently only allowed to use either `J` or `{ J }` as generic constants
+
+error[E0283]: type annotations needed
+  --> $DIR/issue-72787.rs:22:26
+   |
+LL | pub trait True {}
+   | -------------- required by this bound in `True`
+...
+LL |     IsLessOrEqual<I, 8>: True,
+   |                          ^^^^ cannot infer type for struct `IsLessOrEqual<I, 8_u32>`
+   |
+   = note: cannot satisfy `IsLessOrEqual<I, 8_u32>: True`
+
+error[E0283]: type annotations needed
+  --> $DIR/issue-72787.rs:22:26
+   |
+LL | pub trait True {}
+   | -------------- required by this bound in `True`
+...
+LL |     IsLessOrEqual<I, 8>: True,
+   |                          ^^^^ cannot infer type for struct `IsLessOrEqual<I, 8_u32>`
+   |
+   = note: cannot satisfy `IsLessOrEqual<I, 8_u32>: True`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0283`.
