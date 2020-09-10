@@ -142,6 +142,16 @@ fn is_exception(file: &Path, link: &str) -> bool {
     if let Some(entry) = LINKCHECK_EXCEPTIONS.iter().find(|&(f, _)| file.ends_with(f)) {
         entry.1.contains(&link)
     } else {
+        // FIXME(#63351): Concat trait in alloc/slice reexported in primitive page
+        //
+        // NOTE: This cannot be added to `LINKCHECK_EXCEPTIONS` because the resolved path
+        // calculated in `check` function is outside `build/<triple>/doc` dir.
+        // So the `strip_prefix` method just returns the old absolute broken path.
+        if file.ends_with("std/primitive.slice.html") {
+            if link.ends_with("primitive.slice.html") {
+                return true;
+            }
+        }
         false
     }
 }
