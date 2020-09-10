@@ -28,29 +28,5 @@ error: assignment to temporary
 LL |     (0, 0).0 = 1;
    |     ^^^^^^^^^^^^
 
-error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:56:5
-   |
-LL |     A.0 = 2;
-   |     ^^^^^^^
-
-error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:57:5
-   |
-LL |     B.field = 2;
-   |     ^^^^^^^^^^^
-
-error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:58:5
-   |
-LL |     C.structure.field = 2;
-   |     ^^^^^^^^^^^^^^^^^^^^^
-
-error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:59:5
-   |
-LL |     D.array[0] = 2;
-   |     ^^^^^^^^^^^^^^
-
-error: aborting due to 8 previous errors
+error: aborting due to 4 previous errors
 
