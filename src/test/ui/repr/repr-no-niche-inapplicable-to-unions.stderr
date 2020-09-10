@@ -1,4 +1,4 @@
-error[E0517]: attribute should be applied to struct or enum
+error[E0517]: attribute should be applied to a struct or enum
   --> $DIR/repr-no-niche-inapplicable-to-unions.rs:6:8
    |
 LL | #[repr(no_niche)]
@@ -6,7 +6,7 @@ LL | #[repr(no_niche)]
 LL | pub union Cloaked1 { _A: N16 }
    | ------------------------------ not a struct or enum
 
-error[E0517]: attribute should be applied to struct or enum
+error[E0517]: attribute should be applied to a struct or enum
   --> $DIR/repr-no-niche-inapplicable-to-unions.rs:10:8
    |
 LL | #[repr(no_niche)]

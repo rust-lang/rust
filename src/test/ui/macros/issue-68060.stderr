@@ -7,18 +7,5 @@ LL |             #[target_feature(enable = "")]
 LL |             |_| (),
    |             ------ not a function
 
-error: the feature named `` is not valid for this target
-  --> $DIR/issue-68060.rs:4:30
-   |
-LL |             #[target_feature(enable = "")]
-   |                              ^^^^^^^^^^^ `` is not valid for this target
+error: aborting due to previous error
 
-error[E0737]: `#[track_caller]` requires Rust ABI
-  --> $DIR/issue-68060.rs:8:13
-   |
-LL |             #[track_caller]
-   |             ^^^^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0737`.

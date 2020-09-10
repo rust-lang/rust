@@ -1,0 +1,12 @@
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/repr-disallow-on-variant.rs:4:12
+   |
+LL |     #[repr(u8)]
+   |            ^^
+LL |
+LL |     Variant,
+   |     ------- not a struct, enum, or union
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0517`.
