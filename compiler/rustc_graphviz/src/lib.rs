@@ -599,6 +599,7 @@ pub enum RenderOption {
     NoNodeStyles,
 
     Monospace,
+    DarkTheme,
 }
 
 /// Returns vec holding all the default render options.
@@ -630,10 +631,23 @@ where
     writeln!(w, "digraph {} {{", g.graph_id().as_slice())?;
 
     // Global graph properties
+    let mut graph_attrs = Vec::new();
+    let mut content_attrs = Vec::new();
     if options.contains(&RenderOption::Monospace) {
-        writeln!(w, r#"    graph[fontname="monospace"];"#)?;
-        writeln!(w, r#"    node[fontname="monospace"];"#)?;
-        writeln!(w, r#"    edge[fontname="monospace"];"#)?;
+        let font = r#"fontname="Courier, monospace""#;
+        graph_attrs.push(font);
+        content_attrs.push(font);
+    };
+    if options.contains(&RenderOption::DarkTheme) {
+        graph_attrs.push(r#"bgcolor="black""#);
+        content_attrs.push(r#"color="white""#);
+        content_attrs.push(r#"fontcolor="white""#);
+    }
+    if !(graph_attrs.is_empty() && content_attrs.is_empty()) {
+        writeln!(w, r#"    graph[{}];"#, graph_attrs.join(" "))?;
+        let content_attrs_str = content_attrs.join(" ");
+        writeln!(w, r#"    node[{}];"#, content_attrs_str)?;
+        writeln!(w, r#"    edge[{}];"#, content_attrs_str)?;
     }
 
     for n in g.nodes().iter() {
