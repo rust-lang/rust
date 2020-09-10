@@ -1,5 +1,5 @@
 error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:47:5
+  --> $DIR/temporary_assignment.rs:48:5
    |
 LL |     Struct { field: 0 }.field = 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     Struct { field: 0 }.field = 1;
    = note: `-D clippy::temporary-assignment` implied by `-D warnings`
 
 error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:48:5
+  --> $DIR/temporary_assignment.rs:49:5
    |
 LL | /     MultiStruct {
 LL | |         structure: Struct { field: 0 },
@@ -17,40 +17,16 @@ LL | |     .field = 1;
    | |______________^
 
 error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:53:5
+  --> $DIR/temporary_assignment.rs:54:5
    |
 LL |     ArrayStruct { array: [0] }.array[0] = 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:54:5
+  --> $DIR/temporary_assignment.rs:55:5
    |
 LL |     (0, 0).0 = 1;
    |     ^^^^^^^^^^^^
 
-error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:56:5
-   |
-LL |     A.0 = 2;
-   |     ^^^^^^^
-
-error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:57:5
-   |
-LL |     B.field = 2;
-   |     ^^^^^^^^^^^
-
-error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:58:5
-   |
-LL |     C.structure.field = 2;
-   |     ^^^^^^^^^^^^^^^^^^^^^
-
-error: assignment to temporary
-  --> $DIR/temporary_assignment.rs:59:5
-   |
-LL |     D.array[0] = 2;
-   |     ^^^^^^^^^^^^^^
-
-error: aborting due to 8 previous errors
+error: aborting due to 4 previous errors
 
