@@ -79,7 +79,7 @@ LL |     let _ = x.fetch_update(Ordering::SeqCst, Ordering::Release, |old| Some(
    |
    = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed` instead
 
-error: fetch_update's failure ordering may not stronger than the success ordering of `Release`
+error: fetch_update's failure ordering may not be stronger than the success ordering of `Release`
   --> $DIR/atomic_ordering_fetch_update.rs:35:47
    |
 LL |     let _ = x.fetch_update(Ordering::Release, Ordering::Acquire, |old| Some(old + 1));
@@ -87,7 +87,7 @@ LL |     let _ = x.fetch_update(Ordering::Release, Ordering::Acquire, |old| Some
    |
    = help: consider using ordering mode `Relaxed` instead
 
-error: fetch_update's failure ordering may not stronger than the success ordering of `Release`
+error: fetch_update's failure ordering may not be stronger than the success ordering of `Release`
   --> $DIR/atomic_ordering_fetch_update.rs:36:47
    |
 LL |     let _ = x.fetch_update(Ordering::Release, Ordering::SeqCst, |old| Some(old + 1));
@@ -95,7 +95,7 @@ LL |     let _ = x.fetch_update(Ordering::Release, Ordering::SeqCst, |old| Some(
    |
    = help: consider using ordering mode `Relaxed` instead
 
-error: fetch_update's failure ordering may not stronger than the success ordering of `Relaxed`
+error: fetch_update's failure ordering may not be stronger than the success ordering of `Relaxed`
   --> $DIR/atomic_ordering_fetch_update.rs:39:47
    |
 LL |     let _ = x.fetch_update(Ordering::Relaxed, Ordering::SeqCst, |old| Some(old + 1));
@@ -103,7 +103,7 @@ LL |     let _ = x.fetch_update(Ordering::Relaxed, Ordering::SeqCst, |old| Some(
    |
    = help: consider using ordering mode `Relaxed` instead
 
-error: fetch_update's failure ordering may not stronger than the success ordering of `Relaxed`
+error: fetch_update's failure ordering may not be stronger than the success ordering of `Relaxed`
   --> $DIR/atomic_ordering_fetch_update.rs:40:47
    |
 LL |     let _ = x.fetch_update(Ordering::Relaxed, Ordering::Acquire, |old| Some(old + 1));
@@ -111,7 +111,7 @@ LL |     let _ = x.fetch_update(Ordering::Relaxed, Ordering::Acquire, |old| Some
    |
    = help: consider using ordering mode `Relaxed` instead
 
-error: fetch_update's failure ordering may not stronger than the success ordering of `Acquire`
+error: fetch_update's failure ordering may not be stronger than the success ordering of `Acquire`
   --> $DIR/atomic_ordering_fetch_update.rs:43:47
    |
 LL |     let _ = x.fetch_update(Ordering::Acquire, Ordering::SeqCst, |old| Some(old + 1));
@@ -119,7 +119,7 @@ LL |     let _ = x.fetch_update(Ordering::Acquire, Ordering::SeqCst, |old| Some(
    |
    = help: consider using ordering modes `Acquire` or `Relaxed` instead
 
-error: fetch_update's failure ordering may not stronger than the success ordering of `AcqRel`
+error: fetch_update's failure ordering may not be stronger than the success ordering of `AcqRel`
   --> $DIR/atomic_ordering_fetch_update.rs:44:46
    |
 LL |     let _ = x.fetch_update(Ordering::AcqRel, Ordering::SeqCst, |old| Some(old + 1));

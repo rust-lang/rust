@@ -79,7 +79,7 @@ LL |     let _ = x.compare_exchange(0, 0, Ordering::SeqCst, Ordering::Release);
    |
    = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed` instead
 
-error: compare_exchange's failure ordering may not stronger than the success ordering of `Release`
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `Release`
   --> $DIR/atomic_ordering_exchange.rs:35:57
    |
 LL |     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::Acquire);
@@ -87,7 +87,7 @@ LL |     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::Acquire);
    |
    = help: consider using ordering mode `Relaxed` instead
 
-error: compare_exchange's failure ordering may not stronger than the success ordering of `Release`
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `Release`
   --> $DIR/atomic_ordering_exchange.rs:36:57
    |
 LL |     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::SeqCst);
@@ -95,7 +95,7 @@ LL |     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::SeqCst);
    |
    = help: consider using ordering mode `Relaxed` instead
 
-error: compare_exchange's failure ordering may not stronger than the success ordering of `Relaxed`
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `Relaxed`
   --> $DIR/atomic_ordering_exchange.rs:39:57
    |
 LL |     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::SeqCst);
@@ -103,7 +103,7 @@ LL |     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::SeqCst);
    |
    = help: consider using ordering mode `Relaxed` instead
 
-error: compare_exchange's failure ordering may not stronger than the success ordering of `Relaxed`
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `Relaxed`
   --> $DIR/atomic_ordering_exchange.rs:40:57
    |
 LL |     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::Acquire);
@@ -111,7 +111,7 @@ LL |     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::Acquire);
    |
    = help: consider using ordering mode `Relaxed` instead
 
-error: compare_exchange's failure ordering may not stronger than the success ordering of `Acquire`
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `Acquire`
   --> $DIR/atomic_ordering_exchange.rs:43:57
    |
 LL |     let _ = x.compare_exchange(0, 0, Ordering::Acquire, Ordering::SeqCst);
@@ -119,7 +119,7 @@ LL |     let _ = x.compare_exchange(0, 0, Ordering::Acquire, Ordering::SeqCst);
    |
    = help: consider using ordering modes `Acquire` or `Relaxed` instead
 
-error: compare_exchange's failure ordering may not stronger than the success ordering of `AcqRel`
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `AcqRel`
   --> $DIR/atomic_ordering_exchange.rs:44:56
    |
 LL |     let _ = x.compare_exchange(0, 0, Ordering::AcqRel, Ordering::SeqCst);
