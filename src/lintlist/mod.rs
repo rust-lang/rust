@@ -53,6 +53,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "assign_ops",
     },
     Lint {
+        name: "async_yields_async",
+        group: "correctness",
+        desc: "async blocks that return a type that can be awaited",
+        deprecation: None,
+        module: "async_yields_async",
+    },
+    Lint {
         name: "await_holding_lock",
         group: "pedantic",
         desc: "Inside an async function, holding a MutexGuard while calling await",
@@ -289,6 +296,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "implementing `Iterator` on a `Copy` type",
         deprecation: None,
         module: "copy_iterator",
+    },
+    Lint {
+        name: "create_dir",
+        group: "restriction",
+        desc: "calling `std::fs::create_dir` instead of `std::fs::create_dir_all`",
+        deprecation: None,
+        module: "create_dir",
     },
     Lint {
         name: "crosspointer_transmute",
