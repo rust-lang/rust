@@ -134,8 +134,8 @@
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
 use crate::pin::Pin;
 use crate::{
-    convert, fmt, hint, mem,
-    ops::{self, Deref, DerefMut},
+    convert, fmt, hint, mem, ptr,
+    ops::{self, Deref, DerefMut, Range},
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
@@ -1257,6 +1257,16 @@ impl<T: Copy> Clone for Option<T> {
     }
 }
 
+// Range<T> is not Copy even if T is copy (see #27186),
+// so provide an efficient implementation.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Copy> Clone for Option<Range<T>> {
+    #[inline]
+    fn clone(&self) -> Self {
+        // SAFETY: 'self' is not Drop so memcpy is OK.
+        unsafe { ptr::read(self as *const Self) }
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {
