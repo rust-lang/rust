@@ -92,7 +92,7 @@ to the end of the pull request description, and [@rust-highfive][rust-highfive] 
 
 In addition to being reviewed by a human, pull requests are automatically tested
 thanks to continuous integration (CI). Basically, every time you open and update
-a pull request, the CI builds the compiler and tests it against the
+a pull request, CI builds the compiler and tests it against the
 [compiler test suite][rctd], and also performs other tests such as checking that
 your pull request is in compliance with Rust's style guidelines.
 
@@ -103,7 +103,8 @@ of the status of a particular pull request.
 Rust has plenty of CI capacity, and you should never have to worry about wasting
 computational resources each time you push a change. It is also perfectly fine
 (and even encouraged!) to use the CI to test your changes if it can help your
-productivity, e.g. if your machine is not very powerful.
+productivity. In particular, we don't recommend running the full `x.py test` suite locally,
+since it takes a very long time to execute.
 
 After someone has reviewed your pull request, they will leave an annotation
 on the pull request with an `r+`. It will look something like this:
@@ -136,11 +137,11 @@ should be aware of.
 
 All pull requests should be filed against the `master` branch, except in very
 particular scenarios. Unless you know for sure that you should target another
-branch, `master` will be the right choice.
+branch, `master` will be the right choice (it's also the default).
 
 Make sure your pull request is in compliance with Rust's style guidelines by running
 
-    $ ./x.py test tidy
+    $ ./x.py test tidy --bless
 
 We recommand to make this check before every pull request (and every new commit
 in a pull request); you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
