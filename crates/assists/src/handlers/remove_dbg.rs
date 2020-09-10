@@ -242,6 +242,8 @@ fn main() {
             r#"let res = <|>dbg!(a + b).foo();"#,
             r#"let res = (a + b).foo();"#,
         );
+
+        check_assist(remove_dbg, r#"let res = <|>dbg!(2 + 2) * 5"#, r#"let res = (2 + 2) * 5"#);
     }
 
     #[test]
