@@ -484,7 +484,7 @@ are:
   discuss Rust's internals
 * The [generated documentation for Rust's compiler][gdfrustc]
 * The [Rust reference][rr], even though it doesn't specifically talk about
-  Rust's internals is a great resource nonetheless
+  Rust's internals, is a great resource nonetheless
 * Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
 * [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
 * The [Rust Compiler Testing Docs][rctd]
