@@ -555,7 +555,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                             .iter()
                             .find(|a| a.has_name(sym::unstable))
                             .map_or(item.span, |a| a.span);
-                        self.tcx.sess.span_warn(
+                        self.tcx.sess.span_err(
                             span,
                             "An `#[unstable]` annotation here has no effect. \
                             See issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information.",
