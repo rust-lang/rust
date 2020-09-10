@@ -1228,7 +1228,7 @@ fn expect_none_failed(msg: &str, value: &dyn fmt::Debug) -> ! {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for Option<T> {
     #[inline]
-    fn clone(&self) -> Self {
+    default fn clone(&self) -> Self {
         match self {
             Some(x) => Some(x.clone()),
             None => None,
@@ -1236,11 +1236,24 @@ impl<T: Clone> Clone for Option<T> {
     }
 
     #[inline]
-    fn clone_from(&mut self, source: &Self) {
+    default fn clone_from(&mut self, source: &Self) {
         match (self, source) {
             (Some(to), Some(from)) => to.clone_from(from),
             (to, from) => *to = from.clone(),
         }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Copy> Clone for Option<T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        *self = *source
     }
 }
 
