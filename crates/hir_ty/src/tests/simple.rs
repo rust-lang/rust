@@ -1889,31 +1889,40 @@ fn fn_pointer_return() {
 fn effects_smoke_test() {
     check_infer(
         r#"
-        fn main() {
+        async fn main() {
             let x = unsafe { 92 };
             let y = async { async { () }.await };
             let z = try { () };
             let t = 'a: { 92 };
         }
+
+        #[prelude_import] use future::*;
+
+        mod future {
+            #[lang = "future_trait"]
+            pub trait Future { type Output; }
+        }
         "#,
         expect![[r#"
-            10..130 '{     ...2 }; }': ()
-            20..21 'x': i32
-            24..37 'unsafe { 92 }': i32
-            31..37 '{ 92 }': i32
-            33..35 '92': i32
-            47..48 'y': {unknown}
-            57..79 '{ asyn...wait }': {unknown}
-            59..77 'async ....await': {unknown}
-            65..71 '{ () }': ()
-            67..69 '()': ()
-            89..90 'z': {unknown}
-            93..103 'try { () }': {unknown}
-            97..103 '{ () }': ()
-            99..101 '()': ()
-            113..114 't': i32
-            121..127 '{ 92 }': i32
-            123..125 '92': i32
+            16..136 '{     ...2 }; }': ()
+            26..27 'x': i32
+            30..43 'unsafe { 92 }': i32
+            37..43 '{ 92 }': i32
+            39..41 '92': i32
+            53..54 'y': impl Future<Output = ()>
+            57..85 'async ...wait }': impl Future<Output = ()>
+            63..85 '{ asyn...wait }': ()
+            65..77 'async { () }': impl Future<Output = ()>
+            65..83 'async ....await': ()
+            71..77 '{ () }': ()
+            73..75 '()': ()
+            95..96 'z': {unknown}
+            99..109 'try { () }': {unknown}
+            103..109 '{ () }': ()
+            105..107 '()': ()
+            119..120 't': i32
+            127..133 '{ 92 }': i32
+            129..131 '92': i32
         "#]],
     )
 }

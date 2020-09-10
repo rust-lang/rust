@@ -239,7 +239,10 @@ impl ExprCollector<'_> {
                     None => self.missing_expr(),
                 },
                 // FIXME: we need to record these effects somewhere...
-                ast::Effect::Async(_) => self.collect_block_opt(e.block_expr()),
+                ast::Effect::Async(_) => {
+                    let body = self.collect_block_opt(e.block_expr());
+                    self.alloc_expr(Expr::Async { body }, syntax_ptr)
+                }
             },
             ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {

@@ -1283,6 +1283,8 @@ impl Type {
     /// Checks that particular type `ty` implements `std::future::Future`.
     /// This function is used in `.await` syntax completion.
     pub fn impls_future(&self, db: &dyn HirDatabase) -> bool {
+        // No special case for the type of async block, since Chalk can figure it out.
+
         let krate = self.krate;
 
         let std_future_trait =

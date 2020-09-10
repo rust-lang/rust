@@ -17,8 +17,8 @@ use crate::{
     autoderef, method_resolution, op,
     traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    ApplicationTy, Binders, CallableDefId, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
-    TraitRef, Ty, TypeCtor,
+    ApplicationTy, Binders, CallableDefId, InferTy, IntTy, Mutability, Obligation, OpaqueTyId,
+    Rawness, Substs, TraitRef, Ty, TypeCtor,
 };
 
 use super::{
@@ -145,6 +145,13 @@ impl<'a> InferenceContext<'a> {
                 let _inner = self.infer_expr(*body, expected);
                 // FIXME should be std::result::Result<{inner}, _>
                 Ty::Unknown
+            }
+            Expr::Async { body } => {
+                // Use the first type parameter as the output type of future.
+                // existenail type AsyncBlockImplTrait<InnerType>: Future<Output = InnerType>
+                let inner_ty = self.infer_expr(*body, &Expectation::none());
+                let opaque_ty_id = OpaqueTyId::AsyncBlockTypeImplTrait(self.owner, *body);
+                Ty::apply_one(TypeCtor::OpaqueType(opaque_ty_id), inner_ty)
             }
             Expr::Loop { body, label } => {
                 self.breakables.push(BreakableContext {

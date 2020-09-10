@@ -510,6 +510,28 @@ pub mod future {
             expect![[r#"
                 kw await expr.await
             "#]],
+        );
+
+        check(
+            r#"
+//- /main.rs
+use std::future::*;
+fn foo() {
+    let a = async {};
+    a.<|>
+}
+
+//- /std/lib.rs
+pub mod future {
+    #[lang = "future_trait"]
+    pub trait Future {
+        type Output;
+    }
+}
+"#,
+            expect![[r#"
+                kw await expr.await
+            "#]],
         )
     }
 

@@ -86,6 +86,46 @@ mod future {
 }
 
 #[test]
+fn infer_async_block() {
+    check_types(
+        r#"
+//- /main.rs crate:main deps:core
+async fn test() {
+    let a = async { 42 };
+    a;
+//  ^ impl Future<Output = i32>
+    let x = a.await;
+    x;
+//  ^ i32
+    let b = async {}.await;
+    b;
+//  ^ ()
+    let c = async {
+        let y = Option::None;
+        y
+    //  ^ Option<u64>
+    };
+    let _: Option<u64> = c.await;
+    c;
+//  ^ impl Future<Output = Option<u64>>
+}
+
+enum Option<T> { None, Some(T) }
+
+//- /core.rs crate:core
+#[prelude_import] use future::*;
+mod future {
+    #[lang = "future_trait"]
+    trait Future {
+        type Output;
+    }
+}
+
+"#,
+    );
+}
+
+#[test]
 fn infer_try() {
     check_types(
         r#"
