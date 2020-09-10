@@ -19,6 +19,17 @@ if (${LLVM_VERSION_MAJOR} LESS 8)
         opt
     )
 else()
+# on windows `PLUGIN_TOOL` doesn't link against LLVM.dll
+if ((WIN32 OR CYGWIN) AND LLVM_LINK_LLVM_DYLIB)
+    add_llvm_library( LLVMEnzyme-${LLVM_VERSION_MAJOR}
+        ${ENZYME_SRC}
+        MODULE
+        DEPENDS
+        intrinsics_gen
+	LINK_COMPONENTS
+	LLVM
+    )
+else()
     add_llvm_library( LLVMEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC}
         MODULE
@@ -27,5 +38,5 @@ else()
         PLUGIN_TOOL
         opt
     )
-
+endif()
 endif()
