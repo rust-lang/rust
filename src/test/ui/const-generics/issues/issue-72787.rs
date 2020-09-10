@@ -22,7 +22,6 @@ where
     IsLessOrEqual<I, 8>: True,
 //[min]~^ Error type annotations needed [E0283]
 //[min]~| Error type annotations needed [E0283]
-    // Condition<{ 8 - I <= 8 - J }>: True,
     IsLessOrEqual<J, 8>: True,
     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
 //[full]~^ constant expression depends on a generic parameter

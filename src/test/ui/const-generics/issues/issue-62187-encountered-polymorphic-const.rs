@@ -14,5 +14,5 @@ impl<const L: usize> BitLen for [u8; L] {
 }
 
 fn main() {
-    let foo = <[u8; 2]>::BIT_LEN; //~ WARN unused variable
+    let _foo = <[u8; 2]>::BIT_LEN;
 }
