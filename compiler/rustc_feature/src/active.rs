@@ -585,6 +585,9 @@ declare_features! (
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
 
+    /// Allows non trivial generic constants which have to be manually propageted upwards.
+    (active, const_evaluatable_checked, "1.48.0", Some(76560), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -600,6 +603,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_generics,
     sym::let_chains,
     sym::raw_dylib,
+    sym::const_evaluatable_checked,
     sym::const_trait_impl,
     sym::const_trait_bound_opt_out,
     sym::lazy_normalization_consts,
@@ -607,6 +611,6 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
 ];
 
 /// Some features are not allowed to be used together at the same time, if
-/// the two are present, produce an error
+/// the two are present, produce an error.
 pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] =
     &[(sym::const_generics, sym::min_const_generics)];

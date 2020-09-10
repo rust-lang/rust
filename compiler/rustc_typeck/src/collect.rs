@@ -37,11 +37,12 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
 use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
+use rustc_middle::ty::{TypeFoldable, TypeVisitor};
 use rustc_session::config::SanitizerSet;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
@@ -49,6 +50,8 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
+
+use smallvec::SmallVec;
 
 mod type_of;
 
@@ -1672,8 +1675,44 @@ fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicate
                 .alloc_from_iter(result.predicates.iter().chain(inferred_outlives).copied());
         }
     }
+
+    if tcx.features().const_evaluatable_checked {
+        let const_evaluatable = const_evaluatable_predicates_of(tcx, def_id, &result);
+        result.predicates =
+            tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(const_evaluatable));
+    }
+
     debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
     result
+}
+
+pub fn const_evaluatable_predicates_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    predicates: &ty::GenericPredicates<'tcx>,
+) -> impl Iterator<Item = (ty::Predicate<'tcx>, Span)> {
+    #[derive(Default)]
+    struct ConstCollector<'tcx> {
+        ct: SmallVec<[(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>); 4]>,
+    }
+
+    impl<'tcx> TypeVisitor<'tcx> for ConstCollector<'tcx> {
+        fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> bool {
+            if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
+                self.ct.push((def, substs));
+            }
+            false
+        }
+    }
+
+    let mut collector = ConstCollector::default();
+    for (pred, _span) in predicates.predicates.iter() {
+        pred.visit_with(&mut collector);
+    }
+    warn!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.ct);
+    collector.ct.into_iter().map(move |(def_id, subst)| {
+        (ty::PredicateAtom::ConstEvaluatable(def_id, subst).to_predicate(tcx), DUMMY_SP)
+    })
 }
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
