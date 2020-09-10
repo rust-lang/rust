@@ -2289,12 +2289,15 @@ impl FnRetTy {
 /// Module declaration.
 ///
 /// E.g., `mod foo;` or `mod foo { .. }`.
-#[derive(Clone, Encodable, Decodable, Debug, Default)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Mod {
     /// A span from the first token past `{` to the last token until `}`.
     /// For `mod foo;`, the inner span ranges from the first token
     /// to the last token in the external file.
     pub inner: Span,
+    /// `unsafe` keyword accepted syntactically for macro DSLs, but not
+    /// semantically by Rust.
+    pub unsafety: Unsafe,
     pub items: Vec<P<Item>>,
     /// `true` for `mod foo { .. }`; `false` for `mod foo;`.
     pub inline: bool,
@@ -2302,9 +2305,12 @@ pub struct Mod {
 
 /// Foreign module declaration.
 ///
-/// E.g., `extern { .. }` or `extern C { .. }`.
+/// E.g., `extern { .. }` or `extern "C" { .. }`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct ForeignMod {
+    /// `unsafe` keyword accepted syntactically for macro DSLs, but not
+    /// semantically by Rust.
+    pub unsafety: Unsafe,
     pub abi: Option<StrLit>,
     pub items: Vec<P<ForeignItem>>,
 }

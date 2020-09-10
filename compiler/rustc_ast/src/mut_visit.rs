@@ -490,7 +490,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
 }
 
 pub fn noop_visit_foreign_mod<T: MutVisitor>(foreign_mod: &mut ForeignMod, vis: &mut T) {
-    let ForeignMod { abi: _, items } = foreign_mod;
+    let ForeignMod { unsafety: _, abi: _, items } = foreign_mod;
     items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
 }
 
@@ -970,7 +970,8 @@ pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
     vis.visit_asyncness(asyncness);
 }
 
-pub fn noop_visit_mod<T: MutVisitor>(Mod { inner, items, inline: _ }: &mut Mod, vis: &mut T) {
+pub fn noop_visit_mod<T: MutVisitor>(module: &mut Mod, vis: &mut T) {
+    let Mod { inner, unsafety: _, items, inline: _ } = module;
     vis.visit_span(inner);
     items.flat_map_in_place(|item| vis.flat_map_item(item));
 }
@@ -990,7 +991,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
 
         let len = items.len();
         if len == 0 {
-            let module = Mod { inner: span, items: vec![], inline: true };
+            let module = Mod { inner: span, unsafety: Unsafe::No, items: vec![], inline: true };
             Crate { module, attrs: vec![], span, proc_macros }
         } else if len == 1 {
             let Item { attrs, span, kind, .. } = items.into_iter().next().unwrap().into_inner();
