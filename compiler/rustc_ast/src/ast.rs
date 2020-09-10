@@ -918,6 +918,7 @@ pub struct Stmt {
     pub id: NodeId,
     pub kind: StmtKind,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 impl Stmt {

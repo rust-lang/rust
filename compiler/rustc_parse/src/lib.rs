@@ -269,6 +269,13 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
             prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
         }
         Nonterminal::NtBlock(ref block) => block.tokens.clone(),
+        Nonterminal::NtStmt(ref stmt) => {
+            // FIXME: We currently only collect tokens for `:stmt`
+            // matchers in `macro_rules!` macros. When we start collecting
+            // tokens for attributes on statements, we will need to prepend
+            // attributes here
+            stmt.tokens.clone()
+        }
         Nonterminal::NtPat(ref pat) => pat.tokens.clone(),
         Nonterminal::NtTy(ref ty) => ty.tokens.clone(),
         Nonterminal::NtIdent(ident, is_raw) => {

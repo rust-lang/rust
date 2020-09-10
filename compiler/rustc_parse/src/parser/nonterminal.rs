@@ -119,10 +119,20 @@ impl<'a> Parser<'a> {
                 }
                 token::NtBlock(block)
             }
-            NonterminalKind::Stmt => match self.parse_stmt()? {
-                Some(s) => token::NtStmt(s),
-                None => return Err(self.struct_span_err(self.token.span, "expected a statement")),
-            },
+            NonterminalKind::Stmt => {
+                let (stmt, tokens) = self.collect_tokens(|this| this.parse_stmt())?;
+                match stmt {
+                    Some(mut s) => {
+                        if s.tokens.is_none() {
+                            s.tokens = Some(tokens);
+                        }
+                        token::NtStmt(s)
+                    }
+                    None => {
+                        return Err(self.struct_span_err(self.token.span, "expected a statement"));
+                    }
+                }
+            }
             NonterminalKind::Pat => {
                 let (mut pat, tokens) = self.collect_tokens(|this| this.parse_pat(None))?;
                 // We have have eaten an NtPat, which could already have tokens

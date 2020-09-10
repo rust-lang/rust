@@ -1286,12 +1286,15 @@ pub fn noop_filter_map_expr<T: MutVisitor>(mut e: P<Expr>, vis: &mut T) -> Optio
 }
 
 pub fn noop_flat_map_stmt<T: MutVisitor>(
-    Stmt { kind, mut span, mut id }: Stmt,
+    Stmt { kind, mut span, mut id, tokens }: Stmt,
     vis: &mut T,
 ) -> SmallVec<[Stmt; 1]> {
     vis.visit_id(&mut id);
     vis.visit_span(&mut span);
-    noop_flat_map_stmt_kind(kind, vis).into_iter().map(|kind| Stmt { id, kind, span }).collect()
+    noop_flat_map_stmt_kind(kind, vis)
+        .into_iter()
+        .map(|kind| Stmt { id, kind, span, tokens: tokens.clone() })
+        .collect()
 }
 
 pub fn noop_flat_map_stmt_kind<T: MutVisitor>(

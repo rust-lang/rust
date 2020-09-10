@@ -1396,10 +1396,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         // The placeholder expander gives ids to statements, so we avoid folding the id here.
-        let ast::Stmt { id, kind, span } = stmt;
+        let ast::Stmt { id, kind, span, tokens } = stmt;
         noop_flat_map_stmt_kind(kind, self)
             .into_iter()
-            .map(|kind| ast::Stmt { id, kind, span })
+            .map(|kind| ast::Stmt { id, kind, span, tokens: tokens.clone() })
             .collect()
     }
 
