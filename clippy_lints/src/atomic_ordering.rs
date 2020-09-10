@@ -22,18 +22,27 @@ declare_clippy_lint! {
     ///
     /// let x = AtomicU8::new(0);
     ///
+    /// // Bad: `Release` and `AcqRel` cannot be used for `load`.
     /// let _ = x.load(Ordering::Release);
     /// let _ = x.load(Ordering::AcqRel);
     ///
+    /// // Bad: `Acquire` and `AcqRel` cannot be used for `store`.
     /// x.store(1, Ordering::Acquire);
     /// x.store(2, Ordering::AcqRel);
     ///
+    /// // Bad: `Relaxed` cannot be used as a fence's ordering.
     /// atomic::fence(Ordering::Relaxed);
     /// atomic::compiler_fence(Ordering::Relaxed);
     ///
-    /// let _ = x.compare_exchange(1, 2, Ordering::Relaxed, Ordering::SeqCst);
-    /// let _ = x.compare_exchange_weak(2, 3, Ordering::SeqCst, Ordering::Release);
-    /// let _ = x.fetch_update(Ordering::AcqRel, Ordering::AcqRel, |val| Some(val + val));
+    /// // Bad: `Release` and `AcqRel` are both always invalid
+    /// // for the failure ordering (the last arg).
+    /// let _ = x.compare_exchange(1, 2, Ordering::SeqCst, Ordering::Release);
+    /// let _ = x.compare_exchange_weak(2, 3, Ordering::AcqRel, Ordering::AcqRel);
+    ///
+    /// // Bad: The failure ordering is not allowed to be
+    /// // stronger than the success order, and `SeqCst` is
+    /// // stronger than `Relaxed`.
+    /// let _ = x.fetch_update(Ordering::Relaxed, Ordering::SeqCst, |val| Some(val + val));
     /// ```
     pub INVALID_ATOMIC_ORDERING,
     correctness,
