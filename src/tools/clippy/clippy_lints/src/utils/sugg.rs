@@ -132,7 +132,11 @@ impl<'a> Sugg<'a> {
     pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
         use rustc_ast::ast::RangeLimits;
 
-        let snippet = snippet(cx, expr.span, default);
+        let snippet = if expr.span.from_expansion() {
+            snippet_with_macro_callsite(cx, expr.span, default)
+        } else {
+            snippet(cx, expr.span, default)
+        };
 
         match expr.kind {
             ast::ExprKind::AddrOf(..)

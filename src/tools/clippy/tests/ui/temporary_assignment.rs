@@ -54,11 +54,6 @@ fn main() {
     ArrayStruct { array: [0] }.array[0] = 1;
     (0, 0).0 = 1;
 
-    A.0 = 2;
-    B.field = 2;
-    C.structure.field = 2;
-    D.array[0] = 2;
-
     // no error
     s.field = 1;
     t.0 = 1;

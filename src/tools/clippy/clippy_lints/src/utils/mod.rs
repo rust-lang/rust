@@ -19,6 +19,7 @@ pub mod paths;
 pub mod ptr;
 pub mod sugg;
 pub mod usage;
+
 pub use self::attrs::*;
 pub use self::diagnostics::*;
 pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
@@ -108,6 +109,7 @@ pub fn in_macro(span: Span) -> bool {
         false
     }
 }
+
 // If the snippet is empty, it's an attribute that was inserted during macro
 // expansion and we want to ignore those, because they could come from external
 // sources that the user has no control over.
@@ -571,7 +573,7 @@ pub fn snippet_block<'a, T: LintContext>(
 ) -> Cow<'a, str> {
     let snip = snippet(cx, span, default);
     let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
-    trim_multiline(snip, true, indent)
+    reindent_multiline(snip, true, indent)
 }
 
 /// Same as `snippet_block`, but adapts the applicability level by the rules of
@@ -585,7 +587,7 @@ pub fn snippet_block_with_applicability<'a, T: LintContext>(
 ) -> Cow<'a, str> {
     let snip = snippet_with_applicability(cx, span, default, applicability);
     let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
-    trim_multiline(snip, true, indent)
+    reindent_multiline(snip, true, indent)
 }
 
 /// Returns a new Span that extends the original Span to the first non-whitespace char of the first
@@ -661,16 +663,16 @@ pub fn expr_block<'a, T: LintContext>(
     }
 }
 
-/// Trim indentation from a multiline string with possibility of ignoring the
-/// first line.
-fn trim_multiline(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>) -> Cow<'_, str> {
-    let s_space = trim_multiline_inner(s, ignore_first, indent, ' ');
-    let s_tab = trim_multiline_inner(s_space, ignore_first, indent, '\t');
-    trim_multiline_inner(s_tab, ignore_first, indent, ' ')
+/// Reindent a multiline string with possibility of ignoring the first line.
+#[allow(clippy::needless_pass_by_value)]
+pub fn reindent_multiline(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>) -> Cow<'_, str> {
+    let s_space = reindent_multiline_inner(&s, ignore_first, indent, ' ');
+    let s_tab = reindent_multiline_inner(&s_space, ignore_first, indent, '\t');
+    reindent_multiline_inner(&s_tab, ignore_first, indent, ' ').into()
 }
 
-fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>, ch: char) -> Cow<'_, str> {
-    let mut x = s
+fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, ch: char) -> String {
+    let x = s
         .lines()
         .skip(ignore_first as usize)
         .filter_map(|l| {
@@ -683,26 +685,20 @@ fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, indent: Option<usiz
         })
         .min()
         .unwrap_or(0);
-    if let Some(indent) = indent {
-        x = x.saturating_sub(indent);
-    }
-    if x > 0 {
-        Cow::Owned(
-            s.lines()
-                .enumerate()
-                .map(|(i, l)| {
-                    if (ignore_first && i == 0) || l.is_empty() {
-                        l
-                    } else {
-                        l.split_at(x).1
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join("\n"),
-        )
-    } else {
-        s
-    }
+    let indent = indent.unwrap_or(0);
+    s.lines()
+        .enumerate()
+        .map(|(i, l)| {
+            if (ignore_first && i == 0) || l.is_empty() {
+                l.to_owned()
+            } else if x > indent {
+                l.split_at(x - indent).1.to_owned()
+            } else {
+                " ".repeat(indent - x) + l
+            }
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
 }
 
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
@@ -899,7 +895,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_
             return match res {
                 def::Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
                 // FIXME: check the constness of the arguments, see https://github.com/rust-lang/rust-clippy/pull/5682#issuecomment-638681210
-                def::Res::Def(DefKind::Fn, def_id) if has_no_arguments(cx, def_id) => {
+                def::Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) if has_no_arguments(cx, def_id) => {
                     const_eval::is_const_fn(cx.tcx, def_id)
                 },
                 def::Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
@@ -1432,7 +1428,7 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
             } else {
                 unreachable!()
             }
-        }
+        },
         _ => false,
     };
 
@@ -1474,26 +1470,26 @@ macro_rules! unwrap_cargo_metadata {
 
 #[cfg(test)]
 mod test {
-    use super::{trim_multiline, without_block_comments};
+    use super::{reindent_multiline, without_block_comments};
 
     #[test]
-    fn test_trim_multiline_single_line() {
-        assert_eq!("", trim_multiline("".into(), false, None));
-        assert_eq!("...", trim_multiline("...".into(), false, None));
-        assert_eq!("...", trim_multiline("    ...".into(), false, None));
-        assert_eq!("...", trim_multiline("\t...".into(), false, None));
-        assert_eq!("...", trim_multiline("\t\t...".into(), false, None));
+    fn test_reindent_multiline_single_line() {
+        assert_eq!("", reindent_multiline("".into(), false, None));
+        assert_eq!("...", reindent_multiline("...".into(), false, None));
+        assert_eq!("...", reindent_multiline("    ...".into(), false, None));
+        assert_eq!("...", reindent_multiline("\t...".into(), false, None));
+        assert_eq!("...", reindent_multiline("\t\t...".into(), false, None));
     }
 
     #[test]
     #[rustfmt::skip]
-    fn test_trim_multiline_block() {
+    fn test_reindent_multiline_block() {
         assert_eq!("\
     if x {
         y
     } else {
         z
-    }", trim_multiline("    if x {
+    }", reindent_multiline("    if x {
             y
         } else {
             z
@@ -1503,7 +1499,7 @@ mod test {
     \ty
     } else {
     \tz
-    }", trim_multiline("    if x {
+    }", reindent_multiline("    if x {
         \ty
         } else {
         \tz
@@ -1512,19 +1508,35 @@ mod test {
 
     #[test]
     #[rustfmt::skip]
-    fn test_trim_multiline_empty_line() {
+    fn test_reindent_multiline_empty_line() {
         assert_eq!("\
     if x {
         y
 
     } else {
         z
-    }", trim_multiline("    if x {
+    }", reindent_multiline("    if x {
             y
 
         } else {
             z
         }".into(), false, None));
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn test_reindent_multiline_lines_deeper() {
+        assert_eq!("\
+        if x {
+            y
+        } else {
+            z
+        }", reindent_multiline("\
+    if x {
+        y
+    } else {
+        z
+    }".into(), true, Some(8)));
     }
 
     #[test]

@@ -58,12 +58,6 @@ fn or_fun_call() {
     let without_default = Some(Foo);
     without_default.unwrap_or(Foo::new());
 
-    let mut map = HashMap::<u64, String>::new();
-    map.entry(42).or_insert(String::new());
-
-    let mut btree = BTreeMap::<u64, String>::new();
-    btree.entry(42).or_insert(String::new());
-
     let stringy = Some(String::from(""));
     let _ = stringy.unwrap_or("".to_owned());
 
@@ -122,6 +116,17 @@ pub fn skip_const_fn_with_no_args() {
         Some(42)
     }
     let _ = None.or(foo());
+
+    // See issue #5693.
+    let mut map = std::collections::HashMap::new();
+    map.insert(1, vec![1]);
+    map.entry(1).or_insert(vec![]);
+
+    let mut map = HashMap::<u64, String>::new();
+    map.entry(42).or_insert(String::new());
+
+    let mut btree = BTreeMap::<u64, String>::new();
+    btree.entry(42).or_insert(String::new());
 }
 
 fn main() {}
