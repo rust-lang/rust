@@ -1467,12 +1467,14 @@ static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
 }
 };
 
+#if defined(__FLOAT128__) || defined(__SIZEOF_FLOAT128__)
 template<>
 struct Meta<__float128> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
     TA.updateAnalysis(val, ValueData(DataType(Type::getFP128Ty (call.getContext()))).Only(-1), &call);
 }
 };
+#endif
 
 template<>
 struct Meta<double*> {
@@ -1501,6 +1503,7 @@ static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
 }
 };
 
+#if defined(__FLOAT128__) || defined(__SIZEOF_FLOAT128__)
 template<>
 struct Meta<__float128*> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
@@ -1509,7 +1512,7 @@ static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
     TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
-
+#endif
 
 template<>
 struct Meta<void> {
