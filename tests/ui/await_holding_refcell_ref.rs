@@ -64,7 +64,7 @@ fn main() {
     let m = RefCell::new(100);
     good(&m);
     bad(&m);
-    bad_mut(&m);    
+    bad_mut(&m);
     also_bad(&m);
     not_good(&m);
     block_bad(&m);
