@@ -21,11 +21,8 @@ declare_clippy_lint! {
     "assignments to temporaries"
 }
 
-fn is_temporary(_cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match &expr.kind {
-        ExprKind::Struct(..) | ExprKind::Tup(..) => true,
-        _ => false,
-    }
+fn is_temporary(expr: &Expr<'_>) -> bool {
+    matches!(&expr.kind, ExprKind::Struct(..) | ExprKind::Tup(..))
 }
 
 declare_lint_pass!(TemporaryAssignment => [TEMPORARY_ASSIGNMENT]);
@@ -37,7 +34,7 @@ impl<'tcx> LateLintPass<'tcx> for TemporaryAssignment {
             while let ExprKind::Field(f, _) | ExprKind::Index(f, _) = &base.kind {
                 base = f;
             }
-            if is_temporary(cx, base) && !is_adjusted(cx, base) {
+            if is_temporary(base) && !is_adjusted(cx, base) {
                 span_lint(cx, TEMPORARY_ASSIGNMENT, expr.span, "assignment to temporary");
             }
         }

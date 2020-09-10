@@ -11,8 +11,8 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
     BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, QPath, Stmt, StmtKind, TraitFn,
-    TraitItem, TraitItemKind, TyKind, UnOp,
+    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, Node, QPath, Stmt, StmtKind,
+    TraitFn, TraitItem, TraitItemKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -31,12 +31,13 @@ use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_type_diagnostic_item,
     last_path_segment, match_def_path, match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral,
-    qpath_res, sext, snippet, snippet_block_with_applicability, snippet_opt, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
+    qpath_res, reindent_multiline, sext, snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.
+    /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// **Why is this bad?** `Vec` already keeps its contents in a separate area on
     /// the heap. So if you `Box` it, you just add another level of indirection
@@ -65,6 +66,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `Vec<Box<T>>` where T: Sized anywhere in the code.
+    /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// **Why is this bad?** `Vec` already keeps its contents in a separate area on
     /// the heap. So if you `Box` its contents, you just add another level of indirection.
@@ -167,6 +169,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `&Box<T>` anywhere in the code.
+    /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// **Why is this bad?** Any `&Box<T>` can also be a `&T`, which is more
     /// general.
@@ -802,6 +805,45 @@ impl<'tcx> LateLintPass<'tcx> for UnitArg {
     }
 }
 
+fn fmt_stmts_and_call(
+    cx: &LateContext<'_>,
+    call_expr: &Expr<'_>,
+    call_snippet: &str,
+    args_snippets: &[impl AsRef<str>],
+    non_empty_block_args_snippets: &[impl AsRef<str>],
+) -> String {
+    let call_expr_indent = indent_of(cx, call_expr.span).unwrap_or(0);
+    let call_snippet_with_replacements = args_snippets
+        .iter()
+        .fold(call_snippet.to_owned(), |acc, arg| acc.replacen(arg.as_ref(), "()", 1));
+
+    let mut stmts_and_call = non_empty_block_args_snippets
+        .iter()
+        .map(|it| it.as_ref().to_owned())
+        .collect::<Vec<_>>();
+    stmts_and_call.push(call_snippet_with_replacements);
+    stmts_and_call = stmts_and_call
+        .into_iter()
+        .map(|v| reindent_multiline(v.into(), true, Some(call_expr_indent)).into_owned())
+        .collect();
+
+    let mut stmts_and_call_snippet = stmts_and_call.join(&format!("{}{}", ";\n", " ".repeat(call_expr_indent)));
+    // expr is not in a block statement or result expression position, wrap in a block
+    let parent_node = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(call_expr.hir_id));
+    if !matches!(parent_node, Some(Node::Block(_))) && !matches!(parent_node, Some(Node::Stmt(_))) {
+        let block_indent = call_expr_indent + 4;
+        stmts_and_call_snippet =
+            reindent_multiline(stmts_and_call_snippet.into(), true, Some(block_indent)).into_owned();
+        stmts_and_call_snippet = format!(
+            "{{\n{}{}\n{}}}",
+            " ".repeat(block_indent),
+            &stmts_and_call_snippet,
+            " ".repeat(call_expr_indent)
+        );
+    }
+    stmts_and_call_snippet
+}
+
 fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Expr<'_>]) {
     let mut applicability = Applicability::MachineApplicable;
     let (singular, plural) = if args_to_recover.len() > 1 {
@@ -844,43 +886,52 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                         Applicability::MaybeIncorrect,
                     );
                     or = "or ";
+                    applicability = Applicability::MaybeIncorrect;
                 });
-            let sugg = args_to_recover
+
+            let arg_snippets: Vec<String> = args_to_recover
+                .iter()
+                .filter_map(|arg| snippet_opt(cx, arg.span))
+                .collect();
+            let arg_snippets_without_empty_blocks: Vec<String> = args_to_recover
                 .iter()
                 .filter(|arg| !is_empty_block(arg))
-                .enumerate()
-                .map(|(i, arg)| {
-                    let indent = if i == 0 {
-                        0
-                    } else {
-                        indent_of(cx, expr.span).unwrap_or(0)
-                    };
-                    format!(
-                        "{}{};",
-                        " ".repeat(indent),
-                        snippet_block_with_applicability(cx, arg.span, "..", Some(expr.span), &mut applicability)
-                    )
-                })
-                .collect::<Vec<String>>();
-            let mut and = "";
-            if !sugg.is_empty() {
-                let plural = if sugg.len() > 1 { "s" } else { "" };
-                db.span_suggestion(
-                    expr.span.with_hi(expr.span.lo()),
-                    &format!("{}move the expression{} in front of the call...", or, plural),
-                    format!("{}\n", sugg.join("\n")),
-                    applicability,
+                .filter_map(|arg| snippet_opt(cx, arg.span))
+                .collect();
+
+            if let Some(call_snippet) = snippet_opt(cx, expr.span) {
+                let sugg = fmt_stmts_and_call(
+                    cx,
+                    expr,
+                    &call_snippet,
+                    &arg_snippets,
+                    &arg_snippets_without_empty_blocks,
                 );
-                and = "...and "
+
+                if arg_snippets_without_empty_blocks.is_empty() {
+                    db.multipart_suggestion(
+                        &format!("use {}unit literal{} instead", singular, plural),
+                        args_to_recover
+                            .iter()
+                            .map(|arg| (arg.span, "()".to_string()))
+                            .collect::<Vec<_>>(),
+                        applicability,
+                    );
+                } else {
+                    let plural = arg_snippets_without_empty_blocks.len() > 1;
+                    let empty_or_s = if plural { "s" } else { "" };
+                    let it_or_them = if plural { "them" } else { "it" };
+                    db.span_suggestion(
+                        expr.span,
+                        &format!(
+                            "{}move the expression{} in front of the call and replace {} with the unit literal `()`",
+                            or, empty_or_s, it_or_them
+                        ),
+                        sugg,
+                        applicability,
+                    );
+                }
             }
-            db.multipart_suggestion(
-                &format!("{}use {}unit literal{} instead", and, singular, plural),
-                args_to_recover
-                    .iter()
-                    .map(|arg| (arg.span, "()".to_string()))
-                    .collect::<Vec<_>>(),
-                applicability,
-            );
         },
     );
 }
@@ -2055,6 +2106,7 @@ impl PartialOrd for FullInt {
         })
     }
 }
+
 impl Ord for FullInt {
     #[must_use]
     fn cmp(&self, other: &Self) -> Ordering {
