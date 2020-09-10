@@ -1014,7 +1014,6 @@ impl Step for Src {
         let dst_src = image.join("lib/rustlib/src/rust");
         t!(fs::create_dir_all(&dst_src));
 
-        let src_files = ["Cargo.lock"];
         // This is the reduced set of paths which will become the rust-src component
         // (essentially libstd and all of its path dependencies).
         copy_src_dirs(
@@ -1028,9 +1027,6 @@ impl Step for Src {
             ],
             &dst_src,
         );
-        for file in src_files.iter() {
-            builder.copy(&builder.src.join(file), &dst_src.join(file));
-        }
 
         // Create source tarball in rust-installer format
         let mut cmd = rust_installer(builder);
