@@ -2524,6 +2524,14 @@ impl Step for RustDev {
     fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let target = self.target;
 
+        /* run only if llvm-config isn't used */
+        if let Some(config) = builder.config.target_config.get(&target) {
+            if let Some(ref _s) = config.llvm_config {
+                builder.info(&format!("Skipping RustDev ({}): external LLVM", target));
+                return None;
+            }
+        }
+
         builder.info(&format!("Dist RustDev ({})", target));
         let _time = timeit(builder);
         let src = builder.src.join("src/llvm-project/llvm");
@@ -2536,6 +2544,7 @@ impl Step for RustDev {
         // Prepare the image directory
         let dst_bindir = image.join("bin");
         t!(fs::create_dir_all(&dst_bindir));
+
         let exe = builder.llvm_out(target).join("bin").join(exe("llvm-config", target));
         builder.install(&exe, &dst_bindir, 0o755);
         builder.install(&builder.llvm_filecheck(target), &dst_bindir, 0o755);
