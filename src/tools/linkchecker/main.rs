@@ -42,6 +42,10 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
             "#method.get_unchecked_mut",
         ],
     ),
+    // FIXME(#74672): "Read more" is broken
+    ("std/primitive.usize.html", &["#tymethod.from_u64"]),
+    ("std/primitive.u32.html", &["#tymethod.from_u64"]),
+    ("std/primitive.u64.html", &["#tymethod.from_u64"]),
     // These try to link to std::collections, but are defined in alloc
     // https://github.com/rust-lang/rust/issues/74481
     ("std/collections/btree_map/struct.BTreeMap.html", &["#insert-and-complex-keys"]),
@@ -142,6 +146,12 @@ fn is_exception(file: &Path, link: &str) -> bool {
     if let Some(entry) = LINKCHECK_EXCEPTIONS.iter().find(|&(f, _)| file.ends_with(f)) {
         entry.1.contains(&link)
     } else {
+        // FIXME(#63351): Concat trait in alloc/slice reexported in primitive page
+        if file.ends_with("std/primitive.slice.html") {
+            if link.ends_with("std/primitive.slice.html") {
+                return true;
+            }
+        }
         false
     }
 }
