@@ -269,7 +269,27 @@ pub(super) fn mir_abstract_const<'tcx>(
     }
 }
 
-pub fn try_unify<'tcx>(tcx: TyCtxt<'tcx>, a: AbstractConst<'tcx>, b: AbstractConst<'tcx>) -> bool {
+pub(super) fn try_unify_abstract_consts<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ((a, a_substs), (b, b_substs)): (
+        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+    ),
+) -> bool {
+    if let Some(a) = AbstractConst::new(tcx, a, a_substs) {
+        if let Some(b) = AbstractConst::new(tcx, b, b_substs) {
+            return try_unify(tcx, a, b);
+        }
+    }
+
+    false
+}
+
+pub(super) fn try_unify<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    a: AbstractConst<'tcx>,
+    b: AbstractConst<'tcx>,
+) -> bool {
     match (a.root(), b.root()) {
         (Node::Leaf(a_ct), Node::Leaf(b_ct)) => {
             let a_ct = a_ct.subst(tcx, a.substs);

@@ -263,6 +263,16 @@ rustc_queries! {
             }
         }
 
+        query try_unify_abstract_consts(key: (
+            (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+            (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)
+        )) -> bool {
+            desc {
+                |tcx| "trying to unify the generic constants {} and {}",
+                tcx.def_path_str(key.0.0.did), tcx.def_path_str(key.1.0.did)
+            }
+        }
+
         query mir_drops_elaborated_and_const_checked(
             key: ty::WithOptConstParam<LocalDefId>
         ) -> &'tcx Steal<mir::Body<'tcx>> {
