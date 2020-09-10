@@ -431,7 +431,7 @@
 # supported platforms. The LLD from the bootstrap distribution will be used
 # and not the LLD compiled during the bootstrap.
 #
-# LLD will not be used if we're cross linking or running tests.
+# LLD will not be used if we're cross linking.
 #
 # Explicitly setting the linker for a target will override this option when targeting MSVC.
 #use-lld = false

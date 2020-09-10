@@ -844,7 +844,7 @@ impl Build {
     }
 
     /// Returns the path to the linker for the given target if it needs to be overridden.
-    fn linker(&self, target: TargetSelection, can_use_lld: bool) -> Option<&Path> {
+    fn linker(&self, target: TargetSelection) -> Option<&Path> {
         if let Some(linker) = self.config.target_config.get(&target).and_then(|c| c.linker.as_ref())
         {
             Some(linker)
@@ -857,16 +857,17 @@ impl Build {
             && !target.contains("msvc")
         {
             Some(self.cc(target))
-        } else if target.contains("msvc")
-            && can_use_lld
-            && self.config.use_lld
-            && self.build == target
-        {
-            // Currently we support using LLD directly via `rust.use_lld` option only with MSVC
+        } else if self.config.use_lld && !self.is_fuse_ld_lld(target) && self.build == target {
             Some(&self.initial_lld)
         } else {
             None
         }
+    }
+
+    // LLD is used through `-fuse-ld=lld` rather than directly.
+    // Only MSVC targets use LLD directly at the moment.
+    fn is_fuse_ld_lld(&self, target: TargetSelection) -> bool {
+        self.config.use_lld && !target.contains("msvc")
     }
 
     /// Returns if this target should statically link the C runtime, if specified
