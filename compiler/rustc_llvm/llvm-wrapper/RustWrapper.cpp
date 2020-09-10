@@ -1,4 +1,4 @@
-#include "rustllvm.h"
+#include "LLVMWrapper.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"

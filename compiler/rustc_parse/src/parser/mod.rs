@@ -822,15 +822,15 @@ impl<'a> Parser<'a> {
         }
 
         let frame = &self.token_cursor.frame;
-        match frame.tree_cursor.look_ahead(dist - 1) {
+        looker(&match frame.tree_cursor.look_ahead(dist - 1) {
             Some(tree) => match tree {
-                TokenTree::Token(token) => looker(token),
+                TokenTree::Token(token) => token,
                 TokenTree::Delimited(dspan, delim, _) => {
-                    looker(&Token::new(token::OpenDelim(delim.clone()), dspan.open))
+                    Token::new(token::OpenDelim(delim), dspan.open)
                 }
             },
-            None => looker(&Token::new(token::CloseDelim(frame.delim), frame.span.close)),
-        }
+            None => Token::new(token::CloseDelim(frame.delim), frame.span.close),
+        })
     }
 
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.

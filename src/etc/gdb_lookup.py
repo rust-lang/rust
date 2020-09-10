@@ -69,9 +69,9 @@ def lookup(valobj):
         else:
             return StdOldHashMapProvider(valobj)
     if rust_type == RustType.STD_HASH_SET:
-        hash_map = valobj["map"]
+        hash_map = valobj[valobj.type.fields()[0]]
         if is_hashbrown_hashmap(hash_map):
-            return StdHashMapProvider(hash_map, show_values=False)
+            return StdHashMapProvider(valobj, show_values=False)
         else:
             return StdOldHashMapProvider(hash_map, show_values=False)
 

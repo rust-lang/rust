@@ -1,4 +1,4 @@
-#include "rustllvm.h"
+#include "LLVMWrapper.h"
 
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/ArchiveWriter.h"

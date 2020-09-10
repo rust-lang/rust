@@ -3,7 +3,7 @@
 #include <vector>
 #include <set>
 
-#include "rustllvm.h"
+#include "LLVMWrapper.h"
 
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"

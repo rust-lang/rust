@@ -1,6 +1,6 @@
 #include "llvm/Linker/Linker.h"
 
-#include "rustllvm.h"
+#include "LLVMWrapper.h"
 
 using namespace llvm;
 
