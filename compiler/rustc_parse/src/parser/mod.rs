@@ -15,7 +15,7 @@ pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
-use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AttrStyle, AttrVec, Const, CrateSugar, Extern, Unsafe};
 use rustc_ast::{Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
@@ -118,7 +118,7 @@ impl<'a> Drop for Parser<'a> {
 struct TokenCursor {
     frame: TokenCursorFrame,
     stack: Vec<TokenCursorFrame>,
-    cur_token: Option<TreeAndJoint>,
+    cur_token: Option<TreeAndSpacing>,
     collecting: Option<Collecting>,
 }
 
@@ -136,7 +136,7 @@ struct TokenCursorFrame {
 struct Collecting {
     /// Holds the current tokens captured during the most
     /// recent call to `collect_tokens`
-    buf: Vec<TreeAndJoint>,
+    buf: Vec<TreeAndSpacing>,
     /// The depth of the `TokenCursor` stack at the time
     /// collection was started. When we encounter a `TokenTree::Delimited`,
     /// we want to record the `TokenTree::Delimited` itself,
@@ -167,7 +167,7 @@ impl TokenCursor {
             let tree = if !self.frame.open_delim {
                 self.frame.open_delim = true;
                 TokenTree::open_tt(self.frame.span, self.frame.delim).into()
-            } else if let Some(tree) = self.frame.tree_cursor.next_with_joint() {
+            } else if let Some(tree) = self.frame.tree_cursor.next_with_spacing() {
                 tree
             } else if !self.frame.close_delim {
                 self.frame.close_delim = true;
@@ -1154,7 +1154,7 @@ impl<'a> Parser<'a> {
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
     ) -> PResult<'a, (R, TokenStream)> {
         // Record all tokens we parse when parsing this item.
-        let tokens: Vec<TreeAndJoint> = self.token_cursor.cur_token.clone().into_iter().collect();
+        let tokens: Vec<TreeAndSpacing> = self.token_cursor.cur_token.clone().into_iter().collect();
         debug!("collect_tokens: starting with {:?}", tokens);
 
         // We need special handling for the case where `collect_tokens` is called
