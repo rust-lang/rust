@@ -121,23 +121,23 @@ on the pull request with an `r+`. It will look something like this:
 
     @bors r+
 
-This tells [@bors][bors], our lovable integration bot, that your pull request has
-been approved. The PR then enters the [merge queue][merge-queue], where [@bors][bors]
+This tells [@bors], our lovable integration bot, that your pull request has
+been approved. The PR then enters the [merge queue][merge-queue], where [@bors]
 will run all the tests on every platform we support. If it all works out,
-[@bors][bors] will merge your code into `master` and close the pull request.
+[@bors] will merge your code into `master` and close the pull request.
 
 Depending on the scale of the change, you may see a slightly different form of `r+`:
 
     @bors r+ rollup
 
-The additional `rollup` tells [@bors][bors] that this change is eligible for to be
+The additional `rollup` tells [@bors] that this change is eligible for to be
 "rolled up". Changes that are rolled up are tested and merged at the same time, to
 speed the process up. Typically only small changes that are expected not to conflict
 with one another are rolled up.
 
 [rust-highfive]: https://github.com/rust-highfive
 [steveklabnik]: https://github.com/steveklabnik
-[bors]: https://github.com/bors
+[@bors]: https://github.com/bors
 [merge-queue]: https://buildbot2.rust-lang.org/homu/queue/rust
 
 Speaking of tests, Rust has a comprehensive test suite. More information about
@@ -476,27 +476,26 @@ For people new to Rust, and just starting to contribute, or even for
 more seasoned developers, some useful places to look for information
 are:
 
-* The [rustc dev guide] contains information about how various parts of the
+* This guide contains information about how various parts of the
   compiler work and how to contribute to the compiler
 * [Rust Forge][rustforge] contains additional documentation, including
   write-ups of how to achieve common tasks
 * The [Rust Internals forum][rif], a place to ask questions and
   discuss Rust's internals
-* The [generated documentation for rust's compiler][gdfrustc]
-* The [rust reference][rr], even though it doesn't specifically talk about
-  Rust's internals, it's a great resource nonetheless
+* The [generated documentation for Rust's compiler][gdfrustc]
+* The [Rust reference][rr], even though it doesn't specifically talk about
+  Rust's internals is a great resource nonetheless
 * Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
 * [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
 * The [Rust Compiler Testing Docs][rctd]
-* For [@bors][bors], [this cheat sheet][cheatsheet] is helpful
-(though you'll need to replace `@homu` with `@bors` in any commands)
-* **Google!** ([search only in Rust Documentation][gsearchdocs] to find types,
-  traits, etc. quickly)
+* For [@bors], [this cheat sheet][cheatsheet] is helpful
+* **Google!** is always helpful when programming :)
+* [Search Rust documentation][stddocs] to find types, traits, etc. quickly
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
 [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
 [gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
-[gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
+[stddocs]: https://doc.rust-lang.org/std
 [rif]: http://internals.rust-lang.org
 [rr]: https://doc.rust-lang.org/book/README.html
 [rustforge]: https://forge.rust-lang.org/
