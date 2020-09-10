@@ -251,4 +251,4 @@ everything up then you only need to run one command!
 ```
 
 `rm -rf build` works too, but then you have to rebuild LLVM, which can take
-a long time (on the order of a half-hour).
+a long time even on fast computers.
