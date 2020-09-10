@@ -417,7 +417,7 @@ crate fn location_set_str(
 
 fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String {
     let mut result = String::new();
-    result.push_str("{");
+    result.push('{');
 
     // Set to Some(l1, l2) when we have observed all the locations
     // from l1..=l2 (inclusive) but not yet printed them. This
@@ -478,7 +478,7 @@ fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String
         push_location_range(&mut result, location1, location2);
     }
 
-    result.push_str("}");
+    result.push('}');
 
     return result;
 

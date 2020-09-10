@@ -1076,7 +1076,7 @@ fn exec_linker(
             }
             .to_string(),
         );
-        args.push_str("\n");
+        args.push('\n');
     }
     let file = tmpdir.join("linker-arguments");
     let bytes = if sess.target.target.options.is_like_msvc {

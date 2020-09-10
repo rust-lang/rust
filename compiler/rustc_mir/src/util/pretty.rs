@@ -514,7 +514,7 @@ fn write_scope_tree(
                 write!(indented_decl, " as {:?}", user_ty).unwrap();
             }
         }
-        indented_decl.push_str(";");
+        indented_decl.push(';');
 
         let local_name =
             if local == RETURN_PLACE { " return place".to_string() } else { String::new() };

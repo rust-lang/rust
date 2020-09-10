@@ -438,7 +438,7 @@ impl<'tcx> SaveContext<'tcx> {
                                     .next()
                                     .map(|item| item.def_id);
                             }
-                            qualname.push_str(">");
+                            qualname.push('>');
 
                             (qualname, trait_id, decl_id, docs, attrs)
                         }

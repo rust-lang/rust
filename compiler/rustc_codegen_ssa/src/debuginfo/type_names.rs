@@ -37,7 +37,7 @@ pub fn push_debuginfo_type_name<'tcx>(
         ty::Bool => output.push_str("bool"),
         ty::Char => output.push_str("char"),
         ty::Str => output.push_str("str"),
-        ty::Never => output.push_str("!"),
+        ty::Never => output.push('!'),
         ty::Int(int_ty) => output.push_str(int_ty.name_str()),
         ty::Uint(uint_ty) => output.push_str(uint_ty.name_str()),
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),

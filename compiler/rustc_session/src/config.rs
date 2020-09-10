@@ -581,9 +581,9 @@ impl OutputFilenames {
 
         if !ext.is_empty() {
             if !extension.is_empty() {
-                extension.push_str(".");
+                extension.push('.');
                 extension.push_str(RUST_CGU_EXT);
-                extension.push_str(".");
+                extension.push('.');
             }
 
             extension.push_str(ext);
