@@ -1315,11 +1315,8 @@ pub unsafe fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t 
 // `mov` seems to be an acceptable intrinsic to compile to
 // #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(vmov, imm5 = 1))]
 pub unsafe fn vgetq_lane_u64(v: uint64x2_t, imm5: i32) -> u64 {
-    if (imm5) < 0 || (imm5) > 1 {
-        unreachable_unchecked()
-    }
-    let imm5 = (imm5 & 0b1) as u32;
-    simd_extract(v, imm5)
+    assert!(imm5 >= 0 && imm5 <= 1);
+    simd_extract(v, imm5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -1332,9 +1329,7 @@ pub unsafe fn vgetq_lane_u64(v: uint64x2_t, imm5: i32) -> u64 {
 // FIXME: no 32bit this seems to be turned into two vmov.32 instructions
 // validate correctness
 pub unsafe fn vget_lane_u64(v: uint64x1_t, imm5: i32) -> u64 {
-    if imm5 != 0 {
-        unreachable_unchecked()
-    }
+    assert!(imm5 == 0);
     simd_extract(v, 0)
 }
 
@@ -1346,11 +1341,8 @@ pub unsafe fn vget_lane_u64(v: uint64x1_t, imm5: i32) -> u64 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.u16", imm5 = 2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umov, imm5 = 2))]
 pub unsafe fn vgetq_lane_u16(v: uint16x8_t, imm5: i32) -> u16 {
-    if (imm5) < 0 || (imm5) > 7 {
-        unreachable_unchecked()
-    }
-    let imm5 = (imm5 & 0b111) as u32;
-    simd_extract(v, imm5)
+    assert!(imm5 >= 0 && imm5 <= 7);
+    simd_extract(v, imm5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -1361,11 +1353,20 @@ pub unsafe fn vgetq_lane_u16(v: uint16x8_t, imm5: i32) -> u16 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", imm5 = 2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov, imm5 = 2))]
 pub unsafe fn vgetq_lane_u32(v: uint32x4_t, imm5: i32) -> u32 {
-    if (imm5) < 0 || (imm5) > 3 {
-        unreachable_unchecked()
-    }
-    let imm5 = (imm5 & 0b11) as u32;
-    simd_extract(v, imm5)
+    assert!(imm5 >= 0 && imm5 <= 3);
+    simd_extract(v, imm5 as u32)
+}
+
+/// Move vector element to general-purpose register
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[rustc_args_required_const(1)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", imm5 = 2))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov, imm5 = 2))]
+pub unsafe fn vgetq_lane_s32(v: int32x4_t, imm5: i32) -> i32 {
+    assert!(imm5 >= 0 && imm5 <= 3);
+    simd_extract(v, imm5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -1376,11 +1377,8 @@ pub unsafe fn vgetq_lane_u32(v: uint32x4_t, imm5: i32) -> u32 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.u8", imm5 = 2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umov, imm5 = 2))]
 pub unsafe fn vget_lane_u8(v: uint8x8_t, imm5: i32) -> u8 {
-    if (imm5) < 0 || (imm5) > 7 {
-        unreachable_unchecked()
-    }
-    let imm5 = (imm5 & 7) as u32;
-    simd_extract(v, imm5)
+    assert!(imm5 >= 0 && imm5 <= 7);
+    simd_extract(v, imm5 as u32)
 }
 
 /// Duplicate vector element to vector or scalar
@@ -1889,6 +1887,13 @@ mod tests {
     unsafe fn test_vgetq_lane_u32() {
         let v = i32x4::new(1, 2, 3, 4);
         let r = vgetq_lane_u32(transmute(v), 1);
+        assert_eq!(r, 2);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vgetq_lane_s32() {
+        let v = i32x4::new(1, 2, 3, 4);
+        let r = vgetq_lane_s32(transmute(v), 1);
         assert_eq!(r, 2);
     }
 
