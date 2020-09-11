@@ -561,10 +561,10 @@ impl Visitor<'tcx> for Checker<'tcx> {
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id,
                                 span,
-                                |lint| lint.build(
-                                    "An `#[unstable]` annotation here has no effect. \
-                                    See issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information.",
-                                ).emit()
+                                |lint| lint
+                                    .build("an `#[unstable]` annotation here has no effect")
+                                    .note("see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information")
+                                    .emit()
                             );
                         }
                     }

@@ -22,7 +22,7 @@ impl StableTrait for UnstableType {}
 impl UnstableTrait for StableType {}
 
 #[unstable(feature = "x", issue = "none")]
-//~^ ERROR An `#[unstable]` annotation here has no effect.
+//~^ ERROR an `#[unstable]` annotation here has no effect [rustc::ineffective_unstable_trait_impl]
 impl StableTrait for StableType {}
 
 fn main() {}
