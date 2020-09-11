@@ -38,114 +38,111 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
         }
 
         let mut def_use_analysis = DefUseAnalysis::new(body);
-        loop {
-            def_use_analysis.analyze(body);
+        let mut changed = true;
 
-            if eliminate_self_assignments(body, &def_use_analysis) {
+        for dest_local in body.local_decls.indices() {
+            if changed {
                 def_use_analysis.analyze(body);
+                if eliminate_self_assignments(body, &def_use_analysis) {
+                    def_use_analysis.analyze(body);
+                }
+                changed = false;
             }
 
-            let mut changed = false;
-            for dest_local in body.local_decls.indices() {
-                debug!("considering destination local: {:?}", dest_local);
+            debug!("considering destination local: {:?}", dest_local);
 
-                let action;
-                let location;
-                {
-                    // The destination must have exactly one def.
-                    let dest_use_info = def_use_analysis.local_info(dest_local);
-                    let dest_def_count = dest_use_info.def_count_not_including_drop();
-                    if dest_def_count == 0 {
-                        debug!("  Can't copy-propagate local: dest {:?} undefined", dest_local);
-                        continue;
-                    }
-                    if dest_def_count > 1 {
-                        debug!(
-                            "  Can't copy-propagate local: dest {:?} defined {} times",
-                            dest_local,
-                            dest_use_info.def_count()
-                        );
-                        continue;
-                    }
-                    if dest_use_info.use_count() == 0 {
-                        debug!("  Can't copy-propagate local: dest {:?} unused", dest_local);
-                        continue;
-                    }
-                    // Conservatively gives up if the dest is an argument,
-                    // because there may be uses of the original argument value.
-                    // Also gives up on the return place, as we cannot propagate into its implicit
-                    // use by `return`.
-                    if matches!(
-                        body.local_kind(dest_local),
-                        LocalKind::Arg | LocalKind::ReturnPointer
-                    ) {
-                        debug!("  Can't copy-propagate local: dest {:?} (argument)", dest_local);
-                        continue;
-                    }
-                    let dest_place_def = dest_use_info.defs_not_including_drop().next().unwrap();
-                    location = dest_place_def.location;
+            let action;
+            let location;
+            {
+                // The destination must have exactly one def.
+                let dest_use_info = def_use_analysis.local_info(dest_local);
+                let dest_def_count = dest_use_info.def_count_not_including_drop();
+                if dest_def_count == 0 {
+                    debug!("  Can't copy-propagate local: dest {:?} undefined", dest_local);
+                    continue;
+                }
+                if dest_def_count > 1 {
+                    debug!(
+                        "  Can't copy-propagate local: dest {:?} defined {} times",
+                        dest_local,
+                        dest_use_info.def_count()
+                    );
+                    continue;
+                }
+                if dest_use_info.use_count() == 0 {
+                    debug!("  Can't copy-propagate local: dest {:?} unused", dest_local);
+                    continue;
+                }
+                // Conservatively gives up if the dest is an argument,
+                // because there may be uses of the original argument value.
+                // Also gives up on the return place, as we cannot propagate into its implicit
+                // use by `return`.
+                if matches!(
+                    body.local_kind(dest_local),
+                    LocalKind::Arg | LocalKind::ReturnPointer
+                ) {
+                    debug!("  Can't copy-propagate local: dest {:?} (argument)", dest_local);
+                    continue;
+                }
+                let dest_place_def = dest_use_info.defs_not_including_drop().next().unwrap();
+                location = dest_place_def.location;
 
-                    let basic_block = &body[location.block];
-                    let statement_index = location.statement_index;
-                    let statement = match basic_block.statements.get(statement_index) {
-                        Some(statement) => statement,
-                        None => {
-                            debug!("  Can't copy-propagate local: used in terminator");
-                            continue;
-                        }
-                    };
+                let basic_block = &body[location.block];
+                let statement_index = location.statement_index;
+                let statement = match basic_block.statements.get(statement_index) {
+                    Some(statement) => statement,
+                    None => {
+                        debug!("  Can't copy-propagate local: used in terminator");
+                        continue;
+                    }
+                };
 
-                    // That use of the source must be an assignment.
-                    match &statement.kind {
-                        StatementKind::Assign(box (place, Rvalue::Use(operand))) => {
-                            if let Some(local) = place.as_local() {
-                                if local == dest_local {
-                                    let maybe_action = match operand {
-                                        Operand::Copy(src_place) | Operand::Move(src_place) => {
-                                            Action::local_copy(&body, &def_use_analysis, *src_place)
-                                        }
-                                        Operand::Constant(ref src_constant) => {
-                                            Action::constant(src_constant)
-                                        }
-                                    };
-                                    match maybe_action {
-                                        Some(this_action) => action = this_action,
-                                        None => continue,
+                // That use of the source must be an assignment.
+                match &statement.kind {
+                    StatementKind::Assign(box (place, Rvalue::Use(operand))) => {
+                        if let Some(local) = place.as_local() {
+                            if local == dest_local {
+                                let maybe_action = match operand {
+                                    Operand::Copy(src_place) | Operand::Move(src_place) => {
+                                        Action::local_copy(&body, &def_use_analysis, *src_place)
                                     }
-                                } else {
-                                    debug!(
-                                        "  Can't copy-propagate local: source use is not an \
-                                    assignment"
-                                    );
-                                    continue;
+                                    Operand::Constant(ref src_constant) => {
+                                        Action::constant(src_constant)
+                                    }
+                                };
+                                match maybe_action {
+                                    Some(this_action) => action = this_action,
+                                    None => continue,
                                 }
                             } else {
                                 debug!(
                                     "  Can't copy-propagate local: source use is not an \
-                                    assignment"
+                                assignment"
                                 );
                                 continue;
                             }
-                        }
-                        _ => {
+                        } else {
                             debug!(
                                 "  Can't copy-propagate local: source use is not an \
-                                    assignment"
+                                assignment"
                             );
                             continue;
                         }
                     }
+                    _ => {
+                        debug!(
+                            "  Can't copy-propagate local: source use is not an \
+                                assignment"
+                        );
+                        continue;
+                    }
                 }
+            }
 
-                changed =
-                    action.perform(body, &def_use_analysis, dest_local, location, tcx) || changed;
-                // FIXME(pcwalton): Update the use-def chains to delete the instructions instead of
-                // regenerating the chains.
-                break;
-            }
-            if !changed {
-                break;
-            }
+            // FIXME(pcwalton): Update the use-def chains to delete the instructions instead of
+            // regenerating the chains.
+            action.perform(body, &def_use_analysis, dest_local, location, tcx);
+            changed = true;
         }
     }
 }

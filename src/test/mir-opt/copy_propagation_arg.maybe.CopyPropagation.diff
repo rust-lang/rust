@@ -23,13 +23,16 @@
       let mut _20: bool;                   // in scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
       let mut _21: bool;                   // in scope 0 at $DIR/copy_propagation_arg.rs:43:9: 43:10
       scope 1 {
-          debug s2 => _7;                  // in scope 1 at $DIR/copy_propagation_arg.rs:36:13: 36:15
+-         debug s2 => _7;                  // in scope 1 at $DIR/copy_propagation_arg.rs:36:13: 36:15
++         debug s2 => _2;                  // in scope 1 at $DIR/copy_propagation_arg.rs:36:13: 36:15
           let _12: std::string::String;    // in scope 1 at $DIR/copy_propagation_arg.rs:38:17: 38:19
           scope 2 {
-              debug s3 => _12;             // in scope 2 at $DIR/copy_propagation_arg.rs:38:17: 38:19
+-             debug s3 => _12;             // in scope 2 at $DIR/copy_propagation_arg.rs:38:17: 38:19
++             debug s3 => _2;              // in scope 2 at $DIR/copy_propagation_arg.rs:38:17: 38:19
               let _17: std::string::String; // in scope 2 at $DIR/copy_propagation_arg.rs:40:21: 40:23
               scope 3 {
-                  debug s4 => _17;         // in scope 3 at $DIR/copy_propagation_arg.rs:40:21: 40:23
+-                 debug s4 => _17;         // in scope 3 at $DIR/copy_propagation_arg.rs:40:21: 40:23
++                 debug s4 => _2;          // in scope 3 at $DIR/copy_propagation_arg.rs:40:21: 40:23
               }
           }
       }
@@ -65,12 +68,15 @@
       }
   
       bb4: {
-          StorageLive(_7);                 // scope 0 at $DIR/copy_propagation_arg.rs:36:13: 36:15
+-         StorageLive(_7);                 // scope 0 at $DIR/copy_propagation_arg.rs:36:13: 36:15
++         nop;                             // scope 0 at $DIR/copy_propagation_arg.rs:36:13: 36:15
           _19 = const false;               // scope 0 at $DIR/copy_propagation_arg.rs:36:18: 36:20
           _20 = const true;                // scope 0 at $DIR/copy_propagation_arg.rs:36:18: 36:20
-          _7 = move _2;                    // scope 0 at $DIR/copy_propagation_arg.rs:36:18: 36:20
+-         _7 = move _2;                    // scope 0 at $DIR/copy_propagation_arg.rs:36:18: 36:20
++         nop;                             // scope 0 at $DIR/copy_propagation_arg.rs:36:18: 36:20
           StorageLive(_8);                 // scope 1 at $DIR/copy_propagation_arg.rs:37:12: 37:16
-          StorageLive(_9);                 // scope 1 at $DIR/copy_propagation_arg.rs:37:14: 37:15
+-         StorageLive(_9);                 // scope 1 at $DIR/copy_propagation_arg.rs:37:14: 37:15
++         nop;                             // scope 1 at $DIR/copy_propagation_arg.rs:37:14: 37:15
           _9 = const 1_usize;              // scope 1 at $DIR/copy_propagation_arg.rs:37:14: 37:15
           _10 = Len((*_1));                // scope 1 at $DIR/copy_propagation_arg.rs:37:12: 37:16
           _11 = Lt(const 1_usize, _10);    // scope 1 at $DIR/copy_propagation_arg.rs:37:12: 37:16
@@ -79,7 +85,8 @@
   
       bb5: {
           _8 = (*_1)[_9];                  // scope 1 at $DIR/copy_propagation_arg.rs:37:12: 37:16
-          StorageDead(_9);                 // scope 1 at $DIR/copy_propagation_arg.rs:37:15: 37:16
+-         StorageDead(_9);                 // scope 1 at $DIR/copy_propagation_arg.rs:37:15: 37:16
++         nop;                             // scope 1 at $DIR/copy_propagation_arg.rs:37:15: 37:16
           switchInt(_8) -> [false: bb6, otherwise: bb7]; // scope 1 at $DIR/copy_propagation_arg.rs:37:9: 43:10
       }
   
@@ -89,12 +96,15 @@
       }
   
       bb7: {
-          StorageLive(_12);                // scope 1 at $DIR/copy_propagation_arg.rs:38:17: 38:19
+-         StorageLive(_12);                // scope 1 at $DIR/copy_propagation_arg.rs:38:17: 38:19
++         nop;                             // scope 1 at $DIR/copy_propagation_arg.rs:38:17: 38:19
           _20 = const false;               // scope 1 at $DIR/copy_propagation_arg.rs:38:22: 38:24
           _21 = const true;                // scope 1 at $DIR/copy_propagation_arg.rs:38:22: 38:24
-          _12 = move _7;                   // scope 1 at $DIR/copy_propagation_arg.rs:38:22: 38:24
+-         _12 = move _7;                   // scope 1 at $DIR/copy_propagation_arg.rs:38:22: 38:24
++         nop;                             // scope 1 at $DIR/copy_propagation_arg.rs:38:22: 38:24
           StorageLive(_13);                // scope 2 at $DIR/copy_propagation_arg.rs:39:16: 39:20
-          StorageLive(_14);                // scope 2 at $DIR/copy_propagation_arg.rs:39:18: 39:19
+-         StorageLive(_14);                // scope 2 at $DIR/copy_propagation_arg.rs:39:18: 39:19
++         nop;                             // scope 2 at $DIR/copy_propagation_arg.rs:39:18: 39:19
           _14 = const 2_usize;             // scope 2 at $DIR/copy_propagation_arg.rs:39:18: 39:19
           _15 = Len((*_1));                // scope 2 at $DIR/copy_propagation_arg.rs:39:16: 39:20
           _16 = Lt(const 2_usize, _15);    // scope 2 at $DIR/copy_propagation_arg.rs:39:16: 39:20
@@ -103,7 +113,8 @@
   
       bb8: {
           _13 = (*_1)[_14];                // scope 2 at $DIR/copy_propagation_arg.rs:39:16: 39:20
-          StorageDead(_14);                // scope 2 at $DIR/copy_propagation_arg.rs:39:19: 39:20
+-         StorageDead(_14);                // scope 2 at $DIR/copy_propagation_arg.rs:39:19: 39:20
++         nop;                             // scope 2 at $DIR/copy_propagation_arg.rs:39:19: 39:20
           switchInt(_13) -> [false: bb9, otherwise: bb10]; // scope 2 at $DIR/copy_propagation_arg.rs:39:13: 42:14
       }
   
@@ -113,31 +124,38 @@
       }
   
       bb10: {
-          StorageLive(_17);                // scope 2 at $DIR/copy_propagation_arg.rs:40:21: 40:23
+-         StorageLive(_17);                // scope 2 at $DIR/copy_propagation_arg.rs:40:21: 40:23
++         nop;                             // scope 2 at $DIR/copy_propagation_arg.rs:40:21: 40:23
           _21 = const false;               // scope 2 at $DIR/copy_propagation_arg.rs:40:26: 40:28
-          _17 = move _12;                  // scope 2 at $DIR/copy_propagation_arg.rs:40:26: 40:28
+-         _17 = move _12;                  // scope 2 at $DIR/copy_propagation_arg.rs:40:26: 40:28
++         nop;                             // scope 2 at $DIR/copy_propagation_arg.rs:40:26: 40:28
           StorageLive(_18);                // scope 3 at $DIR/copy_propagation_arg.rs:41:17: 41:20
-          _18 = &_17;                      // scope 3 at $DIR/copy_propagation_arg.rs:41:17: 41:20
+-         _18 = &_17;                      // scope 3 at $DIR/copy_propagation_arg.rs:41:17: 41:20
++         _18 = &_2;                       // scope 3 at $DIR/copy_propagation_arg.rs:41:17: 41:20
           StorageDead(_18);                // scope 3 at $DIR/copy_propagation_arg.rs:41:20: 41:21
           _0 = const ();                   // scope 2 at $DIR/copy_propagation_arg.rs:39:21: 42:14
-          drop(_17) -> [return: bb11, unwind: bb21]; // scope 2 at $DIR/copy_propagation_arg.rs:42:13: 42:14
+-         drop(_17) -> [return: bb11, unwind: bb21]; // scope 2 at $DIR/copy_propagation_arg.rs:42:13: 42:14
++         drop(_2) -> [return: bb11, unwind: bb21]; // scope 2 at $DIR/copy_propagation_arg.rs:42:13: 42:14
       }
   
       bb11: {
-          StorageDead(_17);                // scope 2 at $DIR/copy_propagation_arg.rs:42:13: 42:14
+-         StorageDead(_17);                // scope 2 at $DIR/copy_propagation_arg.rs:42:13: 42:14
++         nop;                             // scope 2 at $DIR/copy_propagation_arg.rs:42:13: 42:14
           goto -> bb23;                    // scope 2 at $DIR/copy_propagation_arg.rs:39:13: 42:14
       }
   
       bb12: {
           _21 = const false;               // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
-          StorageDead(_12);                // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
+-         StorageDead(_12);                // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
++         nop;                             // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
           StorageDead(_13);                // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
           goto -> bb25;                    // scope 1 at $DIR/copy_propagation_arg.rs:37:9: 43:10
       }
   
       bb13: {
           _20 = const false;               // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
-          StorageDead(_7);                 // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
+-         StorageDead(_7);                 // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
++         nop;                             // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
           StorageDead(_8);                 // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
           goto -> bb14;                    // scope 0 at $DIR/copy_propagation_arg.rs:35:5: 44:6
       }
@@ -162,7 +180,8 @@
   
       bb18 (cleanup): {
           _20 = const false;               // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
-          drop(_7) -> bb17;                // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
+-         drop(_7) -> bb17;                // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
++         drop(_2) -> bb17;                // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
       }
   
       bb19 (cleanup): {
@@ -171,7 +190,8 @@
   
       bb20 (cleanup): {
           _21 = const false;               // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
-          drop(_12) -> bb19;               // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
+-         drop(_12) -> bb19;               // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
++         drop(_2) -> bb19;                // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
       }
   
       bb21 (cleanup): {
@@ -180,7 +200,8 @@
   
       bb22: {
           _21 = const false;               // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
-          drop(_12) -> [return: bb12, unwind: bb19]; // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
+-         drop(_12) -> [return: bb12, unwind: bb19]; // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
++         drop(_2) -> [return: bb12, unwind: bb19]; // scope 1 at $DIR/copy_propagation_arg.rs:43:9: 43:10
       }
   
       bb23: {
@@ -189,7 +210,8 @@
   
       bb24: {
           _20 = const false;               // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
-          drop(_7) -> [return: bb13, unwind: bb17]; // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
+-         drop(_7) -> [return: bb13, unwind: bb17]; // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
++         drop(_2) -> [return: bb13, unwind: bb17]; // scope 0 at $DIR/copy_propagation_arg.rs:44:5: 44:6
       }
   
       bb25: {
