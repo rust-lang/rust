@@ -1,22 +1,105 @@
-warning: cast `foo` with `as *const fn() -> _` to use it as a pointer
-  --> $DIR/function-references.rs:7:23
+warning: cast `foo` with `as fn() -> _` to use it as a pointer
+  --> $DIR/function-references.rs:16:20
    |
-LL |     println!("{:p}", &foo);
-   |                       ^^^
+LL |     let _zst_ref = &foo;
+   |                    ^^^^
    |
    = note: `#[warn(function_references)]` on by default
 
-warning: cast `bar` with `as *const fn(_) -> _` to use it as a pointer
-  --> $DIR/function-references.rs:9:23
+warning: cast `fn_item` with `as fn() -> _` to use it as a pointer
+  --> $DIR/function-references.rs:19:25
+   |
+LL |     let _indirect_ref = &fn_item;
+   |                         ^^^^^^^^
+
+warning: cast `foo` with `as fn() -> _` to use it as a pointer
+  --> $DIR/function-references.rs:21:25
+   |
+LL |     let _cast_zst_ptr = &foo as *const _;
+   |                         ^^^^
+
+warning: cast `foo` with `as fn() -> _` to use it as a pointer
+  --> $DIR/function-references.rs:23:38
+   |
+LL |     let _coerced_zst_ptr: *const _ = &foo;
+   |                                      ^^^^
+
+warning: cast `foo` with `as fn() -> _` to use it as a pointer
+  --> $DIR/function-references.rs:26:20
+   |
+LL |     let _zst_ref = &mut foo;
+   |                    ^^^^^^^^
+
+warning: cast `mut_fn_item` with `as fn() -> _` to use it as a pointer
+  --> $DIR/function-references.rs:29:25
+   |
+LL |     let _indirect_ref = &mut mut_fn_item;
+   |                         ^^^^^^^^^^^^^^^^
+
+warning: cast `foo` with `as fn() -> _` to use it as a pointer
+  --> $DIR/function-references.rs:31:25
+   |
+LL |     let _cast_zst_ptr = &mut foo as *mut _;
+   |                         ^^^^^^^^
+
+warning: cast `foo` with `as fn() -> _` to use it as a pointer
+  --> $DIR/function-references.rs:33:36
+   |
+LL |     let _coerced_zst_ptr: *mut _ = &mut foo;
+   |                                    ^^^^^^^^
+
+warning: cast `foo` with `as fn() -> _` to use it as a pointer
+  --> $DIR/function-references.rs:43:22
+   |
+LL |     println!("{:p}", &foo);
+   |                      ^^^^
+
+warning: cast `bar` with `as fn(_) -> _` to use it as a pointer
+  --> $DIR/function-references.rs:45:22
    |
 LL |     println!("{:p}", &bar);
-   |                       ^^^
+   |                      ^^^^
 
-warning: cast `baz` with `as *const fn(_, _) -> _` to use it as a pointer
-  --> $DIR/function-references.rs:11:23
+warning: cast `baz` with `as fn(_, _) -> _` to use it as a pointer
+  --> $DIR/function-references.rs:47:22
    |
 LL |     println!("{:p}", &baz);
-   |                       ^^^
+   |                      ^^^^
 
-warning: 3 warnings emitted
+warning: cast `unsafe_fn` with `as unsafe fn()` to use it as a pointer
+  --> $DIR/function-references.rs:49:22
+   |
+LL |     println!("{:p}", &unsafe_fn);
+   |                      ^^^^^^^^^^
 
+warning: cast `c_fn` with `as extern "C" fn()` to use it as a pointer
+  --> $DIR/function-references.rs:51:22
+   |
+LL |     println!("{:p}", &c_fn);
+   |                      ^^^^^
+
+warning: cast `unsafe_c_fn` with `as unsafe extern "C" fn()` to use it as a pointer
+  --> $DIR/function-references.rs:53:22
+   |
+LL |     println!("{:p}", &unsafe_c_fn);
+   |                      ^^^^^^^^^^^^
+
+warning: cast `variadic_fn` with `as unsafe extern "C" fn(_, ...)` to use it as a pointer
+  --> $DIR/function-references.rs:55:22
+   |
+LL |     println!("{:p}", &variadic_fn);
+   |                      ^^^^^^^^^^^^
+
+warning: cast `std::env::var` with `as fn(_) -> _` to use it as a pointer
+  --> $DIR/function-references.rs:57:22
+   |
+LL |     println!("{:p}", &std::env::var::<String>);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: cast `foo` with `as fn() -> _` to use it as a pointer
+  --> $DIR/function-references.rs:63:41
+   |
+LL |         std::mem::transmute::<_, usize>(&foo);
+   |                                         ^^^^
+
+warning: 17 warnings emitted

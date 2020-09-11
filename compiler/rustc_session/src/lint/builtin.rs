@@ -2645,6 +2645,11 @@ declare_lint! {
         reference: "issue #76200 <https://github.com/rust-lang/rust/issues/76200>",
         edition: None,
     };
+
+declare_lint! {
+    pub FUNCTION_REFERENCES,
+    Warn,
+    "suggest casting functions to pointers when attempting to take references",
 }
 
 declare_lint! {
@@ -2762,6 +2767,7 @@ declare_lint_pass! {
         CONST_EVALUATABLE_UNCHECKED,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
         UNINHABITED_STATIC,
+        FUNCTION_REFERENCES,
     ]
 }
 

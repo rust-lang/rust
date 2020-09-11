@@ -194,7 +194,6 @@ macro_rules! late_lint_mod_passes {
                 UnreachablePub: UnreachablePub,
                 ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
                 InvalidValue: InvalidValue,
-                FunctionReferences: FunctionReferences,
             ]
         );
     };
