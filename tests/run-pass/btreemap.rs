@@ -1,4 +1,6 @@
+#![feature(btree_drain_filter)]
 use std::collections::{BTreeMap, BTreeSet};
+use std::mem;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Foo {
@@ -43,4 +45,9 @@ pub fn main() {
         b.insert(format!("key{}", i), i);
     }
     test_all_refs(&mut 13, b.values_mut());
+
+    // Test forgetting the drain.
+    let mut d = b.drain_filter(|_, i| *i < 30);
+    d.next().unwrap();
+    mem::forget(d);
 }
