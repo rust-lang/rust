@@ -38,4 +38,4 @@ winapi = { version = "0.3", features = ["consoleapi", "debugapi", "processenv"] 
 
 [features]
 llvm = ['rustc_interface/llvm']
-release_max_level_info = ['tracing/release_max_level_info', 'tracing/max_level_info']
+max_level_info = ['tracing/max_level_info']
