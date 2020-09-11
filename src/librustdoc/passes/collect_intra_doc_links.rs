@@ -48,8 +48,14 @@ pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_>) -> Crate {
 }
 
 enum ErrorKind<'a> {
-    Resolve(ResolutionFailure<'a>),
+    Resolve(Box<ResolutionFailure<'a>>),
     AnchorFailure(AnchorFailure),
+}
+
+impl<'a> From<ResolutionFailure<'a>> for ErrorKind<'a> {
+    fn from(err: ResolutionFailure<'a>) -> Self {
+        ErrorKind::Resolve(box err)
+    }
 }
 
 #[derive(Debug)]
@@ -142,10 +148,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .expect("fold_item should ensure link is non-empty");
         let variant_name =
             // we're not sure this is a variant at all, so use the full string
-            split.next().map(|f| Symbol::intern(f)).ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope{
+            split.next().map(|f| Symbol::intern(f)).ok_or_else(|| ResolutionFailure::NotInScope {
                 module_id,
                 name: path_str.into(),
-            }))?;
+            })?;
         let path = split
             .next()
             .map(|f| {
@@ -156,10 +162,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }
                 f.to_owned()
             })
-            .ok_or(ErrorKind::Resolve(ResolutionFailure::NotInScope {
+            .ok_or_else(|| ResolutionFailure::NotInScope {
                 module_id,
                 name: variant_name.to_string().into(),
-            }))?;
+            })?;
         let ty_res = cx
             .enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path, TypeNS, module_id)
@@ -167,10 +173,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .map(|(_, res)| res)
             .unwrap_or(Res::Err);
         if let Res::Err = ty_res {
-            return Err(ErrorKind::Resolve(ResolutionFailure::NotInScope {
-                module_id,
-                name: path.into(),
-            }));
+            return Err(ResolutionFailure::NotInScope { module_id, name: path.into() }.into());
         }
         let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
         match ty_res {
@@ -184,7 +187,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 {
                     // This is just to let `fold_item` know that this shouldn't be considered;
                     // it's a bug for the error to make it to the user
-                    return Err(ErrorKind::Resolve(ResolutionFailure::Dummy));
+                    return Err(ResolutionFailure::Dummy.into());
                 }
                 match cx.tcx.type_of(did).kind() {
                     ty::Adt(def, _) if def.is_enum() => {
@@ -197,10 +200,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                 )),
                             ))
                         } else {
-                            Err(ErrorKind::Resolve(ResolutionFailure::NotAVariant(
-                                ty_res,
-                                variant_field_name,
-                            )))
+                            Err(ResolutionFailure::NotAVariant(ty_res, variant_field_name).into())
                         }
                     }
                     _ => unreachable!(),
@@ -226,7 +226,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // Even with the shorter path, it didn't resolve, so say that.
                     ResolutionFailure::NoAssocItem(ty_res, variant_name)
                 };
-                Err(ErrorKind::Resolve(kind))
+                Err(kind.into())
             }
         }
     }
@@ -344,7 +344,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 };
 
                 if value != (ns == ValueNS) {
-                    return Err(ErrorKind::Resolve(ResolutionFailure::WrongNamespace(res, ns)));
+                    return Err(ResolutionFailure::WrongNamespace(res, ns).into());
                 }
             } else if let Some((path, prim)) = is_primitive(path_str, ns) {
                 if extra_fragment.is_some() {
@@ -373,16 +373,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // So we can be sure that `rustc_resolve` was accurate when it said it wasn't resolved.
                 .ok_or_else(|| {
                     debug!("found no `::`, assumming {} was correctly not in scope", item_name);
-                    ErrorKind::Resolve(ResolutionFailure::NotInScope {
-                        module_id,
-                        name: item_name.to_string().into(),
-                    })
+                    ResolutionFailure::NotInScope { module_id, name: item_name.to_string().into() }
                 })?;
 
             if let Some((path, prim)) = is_primitive(&path_root, TypeNS) {
-                let impls = primitive_impl(cx, &path).ok_or_else(|| {
-                    ErrorKind::Resolve(ResolutionFailure::NoPrimitiveImpl(prim, path_root.into()))
-                })?;
+                let impls = primitive_impl(cx, &path)
+                    .ok_or_else(|| ResolutionFailure::NoPrimitiveImpl(prim, path_root.into()))?;
                 for &impl_ in impls {
                     let link = cx
                         .tcx
@@ -409,11 +405,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     item_name,
                     ns.descr()
                 );
-                return Err(ErrorKind::Resolve(ResolutionFailure::NoPrimitiveAssocItem {
+                return Err(ResolutionFailure::NoPrimitiveAssocItem {
                     res: prim,
                     prim_name: path,
                     assoc_item: item_name,
-                }));
+                }
+                .into());
             }
 
             let ty_res = cx
@@ -445,7 +442,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             }
                             ResolutionFailure::NotInScope { module_id, name: path_root.into() }
                         });
-                        Err(ErrorKind::Resolve(kind))
+                        Err(kind.into())
                     };
                 }
                 Ok(res) => res,
@@ -548,9 +545,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         }
                     } else {
                         // We already know this isn't in ValueNS, so no need to check variant_field
-                        return Err(ErrorKind::Resolve(ResolutionFailure::NoAssocItem(
-                            ty_res, item_name,
-                        )));
+                        return Err(ResolutionFailure::NoAssocItem(ty_res, item_name).into());
                     }
                 }
                 Res::Def(DefKind::Trait, did) => cx
@@ -585,12 +580,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 if ns == Namespace::ValueNS {
                     self.variant_field(path_str, current_item, module_id, extra_fragment)
                 } else {
-                    Err(ErrorKind::Resolve(ResolutionFailure::NoAssocItem(ty_res, item_name)))
+                    Err(ResolutionFailure::NoAssocItem(ty_res, item_name).into())
                 }
             })
         } else {
             debug!("attempting to resolve item without parent module: {}", path_str);
-            Err(ErrorKind::Resolve(ResolutionFailure::NoParentItem))
+            Err(ResolutionFailure::NoParentItem.into())
         }
     }
 
@@ -611,7 +606,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         let check_full_res_inner = |this: &Self, result: Result<Res, ErrorKind<'_>>| {
             let res = match result {
                 Ok(res) => Some(res),
-                Err(ErrorKind::Resolve(kind)) => kind.full_res(),
+                Err(ErrorKind::Resolve(box kind)) => kind.full_res(),
                 Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res))) => {
                     Some(res)
                 }
@@ -626,7 +621,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         };
         let check_full_res_macro = |this: &Self| {
             let result = this.macro_resolve(path_str, base_node);
-            check_full_res_inner(this, result.map_err(ErrorKind::Resolve))
+            check_full_res_inner(this, result.map_err(ErrorKind::from))
         };
         match ns {
             Namespace::MacroNS => check_full_res_macro(self),
@@ -970,7 +965,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         match self.resolve(path_str, ns, &current_item, base_node, &extra_fragment)
                         {
                             Ok(res) => res,
-                            Err(ErrorKind::Resolve(mut kind)) => {
+                            Err(ErrorKind::Resolve(box mut kind)) => {
                                 // We only looked in one namespace. Try to give a better error if possible.
                                 if kind.full_res().is_none() {
                                     let other_ns = if ns == ValueNS { TypeNS } else { ValueNS };
@@ -1028,7 +1023,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                     anchor_failure(cx, &item, &ori_link, &dox, link_range, msg);
                                     continue;
                                 }
-                                Err(ErrorKind::Resolve(kind)) => Err(kind),
+                                Err(ErrorKind::Resolve(box kind)) => Err(kind),
                             },
                             value_ns: match self.resolve(
                                 path_str,
@@ -1042,7 +1037,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                     anchor_failure(cx, &item, &ori_link, &dox, link_range, msg);
                                     continue;
                                 }
-                                Err(ErrorKind::Resolve(kind)) => Err(kind),
+                                Err(ErrorKind::Resolve(box kind)) => Err(kind),
                             }
                             .and_then(|(res, fragment)| {
                                 // Constructors are picked up in the type namespace.
@@ -1816,7 +1811,7 @@ fn handle_variant(
     let parent = if let Some(parent) = cx.tcx.parent(res.def_id()) {
         parent
     } else {
-        return Err(ErrorKind::Resolve(ResolutionFailure::NoParentItem));
+        return Err(ResolutionFailure::NoParentItem.into());
     };
     let parent_def = Res::Def(DefKind::Enum, parent);
     let variant = cx.tcx.expect_variant_res(res);
