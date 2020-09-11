@@ -277,18 +277,25 @@ mod tests {
         );
     }
 
-    // FIXME binart modules are not picked up in tests
+    // FIXME binary modules are not supported in tests properly
+    // Binary modules are a bit special, they allow importing the modules from `/src/bin`
+    // and that's why are good to test two things:
+    // * no cycles are allowed in mod declarations
+    // * no modules from the parent directory are proposed
+    // Unfortunately, binary modules support is in cargo not rustc,
+    // hence the test does not work now
+    //
     // #[test]
     // fn regular_bin_module_completion() {
     //     check(
     //         r#"
-    //         //- /src/main.rs
+    //         //- /src/bin.rs
     //         fn main() {}
-    //         //- /src/main/foo.rs
+    //         //- /src/bin/foo.rs
     //         mod <|>
-    //         //- /src/main/bar.rs
+    //         //- /src/bin/bar.rs
     //         fn bar() {}
-    //         //- /src/main/bar/bar_ignored.rs
+    //         //- /src/bin/bar/bar_ignored.rs
     //         fn bar_ignored() {}
     //     "#,
     //         expect![[r#"
@@ -301,14 +308,14 @@ mod tests {
     fn already_declared_bin_module_completion_omitted() {
         check(
             r#"
-            //- /src/main.rs
+            //- /src/bin.rs
             fn main() {}
-            //- /src/main/foo.rs
+            //- /src/bin/foo.rs
             mod <|>
-            //- /src/main/bar.rs
+            //- /src/bin/bar.rs
             mod foo;
             fn bar() {}
-            //- /src/main/bar/bar_ignored.rs
+            //- /src/bin/bar/bar_ignored.rs
             fn bar_ignored() {}
         "#,
             expect![[r#""#]],
