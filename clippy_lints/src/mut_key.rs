@@ -1,4 +1,4 @@
-use crate::utils::{match_def_path, paths, span_lint, trait_ref_of_method, walk_ptrs_ty};
+use crate::utils::{match_def_path, paths, span_lint, trait_ref_of_method};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{Adt, Array, RawPtr, Ref, Slice, Tuple, Ty, TypeAndMut};
@@ -98,7 +98,7 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, item_hir_id: hir::HirId, decl: &hir::
 // We want to lint 1. sets or maps with 2. not immutable key types and 3. no unerased
 // generics (because the compiler cannot ensure immutability for unknown types).
 fn check_ty<'tcx>(cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
-    let ty = walk_ptrs_ty(ty);
+    let ty = ty.peel_refs();
     if let Adt(def, substs) = ty.kind() {
         if [&paths::HASHMAP, &paths::BTREEMAP, &paths::HASHSET, &paths::BTREESET]
             .iter()

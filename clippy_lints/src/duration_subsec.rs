@@ -7,7 +7,7 @@ use rustc_span::source_map::Spanned;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
-use crate::utils::{match_type, snippet_with_applicability, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{match_type, snippet_with_applicability, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for calculation of subsecond microseconds or milliseconds
@@ -43,7 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for DurationSubsec {
         if_chain! {
             if let ExprKind::Binary(Spanned { node: BinOpKind::Div, .. }, ref left, ref right) = expr.kind;
             if let ExprKind::MethodCall(ref method_path, _ , ref args, _) = left.kind;
-            if match_type(cx, walk_ptrs_ty(cx.typeck_results().expr_ty(&args[0])), &paths::DURATION);
+            if match_type(cx, cx.typeck_results().expr_ty(&args[0]).peel_refs(), &paths::DURATION);
             if let Some((Constant::Int(divisor), _)) = constant(cx, cx.typeck_results(), right);
             then {
                 let suggested_fn = match (method_path.ident.as_str().as_ref(), divisor) {

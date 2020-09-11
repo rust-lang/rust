@@ -32,8 +32,8 @@ use crate::utils::{
     is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path, match_qpath,
     match_trait_method, match_type, match_var, method_calls, method_chain_args, paths, remove_blocks, return_ty,
     single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
-    span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then, sugg, walk_ptrs_ty,
-    walk_ptrs_ty_depth, SpanlessEq,
+    span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then, sugg, walk_ptrs_ty_depth,
+    SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -1774,7 +1774,7 @@ fn lint_or_fun_call<'tcx>(
     ) {
         if let hir::ExprKind::MethodCall(ref path, _, ref args, _) = &arg.kind {
             if path.ident.as_str() == "len" {
-                let ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&args[0]));
+                let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
 
                 match ty.kind() {
                     ty::Slice(_) | ty::Array(_, _) => return,
@@ -1881,7 +1881,7 @@ fn lint_expect_fun_call(
                         && (method_name.ident.name == sym!(as_str) || method_name.ident.name == sym!(as_ref))
                         && {
                             let arg_type = cx.typeck_results().expr_ty(&call_args[0]);
-                            let base_type = walk_ptrs_ty(arg_type);
+                            let base_type = arg_type.peel_refs();
                             *base_type.kind() == ty::Str || is_type_diagnostic_item(cx, base_type, sym!(string_type))
                         }
                     {
@@ -2142,7 +2142,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Exp
 }
 
 fn lint_clone_on_ref_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
-    let obj_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(arg));
+    let obj_ty = cx.typeck_results().expr_ty(arg).peel_refs();
 
     if let ty::Adt(_, subst) = obj_ty.kind() {
         let caller_type = if is_type_diagnostic_item(cx, obj_ty, sym::Rc) {
@@ -2173,7 +2173,7 @@ fn lint_string_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::E
     let arg = &args[1];
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
-        let self_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(target));
+        let self_ty = cx.typeck_results().expr_ty(target).peel_refs();
         let ref_str = if *self_ty.kind() == ty::Str {
             ""
         } else if is_type_diagnostic_item(cx, self_ty, sym!(string_type)) {
@@ -2201,7 +2201,7 @@ fn lint_string_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::E
 }
 
 fn lint_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    let obj_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&args[0]));
+    let obj_ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
     if is_type_diagnostic_item(cx, obj_ty, sym!(string_type)) {
         lint_string_extend(cx, expr, args);
     }
@@ -2384,7 +2384,7 @@ fn lint_iter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_
         }
     } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(caller_expr), sym!(vec_type))
         || matches!(
-            &walk_ptrs_ty(cx.typeck_results().expr_ty(caller_expr)).kind(),
+            &cx.typeck_results().expr_ty(caller_expr).peel_refs().kind(),
             ty::Array(_, _)
         )
     {
@@ -2587,7 +2587,7 @@ fn derefs_to_slice<'tcx>(
 
 /// lint use of `unwrap()` for `Option`s and `Result`s
 fn lint_unwrap(cx: &LateContext<'_>, expr: &hir::Expr<'_>, unwrap_args: &[hir::Expr<'_>]) {
-    let obj_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&unwrap_args[0]));
+    let obj_ty = cx.typeck_results().expr_ty(&unwrap_args[0]).peel_refs();
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
         Some((UNWRAP_USED, "an Option", "None"))
@@ -2615,7 +2615,7 @@ fn lint_unwrap(cx: &LateContext<'_>, expr: &hir::Expr<'_>, unwrap_args: &[hir::E
 
 /// lint use of `expect()` for `Option`s and `Result`s
 fn lint_expect(cx: &LateContext<'_>, expr: &hir::Expr<'_>, expect_args: &[hir::Expr<'_>]) {
-    let obj_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&expect_args[0]));
+    let obj_ty = cx.typeck_results().expr_ty(&expect_args[0]).peel_refs();
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
         Some((EXPECT_USED, "an Option", "None"))
@@ -3134,7 +3134,7 @@ fn lint_chars_cmp(
         if segment.ident.name == sym!(Some);
         then {
             let mut applicability = Applicability::MachineApplicable;
-            let self_ty = walk_ptrs_ty(cx.typeck_results().expr_ty_adjusted(&args[0][0]));
+            let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0][0]).peel_refs();
 
             if *self_ty.kind() != ty::Str {
                 return false;
