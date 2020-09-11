@@ -22,7 +22,7 @@ use rustc_ast::{Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, Vi
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::{respan, Span, DUMMY_SP};
+use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use tracing::debug;
 
@@ -1022,14 +1022,22 @@ impl<'a> Parser<'a> {
         if self.is_crate_vis() {
             self.bump(); // `crate`
             self.sess.gated_spans.gate(sym::crate_visibility_modifier, self.prev_token.span);
-            return Ok(respan(self.prev_token.span, VisibilityKind::Crate(CrateSugar::JustCrate)));
+            return Ok(Visibility {
+                span: self.prev_token.span,
+                kind: VisibilityKind::Crate(CrateSugar::JustCrate),
+                tokens: None,
+            });
         }
 
         if !self.eat_keyword(kw::Pub) {
             // We need a span for our `Spanned<VisibilityKind>`, but there's inherently no
             // keyword to grab a span from for inherited visibility; an empty span at the
             // beginning of the current token would seem to be the "Schelling span".
-            return Ok(respan(self.token.span.shrink_to_lo(), VisibilityKind::Inherited));
+            return Ok(Visibility {
+                span: self.token.span.shrink_to_lo(),
+                kind: VisibilityKind::Inherited,
+                tokens: None,
+            });
         }
         let lo = self.prev_token.span;
 
@@ -1046,7 +1054,11 @@ impl<'a> Parser<'a> {
                 self.bump(); // `crate`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Crate(CrateSugar::PubCrate);
-                return Ok(respan(lo.to(self.prev_token.span), vis));
+                return Ok(Visibility {
+                    span: lo.to(self.prev_token.span),
+                    kind: vis,
+                    tokens: None,
+                });
             } else if self.is_keyword_ahead(1, &[kw::In]) {
                 // Parse `pub(in path)`.
                 self.bump(); // `(`
@@ -1054,7 +1066,11 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
-                return Ok(respan(lo.to(self.prev_token.span), vis));
+                return Ok(Visibility {
+                    span: lo.to(self.prev_token.span),
+                    kind: vis,
+                    tokens: None,
+                });
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren))
                 && self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
             {
@@ -1063,7 +1079,11 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
-                return Ok(respan(lo.to(self.prev_token.span), vis));
+                return Ok(Visibility {
+                    span: lo.to(self.prev_token.span),
+                    kind: vis,
+                    tokens: None,
+                });
             } else if let FollowedByType::No = fbt {
                 // Provide this diagnostic if a type cannot follow;
                 // in particular, if this is not a tuple struct.
@@ -1072,7 +1092,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(respan(lo, VisibilityKind::Public))
+        Ok(Visibility { span: lo, kind: VisibilityKind::Public, tokens: None })
     }
 
     /// Recovery for e.g. `pub(something) fn ...` or `struct X { pub(something) y: Z }`

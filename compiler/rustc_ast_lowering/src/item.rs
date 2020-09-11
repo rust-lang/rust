@@ -251,7 +251,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::ExternCrate(orig_name) => hir::ItemKind::ExternCrate(orig_name),
             ItemKind::Use(ref use_tree) => {
                 // Start with an empty prefix.
-                let prefix = Path { segments: vec![], span: use_tree.span };
+                let prefix = Path { segments: vec![], span: use_tree.span, tokens: None };
 
                 self.lower_use_tree(use_tree, &prefix, id, vis, ident, attrs)
             }
@@ -488,7 +488,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 *ident = tree.ident();
 
                 // First, apply the prefix to the path.
-                let mut path = Path { segments, span: path.span };
+                let mut path = Path { segments, span: path.span, tokens: None };
 
                 // Correctly resolve `self` imports.
                 if path.segments.len() > 1
@@ -540,8 +540,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
-                let path =
-                    self.lower_path(id, &Path { segments, span: path.span }, ParamMode::Explicit);
+                let path = self.lower_path(
+                    id,
+                    &Path { segments, span: path.span, tokens: None },
+                    ParamMode::Explicit,
+                );
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
             UseTreeKind::Nested(ref trees) => {
@@ -569,7 +572,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // for that we return the `{}` import (called the
                 // `ListStem`).
 
-                let prefix = Path { segments, span: prefix.span.to(path.span) };
+                let prefix = Path { segments, span: prefix.span.to(path.span), tokens: None };
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
@@ -927,7 +930,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         v: &Visibility,
         explicit_owner: Option<NodeId>,
     ) -> hir::Visibility<'hir> {
-        let node = match v.node {
+        let node = match v.kind {
             VisibilityKind::Public => hir::VisibilityKind::Public,
             VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
             VisibilityKind::Restricted { ref path, id } => {

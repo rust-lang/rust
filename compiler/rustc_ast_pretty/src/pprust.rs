@@ -1359,7 +1359,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_visibility(&mut self, vis: &ast::Visibility) {
-        match vis.node {
+        match vis.kind {
             ast::VisibilityKind::Public => self.word_nbsp("pub"),
             ast::VisibilityKind::Crate(sugar) => match sugar {
                 ast::CrateSugar::PubCrate => self.word_nbsp("pub(crate)"),

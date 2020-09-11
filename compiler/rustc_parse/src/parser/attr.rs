@@ -162,7 +162,7 @@ impl<'a> Parser<'a> {
         } else {
             let path = self.parse_path(PathStyle::Mod)?;
             let args = self.parse_attr_args()?;
-            ast::AttrItem { path, args }
+            ast::AttrItem { path, args, tokens: None }
         })
     }
 

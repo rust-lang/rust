@@ -411,11 +411,11 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn mk_block(&self, stmts: Vec<Stmt>, rules: BlockCheckMode, span: Span) -> P<Block> {
-        P(Block { stmts, id: DUMMY_NODE_ID, rules, span })
+        P(Block { stmts, id: DUMMY_NODE_ID, rules, span, tokens: None })
     }
 
     pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
-        Stmt { id: DUMMY_NODE_ID, kind, span }
+        Stmt { id: DUMMY_NODE_ID, kind, span, tokens: None }
     }
 
     fn mk_stmt_err(&self, span: Span) -> Stmt {

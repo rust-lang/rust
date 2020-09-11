@@ -330,7 +330,7 @@ crate fn mk_attr_id() -> AttrId {
 }
 
 pub fn mk_attr(style: AttrStyle, path: Path, args: MacArgs, span: Span) -> Attribute {
-    mk_attr_from_item(style, AttrItem { path, args }, span)
+    mk_attr_from_item(style, AttrItem { path, args, tokens: None }, span)
 }
 
 pub fn mk_attr_from_item(style: AttrStyle, item: AttrItem, span: Span) -> Attribute {
@@ -415,7 +415,7 @@ impl MetaItem {
                     }
                 }
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
-                Path { span, segments }
+                Path { span, segments, tokens: None }
             }
             Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. })) => match *nt {
                 token::Nonterminal::NtMeta(ref item) => return item.meta(item.path.span),

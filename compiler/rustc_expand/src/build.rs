@@ -3,7 +3,7 @@ use crate::base::ExtCtxt;
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Expr, PatKind, UnOp};
-use rustc_span::source_map::{respan, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
 use rustc_span::Span;
@@ -46,7 +46,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             args,
         });
-        ast::Path { span, segments }
+        ast::Path { span, segments, tokens: None }
     }
 
     pub fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy {
@@ -54,7 +54,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn ty(&self, span: Span, kind: ast::TyKind) -> P<ast::Ty> {
-        P(ast::Ty { id: ast::DUMMY_NODE_ID, span, kind })
+        P(ast::Ty { id: ast::DUMMY_NODE_ID, span, kind, tokens: None })
     }
 
     pub fn ty_path(&self, path: ast::Path) -> P<ast::Ty> {
@@ -158,7 +158,12 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(expr) }
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            span: expr.span,
+            kind: ast::StmtKind::Expr(expr),
+            tokens: None,
+        }
     }
 
     pub fn stmt_let(&self, sp: Span, mutbl: bool, ident: Ident, ex: P<ast::Expr>) -> ast::Stmt {
@@ -176,7 +181,12 @@ impl<'a> ExtCtxt<'a> {
             span: sp,
             attrs: AttrVec::new(),
         });
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp }
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            kind: ast::StmtKind::Local(local),
+            span: sp,
+            tokens: None,
+        }
     }
 
     // Generates `let _: Type;`, which is usually used for type assertions.
@@ -189,11 +199,16 @@ impl<'a> ExtCtxt<'a> {
             span,
             attrs: AttrVec::new(),
         });
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span }
+        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span, tokens: None }
     }
 
     pub fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Item(item), span: sp }
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            kind: ast::StmtKind::Item(item),
+            span: sp,
+            tokens: None,
+        }
     }
 
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
@@ -203,11 +218,18 @@ impl<'a> ExtCtxt<'a> {
                 id: ast::DUMMY_NODE_ID,
                 span: expr.span,
                 kind: ast::StmtKind::Expr(expr),
+                tokens: None,
             }],
         )
     }
     pub fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
-        P(ast::Block { stmts, id: ast::DUMMY_NODE_ID, rules: BlockCheckMode::Default, span })
+        P(ast::Block {
+            stmts,
+            id: ast::DUMMY_NODE_ID,
+            rules: BlockCheckMode::Default,
+            span,
+            tokens: None,
+        })
     }
 
     pub fn expr(&self, span: Span, kind: ast::ExprKind) -> P<ast::Expr> {
@@ -578,7 +600,11 @@ impl<'a> ExtCtxt<'a> {
             attrs,
             id: ast::DUMMY_NODE_ID,
             kind,
-            vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+            vis: ast::Visibility {
+                span: span.shrink_to_lo(),
+                kind: ast::VisibilityKind::Inherited,
+                tokens: None,
+            },
             span,
             tokens: None,
         })
@@ -592,7 +618,11 @@ impl<'a> ExtCtxt<'a> {
                 span: ty.span,
                 ty,
                 ident: None,
-                vis: respan(vis_span, ast::VisibilityKind::Inherited),
+                vis: ast::Visibility {
+                    span: vis_span,
+                    kind: ast::VisibilityKind::Inherited,
+                    tokens: None,
+                },
                 attrs: Vec::new(),
                 id: ast::DUMMY_NODE_ID,
                 is_placeholder: false,
@@ -611,7 +641,11 @@ impl<'a> ExtCtxt<'a> {
             disr_expr: None,
             id: ast::DUMMY_NODE_ID,
             ident,
-            vis: respan(vis_span, ast::VisibilityKind::Inherited),
+            vis: ast::Visibility {
+                span: vis_span,
+                kind: ast::VisibilityKind::Inherited,
+                tokens: None,
+            },
             span,
             is_placeholder: false,
         }

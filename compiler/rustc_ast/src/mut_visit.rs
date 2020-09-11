@@ -14,7 +14,7 @@ use crate::tokenstream::*;
 
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::sync::Lrc;
-use rustc_span::source_map::{respan, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -451,7 +451,7 @@ pub fn noop_visit_ty_constraint<T: MutVisitor>(
 }
 
 pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
-    let Ty { id, kind, span } = ty.deref_mut();
+    let Ty { id, kind, span, tokens: _ } = ty.deref_mut();
     vis.visit_id(id);
     match kind {
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err | TyKind::Never | TyKind::CVarArgs => {}
@@ -513,7 +513,7 @@ pub fn noop_visit_ident<T: MutVisitor>(Ident { name: _, span }: &mut Ident, vis:
     vis.visit_span(span);
 }
 
-pub fn noop_visit_path<T: MutVisitor>(Path { segments, span }: &mut Path, vis: &mut T) {
+pub fn noop_visit_path<T: MutVisitor>(Path { segments, span, tokens: _ }: &mut Path, vis: &mut T) {
     vis.visit_span(span);
     for PathSegment { ident, id, args } in segments {
         vis.visit_ident(ident);
@@ -579,7 +579,7 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
     let Attribute { kind, id: _, style: _, span } = attr;
     match kind {
-        AttrKind::Normal(AttrItem { path, args }) => {
+        AttrKind::Normal(AttrItem { path, args, tokens: _ }) => {
             vis.visit_path(path);
             visit_mac_args(args, vis);
         }
@@ -709,7 +709,7 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
         token::NtLifetime(ident) => vis.visit_ident(ident),
         token::NtLiteral(expr) => vis.visit_expr(expr),
         token::NtMeta(item) => {
-            let AttrItem { path, args } = item.deref_mut();
+            let AttrItem { path, args, tokens: _ } = item.deref_mut();
             vis.visit_path(path);
             visit_mac_args(args, vis);
         }
@@ -871,7 +871,7 @@ pub fn noop_visit_mt<T: MutVisitor>(MutTy { ty, mutbl: _ }: &mut MutTy, vis: &mu
 }
 
 pub fn noop_visit_block<T: MutVisitor>(block: &mut P<Block>, vis: &mut T) {
-    let Block { id, stmts, rules: _, span } = block.deref_mut();
+    let Block { id, stmts, rules: _, span, tokens: _ } = block.deref_mut();
     vis.visit_id(id);
     stmts.flat_map_in_place(|stmt| vis.flat_map_stmt(stmt));
     vis.visit_span(span);
@@ -978,11 +978,13 @@ pub fn noop_visit_mod<T: MutVisitor>(module: &mut Mod, vis: &mut T) {
 
 pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
     visit_clobber(krate, |Crate { module, attrs, span, proc_macros }| {
+        let item_vis =
+            Visibility { kind: VisibilityKind::Public, span: span.shrink_to_lo(), tokens: None };
         let item = P(Item {
             ident: Ident::invalid(),
             attrs,
             id: DUMMY_NODE_ID,
-            vis: respan(span.shrink_to_lo(), VisibilityKind::Public),
+            vis: item_vis,
             span,
             kind: ItemKind::Mod(module),
             tokens: None,
@@ -1284,12 +1286,15 @@ pub fn noop_filter_map_expr<T: MutVisitor>(mut e: P<Expr>, vis: &mut T) -> Optio
 }
 
 pub fn noop_flat_map_stmt<T: MutVisitor>(
-    Stmt { kind, mut span, mut id }: Stmt,
+    Stmt { kind, mut span, mut id, tokens }: Stmt,
     vis: &mut T,
 ) -> SmallVec<[Stmt; 1]> {
     vis.visit_id(&mut id);
     vis.visit_span(&mut span);
-    noop_flat_map_stmt_kind(kind, vis).into_iter().map(|kind| Stmt { id, kind, span }).collect()
+    noop_flat_map_stmt_kind(kind, vis)
+        .into_iter()
+        .map(|kind| Stmt { id, kind, span, tokens: tokens.clone() })
+        .collect()
 }
 
 pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
@@ -1314,13 +1319,13 @@ pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
     }
 }
 
-pub fn noop_visit_vis<T: MutVisitor>(Spanned { node, span }: &mut Visibility, vis: &mut T) {
-    match node {
+pub fn noop_visit_vis<T: MutVisitor>(visibility: &mut Visibility, vis: &mut T) {
+    match &mut visibility.kind {
         VisibilityKind::Public | VisibilityKind::Crate(_) | VisibilityKind::Inherited => {}
         VisibilityKind::Restricted { path, id } => {
             vis.visit_path(path);
             vis.visit_id(id);
         }
     }
-    vis.visit_span(span);
+    vis.visit_span(&mut visibility.span);
 }

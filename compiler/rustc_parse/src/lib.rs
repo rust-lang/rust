@@ -268,21 +268,32 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
         Nonterminal::NtItem(ref item) => {
             prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
         }
+        Nonterminal::NtBlock(ref block) => block.tokens.clone(),
+        Nonterminal::NtStmt(ref stmt) => {
+            // FIXME: We currently only collect tokens for `:stmt`
+            // matchers in `macro_rules!` macros. When we start collecting
+            // tokens for attributes on statements, we will need to prepend
+            // attributes here
+            stmt.tokens.clone()
+        }
         Nonterminal::NtPat(ref pat) => pat.tokens.clone(),
+        Nonterminal::NtTy(ref ty) => ty.tokens.clone(),
         Nonterminal::NtIdent(ident, is_raw) => {
             Some(tokenstream::TokenTree::token(token::Ident(ident.name, is_raw), ident.span).into())
         }
         Nonterminal::NtLifetime(ident) => {
             Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
         }
+        Nonterminal::NtMeta(ref attr) => attr.tokens.clone(),
+        Nonterminal::NtPath(ref path) => path.tokens.clone(),
+        Nonterminal::NtVis(ref vis) => vis.tokens.clone(),
         Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
-        Nonterminal::NtExpr(ref expr) => {
+        Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
             if expr.tokens.is_none() {
                 debug!("missing tokens for expr {:?}", expr);
             }
             prepend_attrs(sess, &expr.attrs, expr.tokens.as_ref(), span)
         }
-        _ => None,
     };
 
     // FIXME(#43081): Avoid this pretty-print + reparse hack

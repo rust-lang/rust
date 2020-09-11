@@ -967,6 +967,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AttrKind::Normal(ref item) => AttrKind::Normal(AttrItem {
                 path: item.path.clone(),
                 args: self.lower_mac_args(&item.args),
+                tokens: None,
             }),
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
@@ -1106,6 +1107,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 id: node_id,
                                 kind: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
                                 span: constraint.span,
+                                tokens: None,
                             },
                             itctx,
                         );

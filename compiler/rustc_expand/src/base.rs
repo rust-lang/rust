@@ -400,6 +400,7 @@ macro_rules! make_stmts_default {
                 id: ast::DUMMY_NODE_ID,
                 span: e.span,
                 kind: ast::StmtKind::Expr(e),
+                tokens: None
             }]
         })
     };
@@ -607,6 +608,7 @@ impl DummyResult {
             id: ast::DUMMY_NODE_ID,
             kind: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
             span: sp,
+            tokens: None,
         })
     }
 }
@@ -641,6 +643,7 @@ impl MacResult for DummyResult {
             id: ast::DUMMY_NODE_ID,
             kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
             span: self.span,
+            tokens: None
         }])
     }
 

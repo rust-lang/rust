@@ -26,7 +26,6 @@ use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Limit;
-use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{ExpnId, FileName, Span, DUMMY_SP};
 
@@ -358,7 +357,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             kind: ast::ItemKind::Mod(krate.module),
             ident: Ident::invalid(),
             id: ast::DUMMY_NODE_ID,
-            vis: respan(krate.span.shrink_to_lo(), ast::VisibilityKind::Public),
+            vis: ast::Visibility {
+                span: krate.span.shrink_to_lo(),
+                kind: ast::VisibilityKind::Public,
+                tokens: None,
+            },
             tokens: None,
         })]);
 
@@ -1393,10 +1396,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         // The placeholder expander gives ids to statements, so we avoid folding the id here.
-        let ast::Stmt { id, kind, span } = stmt;
+        let ast::Stmt { id, kind, span, tokens } = stmt;
         noop_flat_map_stmt_kind(kind, self)
             .into_iter()
-            .map(|kind| ast::Stmt { id, kind, span })
+            .map(|kind| ast::Stmt { id, kind, span, tokens: tokens.clone() })
             .collect()
     }
 
@@ -1777,6 +1780,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 kind: ast::AttrKind::Normal(AttrItem {
                     path: meta.path,
                     args: meta.kind.mac_args(meta.span),
+                    tokens: None,
                 }),
                 span: at.span,
                 id: at.id,

@@ -96,6 +96,7 @@ pub struct Path {
     /// The segments in the path: the things separated by `::`.
     /// Global paths begin with `kw::PathRoot`.
     pub segments: Vec<PathSegment>,
+    pub tokens: Option<TokenStream>,
 }
 
 impl PartialEq<Symbol> for Path {
@@ -117,7 +118,7 @@ impl Path {
     // Convert a span and an identifier to the corresponding
     // one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
-        Path { segments: vec![PathSegment::from_ident(ident)], span: ident.span }
+        Path { segments: vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
     }
 
     pub fn is_global(&self) -> bool {
@@ -540,6 +541,7 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 /// A match pattern.
@@ -586,7 +588,7 @@ impl Pat {
             _ => return None,
         };
 
-        Some(P(Ty { kind, id: self.id, span: self.span }))
+        Some(P(Ty { kind, id: self.id, span: self.span, tokens: None }))
     }
 
     /// Walk top-down and call `it` in each place where a pattern occurs
@@ -916,6 +918,7 @@ pub struct Stmt {
     pub id: NodeId,
     pub kind: StmtKind,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 impl Stmt {
@@ -1068,7 +1071,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr, 104);
+rustc_data_structures::static_assert_size!(Expr, 112);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
@@ -1168,7 +1171,7 @@ impl Expr {
             _ => return None,
         };
 
-        Some(P(Ty { kind, id: self.id, span: self.span }))
+        Some(P(Ty { kind, id: self.id, span: self.span, tokens: None }))
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1866,6 +1869,7 @@ pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2144,7 +2148,7 @@ impl Param {
     /// Builds a `Param` object from `ExplicitSelf`.
     pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
-        let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span });
+        let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span, tokens: None });
         let param = |mutbl, ty| Param {
             attrs,
             pat: P(Pat {
@@ -2167,6 +2171,7 @@ impl Param {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::Rptr(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
+                    tokens: None,
                 }),
             ),
         }
@@ -2416,6 +2421,7 @@ impl<D: Decoder> rustc_serialize::Decodable<D> for AttrId {
 pub struct AttrItem {
     pub path: Path,
     pub args: MacArgs,
+    pub tokens: Option<TokenStream>,
 }
 
 /// A list of attributes.
@@ -2485,7 +2491,12 @@ pub enum CrateSugar {
     JustCrate,
 }
 
-pub type Visibility = Spanned<VisibilityKind>;
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Visibility {
+    pub kind: VisibilityKind,
+    pub span: Span,
+    pub tokens: Option<TokenStream>,
+}
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum VisibilityKind {

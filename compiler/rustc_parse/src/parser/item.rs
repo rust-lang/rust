@@ -187,7 +187,7 @@ impl<'a> Parser<'a> {
 
     /// Error in-case a non-inherited visibility was parsed but no item followed.
     fn error_on_unmatched_vis(&self, vis: &Visibility) {
-        if let VisibilityKind::Inherited = vis.node {
+        if let VisibilityKind::Inherited = vis.kind {
             return;
         }
         let vs = pprust::vis_to_string(&vis);
@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
         } else if self.is_macro_rules_item() {
             // MACRO_RULES ITEM
             self.parse_item_macro_rules(vis)?
-        } else if vis.node.is_pub() && self.isnt_macro_invocation() {
+        } else if vis.kind.is_pub() && self.isnt_macro_invocation() {
             self.recover_missing_kw_before_item()?;
             return Ok(None);
         } else if macros_allowed && self.check_path() {
@@ -510,7 +510,12 @@ impl<'a> Parser<'a> {
         {
             let span = self.prev_token.span.between(self.token.span);
             self.struct_span_err(span, "missing trait in a trait impl").emit();
-            P(Ty { kind: TyKind::Path(None, err_path(span)), span, id: DUMMY_NODE_ID })
+            P(Ty {
+                kind: TyKind::Path(None, err_path(span)),
+                span,
+                id: DUMMY_NODE_ID,
+                tokens: None,
+            })
         } else {
             self.parse_ty()?
         };
@@ -782,7 +787,7 @@ impl<'a> Parser<'a> {
     fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
         let lo = self.token.span;
 
-        let mut prefix = ast::Path { segments: Vec::new(), span: lo.shrink_to_lo() };
+        let mut prefix = ast::Path { segments: Vec::new(), span: lo.shrink_to_lo(), tokens: None };
         let kind = if self.check(&token::OpenDelim(token::Brace))
             || self.check(&token::BinOp(token::Star))
             || self.is_import_coupler()
@@ -1046,7 +1051,7 @@ impl<'a> Parser<'a> {
 
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
-        P(Ty { kind: TyKind::Infer, span: id.span, id: ast::DUMMY_NODE_ID })
+        P(Ty { kind: TyKind::Infer, span: id.span, id: ast::DUMMY_NODE_ID, tokens: None })
     }
 
     /// Parses an enum declaration.
@@ -1413,7 +1418,7 @@ impl<'a> Parser<'a> {
     /// Item macro invocations or `macro_rules!` definitions need inherited visibility.
     /// If that's not the case, emit an error.
     fn complain_if_pub_macro(&self, vis: &Visibility, macro_rules: bool) {
-        if let VisibilityKind::Inherited = vis.node {
+        if let VisibilityKind::Inherited = vis.kind {
             return;
         }
 
