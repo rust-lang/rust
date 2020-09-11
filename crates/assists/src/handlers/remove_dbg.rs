@@ -43,15 +43,18 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
 fn adjusted_macro_contents(macro_call: &ast::MacroCall) -> Option<String> {
     let contents = get_valid_macrocall_contents(&macro_call, "dbg")?;
-    let is_leaf = macro_call.syntax().next_sibling().is_none();
     let macro_text_with_brackets = macro_call.token_tree()?.syntax().text();
-    let slice_index = if is_leaf || !needs_parentheses_around_macro_contents(contents) {
-        TextRange::new(TextSize::of('('), macro_text_with_brackets.len() - TextSize::of(')'))
+    let macro_text_in_brackets = macro_text_with_brackets.slice(TextRange::new(
+        TextSize::of('('),
+        macro_text_with_brackets.len() - TextSize::of(')'),
+    ));
+
+    let is_leaf = macro_call.syntax().next_sibling().is_none();
+    Some(if !is_leaf && needs_parentheses_around_macro_contents(contents) {
+        format!("({})", macro_text_in_brackets)
     } else {
-        // leave parenthesis around macro contents to preserve the semantics
-        TextRange::up_to(macro_text_with_brackets.len())
-    };
-    Some(macro_text_with_brackets.slice(slice_index).to_string())
+        macro_text_in_brackets.to_string()
+    })
 }
 
 /// Verifies that the given macro_call actually matches the given name
@@ -90,19 +93,10 @@ fn needs_parentheses_around_macro_contents(macro_contents: Vec<SyntaxElement>) -
     if macro_contents.len() < 2 {
         return false;
     }
-
-    let mut macro_contents_kind_not_in_brackets = Vec::with_capacity(macro_contents.len());
-
-    let mut first_bracket_in_macro = None;
     let mut unpaired_brackets_in_contents = Vec::new();
     for element in macro_contents {
         match element.kind() {
-            T!['('] | T!['['] | T!['{'] => {
-                if let None = first_bracket_in_macro {
-                    first_bracket_in_macro = Some(element.clone())
-                }
-                unpaired_brackets_in_contents.push(element);
-            }
+            T!['('] | T!['['] | T!['{'] => unpaired_brackets_in_contents.push(element),
             T![')'] => {
                 if !matches!(unpaired_brackets_in_contents.pop(), Some(correct_bracket) if correct_bracket.kind() == T!['('])
                 {
@@ -121,19 +115,15 @@ fn needs_parentheses_around_macro_contents(macro_contents: Vec<SyntaxElement>) -
                     return true;
                 }
             }
-            other_kind => {
-                if unpaired_brackets_in_contents.is_empty() {
-                    macro_contents_kind_not_in_brackets.push(other_kind);
+            symbol_kind => {
+                let symbol_not_in_bracket = unpaired_brackets_in_contents.is_empty();
+                if symbol_not_in_bracket && symbol_kind.is_punct() {
+                    return true;
                 }
             }
         }
     }
-
     !unpaired_brackets_in_contents.is_empty()
-        || matches!(first_bracket_in_macro, Some(bracket) if bracket.kind() != T!['('])
-        || macro_contents_kind_not_in_brackets
-            .into_iter()
-            .any(|macro_contents_kind| macro_contents_kind.is_punct())
 }
 
 #[cfg(test)]
@@ -244,6 +234,7 @@ fn main() {
         );
 
         check_assist(remove_dbg, r#"let res = <|>dbg!(2 + 2) * 5"#, r#"let res = (2 + 2) * 5"#);
+        check_assist(remove_dbg, r#"let res = <|>dbg![2 + 2] * 5"#, r#"let res = (2 + 2) * 5"#);
     }
 
     #[test]
