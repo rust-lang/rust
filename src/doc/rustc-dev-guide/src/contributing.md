@@ -143,7 +143,7 @@ Make sure your pull request is in compliance with Rust's style guidelines by run
 
     $ ./x.py test tidy --bless
 
-We recommand to make this check before every pull request (and every new commit
+We recommend to make this check before every pull request (and every new commit
 in a pull request); you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
 before every push to make sure you never forget to make this check. The
 CI will also run tidy and will fail if tidy fails.
