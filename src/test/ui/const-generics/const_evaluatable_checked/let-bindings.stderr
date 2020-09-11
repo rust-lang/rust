@@ -1,0 +1,18 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/let-bindings.rs:6:91
+   |
+LL | fn test<const N: usize>() -> [u8; { let x = N; N + 1 }] where [u8; { let x = N; N + 1 }]: Default {
+   |                                                                                           ^^^^^^^ required by this bound in `test::{{constant}}#0`
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/let-bindings.rs:6:30
+   |
+LL | fn test<const N: usize>() -> [u8; { let x = N; N + 1 }] where [u8; { let x = N; N + 1 }]: Default {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 2 previous errors
+

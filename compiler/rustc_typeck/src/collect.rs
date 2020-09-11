@@ -1693,25 +1693,27 @@ pub fn const_evaluatable_predicates_of<'tcx>(
 ) -> impl Iterator<Item = (ty::Predicate<'tcx>, Span)> {
     #[derive(Default)]
     struct ConstCollector<'tcx> {
-        ct: SmallVec<[(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>); 4]>,
+        ct: SmallVec<[(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>, Span); 4]>,
+        curr_span: Span,
     }
 
     impl<'tcx> TypeVisitor<'tcx> for ConstCollector<'tcx> {
         fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> bool {
             if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
-                self.ct.push((def, substs));
+                self.ct.push((def, substs, self.curr_span));
             }
             false
         }
     }
 
     let mut collector = ConstCollector::default();
-    for (pred, _span) in predicates.predicates.iter() {
+    for &(pred, span) in predicates.predicates.iter() {
+        collector.curr_span = span;
         pred.visit_with(&mut collector);
     }
     warn!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.ct);
-    collector.ct.into_iter().map(move |(def_id, subst)| {
-        (ty::PredicateAtom::ConstEvaluatable(def_id, subst).to_predicate(tcx), DUMMY_SP)
+    collector.ct.into_iter().map(move |(def_id, subst, span)| {
+        (ty::PredicateAtom::ConstEvaluatable(def_id, subst).to_predicate(tcx), span)
     })
 }
 
