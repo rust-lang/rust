@@ -120,19 +120,18 @@
 # Defaults to host platform
 #build = "x86_64-unknown-linux-gnu"
 
-# In addition to the build triple, other triples to produce full compiler
-# toolchains for. Each of these triples will be bootstrapped from the build
-# triple and then will continue to bootstrap themselves. This platform must
-# currently be able to run all of the triples provided here.
+# Which triples to produce a compiler toolchain for. Each of these triples will
+# be bootstrapped from the build triple themselves.
 #
 # Defaults to just the build triple
 #host = ["x86_64-unknown-linux-gnu"]
 
-# In addition to all host triples, other triples to produce the standard library
-# for. Each host triple will be used to produce a copy of the standard library
-# for each target triple.
+# Which triples to build libraries (core/alloc/std/test/proc_macro) for. Each of
+# these triples will be bootstrapped from the build triple themselves.
 #
-# Defaults to just the build triple
+# Defaults to `host`. If you set this explicitly, you likely want to add all
+# host triples to this list as well in order for those host toolchains to be
+# able to compile programs for their native target.
 #target = ["x86_64-unknown-linux-gnu"]
 
 # Use this directory to store build artifacts.

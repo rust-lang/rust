@@ -87,9 +87,14 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 
 pub struct RunConfig<'a> {
     pub builder: &'a Builder<'a>,
-    pub host: TargetSelection,
     pub target: TargetSelection,
     pub path: PathBuf,
+}
+
+impl RunConfig<'_> {
+    pub fn build_triple(&self) -> TargetSelection {
+        self.builder.build.build
+    }
 }
 
 struct StepDescription {
@@ -165,7 +170,6 @@ impl StepDescription {
                 pathset, self.name, builder.config.exclude
             );
         }
-        let hosts = &builder.hosts;
 
         // Determine the targets participating in this rule.
         let targets = if self.only_hosts {
@@ -178,16 +182,9 @@ impl StepDescription {
             &builder.targets
         };
 
-        for host in hosts {
-            for target in targets {
-                let run = RunConfig {
-                    builder,
-                    path: pathset.path(builder),
-                    host: *host,
-                    target: *target,
-                };
-                (self.make_run)(run);
-            }
+        for target in targets {
+            let run = RunConfig { builder, path: pathset.path(builder), target: *target };
+            (self.make_run)(run);
         }
     }
 

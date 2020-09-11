@@ -45,7 +45,7 @@ impl Step for Std {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Std {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
         });
     }
@@ -385,7 +385,7 @@ impl Step for StartupObjects {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(StartupObjects {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
         });
     }
@@ -454,7 +454,7 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustc {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
         });
     }
