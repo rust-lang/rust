@@ -562,6 +562,12 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
     }
 }
 
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [mir::abstract_const::Node<'tcx>] {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
+        ty::codec::RefDecodable::decode(d)
+    }
+}
+
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
         ty::codec::RefDecodable::decode(d)
@@ -1189,6 +1195,19 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 bug!("get_optimized_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
             .decode((self, tcx))
+    }
+
+    fn get_mir_abstract_const(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        id: DefIndex,
+    ) -> Option<&'tcx [mir::abstract_const::Node<'tcx>]> {
+        self.root
+            .tables
+            .mir_abstract_consts
+            .get(self, id)
+            .filter(|_| !self.is_proc_macro(id))
+            .map_or(None, |v| Some(v.decode((self, tcx))))
     }
 
     fn get_unused_generic_params(&self, id: DefIndex) -> FiniteBitSet<u32> {

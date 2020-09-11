@@ -321,6 +321,12 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for &'tcx [mir::abstract_const::Node<'tcx>] {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
+        (**self).encode(s)
+    }
+}
+
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
         (**self).encode(s)
@@ -1108,6 +1114,11 @@ impl EncodeContext<'a, 'tcx> {
             let unused = self.tcx.unused_generic_params(def_id);
             if !unused.is_empty() {
                 record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
+            }
+
+            let abstract_const = self.tcx.mir_abstract_const(def_id);
+            if let Some(abstract_const) = abstract_const {
+                record!(self.tables.mir_abstract_consts[def_id.to_def_id()] <- abstract_const);
             }
         }
     }

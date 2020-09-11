@@ -553,7 +553,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         type_implements_trait,
         subst_and_check_impossible_predicates,
         mir_abstract_const: |tcx, def_id| {
-            let def_id = def_id.as_local()?; // We do not store failed AbstractConst's.
+            let def_id = def_id.expect_local();
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
                 tcx.mir_abstract_const_of_const_arg(def)
             } else {

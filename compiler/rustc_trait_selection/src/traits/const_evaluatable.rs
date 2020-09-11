@@ -142,6 +142,12 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             return None;
         }
 
+        // We don't have to look at concrete constants, as we
+        // can just evaluate them.
+        if !body.is_polymorphic {
+            return None;
+        }
+
         Some(AbstractConstBuilder {
             tcx,
             body,
@@ -304,6 +310,15 @@ pub(super) fn mir_abstract_const<'tcx>(
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> Option<&'tcx [Node<'tcx>]> {
     if tcx.features().const_evaluatable_checked {
+        match tcx.def_kind(def.did) {
+            // FIXME(const_evaluatable_checked): We currently only do this for anonymous constants,
+            // meaning that we do not look into associated constants. I(@lcnr) am not yet sure whether
+            // we want to look into them or treat them as opaque projections.
+            //
+            // Right now we do neither of that and simply always fail to unify them.
+            DefKind::AnonConst => (),
+            _ => return None,
+        }
         let body = tcx.mir_const(def).borrow();
         AbstractConstBuilder::new(tcx, &body)?.build()
     } else {

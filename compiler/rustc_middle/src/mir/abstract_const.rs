@@ -11,7 +11,7 @@ rustc_index::newtype_index! {
 }
 
 /// A node of an `AbstractConst`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub enum Node<'tcx> {
     Leaf(&'tcx ty::Const<'tcx>),
     Binop(mir::BinOp, NodeId, NodeId),

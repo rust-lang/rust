@@ -760,6 +760,12 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     }
 }
 
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [mir::abstract_const::Node<'tcx>] {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+        RefDecodable::decode(d)
+    }
+}
+
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
         RefDecodable::decode(d)
