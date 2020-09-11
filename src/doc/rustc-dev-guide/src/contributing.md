@@ -418,7 +418,7 @@ still valid. Load up an older issue, double check that it's still true, and
 leave a comment letting us know if it is or is not. The [least recently
 updated sort][lru] is good for finding issues like this.
 
-[Thanks to `@rustbot`][rustbot], anyone can help triaging issues by adding
+[Thanks to `@rustbot`][rustbot], anyone can help triage issues by adding
 appropriate labels to issues that haven't been triaged yet:
 
 * Yellow, **A**-prefixed labels state which **area** of the project an issue
