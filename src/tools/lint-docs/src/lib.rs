@@ -15,6 +15,12 @@ struct Lint {
     lineno: usize,
 }
 
+impl Lint {
+    fn doc_contains(&self, text: &str) -> bool {
+        self.doc.iter().any(|line| line.contains(text))
+    }
+}
+
 #[derive(Clone, Copy, PartialEq)]
 enum Level {
     Allow,
@@ -37,12 +43,11 @@ pub fn extract_lint_docs(
     src_path: &Path,
     out_path: &Path,
     rustc_path: &Path,
-    rustdoc_path: &Path,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
     let mut lints = gather_lints(src_path)?;
     for lint in &mut lints {
-        generate_output_example(lint, rustc_path, rustdoc_path, verbose).map_err(|e| {
+        generate_output_example(lint, rustc_path, verbose).map_err(|e| {
             format!(
                 "failed to test example in lint docs for `{}` in {}:{}: {}",
                 lint.name,
@@ -197,7 +202,6 @@ fn lint_name(line: &str) -> Result<String, &'static str> {
 fn generate_output_example(
     lint: &mut Lint,
     rustc_path: &Path,
-    rustdoc_path: &Path,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
     // Explicit list of lints that are allowed to not have an example. Please
@@ -214,15 +218,19 @@ fn generate_output_example(
     ) {
         return Ok(());
     }
+    if lint.doc_contains("[rustdoc book]") && !lint.doc_contains("{{produces}}") {
+        // Rustdoc lints are documented in the rustdoc book, don't check these.
+        return Ok(());
+    }
     check_style(lint)?;
-    replace_produces(lint, rustc_path, rustdoc_path, verbose)?;
+    replace_produces(lint, rustc_path, verbose)?;
     Ok(())
 }
 
 /// Checks the doc style of the lint.
 fn check_style(lint: &Lint) -> Result<(), Box<dyn Error>> {
     for expected in &["### Example", "### Explanation", "{{produces}}"] {
-        if !lint.doc.iter().any(|line| line.contains(expected)) {
+        if !lint.doc_contains(expected) {
             return Err(format!("lint docs should contain the line `{}`", expected).into());
         }
     }
@@ -243,7 +251,6 @@ fn check_style(lint: &Lint) -> Result<(), Box<dyn Error>> {
 fn replace_produces(
     lint: &mut Lint,
     rustc_path: &Path,
-    rustdoc_path: &Path,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
     let mut lines = lint.doc.iter_mut();
@@ -283,14 +290,8 @@ fn replace_produces(
             match lines.next() {
                 Some(line) if line.is_empty() => {}
                 Some(line) if line == "{{produces}}" => {
-                    let output = generate_lint_output(
-                        &lint.name,
-                        &example,
-                        &options,
-                        rustc_path,
-                        rustdoc_path,
-                        verbose,
-                    )?;
+                    let output =
+                        generate_lint_output(&lint.name, &example, &options, rustc_path, verbose)?;
                     line.replace_range(
                         ..,
                         &format!(
@@ -318,7 +319,6 @@ fn generate_lint_output(
     example: &[&mut String],
     options: &[&str],
     rustc_path: &Path,
-    rustdoc_path: &Path,
     verbose: bool,
 ) -> Result<String, Box<dyn Error>> {
     if verbose {
@@ -327,8 +327,7 @@ fn generate_lint_output(
     let tempdir = tempfile::TempDir::new()?;
     let tempfile = tempdir.path().join("lint_example.rs");
     let mut source = String::new();
-    let is_rustdoc = options.contains(&"rustdoc");
-    let needs_main = !example.iter().any(|line| line.contains("fn main")) && !is_rustdoc;
+    let needs_main = !example.iter().any(|line| line.contains("fn main"));
     // Remove `# ` prefix for hidden lines.
     let unhidden =
         example.iter().map(|line| if line.starts_with("# ") { &line[2..] } else { line });
@@ -354,8 +353,7 @@ fn generate_lint_output(
     }
     fs::write(&tempfile, source)
         .map_err(|e| format!("failed to write {}: {}", tempfile.display(), e))?;
-    let program = if is_rustdoc { rustdoc_path } else { rustc_path };
-    let mut cmd = Command::new(program);
+    let mut cmd = Command::new(rustc_path);
     if options.contains(&"edition2015") {
         cmd.arg("--edition=2015");
     } else {

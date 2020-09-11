@@ -756,7 +756,6 @@ impl Step for RustcBook {
         // The tool runs `rustc` for extracting output examples, so it needs a
         // functional sysroot.
         builder.ensure(compile::Std { compiler: self.compiler, target: self.target });
-        let rustdoc = builder.rustdoc(self.compiler);
         let mut cmd = builder.tool_cmd(Tool::LintDocs);
         cmd.arg("--src");
         cmd.arg(builder.src.join("compiler"));
@@ -764,8 +763,6 @@ impl Step for RustcBook {
         cmd.arg(&out_listing);
         cmd.arg("--rustc");
         cmd.arg(rustc);
-        cmd.arg("--rustdoc");
-        cmd.arg(rustdoc);
         if builder.config.verbose() {
             cmd.arg("--verbose");
         }

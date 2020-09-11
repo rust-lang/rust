@@ -1817,35 +1817,10 @@ declare_lint! {
 
 declare_lint! {
     /// The `broken_intra_doc_links` lint detects failures in resolving
-    /// intra-doc link targets. This is a `rustdoc` only lint, and only works
-    /// on the [**nightly channel**].
+    /// intra-doc link targets. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
     ///
-    /// [**nightly channel**]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
-    ///
-    /// ### Example
-    ///
-    /// ```rust,rustdoc
-    /// /// This is a doc comment.
-    /// ///
-    /// /// See also [`bar`].
-    /// pub fn foo() {
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// `rustdoc` allows [linking to items by name][intra] which will
-    /// automatically generate links in the documentation to the item. This
-    /// lint is issued when `rustdoc` is unable to find the named item. Check
-    /// that the name is correct, that it is in scope, or if you need to
-    /// qualify it with a path. If you intended to have square brackets appear
-    /// literally in the text, surround the brackets with backticks such as ``
-    /// `[example]` `` to indicate a code span, or prefix it with a backslash
-    /// such as `\[example]`.
-    ///
-    /// [intra]: https://doc.rust-lang.org/nightly/rustdoc/unstable-features.html#linking-to-items-by-name
+    /// [rustdoc book]: ../../../rustdoc/lints.html#broken_intra_doc_links
     pub BROKEN_INTRA_DOC_LINKS,
     Warn,
     "failures in resolving intra-doc link targets"
@@ -1854,27 +1829,9 @@ declare_lint! {
 declare_lint! {
     /// The `invalid_codeblock_attributes` lint detects code block attributes
     /// in documentation examples that have potentially mis-typed values. This
-    /// is a `rustdoc` only lint.
+    /// is a `rustdoc` only lint, see the documentation in the [rustdoc book].
     ///
-    /// ### Example
-    ///
-    /// ```rust,rustdoc
-    /// /// Example.
-    /// ///
-    /// /// ```should-panic
-    /// /// assert_eq!(1, 2);
-    /// /// ```
-    /// pub fn foo() {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This lint is issued when `rustdoc` detects an example code block
-    /// attribute that appears similar to a valid one. In the example above,
-    /// the correct form is `should_panic`. This helps detect typo mistakes
-    /// for some common attributes.
+    /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_codeblock_attributes
     pub INVALID_CODEBLOCK_ATTRIBUTES,
     Warn,
     "codeblock attribute looks a lot like a known one"
@@ -1882,24 +1839,10 @@ declare_lint! {
 
 declare_lint! {
     /// The `missing_crate_level_docs` lint detects if documentation is
-    /// missing at the crate root. This is a `rustdoc` only lint. This is a
-    /// `rustdoc` only lint.
+    /// missing at the crate root. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
     ///
-    /// ### Example
-    ///
-    /// ```rust,rustdoc
-    /// #![deny(missing_crate_level_docs)]
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This lint causes `rustdoc` to check if the crate root is missing
-    /// documentation. This is currently "allow" by default, but it is
-    /// intended to make this a warning in the future. This is intended as a
-    /// means to introduce new users on *how* to document their crate by
-    /// pointing them to some instructions on how to get started.
+    /// [rustdoc book]: ../../../rustdoc/lints.html#missing_crate_level_docs
     pub MISSING_CRATE_LEVEL_DOCS,
     Allow,
     "detects crates with no crate-level documentation"
@@ -1908,43 +1851,9 @@ declare_lint! {
 declare_lint! {
     /// The `missing_doc_code_examples` lint detects publicly-exported items
     /// without code samples in their documentation. This is a `rustdoc` only
-    /// lint, and only works on the [**nightly channel**].
+    /// lint, see the documentation in the [rustdoc book].
     ///
-    /// [**nightly channel**]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
-    ///
-    /// ### Example
-    ///
-    /// ```rust,rustdoc
-    /// #![warn(missing_doc_code_examples)]
-    ///
-    /// /// There is no code example!
-    /// pub fn no_code_example() {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This lint is to ensure a high level of quality for documentation. Code
-    /// examples can be very useful to see how to use an API. To add an
-    /// example, include a markdown code block with an example of how to use
-    /// the item, such as:
-    ///
-    /// ```rust
-    /// /// Adds one to the number given.
-    /// ///
-    /// /// # Examples
-    /// ///
-    /// /// ```
-    /// /// let arg = 5;
-    /// /// let answer = my_crate::add_one(arg);
-    /// ///
-    /// /// assert_eq!(6, answer);
-    /// /// ```
-    /// pub fn add_one(x: i32) -> i32 {
-    ///     x + 1
-    /// }
-    /// ```
+    /// [rustdoc book]: ../../../rustdoc/lints.html#missing_doc_code_examples
     pub MISSING_DOC_CODE_EXAMPLES,
     Allow,
     "detects publicly-exported items without code samples in their documentation"
@@ -1952,31 +1861,10 @@ declare_lint! {
 
 declare_lint! {
     /// The `private_doc_tests` lint detects code samples in docs of private
-    /// items not documented by `rustdoc`. This is a `rustdoc` only lint.
+    /// items not documented by `rustdoc`. This is a `rustdoc` only lint, see
+    /// the documentation in the [rustdoc book].
     ///
-    /// ### Example
-    ///
-    /// ```rust,rustdoc
-    /// #![deny(private_doc_tests)]
-    ///
-    /// mod foo {
-    ///     /// private doc test
-    ///     ///
-    ///     /// ```
-    ///     /// assert!(false);
-    ///     /// ```
-    ///     fn bar() {}
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Because documentation examples link against the public API of the
-    /// crate, it is not possible for an example to access a private item.
-    /// This means it was likely a mistake to add a code example to a private
-    /// item.
+    /// [rustdoc book]: ../../../rustdoc/lints.html#private_doc_tests
     pub PRIVATE_DOC_TESTS,
     Allow,
     "detects code samples in docs of private items not documented by rustdoc"
