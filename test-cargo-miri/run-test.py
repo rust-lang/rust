@@ -62,18 +62,22 @@ def test_cargo_miri_run():
     )
 
 def test_cargo_miri_test():
+    # rustdoc is not run on foreign targets
+    is_foreign = 'MIRI_TEST_TARGET' in os.environ
+    rustdoc_ref = "test.stderr.ref2" if is_foreign else "test.stderr.ref"
+
     test("cargo miri test",
         cargo_miri("test"),
-        "test.stdout.ref", "test.stderr.ref",
+        "test.stdout.ref",rustdoc_ref,
         env={'MIRIFLAGS': "-Zmiri-seed=feed"},
     )
     test("cargo miri test (with filter)",
         cargo_miri("test") + ["--", "--format=pretty", "le1"],
-        "test.stdout.ref2", "test.stderr.ref"
+        "test.stdout.ref2", rustdoc_ref
     )
     test("cargo miri test (without isolation)",
         cargo_miri("test") + ["--", "--format=pretty", "num_cpus"],
-        "test.stdout.ref3", "test.stderr.ref",
+        "test.stdout.ref3", rustdoc_ref,
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
     test("cargo miri test (test target)",
