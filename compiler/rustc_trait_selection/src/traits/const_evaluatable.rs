@@ -1,3 +1,13 @@
+//! Checking that constant values used in types can be successfully evaluated.
+//!
+//! For concrete constants, this is fairly simple as we can just try and evaluate it.
+//!
+//! When dealing with polymorphic constants, for example `std::mem::size_of::<T>() - 1`,
+//! this is not as easy.
+//!
+//! In this case we try to build an abstract representation of this constant using
+//! `mir_abstract_const` which can then be checked for structural equality with other
+//! generic constants mentioned in the `caller_bounds` of the current environment.
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
@@ -129,13 +139,19 @@ impl AbstractConst<'tcx> {
 struct AbstractConstBuilder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
+    /// The current WIP node tree.
     nodes: IndexVec<NodeId, Node<'tcx>>,
     locals: IndexVec<mir::Local, NodeId>,
+    /// We only allow field accesses if they access
+    /// the result of a checked operation.
     checked_op_locals: BitSet<mir::Local>,
 }
 
 impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
     fn new(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>) -> Option<AbstractConstBuilder<'a, 'tcx>> {
+        // We only allow consts without control flow, so
+        // we check for cycles here which simplifies the
+        // rest of this implementation.
         if body.is_cfg_cyclic() {
             return None;
         }
@@ -154,17 +170,21 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             checked_op_locals: BitSet::new_empty(body.local_decls.len()),
         })
     }
-
     fn operand_to_node(&mut self, op: &mir::Operand<'tcx>) -> Option<NodeId> {
         debug!("operand_to_node: op={:?}", op);
         const ZERO_FIELD: mir::Field = mir::Field::from_usize(0);
         match op {
             mir::Operand::Copy(p) | mir::Operand::Move(p) => {
+                // Do not allow any projections.
+                //
+                // One exception are field accesses on the result of checked operations,
+                // which are required to support things like `1 + 2`.
                 if let Some(p) = p.as_local() {
                     debug_assert!(!self.checked_op_locals.contains(p));
                     Some(self.locals[p])
                 } else if let &[mir::ProjectionElem::Field(ZERO_FIELD, _)] = p.projection.as_ref() {
-                    // Only allow field accesses on the result of checked operations.
+                    // Only allow field accesses if the given local
+                    // contains the result of a checked operation.
                     if self.checked_op_locals.contains(p.local) {
                         Some(self.locals[p.local])
                     } else {
@@ -238,6 +258,11 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         }
     }
 
+    /// Possible return values:
+    ///
+    /// - `None`: unsupported terminator, stop building
+    /// - `Some(None)`: supported terminator, finish building
+    /// - `Some(Some(block))`: support terminator, build `block` next
     fn build_terminator(
         &mut self,
         terminator: &mir::Terminator<'tcx>,
@@ -250,7 +275,18 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 ref func,
                 ref args,
                 destination: Some((ref place, target)),
+                // We do not care about `cleanup` here. Any branch which
+                // uses `cleanup` will fail const-eval and they therefore
+                // do not matter when checking for const evaluatability.
+                //
+                // Do note that even if `panic::catch_unwind` is made const,
+                // we still do not have to care about this, as we do not look
+                // into functions.
                 cleanup: _,
+                // Do not allow overloaded operators for now,
+                // we probably do want to allow this in the future.
+                //
+                // This is currently fairly irrelevant as it requires `const Trait`s.
                 from_hir_call: true,
                 fn_span: _,
             } => {
@@ -264,10 +300,14 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 self.locals[local] = self.nodes.push(Node::FunctionCall(func, args));
                 Some(Some(target))
             }
+            // We only allow asserts for checked operations.
+            //
+            // These asserts seem to all have the form `!_local.0` so
+            // we only allow exactly that.
             TerminatorKind::Assert { ref cond, expected: false, target, .. } => {
                 let p = match cond {
                     mir::Operand::Copy(p) | mir::Operand::Move(p) => p,
-                    mir::Operand::Constant(_) => bug!("Unexpected assert"),
+                    mir::Operand::Constant(_) => bug!("unexpected assert"),
                 };
 
                 const ONE_FIELD: mir::Field = mir::Field::from_usize(1);
@@ -285,8 +325,11 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         }
     }
 
+    /// Builds the abstract const by walking the mir from start to finish
+    /// and bailing out when encountering an unsupported operation.
     fn build(mut self) -> Option<&'tcx [Node<'tcx>]> {
         let mut block = &self.body.basic_blocks()[mir::START_BLOCK];
+        // We checked for a cyclic cfg above, so this should terminate.
         loop {
             debug!("AbstractConstBuilder: block={:?}", block);
             for stmt in block.statements.iter() {
@@ -340,6 +383,7 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     false
 }
 
+/// Tries to unify two abstract constants using structural equality.
 pub(super) fn try_unify<'tcx>(
     tcx: TyCtxt<'tcx>,
     a: AbstractConst<'tcx>,
