@@ -90,7 +90,7 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
     (variant_path_string, enum_path_string)
 }
 
-impl<'a> LateResolutionVisitor<'a, '_, '_> {
+impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     fn def_span(&self, def_id: DefId) -> Option<Span> {
         match def_id.krate {
             LOCAL_CRATE => self.r.opt_span(def_id),
@@ -623,12 +623,12 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         );
                     }
                 }
-                PathSource::Expr(_) | PathSource::TupleStruct(_) | PathSource::Pat => {
+                PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                     let span = match &source {
                         PathSource::Expr(Some(Expr {
                             span, kind: ExprKind::Call(_, _), ..
                         }))
-                        | PathSource::TupleStruct(span) => {
+                        | PathSource::TupleStruct(span, _) => {
                             // We want the main underline to cover the suggested code as well for
                             // cleaner output.
                             err.set_span(*span);
@@ -640,7 +640,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         err.span_label(span, &format!("`{}` defined here", path_str));
                     }
                     let (tail, descr, applicability) = match source {
-                        PathSource::Pat | PathSource::TupleStruct(_) => {
+                        PathSource::Pat | PathSource::TupleStruct(..) => {
                             ("", "pattern", Applicability::MachineApplicable)
                         }
                         _ => (": val", "literal", Applicability::HasPlaceholders),
@@ -705,7 +705,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             }
             (
                 Res::Def(DefKind::Enum, def_id),
-                PathSource::TupleStruct(_) | PathSource::Expr(..),
+                PathSource::TupleStruct(..) | PathSource::Expr(..),
             ) => {
                 if self
                     .diagnostic_metadata
@@ -745,15 +745,50 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 }
             }
             (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
-                if let Some((ctor_def, ctor_vis)) = self.r.struct_constructors.get(&def_id).cloned()
+                if let Some((ctor_def, ctor_vis, fields)) =
+                    self.r.struct_constructors.get(&def_id).cloned()
                 {
                     let accessible_ctor =
                         self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
                     if is_expected(ctor_def) && !accessible_ctor {
-                        err.span_label(
-                            span,
-                            "constructor is not visible here due to private fields".to_string(),
-                        );
+                        let mut better_diag = false;
+                        if let PathSource::TupleStruct(_, pattern_spans) = source {
+                            if pattern_spans.len() > 0 && fields.len() == pattern_spans.len() {
+                                let non_visible_spans: Vec<Span> = fields
+                                    .iter()
+                                    .zip(pattern_spans.iter())
+                                    .filter_map(|(vis, span)| {
+                                        match self
+                                            .r
+                                            .is_accessible_from(*vis, self.parent_scope.module)
+                                        {
+                                            true => None,
+                                            false => Some(*span),
+                                        }
+                                    })
+                                    .collect();
+                                // Extra check to be sure
+                                if non_visible_spans.len() > 0 {
+                                    let mut m: rustc_span::MultiSpan =
+                                        non_visible_spans.clone().into();
+                                    non_visible_spans.into_iter().for_each(|s| {
+                                        m.push_span_label(s, "private field".to_string())
+                                    });
+                                    err.span_note(
+                                        m,
+                                        "constructor is not visible here due to private fields",
+                                    );
+                                    better_diag = true;
+                                }
+                            }
+                        }
+
+                        if !better_diag {
+                            err.span_label(
+                                span,
+                                "constructor is not visible here due to private fields".to_string(),
+                            );
+                        }
                     }
                 } else {
                     bad_struct_syntax_suggestion(def_id);

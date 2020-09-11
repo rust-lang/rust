@@ -188,7 +188,7 @@ crate enum PathSource<'a> {
     // Paths in struct expressions and patterns `Path { .. }`.
     Struct,
     // Paths in tuple struct patterns `Path(..)`.
-    TupleStruct(Span),
+    TupleStruct(Span, &'a [Span]),
     // `m::A::B` in `<T as m::A>::B::C`.
     TraitItem(Namespace),
 }
@@ -197,7 +197,7 @@ impl<'a> PathSource<'a> {
     fn namespace(self) -> Namespace {
         match self {
             PathSource::Type | PathSource::Trait(_) | PathSource::Struct => TypeNS,
-            PathSource::Expr(..) | PathSource::Pat | PathSource::TupleStruct(_) => ValueNS,
+            PathSource::Expr(..) | PathSource::Pat | PathSource::TupleStruct(..) => ValueNS,
             PathSource::TraitItem(ns) => ns,
         }
     }
@@ -208,7 +208,7 @@ impl<'a> PathSource<'a> {
             | PathSource::Expr(..)
             | PathSource::Pat
             | PathSource::Struct
-            | PathSource::TupleStruct(_) => true,
+            | PathSource::TupleStruct(..) => true,
             PathSource::Trait(_) | PathSource::TraitItem(..) => false,
         }
     }
@@ -219,7 +219,7 @@ impl<'a> PathSource<'a> {
             PathSource::Trait(_) => "trait",
             PathSource::Pat => "unit struct, unit variant or constant",
             PathSource::Struct => "struct, variant or union type",
-            PathSource::TupleStruct(_) => "tuple struct or tuple variant",
+            PathSource::TupleStruct(..) => "tuple struct or tuple variant",
             PathSource::TraitItem(ns) => match ns {
                 TypeNS => "associated type",
                 ValueNS => "method or associated constant",
@@ -305,7 +305,7 @@ impl<'a> PathSource<'a> {
                 | Res::SelfCtor(..) => true,
                 _ => false,
             },
-            PathSource::TupleStruct(_) => match res {
+            PathSource::TupleStruct(..) => match res {
                 Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..) => true,
                 _ => false,
             },
@@ -340,8 +340,8 @@ impl<'a> PathSource<'a> {
             (PathSource::Struct, false) => error_code!(E0422),
             (PathSource::Expr(..), true) => error_code!(E0423),
             (PathSource::Expr(..), false) => error_code!(E0425),
-            (PathSource::Pat | PathSource::TupleStruct(_), true) => error_code!(E0532),
-            (PathSource::Pat | PathSource::TupleStruct(_), false) => error_code!(E0531),
+            (PathSource::Pat | PathSource::TupleStruct(..), true) => error_code!(E0532),
+            (PathSource::Pat | PathSource::TupleStruct(..), false) => error_code!(E0531),
             (PathSource::TraitItem(..), true) => error_code!(E0575),
             (PathSource::TraitItem(..), false) => error_code!(E0576),
         }
@@ -411,7 +411,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
-impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
+impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     fn visit_item(&mut self, item: &'ast Item) {
         let prev = replace(&mut self.diagnostic_metadata.current_item, Some(item));
         // Always report errors in items we just entered.
@@ -659,7 +659,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
 }
 
-impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
+impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn new(resolver: &'b mut Resolver<'a>) -> LateResolutionVisitor<'a, 'b, 'ast> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
@@ -1539,8 +1539,16 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         .unwrap_or_else(|| self.fresh_binding(ident, pat.id, pat_src, bindings));
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
                 }
-                PatKind::TupleStruct(ref path, ..) => {
-                    self.smart_resolve_path(pat.id, None, path, PathSource::TupleStruct(pat.span));
+                PatKind::TupleStruct(ref path, ref sub_patterns) => {
+                    self.smart_resolve_path(
+                        pat.id,
+                        None,
+                        path,
+                        PathSource::TupleStruct(
+                            pat.span,
+                            self.r.arenas.alloc_pattern_spans(sub_patterns.iter().map(|p| p.span)),
+                        ),
+                    );
                 }
                 PatKind::Path(ref qself, ref path) => {
                     self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Pat);
