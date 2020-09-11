@@ -187,70 +187,79 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         }
     }
 
+    fn build_statement(&mut self, stmt: &mir::Statement<'tcx>) -> Option<()> {
+        debug!("AbstractConstBuilder: stmt={:?}", stmt);
+        match stmt.kind {
+            StatementKind::Assign(box (ref place, ref rvalue)) => {
+                let local = place.as_local()?;
+                match *rvalue {
+                    Rvalue::Use(ref operand) => {
+                        self.locals[local] = self.operand_to_node(operand)?;
+                    }
+                    Rvalue::BinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
+                        let lhs = self.operand_to_node(lhs)?;
+                        let rhs = self.operand_to_node(rhs)?;
+                        self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs));
+                        if op.is_checkable() {
+                            bug!("unexpected unchecked checkable binary operation");
+                        }
+                    }
+                    Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
+                        let lhs = self.operand_to_node(lhs)?;
+                        let rhs = self.operand_to_node(rhs)?;
+                        self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs));
+                        self.checked_op_locals.insert(local);
+                    }
+                    _ => return None,
+                }
+            }
+            _ => return None,
+        }
+
+        Some(())
+    }
+
+    fn build_terminator(
+        &mut self,
+        terminator: &mir::Terminator<'tcx>,
+    ) -> Option<Option<mir::BasicBlock>> {
+        debug!("AbstractConstBuilder: terminator={:?}", terminator);
+        match terminator.kind {
+            TerminatorKind::Goto { target } => Some(Some(target)),
+            TerminatorKind::Return => Some(None),
+            TerminatorKind::Assert { ref cond, expected: false, target, .. } => {
+                let p = match cond {
+                    mir::Operand::Copy(p) | mir::Operand::Move(p) => p,
+                    mir::Operand::Constant(_) => bug!("Unexpected assert"),
+                };
+
+                const ONE_FIELD: mir::Field = mir::Field::from_usize(1);
+                debug!("proj: {:?}", p.projection);
+                if let &[mir::ProjectionElem::Field(ONE_FIELD, _)] = p.projection.as_ref() {
+                    // Only allow asserts checking the result of a checked operation.
+                    if self.checked_op_locals.contains(p.local) {
+                        return Some(Some(target));
+                    }
+                }
+
+                None
+            }
+            _ => None,
+        }
+    }
+
     fn build(mut self) -> Option<&'tcx [Node<'tcx>]> {
         let mut block = &self.body.basic_blocks()[mir::START_BLOCK];
         loop {
             debug!("AbstractConstBuilder: block={:?}", block);
             for stmt in block.statements.iter() {
-                debug!("AbstractConstBuilder: stmt={:?}", stmt);
-                match stmt.kind {
-                    StatementKind::Assign(box (ref place, ref rvalue)) => {
-                        let local = place.as_local()?;
-                        match *rvalue {
-                            Rvalue::Use(ref operand) => {
-                                self.locals[local] = self.operand_to_node(operand)?;
-                            }
-                            Rvalue::BinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
-                                let lhs = self.operand_to_node(lhs)?;
-                                let rhs = self.operand_to_node(rhs)?;
-                                self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs));
-                                if op.is_checkable() {
-                                    bug!("unexpected unchecked checkable binary operation");
-                                }
-                            }
-                            Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs)
-                                if Self::check_binop(op) =>
-                            {
-                                let lhs = self.operand_to_node(lhs)?;
-                                let rhs = self.operand_to_node(rhs)?;
-                                self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs));
-                                self.checked_op_locals.insert(local);
-                            }
-                            _ => return None,
-                        }
-                    }
-                    _ => return None,
-                }
+                self.build_statement(stmt)?;
             }
 
-            debug!("AbstractConstBuilder: terminator={:?}", block.terminator());
-            match block.terminator().kind {
-                TerminatorKind::Goto { target } => {
-                    block = &self.body.basic_blocks()[target];
-                }
-                TerminatorKind::Return => {
-                    warn!(?self.nodes);
-                    return { Some(self.tcx.arena.alloc_from_iter(self.nodes)) };
-                }
-                TerminatorKind::Assert { ref cond, expected: false, target, .. } => {
-                    let p = match cond {
-                        mir::Operand::Copy(p) | mir::Operand::Move(p) => p,
-                        mir::Operand::Constant(_) => bug!("Unexpected assert"),
-                    };
-
-                    const ONE_FIELD: mir::Field = mir::Field::from_usize(1);
-                    debug!("proj: {:?}", p.projection);
-                    if let &[mir::ProjectionElem::Field(ONE_FIELD, _)] = p.projection.as_ref() {
-                        // Only allow asserts checking the result of a checked operation.
-                        if self.checked_op_locals.contains(p.local) {
-                            block = &self.body.basic_blocks()[target];
-                            continue;
-                        }
-                    }
-
-                    return None;
-                }
-                _ => return None,
+            if let Some(next) = self.build_terminator(block.terminator())? {
+                block = &self.body.basic_blocks()[next];
+            } else {
+                return Some(self.tcx.arena.alloc_from_iter(self.nodes));
             }
         }
     }
@@ -261,11 +270,11 @@ pub(super) fn mir_abstract_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> Option<&'tcx [Node<'tcx>]> {
-    if !tcx.features().const_evaluatable_checked {
-        None
-    } else {
+    if tcx.features().const_evaluatable_checked {
         let body = tcx.mir_const(def).borrow();
         AbstractConstBuilder::new(tcx, &body)?.build()
+    } else {
+        None
     }
 }
 
