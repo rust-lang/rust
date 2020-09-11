@@ -407,6 +407,10 @@ fn check_terminator(
         } => {
             let fn_ty = func.ty(body, tcx);
             if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
+                // Panic functions (with one argument) might be const fn.
+                if super::check_consts::is_lang_panic_fn(tcx, fn_def_id) {
+                    return Ok(());
+                }
                 // Allow unstable const if we opt in by using #[allow_internal_unstable]
                 // on function or macro declaration.
                 if !crate::const_eval::is_min_const_fn(tcx, fn_def_id)
