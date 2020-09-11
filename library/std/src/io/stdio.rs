@@ -584,26 +584,26 @@ impl fmt::Debug for Stdout {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.lock().write(buf)
+        (&*self).write(buf)
     }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        self.lock().write_vectored(bufs)
+        (&*self).write_vectored(bufs)
     }
     #[inline]
     fn is_write_vectored(&self) -> bool {
-        self.lock().is_write_vectored()
+        io::Write::is_write_vectored(&&*self)
     }
     fn flush(&mut self) -> io::Result<()> {
-        self.lock().flush()
+        (&*self).flush()
     }
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        self.lock().write_all(buf)
+        (&*self).write_all(buf)
     }
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        self.lock().write_all_vectored(bufs)
+        (&*self).write_all_vectored(bufs)
     }
     fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
-        self.lock().write_fmt(args)
+        (&*self).write_fmt(args)
     }
 }
 
@@ -787,26 +787,26 @@ impl fmt::Debug for Stderr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.lock().write(buf)
+        (&*self).write(buf)
     }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        self.lock().write_vectored(bufs)
+        (&*self).write_vectored(bufs)
     }
     #[inline]
     fn is_write_vectored(&self) -> bool {
-        self.lock().is_write_vectored()
+        io::Write::is_write_vectored(&&*self)
     }
     fn flush(&mut self) -> io::Result<()> {
-        self.lock().flush()
+        (&*self).flush()
     }
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        self.lock().write_all(buf)
+        (&*self).write_all(buf)
     }
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        self.lock().write_all_vectored(bufs)
+        (&*self).write_all_vectored(bufs)
     }
     fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
-        self.lock().write_fmt(args)
+        (&*self).write_fmt(args)
     }
 }
 
