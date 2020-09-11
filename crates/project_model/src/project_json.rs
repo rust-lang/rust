@@ -7,12 +7,12 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use serde::{de, Deserialize};
 
-use crate::{cfg_flag::CfgFlag, Sysroot};
+use crate::cfg_flag::CfgFlag;
 
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectJson {
-    pub(crate) sysroot: Option<Sysroot>,
+    pub(crate) sysroot_src: Option<AbsPathBuf>,
     crates: Vec<Crate>,
 }
 
@@ -35,7 +35,7 @@ pub struct Crate {
 impl ProjectJson {
     pub fn new(base: &AbsPath, data: ProjectJsonData) -> ProjectJson {
         ProjectJson {
-            sysroot: data.sysroot_src.map(|it| base.join(it)).map(|it| Sysroot::load(&it)),
+            sysroot_src: data.sysroot_src.map(|it| base.join(it)),
             crates: data
                 .crates
                 .into_iter()

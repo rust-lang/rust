@@ -33,7 +33,7 @@ pub enum ProjectWorkspace {
     /// Project workspace was discovered by running `cargo metadata` and `rustc --print sysroot`.
     Cargo { cargo: CargoWorkspace, sysroot: Sysroot },
     /// Project workspace was manually specified using a `rust-project.json` file.
-    Json { project: ProjectJson },
+    Json { project: ProjectJson, sysroot: Option<Sysroot> },
 }
 
 impl fmt::Debug for ProjectWorkspace {
@@ -44,10 +44,10 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("n_packages", &cargo.packages().len())
                 .field("n_sysroot_crates", &sysroot.crates().len())
                 .finish(),
-            ProjectWorkspace::Json { project } => {
+            ProjectWorkspace::Json { project, sysroot } => {
                 let mut debug_struct = f.debug_struct("Json");
                 debug_struct.field("n_crates", &project.n_crates());
-                if let Some(sysroot) = &project.sysroot {
+                if let Some(sysroot) = sysroot {
                     debug_struct.field("n_sysroot_crates", &sysroot.crates().len());
                 }
                 debug_struct.finish()
@@ -169,7 +169,11 @@ impl ProjectWorkspace {
                 })?;
                 let project_location = project_json.parent().unwrap().to_path_buf();
                 let project = ProjectJson::new(&project_location, data);
-                ProjectWorkspace::Json { project }
+                let sysroot = match &project.sysroot_src {
+                    Some(path) => Some(Sysroot::load(path)?),
+                    None => None,
+                };
+                ProjectWorkspace::Json { project, sysroot }
             }
             ProjectManifest::CargoToml(cargo_toml) => {
                 let cargo_version = utf8_stdout({
@@ -203,12 +207,21 @@ impl ProjectWorkspace {
         Ok(res)
     }
 
+    pub fn load_inline(project_json: ProjectJson) -> Result<ProjectWorkspace> {
+        let sysroot = match &project_json.sysroot_src {
+            Some(path) => Some(Sysroot::load(path)?),
+            None => None,
+        };
+
+        Ok(ProjectWorkspace::Json { project: project_json, sysroot })
+    }
+
     /// Returns the roots for the current `ProjectWorkspace`
     /// The return type contains the path and whether or not
     /// the root is a member of the current workspace
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         match self {
-            ProjectWorkspace::Json { project } => project
+            ProjectWorkspace::Json { project, sysroot } => project
                 .crates()
                 .map(|(_, krate)| PackageRoot {
                     is_member: krate.is_workspace_member,
@@ -217,7 +230,7 @@ impl ProjectWorkspace {
                 })
                 .collect::<FxHashSet<_>>()
                 .into_iter()
-                .chain(project.sysroot.as_ref().into_iter().flat_map(|sysroot| {
+                .chain(sysroot.as_ref().into_iter().flat_map(|sysroot| {
                     sysroot.crates().map(move |krate| PackageRoot {
                         is_member: false,
                         include: vec![sysroot[krate].root_dir().to_path_buf()],
@@ -255,7 +268,7 @@ impl ProjectWorkspace {
 
     pub fn proc_macro_dylib_paths(&self) -> Vec<AbsPathBuf> {
         match self {
-            ProjectWorkspace::Json { project } => project
+            ProjectWorkspace::Json { project, sysroot: _ } => project
                 .crates()
                 .filter_map(|(_, krate)| krate.proc_macro_dylib_path.as_ref())
                 .cloned()
@@ -285,9 +298,8 @@ impl ProjectWorkspace {
     ) -> CrateGraph {
         let mut crate_graph = CrateGraph::default();
         match self {
-            ProjectWorkspace::Json { project } => {
-                let sysroot_dps = project
-                    .sysroot
+            ProjectWorkspace::Json { project, sysroot } => {
+                let sysroot_dps = sysroot
                     .as_ref()
                     .map(|sysroot| sysroot_to_crate_graph(&mut crate_graph, sysroot, target, load));
 

@@ -51,11 +51,11 @@ impl Sysroot {
     pub fn discover(cargo_toml: &AbsPath) -> Result<Sysroot> {
         let current_dir = cargo_toml.parent().unwrap();
         let sysroot_src_dir = discover_sysroot_src_dir(current_dir)?;
-        let res = Sysroot::load(&sysroot_src_dir);
+        let res = Sysroot::load(&sysroot_src_dir)?;
         Ok(res)
     }
 
-    pub fn load(sysroot_src_dir: &AbsPath) -> Sysroot {
+    pub fn load(sysroot_src_dir: &AbsPath) -> Result<Sysroot> {
         let mut sysroot = Sysroot { crates: Arena::default() };
 
         for name in SYSROOT_CRATES.trim().lines() {
@@ -89,7 +89,14 @@ impl Sysroot {
             }
         }
 
-        sysroot
+        if sysroot.by_name("core").is_none() {
+            anyhow::bail!(
+                "could not find libcore in sysroot path `{}`",
+                sysroot_src_dir.as_ref().display()
+            );
+        }
+
+        Ok(sysroot)
     }
 
     fn by_name(&self, name: &str) -> Option<SysrootCrate> {
