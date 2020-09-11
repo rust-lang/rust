@@ -154,12 +154,17 @@ rebase when bringing the latest changes from the master branch to your feature
 branch.  Also, please make sure that fixup commits are squashed into other
 related commits with meaningful commit messages.
 
+If you encounter merge commits, your PR will get marked as `S-waiting-on-author`.
+When you resolve them, you should use `@rustbot` to mark it as `S-waiting-on-review`.
+See [this chapter][labeling] for more details.
+
 GitHub allows [closing issues using keywords][closing-keywords]. This feature
 should be used to keep the issue tracker tidy. However, it is generally preferred
 to put the "closes #123" text in the PR description rather than the issue commit;
 particularly during rebasing, citing the issue number in the commit can "spam"
 the issue in question.
 
+[labeling]: ./rustbot.md#issue-relabeling
 [closing-keywords]: https://help.github.com/en/articles/closing-issues-using-keywords
 
 ### External Dependencies (subtree)
@@ -413,8 +418,8 @@ still valid. Load up an older issue, double check that it's still true, and
 leave a comment letting us know if it is or is not. The [least recently
 updated sort][lru] is good for finding issues like this.
 
-Contributors with sufficient permissions on the Rust repo can help by adding
-labels to triage issues:
+[Thanks to `@rustbot`][rustbot], anyone can help triaging issues by adding
+appropriate labels to issues that haven't been triaged yet:
 
 * Yellow, **A**-prefixed labels state which **area** of the project an issue
   relates to.
@@ -435,7 +440,9 @@ labels to triage issues:
 
 * Red, **I**-prefixed labels indicate the **importance** of the issue. The
   [I-nominated][inom] label indicates that an issue has been nominated for
-  prioritizing at the next triage meeting.
+  prioritizing at the next triage meeting. Similarely, the [I-prioritize][ipri]
+  indicates that an issue has been requested to be prioritized by the
+  appropriate team.
 
 * The purple **metabug** label marks lists of bugs collected by other
   categories.
@@ -444,7 +451,7 @@ labels to triage issues:
   that this issue is specific to.
 
 * Orange, **P**-prefixed labels indicate a bug's **priority**. These labels
-  are only assigned during triage meetings, and replace the [I-nominated][inom]
+  are only assigned during triage meetings, and replace the [I-prioritize][ipri]
   label.
 
 * The gray **proposed-final-comment-period** label marks bugs that are using
@@ -464,7 +471,9 @@ labels to triage issues:
 
 If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 
+[rustbot]: ./rustbot.md
 [inom]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AI-nominated
+[ipri]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AI-prioritize
 [eeasy]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy
 [lru]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-asc
 [rfcbot]: https://github.com/anp/rfcbot-rs/
