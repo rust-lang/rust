@@ -157,9 +157,9 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
             ast::IdentPat(it) => {
                 let local = sema.to_def(&it)?;
 
-                if let Some(record_field_pat) = it.syntax().parent().and_then(ast::RecordPatField::cast) {
-                    if record_field_pat.name_ref().is_none() {
-                        if let Some(field) = sema.resolve_record_field_pat(&record_field_pat) {
+                if let Some(record_pat_field) = it.syntax().parent().and_then(ast::RecordPatField::cast) {
+                    if record_pat_field.name_ref().is_none() {
+                        if let Some(field) = sema.resolve_record_pat_field(&record_pat_field) {
                             let field = Definition::Field(field);
                             return Some(NameClass::FieldShorthand { local, field });
                         }
@@ -275,8 +275,8 @@ pub fn classify_name_ref(
         }
     }
 
-    if let Some(record_field_pat) = ast::RecordPatField::cast(parent.clone()) {
-        if let Some(field) = sema.resolve_record_field_pat(&record_field_pat) {
+    if let Some(record_pat_field) = ast::RecordPatField::cast(parent.clone()) {
+        if let Some(field) = sema.resolve_record_pat_field(&record_pat_field) {
             let field = Definition::Field(field);
             return Some(NameRefClass::Definition(field));
         }

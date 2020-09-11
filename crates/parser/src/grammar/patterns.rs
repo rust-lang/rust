@@ -188,7 +188,7 @@ fn tuple_pat_fields(p: &mut Parser) {
     p.expect(T![')']);
 }
 
-// test record_field_pat_list
+// test record_pat_field_list
 // fn foo() {
 //     let S {} = ();
 //     let S { f, ref mut g } = ();
@@ -208,7 +208,7 @@ fn record_pat_field_list(p: &mut Parser) {
             c => {
                 let m = p.start();
                 match c {
-                    // test record_field_pat
+                    // test record_pat_field
                     // fn foo() {
                     //     let S { 0: 1 } = ();
                     //     let S { x: 1 } = ();

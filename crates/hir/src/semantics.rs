@@ -207,8 +207,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_record_field(field)
     }
 
-    pub fn resolve_record_field_pat(&self, field: &ast::RecordPatField) -> Option<Field> {
-        self.imp.resolve_record_field_pat(field)
+    pub fn resolve_record_pat_field(&self, field: &ast::RecordPatField) -> Option<Field> {
+        self.imp.resolve_record_pat_field(field)
     }
 
     pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroDef> {
@@ -433,8 +433,8 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(field.syntax()).resolve_record_field(self.db, field)
     }
 
-    fn resolve_record_field_pat(&self, field: &ast::RecordPatField) -> Option<Field> {
-        self.analyze(field.syntax()).resolve_record_field_pat(self.db, field)
+    fn resolve_record_pat_field(&self, field: &ast::RecordPatField) -> Option<Field> {
+        self.analyze(field.syntax()).resolve_record_pat_field(self.db, field)
     }
 
     fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroDef> {

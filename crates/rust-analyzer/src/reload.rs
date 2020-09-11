@@ -109,7 +109,7 @@ impl GlobalState {
                             )
                         }
                         LinkedProject::InlineJsonProject(it) => {
-                            Ok(project_model::ProjectWorkspace::Json { project: it.clone() })
+                            project_model::ProjectWorkspace::load_inline(it.clone())
                         }
                     })
                     .collect::<Vec<_>>();
