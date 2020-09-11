@@ -1259,11 +1259,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.layout_raw(param_env.and(normalized))?
             }
 
-            ty::Bound(..) | ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Infer(_) => {
+            ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Infer(_) => {
                 bug!("Layout::compute: unexpected type `{}`", ty)
             }
 
-            ty::Param(_) | ty::Error(_) => {
+            ty::Bound(..) | ty::Param(_) | ty::Error(_) => {
                 return Err(LayoutError::Unknown(ty));
             }
         })
