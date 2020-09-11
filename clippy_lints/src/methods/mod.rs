@@ -3374,7 +3374,7 @@ fn lint_into_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, self_ref_ty: Ty<'_
             INTO_ITER_ON_REF,
             method_span,
             &format!(
-                "this `.into_iter()` call is equivalent to `.{}()` and will not move the `{}`",
+                "this `.into_iter()` call is equivalent to `.{}()` and will not consume the `{}`",
                 method_name, kind,
             ),
             "call directly",
