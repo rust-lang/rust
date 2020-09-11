@@ -202,8 +202,12 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                         Some((trait_, alias))
                     })
                 {
-                    // AsyncBlock<T>: Future</* Self */>
-                    // This is required by `fn impls_future` to check if we need to provide `.await` completion.
+                    // Making up `AsyncBlock<T>: Future<Output = T>`
+                    //
+                    // |--------------------OpaqueTyDatum-------------------|
+                    //        |-------------OpaqueTyDatumBound--------------|
+                    // for<T> <Self> [Future<Self>, Future::Output<Self> = T]
+                    //     ^1  ^0            ^0                    ^0      ^1
                     let impl_bound = GenericPredicate::Implemented(TraitRef {
                         trait_: future_trait,
                         // Self type as the first parameter.
@@ -212,8 +216,6 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                             index: 0,
                         })),
                     });
-                    // AsyncBlock<T>: Future</* Self, */ Output = T>;
-                    // debruijn:  ^1  ^0
                     let proj_bound = GenericPredicate::Projection(ProjectionPredicate {
                         // The parameter of the opaque type.
                         ty: Ty::Bound(BoundVar { debruijn: DebruijnIndex::ONE, index: 0 }),
