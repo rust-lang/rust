@@ -440,7 +440,7 @@ appropriate labels to issues that haven't been triaged yet:
 
 * Red, **I**-prefixed labels indicate the **importance** of the issue. The
   [I-nominated][inom] label indicates that an issue has been nominated for
-  prioritizing at the next triage meeting. Similarely, the [I-prioritize][ipri]
+  prioritizing at the next triage meeting. Similarly, the [I-prioritize][ipri]
   indicates that an issue has been requested to be prioritized by the
   appropriate team.
 
