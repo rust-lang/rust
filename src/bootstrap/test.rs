@@ -737,6 +737,7 @@ impl Step for Tidy {
         let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(&builder.src);
         cmd.arg(&builder.initial_cargo);
+        cmd.arg(&builder.out);
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }

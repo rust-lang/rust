@@ -13,6 +13,8 @@ use std::process;
 fn main() {
     let root_path: PathBuf = env::args_os().nth(1).expect("need path to root of repo").into();
     let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();
+    let output_directory: PathBuf =
+        env::args_os().nth(3).expect("need path to output directory").into();
 
     let src_path = root_path.join("src");
     let library_path = root_path.join("library");
@@ -36,9 +38,9 @@ fn main() {
     unit_tests::check(&library_path, &mut bad);
 
     // Checks that need to be done for both the compiler and std libraries.
-    bins::check(&src_path, &mut bad);
-    bins::check(&compiler_path, &mut bad);
-    bins::check(&library_path, &mut bad);
+    bins::check(&src_path, &output_directory, &mut bad);
+    bins::check(&compiler_path, &output_directory, &mut bad);
+    bins::check(&library_path, &output_directory, &mut bad);
 
     style::check(&src_path, &mut bad);
     style::check(&compiler_path, &mut bad);
