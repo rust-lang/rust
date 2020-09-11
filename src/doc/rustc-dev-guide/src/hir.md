@@ -68,45 +68,18 @@ the compiler a chance to observe that you accessed the data for
 
 ### Identifiers in the HIR
 
-Most of the code that has to deal with things in HIR tends not to
-carry around references into the HIR, but rather to carry around
-*identifier numbers* (or just "ids"). Right now, you will find four
-sorts of identifiers in active use:
+There are a bunch of different identifiers to refer to other nodes or definitions
+in the HIR. In short:
+- A [`DefId`] refers to a *definition* in any crate.
+- A [`LocalDefId`] refers to a *definition* in the currently compiled crate.
+- A [`HirId`] refers to *any node* in the HIR.
 
-- [`DefId`], which primarily names "definitions" or top-level items.
-  - You can think of a [`DefId`] as being shorthand for a very explicit
-    and complete path, like `std::collections::HashMap`. However,
-    these paths are able to name things that are not nameable in
-    normal Rust (e.g. impls), and they also include extra information
-    about the crate (such as its version number, as two versions of
-    the same crate can co-exist).
-  - A [`DefId`] really consists of two parts, a `CrateNum` (which
-    identifies the crate) and a `DefIndex` (which indexes into a list
-    of items that is maintained per crate).
-- [`HirId`], which combines the index of a particular item with an
-  offset within that item.
-  - the key point of a [`HirId`] is that it is *relative* to some item
-    (which is named via a [`DefId`]).
-- [`BodyId`], this is an identifier that refers to a specific
-  body (definition of a function or constant) in the crate. It is currently
-  effectively a "newtype'd" [`HirId`].
-- [`NodeId`], which is an absolute id that identifies a single node in the HIR
-  tree.
-  - While these are still in common use, **they are being slowly phased out**.
-  - Since they are absolute within the crate, adding a new node anywhere in the
-    tree causes the [`NodeId`]s of all subsequent code in the crate to change.
-    This is terrible for incremental compilation, as you can perhaps imagine.
+For more detailed information, check out the [chapter on identifiers][ids].
 
 [`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
+[`LocalDefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.LocalDefId.html
 [`HirId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir_id/struct.HirId.html
-[`BodyId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.BodyId.html
-[`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html
-
-We also have an internal map to go from `DefId` to what’s called "Def path". "Def path" is like a
-module path but a bit more rich. For example, it may be `crate::foo::MyStruct` that identifies
-this definition uniquely. It’s a bit different than a module path because it might include a type
-parameter `T`, which you can't write in normal rust, like `crate::foo::MyStruct::T`. These are used
-in incremental compilation.
+[ids]: ./identifiers.md#in-the-hir
 
 ### The HIR Map
 
@@ -129,6 +102,7 @@ something outside of the current crate (since then it has no HIR
 node), but otherwise returns `Some(n)` where `n` is the node-id of the
 definition.
 
+[`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html
 [as_local_node_id]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.as_local_node_id
 
 Similarly, you can use [`tcx.hir.find(n)`][find] to lookup the node for a
