@@ -295,6 +295,13 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
+    #[inline(always)]
+    fn inner(&self) -> &RcBox<T> {
+        // This unsafety is ok because while this Rc is alive we're guaranteed
+        // that the inner pointer is valid.
+        unsafe { self.ptr.as_ref() }
+    }
+
     fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {
         Self { ptr, phantom: PhantomData }
     }
@@ -845,15 +852,8 @@ impl<T: ?Sized> Rc<T> {
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
         // We are careful to *not* create a reference covering the "count" fields, as
-        // this would alias with concurrent access to the reference counts (e.g. by `Weak`).
+        // this would conflict with accesses to the reference counts (e.g. by `Weak`).
         unsafe { &mut (*this.ptr.as_ptr()).value }
-    }
-
-    #[inline]
-    fn inner(&self) -> &RcBox<T> {
-        // This unsafety is ok because while this Rc is alive we're guaranteed
-        // that the inner pointer is valid.
-        unsafe { self.ptr.as_ref() }
     }
 
     #[inline]
@@ -2145,18 +2145,24 @@ trait RcInnerPtr {
 }
 
 impl<T: ?Sized> RcInnerPtr for RcBox<T> {
+    #[inline(always)]
     fn weak_ref(&self) -> &Cell<usize> {
         &self.weak
     }
+
+    #[inline(always)]
     fn strong_ref(&self) -> &Cell<usize> {
         &self.strong
     }
 }
 
 impl<'a> RcInnerPtr for WeakInner<'a> {
+    #[inline(always)]
     fn weak_ref(&self) -> &Cell<usize> {
         self.weak
     }
+
+    #[inline(always)]
     fn strong_ref(&self) -> &Cell<usize> {
         self.strong
     }
