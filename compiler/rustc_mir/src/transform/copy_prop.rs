@@ -43,9 +43,6 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
         for dest_local in body.local_decls.indices() {
             if changed {
                 def_use_analysis.analyze(body);
-                if eliminate_self_assignments(body, &def_use_analysis) {
-                    def_use_analysis.analyze(body);
-                }
                 changed = false;
             }
 
@@ -145,47 +142,6 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
             changed = true;
         }
     }
-}
-
-fn eliminate_self_assignments(body: &mut Body<'_>, def_use_analysis: &DefUseAnalysis) -> bool {
-    let mut changed = false;
-
-    for dest_local in body.local_decls.indices() {
-        let dest_use_info = def_use_analysis.local_info(dest_local);
-
-        for def in dest_use_info.defs_not_including_drop() {
-            let location = def.location;
-            if let Some(stmt) = body[location.block].statements.get(location.statement_index) {
-                match &stmt.kind {
-                    StatementKind::Assign(box (
-                        place,
-                        Rvalue::Use(Operand::Copy(src_place) | Operand::Move(src_place)),
-                    )) => {
-                        if let (Some(local), Some(src_local)) =
-                            (place.as_local(), src_place.as_local())
-                        {
-                            if local == dest_local && dest_local == src_local {
-                            } else {
-                                continue;
-                            }
-                        } else {
-                            continue;
-                        }
-                    }
-                    _ => {
-                        continue;
-                    }
-                }
-            } else {
-                continue;
-            }
-            debug!("deleting a self-assignment for {:?}", dest_local);
-            body.make_statement_nop(location);
-            changed = true;
-        }
-    }
-
-    changed
 }
 
 enum Action<'tcx> {
