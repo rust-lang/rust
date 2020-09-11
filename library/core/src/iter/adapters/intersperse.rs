@@ -1,5 +1,3 @@
-use crate::ops::Try;
-
 use super::Peekable;
 
 /// An iterator adapter that places a separator between all elements.
@@ -62,30 +60,6 @@ where
             accum = f(accum, element.clone());
             accum = f(accum, x);
             accum
-        })
-    }
-
-    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
-    {
-        let mut accum = init;
-
-        // Use `peek()` first to avoid calling `next()` on an empty iterator.
-        if !self.needs_sep || self.iter.peek().is_some() {
-            if let Some(x) = self.iter.next() {
-                accum = f(accum, x)?;
-            }
-        }
-
-        let element = &self.separator;
-
-        self.iter.try_fold(accum, |mut accum, x| {
-            accum = f(accum, element.clone())?;
-            accum = f(accum, x)?;
-            Try::from_ok(accum)
         })
     }
 
