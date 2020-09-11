@@ -1056,12 +1056,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             }),
                         };
 
-                        let mut candidates_iter =
-                            candidates.iter().filter_map(|res| res.as_ref().ok());
-                        let len = candidates_iter.clone().count();
+                        let len = candidates.iter().filter(|res| res.is_ok()).count();
 
                         if len == 0 {
-                            drop(candidates_iter);
                             resolution_failure(
                                 self,
                                 &item,
@@ -1076,12 +1073,10 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         }
 
                         if len == 1 {
-                            candidates_iter.next().unwrap().clone()
+                            candidates.into_iter().filter_map(|res| res.ok()).next().unwrap()
                         } else if len == 2 && is_derive_trait_collision(&candidates) {
-                            drop(candidates_iter);
                             candidates.type_ns.unwrap()
                         } else {
-                            drop(candidates_iter);
                             if is_derive_trait_collision(&candidates) {
                                 candidates.macro_ns = Err(ResolutionFailure::Dummy);
                             }
