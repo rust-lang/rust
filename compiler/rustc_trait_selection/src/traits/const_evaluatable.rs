@@ -242,6 +242,24 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         match terminator.kind {
             TerminatorKind::Goto { target } => Some(Some(target)),
             TerminatorKind::Return => Some(None),
+            TerminatorKind::Call {
+                ref func,
+                ref args,
+                destination: Some((ref place, target)),
+                cleanup: _,
+                from_hir_call: true,
+                fn_span: _,
+            } => {
+                let local = place.as_local()?;
+                let func = self.operand_to_node(func)?;
+                let args = self.tcx.arena.alloc_from_iter(
+                    args.iter()
+                        .map(|arg| self.operand_to_node(arg))
+                        .collect::<Option<Vec<NodeId>>>()?,
+                );
+                self.locals[local] = self.nodes.push(Node::FunctionCall(func, args));
+                Some(Some(target))
+            }
             TerminatorKind::Assert { ref cond, expected: false, target, .. } => {
                 let p = match cond {
                     mir::Operand::Copy(p) | mir::Operand::Move(p) => p,
