@@ -6,15 +6,15 @@
 
 /// [path::to::nonexistent::module]
 //~^ ERROR unresolved link
-//~| NOTE no item named `path` is in scope
+//~| NOTE no item named `path` in `intra_link_errors`
 
 /// [path::to::nonexistent::macro!]
 //~^ ERROR unresolved link
-//~| NOTE no item named `path` is in scope
+//~| NOTE no item named `path` in `intra_link_errors`
 
 /// [type@path::to::nonexistent::type]
 //~^ ERROR unresolved link
-//~| NOTE no item named `path` is in scope
+//~| NOTE no item named `path` in `intra_link_errors`
 
 /// [std::io::not::here]
 //~^ ERROR unresolved link

@@ -1554,12 +1554,13 @@ fn resolution_failure(
                 }
                 variants_seen.push(variant);
                 let note = match failure {
-                    ResolutionFailure::NotInScope { name, .. } => {
+                    ResolutionFailure::NotInScope { module_id, name, .. } => {
                         if in_scope {
                             continue;
                         }
                         // NOTE: uses an explicit `continue` so the `note:` will come before the `help:`
-                        let note = format!("no item named `{}` is in scope", name);
+                        let module_name = collector.cx.tcx.item_name(module_id);
+                        let note = format!("no item named `{}` in `{}`", name, module_name);
                         if let Some(span) = sp {
                             diag.span_label(span, &note);
                         } else {
