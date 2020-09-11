@@ -1602,6 +1602,11 @@ impl Type {
                                 cb(type_.derived(ty.clone()));
                             }
                         }
+                        TypeCtor::OpaqueType(..) => {
+                            if let Some(bounds) = ty.impl_trait_bounds(db) {
+                                walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
+                            }
+                        }
                         _ => (),
                     }
 

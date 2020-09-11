@@ -33,7 +33,6 @@ use hir_def::{
     AdtId, AssocContainerId, DefWithBodyId, GenericDefId, HasModule, Lookup, TraitId, TypeAliasId,
     TypeParamId,
 };
-use hir_expand::name::name;
 use itertools::Itertools;
 
 use crate::{
@@ -848,26 +847,22 @@ impl Ty {
 
     pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<GenericPredicate>> {
         match self {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::OpaqueType(opaque_ty_id), parameters }) => {
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::OpaqueType(opaque_ty_id), .. }) => {
                 match opaque_ty_id {
                     OpaqueTyId::AsyncBlockTypeImplTrait(def, _expr) => {
                         let krate = def.module(db.upcast()).krate;
-                        if let Some(future_output) = db
+                        if let Some(future_trait) = db
                             .lang_item(krate, "future_trait".into())
                             .and_then(|item| item.as_trait())
-                            .and_then(|trait_| {
-                                db.trait_data(trait_).associated_type_by_name(&name![Output])
-                            })
                         {
-                            let proj = GenericPredicate::Projection(ProjectionPredicate {
-                                projection_ty: ProjectionTy {
-                                    associated_ty: future_output,
-                                    // Self type.
-                                    parameters: Substs::single(self.clone()),
-                                },
-                                ty: parameters[0].clone(),
+                            // This is only used by type walking.
+                            // Parameters will be walked outside, and projection predicate is not used.
+                            // So just provide the Future trait.
+                            let impl_bound = GenericPredicate::Implemented(TraitRef {
+                                trait_: future_trait,
+                                substs: Substs::empty(),
                             });
-                            Some(vec![proj])
+                            Some(vec![impl_bound])
                         } else {
                             None
                         }
