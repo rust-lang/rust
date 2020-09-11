@@ -1516,16 +1516,15 @@ fn resolution_failure(
                     collector.cx.tcx.item_name(res.def_id()).to_string()
                 )
             };
-            let assoc_item_not_allowed = |res: Res, diag: &mut DiagnosticBuilder<'_>| {
+            let assoc_item_not_allowed = |res: Res| {
                 let def_id = res.def_id();
                 let name = collector.cx.tcx.item_name(def_id);
-                let note = format!(
+                format!(
                     "`{}` is {} {}, not a module or type, and cannot have associated items",
                     name,
                     res.article(),
                     res.descr()
-                );
-                diag.note(&note);
+                )
             };
             // ignore duplicates
             let mut variants_seen = SmallVec::<[_; 3]>::new();
@@ -1559,12 +1558,18 @@ fn resolution_failure(
                     continue;
                 }
                 variants_seen.push(variant);
-                match failure {
+                let note = match failure {
                     ResolutionFailure::NotInScope { name, .. } => {
                         if in_scope {
                             continue;
                         }
-                        diag.note(&format!("no item named `{}` is in scope", name));
+                        // NOTE: uses an explicit `continue` so the `note:` will come before the `help:`
+                        let note = format!("no item named `{}` is in scope", name);
+                        if let Some(span) = sp {
+                            diag.span_label(span, &note);
+                        } else {
+                            diag.note(&note);
+                        }
                         // If the link has `::` in the path, assume it's meant to be an intra-doc link
                         if !path_str.contains("::") {
                             // Otherwise, the `[]` might be unrelated.
@@ -1572,16 +1577,10 @@ fn resolution_failure(
                             // don't show this for autolinks (`<>`), `()` style links, or reference links
                             diag.help(r#"to escape `[` and `]` characters, add '\' before them like `\[` or `\]`"#);
                         }
+                        continue;
                     }
                     ResolutionFailure::Dummy => continue,
                     ResolutionFailure::WrongNamespace(res, expected_ns) => {
-                        let note = format!(
-                            "this link resolves to {}, which is not in the {} namespace",
-                            item(res),
-                            expected_ns.descr()
-                        );
-                        diag.note(&note);
-
                         if let Res::Def(kind, _) = res {
                             let disambiguator = Disambiguator::Kind(kind);
                             suggest_disambiguator(
@@ -1593,24 +1592,26 @@ fn resolution_failure(
                                 &link_range,
                             )
                         }
+
+                        format!(
+                            "this link resolves to {}, which is not in the {} namespace",
+                            item(res),
+                            expected_ns.descr()
+                        )
                     }
                     ResolutionFailure::NoParentItem => {
                         diag.level = rustc_errors::Level::Bug;
-                        diag.note("all intra doc links should have a parent item");
+                        "all intra doc links should have a parent item".to_owned()
                     }
-                    ResolutionFailure::NoPrimitiveImpl(res, _) => {
-                        let note = format!(
-                            "this link partially resolves to {}, which does not have any associated items",
-                            item(res),
-                        );
-                        diag.note(&note);
-                    }
+                    ResolutionFailure::NoPrimitiveImpl(res, _) => format!(
+                        "this link partially resolves to {}, which does not have any associated items",
+                        item(res),
+                    ),
                     ResolutionFailure::NoPrimitiveAssocItem { prim_name, assoc_item, .. } => {
-                        let note = format!(
+                        format!(
                             "the builtin type `{}` does not have an associated item named `{}`",
                             prim_name, assoc_item
-                        );
-                        diag.note(&note);
+                        )
                     }
                     ResolutionFailure::NoAssocItem(res, assoc_item) => {
                         use DefKind::*;
@@ -1645,32 +1646,41 @@ fn resolution_failure(
                                 | Use
                                 | LifetimeParam
                                 | Ctor(_, _)
-                                | AnonConst => return assoc_item_not_allowed(res, diag),
+                                | AnonConst => {
+                                    let note = assoc_item_not_allowed(res);
+                                    if let Some(span) = sp {
+                                        diag.span_label(span, &note);
+                                    } else {
+                                        diag.note(&note);
+                                    }
+                                    return;
+                                }
                                 Trait | TyAlias | ForeignTy | OpaqueTy | TraitAlias | TyParam
                                 | Static => "associated item",
                                 Impl | GlobalAsm => unreachable!("not a path"),
                             }
                         };
-                        let note = format!(
+                        format!(
                             "the {} `{}` has no {} named `{}`",
                             res.descr(),
                             name,
                             path_description,
                             assoc_item
-                        );
-                        diag.note(&note);
+                        )
                     }
                     ResolutionFailure::CannotHaveAssociatedItems(res, _) => {
-                        assoc_item_not_allowed(res, diag)
+                        assoc_item_not_allowed(res)
                     }
-                    ResolutionFailure::NotAVariant(res, variant) => {
-                        let note = format!(
-                            "this link partially resolves to {}, but there is no variant named {}",
-                            item(res),
-                            variant
-                        );
-                        diag.note(&note);
-                    }
+                    ResolutionFailure::NotAVariant(res, variant) => format!(
+                        "this link partially resolves to {}, but there is no variant named {}",
+                        item(res),
+                        variant
+                    ),
+                };
+                if let Some(span) = sp {
+                    diag.span_label(span, &note);
+                } else {
+                    diag.note(&note);
                 }
             }
         },

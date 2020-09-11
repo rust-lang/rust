@@ -2,76 +2,62 @@ warning: unresolved link to `Foo::baz`
   --> $DIR/intra-links-warning.rs:3:23
    |
 LL |        //! Test with [Foo::baz], [Bar::foo], ...
-   |                       ^^^^^^^^
+   |                       ^^^^^^^^ the struct `Foo` has no field or associated item named `baz`
    |
    = note: `#[warn(broken_intra_doc_links)]` on by default
-   = note: the struct `Foo` has no field or associated item named `baz`
 
 warning: unresolved link to `Bar::foo`
   --> $DIR/intra-links-warning.rs:3:35
    |
 LL |        //! Test with [Foo::baz], [Bar::foo], ...
-   |                                   ^^^^^^^^
-   |
-   = note: no item named `Bar` is in scope
+   |                                   ^^^^^^^^ no item named `Bar` is in scope
 
 warning: unresolved link to `Uniooon::X`
   --> $DIR/intra-links-warning.rs:6:13
    |
 LL |      //! , [Uniooon::X] and [Qux::Z].
-   |             ^^^^^^^^^^
-   |
-   = note: no item named `Uniooon` is in scope
+   |             ^^^^^^^^^^ no item named `Uniooon` is in scope
 
 warning: unresolved link to `Qux::Z`
   --> $DIR/intra-links-warning.rs:6:30
    |
 LL |      //! , [Uniooon::X] and [Qux::Z].
-   |                              ^^^^^^
-   |
-   = note: no item named `Qux` is in scope
+   |                              ^^^^^^ no item named `Qux` is in scope
 
 warning: unresolved link to `Uniooon::X`
   --> $DIR/intra-links-warning.rs:10:14
    |
 LL |       //! , [Uniooon::X] and [Qux::Z].
-   |              ^^^^^^^^^^
-   |
-   = note: no item named `Uniooon` is in scope
+   |              ^^^^^^^^^^ no item named `Uniooon` is in scope
 
 warning: unresolved link to `Qux::Z`
   --> $DIR/intra-links-warning.rs:10:31
    |
 LL |       //! , [Uniooon::X] and [Qux::Z].
-   |                               ^^^^^^
-   |
-   = note: no item named `Qux` is in scope
+   |                               ^^^^^^ no item named `Qux` is in scope
 
 warning: unresolved link to `Qux:Y`
   --> $DIR/intra-links-warning.rs:14:13
    |
 LL |        /// [Qux:Y]
-   |             ^^^^^
+   |             ^^^^^ no item named `Qux:Y` is in scope
    |
-   = note: no item named `Qux:Y` is in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
   --> $DIR/intra-links-warning.rs:58:30
    |
 LL |  * time to introduce a link [error]*/
-   |                              ^^^^^
+   |                              ^^^^^ no item named `error` is in scope
    |
-   = note: no item named `error` is in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
   --> $DIR/intra-links-warning.rs:64:30
    |
 LL |  * time to introduce a link [error]
-   |                              ^^^^^
+   |                              ^^^^^ no item named `error` is in scope
    |
-   = note: no item named `error` is in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
@@ -119,45 +105,40 @@ warning: unresolved link to `error1`
   --> $DIR/intra-links-warning.rs:80:11
    |
 LL | /// docs [error1]
-   |           ^^^^^^
+   |           ^^^^^^ no item named `error1` is in scope
    |
-   = note: no item named `error1` is in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error2`
   --> $DIR/intra-links-warning.rs:82:11
    |
 LL | /// docs [error2]
-   |           ^^^^^^
+   |           ^^^^^^ no item named `error2` is in scope
    |
-   = note: no item named `error2` is in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarA`
   --> $DIR/intra-links-warning.rs:21:10
    |
 LL | /// bar [BarA] bar
-   |          ^^^^
+   |          ^^^^ no item named `BarA` is in scope
    |
-   = note: no item named `BarA` is in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarB`
   --> $DIR/intra-links-warning.rs:27:9
    |
 LL |  * bar [BarB] bar
-   |         ^^^^
+   |         ^^^^ no item named `BarB` is in scope
    |
-   = note: no item named `BarB` is in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarC`
   --> $DIR/intra-links-warning.rs:34:6
    |
 LL | bar [BarC] bar
-   |      ^^^^
+   |      ^^^^ no item named `BarC` is in scope
    |
-   = note: no item named `BarC` is in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `BarD`
