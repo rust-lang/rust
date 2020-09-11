@@ -174,12 +174,22 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         }
     }
 
+    /// We do not allow all binary operations in abstract consts, so filter disallowed ones.
     fn check_binop(op: mir::BinOp) -> bool {
         use mir::BinOp::*;
         match op {
             Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr | Eq | Lt | Le
             | Ne | Ge | Gt => true,
             Offset => false,
+        }
+    }
+
+    /// While we currently allow all unary operations, we still want to explicitly guard against
+    /// future changes here.
+    fn check_unop(op: mir::UnOp) -> bool {
+        use mir::UnOp::*;
+        match op {
+            Not | Neg => true,
         }
     }
 
@@ -191,6 +201,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 match *rvalue {
                     Rvalue::Use(ref operand) => {
                         self.locals[local] = self.operand_to_node(operand)?;
+                        Some(())
                     }
                     Rvalue::BinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
                         let lhs = self.operand_to_node(lhs)?;
@@ -198,6 +209,8 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                         self.locals[local] = self.nodes.push(Node::Binop(op, lhs, rhs));
                         if op.is_checkable() {
                             bug!("unexpected unchecked checkable binary operation");
+                        } else {
+                            Some(())
                         }
                     }
                     Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
@@ -205,14 +218,20 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                         let rhs = self.operand_to_node(rhs)?;
                         self.locals[local] = self.nodes.push(Node::Binop(op, lhs, rhs));
                         self.checked_op_locals.insert(local);
+                        Some(())
                     }
-                    _ => return None,
+                    Rvalue::UnaryOp(op, ref operand) if Self::check_unop(op) => {
+                        let operand = self.operand_to_node(operand)?;
+                        self.locals[local] = self.nodes.push(Node::UnaryOp(op, operand));
+                        Some(())
+                    }
+                    _ => None,
                 }
             }
-            _ => return None,
+            // These are not actually relevant for us here, so we can ignore them.
+            StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => Some(()),
+            _ => None,
         }
-
-        Some(())
     }
 
     fn build_terminator(
