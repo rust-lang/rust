@@ -1969,6 +1969,228 @@ pub unsafe fn _mm512_maskz_getexp_pd(k: __mmask8, a: __m512d) -> __m512d {
     ))
 }
 
+/// Normalize the mantissas of packed single-precision (32-bit) floating-point elements in a, and store the results in dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_getmant_ps&expand=2880)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantps, norm = 0, sign = 0))]
+#[rustc_args_required_const(1, 2)]
+pub unsafe fn _mm512_getmant_ps(
+    a: __m512,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m512 {
+    macro_rules! call {
+        ($imm4:expr, $imm2:expr) => {
+            vgetmantps(
+                a.as_f32x16(),
+                $imm2 << 2 | $imm4,
+                _mm512_setzero_ps().as_f32x16(),
+                0b11111111_11111111,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of packed single-precision (32-bit) floating-point elements in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set). This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_getmant_ps&expand=2881)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantps, norm = 0, sign = 0))]
+#[rustc_args_required_const(3, 4)]
+pub unsafe fn _mm512_mask_getmant_ps(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m512 {
+    macro_rules! call {
+        ($imm4:expr, $imm2:expr) => {
+            vgetmantps(
+                a.as_f32x16(),
+                $imm2 << 2 | $imm4,
+                src.as_f32x16(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of packed single-precision (32-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set). This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_getmant_ps&expand=2882)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantps, norm = 0, sign = 0))]
+#[rustc_args_required_const(2, 3)]
+pub unsafe fn _mm512_maskz_getmant_ps(
+    k: __mmask16,
+    a: __m512,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m512 {
+    macro_rules! call {
+        ($imm4:expr, $imm2:expr) => {
+            vgetmantps(
+                a.as_f32x16(),
+                $imm2 << 2 | $imm4,
+                _mm512_setzero_ps().as_f32x16(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of packed double-precision (64-bit) floating-point elements in a, and store the results in dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_getmant_pd&expand=2871)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantpd, norm = 0, sign = 0))]
+#[rustc_args_required_const(1, 2)]
+pub unsafe fn _mm512_getmant_pd(
+    a: __m512d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m512d {
+    macro_rules! call {
+        ($imm4:expr, $imm2:expr) => {
+            vgetmantpd(
+                a.as_f64x8(),
+                $imm2 << 2 | $imm4,
+                _mm512_setzero_pd().as_f64x8(),
+                0b11111111,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of packed double-precision (64-bit) floating-point elements in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set). This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_getmant_pd&expand=2872)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantpd, norm = 0, sign = 0))]
+#[rustc_args_required_const(3, 4)]
+pub unsafe fn _mm512_mask_getmant_pd(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m512d {
+    macro_rules! call {
+        ($imm4:expr, $imm2:expr) => {
+            vgetmantpd(
+                a.as_f64x8(),
+                $imm2 << 2 | $imm4,
+                src.as_f64x8(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of packed double-precision (64-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set). This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_getmant_pd&expand=2873)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantpd, norm = 0, sign = 0))]
+#[rustc_args_required_const(2, 3)]
+pub unsafe fn _mm512_maskz_getmant_pd(
+    k: __mmask8,
+    a: __m512d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m512d {
+    macro_rules! call {
+        ($imm4:expr, $imm2:expr) => {
+            vgetmantpd(
+                a.as_f64x8(),
+                $imm2 << 2 | $imm4,
+                _mm512_setzero_pd().as_f64x8(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
 /// Add packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst.
 ///
 /// Rounding is done according to the rounding[3:0] parameter, which can be one of:
@@ -4583,7 +4805,7 @@ pub unsafe fn _mm512_getexp_round_pd(a: __m512d, sae: i32) -> __m512d {
 }
 
 /// Convert the exponent of each packed double-precision (64-bit) floating-point element in a to a double-precision (64-bit) floating-point number representing the integer exponent, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set). This intrinsic essentially calculates floor(log2(x)) for each element.
-/// Compare packed double-precision (64-bit) floating-point elements in a and b, and store packed maximum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_getexp_round_pd&expand=2848)
 #[inline]
@@ -4606,7 +4828,7 @@ pub unsafe fn _mm512_mask_getexp_round_pd(
 }
 
 /// Convert the exponent of each packed double-precision (64-bit) floating-point element in a to a double-precision (64-bit) floating-point number representing the integer exponent, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set). This intrinsic essentially calculates floor(log2(x)) for each element.
-/// Compare packed double-precision (64-bit) floating-point elements in a and b, and store packed maximum values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_getexp_round_pd&expand=2849)
 #[inline]
@@ -4620,6 +4842,240 @@ pub unsafe fn _mm512_maskz_getexp_round_pd(k: __mmask8, a: __m512d, sae: i32) ->
         };
     }
     let r = constify_imm4_sae!(sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of packed single-precision (32-bit) floating-point elements in a, and store the results in dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_getmant_round_ps&expand=2886)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantps, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(1, 2, 3)]
+pub unsafe fn _mm512_getmant_round_ps(
+    a: __m512,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantps(
+                a.as_f32x16(),
+                $imm2 << 2 | $imm4_1,
+                _mm512_setzero_ps().as_f32x16(),
+                0b11111111_11111111,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of packed single-precision (32-bit) floating-point elements in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set). This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_getmant_round_ps&expand=2887)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantps, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(3, 4, 5)]
+pub unsafe fn _mm512_mask_getmant_round_ps(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantps(
+                a.as_f32x16(),
+                $imm2 << 2 | $imm4_1,
+                src.as_f32x16(),
+                k,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of packed single-precision (32-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set). This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_getmant_round_ps&expand=2888)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantps, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(2, 3, 4)]
+pub unsafe fn _mm512_maskz_getmant_round_ps(
+    k: __mmask16,
+    a: __m512,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantps(
+                a.as_f32x16(),
+                $imm2 << 2 | $imm4_1,
+                _mm512_setzero_ps().as_f32x16(),
+                k,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of packed double-precision (64-bit) floating-point elements in a, and store the results in dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_getmant_round_pd&expand=2883)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantpd, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(1, 2, 3)]
+pub unsafe fn _mm512_getmant_round_pd(
+    a: __m512d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantpd(
+                a.as_f64x8(),
+                $imm2 << 2 | $imm4_1,
+                _mm512_setzero_pd().as_f64x8(),
+                0b11111111,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of packed double-precision (64-bit) floating-point elements in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set). This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_getmant_round_pd&expand=2884)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantpd, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(3, 4, 5)]
+pub unsafe fn _mm512_mask_getmant_round_pd(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantpd(
+                a.as_f64x8(),
+                $imm2 << 2 | $imm4_1,
+                src.as_f64x8(),
+                k,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of packed double-precision (64-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set). This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_getmant_round_pd&expand=2885)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantpd, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(2, 3, 4)]
+pub unsafe fn _mm512_maskz_getmant_round_pd(
+    k: __mmask8,
+    a: __m512d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantpd(
+                a.as_f64x8(),
+                $imm2 << 2 | $imm4_1,
+                _mm512_setzero_pd().as_f64x8(),
+                k,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
     transmute(r)
 }
 
@@ -4708,6 +5164,51 @@ pub unsafe fn _mm512_maskz_cvtps_epu32(k: __mmask16, a: __m512) -> __m512i {
     transmute(vcvtps2udq(
         a.as_f32x16(),
         _mm512_setzero_si512().as_u32x16(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed double-precision (64-bit) floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_cvtps_pd&expand=1769)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vcvtps2pd))]
+pub unsafe fn _mm512_cvtps_pd(a: __m256) -> __m512d {
+    transmute(vcvtps2pd(
+        a.as_f32x8(),
+        _mm512_setzero_pd().as_f64x8(),
+        0b11111111,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed double-precision (64-bit) floating-point elements, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_cvtps_pd&expand=1770)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vcvtps2pd))]
+pub unsafe fn _mm512_mask_cvtps_pd(src: __m512d, k: __mmask8, a: __m256) -> __m512d {
+    transmute(vcvtps2pd(
+        a.as_f32x8(),
+        src.as_f64x8(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed double-precision (64-bit) floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_cvtps_pd&expand=1771)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vcvtps2pd))]
+pub unsafe fn _mm512_maskz_cvtps_pd(k: __mmask8, a: __m256) -> __m512d {
+    transmute(vcvtps2pd(
+        a.as_f32x8(),
+        _mm512_setzero_pd().as_f64x8(),
         k,
         _MM_FROUND_CUR_DIRECTION,
     ))
@@ -4874,6 +5375,70 @@ pub unsafe fn _mm512_maskz_cvt_roundps_epu32(k: __mmask16, a: __m512, rounding: 
         };
     }
     let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed double-precision (64-bit) floating-point elements, and store the results in dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///    
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=cvt_roundps_pd&expand=1347)   
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vcvtps2pd, sae = 8))]
+#[rustc_args_required_const(1)]
+pub unsafe fn _mm512_cvt_roundps_pd(a: __m256, sae: i32) -> __m512d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vcvtps2pd(
+                a.as_f32x8(),
+                _mm512_setzero_pd().as_f64x8(),
+                0b11111111,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_sae!(sae, call);
+    transmute(r)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed double-precision (64-bit) floating-point elements, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_cvt_roundps_epi32&expand=1336)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vcvtps2pd, sae = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm512_mask_cvt_roundps_pd(
+    src: __m512d,
+    k: __mmask8,
+    a: __m256,
+    sae: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vcvtps2pd(a.as_f32x8(), src.as_f64x8(), k, $imm4)
+        };
+    }
+    let r = constify_imm4_sae!(sae, call);
+    transmute(r)
+}
+
+/// Convert packed single-precision (32-bit) floating-point elements in a to packed double-precision (64-bit) floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_cvt_roundps_epi32&expand=1337)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vcvtps2pd, sae = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm512_maskz_cvt_roundps_pd(k: __mmask8, a: __m256, sae: i32) -> __m512d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vcvtps2pd(a.as_f32x8(), _mm512_setzero_pd().as_f64x8(), k, $imm4)
+        };
+    }
+    let r = constify_imm4_sae!(sae, call);
     transmute(r)
 }
 
@@ -5690,8 +6255,13 @@ pub unsafe fn _mm512_mask_i64scatter_epi32(
 #[cfg_attr(test, assert_instr(vprold, imm8 = 1))]
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm512_rol_epi32(a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    transmute(vprold(a.as_i32x16(), imm8))
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprold(a.as_i32x16(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -5702,8 +6272,12 @@ pub unsafe fn _mm512_rol_epi32(a: __m512i, imm8: i32) -> __m512i {
 #[cfg_attr(test, assert_instr(vprold, imm8 = 1))]
 #[rustc_args_required_const(3)]
 pub unsafe fn _mm512_mask_rol_epi32(src: __m512i, k: __mmask16, a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let rol = vprold(a.as_i32x16(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprold(a.as_i32x16(), $imm8)
+        };
+    }
+    let rol = constify_imm8_sae!(imm8, call);
     transmute(simd_select_bitmask(k, rol, src.as_i32x16()))
 }
 
@@ -5715,8 +6289,12 @@ pub unsafe fn _mm512_mask_rol_epi32(src: __m512i, k: __mmask16, a: __m512i, imm8
 #[cfg_attr(test, assert_instr(vprold, imm8 = 1))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_rol_epi32(k: __mmask16, a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let rol = vprold(a.as_i32x16(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprold(a.as_i32x16(), $imm8)
+        };
+    }
+    let rol = constify_imm8_sae!(imm8, call);
     let zero = _mm512_setzero_si512().as_i32x16();
     transmute(simd_select_bitmask(k, rol, zero))
 }
@@ -5729,8 +6307,13 @@ pub unsafe fn _mm512_maskz_rol_epi32(k: __mmask16, a: __m512i, imm8: i32) -> __m
 #[cfg_attr(test, assert_instr(vprold, imm8 = 1))]
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm512_ror_epi32(a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    transmute(vprord(a.as_i32x16(), imm8))
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprord(a.as_i32x16(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -5741,8 +6324,12 @@ pub unsafe fn _mm512_ror_epi32(a: __m512i, imm8: i32) -> __m512i {
 #[cfg_attr(test, assert_instr(vprold, imm8 = 123))]
 #[rustc_args_required_const(3)]
 pub unsafe fn _mm512_mask_ror_epi32(src: __m512i, k: __mmask16, a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let ror = vprord(a.as_i32x16(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprord(a.as_i32x16(), $imm8)
+        };
+    }
+    let ror = constify_imm8_sae!(imm8, call);
     transmute(simd_select_bitmask(k, ror, src.as_i32x16()))
 }
 
@@ -5754,8 +6341,12 @@ pub unsafe fn _mm512_mask_ror_epi32(src: __m512i, k: __mmask16, a: __m512i, imm8
 #[cfg_attr(test, assert_instr(vprold, imm8 = 123))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_ror_epi32(k: __mmask16, a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let ror = vprord(a.as_i32x16(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprord(a.as_i32x16(), $imm8)
+        };
+    }
+    let ror = constify_imm8_sae!(imm8, call);
     let zero = _mm512_setzero_si512().as_i32x16();
     transmute(simd_select_bitmask(k, ror, zero))
 }
@@ -5768,8 +6359,13 @@ pub unsafe fn _mm512_maskz_ror_epi32(k: __mmask16, a: __m512i, imm8: i32) -> __m
 #[cfg_attr(test, assert_instr(vprolq, imm8 = 1))]
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm512_rol_epi64(a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    transmute(vprolq(a.as_i64x8(), imm8))
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprolq(a.as_i64x8(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -5780,8 +6376,12 @@ pub unsafe fn _mm512_rol_epi64(a: __m512i, imm8: i32) -> __m512i {
 #[cfg_attr(test, assert_instr(vprolq, imm8 = 1))]
 #[rustc_args_required_const(3)]
 pub unsafe fn _mm512_mask_rol_epi64(src: __m512i, k: __mmask8, a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let rol = vprolq(a.as_i64x8(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprolq(a.as_i64x8(), $imm8)
+        };
+    }
+    let rol = constify_imm8_sae!(imm8, call);
     transmute(simd_select_bitmask(k, rol, src.as_i64x8()))
 }
 
@@ -5793,8 +6393,12 @@ pub unsafe fn _mm512_mask_rol_epi64(src: __m512i, k: __mmask8, a: __m512i, imm8:
 #[cfg_attr(test, assert_instr(vprolq, imm8 = 1))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_rol_epi64(k: __mmask8, a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let rol = vprolq(a.as_i64x8(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprolq(a.as_i64x8(), $imm8)
+        };
+    }
+    let rol = constify_imm8_sae!(imm8, call);
     let zero = _mm512_setzero_si512().as_i64x8();
     transmute(simd_select_bitmask(k, rol, zero))
 }
@@ -5807,8 +6411,13 @@ pub unsafe fn _mm512_maskz_rol_epi64(k: __mmask8, a: __m512i, imm8: i32) -> __m5
 #[cfg_attr(test, assert_instr(vprolq, imm8 = 15))]
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm512_ror_epi64(a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    transmute(vprorq(a.as_i64x8(), imm8))
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprorq(a.as_i64x8(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -5819,8 +6428,12 @@ pub unsafe fn _mm512_ror_epi64(a: __m512i, imm8: i32) -> __m512i {
 #[cfg_attr(test, assert_instr(vprolq, imm8 = 15))]
 #[rustc_args_required_const(3)]
 pub unsafe fn _mm512_mask_ror_epi64(src: __m512i, k: __mmask8, a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let ror = vprorq(a.as_i64x8(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprorq(a.as_i64x8(), $imm8)
+        };
+    }
+    let ror = constify_imm8_sae!(imm8, call);
     transmute(simd_select_bitmask(k, ror, src.as_i64x8()))
 }
 
@@ -5832,8 +6445,12 @@ pub unsafe fn _mm512_mask_ror_epi64(src: __m512i, k: __mmask8, a: __m512i, imm8:
 #[cfg_attr(test, assert_instr(vprolq, imm8 = 15))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_ror_epi64(k: __mmask8, a: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let ror = vprorq(a.as_i64x8(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vprorq(a.as_i64x8(), $imm8)
+        };
+    }
+    let ror = constify_imm8_sae!(imm8, call);
     let zero = _mm512_setzero_si512().as_i64x8();
     transmute(simd_select_bitmask(k, ror, zero))
 }
@@ -5846,8 +6463,13 @@ pub unsafe fn _mm512_maskz_ror_epi64(k: __mmask8, a: __m512i, imm8: i32) -> __m5
 #[cfg_attr(test, assert_instr(vpslld, imm8 = 5))]
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm512_slli_epi32(a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    transmute(vpsllid(a.as_i32x16(), imm8))
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsllid(a.as_i32x16(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
 }
 
 /// Shift packed 32-bit integers in a left by imm8 while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -5858,8 +6480,12 @@ pub unsafe fn _mm512_slli_epi32(a: __m512i, imm8: u32) -> __m512i {
 #[cfg_attr(test, assert_instr(vpslld, imm8 = 5))]
 #[rustc_args_required_const(3)]
 pub unsafe fn _mm512_mask_slli_epi32(src: __m512i, k: __mmask16, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpsllid(a.as_i32x16(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsllid(a.as_i32x16(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     transmute(simd_select_bitmask(k, shf, src.as_i32x16()))
 }
 
@@ -5871,8 +6497,12 @@ pub unsafe fn _mm512_mask_slli_epi32(src: __m512i, k: __mmask16, a: __m512i, imm
 #[cfg_attr(test, assert_instr(vpslld, imm8 = 5))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_slli_epi32(k: __mmask16, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpsllid(a.as_i32x16(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsllid(a.as_i32x16(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     let zero = _mm512_setzero_si512().as_i32x16();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -5885,8 +6515,13 @@ pub unsafe fn _mm512_maskz_slli_epi32(k: __mmask16, a: __m512i, imm8: u32) -> __
 #[cfg_attr(test, assert_instr(vpsrld, imm8 = 1))]
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm512_srli_epi32(a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    transmute(vpsrlid(a.as_i32x16(), imm8))
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsrlid(a.as_i32x16(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
 }
 
 /// Shift packed 32-bit integers in a right by imm8 while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -5897,8 +6532,12 @@ pub unsafe fn _mm512_srli_epi32(a: __m512i, imm8: u32) -> __m512i {
 #[cfg_attr(test, assert_instr(vpsrld, imm8 = 1))]
 #[rustc_args_required_const(3)]
 pub unsafe fn _mm512_mask_srli_epi32(src: __m512i, k: __mmask16, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpsrlid(a.as_i32x16(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsrlid(a.as_i32x16(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     transmute(simd_select_bitmask(k, shf, src.as_i32x16()))
 }
 
@@ -5910,8 +6549,12 @@ pub unsafe fn _mm512_mask_srli_epi32(src: __m512i, k: __mmask16, a: __m512i, imm
 #[cfg_attr(test, assert_instr(vpsrld, imm8 = 1))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_srli_epi32(k: __mmask16, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpsrlid(a.as_i32x16(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsrlid(a.as_i32x16(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     let zero = _mm512_setzero_si512().as_i32x16();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -5924,8 +6567,13 @@ pub unsafe fn _mm512_maskz_srli_epi32(k: __mmask16, a: __m512i, imm8: u32) -> __
 #[cfg_attr(test, assert_instr(vpsllq, imm8 = 5))]
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm512_slli_epi64(a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    transmute(vpslliq(a.as_i64x8(), imm8))
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpslliq(a.as_i64x8(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
 }
 
 /// Shift packed 64-bit integers in a left by imm8 while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -5936,8 +6584,12 @@ pub unsafe fn _mm512_slli_epi64(a: __m512i, imm8: u32) -> __m512i {
 #[cfg_attr(test, assert_instr(vpsllq, imm8 = 5))]
 #[rustc_args_required_const(3)]
 pub unsafe fn _mm512_mask_slli_epi64(src: __m512i, k: __mmask8, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpslliq(a.as_i64x8(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpslliq(a.as_i64x8(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     transmute(simd_select_bitmask(k, shf, src.as_i64x8()))
 }
 
@@ -5949,8 +6601,12 @@ pub unsafe fn _mm512_mask_slli_epi64(src: __m512i, k: __mmask8, a: __m512i, imm8
 #[cfg_attr(test, assert_instr(vpsllq, imm8 = 5))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_slli_epi64(k: __mmask8, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpslliq(a.as_i64x8(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpslliq(a.as_i64x8(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     let zero = _mm512_setzero_si512().as_i64x8();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -5963,8 +6619,13 @@ pub unsafe fn _mm512_maskz_slli_epi64(k: __mmask8, a: __m512i, imm8: u32) -> __m
 #[cfg_attr(test, assert_instr(vpsrlq, imm8 = 1))]
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm512_srli_epi64(a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    transmute(vpsrliq(a.as_i64x8(), imm8))
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsrliq(a.as_i64x8(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
 }
 
 /// Shift packed 64-bit integers in a right by imm8 while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -5975,8 +6636,12 @@ pub unsafe fn _mm512_srli_epi64(a: __m512i, imm8: u32) -> __m512i {
 #[cfg_attr(test, assert_instr(vpsrlq, imm8 = 1))]
 #[rustc_args_required_const(3)]
 pub unsafe fn _mm512_mask_srli_epi64(src: __m512i, k: __mmask8, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpsrliq(a.as_i64x8(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsrliq(a.as_i64x8(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     transmute(simd_select_bitmask(k, shf, src.as_i64x8()))
 }
 
@@ -5988,8 +6653,12 @@ pub unsafe fn _mm512_mask_srli_epi64(src: __m512i, k: __mmask8, a: __m512i, imm8
 #[cfg_attr(test, assert_instr(vpsrlq, imm8 = 1))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_srli_epi64(k: __mmask8, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpsrliq(a.as_i64x8(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsrliq(a.as_i64x8(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     let zero = _mm512_setzero_si512().as_i64x8();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -6230,8 +6899,13 @@ pub unsafe fn _mm512_maskz_sra_epi64(k: __mmask8, a: __m512i, count: __m128i) ->
 #[cfg_attr(test, assert_instr(vpsrad, imm8 = 1))]
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm512_srai_epi32(a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    transmute(vpsraid(a.as_i32x16(), imm8))
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsraid(a.as_i32x16(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
 }
 
 /// Shift packed 32-bit integers in a right by imm8 while shifting in sign bits, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -6242,8 +6916,12 @@ pub unsafe fn _mm512_srai_epi32(a: __m512i, imm8: u32) -> __m512i {
 #[cfg_attr(test, assert_instr(vpsrad, imm8 = 1))]
 #[rustc_args_required_const(3)]
 pub unsafe fn _mm512_mask_srai_epi32(src: __m512i, k: __mmask16, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpsraid(a.as_i32x16(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsraid(a.as_i32x16(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     transmute(simd_select_bitmask(k, shf, src.as_i32x16()))
 }
 
@@ -6255,8 +6933,12 @@ pub unsafe fn _mm512_mask_srai_epi32(src: __m512i, k: __mmask16, a: __m512i, imm
 #[cfg_attr(test, assert_instr(vpsrad, imm8 = 1))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_srai_epi32(k: __mmask16, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpsraid(a.as_i32x16(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsraid(a.as_i32x16(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     let zero = _mm512_setzero_si512().as_i32x16();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -6269,8 +6951,13 @@ pub unsafe fn _mm512_maskz_srai_epi32(k: __mmask16, a: __m512i, imm8: u32) -> __
 #[cfg_attr(test, assert_instr(vpsraq, imm8 = 1))]
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm512_srai_epi64(a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    transmute(vpsraiq(a.as_i64x8(), imm8))
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsraiq(a.as_i64x8(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
 }
 
 /// Shift packed 64-bit integers in a right by imm8 while shifting in sign bits, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -6281,8 +6968,12 @@ pub unsafe fn _mm512_srai_epi64(a: __m512i, imm8: u32) -> __m512i {
 #[cfg_attr(test, assert_instr(vpsraq, imm8 = 1))]
 #[rustc_args_required_const(3)]
 pub unsafe fn _mm512_mask_srai_epi64(src: __m512i, k: __mmask8, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpsraiq(a.as_i64x8(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsraiq(a.as_i64x8(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     transmute(simd_select_bitmask(k, shf, src.as_i64x8()))
 }
 
@@ -6294,8 +6985,12 @@ pub unsafe fn _mm512_mask_srai_epi64(src: __m512i, k: __mmask8, a: __m512i, imm8
 #[cfg_attr(test, assert_instr(vpsraq, imm8 = 1))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_maskz_srai_epi64(k: __mmask8, a: __m512i, imm8: u32) -> __m512i {
-    assert!(imm8 <= 255);
-    let shf = vpsraiq(a.as_i64x8(), imm8);
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsraiq(a.as_i64x8(), $imm8)
+        };
+    }
+    let shf = constify_imm8_sae!(imm8, call);
     let zero = _mm512_setzero_si512().as_i64x8();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -8526,11 +9221,21 @@ pub const _MM_CMPINT_NLE: _MM_CMPINT_ENUM = 0x06;
 /// True
 pub const _MM_CMPINT_TRUE: _MM_CMPINT_ENUM = 0x07;
 
-//pub const _MM_FROUND_TO_NEAREST_INT: i32 = 8;
-//pub const _MM_FROUND_TO_NEG_INF: i32 = 9;
-//pub const _MM_FROUND_TO_POS_INF: i32 = 10;
-//pub const _MM_FROUND_TO_ZERO: i32 = 11;
-//pub const _MM_FROUND_CUR_DIRECTION = 4;
+/// interval [1, 2)
+pub const _MM_MANT_NORM_1_2: _MM_MANTISSA_NORM_ENUM = 0x00;
+/// interval [0.5, 2)
+pub const _MM_MANT_NORM_P5_2: _MM_MANTISSA_NORM_ENUM = 0x01;
+/// interval [0.5, 1)
+pub const _MM_MANT_NORM_P5_1: _MM_MANTISSA_NORM_ENUM = 0x02;
+/// interval [0.75, 1.5)
+pub const _MM_MANT_NORM_P75_1P5: _MM_MANTISSA_NORM_ENUM = 0x03;
+
+/// sign = sign(SRC)
+pub const _MM_MANT_SIGN_SRC: _MM_MANTISSA_SIGN_ENUM = 0x00;
+/// sign = 0
+pub const _MM_MANT_SIGN_ZERO: _MM_MANTISSA_SIGN_ENUM = 0x01;
+/// DEST = NaN if sign(SRC) = 1
+pub const _MM_MANT_SIGN_NAN: _MM_MANTISSA_SIGN_ENUM = 0x02;
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -8603,6 +9308,11 @@ extern "C" {
     #[link_name = "llvm.x86.avx512.mask.getexp.pd.512"]
     fn vgetexppd(a: f64x8, src: f64x8, m: u8, sae: i32) -> f64x8;
 
+    #[link_name = "llvm.x86.avx512.mask.getmant.ps.512"]
+    fn vgetmantps(a: f32x16, mantissas: i32, src: f32x16, m: u16, sae: i32) -> f32x16;
+    #[link_name = "llvm.x86.avx512.mask.getmant.pd.512"]
+    fn vgetmantpd(a: f64x8, mantissas: i32, src: f64x8, m: u8, sae: i32) -> f64x8;
+
     #[link_name = "llvm.x86.avx512.rcp14.ps.512"]
     fn vrcp14ps(a: f32x16, src: f32x16, m: u16) -> f32x16;
     #[link_name = "llvm.x86.avx512.rcp14.pd.512"]
@@ -8616,6 +9326,8 @@ extern "C" {
     fn vcvtps2dq(a: f32x16, src: i32x16, mask: u16, rounding: i32) -> i32x16;
     #[link_name = "llvm.x86.avx512.mask.cvtps2udq.512"]
     fn vcvtps2udq(a: f32x16, src: u32x16, mask: u16, rounding: i32) -> u32x16;
+    #[link_name = "llvm.x86.avx512.mask.cvtps2pd.512"]
+    fn vcvtps2pd(a: f32x8, src: f64x8, mask: u8, sae: i32) -> f64x8;
 
     #[link_name = "llvm.x86.avx512.gather.dpd.512"]
     fn vgatherdpd(src: f64x8, slice: *const i8, offsets: i32x8, mask: i8, scale: i32) -> f64x8;
@@ -10585,6 +11297,45 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_getmant_ps() {
+        let a = _mm512_set1_ps(10.);
+        let r = _mm512_getmant_ps(a, _MM_MANT_NORM_P75_1P5, _MM_MANT_SIGN_NAN);
+        let e = _mm512_set1_ps(1.25);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_getmant_ps() {
+        let a = _mm512_set1_ps(10.);
+        let r = _mm512_mask_getmant_ps(a, 0, a, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        assert_eq_m512(r, a);
+        let r = _mm512_mask_getmant_ps(
+            a,
+            0b11111111_00000000,
+            a,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+        );
+        let e = _mm512_setr_ps(
+            10., 10., 10., 10., 10., 10., 10., 10., 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_getmant_ps() {
+        let a = _mm512_set1_ps(10.);
+        let r = _mm512_maskz_getmant_ps(0, a, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        assert_eq_m512(r, _mm512_setzero_ps());
+        let r =
+            _mm512_maskz_getmant_ps(0b11111111_00000000, a, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        let e = _mm512_setr_ps(
+            0., 0., 0., 0., 0., 0., 0., 0., 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_add_round_ps() {
         let a = _mm512_setr_ps(
             0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
@@ -11896,6 +12647,69 @@ mod tests {
         let r = _mm512_maskz_getexp_round_ps(0b11111111_00000000, a, _MM_FROUND_CUR_DIRECTION);
         let e = _mm512_setr_ps(
             0., 0., 0., 0., 0., 0., 0., 0., 1., 1., 1., 1., 1., 1., 1., 1.,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_getmant_round_ps() {
+        let a = _mm512_set1_ps(10.);
+        let r = _mm512_getmant_round_ps(
+            a,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm512_set1_ps(1.25);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_getmant_round_ps() {
+        let a = _mm512_set1_ps(10.);
+        let r = _mm512_mask_getmant_round_ps(
+            a,
+            0,
+            a,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        assert_eq_m512(r, a);
+        let r = _mm512_mask_getmant_round_ps(
+            a,
+            0b11111111_00000000,
+            a,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm512_setr_ps(
+            10., 10., 10., 10., 10., 10., 10., 10., 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_getmant_round_ps() {
+        let a = _mm512_set1_ps(10.);
+        let r = _mm512_maskz_getmant_round_ps(
+            0,
+            a,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        assert_eq_m512(r, _mm512_setzero_ps());
+        let r = _mm512_maskz_getmant_round_ps(
+            0b11111111_00000000,
+            a,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm512_setr_ps(
+            0., 0., 0., 0., 0., 0., 0., 0., 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25,
         );
         assert_eq_m512(r, e);
     }

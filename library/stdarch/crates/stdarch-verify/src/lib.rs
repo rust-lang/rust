@@ -148,6 +148,8 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "__mmask8" => quote! { &MMASK8 },
             "__mmask16" => quote! { &MMASK16 },
             "_MM_CMPINT_ENUM" => quote! { &MM_CMPINT_ENUM },
+            "_MM_MANTISSA_NORM_ENUM" => quote! { &MM_MANTISSA_NORM_ENUM },
+            "_MM_MANTISSA_SIGN_ENUM" => quote! { &MM_MANTISSA_SIGN_ENUM },
             "__m64" => quote! { &M64 },
             "bool" => quote! { &BOOL },
             "f32" => quote! { &F32 },
