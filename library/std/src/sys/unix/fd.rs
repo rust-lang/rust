@@ -6,7 +6,6 @@ mod tests;
 use crate::cmp;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read};
 use crate::mem;
-#[cfg(not(any(target_os = "redox", target_env = "newlib")))]
 use crate::sys::cvt;
 use crate::sys_common::AsInner;
 
