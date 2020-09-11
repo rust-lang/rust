@@ -66,10 +66,11 @@ where
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (lo, hi) = self.iter.size_hint();
         let next_is_elem = !self.needs_sep;
-        let lo = lo.saturating_add(lo).saturating_sub(next_is_elem as usize);
-        let hi = hi
-            .and_then(|hi| hi.checked_add(hi))
-            .and_then(|hi| hi.checked_sub(next_is_elem as usize));
+        let lo = lo.saturating_sub(next_is_elem as usize).saturating_add(lo);
+        let hi = match hi {
+            Some(hi) => hi.saturating_sub(next_is_elem as usize).checked_add(hi),
+            None => None,
+        };
         (lo, hi)
     }
 }

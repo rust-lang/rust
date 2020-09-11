@@ -3245,6 +3245,8 @@ fn test_intersperse_size_hint() {
     assert_eq!(iter.size_hint(), (6, Some(6)));
     assert_eq!(iter.next(), Some(", "));
     assert_eq!(iter.size_hint(), (5, Some(5)));
+
+    assert_eq!([].iter().intersperse(&()).size_hint(), (0, Some(0)));
 }
 
 #[test]
