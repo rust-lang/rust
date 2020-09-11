@@ -2,8 +2,13 @@
 use crate::mir;
 use crate::ty;
 
-/// An index into an `AbstractConst`.
-pub type NodeId = usize;
+rustc_index::newtype_index! {
+    /// An index into an `AbstractConst`.
+    pub struct NodeId {
+        derive [HashStable]
+        DEBUG_FORMAT = "n{}",
+    }
+}
 
 /// A node of an `AbstractConst`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable)]

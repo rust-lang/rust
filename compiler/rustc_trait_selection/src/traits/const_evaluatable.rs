@@ -95,8 +95,10 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 /// and should not leak any information about desugarings.
 #[derive(Clone, Copy)]
 pub struct AbstractConst<'tcx> {
-    pub inner: &'tcx [Node<'tcx>],
-    pub substs: SubstsRef<'tcx>,
+    // FIXME: Consider adding something like `IndexSlice`
+    // and use this here.
+    inner: &'tcx [Node<'tcx>],
+    substs: SubstsRef<'tcx>,
 }
 
 impl AbstractConst<'tcx> {
@@ -117,7 +119,7 @@ impl AbstractConst<'tcx> {
 
     #[inline]
     pub fn subtree(self, node: NodeId) -> AbstractConst<'tcx> {
-        AbstractConst { inner: &self.inner[..=node], substs: self.substs }
+        AbstractConst { inner: &self.inner[..=node.index()], substs: self.substs }
     }
 
     #[inline]
@@ -129,7 +131,7 @@ impl AbstractConst<'tcx> {
 struct AbstractConstBuilder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
-    nodes: Vec<Node<'tcx>>,
+    nodes: IndexVec<NodeId, Node<'tcx>>,
     locals: IndexVec<mir::Local, NodeId>,
     checked_op_locals: BitSet<mir::Local>,
 }
@@ -143,16 +145,10 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         Some(AbstractConstBuilder {
             tcx,
             body,
-            nodes: vec![],
+            nodes: IndexVec::new(),
             locals: IndexVec::from_elem(NodeId::MAX, &body.local_decls),
             checked_op_locals: BitSet::new_empty(body.local_decls.len()),
         })
-    }
-
-    fn add_node(&mut self, n: Node<'tcx>) -> NodeId {
-        let len = self.nodes.len();
-        self.nodes.push(n);
-        len
     }
 
     fn operand_to_node(&mut self, op: &mir::Operand<'tcx>) -> Option<NodeId> {
@@ -174,7 +170,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     None
                 }
             }
-            mir::Operand::Constant(ct) => Some(self.add_node(Node::Leaf(ct.literal))),
+            mir::Operand::Constant(ct) => Some(self.nodes.push(Node::Leaf(ct.literal))),
         }
     }
 
@@ -199,7 +195,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     Rvalue::BinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
                         let lhs = self.operand_to_node(lhs)?;
                         let rhs = self.operand_to_node(rhs)?;
-                        self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs));
+                        self.locals[local] = self.nodes.push(Node::Binop(op, lhs, rhs));
                         if op.is_checkable() {
                             bug!("unexpected unchecked checkable binary operation");
                         }
@@ -207,7 +203,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
                         let lhs = self.operand_to_node(lhs)?;
                         let rhs = self.operand_to_node(rhs)?;
-                        self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs));
+                        self.locals[local] = self.nodes.push(Node::Binop(op, lhs, rhs));
                         self.checked_op_locals.insert(local);
                     }
                     _ => return None,
