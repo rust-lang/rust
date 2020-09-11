@@ -24,7 +24,7 @@ If you want to unassign from an issue, `@rustbot` has a different command:
 ## Issue relabeling
 
 Changing labels for an issue or PR is also normally reserved to members of the
-organization. However, `@rustdoc` allows you to relabel an issue yourself, only
+organization. However, `@rustbot` allows you to relabel an issue yourself, only
 with a few restrictions. This is mostly useful in two cases:
 
 **Helping with issue triage**: Rust's issue tracker has more than 5,000 open
