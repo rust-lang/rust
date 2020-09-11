@@ -29,8 +29,8 @@ high-level interface to the lexer and some validation routines that run after
 macro expansion. In particular, the [`rustc_parse::parser`][parser] contains
 the parser implementation.
 
-The main entrypoint to the parser is via the various `parse_*` functions in the
-[parser][parser]. They let you do things like turn a [`SourceFile`][sourcefile]
+The main entrypoint to the parser is via the various `parse_*` functions and others in the
+[parser crate][parser_lib]. They let you do things like turn a [`SourceFile`][sourcefile]
 (e.g. the source in a single file) into a token stream, create a parser from
 the token stream, and then execute the parser to get a `Crate` (the root AST
 node).
@@ -62,6 +62,7 @@ Code for lexical analysis is split between two crates:
 [`SourceMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/source_map/struct.SourceMap.html
 [ast module]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html
 [rustc_parse]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
+[parser_lib]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/index.html
 [`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/parse/parser/struct.Parser.html
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
