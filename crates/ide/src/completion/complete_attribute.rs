@@ -13,6 +13,10 @@ use crate::completion::{
 };
 
 pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
+    if ctx.mod_declaration_under_caret.is_some() {
+        return None;
+    }
+
     let attribute = ctx.attribute_under_caret.as_ref()?;
     match (attribute.path(), attribute.token_tree()) {
         (Some(path), Some(token_tree)) if path.to_string() == "derive" => {

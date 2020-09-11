@@ -48,6 +48,24 @@ impl VfsPath {
             (VfsPathRepr::VirtualPath(_), _) => false,
         }
     }
+    pub fn parent(&self) -> Option<VfsPath> {
+        let mut parent = self.clone();
+        if parent.pop() {
+            Some(parent)
+        } else {
+            None
+        }
+    }
+
+    pub fn name_and_extension(&self) -> Option<(&str, Option<&str>)> {
+        match &self.0 {
+            VfsPathRepr::PathBuf(p) => Some((
+                p.file_stem()?.to_str()?,
+                p.extension().and_then(|extension| extension.to_str()),
+            )),
+            VfsPathRepr::VirtualPath(p) => p.name_and_extension(),
+        }
+    }
 
     // Don't make this `pub`
     pub(crate) fn encode(&self, buf: &mut Vec<u8>) {
@@ -267,5 +285,61 @@ impl VirtualPath {
         }
         res.0 = format!("{}/{}", res.0, path);
         Some(res)
+    }
+
+    pub fn name_and_extension(&self) -> Option<(&str, Option<&str>)> {
+        let file_path = if self.0.ends_with('/') { &self.0[..&self.0.len() - 1] } else { &self.0 };
+        let file_name = match file_path.rfind('/') {
+            Some(position) => &file_path[position + 1..],
+            None => file_path,
+        };
+
+        if file_name.is_empty() {
+            None
+        } else {
+            let mut file_stem_and_extension = file_name.rsplitn(2, '.');
+            let extension = file_stem_and_extension.next();
+            let file_stem = file_stem_and_extension.next();
+
+            match (file_stem, extension) {
+                (None, None) => None,
+                (None, Some(_)) | (Some(""), Some(_)) => Some((file_name, None)),
+                (Some(file_stem), extension) => Some((file_stem, extension)),
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn virtual_path_extensions() {
+        assert_eq!(VirtualPath("/".to_string()).name_and_extension(), None);
+        assert_eq!(
+            VirtualPath("/directory".to_string()).name_and_extension(),
+            Some(("directory", None))
+        );
+        assert_eq!(
+            VirtualPath("/directory/".to_string()).name_and_extension(),
+            Some(("directory", None))
+        );
+        assert_eq!(
+            VirtualPath("/directory/file".to_string()).name_and_extension(),
+            Some(("file", None))
+        );
+        assert_eq!(
+            VirtualPath("/directory/.file".to_string()).name_and_extension(),
+            Some((".file", None))
+        );
+        assert_eq!(
+            VirtualPath("/directory/.file.rs".to_string()).name_and_extension(),
+            Some((".file", Some("rs")))
+        );
+        assert_eq!(
+            VirtualPath("/directory/file.rs".to_string()).name_and_extension(),
+            Some(("file", Some("rs")))
+        );
     }
 }

@@ -13,7 +13,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         None => return,
     };
 
-    if ctx.attribute_under_caret.is_some() {
+    if ctx.attribute_under_caret.is_some() || ctx.mod_declaration_under_caret.is_some() {
         return;
     }
 

@@ -13,6 +13,7 @@ pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     if ctx.record_lit_syntax.is_some()
         || ctx.record_pat_syntax.is_some()
         || ctx.attribute_under_caret.is_some()
+        || ctx.mod_declaration_under_caret.is_some()
     {
         return;
     }

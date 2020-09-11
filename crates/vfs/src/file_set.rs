@@ -23,13 +23,22 @@ impl FileSet {
         let mut base = self.paths[&anchor].clone();
         base.pop();
         let path = base.join(path)?;
-        let res = self.files.get(&path).copied();
-        res
+        self.files.get(&path).copied()
     }
+
+    pub fn file_for_path(&self, path: &VfsPath) -> Option<&FileId> {
+        self.files.get(path)
+    }
+
+    pub fn path_for_file(&self, file: &FileId) -> Option<&VfsPath> {
+        self.paths.get(file)
+    }
+
     pub fn insert(&mut self, file_id: FileId, path: VfsPath) {
         self.files.insert(path.clone(), file_id);
         self.paths.insert(file_id, path);
     }
+
     pub fn iter(&self) -> impl Iterator<Item = FileId> + '_ {
         self.paths.keys().copied()
     }

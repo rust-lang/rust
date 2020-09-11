@@ -115,6 +115,7 @@ pub(crate) fn if_is_prev(element: SyntaxElement) -> bool {
         .filter(|it| it.kind() == IF_KW)
         .is_some()
 }
+
 #[test]
 fn test_if_is_prev() {
     check_pattern_is_applicable(r"if l<|>", if_is_prev);

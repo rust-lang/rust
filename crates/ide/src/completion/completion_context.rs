@@ -77,6 +77,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_path_type: bool,
     pub(super) has_type_args: bool,
     pub(super) attribute_under_caret: Option<ast::Attr>,
+    pub(super) mod_declaration_under_caret: Option<ast::Module>,
     pub(super) unsafe_is_prev: bool,
     pub(super) if_is_prev: bool,
     pub(super) block_expr_parent: bool,
@@ -152,6 +153,7 @@ impl<'a> CompletionContext<'a> {
             has_type_args: false,
             dot_receiver_is_ambiguous_float_literal: false,
             attribute_under_caret: None,
+            mod_declaration_under_caret: None,
             unsafe_is_prev: false,
             in_loop_body: false,
             ref_pat_parent: false,
@@ -238,7 +240,10 @@ impl<'a> CompletionContext<'a> {
         self.trait_as_prev_sibling = has_trait_as_prev_sibling(syntax_element.clone());
         self.is_match_arm = is_match_arm(syntax_element.clone());
         self.has_item_list_or_source_file_parent =
-            has_item_list_or_source_file_parent(syntax_element);
+            has_item_list_or_source_file_parent(syntax_element.clone());
+        self.mod_declaration_under_caret =
+            find_node_at_offset::<ast::Module>(&file_with_fake_ident, offset)
+                .filter(|module| module.item_list().is_none());
     }
 
     fn fill(
