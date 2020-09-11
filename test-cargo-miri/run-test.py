@@ -78,11 +78,11 @@ def test_cargo_miri_test():
     )
     test("cargo miri test (test target)",
         cargo_miri("test") + ["--test", "test", "--", "--format=pretty"],
-        "test.stdout.ref4", "test.stderr.ref"
+        "test.stdout.ref4", "test.stderr.ref2"
     )
     test("cargo miri test (bin target)",
         cargo_miri("test") + ["--bin", "cargo-miri-test", "--", "--format=pretty"],
-        "test.stdout.ref5", "test.stderr.ref"
+        "test.stdout.ref5", "test.stderr.ref2"
     )
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))

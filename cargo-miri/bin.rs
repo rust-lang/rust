@@ -442,6 +442,9 @@ fn phase_cargo_miri(mut args: env::Args) {
     let runner_env_name = format!("CARGO_TARGET_{}_RUNNER", target.to_uppercase().replace('-', "_"));
     cmd.env(runner_env_name, &miri_path);
 
+    // Set rustdoc to us as well, so we can make it do nothing (see issue #584).
+    cmd.env("RUSTDOC", &miri_path);
+
     // Run cargo.
     if verbose {
         cmd.env("MIRI_VERBOSE", ""); // This makes the other phases verbose.
@@ -571,7 +574,7 @@ fn phase_cargo_rustc(args: env::Args) {
     }
 }
 
-fn phase_cargo_runner(binary: &str, binary_args: env::Args) {
+fn phase_cargo_runner(binary: &Path, binary_args: env::Args) {
     let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
 
     let file = File::open(&binary)
@@ -659,10 +662,25 @@ fn main() {
     //   binary crates for later interpretation.
     // - When we are executed due to CARGO_TARGET_RUNNER, we start interpretation based on the
     //   flags that were stored earlier.
+    // On top of that, we are also called as RUSTDOC, but that is just a stub currently.
     match args.next().as_deref() {
         Some("miri") => phase_cargo_miri(args),
         Some("rustc") => phase_cargo_rustc(args),
-        Some(binary) => phase_cargo_runner(binary, args),
+        Some(arg) => {
+            // We have to distinguish the "runner" and "rustfmt" cases.
+            // As runner, the first argument is the binary (a file that should exist, with an absolute path);
+            // as rustfmt, the first argument is a flag (`--something`).
+            let binary = Path::new(arg);
+            if binary.exists() {
+                assert!(!arg.starts_with("--")); // not a flag
+                phase_cargo_runner(binary, args);
+            } else if arg.starts_with("--") {
+                // We are rustdoc.
+                eprintln!("Running doctests is not currently supported by Miri.")
+            } else {
+                show_error(format!("`cargo-miri` called with unexpected first argument `{}`; please only invoke this binary through `cargo miri`", arg));
+            }
+        }
         _ => show_error(format!("`cargo-miri` called without first argument; please only invoke this binary through `cargo miri`")),
     }
 }
