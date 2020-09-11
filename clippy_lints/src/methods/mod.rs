@@ -1540,8 +1540,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         match expr.kind {
             hir::ExprKind::Call(ref func, ref args) => {
                 if let hir::ExprKind::Path(path) = &func.kind {
-                    let path_segment = last_path_segment(path);
-                    if path_segment.ident.name.as_str() == "from_iter" {
+                    if match_qpath(path, &["from_iter"]) {
                         lint_from_iter(cx, expr, args);
                     }
                 }
