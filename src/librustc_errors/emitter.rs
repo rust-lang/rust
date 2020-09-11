@@ -959,15 +959,15 @@ impl EmitterWriter {
                         '_',
                         line_offset + pos,
                         width_offset + depth,
-                        code_offset + annotation.start_col - left,
+                        (code_offset + annotation.start_col).saturating_sub(left),
                         style,
                     );
                 }
                 _ if self.teach => {
                     buffer.set_style_range(
                         line_offset,
-                        code_offset + annotation.start_col - left,
-                        code_offset + annotation.end_col - left,
+                        (code_offset + annotation.start_col).saturating_sub(left),
+                        (code_offset + annotation.end_col).saturating_sub(left),
                         style,
                         annotation.is_primary,
                     );
