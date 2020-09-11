@@ -1,11 +1,9 @@
-#![allow(warnings)]
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::abstract_const::{Node, NodeId};
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, Rvalue, StatementKind, TerminatorKind};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::SubstsRef;
