@@ -36,7 +36,7 @@ you are comfortable with doing it yourself.
 **Updating the status of a PR**: we use "status labels" to reflect the status of
 PRs. For example, if your PR has merge conflicts, it will automatically be assigned
 the `S-waiting-on-author`, and reviewers might not review it until you rebase your
-PR. Once you did rebase your branch, you should change the labels yourself to remove
+PR. Once you do rebase your branch, you should change the labels yourself to remove
 the `S-waiting-on-author` label and add back `S-waiting-on-review`. In this case,
 the `@rustbot` command will look like this:
 
