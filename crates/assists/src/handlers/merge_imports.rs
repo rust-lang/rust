@@ -1,14 +1,14 @@
-use std::iter::successors;
-
 use syntax::{
-    algo::{neighbor, skip_trivia_token, SyntaxRewriter},
-    ast::{self, edit::AstNodeEdit, make},
-    AstNode, Direction, InsertPosition, SyntaxElement, T,
+    algo::{neighbor, SyntaxRewriter},
+    ast, AstNode,
 };
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::next_prev,
+    utils::{
+        insert_use::{try_merge_imports, try_merge_trees},
+        next_prev, MergeBehaviour,
+    },
     AssistId, AssistKind,
 };
 
@@ -30,23 +30,22 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()
     let mut offset = ctx.offset();
 
     if let Some(use_item) = tree.syntax().parent().and_then(ast::Use::cast) {
-        let (merged, to_delete) = next_prev()
-            .filter_map(|dir| neighbor(&use_item, dir))
-            .filter_map(|it| Some((it.clone(), it.use_tree()?)))
-            .find_map(|(use_item, use_tree)| {
-                Some((try_merge_trees(&tree, &use_tree)?, use_item))
+        let (merged, to_delete) =
+            next_prev().filter_map(|dir| neighbor(&use_item, dir)).find_map(|use_item2| {
+                try_merge_imports(&use_item, &use_item2, MergeBehaviour::Full).zip(Some(use_item2))
             })?;
 
-        rewriter.replace_ast(&tree, &merged);
+        rewriter.replace_ast(&use_item, &merged);
         rewriter += to_delete.remove();
 
         if to_delete.syntax().text_range().end() < offset {
             offset -= to_delete.syntax().text_range().len();
         }
     } else {
-        let (merged, to_delete) = next_prev()
-            .filter_map(|dir| neighbor(&tree, dir))
-            .find_map(|use_tree| Some((try_merge_trees(&tree, &use_tree)?, use_tree.clone())))?;
+        let (merged, to_delete) =
+            next_prev().filter_map(|dir| neighbor(&tree, dir)).find_map(|use_tree| {
+                try_merge_trees(&tree, &use_tree, MergeBehaviour::Full).zip(Some(use_tree))
+            })?;
 
         rewriter.replace_ast(&tree, &merged);
         rewriter += to_delete.remove();
@@ -65,66 +64,6 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()
             builder.rewrite(rewriter);
         },
     )
-}
-
-fn try_merge_trees(old: &ast::UseTree, new: &ast::UseTree) -> Option<ast::UseTree> {
-    let lhs_path = old.path()?;
-    let rhs_path = new.path()?;
-
-    let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
-
-    let lhs = old.split_prefix(&lhs_prefix);
-    let rhs = new.split_prefix(&rhs_prefix);
-
-    let should_insert_comma = lhs
-        .use_tree_list()?
-        .r_curly_token()
-        .and_then(|it| skip_trivia_token(it.prev_token()?, Direction::Prev))
-        .map(|it| it.kind() != T![,])
-        .unwrap_or(true);
-
-    let mut to_insert: Vec<SyntaxElement> = Vec::new();
-    if should_insert_comma {
-        to_insert.push(make::token(T![,]).into());
-        to_insert.push(make::tokens::single_space().into());
-    }
-    to_insert.extend(
-        rhs.use_tree_list()?
-            .syntax()
-            .children_with_tokens()
-            .filter(|it| it.kind() != T!['{'] && it.kind() != T!['}']),
-    );
-    let use_tree_list = lhs.use_tree_list()?;
-    let pos = InsertPosition::Before(use_tree_list.r_curly_token()?.into());
-    let use_tree_list = use_tree_list.insert_children(pos, to_insert);
-    Some(lhs.with_use_tree_list(use_tree_list))
-}
-
-fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast::Path)> {
-    let mut res = None;
-    let mut lhs_curr = first_path(&lhs);
-    let mut rhs_curr = first_path(&rhs);
-    loop {
-        match (lhs_curr.segment(), rhs_curr.segment()) {
-            (Some(lhs), Some(rhs)) if lhs.syntax().text() == rhs.syntax().text() => (),
-            _ => break,
-        }
-        res = Some((lhs_curr.clone(), rhs_curr.clone()));
-
-        match (lhs_curr.parent_path(), rhs_curr.parent_path()) {
-            (Some(lhs), Some(rhs)) => {
-                lhs_curr = lhs;
-                rhs_curr = rhs;
-            }
-            _ => break,
-        }
-    }
-
-    res
-}
-
-fn first_path(path: &ast::Path) -> ast::Path {
-    successors(Some(path.clone()), |it| it.qualifier()).last().unwrap()
 }
 
 #[cfg(test)]
@@ -186,6 +125,78 @@ use std::{fmt, <|>fmt::Display};
 use std::{fmt::{Display, self}};
 ",
         );
+    }
+
+    #[test]
+    fn skip_pub1() {
+        check_assist_not_applicable(
+            merge_imports,
+            r"
+pub use std::fmt<|>::Debug;
+use std::fmt::Display;
+",
+        );
+    }
+
+    #[test]
+    fn skip_pub_last() {
+        check_assist_not_applicable(
+            merge_imports,
+            r"
+use std::fmt<|>::Debug;
+pub use std::fmt::Display;
+",
+        );
+    }
+
+    #[test]
+    fn skip_pub_crate_pub() {
+        check_assist_not_applicable(
+            merge_imports,
+            r"
+pub(crate) use std::fmt<|>::Debug;
+pub use std::fmt::Display;
+",
+        );
+    }
+
+    #[test]
+    fn skip_pub_pub_crate() {
+        check_assist_not_applicable(
+            merge_imports,
+            r"
+pub use std::fmt<|>::Debug;
+pub(crate) use std::fmt::Display;
+",
+        );
+    }
+
+    #[test]
+    fn merge_pub() {
+        check_assist(
+            merge_imports,
+            r"
+pub use std::fmt<|>::Debug;
+pub use std::fmt::Display;
+",
+            r"
+pub use std::fmt::{Debug, Display};
+",
+        )
+    }
+
+    #[test]
+    fn merge_pub_crate() {
+        check_assist(
+            merge_imports,
+            r"
+pub(crate) use std::fmt<|>::Debug;
+pub(crate) use std::fmt::Display;
+",
+            r"
+pub(crate) use std::fmt::{Debug, Display};
+",
+        )
     }
 
     #[test]
