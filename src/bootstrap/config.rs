@@ -667,6 +667,13 @@ impl Config {
                 // CI-built LLVM is shared
                 config.llvm_link_shared = true;
             }
+
+            if config.llvm_thin_lto {
+                // If we're building with ThinLTO on, we want to link to LLVM
+                // shared, to avoid re-doing ThinLTO (which happens in the link
+                // step) with each stage.
+                config.llvm_link_shared = true;
+            }
         }
 
         if let Some(ref rust) = toml.rust {
