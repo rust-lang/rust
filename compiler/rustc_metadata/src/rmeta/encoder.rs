@@ -40,6 +40,7 @@ use tracing::{debug, trace};
 pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::Encoder,
     tcx: TyCtxt<'tcx>,
+    feat: &'tcx rustc_feature::Features,
 
     tables: TableBuilders<'tcx>,
 
@@ -1132,15 +1133,25 @@ impl EncodeContext<'a, 'tcx> {
 
     fn encode_stability(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_stability({:?})", def_id);
-        if let Some(stab) = self.tcx.lookup_stability(def_id) {
-            record!(self.tables.stability[def_id] <- stab)
+
+        // The query lookup can take a measurable amount of time in crates with many items. Check if
+        // the stability attributes are even enabled before using their queries.
+        if self.feat.staged_api || self.tcx.sess.opts.debugging_opts.force_unstable_if_unmarked {
+            if let Some(stab) = self.tcx.lookup_stability(def_id) {
+                record!(self.tables.stability[def_id] <- stab)
+            }
         }
     }
 
     fn encode_const_stability(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_const_stability({:?})", def_id);
-        if let Some(stab) = self.tcx.lookup_const_stability(def_id) {
-            record!(self.tables.const_stability[def_id] <- stab)
+
+        // The query lookup can take a measurable amount of time in crates with many items. Check if
+        // the stability attributes are even enabled before using their queries.
+        if self.feat.staged_api || self.tcx.sess.opts.debugging_opts.force_unstable_if_unmarked {
+            if let Some(stab) = self.tcx.lookup_const_stability(def_id) {
+                record!(self.tables.const_stability[def_id] <- stab)
+            }
         }
     }
 
@@ -1979,6 +1990,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let mut ecx = EncodeContext {
         opaque: encoder,
         tcx,
+        feat: tcx.features(),
         tables: Default::default(),
         lazy_state: LazyState::NoNode,
         type_shorthands: Default::default(),
