@@ -10,6 +10,16 @@
 # system.
 
 # =============================================================================
+# Global Settings
+# =============================================================================
+
+# Use different pre-set defaults than the global defaults.
+#
+# See `src/bootstrap/defaults` for more information.
+# Note that this has no default value (x.py uses the defaults in `config.toml.example`).
+#profile = <none>
+
+# =============================================================================
 # Tweaking how LLVM is compiled
 # =============================================================================
 [llvm]
