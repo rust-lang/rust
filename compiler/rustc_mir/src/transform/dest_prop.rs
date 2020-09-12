@@ -858,89 +858,6 @@ fn find_candidates<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
 ) -> Vec<CandidateAssignment<'tcx>> {
-    struct FindAssignments<'a, 'tcx> {
-        tcx: TyCtxt<'tcx>,
-        body: &'a Body<'tcx>,
-        candidates: Vec<CandidateAssignment<'tcx>>,
-        ever_borrowed_locals: BitSet<Local>,
-        locals_used_as_array_index: BitSet<Local>,
-    }
-
-    impl<'a, 'tcx> Visitor<'tcx> for FindAssignments<'a, 'tcx> {
-        fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
-            if let StatementKind::Assign(box (
-                dest,
-                Rvalue::Use(Operand::Copy(src) | Operand::Move(src)),
-            )) = &statement.kind
-            {
-                // `dest` must not have pointer indirection.
-                if dest.is_indirect() {
-                    return;
-                }
-
-                // `src` must be a plain local.
-                if !src.projection.is_empty() {
-                    return;
-                }
-
-                // Since we want to replace `src` with `dest`, `src` must not be required.
-                if is_local_required(src.local, self.body) {
-                    return;
-                }
-
-                // Can't optimize if both locals ever have their address taken (can introduce
-                // aliasing).
-                // FIXME: This can be smarter and take `StorageDead` into account (which
-                // invalidates borrows).
-                if self.ever_borrowed_locals.contains(dest.local)
-                    && self.ever_borrowed_locals.contains(src.local)
-                {
-                    return;
-                }
-
-                assert_ne!(dest.local, src.local, "self-assignments are UB");
-
-                // We can't replace locals occurring in `PlaceElem::Index` for now.
-                if self.locals_used_as_array_index.contains(src.local) {
-                    return;
-                }
-
-                // Handle the "subtle case" described above by rejecting any `dest` that is or
-                // projects through a union.
-                let is_union = |ty: Ty<'_>| {
-                    if let ty::Adt(def, _) = ty.kind() {
-                        if def.is_union() {
-                            return true;
-                        }
-                    }
-
-                    false
-                };
-                let mut place_ty = PlaceTy::from_ty(self.body.local_decls[dest.local].ty);
-                if is_union(place_ty.ty) {
-                    return;
-                }
-                for elem in dest.projection {
-                    if let PlaceElem::Index(_) = elem {
-                        // `dest` contains an indexing projection.
-                        return;
-                    }
-
-                    place_ty = place_ty.projection_ty(self.tcx, elem);
-                    if is_union(place_ty.ty) {
-                        return;
-                    }
-                }
-
-                self.candidates.push(CandidateAssignment {
-                    dest: *dest,
-                    src: src.local,
-                    loc: location,
-                });
-            }
-        }
-    }
-
     let mut visitor = FindAssignments {
         tcx,
         body,
@@ -950,6 +867,89 @@ fn find_candidates<'a, 'tcx>(
     };
     visitor.visit_body(body);
     visitor.candidates
+}
+
+struct FindAssignments<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    body: &'a Body<'tcx>,
+    candidates: Vec<CandidateAssignment<'tcx>>,
+    ever_borrowed_locals: BitSet<Local>,
+    locals_used_as_array_index: BitSet<Local>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for FindAssignments<'a, 'tcx> {
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+        if let StatementKind::Assign(box (
+            dest,
+            Rvalue::Use(Operand::Copy(src) | Operand::Move(src)),
+        )) = &statement.kind
+        {
+            // `dest` must not have pointer indirection.
+            if dest.is_indirect() {
+                return;
+            }
+
+            // `src` must be a plain local.
+            if !src.projection.is_empty() {
+                return;
+            }
+
+            // Since we want to replace `src` with `dest`, `src` must not be required.
+            if is_local_required(src.local, self.body) {
+                return;
+            }
+
+            // Can't optimize if both locals ever have their address taken (can introduce
+            // aliasing).
+            // FIXME: This can be smarter and take `StorageDead` into account (which
+            // invalidates borrows).
+            if self.ever_borrowed_locals.contains(dest.local)
+                && self.ever_borrowed_locals.contains(src.local)
+            {
+                return;
+            }
+
+            assert_ne!(dest.local, src.local, "self-assignments are UB");
+
+            // We can't replace locals occurring in `PlaceElem::Index` for now.
+            if self.locals_used_as_array_index.contains(src.local) {
+                return;
+            }
+
+            // Handle the "subtle case" described above by rejecting any `dest` that is or
+            // projects through a union.
+            let is_union = |ty: Ty<'_>| {
+                if let ty::Adt(def, _) = ty.kind() {
+                    if def.is_union() {
+                        return true;
+                    }
+                }
+
+                false
+            };
+            let mut place_ty = PlaceTy::from_ty(self.body.local_decls[dest.local].ty);
+            if is_union(place_ty.ty) {
+                return;
+            }
+            for elem in dest.projection {
+                if let PlaceElem::Index(_) = elem {
+                    // `dest` contains an indexing projection.
+                    return;
+                }
+
+                place_ty = place_ty.projection_ty(self.tcx, elem);
+                if is_union(place_ty.ty) {
+                    return;
+                }
+            }
+
+            self.candidates.push(CandidateAssignment {
+                dest: *dest,
+                src: src.local,
+                loc: location,
+            });
+        }
+    }
 }
 
 /// Some locals are part of the function's interface and can not be removed.
@@ -965,64 +965,64 @@ fn is_local_required(local: Local, body: &Body<'_>) -> bool {
 
 /// Walks MIR to find all locals that have their address taken anywhere.
 fn ever_borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
-    struct BorrowCollector {
-        locals: BitSet<Local>,
-    }
-
-    impl<'tcx> Visitor<'tcx> for BorrowCollector {
-        fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-            self.super_rvalue(rvalue, location);
-
-            match rvalue {
-                Rvalue::AddressOf(_, borrowed_place) | Rvalue::Ref(_, _, borrowed_place) => {
-                    if !borrowed_place.is_indirect() {
-                        self.locals.insert(borrowed_place.local);
-                    }
-                }
-
-                Rvalue::Cast(..)
-                | Rvalue::Use(..)
-                | Rvalue::Repeat(..)
-                | Rvalue::Len(..)
-                | Rvalue::BinaryOp(..)
-                | Rvalue::CheckedBinaryOp(..)
-                | Rvalue::NullaryOp(..)
-                | Rvalue::UnaryOp(..)
-                | Rvalue::Discriminant(..)
-                | Rvalue::Aggregate(..)
-                | Rvalue::ThreadLocalRef(..) => {}
-            }
-        }
-
-        fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-            self.super_terminator(terminator, location);
-
-            match terminator.kind {
-                TerminatorKind::Drop { place: dropped_place, .. }
-                | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
-                    self.locals.insert(dropped_place.local);
-                }
-
-                TerminatorKind::Abort
-                | TerminatorKind::Assert { .. }
-                | TerminatorKind::Call { .. }
-                | TerminatorKind::FalseEdge { .. }
-                | TerminatorKind::FalseUnwind { .. }
-                | TerminatorKind::GeneratorDrop
-                | TerminatorKind::Goto { .. }
-                | TerminatorKind::Resume
-                | TerminatorKind::Return
-                | TerminatorKind::SwitchInt { .. }
-                | TerminatorKind::Unreachable
-                | TerminatorKind::Yield { .. }
-                | TerminatorKind::InlineAsm { .. } => {}
-            }
-        }
-    }
-
     let mut visitor = BorrowCollector { locals: BitSet::new_empty(body.local_decls.len()) };
     visitor.visit_body(body);
     visitor.locals
+}
+
+struct BorrowCollector {
+    locals: BitSet<Local>,
+}
+
+impl<'tcx> Visitor<'tcx> for BorrowCollector {
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        self.super_rvalue(rvalue, location);
+
+        match rvalue {
+            Rvalue::AddressOf(_, borrowed_place) | Rvalue::Ref(_, _, borrowed_place) => {
+                if !borrowed_place.is_indirect() {
+                    self.locals.insert(borrowed_place.local);
+                }
+            }
+
+            Rvalue::Cast(..)
+            | Rvalue::Use(..)
+            | Rvalue::Repeat(..)
+            | Rvalue::Len(..)
+            | Rvalue::BinaryOp(..)
+            | Rvalue::CheckedBinaryOp(..)
+            | Rvalue::NullaryOp(..)
+            | Rvalue::UnaryOp(..)
+            | Rvalue::Discriminant(..)
+            | Rvalue::Aggregate(..)
+            | Rvalue::ThreadLocalRef(..) => {}
+        }
+    }
+
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        self.super_terminator(terminator, location);
+
+        match terminator.kind {
+            TerminatorKind::Drop { place: dropped_place, .. }
+            | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
+                self.locals.insert(dropped_place.local);
+            }
+
+            TerminatorKind::Abort
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::Call { .. }
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::Goto { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::Return
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Yield { .. }
+            | TerminatorKind::InlineAsm { .. } => {}
+        }
+    }
 }
 
 /// `PlaceElem::Index` only stores a `Local`, so we can't replace that with a full `Place`.
@@ -1030,27 +1030,27 @@ fn ever_borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
 /// Collect locals used as indices so we don't generate candidates that are impossible to apply
 /// later.
 fn locals_used_as_array_index(body: &Body<'_>) -> BitSet<Local> {
-    struct IndexCollector {
-        locals: BitSet<Local>,
-    }
-
-    impl<'tcx> Visitor<'tcx> for IndexCollector {
-        fn visit_projection_elem(
-            &mut self,
-            local: Local,
-            proj_base: &[PlaceElem<'tcx>],
-            elem: PlaceElem<'tcx>,
-            context: PlaceContext,
-            location: Location,
-        ) {
-            if let PlaceElem::Index(i) = elem {
-                self.locals.insert(i);
-            }
-            self.super_projection_elem(local, proj_base, elem, context, location);
-        }
-    }
-
     let mut visitor = IndexCollector { locals: BitSet::new_empty(body.local_decls.len()) };
     visitor.visit_body(body);
     visitor.locals
+}
+
+struct IndexCollector {
+    locals: BitSet<Local>,
+}
+
+impl<'tcx> Visitor<'tcx> for IndexCollector {
+    fn visit_projection_elem(
+        &mut self,
+        local: Local,
+        proj_base: &[PlaceElem<'tcx>],
+        elem: PlaceElem<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        if let PlaceElem::Index(i) = elem {
+            self.locals.insert(i);
+        }
+        self.super_projection_elem(local, proj_base, elem, context, location);
+    }
 }
