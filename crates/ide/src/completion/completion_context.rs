@@ -74,8 +74,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_pattern_call: bool,
     /// If this is a macro call, i.e. the () are already there.
     pub(super) is_macro_call: bool,
-    /// If this is a string literal, like "lorem ipsum".
-    pub(super) is_string_literal: bool,
     pub(super) is_path_type: bool,
     pub(super) has_type_args: bool,
     pub(super) attribute_under_caret: Option<ast::Attr>,
@@ -158,7 +156,6 @@ impl<'a> CompletionContext<'a> {
             is_call: false,
             is_pattern_call: false,
             is_macro_call: false,
-            is_string_literal: false,
             is_path_type: false,
             has_type_args: false,
             dot_receiver_is_ambiguous_float_literal: false,
@@ -473,12 +470,6 @@ impl<'a> CompletionContext<'a> {
                 } else {
                     false
                 };
-
-            self.is_string_literal = if let Some(ast::Expr::Literal(l)) = &self.dot_receiver {
-                matches!(l.kind(), ast::LiteralKind::String { .. })
-            } else {
-                false
-            };
         }
         if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent) {
             // As above

@@ -211,9 +211,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     )
     .add_to(acc);
 
-    if ctx.is_string_literal {
-        add_format_like_completions(acc, ctx, &dot_receiver, cap, &receiver_text);
-    }
+    add_format_like_completions(acc, ctx, &dot_receiver, cap, &receiver_text);
 }
 
 fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: bool) -> String {

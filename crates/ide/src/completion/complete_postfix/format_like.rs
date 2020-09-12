@@ -27,7 +27,11 @@ pub(super) fn add_format_like_completions(
     cap: SnippetCap,
     receiver_text: &str,
 ) {
-    assert!(receiver_text.len() >= 2);
+    if !is_string_literal(receiver_text) {
+        // It's not a string literal, do not parse input.
+        return;
+    }
+
     let input = &receiver_text[1..receiver_text.len() - 1];
 
     let mut parser = FormatStrParser::new(input);
@@ -42,6 +46,20 @@ pub(super) fn add_format_like_completions(
     }
 }
 
+/// Checks whether provided item is a string literal.
+fn is_string_literal(item: &str) -> bool {
+    if item.len() < 2 {
+        return false;
+    }
+    if item.chars().nth(0) != Some('"') || item.chars().nth(item.len() - 1) != Some('"') {
+        return false;
+    }
+
+    true
+}
+
+/// Parser for a format-like string. It is more allowing in terms of string contents,
+/// as we expect variable placeholders to be filled with expressions.
 #[derive(Debug)]
 pub struct FormatStrParser {
     input: String,
@@ -127,7 +145,7 @@ impl FormatStrParser {
     pub fn parse(&mut self) -> Result<(), ()> {
         let mut current_expr = String::new();
 
-        let mut placeholders_count = 0;
+        let mut placeholder_id = 1;
 
         // Count of open braces inside of an expression.
         // We assume that user knows what they're doing, thus we treat it like a correct pattern, e.g.
@@ -163,8 +181,8 @@ impl FormatStrParser {
                 (State::MaybeExpr, '}') => {
                     // This is an empty sequence '{}'. Replace it with placeholder.
                     self.output.push(chr);
-                    self.extracted_expressions.push(format!("${}", placeholders_count));
-                    placeholders_count += 1;
+                    self.extracted_expressions.push(format!("${}", placeholder_id));
+                    placeholder_id += 1;
                     self.state = State::NotExpr;
                 }
                 (State::MaybeExpr, _) => {
