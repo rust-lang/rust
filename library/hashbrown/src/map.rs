@@ -548,11 +548,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain(&mut self) -> Drain<'_, K, V> {
-        // Here we tie the lifetime of self to the iter.
-        unsafe {
-            Drain {
-                inner: self.table.drain(),
-            }
+        Drain {
+            inner: self.table.drain(),
         }
     }
 

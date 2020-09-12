@@ -1062,14 +1062,12 @@ impl<T> RawTable<T> {
 
     /// Returns an iterator which removes all elements from the table without
     /// freeing the memory.
-    ///
-    /// It is up to the caller to ensure that the `RawTable` outlives the `RawDrain`.
-    /// Because we cannot make the `next` method unsafe on the `RawDrain`,
-    /// we have to make the `drain` method unsafe.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub unsafe fn drain(&mut self) -> RawDrain<'_, T> {
-        let iter = self.iter();
-        self.drain_iter_from(iter)
+    pub fn drain(&mut self) -> RawDrain<'_, T> {
+        unsafe {
+            let iter = self.iter();
+            self.drain_iter_from(iter)
+        }
     }
 
     /// Returns an iterator which removes all elements from the table without
