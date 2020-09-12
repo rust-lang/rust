@@ -100,10 +100,7 @@ use crate::{
     transform::{MirPass, MirSource},
     util::{dump_mir, PassWhere},
 };
-use dataflow::{
-    impls::{MaybeInitializedLocals, MaybeLiveLocals},
-    ResultsCursor,
-};
+use dataflow::impls::{MaybeInitializedLocals, MaybeLiveLocals};
 use rustc_data_structures::unify::{InPlaceUnificationTable, UnifyKey};
 use rustc_index::{
     bit_set::{BitMatrix, BitSet},
@@ -382,16 +379,11 @@ impl Conflicts {
             body.local_decls.len(),
         );
 
-        let mut record_conflicts =
-            |init: &ResultsCursor<'_, '_, MaybeInitializedLocals>,
-             live: &ResultsCursor<'_, '_, MaybeLiveLocals>| {
-                let mut requires_storage = init.get().clone();
-                requires_storage.intersect(live.get());
-
-                for local in requires_storage.iter() {
-                    conflicts.union_row_with(&requires_storage, local);
-                }
-            };
+        let mut record_conflicts = |new_conflicts: &BitSet<_>| {
+            for local in new_conflicts.iter() {
+                conflicts.union_row_with(&new_conflicts, local);
+            }
+        };
 
         let def_id = source.def_id();
         let mut init = MaybeInitializedLocals
@@ -457,27 +449,50 @@ impl Conflicts {
             },
         );
 
+        let mut relevant_locals = Vec::new();
+
         // Visit only reachable basic blocks. The exact order is not important.
         for (block, data) in traversal::preorder(body) {
-            // Observe the dataflow state *before* all possible locations (statement or terminator) in
-            // each basic block...
+            // We need to observe the dataflow state *before* all possible locations (statement or
+            // terminator) in each basic block, and then observe the state *after* the terminator
+            // effect is applied. As long as neither `init` nor `borrowed` has a "before" effect,
+            // we will observe all possible dataflow states.
+
+            // Since liveness is a backwards analysis, we need to walk the results backwards. To do
+            // that, we first collect in the `MaybeInitializedLocals` results in a forwards
+            // traversal.
+
+            relevant_locals.resize_with(data.statements.len() + 1, || {
+                BitSet::new_empty(body.local_decls.len())
+            });
+
+            // First, go forwards for `MaybeInitializedLocals`.
             for statement_index in 0..=data.statements.len() {
                 let loc = Location { block, statement_index };
-                trace!("record conflicts at {:?}", loc);
                 init.seek_before_primary_effect(loc);
-                live.seek_after_primary_effect(loc);
-                // FIXME: liveness is backwards, so this is slow
 
-                record_conflicts(&init, &live);
+                relevant_locals[statement_index].clone_from(init.get());
             }
 
-            // ...and then observe the state *after* the terminator effect is applied. As long as
-            // neither `init` nor `borrowed` has a "before" effect, we will observe all possible
-            // dataflow states here or in the loop above.
-            trace!("record conflicts at end of {:?}", block);
+            // Now, go backwards and union with the liveness results.
+            for statement_index in (0..=data.statements.len()).rev() {
+                let loc = Location { block, statement_index };
+                live.seek_after_primary_effect(loc);
+
+                relevant_locals[statement_index].intersect(live.get());
+
+                trace!("record conflicts at {:?}", loc);
+
+                record_conflicts(&relevant_locals[statement_index]);
+            }
+
             init.seek_to_block_end(block);
             live.seek_to_block_end(block);
-            record_conflicts(&init, &live);
+            let mut conflicts = init.get().clone();
+            conflicts.intersect(live.get());
+            trace!("record conflicts at end of {:?}", block);
+
+            record_conflicts(&conflicts);
         }
 
         Self { matrix: conflicts, unify_cache: BitSet::new_empty(body.local_decls.len()) }
