@@ -149,31 +149,31 @@ fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -
 }
 
 pub(crate) fn try_merge_imports(
-    old: &ast::Use,
-    new: &ast::Use,
+    lhs: &ast::Use,
+    rhs: &ast::Use,
     merge_behaviour: MergeBehaviour,
 ) -> Option<ast::Use> {
     // don't merge imports with different visibilities
-    if !eq_visibility(old.visibility(), new.visibility()) {
+    if !eq_visibility(lhs.visibility(), rhs.visibility()) {
         return None;
     }
-    let old_tree = old.use_tree()?;
-    let new_tree = new.use_tree()?;
-    let merged = try_merge_trees(&old_tree, &new_tree, merge_behaviour)?;
-    Some(old.with_use_tree(merged))
+    let lhs_tree = lhs.use_tree()?;
+    let rhs_tree = rhs.use_tree()?;
+    let merged = try_merge_trees(&lhs_tree, &rhs_tree, merge_behaviour)?;
+    Some(lhs.with_use_tree(merged))
 }
 
 pub(crate) fn try_merge_trees(
-    old: &ast::UseTree,
-    new: &ast::UseTree,
+    lhs: &ast::UseTree,
+    rhs: &ast::UseTree,
     merge: MergeBehaviour,
 ) -> Option<ast::UseTree> {
-    let lhs_path = old.path()?;
-    let rhs_path = new.path()?;
+    let lhs_path = lhs.path()?;
+    let rhs_path = rhs.path()?;
 
     let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
-    let lhs = old.split_prefix(&lhs_prefix);
-    let rhs = new.split_prefix(&rhs_prefix);
+    let lhs = lhs.split_prefix(&lhs_prefix);
+    let rhs = rhs.split_prefix(&rhs_prefix);
     recursive_merge(&lhs, &rhs, merge).map(|(merged, _)| merged)
 }
 
@@ -209,13 +209,18 @@ fn recursive_merge(
                     };
                     // check if only one of the two trees has a tree list, and whether that then contains `self` or not.
                     // If this is the case we can skip this iteration since the path without the list is already included in the other one via `self`
-                    if lhs_t
-                        .use_tree_list()
-                        .xor(rhs_t.use_tree_list())
-                        .map(|tree_list| tree_list.use_trees().any(tree_is_self))
-                        .unwrap_or(false)
-                    {
-                        continue;
+                    let tree_contains_self = |tree: &ast::UseTree| {
+                        tree.use_tree_list()
+                            .map(|tree_list| tree_list.use_trees().any(tree_is_self))
+                            .unwrap_or(false)
+                    };
+                    match (tree_contains_self(&lhs_t), tree_contains_self(&rhs_t)) {
+                        (true, false) => continue,
+                        (false, true) => {
+                            *lhs_t = rhs_t;
+                            continue;
+                        }
+                        _ => (),
                     }
 
                     // glob imports arent part of the use-tree lists so we need to special handle them here as well
@@ -254,6 +259,13 @@ fn recursive_merge(
                     Some((use_tree, _)) => use_trees[idx] = use_tree,
                     None => use_trees.insert(idx, rhs_t),
                 }
+            }
+            Err(_)
+                if merge == MergeBehaviour::Last
+                    && use_trees.len() > 0
+                    && rhs_t.use_tree_list().is_some() =>
+            {
+                return None
             }
             Err(idx) => {
                 use_trees.insert(idx, rhs_t);
@@ -819,8 +831,8 @@ use std::io;",
     fn merge_glob_nested() {
         check_full(
             "foo::bar::quux::Fez",
-            r"use foo::bar::{Baz, quux::*;",
-            r"use foo::bar::{Baz, quux::{self::*, Fez}}",
+            r"use foo::bar::{Baz, quux::*};",
+            r"use foo::bar::{Baz, quux::{self::*, Fez}};",
         )
     }
 
