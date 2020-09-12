@@ -172,8 +172,16 @@ where
 
     pub(crate) fn encode(&self, buf: &mut Encoder) -> Lazy<Table<I, T>> {
         let pos = buf.position();
+        // Since all of the data are serialized as u32, adding some padding
+        // should make encoding/decoding slightly faster.
+        let pad = (4 - (pos % 4)) % 4;
+        let pad_bytes = [0, 0, 0];
+        buf.emit_raw_bytes(&pad_bytes[..pad]);
         buf.emit_raw_bytes(&self.bytes);
-        Lazy::from_position_and_meta(NonZeroUsize::new(pos as usize).unwrap(), self.bytes.len())
+        Lazy::from_position_and_meta(
+            NonZeroUsize::new(pos as usize + pad).unwrap(),
+            self.bytes.len(),
+        )
     }
 }
 
