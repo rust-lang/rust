@@ -8,7 +8,7 @@ use crate::clean;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use crate::html::markdown::{find_testable_code, ErrorCodes, LangString};
+use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
 use rustc_session::lint;
 
 pub const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass = Pass {
@@ -48,15 +48,11 @@ pub(crate) struct Tests {
     pub(crate) found_tests: usize,
 }
 
-impl Tests {
-    pub(crate) fn new() -> Tests {
-        Tests { found_tests: 0 }
-    }
-}
-
 impl crate::doctest::Tester for Tests {
-    fn add_test(&mut self, _: String, _: LangString, _: usize) {
-        self.found_tests += 1;
+    fn add_test(&mut self, _: String, config: LangString, _: usize) {
+        if config.rust && config.ignore == Ignore::None {
+            self.found_tests += 1;
+        }
     }
 }
 
@@ -85,7 +81,7 @@ pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
         }
     };
 
-    let mut tests = Tests::new();
+    let mut tests = Tests { found_tests: 0 };
 
     find_testable_code(&dox, &mut tests, ErrorCodes::No, false, None);
 
