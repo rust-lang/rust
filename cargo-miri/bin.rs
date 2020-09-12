@@ -140,7 +140,7 @@ fn xargo_check() -> Command {
     Command::new(env::var_os("XARGO_CHECK").unwrap_or_else(|| OsString::from("xargo-check")))
 }
 
-/// Execute the command if it fails, fail this process with the same exit code.
+/// Execute the command. If it fails, fail this process with the same exit code.
 /// Otherwise, continue.
 fn exec(mut cmd: Command) {
     let exit_status = cmd.status().expect("failed to run command");
