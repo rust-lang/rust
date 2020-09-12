@@ -611,6 +611,10 @@ impl Build {
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
     fn is_rust_llvm(&self, target: TargetSelection) -> bool {
+        if self.config.llvm_from_ci && target == self.config.build {
+            return true;
+        }
+
         match self.config.target_config.get(&target) {
             Some(ref c) => c.llvm_config.is_none(),
             None => true,
