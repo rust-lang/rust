@@ -1421,7 +1421,7 @@ impl<'a> Builder<'a> {
             (out, dur - deps)
         };
 
-        if self.config.print_step_timings && dur > Duration::from_millis(100) {
+        if self.config.print_step_timings {
             println!("[TIMING] {:?} -- {}.{:03}", step, dur.as_secs(), dur.subsec_millis());
         }
 

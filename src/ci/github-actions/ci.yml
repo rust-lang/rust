@@ -491,7 +491,7 @@ jobs:
           #
           # We are using MinGW with POSIX threads since LLVM requires
           # C++'s std::thread which is disabled in libstdc++ with win32 threads.
-          # FIXME: Libc++ doesn't have this limitation so we can avoid 
+          # FIXME: Libc++ doesn't have this limitation so we can avoid
           # winpthreads if we switch to it.
           #
           # Instead of relying on the MinGW version installed on CI we download
@@ -541,6 +541,7 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: >-
                 --build=x86_64-pc-windows-msvc
+                --host=x86_64-pc-windows-msvc
                 --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
                 --enable-full-tools
                 --enable-profiler
@@ -552,6 +553,7 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: >-
                 --build=i686-pc-windows-msvc
+                --host=i686-pc-windows-msvc
                 --target=i586-pc-windows-msvc
                 --enable-full-tools
                 --enable-profiler
@@ -605,7 +607,7 @@ jobs:
           - name: dist-x86_64-apple
             env:
               SCRIPT: ./x.py dist
-              RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
+              RUST_CONFIGURE_ARGS: --host=x86_64-apple-darwin --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
