@@ -29,7 +29,7 @@ use crate::intrinsics::{assume, exact_div, is_aligned_and_not_null, unchecked_su
 use crate::iter::*;
 use crate::marker::{self, Copy, Send, Sized, Sync};
 use crate::mem;
-use crate::ops::{self, FnMut, Range};
+use crate::ops::{self, Bound, FnMut, Range, RangeBounds};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
 use crate::ptr::{self, NonNull};
@@ -66,7 +66,6 @@ impl<T> [T] {
     #[rustc_const_stable(feature = "const_slice_len", since = "1.32.0")]
     #[inline]
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
-    #[allow(unused_attributes)]
     #[allow_internal_unstable(const_fn_union)]
     pub const fn len(&self) -> usize {
         // SAFETY: this is safe because `&[T]` and `FatPtr<T>` have the same layout.
@@ -353,6 +352,79 @@ impl<T> [T] {
         // the slice is dereferencable because `self` is a safe reference.
         // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
         unsafe { &mut *index.get_unchecked_mut(self) }
+    }
+
+    /// Converts a range over this slice to [`Range`].
+    ///
+    /// The returned range is safe to pass to [`get_unchecked`] and [`get_unchecked_mut`].
+    ///
+    /// [`get_unchecked`]: #method.get_unchecked
+    /// [`get_unchecked_mut`]: #method.get_unchecked_mut
+    ///
+    /// # Panics
+    ///
+    /// Panics if the range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_check_range)]
+    ///
+    /// let v = [10, 40, 30];
+    /// assert_eq!(1..2, v.check_range(1..2));
+    /// assert_eq!(0..2, v.check_range(..2));
+    /// assert_eq!(1..3, v.check_range(1..));
+    /// ```
+    ///
+    /// Panics when [`Index::index`] would panic:
+    ///
+    /// ```should_panic
+    /// #![feature(slice_check_range)]
+    ///
+    /// [10, 40, 30].check_range(2..1);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(slice_check_range)]
+    ///
+    /// [10, 40, 30].check_range(1..4);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(slice_check_range)]
+    ///
+    /// [10, 40, 30].check_range(1..=usize::MAX);
+    /// ```
+    ///
+    /// [`Index::index`]: ops::Index::index
+    #[track_caller]
+    #[unstable(feature = "slice_check_range", issue = "76393")]
+    pub fn check_range<R: RangeBounds<usize>>(&self, range: R) -> Range<usize> {
+        let start = match range.start_bound() {
+            Bound::Included(&start) => start,
+            Bound::Excluded(start) => {
+                start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
+            }
+            Bound::Unbounded => 0,
+        };
+
+        let len = self.len();
+        let end = match range.end_bound() {
+            Bound::Included(end) => {
+                end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
+            }
+            Bound::Excluded(&end) => end,
+            Bound::Unbounded => len,
+        };
+
+        if start > end {
+            slice_index_order_fail(start, end);
+        }
+        if end > len {
+            slice_end_index_len_fail(end, len);
+        }
+
+        Range { start, end }
     }
 
     /// Returns a raw pointer to the slice's buffer.
@@ -924,9 +996,9 @@ impl<T> [T] {
     /// Returns an iterator over `N` elements of the slice at a time, starting at the
     /// beginning of the slice.
     ///
-    /// The chunks are slices and do not overlap. If `N` does not divide the length of the
-    /// slice, then the last up to `N-1` elements will be omitted and can be retrieved
-    /// from the `remainder` function of the iterator.
+    /// The chunks are array references and do not overlap. If `N` does not divide the
+    /// length of the slice, then the last up to `N-1` elements will be omitted and can be
+    /// retrieved from the `remainder` function of the iterator.
     ///
     /// This method is the const generic equivalent of [`chunks_exact`].
     ///
@@ -958,6 +1030,49 @@ impl<T> [T] {
         // a slice of `len` many `N` elements chunks.
         let array_slice: &[[T; N]] = unsafe { from_raw_parts(fst.as_ptr().cast(), len) };
         ArrayChunks { iter: array_slice.iter(), rem: snd }
+    }
+
+    /// Returns an iterator over `N` elements of the slice at a time, starting at the
+    /// beginning of the slice.
+    ///
+    /// The chunks are mutable array references and do not overlap. If `N` does not divide
+    /// the length of the slice, then the last up to `N-1` elements will be omitted and
+    /// can be retrieved from the `into_remainder` function of the iterator.
+    ///
+    /// This method is the const generic equivalent of [`chunks_exact_mut`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// error before this method gets stabilized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_chunks)]
+    /// let v = &mut [0, 0, 0, 0, 0];
+    /// let mut count = 1;
+    ///
+    /// for chunk in v.array_chunks_mut() {
+    ///     *chunk = [count; 2];
+    ///     count += 1;
+    /// }
+    /// assert_eq!(v, &[1, 1, 2, 2, 0]);
+    /// ```
+    ///
+    /// [`chunks_exact_mut`]: #method.chunks_exact_mut
+    #[unstable(feature = "array_chunks", issue = "74985")]
+    #[inline]
+    pub fn array_chunks_mut<const N: usize>(&mut self) -> ArrayChunksMut<'_, T, N> {
+        assert_ne!(N, 0);
+        let len = self.len() / N;
+        let (fst, snd) = self.split_at_mut(len * N);
+        // SAFETY: We cast a slice of `len * N` elements into
+        // a slice of `len` many `N` elements chunks.
+        unsafe {
+            let array_slice: &mut [[T; N]] = from_raw_parts_mut(fst.as_mut_ptr().cast(), len);
+            ArrayChunksMut { iter: array_slice.iter_mut(), rem: snd }
+        }
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the end
@@ -2651,26 +2766,11 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "copy_within", since = "1.37.0")]
     #[track_caller]
-    pub fn copy_within<R: ops::RangeBounds<usize>>(&mut self, src: R, dest: usize)
+    pub fn copy_within<R: RangeBounds<usize>>(&mut self, src: R, dest: usize)
     where
         T: Copy,
     {
-        let src_start = match src.start_bound() {
-            ops::Bound::Included(&n) => n,
-            ops::Bound::Excluded(&n) => {
-                n.checked_add(1).unwrap_or_else(|| slice_index_overflow_fail())
-            }
-            ops::Bound::Unbounded => 0,
-        };
-        let src_end = match src.end_bound() {
-            ops::Bound::Included(&n) => {
-                n.checked_add(1).unwrap_or_else(|| slice_index_overflow_fail())
-            }
-            ops::Bound::Excluded(&n) => n,
-            ops::Bound::Unbounded => self.len(),
-        };
-        assert!(src_start <= src_end, "src end is before src start");
-        assert!(src_end <= self.len(), "src is out of bounds");
+        let Range { start: src_start, end: src_end } = self.check_range(src);
         let count = src_end - src_start;
         assert!(dest <= self.len() - count, "dest is out of bounds");
         // SAFETY: the conditions for `ptr::copy` have all been checked above,
@@ -3188,7 +3288,7 @@ fn is_ascii(s: &[u8]) -> bool {
             (word_ptr as usize) - (start as usize) == byte_pos
         );
 
-        // Safety: We know `word_ptr` is properly aligned (because of
+        // SAFETY: We know `word_ptr` is properly aligned (because of
         // `align_offset`), and we know that we have enough bytes between `word_ptr` and the end
         let word = unsafe { word_ptr.read() };
         if contains_nonascii(word) {
@@ -3259,7 +3359,14 @@ fn slice_index_order_fail(index: usize, end: usize) -> ! {
 #[inline(never)]
 #[cold]
 #[track_caller]
-fn slice_index_overflow_fail() -> ! {
+fn slice_start_index_overflow_fail() -> ! {
+    panic!("attempted to index slice from after maximum usize");
+}
+
+#[inline(never)]
+#[cold]
+#[track_caller]
+fn slice_end_index_overflow_fail() -> ! {
     panic!("attempted to index slice up to maximum usize");
 }
 
@@ -3293,8 +3400,9 @@ mod private_slice_index {
     on(T = "str", label = "string indices are ranges of `usize`",),
     on(
         all(any(T = "str", T = "&str", T = "std::string::String"), _Self = "{integer}"),
-        note = "you can use `.chars().nth()` or `.bytes().nth()`
-see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"
+        note = "you can use `.chars().nth()` or `.bytes().nth()`\n\
+                for more information, see chapter 8 in The Book: \
+                <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"
     ),
     message = "the type `{T}` cannot be indexed by `{Self}`",
     label = "slice indices are of type `usize` or ranges of `usize`"
@@ -3319,7 +3427,7 @@ pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
     /// is *[undefined behavior]* even if the resulting reference is not used.
     ///
-    /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]
     unsafe fn get_unchecked(self, slice: *const T) -> *const Self::Output;
 
@@ -3328,7 +3436,7 @@ pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
     /// is *[undefined behavior]* even if the resulting reference is not used.
     ///
-    /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]
     unsafe fn get_unchecked_mut(self, slice: *mut T) -> *mut Self::Output;
 
@@ -3603,7 +3711,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
         if *self.end() == usize::MAX {
-            slice_index_overflow_fail();
+            slice_end_index_overflow_fail();
         }
         (*self.start()..self.end() + 1).index(slice)
     }
@@ -3611,7 +3719,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         if *self.end() == usize::MAX {
-            slice_index_overflow_fail();
+            slice_end_index_overflow_fail();
         }
         (*self.start()..self.end() + 1).index_mut(slice)
     }
@@ -5761,7 +5869,7 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
 /// time), starting at the beginning of the slice.
 ///
 /// When the slice len is not evenly divided by the chunk size, the last
-/// up to `chunk_size-1` elements will be omitted but can be retrieved from
+/// up to `N-1` elements will be omitted but can be retrieved from
 /// the [`remainder`] function from the iterator.
 ///
 /// This struct is created by the [`array_chunks`] method on [slices].
@@ -5778,7 +5886,7 @@ pub struct ArrayChunks<'a, T: 'a, const N: usize> {
 
 impl<'a, T, const N: usize> ArrayChunks<'a, T, N> {
     /// Returns the remainder of the original slice that is not going to be
-    /// returned by the iterator. The returned slice has at most `chunk_size-1`
+    /// returned by the iterator. The returned slice has at most `N-1`
     /// elements.
     #[unstable(feature = "array_chunks", issue = "74985")]
     pub fn remainder(&self) -> &'a [T] {
@@ -5859,6 +5967,105 @@ impl<T, const N: usize> FusedIterator for ArrayChunks<'_, T, N> {}
 #[doc(hidden)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N> {
+    fn may_have_side_effect() -> bool {
+        false
+    }
+}
+
+/// An iterator over a slice in (non-overlapping) mutable chunks (`N` elements
+/// at a time), starting at the beginning of the slice.
+///
+/// When the slice len is not evenly divided by the chunk size, the last
+/// up to `N-1` elements will be omitted but can be retrieved from
+/// the [`into_remainder`] function from the iterator.
+///
+/// This struct is created by the [`array_chunks_mut`] method on [slices].
+///
+/// [`array_chunks_mut`]: ../../std/primitive.slice.html#method.array_chunks_mut
+/// [`into_remainder`]: ../../std/slice/struct.ArrayChunksMut.html#method.into_remainder
+/// [slices]: ../../std/primitive.slice.html
+#[derive(Debug)]
+#[unstable(feature = "array_chunks", issue = "74985")]
+pub struct ArrayChunksMut<'a, T: 'a, const N: usize> {
+    iter: IterMut<'a, [T; N]>,
+    rem: &'a mut [T],
+}
+
+impl<'a, T, const N: usize> ArrayChunksMut<'a, T, N> {
+    /// Returns the remainder of the original slice that is not going to be
+    /// returned by the iterator. The returned slice has at most `N-1`
+    /// elements.
+    #[unstable(feature = "array_chunks", issue = "74985")]
+    pub fn into_remainder(self) -> &'a mut [T] {
+        self.rem
+    }
+}
+
+#[unstable(feature = "array_chunks", issue = "74985")]
+impl<'a, T, const N: usize> Iterator for ArrayChunksMut<'a, T, N> {
+    type Item = &'a mut [T; N];
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a mut [T; N]> {
+        self.iter.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.iter.count()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.iter.nth(n)
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        self.iter.last()
+    }
+
+    unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T; N] {
+        // SAFETY: The safety guarantees of `get_unchecked` are transferred to
+        // the caller.
+        unsafe { self.iter.get_unchecked(i) }
+    }
+}
+
+#[unstable(feature = "array_chunks", issue = "74985")]
+impl<'a, T, const N: usize> DoubleEndedIterator for ArrayChunksMut<'a, T, N> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a mut [T; N]> {
+        self.iter.next_back()
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.iter.nth_back(n)
+    }
+}
+
+#[unstable(feature = "array_chunks", issue = "74985")]
+impl<T, const N: usize> ExactSizeIterator for ArrayChunksMut<'_, T, N> {
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T, const N: usize> TrustedLen for ArrayChunksMut<'_, T, N> {}
+
+#[unstable(feature = "array_chunks", issue = "74985")]
+impl<T, const N: usize> FusedIterator for ArrayChunksMut<'_, T, N> {}
+
+#[doc(hidden)]
+#[unstable(feature = "array_chunks", issue = "74985")]
+unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunksMut<'a, T, N> {
     fn may_have_side_effect() -> bool {
         false
     }

@@ -17,7 +17,7 @@ crate trait UserAnnotatedTyHelpers<'tcx> {
         let mut user_ty = *user_provided_types.get(hir_id)?;
         debug!("user_subts_applied_to_ty_of_hir_id: user_ty={:?}", user_ty);
         let ty = self.typeck_results().node_type(hir_id);
-        match ty.kind {
+        match ty.kind() {
             ty::Adt(adt_def, ..) => {
                 if let UserType::TypeOf(ref mut did, _) = &mut user_ty.value {
                     *did = adt_def.did;

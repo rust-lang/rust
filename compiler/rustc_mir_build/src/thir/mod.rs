@@ -273,6 +273,10 @@ crate enum ExprKind<'tcx> {
     Literal {
         literal: &'tcx Const<'tcx>,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+        /// The `DefId` of the `const` item this literal
+        /// was produced from, if this is not a user-written
+        /// literal value.
+        const_id: Option<DefId>,
     },
     /// A literal containing the address of a `static`.
     ///

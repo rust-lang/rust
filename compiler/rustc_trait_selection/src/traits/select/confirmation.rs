@@ -327,8 +327,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // from the object. Have to try to make a broken test case that
         // results.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let poly_trait_ref = match self_ty.kind {
-            ty::Dynamic(ref data, ..) => data
+        let poly_trait_ref = match self_ty.kind() {
+            ty::Dynamic(data, ..) => data
                 .principal()
                 .unwrap_or_else(|| {
                     span_bug!(obligation.cause.span, "object candidate with no principal")
@@ -449,7 +449,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let (generator_def_id, substs) = match self_ty.kind {
+        let (generator_def_id, substs) = match *self_ty.kind() {
             ty::Generator(id, substs, _) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
@@ -498,7 +498,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let (closure_def_id, substs) = match self_ty.kind {
+        let (closure_def_id, substs) = match *self_ty.kind() {
             ty::Closure(id, substs) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
@@ -594,7 +594,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("confirm_builtin_unsize_candidate(source={:?}, target={:?})", source, target);
 
         let mut nested = vec![];
-        match (&source.kind, &target.kind) {
+        match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
             (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
                 // See `assemble_candidates_for_unsizing` for more info.
@@ -693,7 +693,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `Struct<T>` -> `Struct<U>`
             (&ty::Adt(def, substs_a), &ty::Adt(_, substs_b)) => {
                 let maybe_unsizing_param_idx = |arg: GenericArg<'tcx>| match arg.unpack() {
-                    GenericArgKind::Type(ty) => match ty.kind {
+                    GenericArgKind::Type(ty) => match ty.kind() {
                         ty::Param(p) => Some(p.index),
                         _ => None,
                     },

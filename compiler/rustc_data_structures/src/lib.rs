@@ -8,6 +8,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![allow(incomplete_features)]
+#![feature(control_flow_enum)]
 #![feature(in_band_lifetimes)]
 #![feature(unboxed_closures)]
 #![feature(generators)]

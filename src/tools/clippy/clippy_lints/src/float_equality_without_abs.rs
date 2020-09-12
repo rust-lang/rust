@@ -81,8 +81,8 @@ impl<'tcx> LateLintPass<'tcx> for FloatEqualityWithoutAbs {
             // values of the substractions on the left hand side are of the type float
             let t_val_l = cx.typeck_results().expr_ty(val_l);
             let t_val_r = cx.typeck_results().expr_ty(val_r);
-            if let ty::Float(_) = t_val_l.kind;
-            if let ty::Float(_) = t_val_r.kind;
+            if let ty::Float(_) = t_val_l.kind();
+            if let ty::Float(_) = t_val_r.kind();
 
             then {
                 let sug_l = sugg::Sugg::hir(cx, &val_l, "..");

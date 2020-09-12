@@ -39,6 +39,7 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
             "#method.sort_by_key",
             "#method.make_ascii_uppercase",
             "#method.make_ascii_lowercase",
+            "#method.get_unchecked_mut",
         ],
     ),
     // These try to link to std::collections, but are defined in alloc

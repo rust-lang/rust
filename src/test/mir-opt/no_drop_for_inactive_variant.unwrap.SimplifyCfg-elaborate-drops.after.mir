@@ -1,6 +1,6 @@
 // MIR for `unwrap` after SimplifyCfg-elaborate-drops
 
-fn unwrap(_1: std::option::Option<T>) -> T {
+fn unwrap(_1: Option<T>) -> T {
     debug opt => _1;                     // in scope 0 at $DIR/no-drop-for-inactive-variant.rs:7:14: 7:17
     let mut _0: T;                       // return place in scope 0 at $DIR/no-drop-for-inactive-variant.rs:7:33: 7:34
     let mut _2: isize;                   // in scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:9: 9:16
@@ -20,7 +20,7 @@ fn unwrap(_1: std::option::Option<T>) -> T {
 
     bb1: {
         StorageLive(_4);                 // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
-        std::rt::begin_panic::<&str>(const "explicit panic") -> bb4; // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+        begin_panic::<&str>(const "explicit panic") -> bb4; // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/std/src/macros.rs:LL:COL
                                          // + literal: Const { ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }

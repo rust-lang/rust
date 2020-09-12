@@ -1,38 +1,38 @@
-error[E0004]: non-exhaustive patterns: type `uninhabited::IndirectUninhabitedEnum` is non-empty
+error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedEnum` is non-empty
   --> $DIR/indirect_match_with_exhaustive_patterns.rs:23:11
    |
 LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `uninhabited::IndirectUninhabitedEnum`
+   = note: the matched value is of type `IndirectUninhabitedEnum`
 
-error[E0004]: non-exhaustive patterns: type `uninhabited::IndirectUninhabitedStruct` is non-empty
+error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedStruct` is non-empty
   --> $DIR/indirect_match_with_exhaustive_patterns.rs:27:11
    |
 LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `uninhabited::IndirectUninhabitedStruct`
+   = note: the matched value is of type `IndirectUninhabitedStruct`
 
-error[E0004]: non-exhaustive patterns: type `uninhabited::IndirectUninhabitedTupleStruct` is non-empty
+error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedTupleStruct` is non-empty
   --> $DIR/indirect_match_with_exhaustive_patterns.rs:31:11
    |
 LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `uninhabited::IndirectUninhabitedTupleStruct`
+   = note: the matched value is of type `IndirectUninhabitedTupleStruct`
 
-error[E0004]: non-exhaustive patterns: type `uninhabited::IndirectUninhabitedVariants` is non-empty
+error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedVariants` is non-empty
   --> $DIR/indirect_match_with_exhaustive_patterns.rs:37:11
    |
 LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `uninhabited::IndirectUninhabitedVariants`
+   = note: the matched value is of type `IndirectUninhabitedVariants`
 
 error: aborting due to 4 previous errors
 

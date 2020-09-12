@@ -6,7 +6,7 @@ use rustc_hir::Mutability;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::{
-    Body, Constant, Local, Location, Operand, Place, PlaceRef, ProjectionElem, Rvalue,
+    BinOp, Body, Constant, Local, Location, Operand, Place, PlaceRef, ProjectionElem, Rvalue,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use std::mem;
@@ -66,6 +66,11 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
             *rvalue = Rvalue::Use(Operand::Constant(box constant));
         }
 
+        if let Some(operand) = self.optimizations.unneeded_equality_comparison.remove(&location) {
+            debug!("replacing {:?} with {:?}", rvalue, operand);
+            *rvalue = Rvalue::Use(operand);
+        }
+
         self.super_rvalue(rvalue, location)
     }
 }
@@ -81,6 +86,48 @@ impl OptimizationFinder<'b, 'tcx> {
     fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'tcx>) -> OptimizationFinder<'b, 'tcx> {
         OptimizationFinder { body, tcx, optimizations: OptimizationList::default() }
     }
+
+    fn find_unneeded_equality_comparison(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        // find Ne(_place, false) or Ne(false, _place)
+        // or   Eq(_place, true) or Eq(true, _place)
+        if let Rvalue::BinaryOp(op, l, r) = rvalue {
+            let const_to_find = if *op == BinOp::Ne {
+                false
+            } else if *op == BinOp::Eq {
+                true
+            } else {
+                return;
+            };
+            // (const, _place)
+            if let Some(o) = self.find_operand_in_equality_comparison_pattern(l, r, const_to_find) {
+                self.optimizations.unneeded_equality_comparison.insert(location, o.clone());
+            }
+            // (_place, const)
+            else if let Some(o) =
+                self.find_operand_in_equality_comparison_pattern(r, l, const_to_find)
+            {
+                self.optimizations.unneeded_equality_comparison.insert(location, o.clone());
+            }
+        }
+    }
+
+    fn find_operand_in_equality_comparison_pattern(
+        &self,
+        l: &Operand<'tcx>,
+        r: &'a Operand<'tcx>,
+        const_to_find: bool,
+    ) -> Option<&'a Operand<'tcx>> {
+        let const_ = l.constant()?;
+        if const_.literal.ty == self.tcx.types.bool
+            && const_.literal.val.try_to_bool() == Some(const_to_find)
+        {
+            if r.place().is_some() {
+                return Some(r);
+            }
+        }
+
+        return None;
+    }
 }
 
 impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
@@ -91,7 +138,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
             {
                 // The dereferenced place must have type `&_`.
                 let ty = Place::ty_from(local, proj_base, self.body, self.tcx).ty;
-                if let ty::Ref(_, _, Mutability::Not) = ty.kind {
+                if let ty::Ref(_, _, Mutability::Not) = ty.kind() {
                     self.optimizations.and_stars.insert(location);
                 }
             }
@@ -99,12 +146,14 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 
         if let Rvalue::Len(ref place) = *rvalue {
             let place_ty = place.ty(&self.body.local_decls, self.tcx).ty;
-            if let ty::Array(_, len) = place_ty.kind {
+            if let ty::Array(_, len) = place_ty.kind() {
                 let span = self.body.source_info(location).span;
                 let constant = Constant { span, literal: len, user_ty: None };
                 self.optimizations.arrays_lengths.insert(location, constant);
             }
         }
+
+        self.find_unneeded_equality_comparison(rvalue, location);
 
         self.super_rvalue(rvalue, location)
     }
@@ -114,4 +163,5 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 struct OptimizationList<'tcx> {
     and_stars: FxHashSet<Location>,
     arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
+    unneeded_equality_comparison: FxHashMap<Location, Operand<'tcx>>,
 }

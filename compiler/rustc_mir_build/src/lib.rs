@@ -6,6 +6,7 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(const_panic)]
+#![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
 #![feature(bool_to_option)]
 #![feature(or_patterns)]

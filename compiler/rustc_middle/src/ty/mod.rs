@@ -580,8 +580,12 @@ bitflags! {
 
 #[allow(rustc::usage_of_ty_tykind)]
 pub struct TyS<'tcx> {
-    pub kind: TyKind<'tcx>,
-    pub flags: TypeFlags,
+    /// This field shouldn't be used directly and may be removed in the future.
+    /// Use `TyS::kind()` instead.
+    kind: TyKind<'tcx>,
+    /// This field shouldn't be used directly and may be removed in the future.
+    /// Use `TyS::flags()` instead.
+    flags: TypeFlags,
 
     /// This is a kind of confusing thing: it stores the smallest
     /// binder such that
@@ -609,13 +613,13 @@ static_assert_size!(TyS<'_>, 32);
 
 impl<'tcx> Ord for TyS<'tcx> {
     fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
-        self.kind.cmp(&other.kind)
+        self.kind().cmp(other.kind())
     }
 }
 
 impl<'tcx> PartialOrd for TyS<'tcx> {
     fn partial_cmp(&self, other: &TyS<'tcx>) -> Option<Ordering> {
-        Some(self.kind.cmp(&other.kind))
+        Some(self.kind().cmp(other.kind()))
     }
 }
 
@@ -3101,6 +3105,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     erase_regions::provide(providers);
     layout::provide(providers);
     util::provide(providers);
+    print::provide(providers);
     super::util::bug::provide(providers);
     *providers = ty::query::Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,

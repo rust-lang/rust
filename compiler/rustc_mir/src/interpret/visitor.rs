@@ -203,7 +203,7 @@ macro_rules! make_value_visitor {
                 trace!("walk_value: type: {}", v.layout().ty);
 
                 // Special treatment for special types, where the (static) layout is not sufficient.
-                match v.layout().ty.kind {
+                match *v.layout().ty.kind() {
                     // If it is a trait object, switch to the real type that was used to create it.
                     ty::Dynamic(..) => {
                         // immediate trait objects are not a thing

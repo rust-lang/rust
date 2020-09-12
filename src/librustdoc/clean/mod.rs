@@ -764,17 +764,17 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                 let param_idx = (|| {
                     match p.skip_binders() {
                         ty::PredicateAtom::Trait(pred, _constness) => {
-                            if let ty::Param(param) = pred.self_ty().kind {
+                            if let ty::Param(param) = pred.self_ty().kind() {
                                 return Some(param.index);
                             }
                         }
                         ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
-                            if let ty::Param(param) = ty.kind {
+                            if let ty::Param(param) = ty.kind() {
                                 return Some(param.index);
                             }
                         }
                         ty::PredicateAtom::Projection(p) => {
-                            if let ty::Param(param) = p.projection_ty.self_ty().kind {
+                            if let ty::Param(param) = p.projection_ty.self_ty().kind() {
                                 projection = Some(ty::Binder::bind(p));
                                 return Some(param.index);
                             }
@@ -1206,7 +1206,7 @@ impl Clean<Item> for ty::AssocItem {
                     let self_arg_ty = sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
                         decl.inputs.values[0].type_ = Generic(String::from("Self"));
-                    } else if let ty::Ref(_, ty, _) = self_arg_ty.kind {
+                    } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {
                         if ty == self_ty {
                             match decl.inputs.values[0].type_ {
                                 BorrowedRef { ref mut type_, .. } => {
@@ -1364,16 +1364,16 @@ impl Clean<Type> for hir::Ty<'_> {
             TyKind::Slice(ref ty) => Slice(box ty.clean(cx)),
             TyKind::Array(ref ty, ref length) => {
                 let def_id = cx.tcx.hir().local_def_id(length.hir_id);
-                let length = match cx.tcx.const_eval_poly(def_id.to_def_id()) {
-                    Ok(length) => {
-                        print_const(cx, ty::Const::from_value(cx.tcx, length, cx.tcx.types.usize))
-                    }
-                    Err(_) => cx
-                        .sess()
-                        .source_map()
-                        .span_to_snippet(cx.tcx.def_span(def_id))
-                        .unwrap_or_else(|_| "_".to_string()),
-                };
+                // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
+                // as we currently do not supply the parent generics to anonymous constants
+                // but do allow `ConstKind::Param`.
+                //
+                // `const_eval_poly` tries to to first substitute generic parameters which
+                // results in an ICE while manually constructing the constant and using `eval`
+                // does nothing for `ConstKind::Param`.
+                let ct = ty::Const::from_anon_const(cx.tcx, def_id);
+                let param_env = cx.tcx.param_env(def_id);
+                let length = print_const(cx, ct.eval(cx.tcx, param_env));
                 Array(box ty.clean(cx), length)
             }
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
@@ -1511,7 +1511,7 @@ impl Clean<Type> for hir::Ty<'_> {
             TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 let mut res = Res::Err;
                 let ty = hir_ty_to_ty(cx.tcx, self);
-                if let ty::Projection(proj) = ty.kind {
+                if let ty::Projection(proj) = ty.kind() {
                     res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
                 }
                 let trait_path = hir::Path { span: self.span, res, segments: &[] };
@@ -1554,7 +1554,7 @@ impl Clean<Type> for hir::Ty<'_> {
 impl<'tcx> Clean<Type> for Ty<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
         debug!("cleaning type: {:?}", self);
-        match self.kind {
+        match *self.kind() {
             ty::Never => Never,
             ty::Bool => Primitive(PrimitiveType::Bool),
             ty::Char => Primitive(PrimitiveType::Char),

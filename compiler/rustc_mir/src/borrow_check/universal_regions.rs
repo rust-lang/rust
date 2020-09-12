@@ -524,7 +524,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let defining_ty =
                     self.infcx.replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
 
-                match defining_ty.kind {
+                match *defining_ty.kind() {
                     ty::Closure(def_id, substs) => DefiningTy::Closure(def_id, substs),
                     ty::Generator(def_id, substs, movability) => {
                         DefiningTy::Generator(def_id, substs, movability)
@@ -603,7 +603,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     // flattens this tuple.
                     let (&output, tuplized_inputs) = inputs_and_output.split_last().unwrap();
                     assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
-                    let inputs = match tuplized_inputs[0].kind {
+                    let inputs = match tuplized_inputs[0].kind() {
                         ty::Tuple(inputs) => inputs,
                         _ => bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]),
                     };

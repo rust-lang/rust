@@ -124,7 +124,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 type Output = Self;
                 #[inline]
                 fn bitor(self, rhs: Self) -> Self::Output {
-                    // Safety: since `self` and `rhs` are both nonzero, the
+                    // SAFETY: since `self` and `rhs` are both nonzero, the
                     // result of the bitwise-or will be nonzero.
                     unsafe { $Ty::new_unchecked(self.get() | rhs.get()) }
                 }
@@ -135,7 +135,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 type Output = Self;
                 #[inline]
                 fn bitor(self, rhs: $Int) -> Self::Output {
-                    // Safety: since `self` is nonzero, the result of the
+                    // SAFETY: since `self` is nonzero, the result of the
                     // bitwise-or will be nonzero regardless of the value of
                     // `rhs`.
                     unsafe { $Ty::new_unchecked(self.get() | rhs) }
@@ -147,7 +147,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 type Output = $Ty;
                 #[inline]
                 fn bitor(self, rhs: $Ty) -> Self::Output {
-                    // Safety: since `rhs` is nonzero, the result of the
+                    // SAFETY: since `rhs` is nonzero, the result of the
                     // bitwise-or will be nonzero regardless of the value of
                     // `self`.
                     unsafe { $Ty::new_unchecked(self | rhs.get()) }
@@ -2470,7 +2470,7 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
         doc_comment! {
             concat!("**This method is soft-deprecated.**
 
-Although using it won’t cause compilation warning,
+Although using it won’t cause a compilation warning,
 new code should use [`", stringify!($SelfT), "::MIN", "`](#associatedconstant.MIN) instead.
 
 Returns the smallest value that can be represented by this integer type."),
@@ -2486,7 +2486,7 @@ Returns the smallest value that can be represented by this integer type."),
         doc_comment! {
             concat!("**This method is soft-deprecated.**
 
-Although using it won’t cause compilation warning,
+Although using it won’t cause a compilation warning,
 new code should use [`", stringify!($SelfT), "::MAX", "`](#associatedconstant.MAX) instead.
 
 Returns the largest value that can be represented by this integer type."),

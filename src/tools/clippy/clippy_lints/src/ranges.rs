@@ -281,7 +281,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
         if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(expr);
         let ty = cx.typeck_results().expr_ty(start);
-        if let ty::Int(_) | ty::Uint(_) = ty.kind;
+        if let ty::Int(_) | ty::Uint(_) = ty.kind();
         if let Some((start_idx, _)) = constant(cx, cx.typeck_results(), start);
         if let Some((end_idx, _)) = constant(cx, cx.typeck_results(), end);
         if let Some(ordering) = Constant::partial_cmp(cx.tcx, ty, &start_idx, &end_idx);

@@ -289,7 +289,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                 cx.typeck_results.extract_binding_mode(cx.tcx.sess, p.hir_id, p.span)
             {
                 let pat_ty = cx.typeck_results.pat_ty(p).peel_refs();
-                if let ty::Adt(edef, _) = pat_ty.kind {
+                if let ty::Adt(edef, _) = pat_ty.kind() {
                     if edef.is_enum()
                         && edef.variants.iter().any(|variant| {
                             variant.ident == ident && variant.ctor_kind == CtorKind::Const
@@ -442,7 +442,7 @@ fn check_exhaustive<'p, 'tcx>(
     // In the absence of the `exhaustive_patterns` feature, empty matches are not detected by
     // `is_useful` to exhaustively match uninhabited types, so we manually check here.
     if is_empty_match && !cx.tcx.features().exhaustive_patterns {
-        let scrutinee_is_visibly_uninhabited = match scrut_ty.kind {
+        let scrutinee_is_visibly_uninhabited = match scrut_ty.kind() {
             ty::Never => true,
             ty::Adt(def, _) => {
                 def.is_enum()
@@ -462,7 +462,7 @@ fn check_exhaustive<'p, 'tcx>(
         Err(err) => err,
     };
 
-    let non_empty_enum = match scrut_ty.kind {
+    let non_empty_enum = match scrut_ty.kind() {
         ty::Adt(def, _) => def.is_enum() && !def.variants.is_empty(),
         _ => false,
     };
@@ -541,7 +541,7 @@ fn adt_defined_here(
     witnesses: &[super::Pat<'_>],
 ) {
     let ty = ty.peel_refs();
-    if let ty::Adt(def, _) = ty.kind {
+    if let ty::Adt(def, _) = ty.kind() {
         if let Some(sp) = cx.tcx.hir().span_if_local(def.did) {
             err.span_label(sp, format!("`{}` defined here", ty));
         }
@@ -556,7 +556,7 @@ fn adt_defined_here(
 
 fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> {
     let mut covered = vec![];
-    if let ty::Adt(def, _) = ty.kind {
+    if let ty::Adt(def, _) = ty.kind() {
         // Don't point at variants that have already been covered due to other patterns to avoid
         // visual clutter.
         for pattern in patterns {

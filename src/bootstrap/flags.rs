@@ -20,8 +20,8 @@ pub struct Flags {
     pub stage: Option<u32>,
     pub keep_stage: Vec<u32>,
 
-    pub host: Vec<TargetSelection>,
-    pub target: Vec<TargetSelection>,
+    pub host: Option<Vec<TargetSelection>>,
+    pub target: Option<Vec<TargetSelection>>,
     pub config: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
@@ -526,14 +526,26 @@ Arguments:
                 .into_iter()
                 .map(|j| j.parse().expect("`keep-stage` should be a number"))
                 .collect(),
-            host: split(&matches.opt_strs("host"))
-                .into_iter()
-                .map(|x| TargetSelection::from_user(&x))
-                .collect::<Vec<_>>(),
-            target: split(&matches.opt_strs("target"))
-                .into_iter()
-                .map(|x| TargetSelection::from_user(&x))
-                .collect::<Vec<_>>(),
+            host: if matches.opt_present("host") {
+                Some(
+                    split(&matches.opt_strs("host"))
+                        .into_iter()
+                        .map(|x| TargetSelection::from_user(&x))
+                        .collect::<Vec<_>>(),
+                )
+            } else {
+                None
+            },
+            target: if matches.opt_present("target") {
+                Some(
+                    split(&matches.opt_strs("target"))
+                        .into_iter()
+                        .map(|x| TargetSelection::from_user(&x))
+                        .collect::<Vec<_>>(),
+                )
+            } else {
+                None
+            },
             config: cfg_file,
             jobs: matches.opt_str("jobs").map(|j| j.parse().expect("`jobs` should be a number")),
             cmd,

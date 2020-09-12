@@ -9,7 +9,7 @@ LL |      t.min().unwrap()
 LL |         Self: Sized,
    |               ----- this has a `Sized` requirement
    |
-   = note: you need `&mut dyn std::iter::Iterator<Item = &u64>` instead of `&dyn std::iter::Iterator<Item = &u64>`
+   = note: you need `&mut dyn Iterator<Item = &u64>` instead of `&dyn Iterator<Item = &u64>`
 
 error: aborting due to previous error
 

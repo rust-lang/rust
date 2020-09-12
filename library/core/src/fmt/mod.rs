@@ -168,8 +168,6 @@ pub trait Write {
     /// This method should generally not be invoked manually, but rather through
     /// the [`write!`] macro itself.
     ///
-    /// [`write!`]: ../../std/macro.write.html
-    ///
     /// # Examples
     ///
     /// ```

@@ -8,7 +8,7 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
         StorageLive(_2);                 // scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
-        _2 = const {alloc0: &&[(std::option::Option<i32>, &[&u8])]}; // scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
+        _2 = const {alloc0: &&[(Option<i32>, &[&u8])]}; // scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
                                          // ty::Const
                                          // + ty: &&[(std::option::Option<i32>, &[&u8])]
                                          // + val: Value(Scalar(alloc0))

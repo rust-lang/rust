@@ -265,7 +265,7 @@ where
         use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
         use rustc_span::DUMMY_SP;
 
-        match value_ty.kind {
+        match *value_ty.kind() {
             ty::Projection(other_projection_ty) => {
                 let var = self.infcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::MiscVariable,
@@ -311,7 +311,7 @@ where
         // This only presently applies to chalk integration, as NLL
         // doesn't permit type variables to appear on both sides (and
         // doesn't use lazy norm).
-        match value_ty.kind {
+        match *value_ty.kind() {
             ty::Infer(ty::TyVar(value_vid)) => {
                 // Two type variables: just equate them.
                 self.infcx.inner.borrow_mut().type_variables().equate(vid, value_vid);
@@ -531,7 +531,7 @@ where
             }
         }
 
-        match (&a.kind, &b.kind) {
+        match (a.kind(), b.kind()) {
             (_, &ty::Infer(ty::TyVar(vid))) => {
                 if D::forbid_inference_vars() {
                     // Forbid inference variables in the RHS.
@@ -868,7 +868,7 @@ where
 
         debug!("TypeGeneralizer::tys(a={:?})", a);
 
-        match a.kind {
+        match *a.kind() {
             ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_))
                 if D::forbid_inference_vars() =>
             {

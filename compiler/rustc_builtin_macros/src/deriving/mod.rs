@@ -75,6 +75,7 @@ fn call_intrinsic(
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
         span,
+        tokens: None,
     }))
 }
 

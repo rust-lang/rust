@@ -11,7 +11,7 @@ note: this value implements `FnOnce`, which causes it to be moved when called
    |
 LL |         f();
    |         ^
-   = note: move occurs because `f` has type `[closure@$DIR/issue-12127.rs:8:24: 8:41 x:std::boxed::Box<isize>]`, which does not implement the `Copy` trait
+   = note: move occurs because `f` has type `[closure@$DIR/issue-12127.rs:8:24: 8:41 x:Box<isize>]`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

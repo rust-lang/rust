@@ -91,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             let ty = cx.typeck_results().expr_ty(array);
             if let Some(range) = higher::range(index) {
                 // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
-                if let ty::Array(_, s) = ty.kind {
+                if let ty::Array(_, s) = ty.kind() {
                     let size: u128 = if let Some(size) = s.try_eval_usize(cx.tcx, cx.param_env) {
                         size.into()
                     } else {
@@ -141,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                 span_lint_and_help(cx, INDEXING_SLICING, expr.span, "slicing may panic.", None, help_msg);
             } else {
                 // Catchall non-range index, i.e., [n] or [n << m]
-                if let ty::Array(..) = ty.kind {
+                if let ty::Array(..) = ty.kind() {
                     // Index is a constant uint.
                     if let Some(..) = constant(cx, cx.typeck_results(), index) {
                         // Let rustc's `const_err` lint handle constant `usize` indexing on arrays.

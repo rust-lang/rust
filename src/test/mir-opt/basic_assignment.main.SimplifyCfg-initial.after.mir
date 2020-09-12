@@ -35,7 +35,7 @@ fn main() -> () {
         _2 = move _3;                    // scope 2 at $DIR/basic_assignment.rs:16:5: 16:24
         StorageDead(_3);                 // scope 2 at $DIR/basic_assignment.rs:16:23: 16:24
         StorageLive(_4);                 // scope 2 at $DIR/basic_assignment.rs:18:9: 18:15
-        _4 = std::option::Option::<std::boxed::Box<u32>>::None; // scope 2 at $DIR/basic_assignment.rs:18:36: 18:40
+        _4 = Option::<Box<u32>>::None;   // scope 2 at $DIR/basic_assignment.rs:18:36: 18:40
         FakeRead(ForLet, _4);            // scope 2 at $DIR/basic_assignment.rs:18:9: 18:15
         AscribeUserType(_4, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 2 at $DIR/basic_assignment.rs:18:17: 18:33
         StorageLive(_5);                 // scope 3 at $DIR/basic_assignment.rs:19:9: 19:15

@@ -102,7 +102,7 @@ impl BorrowExplanation {
                 should_note_order,
             } => {
                 let local_decl = &body.local_decls[dropped_local];
-                let (dtor_desc, type_desc) = match local_decl.ty.kind {
+                let (dtor_desc, type_desc) = match local_decl.ty.kind() {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
                     ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => {
@@ -626,7 +626,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                         if from == target {
                                             debug!("was_captured_by_trait_object: ty={:?}", ty);
                                             // Check the type for a trait object.
-                                            return match ty.kind {
+                                            return match ty.kind() {
                                                 // `&dyn Trait`
                                                 ty::Ref(_, ty, _) if ty.is_trait() => true,
                                                 // `Box<dyn Trait>`

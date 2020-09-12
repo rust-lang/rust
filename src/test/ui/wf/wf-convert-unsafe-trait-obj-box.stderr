@@ -9,8 +9,8 @@ LL | trait Trait: Sized {}
 LL |     let t_box: Box<dyn Trait> = Box::new(S);
    |                                 ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Trait>>` for `std::boxed::Box<S>`
-   = note: required by cast to type `std::boxed::Box<dyn Trait>`
+   = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn Trait>>` for `Box<S>`
+   = note: required by cast to type `Box<dyn Trait>`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-convert-unsafe-trait-obj-box.rs:17:15
@@ -23,8 +23,8 @@ LL | trait Trait: Sized {}
 LL |     takes_box(Box::new(S));
    |               ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Trait>>` for `std::boxed::Box<S>`
-   = note: required by cast to type `std::boxed::Box<(dyn Trait + 'static)>`
+   = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn Trait>>` for `Box<S>`
+   = note: required by cast to type `Box<(dyn Trait + 'static)>`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-convert-unsafe-trait-obj-box.rs:15:5
@@ -37,8 +37,8 @@ LL | trait Trait: Sized {}
 LL |     Box::new(S) as Box<dyn Trait>;
    |     ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Trait>>` for `std::boxed::Box<S>`
-   = note: required by cast to type `std::boxed::Box<dyn Trait>`
+   = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn Trait>>` for `Box<S>`
+   = note: required by cast to type `Box<dyn Trait>`
 
 error: aborting due to 3 previous errors
 

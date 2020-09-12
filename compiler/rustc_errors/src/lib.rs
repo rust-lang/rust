@@ -4,6 +4,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(crate_visibility_modifier)]
+#![feature(backtrace)]
 #![feature(nll)]
 
 #[macro_use]
@@ -296,9 +297,11 @@ struct HandlerInner {
     /// This is not necessarily the count that's reported to the user once
     /// compilation ends.
     err_count: usize,
+    warn_count: usize,
     deduplicated_err_count: usize,
     emitter: Box<dyn Emitter + sync::Send>,
     delayed_span_bugs: Vec<Diagnostic>,
+    delayed_good_path_bugs: Vec<Diagnostic>,
 
     /// This set contains the `DiagnosticId` of all emitted diagnostics to avoid
     /// emitting the same diagnostic with extended help (`--teach`) twice, which
@@ -361,13 +364,15 @@ impl Drop for HandlerInner {
 
         if !self.has_errors() {
             let bugs = std::mem::replace(&mut self.delayed_span_bugs, Vec::new());
-            let has_bugs = !bugs.is_empty();
-            for bug in bugs {
-                self.emit_diagnostic(&bug);
-            }
-            if has_bugs {
-                panic!("no errors encountered even though `delay_span_bug` issued");
-            }
+            self.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
+        }
+
+        if !self.has_any_message() {
+            let bugs = std::mem::replace(&mut self.delayed_good_path_bugs, Vec::new());
+            self.flush_delayed(
+                bugs,
+                "no warnings or errors encountered even though `delayed_good_path_bugs` issued",
+            );
         }
     }
 }
@@ -422,10 +427,12 @@ impl Handler {
             inner: Lock::new(HandlerInner {
                 flags,
                 err_count: 0,
+                warn_count: 0,
                 deduplicated_err_count: 0,
                 deduplicated_warn_count: 0,
                 emitter,
                 delayed_span_bugs: Vec::new(),
+                delayed_good_path_bugs: Vec::new(),
                 taught_diagnostics: Default::default(),
                 emitted_diagnostic_codes: Default::default(),
                 emitted_diagnostics: Default::default(),
@@ -448,11 +455,13 @@ impl Handler {
     pub fn reset_err_count(&self) {
         let mut inner = self.inner.borrow_mut();
         inner.err_count = 0;
+        inner.warn_count = 0;
         inner.deduplicated_err_count = 0;
         inner.deduplicated_warn_count = 0;
 
         // actually free the underlying memory (which `clear` would not do)
         inner.delayed_span_bugs = Default::default();
+        inner.delayed_good_path_bugs = Default::default();
         inner.taught_diagnostics = Default::default();
         inner.emitted_diagnostic_codes = Default::default();
         inner.emitted_diagnostics = Default::default();
@@ -629,6 +638,10 @@ impl Handler {
         self.inner.borrow_mut().delay_span_bug(span, msg)
     }
 
+    pub fn delay_good_path_bug(&self, msg: &str) {
+        self.inner.borrow_mut().delay_good_path_bug(msg)
+    }
+
     pub fn span_bug_no_panic(&self, span: impl Into<MultiSpan>, msg: &str) {
         self.emit_diag_at_span(Diagnostic::new(Bug, msg), span);
     }
@@ -768,6 +781,8 @@ impl HandlerInner {
         }
         if diagnostic.is_error() {
             self.bump_err_count();
+        } else {
+            self.bump_warn_count();
         }
     }
 
@@ -859,6 +874,9 @@ impl HandlerInner {
     fn has_errors_or_delayed_span_bugs(&self) -> bool {
         self.has_errors() || !self.delayed_span_bugs.is_empty()
     }
+    fn has_any_message(&self) -> bool {
+        self.err_count() > 0 || self.warn_count > 0
+    }
 
     fn abort_if_errors(&mut self) {
         self.emit_stashed_diagnostics();
@@ -890,6 +908,15 @@ impl HandlerInner {
         diagnostic.set_span(sp.into());
         diagnostic.note(&format!("delayed at {}", std::panic::Location::caller()));
         self.delay_as_bug(diagnostic)
+    }
+
+    fn delay_good_path_bug(&mut self, msg: &str) {
+        let mut diagnostic = Diagnostic::new(Level::Bug, msg);
+        if self.flags.report_delayed_bugs {
+            self.emit_diagnostic(&diagnostic);
+        }
+        diagnostic.note(&format!("delayed at {}", std::backtrace::Backtrace::force_capture()));
+        self.delayed_good_path_bugs.push(diagnostic);
     }
 
     fn failure(&mut self, msg: &str) {
@@ -925,9 +952,23 @@ impl HandlerInner {
         self.delayed_span_bugs.push(diagnostic);
     }
 
+    fn flush_delayed(&mut self, bugs: Vec<Diagnostic>, explanation: &str) {
+        let has_bugs = !bugs.is_empty();
+        for bug in bugs {
+            self.emit_diagnostic(&bug);
+        }
+        if has_bugs {
+            panic!("{}", explanation);
+        }
+    }
+
     fn bump_err_count(&mut self) {
         self.err_count += 1;
         self.panic_if_treat_err_as_bug();
+    }
+
+    fn bump_warn_count(&mut self) {
+        self.warn_count += 1;
     }
 
     fn panic_if_treat_err_as_bug(&self) {

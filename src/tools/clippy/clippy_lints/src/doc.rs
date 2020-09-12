@@ -239,9 +239,9 @@ fn lint_for_missing_headers<'tcx>(
                 let mir = cx.tcx.optimized_mir(def_id.to_def_id());
                 let ret_ty = mir.return_ty();
                 if implements_trait(cx, ret_ty, future, &[]);
-                if let ty::Opaque(_, subs) = ret_ty.kind;
+                if let ty::Opaque(_, subs) = ret_ty.kind();
                 if let Some(gen) = subs.types().next();
-                if let ty::Generator(_, subs, _) = gen.kind;
+                if let ty::Generator(_, subs, _) = gen.kind();
                 if is_type_diagnostic_item(cx, subs.as_generator().return_ty(), sym!(result_type));
                 then {
                     span_lint(

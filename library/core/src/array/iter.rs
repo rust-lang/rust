@@ -73,7 +73,7 @@ impl<T, const N: usize> IntoIter<T, N> {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
             let slice = self.data.get_unchecked(self.alive.clone());
-            MaybeUninit::slice_get_ref(slice)
+            MaybeUninit::slice_assume_init_ref(slice)
         }
     }
 
@@ -82,7 +82,7 @@ impl<T, const N: usize> IntoIter<T, N> {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
             let slice = self.data.get_unchecked_mut(self.alive.clone());
-            MaybeUninit::slice_get_mut(slice)
+            MaybeUninit::slice_assume_init_mut(slice)
         }
     }
 }
@@ -103,7 +103,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
             // dead now (i.e. do not touch). As `idx` was the start of the
             // alive-zone, the alive zone is now `data[alive]` again, restoring
             // all invariants.
-            unsafe { self.data.get_unchecked(idx).read() }
+            unsafe { self.data.get_unchecked(idx).assume_init_read() }
         })
     }
 
@@ -136,7 +136,7 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
             // dead now (i.e. do not touch). As `idx` was the end of the
             // alive-zone, the alive zone is now `data[alive]` again, restoring
             // all invariants.
-            unsafe { self.data.get_unchecked(idx).read() }
+            unsafe { self.data.get_unchecked(idx).assume_init_read() }
         })
     }
 }

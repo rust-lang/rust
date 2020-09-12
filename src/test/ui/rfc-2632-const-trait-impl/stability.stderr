@@ -10,7 +10,7 @@ LL | |     }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: can only call other `const fn` within a `const fn`, but `<Int as std::ops::Add>::add` is not stable as `const fn`
+error[E0723]: can only call other `const fn` within a `const fn`, but `<Int as Add>::add` is not stable as `const fn`
   --> $DIR/stability.rs:32:5
    |
 LL |     Int(1i32) + Int(2i32)

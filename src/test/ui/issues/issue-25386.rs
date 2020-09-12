@@ -17,12 +17,12 @@ mod stuff {
 macro_rules! check_ptr_exist {
     ($var:expr, $member:ident) => (
         (*$var.c_object).$member.is_some()
-        //~^ ERROR field `c_object` of struct `stuff::Item` is private
+        //~^ ERROR field `c_object` of struct `Item` is private
     );
 }
 
 fn main() {
     let item = stuff::Item::new();
     println!("{}", check_ptr_exist!(item, name));
-    //~^ ERROR field `name` of struct `stuff::CObj` is private
+    //~^ ERROR field `name` of struct `CObj` is private
 }

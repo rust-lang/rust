@@ -367,7 +367,8 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// Used primarily by `ty::print::pretty` to be able to handle closure
     /// types that haven't had their synthetic types substituted in.
     pub fn is_valid(self) -> bool {
-        self.substs.len() >= 3 && matches!(self.split().tupled_upvars_ty.expect_ty().kind, Tuple(_))
+        self.substs.len() >= 3
+            && matches!(self.split().tupled_upvars_ty.expect_ty().kind(), Tuple(_))
     }
 
     /// Returns the substitutions of the closure's parent.
@@ -414,9 +415,9 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// Extracts the signature from the closure.
     pub fn sig(self) -> ty::PolyFnSig<'tcx> {
         let ty = self.sig_as_fn_ptr_ty();
-        match ty.kind {
-            ty::FnPtr(sig) => sig,
-            _ => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {:?}", ty.kind),
+        match ty.kind() {
+            ty::FnPtr(sig) => *sig,
+            _ => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {:?}", ty.kind()),
         }
     }
 }
@@ -484,7 +485,8 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// Used primarily by `ty::print::pretty` to be able to handle generator
     /// types that haven't had their synthetic types substituted in.
     pub fn is_valid(self) -> bool {
-        self.substs.len() >= 5 && matches!(self.split().tupled_upvars_ty.expect_ty().kind, Tuple(_))
+        self.substs.len() >= 5
+            && matches!(self.split().tupled_upvars_ty.expect_ty().kind(), Tuple(_))
     }
 
     /// Returns the substitutions of the generator's parent.
@@ -1741,9 +1743,19 @@ impl RegionKind {
 
 /// Type utilities
 impl<'tcx> TyS<'tcx> {
+    #[inline(always)]
+    pub fn kind(&self) -> &TyKind<'tcx> {
+        &self.kind
+    }
+
+    #[inline(always)]
+    pub fn flags(&self) -> TypeFlags {
+        self.flags
+    }
+
     #[inline]
     pub fn is_unit(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Tuple(ref tys) => tys.is_empty(),
             _ => false,
         }
@@ -1751,7 +1763,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_never(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Never => true,
             _ => false,
         }
@@ -1766,7 +1778,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn conservative_is_privately_uninhabited(&self, tcx: TyCtxt<'tcx>) -> bool {
         // FIXME(varkor): we can make this less conversative by substituting concrete
         // type arguments.
-        match self.kind {
+        match self.kind() {
             ty::Never => true,
             ty::Adt(def, _) if def.is_union() => {
                 // For now, `union`s are never considered uninhabited.
@@ -1806,12 +1818,28 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_primitive(&self) -> bool {
-        self.kind.is_primitive()
+        self.kind().is_primitive()
+    }
+
+    #[inline]
+    pub fn is_adt(&self) -> bool {
+        match self.kind() {
+            Adt(..) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    pub fn is_ref(&self) -> bool {
+        match self.kind() {
+            Ref(..) => true,
+            _ => false,
+        }
     }
 
     #[inline]
     pub fn is_ty_var(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Infer(TyVar(_)) => true,
             _ => false,
         }
@@ -1819,7 +1847,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_ty_infer(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Infer(_) => true,
             _ => false,
         }
@@ -1827,23 +1855,23 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
-        if let Adt(def, _) = self.kind { def.is_phantom_data() } else { false }
+        if let Adt(def, _) = self.kind() { def.is_phantom_data() } else { false }
     }
 
     #[inline]
     pub fn is_bool(&self) -> bool {
-        self.kind == Bool
+        *self.kind() == Bool
     }
 
     /// Returns `true` if this type is a `str`.
     #[inline]
     pub fn is_str(&self) -> bool {
-        self.kind == Str
+        *self.kind() == Str
     }
 
     #[inline]
     pub fn is_param(&self, index: u32) -> bool {
-        match self.kind {
+        match self.kind() {
             ty::Param(ref data) => data.index == index,
             _ => false,
         }
@@ -1851,8 +1879,8 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_slice(&self) -> bool {
-        match self.kind {
-            RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => match ty.kind {
+        match self.kind() {
+            RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => match ty.kind() {
                 Slice(_) | Str => true,
                 _ => false,
             },
@@ -1861,15 +1889,23 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
+    pub fn is_array(&self) -> bool {
+        match self.kind() {
+            Array(..) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
     pub fn is_simd(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Adt(def, _) => def.repr.simd(),
             _ => false,
         }
     }
 
     pub fn sequence_element_type(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        match self.kind {
+        match self.kind() {
             Array(ty, _) | Slice(ty) => ty,
             Str => tcx.mk_mach_uint(ast::UintTy::U8),
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
@@ -1877,7 +1913,7 @@ impl<'tcx> TyS<'tcx> {
     }
 
     pub fn simd_type(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        match self.kind {
+        match self.kind() {
             Adt(def, substs) => def.non_enum_variant().fields[0].ty(tcx, substs),
             _ => bug!("`simd_type` called on invalid type"),
         }
@@ -1886,14 +1922,14 @@ impl<'tcx> TyS<'tcx> {
     pub fn simd_size(&self, _tcx: TyCtxt<'tcx>) -> u64 {
         // Parameter currently unused, but probably needed in the future to
         // allow `#[repr(simd)] struct Simd<T, const N: usize>([T; N]);`.
-        match self.kind {
+        match self.kind() {
             Adt(def, _) => def.non_enum_variant().fields.len() as u64,
             _ => bug!("`simd_size` called on invalid type"),
         }
     }
 
     pub fn simd_size_and_type(&self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
-        match self.kind {
+        match self.kind() {
             Adt(def, substs) => {
                 let variant = def.non_enum_variant();
                 (variant.fields.len() as u64, variant.fields[0].ty(tcx, substs))
@@ -1904,7 +1940,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_region_ptr(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Ref(..) => true,
             _ => false,
         }
@@ -1912,7 +1948,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_mutable_ptr(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             RawPtr(TypeAndMut { mutbl: hir::Mutability::Mut, .. })
             | Ref(_, _, hir::Mutability::Mut) => true,
             _ => false,
@@ -1921,7 +1957,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_unsafe_ptr(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             RawPtr(_) => true,
             _ => false,
         }
@@ -1935,7 +1971,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_box(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Adt(def, _) => def.is_box(),
             _ => false,
         }
@@ -1943,7 +1979,7 @@ impl<'tcx> TyS<'tcx> {
 
     /// Panics if called on any type other than `Box<T>`.
     pub fn boxed_ty(&self) -> Ty<'tcx> {
-        match self.kind {
+        match self.kind() {
             Adt(def, substs) if def.is_box() => substs.type_at(0),
             _ => bug!("`boxed_ty` is called on non-box type {:?}", self),
         }
@@ -1954,7 +1990,7 @@ impl<'tcx> TyS<'tcx> {
     /// contents are abstract to rustc.)
     #[inline]
     pub fn is_scalar(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Bool
             | Char
             | Int(_)
@@ -1971,7 +2007,7 @@ impl<'tcx> TyS<'tcx> {
     /// Returns `true` if this type is a floating point type.
     #[inline]
     pub fn is_floating_point(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Float(_) | Infer(FloatVar(_)) => true,
             _ => false,
         }
@@ -1979,7 +2015,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_trait(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Dynamic(..) => true,
             _ => false,
         }
@@ -1987,7 +2023,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_enum(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Adt(adt_def, _) => adt_def.is_enum(),
             _ => false,
         }
@@ -1995,7 +2031,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_closure(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Closure(..) => true,
             _ => false,
         }
@@ -2003,7 +2039,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_generator(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Generator(..) => true,
             _ => false,
         }
@@ -2011,7 +2047,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_integral(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Infer(IntVar(_)) | Int(_) | Uint(_) => true,
             _ => false,
         }
@@ -2019,7 +2055,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_fresh_ty(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Infer(FreshTy(_)) => true,
             _ => false,
         }
@@ -2027,7 +2063,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_fresh(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Infer(FreshTy(_)) => true,
             Infer(FreshIntTy(_)) => true,
             Infer(FreshFloatTy(_)) => true,
@@ -2037,7 +2073,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_char(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Char => true,
             _ => false,
         }
@@ -2050,7 +2086,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_signed(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Int(_) => true,
             _ => false,
         }
@@ -2058,7 +2094,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_ptr_sized_integral(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize) => true,
             _ => false,
         }
@@ -2066,7 +2102,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_machine(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Int(..) | Uint(..) | Float(..) => true,
             _ => false,
         }
@@ -2074,7 +2110,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn has_concrete_skeleton(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Param(_) | Infer(_) | Error(_) => false,
             _ => true,
         }
@@ -2085,28 +2121,28 @@ impl<'tcx> TyS<'tcx> {
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
     /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut<'tcx>> {
-        match self.kind {
+        match self.kind() {
             Adt(def, _) if def.is_box() => {
                 Some(TypeAndMut { ty: self.boxed_ty(), mutbl: hir::Mutability::Not })
             }
-            Ref(_, ty, mutbl) => Some(TypeAndMut { ty, mutbl }),
-            RawPtr(mt) if explicit => Some(mt),
+            Ref(_, ty, mutbl) => Some(TypeAndMut { ty, mutbl: *mutbl }),
+            RawPtr(mt) if explicit => Some(*mt),
             _ => None,
         }
     }
 
     /// Returns the type of `ty[i]`.
     pub fn builtin_index(&self) -> Option<Ty<'tcx>> {
-        match self.kind {
+        match self.kind() {
             Array(ty, _) | Slice(ty) => Some(ty),
             _ => None,
         }
     }
 
     pub fn fn_sig(&self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
-        match self.kind {
-            FnDef(def_id, substs) => tcx.fn_sig(def_id).subst(tcx, substs),
-            FnPtr(f) => f,
+        match self.kind() {
+            FnDef(def_id, substs) => tcx.fn_sig(*def_id).subst(tcx, substs),
+            FnPtr(f) => *f,
             Error(_) => {
                 // ignore errors (#54954)
                 ty::Binder::dummy(FnSig::fake())
@@ -2120,7 +2156,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_fn(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             FnDef(..) | FnPtr(_) => true,
             _ => false,
         }
@@ -2128,7 +2164,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_fn_ptr(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             FnPtr(_) => true,
             _ => false,
         }
@@ -2136,7 +2172,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_impl_trait(&self) -> bool {
-        match self.kind {
+        match self.kind() {
             Opaque(..) => true,
             _ => false,
         }
@@ -2144,7 +2180,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn ty_adt_def(&self) -> Option<&'tcx AdtDef> {
-        match self.kind {
+        match self.kind() {
             Adt(adt, _) => Some(adt),
             _ => None,
         }
@@ -2153,7 +2189,7 @@ impl<'tcx> TyS<'tcx> {
     /// Iterates over tuple fields.
     /// Panics when called on anything but a tuple.
     pub fn tuple_fields(&self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> {
-        match self.kind {
+        match self.kind() {
             Tuple(substs) => substs.iter().map(|field| field.expect_ty()),
             _ => bug!("tuple_fields called on non-tuple"),
         }
@@ -2164,10 +2200,10 @@ impl<'tcx> TyS<'tcx> {
     // FIXME: This requires the optimized MIR in the case of generators.
     #[inline]
     pub fn variant_range(&self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
-        match self.kind {
+        match self.kind() {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
             TyKind::Generator(def_id, substs, _) => {
-                Some(substs.as_generator().variant_range(def_id, tcx))
+                Some(substs.as_generator().variant_range(*def_id, tcx))
             }
             _ => None,
         }
@@ -2183,7 +2219,7 @@ impl<'tcx> TyS<'tcx> {
         tcx: TyCtxt<'tcx>,
         variant_index: VariantIdx,
     ) -> Option<Discr<'tcx>> {
-        match self.kind {
+        match self.kind() {
             TyKind::Adt(adt, _) if adt.variants.is_empty() => {
                 bug!("discriminant_for_variant called on zero variant enum");
             }
@@ -2191,7 +2227,7 @@ impl<'tcx> TyS<'tcx> {
                 Some(adt.discriminant_for_variant(tcx, variant_index))
             }
             TyKind::Generator(def_id, substs, _) => {
-                Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index))
+                Some(substs.as_generator().discriminant_for_variant(*def_id, tcx, variant_index))
             }
             _ => None,
         }
@@ -2199,7 +2235,7 @@ impl<'tcx> TyS<'tcx> {
 
     /// Returns the type of the discriminant of this type.
     pub fn discriminant_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        match self.kind {
+        match self.kind() {
             ty::Adt(adt, _) if adt.is_enum() => adt.repr.discr_type().to_ty(tcx),
             ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
             _ => {
@@ -2222,7 +2258,7 @@ impl<'tcx> TyS<'tcx> {
     /// inferred. Once upvar inference (in `src/librustc_typeck/check/upvar.rs`)
     /// is complete, that type variable will be unified.
     pub fn to_opt_closure_kind(&self) -> Option<ty::ClosureKind> {
-        match self.kind {
+        match self.kind() {
             Int(int_ty) => match int_ty {
                 ast::IntTy::I8 => Some(ty::ClosureKind::Fn),
                 ast::IntTy::I16 => Some(ty::ClosureKind::FnMut),
@@ -2245,7 +2281,7 @@ impl<'tcx> TyS<'tcx> {
     /// Returning true means the type is known to be sized. Returning
     /// `false` means nothing -- could be sized, might not be.
     pub fn is_trivially_sized(&self, tcx: TyCtxt<'tcx>) -> bool {
-        match self.kind {
+        match self.kind() {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
             | ty::Int(_)

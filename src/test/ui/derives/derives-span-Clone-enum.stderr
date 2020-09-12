@@ -1,10 +1,10 @@
-error[E0277]: the trait bound `Error: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `Error: Clone` is not satisfied
   --> $DIR/derives-span-Clone-enum.rs:9:6
    |
 LL |      Error
-   |      ^^^^^ the trait `std::clone::Clone` is not implemented for `Error`
+   |      ^^^^^ the trait `Clone` is not implemented for `Error`
    |
-   = note: required by `std::clone::Clone::clone`
+   = note: required by `clone`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

@@ -112,7 +112,7 @@ fn dropck_outlives<'tcx>(
 
                             debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
 
-                            match ty.kind {
+                            match ty.kind() {
                                 // All parameters live for the duration of the
                                 // function.
                                 ty::Param(..) => {}
@@ -172,7 +172,7 @@ fn dtorck_constraint_for_ty<'tcx>(
         return Ok(());
     }
 
-    match ty.kind {
+    match ty.kind() {
         ty::Bool
         | ty::Char
         | ty::Int(_)

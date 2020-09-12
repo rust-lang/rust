@@ -58,8 +58,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             .tcx()
             .sess
             .struct_span_err(sp, "`impl` item signature doesn't match `trait` item signature");
-        err.span_label(sp, &format!("found `{:?}`", found));
-        err.span_label(trait_sp, &format!("expected `{:?}`", expected));
+        err.span_label(sp, &format!("found `{}`", found));
+        err.span_label(trait_sp, &format!("expected `{}`", expected));
 
         // Get the span of all the used type parameters in the method.
         let assoc_item = self.tcx().associated_item(trait_def_id);
@@ -92,7 +92,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             err.note_expected_found(&"", expected, &"", found);
         } else {
             // This fallback shouldn't be necessary, but let's keep it in just in case.
-            err.note(&format!("expected `{:?}`\n   found `{:?}`", expected, found));
+            err.note(&format!("expected `{}`\n   found `{}`", expected, found));
         }
         err.span_help(
             type_param_span,

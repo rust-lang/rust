@@ -367,7 +367,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = self.hir.tcx();
         let place_ty =
             Place::ty_from(base_place.local, &base_place.projection, &self.local_decls, tcx);
-        if let ty::Slice(_) = place_ty.ty.kind {
+        if let ty::Slice(_) = place_ty.ty.kind() {
             // We need to create fake borrows to ensure that the bounds
             // check that we just did stays valid. Since we can't assign to
             // unsized values, we only need to ensure that none of the
@@ -406,7 +406,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             &self.local_decls,
                             tcx,
                         );
-                        match index_ty.ty.kind {
+                        match index_ty.ty.kind() {
                             // The previous index expression has already
                             // done any index expressions needed here.
                             ty::Slice(_) => break,

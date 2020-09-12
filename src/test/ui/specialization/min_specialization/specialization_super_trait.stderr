@@ -1,4 +1,4 @@
-error: cannot specialize on trait `std::default::Default`
+error: cannot specialize on trait `Default`
   --> $DIR/specialization_super_trait.rs:13:1
    |
 LL | / impl<T: Default> SpecMarker for T {

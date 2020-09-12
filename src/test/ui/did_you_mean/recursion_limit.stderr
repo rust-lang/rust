@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `K: std::marker::Send`
+error[E0275]: overflow evaluating the requirement `K: Send`
   --> $DIR/recursion_limit.rs:34:5
    |
 LL | fn is_send<T:Send>() { }

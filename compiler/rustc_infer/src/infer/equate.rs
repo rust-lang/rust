@@ -77,7 +77,7 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
 
         debug!("{}.tys: replacements ({:?}, {:?})", self.tag(), a, b);
 
-        match (&a.kind, &b.kind) {
+        match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
                 infcx.inner.borrow_mut().type_variables().equate(a_id, b_id);
             }

@@ -130,7 +130,7 @@ pub fn external_generic_args(
                 None
             }
             GenericArgKind::Type(ty) => {
-                ty_kind = Some(&ty.kind);
+                ty_kind = Some(ty.kind());
                 Some(GenericArg::Type(ty.clean(cx)))
             }
             GenericArgKind::Const(ct) => Some(GenericArg::Const(ct.clean(cx))),
@@ -472,7 +472,7 @@ pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
 pub fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<String> {
     cx.tcx.const_eval_poly(def_id).ok().and_then(|val| {
         let ty = cx.tcx.type_of(def_id);
-        match (val, &ty.kind) {
+        match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
             (ConstValue::Scalar(_), _) => {
@@ -497,7 +497,7 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
 fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const<'tcx>) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
-    match (ct.val, &ct.ty.kind) {
+    match (ct.val, ct.ty.kind()) {
         (ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data, .. })), ty::Uint(ui)) => {
             format!("{}{}", format_integer_with_underscore_sep(&data.to_string()), ui.name_str())
         }

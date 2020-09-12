@@ -269,7 +269,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self.fcx
             .autoderef(self.span, self_ty)
             .include_raw_pointers()
-            .find_map(|(ty, _)| match ty.kind {
+            .find_map(|(ty, _)| match ty.kind() {
                 ty::Dynamic(ref data, ..) => Some(closure(
                     self,
                     ty,
@@ -464,7 +464,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 }
                 _ => None,
             })
-            .find_map(|(trait_pred, span)| match trait_pred.self_ty().kind {
+            .find_map(|(trait_pred, span)| match trait_pred.self_ty().kind() {
                 ty::Dynamic(..) => Some(span),
                 _ => None,
             })

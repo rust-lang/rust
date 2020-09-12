@@ -598,7 +598,7 @@ impl AutoTraitFinder<'tcx> {
     }
 
     pub fn is_of_param(&self, ty: Ty<'_>) -> bool {
-        match ty.kind {
+        match ty.kind() {
             ty::Param(_) => true,
             ty::Projection(p) => self.is_of_param(p.self_ty()),
             _ => false,
@@ -606,7 +606,7 @@ impl AutoTraitFinder<'tcx> {
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
-        match p.ty().skip_binder().kind {
+        match *p.ty().skip_binder().kind() {
             ty::Projection(proj) if proj == p.skip_binder().projection_ty => true,
             _ => false,
         }

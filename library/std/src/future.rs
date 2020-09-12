@@ -9,7 +9,7 @@ pub use core::future::Future;
 pub use core::future::{from_generator, get_context, ResumeTy};
 
 #[doc(inline)]
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 pub use core::future::{pending, ready, Pending, Ready};
 
 #[doc(inline)]

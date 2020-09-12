@@ -1,18 +1,18 @@
-error[E0277]: the type `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+error[E0277]: the type `UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
   --> $DIR/interior-mutability.rs:5:5
    |
 LL |     catch_unwind(|| { x.set(23); });
-   |     ^^^^^^^^^^^^ `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+   |     ^^^^^^^^^^^^ `UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
    | 
   ::: $SRC_DIR/std/src/panic.rs:LL:COL
    |
 LL | pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
-   |                                        ---------- required by this bound in `std::panic::catch_unwind`
+   |                                        ---------- required by this bound in `catch_unwind`
    |
-   = help: within `std::cell::Cell<i32>`, the trait `std::panic::RefUnwindSafe` is not implemented for `std::cell::UnsafeCell<i32>`
-   = note: required because it appears within the type `std::cell::Cell<i32>`
-   = note: required because of the requirements on the impl of `std::panic::UnwindSafe` for `&std::cell::Cell<i32>`
-   = note: required because it appears within the type `[closure@$DIR/interior-mutability.rs:5:18: 5:35 x:&std::cell::Cell<i32>]`
+   = help: within `Cell<i32>`, the trait `RefUnwindSafe` is not implemented for `UnsafeCell<i32>`
+   = note: required because it appears within the type `Cell<i32>`
+   = note: required because of the requirements on the impl of `UnwindSafe` for `&Cell<i32>`
+   = note: required because it appears within the type `[closure@$DIR/interior-mutability.rs:5:18: 5:35 x:&Cell<i32>]`
 
 error: aborting due to previous error
 

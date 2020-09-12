@@ -1,4 +1,4 @@
-error[E0616]: field `inner` of struct `std::sync::Mutex` is private
+error[E0616]: field `inner` of struct `Mutex` is private
   --> $DIR/issue-54062.rs:10:24
    |
 LL |     let _ = test.comps.inner.lock().unwrap();

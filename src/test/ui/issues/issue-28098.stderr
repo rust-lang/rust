@@ -4,7 +4,7 @@ error[E0277]: `()` is not an iterator
 LL |     let _ = Iterator::next(&mut ());
    |                            ^^^^^^^ `()` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `()`
+   = help: the trait `Iterator` is not implemented for `()`
    = note: required by `std::iter::Iterator::next`
 
 error[E0277]: `bool` is not an iterator
@@ -13,8 +13,8 @@ error[E0277]: `bool` is not an iterator
 LL |     for _ in false {}
    |              ^^^^^ `bool` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `bool`
-   = note: required by `std::iter::IntoIterator::into_iter`
+   = help: the trait `Iterator` is not implemented for `bool`
+   = note: required by `into_iter`
 
 error[E0277]: `()` is not an iterator
   --> $DIR/issue-28098.rs:9:28
@@ -22,7 +22,7 @@ error[E0277]: `()` is not an iterator
 LL |     let _ = Iterator::next(&mut ());
    |                            ^^^^^^^ `()` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `()`
+   = help: the trait `Iterator` is not implemented for `()`
    = note: required by `std::iter::Iterator::next`
 
 error[E0277]: `()` is not an iterator
@@ -31,7 +31,7 @@ error[E0277]: `()` is not an iterator
 LL |     let _ = Iterator::next(&mut ());
    |             ^^^^^^^^^^^^^^ `()` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `()`
+   = help: the trait `Iterator` is not implemented for `()`
 
 error[E0277]: `()` is not an iterator
   --> $DIR/issue-28098.rs:18:28
@@ -39,7 +39,7 @@ error[E0277]: `()` is not an iterator
 LL |     let _ = Iterator::next(&mut ());
    |                            ^^^^^^^ `()` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `()`
+   = help: the trait `Iterator` is not implemented for `()`
    = note: required by `std::iter::Iterator::next`
 
 error[E0277]: `()` is not an iterator
@@ -48,7 +48,7 @@ error[E0277]: `()` is not an iterator
 LL |     let _ = Iterator::next(&mut ());
    |                            ^^^^^^^ `()` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `()`
+   = help: the trait `Iterator` is not implemented for `()`
    = note: required by `std::iter::Iterator::next`
 
 error[E0277]: `bool` is not an iterator
@@ -57,8 +57,8 @@ error[E0277]: `bool` is not an iterator
 LL |     for _ in false {}
    |              ^^^^^ `bool` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `bool`
-   = note: required by `std::iter::IntoIterator::into_iter`
+   = help: the trait `Iterator` is not implemented for `bool`
+   = note: required by `into_iter`
 
 error[E0277]: `()` is not an iterator
   --> $DIR/issue-28098.rs:18:13
@@ -66,7 +66,7 @@ error[E0277]: `()` is not an iterator
 LL |     let _ = Iterator::next(&mut ());
    |             ^^^^^^^^^^^^^^ `()` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `()`
+   = help: the trait `Iterator` is not implemented for `()`
 
 error: aborting due to 8 previous errors
 

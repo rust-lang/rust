@@ -1,6 +1,6 @@
 // MIR for `std::ops::Fn::call` before AddMovesForPackedDrops
 
-fn std::ops::Fn::call(_1: *const fn(), _2: Args) -> <Self as std::ops::FnOnce<Args>>::Output {
+fn std::ops::Fn::call(_1: *const fn(), _2: Args) -> <Self as FnOnce<Args>>::Output {
     let mut _0: <Self as std::ops::FnOnce<Args>>::Output; // return place in scope 0 at $SRC_DIR/core/src/ops/function.rs:LL:COL
 
     bb0: {

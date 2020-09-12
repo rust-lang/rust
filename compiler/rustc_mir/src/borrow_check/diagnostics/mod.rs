@@ -81,43 +81,41 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let terminator = self.body[location.block].terminator();
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
-            func:
-                Operand::Constant(box Constant {
-                    literal: ty::Const { ty: &ty::TyS { kind: ty::FnDef(id, _), .. }, .. },
-                    ..
-                }),
+            func: Operand::Constant(box Constant { literal: ty::Const { ty: const_ty, .. }, .. }),
             args,
             ..
         } = &terminator.kind
         {
-            debug!("add_moved_or_invoked_closure_note: id={:?}", id);
-            if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
-                let closure = match args.first() {
-                    Some(Operand::Copy(ref place)) | Some(Operand::Move(ref place))
-                        if target == place.local_or_deref_local() =>
-                    {
-                        place.local_or_deref_local().unwrap()
-                    }
-                    _ => return,
-                };
+            if let ty::FnDef(id, _) = *const_ty.kind() {
+                debug!("add_moved_or_invoked_closure_note: id={:?}", id);
+                if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
+                    let closure = match args.first() {
+                        Some(Operand::Copy(ref place)) | Some(Operand::Move(ref place))
+                            if target == place.local_or_deref_local() =>
+                        {
+                            place.local_or_deref_local().unwrap()
+                        }
+                        _ => return,
+                    };
 
-                debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
-                if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind {
-                    let did = did.expect_local();
-                    let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
+                    debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
+                    if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind() {
+                        let did = did.expect_local();
+                        let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
 
-                    if let Some((span, name)) =
-                        self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
-                    {
-                        diag.span_note(
-                            *span,
-                            &format!(
-                                "closure cannot be invoked more than once because it moves the \
-                                 variable `{}` out of its environment",
-                                name,
-                            ),
-                        );
-                        return;
+                        if let Some((span, name)) =
+                            self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
+                        {
+                            diag.span_note(
+                                *span,
+                                &format!(
+                                    "closure cannot be invoked more than once because it moves the \
+                                    variable `{}` out of its environment",
+                                    name,
+                                ),
+                            );
+                            return;
+                        }
                     }
                 }
             }
@@ -125,7 +123,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // Check if we are just moving a closure after it has been invoked.
         if let Some(target) = target {
-            if let ty::Closure(did, _) = self.body.local_decls[target].ty.kind {
+            if let ty::Closure(did, _) = self.body.local_decls[target].ty.kind() {
                 let did = did.expect_local();
                 let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
 
@@ -152,8 +150,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Some(mut descr) => {
                 // Surround descr with `backticks`.
                 descr.reserve(2);
-                descr.insert_str(0, "`");
-                descr.push_str("`");
+                descr.insert(0, '`');
+                descr.push('`');
                 descr
             }
             None => "value".to_string(),
@@ -224,7 +222,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             if self.upvars[var_index].by_ref {
                                 buf.push_str(&name);
                             } else {
-                                buf.push_str(&format!("*{}", &name));
+                                buf.push('*');
+                                buf.push_str(&name);
                             }
                         } else {
                             if autoderef {
@@ -236,7 +235,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     &including_downcast,
                                 )?;
                             } else {
-                                buf.push_str(&"*");
+                                buf.push('*');
                                 self.append_place_to_string(
                                     PlaceRef { local, projection: proj_base },
                                     buf,
@@ -274,7 +273,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 autoderef,
                                 &including_downcast,
                             )?;
-                            buf.push_str(&format!(".{}", field_name));
+                            buf.push('.');
+                            buf.push_str(&field_name);
                         }
                     }
                     ProjectionElem::Index(index) => {
@@ -286,11 +286,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             autoderef,
                             &including_downcast,
                         )?;
-                        buf.push_str("[");
+                        buf.push('[');
                         if self.append_local_to_string(*index, buf).is_err() {
-                            buf.push_str("_");
+                            buf.push('_');
                         }
-                        buf.push_str("]");
+                        buf.push(']');
                     }
                     ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
                         autoderef = true;
@@ -303,7 +303,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             autoderef,
                             &including_downcast,
                         )?;
-                        buf.push_str(&"[..]");
+                        buf.push_str("[..]");
                     }
                 };
             }
@@ -365,7 +365,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // If the type is a box, the field is described from the boxed type
             self.describe_field_from_ty(&ty.boxed_ty(), field, variant_index)
         } else {
-            match ty.kind {
+            match *ty.kind() {
                 ty::Adt(def, _) => {
                     let variant = if let Some(idx) = variant_index {
                         assert!(def.is_enum());
@@ -496,7 +496,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // We need to add synthesized lifetimes where appropriate. We do
         // this by hooking into the pretty printer and telling it to label the
         // lifetimes without names with the value `'0`.
-        match ty.kind {
+        match ty.kind() {
             ty::Ref(
                 ty::RegionKind::ReLateBound(_, br)
                 | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
@@ -516,7 +516,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut s = String::new();
         let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, &mut s, Namespace::TypeNS);
 
-        let region = match ty.kind {
+        let region = match ty.kind() {
             ty::Ref(region, _, _) => {
                 match region {
                     ty::RegionKind::ReLateBound(_, br)
@@ -650,7 +650,7 @@ impl UseSpans {
                     " in closure".to_string()
                 }
             }
-            _ => "".to_string(),
+            _ => String::new(),
         }
     }
 
@@ -680,7 +680,7 @@ impl BorrowedContentSource<'tcx> {
             BorrowedContentSource::DerefRawPointer => "a raw pointer".to_string(),
             BorrowedContentSource::DerefSharedRef => "a shared reference".to_string(),
             BorrowedContentSource::DerefMutableRef => "a mutable reference".to_string(),
-            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind {
+            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind() {
                 ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Rc, def.did) => {
                     "an `Rc`".to_string()
                 }
@@ -712,7 +712,7 @@ impl BorrowedContentSource<'tcx> {
             BorrowedContentSource::DerefMutableRef => {
                 bug!("describe_for_immutable_place: DerefMutableRef isn't immutable")
             }
-            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind {
+            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind() {
                 ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Rc, def.did) => {
                     "an `Rc`".to_string()
                 }
@@ -726,7 +726,7 @@ impl BorrowedContentSource<'tcx> {
     }
 
     fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
-        match func.kind {
+        match *func.kind() {
             ty::FnDef(def_id, substs) => {
                 let trait_id = tcx.trait_of_item(def_id)?;
 
@@ -806,68 +806,51 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("move_spans: target_temp = {:?}", target_temp);
 
         if let Some(Terminator {
-            kind: TerminatorKind::Call { func, args, fn_span, from_hir_call, .. },
-            ..
+            kind: TerminatorKind::Call { fn_span, from_hir_call, .. }, ..
         }) = &self.body[location.block].terminator
         {
-            let mut method_did = None;
-            if let Operand::Constant(box Constant { literal: ty::Const { ty, .. }, .. }) = func {
-                if let ty::FnDef(def_id, _) = ty.kind {
-                    debug!("move_spans: fn = {:?}", def_id);
-                    if let Some(ty::AssocItem { fn_has_self_parameter, .. }) =
-                        self.infcx.tcx.opt_associated_item(def_id)
-                    {
-                        if *fn_has_self_parameter {
-                            method_did = Some(def_id);
-                        }
-                    }
-                }
-            }
+            let method_did = if let Some(method_did) =
+                crate::util::find_self_call(self.infcx.tcx, &self.body, target_temp, location.block)
+            {
+                method_did
+            } else {
+                return normal_ret;
+            };
 
             let tcx = self.infcx.tcx;
-            let method_did = if let Some(did) = method_did { did } else { return normal_ret };
 
-            if let [Operand::Move(self_place), ..] = **args {
-                if self_place.as_local() == Some(target_temp) {
-                    let parent = tcx.parent(method_did);
-                    let is_fn_once = parent == tcx.lang_items().fn_once_trait();
-                    let is_operator = !from_hir_call
-                        && parent.map_or(false, |p| {
-                            tcx.lang_items().group(LangItemGroup::Op).contains(&p)
-                        });
-                    let fn_call_span = *fn_span;
+            let parent = tcx.parent(method_did);
+            let is_fn_once = parent == tcx.lang_items().fn_once_trait();
+            let is_operator = !from_hir_call
+                && parent.map_or(false, |p| tcx.lang_items().group(LangItemGroup::Op).contains(&p));
+            let fn_call_span = *fn_span;
 
-                    let self_arg = tcx.fn_arg_names(method_did)[0];
+            let self_arg = tcx.fn_arg_names(method_did)[0];
 
-                    let kind = if is_fn_once {
-                        FnSelfUseKind::FnOnceCall
-                    } else if is_operator {
-                        FnSelfUseKind::Operator { self_arg }
-                    } else {
-                        debug!(
-                            "move_spans: method_did={:?}, fn_call_span={:?}",
-                            method_did, fn_call_span
-                        );
-                        let implicit_into_iter = matches!(
-                            fn_call_span.desugaring_kind(),
-                            Some(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
-                        );
-                        FnSelfUseKind::Normal { self_arg, implicit_into_iter }
-                    };
+            let kind = if is_fn_once {
+                FnSelfUseKind::FnOnceCall
+            } else if is_operator {
+                FnSelfUseKind::Operator { self_arg }
+            } else {
+                debug!("move_spans: method_did={:?}, fn_call_span={:?}", method_did, fn_call_span);
+                let implicit_into_iter = matches!(
+                    fn_call_span.desugaring_kind(),
+                    Some(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
+                );
+                FnSelfUseKind::Normal { self_arg, implicit_into_iter }
+            };
 
-                    return FnSelfUse {
-                        var_span: stmt.source_info.span,
-                        fn_call_span,
-                        fn_span: self
-                            .infcx
-                            .tcx
-                            .sess
-                            .source_map()
-                            .guess_head_span(self.infcx.tcx.def_span(method_did)),
-                        kind,
-                    };
-                }
-            }
+            return FnSelfUse {
+                var_span: stmt.source_info.span,
+                fn_call_span,
+                fn_span: self
+                    .infcx
+                    .tcx
+                    .sess
+                    .source_map()
+                    .guess_head_span(self.infcx.tcx.def_span(method_did)),
+                kind,
+            };
         }
         normal_ret
     }

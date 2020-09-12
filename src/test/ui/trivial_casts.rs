@@ -43,7 +43,7 @@ pub fn main() {
 
     let x: Box<[u32; 3]> = Box::new([42, 43, 44]);
     let _ = x as Box<[u32]>;
-    //~^ ERROR trivial cast: `std::boxed::Box<[u32; 3]>` as `std::boxed::Box<[u32]>`
+    //~^ ERROR trivial cast: `Box<[u32; 3]>` as `Box<[u32]>`
     let x: Box<[u32; 3]> = Box::new([42, 43, 44]);
     let _: Box<[u32]> = x;
 
@@ -61,13 +61,13 @@ pub fn main() {
     let _: *mut dyn Foo = x;
 
     let x: Box<Bar> = Box::new(Bar);
-    let _ = x as Box<dyn Foo>; //~ERROR `std::boxed::Box<Bar>` as `std::boxed::Box<dyn Foo>`
+    let _ = x as Box<dyn Foo>; //~ERROR `Box<Bar>` as `Box<dyn Foo>`
     let x: Box<Bar> = Box::new(Bar);
     let _: Box<dyn Foo> = x;
 
     // functions
     fn baz(_x: i32) {}
-    let _ = &baz as &dyn Fn(i32); //~ERROR `&fn(i32) {main::baz}` as `&dyn std::ops::Fn(i32)`
+    let _ = &baz as &dyn Fn(i32); //~ERROR `&fn(i32) {baz}` as `&dyn Fn(i32)`
     let _: &dyn Fn(i32) = &baz;
     let x = |_x: i32| {};
     let _ = &x as &dyn Fn(i32); //~ERROR trivial cast

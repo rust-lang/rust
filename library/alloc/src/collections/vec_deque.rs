@@ -14,8 +14,7 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{once, repeat_with, FromIterator, FusedIterator};
 use core::mem::{self, replace, ManuallyDrop};
-use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{Index, IndexMut, RangeBounds, Try};
+use core::ops::{Index, IndexMut, Range, RangeBounds, Try};
 use core::ptr::{self, NonNull};
 use core::slice;
 
@@ -33,12 +32,8 @@ mod tests;
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
-#[cfg(target_pointer_width = "16")]
-const MAXIMUM_ZST_CAPACITY: usize = 1 << (16 - 1); // Largest possible power of two
-#[cfg(target_pointer_width = "32")]
-const MAXIMUM_ZST_CAPACITY: usize = 1 << (32 - 1); // Largest possible power of two
-#[cfg(target_pointer_width = "64")]
-const MAXIMUM_ZST_CAPACITY: usize = 1 << (64 - 1); // Largest possible power of two
+
+const MAXIMUM_ZST_CAPACITY: usize = 1 << (core::mem::size_of::<usize>() * 8 - 1); // Largest possible power of two
 
 /// A double-ended queue implemented with a growable ring buffer.
 ///
@@ -1090,24 +1085,18 @@ impl<T> VecDeque<T> {
         self.tail == self.head
     }
 
-    fn range_start_end<R>(&self, range: R) -> (usize, usize)
+    fn range_tail_head<R>(&self, range: R) -> (usize, usize)
     where
         R: RangeBounds<usize>,
     {
-        let len = self.len();
-        let start = match range.start_bound() {
-            Included(&n) => n,
-            Excluded(&n) => n + 1,
-            Unbounded => 0,
-        };
-        let end = match range.end_bound() {
-            Included(&n) => n + 1,
-            Excluded(&n) => n,
-            Unbounded => len,
-        };
-        assert!(start <= end, "lower bound was too large");
-        assert!(end <= len, "upper bound was too large");
-        (start, end)
+        // SAFETY: This buffer is only used to check the range. It might be partially
+        // uninitialized, but `check_range` needs a contiguous slice.
+        // https://github.com/rust-lang/rust/pull/75207#discussion_r471193682
+        let buffer = unsafe { slice::from_raw_parts(self.ptr(), self.len()) };
+        let Range { start, end } = buffer.check_range(range);
+        let tail = self.wrap_add(self.tail, start);
+        let head = self.wrap_add(self.tail, end);
+        (tail, head)
     }
 
     /// Creates an iterator that covers the specified range in the `VecDeque`.
@@ -1138,9 +1127,7 @@ impl<T> VecDeque<T> {
     where
         R: RangeBounds<usize>,
     {
-        let (start, end) = self.range_start_end(range);
-        let tail = self.wrap_add(self.tail, start);
-        let head = self.wrap_add(self.tail, end);
+        let (tail, head) = self.range_tail_head(range);
         Iter {
             tail,
             head,
@@ -1181,9 +1168,7 @@ impl<T> VecDeque<T> {
     where
         R: RangeBounds<usize>,
     {
-        let (start, end) = self.range_start_end(range);
-        let tail = self.wrap_add(self.tail, start);
-        let head = self.wrap_add(self.tail, end);
+        let (tail, head) = self.range_tail_head(range);
         IterMut {
             tail,
             head,
@@ -1237,7 +1222,7 @@ impl<T> VecDeque<T> {
         // When finished, the remaining data will be copied back to cover the hole,
         // and the head/tail values will be restored correctly.
         //
-        let (start, end) = self.range_start_end(range);
+        let (drain_tail, drain_head) = self.range_tail_head(range);
 
         // The deque's elements are parted into three segments:
         // * self.tail  -> drain_tail
@@ -1255,8 +1240,6 @@ impl<T> VecDeque<T> {
         //        T   t   h   H
         // [. . . o o x x o o . . .]
         //
-        let drain_tail = self.wrap_add(self.tail, start);
-        let drain_head = self.wrap_add(self.tail, end);
         let head = self.head;
 
         // "forget" about the values after the start of the drain until after
@@ -2405,7 +2388,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    // Safety: the following two methods require that the rotation amount
+    // SAFETY: the following two methods require that the rotation amount
     // be less than half the length of the deque.
     //
     // `wrap_copy` requires that `min(x, cap() - x) + copy_len <= cap()`,

@@ -5,7 +5,7 @@ LL | fn arg_item(&_x: &String) {}
    |             ^--
    |             ||
    |             |data moved here
-   |             |move occurs because `_x` has type `std::string::String`, which does not implement the `Copy` trait
+   |             |move occurs because `_x` has type `String`, which does not implement the `Copy` trait
    |             help: consider removing the `&`: `_x`
 
 error[E0507]: cannot move out of a shared reference
@@ -15,7 +15,7 @@ LL |     with(|&_x| ())
    |           ^--
    |           ||
    |           |data moved here
-   |           |move occurs because `_x` has type `std::string::String`, which does not implement the `Copy` trait
+   |           |move occurs because `_x` has type `String`, which does not implement the `Copy` trait
    |           help: consider removing the `&`: `_x`
 
 error[E0507]: cannot move out of a shared reference
@@ -25,7 +25,7 @@ LL |     let &_x = &"hi".to_string();
    |         ---   ^^^^^^^^^^^^^^^^^
    |         ||
    |         |data moved here
-   |         |move occurs because `_x` has type `std::string::String`, which does not implement the `Copy` trait
+   |         |move occurs because `_x` has type `String`, which does not implement the `Copy` trait
    |         help: consider removing the `&`: `_x`
 
 error: aborting due to 3 previous errors

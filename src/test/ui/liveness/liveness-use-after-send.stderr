@@ -2,7 +2,7 @@ error[E0382]: borrow of moved value: `message`
   --> $DIR/liveness-use-after-send.rs:16:20
    |
 LL | fn test00_start(ch: Chan<Box<isize>>, message: Box<isize>, _count: Box<isize>) {
-   |                                       ------- move occurs because `message` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |                                       ------- move occurs because `message` has type `Box<isize>`, which does not implement the `Copy` trait
 LL |     send(ch, message);
    |              ------- value moved here
 LL |     println!("{}", message);

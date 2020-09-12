@@ -237,6 +237,14 @@ enum DiagnosticBuilderMethod {
                             // Add more variants as needed to support one-time diagnostics.
 }
 
+/// Trait implemented by error types. This should not be implemented manually. Instead, use
+/// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
+pub trait SessionDiagnostic<'a> {
+    /// Write out as a diagnostic out of `sess`.
+    #[must_use]
+    fn into_diagnostic(self, sess: &'a Session) -> DiagnosticBuilder<'a>;
+}
+
 /// Diagnostic message ID, used by `Session.one_time_diagnostics` to avoid
 /// emitting the same message more than once.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -392,6 +400,9 @@ impl Session {
     pub fn err(&self, msg: &str) {
         self.diagnostic().err(msg)
     }
+    pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) {
+        err.into_diagnostic(self).emit()
+    }
     pub fn err_count(&self) -> usize {
         self.diagnostic().err_count()
     }
@@ -442,6 +453,24 @@ impl Session {
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().delay_span_bug(sp, msg)
     }
+
+    /// Used for code paths of expensive computations that should only take place when
+    /// warnings or errors are emitted. If no messages are emitted ("good path"), then
+    /// it's likely a bug.
+    pub fn delay_good_path_bug(&self, msg: &str) {
+        if self.opts.debugging_opts.print_type_sizes
+            || self.opts.debugging_opts.query_dep_graph
+            || self.opts.debugging_opts.dump_mir.is_some()
+            || self.opts.debugging_opts.unpretty.is_some()
+            || self.opts.output_types.contains_key(&OutputType::Mir)
+            || std::env::var_os("RUSTC_LOG").is_some()
+        {
+            return;
+        }
+
+        self.diagnostic().delay_good_path_bug(msg)
+    }
+
     pub fn note_without_error(&self, msg: &str) {
         self.diagnostic().note_without_error(msg)
     }

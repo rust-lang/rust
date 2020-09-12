@@ -5,7 +5,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  overflowing in-bounds pointer arithmetic
-   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `BEFORE_START` at $DIR/offset_ub.rs:7:46
    | 
   ::: $DIR/offset_ub.rs:7:1
@@ -22,7 +22,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  inbounds test failed: pointer must be in-bounds at offset 2, but is outside bounds of allocN which has size 1
-   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `AFTER_END` at $DIR/offset_ub.rs:8:43
    | 
   ::: $DIR/offset_ub.rs:8:1
@@ -37,7 +37,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  inbounds test failed: pointer must be in-bounds at offset 101, but is outside bounds of allocN which has size 100
-   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `AFTER_ARRAY` at $DIR/offset_ub.rs:9:45
    | 
   ::: $DIR/offset_ub.rs:9:1
@@ -52,7 +52,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  overflowing in-bounds pointer arithmetic
-   |                  inside `std::ptr::const_ptr::<impl *const u16>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `ptr::const_ptr::<impl *const u16>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `OVERFLOW` at $DIR/offset_ub.rs:11:43
    | 
   ::: $DIR/offset_ub.rs:11:1
@@ -67,7 +67,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  overflowing in-bounds pointer arithmetic
-   |                  inside `std::ptr::const_ptr::<impl *const u16>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `ptr::const_ptr::<impl *const u16>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `UNDERFLOW` at $DIR/offset_ub.rs:12:44
    | 
   ::: $DIR/offset_ub.rs:12:1
@@ -82,7 +82,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  overflowing in-bounds pointer arithmetic
-   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `OVERFLOW_ADDRESS_SPACE` at $DIR/offset_ub.rs:13:56
    | 
   ::: $DIR/offset_ub.rs:13:1
@@ -97,7 +97,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  overflowing in-bounds pointer arithmetic
-   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `UNDERFLOW_ADDRESS_SPACE` at $DIR/offset_ub.rs:14:57
    | 
   ::: $DIR/offset_ub.rs:14:1
@@ -112,7 +112,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  inbounds test failed: pointer must be in-bounds at offset 1, but is outside bounds of allocN which has size 0
-   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `ZERO_SIZED_ALLOC` at $DIR/offset_ub.rs:16:50
    | 
   ::: $DIR/offset_ub.rs:16:1
@@ -127,7 +127,7 @@ LL |         unsafe { intrinsics::offset(self, count) as *mut T }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  unable to turn bytes into a pointer
-   |                  inside `std::ptr::mut_ptr::<impl *mut u8>::offset` at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+   |                  inside `ptr::mut_ptr::<impl *mut u8>::offset` at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
    |                  inside `DANGLING` at $DIR/offset_ub.rs:17:42
    | 
   ::: $DIR/offset_ub.rs:17:1
@@ -142,7 +142,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  inbounds test failed: 0x0 is not a valid pointer
-   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `NULL_OFFSET_ZERO` at $DIR/offset_ub.rs:20:50
    | 
   ::: $DIR/offset_ub.rs:20:1
@@ -157,7 +157,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  unable to turn bytes into a pointer
-   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `UNDERFLOW_ABS` at $DIR/offset_ub.rs:23:47
    | 
   ::: $DIR/offset_ub.rs:23:1

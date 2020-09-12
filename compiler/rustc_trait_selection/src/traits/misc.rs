@@ -23,7 +23,7 @@ pub fn can_type_implement_copy(
 ) -> Result<(), CopyImplementationError<'tcx>> {
     // FIXME: (@jroesch) float this code up
     tcx.infer_ctxt().enter(|infcx| {
-        let (adt, substs) = match self_type.kind {
+        let (adt, substs) = match self_type.kind() {
             // These types used to have a builtin impl.
             // Now libcore provides that impl.
             ty::Uint(_)

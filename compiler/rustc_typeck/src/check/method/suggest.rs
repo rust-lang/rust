@@ -31,7 +31,7 @@ use super::{CandidateSource, MethodError, NoMatchData};
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let tcx = self.tcx;
-        match ty.kind {
+        match ty.kind() {
             // Not all of these (e.g., unsafe fns) implement `FnOnce`,
             // so we look for these beforehand.
             ty::Closure(..) | ty::FnDef(..) | ty::FnPtr(_) => true,
@@ -413,7 +413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                             }
                         }
-                        if let ty::RawPtr(_) = &actual.kind {
+                        if let ty::RawPtr(_) = &actual.kind() {
                             err.note(
                                 "try using `<*const T>::as_ref()` to get a reference to the \
                                       type behind the pointer: https://doc.rust-lang.org/std/\
@@ -450,7 +450,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // give a helping note that it has to be called as `(x.f)(...)`.
                 if let SelfSource::MethodCall(expr) = source {
                     let field_receiver =
-                        self.autoderef(span, rcvr_ty).find_map(|(ty, _)| match ty.kind {
+                        self.autoderef(span, rcvr_ty).find_map(|(ty, _)| match ty.kind() {
                             ty::Adt(def, substs) if !def.is_enum() => {
                                 let variant = &def.non_enum_variant();
                                 self.tcx.find_field_index(item_name, variant).map(|index| {
@@ -545,7 +545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // original type that has the associated function for accurate suggestions.
                         // (#61411)
                         let ty = tcx.at(span).type_of(*impl_did);
-                        match (&ty.peel_refs().kind, &actual.peel_refs().kind) {
+                        match (&ty.peel_refs().kind(), &actual.peel_refs().kind()) {
                             (ty::Adt(def, _), ty::Adt(def_actual, _)) if def == def_actual => {
                                 // Use `actual` as it will have more `substs` filled in.
                                 self.ty_to_value_string(actual.peel_refs())
@@ -583,9 +583,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         |self_ty: Ty<'tcx>, parent_pred: &ty::Predicate<'tcx>, obligation: &str| {
                             // We don't care about regions here, so it's fine to skip the binder here.
                             if let (ty::Param(_), ty::PredicateAtom::Trait(p, _)) =
-                                (&self_ty.kind, parent_pred.skip_binders())
+                                (self_ty.kind(), parent_pred.skip_binders())
                             {
-                                if let ty::Adt(def, _) = p.trait_ref.self_ty().kind {
+                                if let ty::Adt(def, _) = p.trait_ref.self_ty().kind() {
                                     let node = def.did.as_local().map(|def_id| {
                                         self.tcx
                                             .hir()
@@ -615,7 +615,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "doesn't satisfy `{}`",
                             if obligation.len() > 50 { quiet } else { obligation }
                         );
-                        match &self_ty.kind {
+                        match &self_ty.kind() {
                             // Point at the type that couldn't satisfy the bound.
                             ty::Adt(def, _) => bound_spans.push((def_span(def.did), msg)),
                             // Point at the trait object that couldn't satisfy the bound.
@@ -837,7 +837,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     self.suggest_use_candidates(&mut err, help, candidates);
                 }
-                if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind {
+                if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind() {
                     if needs_mut {
                         let trait_type = self.tcx.mk_ref(
                             region,
@@ -856,7 +856,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Print out the type for use in value namespace.
     fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
-        match ty.kind {
+        match ty.kind() {
             ty::Adt(def, substs) => format!("{}", ty::Instance::new(def.did, substs)),
             _ => self.ty_to_string(ty),
         }
@@ -870,7 +870,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call: &hir::Expr<'_>,
         span: Span,
     ) {
-        if let ty::Opaque(def_id, _) = ty.kind {
+        if let ty::Opaque(def_id, _) = *ty.kind() {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
             // Future::Output
             let item_def_id = self
@@ -897,7 +897,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!(
                     "suggest_await_before_method: normalized_ty={:?}, ty_kind={:?}",
                     self.resolve_vars_if_possible(&normalized_ty),
-                    normalized_ty.kind,
+                    normalized_ty.kind(),
                 );
                 let method_exists = self.method_exists(item_name, normalized_ty, call.hir_id, true);
                 debug!("suggest_await_before_method: is_method_exist={}", method_exists);
@@ -1089,9 +1089,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             candidates.sort_by(|a, b| a.cmp(b).reverse());
             candidates.dedup();
 
-            let param_type = match rcvr_ty.kind {
+            let param_type = match rcvr_ty.kind() {
                 ty::Param(param) => Some(param),
-                ty::Ref(_, ty, _) => match ty.kind {
+                ty::Ref(_, ty, _) => match ty.kind() {
                     ty::Param(param) => Some(param),
                     _ => None,
                 },
@@ -1243,7 +1243,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// autoderefs of `rcvr_ty`.
     fn type_derefs_to_local(&self, span: Span, rcvr_ty: Ty<'tcx>, source: SelfSource<'_>) -> bool {
         fn is_local(ty: Ty<'_>) -> bool {
-            match ty.kind {
+            match ty.kind() {
                 ty::Adt(def, _) => def.did.is_local(),
                 ty::Foreign(did) => did.is_local(),
 

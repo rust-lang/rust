@@ -13,7 +13,7 @@ LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
    = note: closures are lazy and do nothing unless called
 
-error: unused implementer of `std::future::Future` that must be used
+error: unused implementer of `Future` that must be used
   --> $DIR/unused-closure.rs:14:5
    |
 LL |     async {};

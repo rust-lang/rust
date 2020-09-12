@@ -25,7 +25,7 @@ pub fn obligations<'a, 'tcx>(
     // Handle the "livelock" case (see comment above) by bailing out if necessary.
     let arg = match arg.unpack() {
         GenericArgKind::Type(ty) => {
-            match ty.kind {
+            match ty.kind() {
                 ty::Infer(ty::TyVar(_)) => {
                     let resolved_ty = infcx.shallow_resolve(ty);
                     if resolved_ty == ty {
@@ -200,7 +200,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // projection coming from another associated type. See
             // `src/test/ui/associated-types/point-at-type-on-obligation-failure.rs` and
             // `traits-assoc-type-in-supertrait-bad.rs`.
-            if let ty::Projection(projection_ty) = proj.ty.kind {
+            if let ty::Projection(projection_ty) = proj.ty.kind() {
                 let trait_assoc_item = tcx.associated_item(projection_ty.item_def_id);
                 if let Some(impl_item_span) =
                     items.iter().find(|item| item.ident == trait_assoc_item.ident).map(fix_span)
@@ -213,7 +213,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // An associated item obligation born out of the `trait` failed to be met. An example
             // can be seen in `ui/associated-types/point-at-type-on-obligation-failure-2.rs`.
             debug!("extended_cause_with_original_assoc_item_obligation trait proj {:?}", pred);
-            if let ty::Projection(ty::ProjectionTy { item_def_id, .. }) = pred.self_ty().kind {
+            if let ty::Projection(ty::ProjectionTy { item_def_id, .. }) = *pred.self_ty().kind() {
                 if let Some(impl_item_span) = trait_assoc_items
                     .find(|i| i.def_id == item_def_id)
                     .and_then(|trait_assoc_item| {
@@ -412,7 +412,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 }
             };
 
-            match ty.kind {
+            match *ty.kind() {
                 ty::Bool
                 | ty::Char
                 | ty::Int(..)
@@ -590,7 +590,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 // prevention, which happens before this can be reached.
                 ty::Infer(_) => {
                     let ty = self.infcx.shallow_resolve(ty);
-                    if let ty::Infer(ty::TyVar(_)) = ty.kind {
+                    if let ty::Infer(ty::TyVar(_)) = ty.kind() {
                         // Not yet resolved, but we've made progress.
                         let cause = self.cause(traits::MiscObligation);
                         self.out.push(traits::Obligation::new(

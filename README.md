@@ -7,7 +7,10 @@ standard library, and documentation.
 
 [Rust]: https://www.rust-lang.org
 
-**Note: this README is for _users_ rather than _contributors_.**
+**Note: this README is for _users_ rather than _contributors_.
+If you wish to _contribute_ to the compiler, you should read the
+[Getting Started][gettingstarted] of the rustc-dev-guide instead of this
+section.**
 
 ## Quick Start
 
@@ -17,10 +20,6 @@ Read ["Installation"] from [The Book].
 [The Book]: https://doc.rust-lang.org/book/index.html
 
 ## Installing from Source
-
-**Note: If you wish to _contribute_ to the compiler, you should read the
-[Getting Started][gettingstarted] of the rustc-dev-guide instead of this
-section.**
 
 The Rust build system uses a Python script called `x.py` to build the compiler,
 which manages the bootstrapping process. More information about it can be found
@@ -242,6 +241,8 @@ The Rust community congregates in a few places:
 
 If you are interested in contributing to the Rust project, please take a look
 at the [Getting Started][gettingstarted] guide in the [rustc-dev-guide].
+
+[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org
 
 ## License
 

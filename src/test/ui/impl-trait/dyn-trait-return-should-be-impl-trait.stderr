@@ -15,7 +15,7 @@ LL | fn fuz() -> (usize, Trait) { (42, Struct) }
    |             |
    |             doesn't have a size known at compile-time
    |
-   = help: within `(usize, (dyn Trait + 'static))`, the trait `std::marker::Sized` is not implemented for `(dyn Trait + 'static)`
+   = help: within `(usize, (dyn Trait + 'static))`, the trait `Sized` is not implemented for `(dyn Trait + 'static)`
    = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
    = note: the return type of a function must have a statically known size
 
@@ -36,7 +36,7 @@ LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
    |             |
    |             doesn't have a size known at compile-time
    |
-   = help: within `(usize, (dyn Trait + 'static))`, the trait `std::marker::Sized` is not implemented for `(dyn Trait + 'static)`
+   = help: within `(usize, (dyn Trait + 'static))`, the trait `Sized` is not implemented for `(dyn Trait + 'static)`
    = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
    = note: the return type of a function must have a statically known size
 
@@ -137,15 +137,15 @@ error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:34:16
    |
 LL | fn bam() -> Box<dyn Trait> {
-   |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 LL |     if true {
 LL |         return Struct;
    |                ^^^^^^
    |                |
-   |                expected struct `std::boxed::Box`, found struct `Struct`
+   |                expected struct `Box`, found struct `Struct`
    |                help: store this in the heap by calling `Box::new`: `Box::new(Struct)`
    |
-   = note: expected struct `std::boxed::Box<(dyn Trait + 'static)>`
+   = note: expected struct `Box<(dyn Trait + 'static)>`
               found struct `Struct`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
@@ -153,15 +153,15 @@ error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:36:5
    |
 LL | fn bam() -> Box<dyn Trait> {
-   |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 ...
 LL |     42
    |     ^^
    |     |
-   |     expected struct `std::boxed::Box`, found integer
+   |     expected struct `Box`, found integer
    |     help: store this in the heap by calling `Box::new`: `Box::new(42)`
    |
-   = note: expected struct `std::boxed::Box<(dyn Trait + 'static)>`
+   = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
@@ -169,15 +169,15 @@ error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:40:16
    |
 LL | fn baq() -> Box<dyn Trait> {
-   |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 LL |     if true {
 LL |         return 0;
    |                ^
    |                |
-   |                expected struct `std::boxed::Box`, found integer
+   |                expected struct `Box`, found integer
    |                help: store this in the heap by calling `Box::new`: `Box::new(0)`
    |
-   = note: expected struct `std::boxed::Box<(dyn Trait + 'static)>`
+   = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
@@ -185,15 +185,15 @@ error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:42:5
    |
 LL | fn baq() -> Box<dyn Trait> {
-   |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 ...
 LL |     42
    |     ^^
    |     |
-   |     expected struct `std::boxed::Box`, found integer
+   |     expected struct `Box`, found integer
    |     help: store this in the heap by calling `Box::new`: `Box::new(42)`
    |
-   = note: expected struct `std::boxed::Box<(dyn Trait + 'static)>`
+   = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
@@ -201,15 +201,15 @@ error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:46:9
    |
 LL | fn baz() -> Box<dyn Trait> {
-   |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 LL |     if true {
 LL |         Struct
    |         ^^^^^^
    |         |
-   |         expected struct `std::boxed::Box`, found struct `Struct`
+   |         expected struct `Box`, found struct `Struct`
    |         help: store this in the heap by calling `Box::new`: `Box::new(Struct)`
    |
-   = note: expected struct `std::boxed::Box<(dyn Trait + 'static)>`
+   = note: expected struct `Box<(dyn Trait + 'static)>`
               found struct `Struct`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
@@ -217,15 +217,15 @@ error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:48:9
    |
 LL | fn baz() -> Box<dyn Trait> {
-   |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 ...
 LL |         42
    |         ^^
    |         |
-   |         expected struct `std::boxed::Box`, found integer
+   |         expected struct `Box`, found integer
    |         help: store this in the heap by calling `Box::new`: `Box::new(42)`
    |
-   = note: expected struct `std::boxed::Box<(dyn Trait + 'static)>`
+   = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
@@ -233,15 +233,15 @@ error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:53:9
    |
 LL | fn baw() -> Box<dyn Trait> {
-   |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 LL |     if true {
 LL |         0
    |         ^
    |         |
-   |         expected struct `std::boxed::Box`, found integer
+   |         expected struct `Box`, found integer
    |         help: store this in the heap by calling `Box::new`: `Box::new(0)`
    |
-   = note: expected struct `std::boxed::Box<(dyn Trait + 'static)>`
+   = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
@@ -249,15 +249,15 @@ error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:55:9
    |
 LL | fn baw() -> Box<dyn Trait> {
-   |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
+   |             -------------- expected `Box<(dyn Trait + 'static)>` because of return type
 ...
 LL |         42
    |         ^^
    |         |
-   |         expected struct `std::boxed::Box`, found integer
+   |         expected struct `Box`, found integer
    |         help: store this in the heap by calling `Box::new`: `Box::new(42)`
    |
-   = note: expected struct `std::boxed::Box<(dyn Trait + 'static)>`
+   = note: expected struct `Box<(dyn Trait + 'static)>`
                 found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 

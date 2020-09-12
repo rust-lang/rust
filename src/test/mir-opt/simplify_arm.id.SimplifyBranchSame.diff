@@ -1,7 +1,7 @@
 - // MIR for `id` before SimplifyBranchSame
 + // MIR for `id` after SimplifyBranchSame
   
-  fn id(_1: std::option::Option<u8>) -> std::option::Option<u8> {
+  fn id(_1: Option<u8>) -> Option<u8> {
       debug o => _1;                       // in scope 0 at $DIR/simplify-arm.rs:9:7: 9:8
       let mut _0: std::option::Option<u8>; // return place in scope 0 at $DIR/simplify-arm.rs:9:25: 9:35
       let mut _2: isize;                   // in scope 0 at $DIR/simplify-arm.rs:11:9: 11:16

@@ -195,13 +195,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
         // Raw pointers (and boxes) are handled by the `leftover_relocations` logic.
         let tcx = self.ecx.tcx;
         let ty = mplace.layout.ty;
-        if let ty::Ref(_, referenced_ty, ref_mutability) = ty.kind {
+        if let ty::Ref(_, referenced_ty, ref_mutability) = *ty.kind() {
             let value = self.ecx.read_immediate(mplace.into())?;
             let mplace = self.ecx.ref_to_mplace(value)?;
             assert_eq!(mplace.layout.ty, referenced_ty);
             // Handle trait object vtables.
             if let ty::Dynamic(..) =
-                tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind
+                tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind()
             {
                 // Validation will error (with a better message) on an invalid vtable pointer
                 // so we can safely not do anything if this is not a real pointer.
@@ -253,7 +253,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                         // This helps to prevent users from accidentally exploiting UB that they
                         // caused (by somehow getting a mutable reference in a `const`).
                         if ref_mutability == Mutability::Mut {
-                            match referenced_ty.kind {
+                            match referenced_ty.kind() {
                                 ty::Array(_, n) if n.eval_usize(*tcx, self.ecx.param_env) == 0 => {}
                                 ty::Slice(_)
                                     if mplace.meta.unwrap_meta().to_machine_usize(self.ecx)?

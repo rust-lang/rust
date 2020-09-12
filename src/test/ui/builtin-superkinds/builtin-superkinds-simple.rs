@@ -4,6 +4,6 @@
 trait Foo : Send { }
 
 impl Foo for std::rc::Rc<i8> { }
-//~^ ERROR `std::rc::Rc<i8>` cannot be sent between threads safely
+//~^ ERROR `Rc<i8>` cannot be sent between threads safely
 
 fn main() { }

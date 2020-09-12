@@ -95,7 +95,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         decl: &hir::FnDecl<'_>,
     ) -> Option<Span> {
         let ret_ty = self.tcx().type_of(scope_def_id);
-        if let ty::FnDef(_, _) = ret_ty.kind {
+        if let ty::FnDef(_, _) = ret_ty.kind() {
             let sig = ret_ty.fn_sig(self.tcx());
             let late_bound_regions =
                 self.tcx().collect_referenced_late_bound_regions(&sig.output());

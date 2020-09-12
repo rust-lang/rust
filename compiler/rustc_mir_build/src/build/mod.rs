@@ -96,7 +96,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             let body = tcx.hir().body(body_id);
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
-            let implicit_argument = match ty.kind {
+            let implicit_argument = match ty.kind() {
                 ty::Closure(..) => {
                     // HACK(eddyb) Avoid having RustCall on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
@@ -159,7 +159,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
             let (yield_ty, return_ty) = if body.generator_kind.is_some() {
                 let gen_ty = tcx.typeck_body(body_id).node_type(id);
-                let gen_sig = match gen_ty.kind {
+                let gen_sig = match gen_ty.kind() {
                     ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
                     _ => span_bug!(tcx.hir().span(id), "generator w/o generator type: {:?}", ty),
                 };
@@ -228,7 +228,7 @@ fn liberated_closure_env_ty(
 ) -> Ty<'_> {
     let closure_ty = tcx.typeck_body(body_id).node_type(closure_expr_id);
 
-    let (closure_def_id, closure_substs) = match closure_ty.kind {
+    let (closure_def_id, closure_substs) = match *closure_ty.kind() {
         ty::Closure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
         _ => bug!("closure expr does not have closure type: {:?}", closure_ty),
     };
@@ -840,11 +840,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let closure_env_arg = Local::new(1);
             let mut closure_env_projs = vec![];
             let mut closure_ty = self.local_decls[closure_env_arg].ty;
-            if let ty::Ref(_, ty, _) = closure_ty.kind {
+            if let ty::Ref(_, ty, _) = closure_ty.kind() {
                 closure_env_projs.push(ProjectionElem::Deref);
                 closure_ty = ty;
             }
-            let upvar_substs = match closure_ty.kind {
+            let upvar_substs = match closure_ty.kind() {
                 ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
                 ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
                 _ => span_bug!(self.fn_span, "upvars with non-closure env ty {:?}", closure_ty),

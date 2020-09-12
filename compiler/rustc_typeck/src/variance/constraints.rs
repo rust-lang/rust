@@ -140,7 +140,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         let id = tcx.hir().local_def_id_to_hir_id(def_id);
         let inferred_start = self.terms_cx.inferred_starts[&id];
         let current_item = &CurrentItem { inferred_start };
-        match tcx.type_of(def_id).kind {
+        match tcx.type_of(def_id).kind() {
             ty::Adt(def, _) => {
                 // Not entirely obvious: constraints on structs/enums do not
                 // affect the variance of their type parameters. See discussion
@@ -257,7 +257,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     ) {
         debug!("add_constraints_from_ty(ty={:?}, variance={:?})", ty, variance);
 
-        match ty.kind {
+        match *ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)

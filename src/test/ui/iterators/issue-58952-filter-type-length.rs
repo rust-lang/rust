@@ -3,6 +3,7 @@
 //! so check that we don't accidentially exceed the type length limit.
 // FIXME: Once the size of iterator adaptors is further reduced,
 // increase the complexity of this test.
+use std::collections::VecDeque;
 
 fn main() {
     let c = 2;
@@ -27,5 +28,5 @@ fn main() {
         .filter(|a| b.clone().any(|b| *b == *a))
         .filter(|a| b.clone().any(|b| *b == *a))
         .filter(|a| b.clone().any(|b| *b == *a))
-        .collect::<Vec<_>>();
+        .collect::<VecDeque<_>>();
 }

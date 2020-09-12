@@ -1,13 +1,13 @@
-error[E0277]: the trait bound `std::boxed::Box<{integer}>: Foo` is not satisfied
+error[E0277]: the trait bound `Box<{integer}>: Foo` is not satisfied
   --> $DIR/kindck-inherited-copy-bound.rs:21:16
    |
 LL | fn take_param<T:Foo>(foo: &T) { }
    |                 --- required by this bound in `take_param`
 ...
 LL |     take_param(&x);
-   |                ^^ the trait `std::marker::Copy` is not implemented for `std::boxed::Box<{integer}>`
+   |                ^^ the trait `Copy` is not implemented for `Box<{integer}>`
    |
-   = note: required because of the requirements on the impl of `Foo` for `std::boxed::Box<{integer}>`
+   = note: required because of the requirements on the impl of `Foo` for `Box<{integer}>`
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/kindck-inherited-copy-bound.rs:28:13
@@ -20,7 +20,7 @@ LL | trait Foo : Copy {
 LL |     let z = &x as &dyn Foo;
    |             ^^ the trait `Foo` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Foo>` for `&std::boxed::Box<i32>`
+   = note: required because of the requirements on the impl of `CoerceUnsized<&dyn Foo>` for `&Box<i32>`
    = note: required by cast to type `&dyn Foo`
 
 error: aborting due to 2 previous errors

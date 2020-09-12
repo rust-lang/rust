@@ -1005,7 +1005,8 @@ pub struct Resolver<'a> {
 
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
-    struct_constructors: DefIdMap<(Res, ty::Visibility)>,
+    /// Also includes of list of each fields visibility
+    struct_constructors: DefIdMap<(Res, ty::Visibility, Vec<ty::Visibility>)>,
 
     /// Features enabled for this crate.
     active_features: FxHashSet<Symbol>,
@@ -1042,6 +1043,7 @@ pub struct ResolverArenas<'a> {
     name_resolutions: TypedArena<RefCell<NameResolution<'a>>>,
     macro_rules_bindings: TypedArena<MacroRulesBinding<'a>>,
     ast_paths: TypedArena<ast::Path>,
+    pattern_spans: TypedArena<Span>,
 }
 
 impl<'a> ResolverArenas<'a> {
@@ -1072,6 +1074,9 @@ impl<'a> ResolverArenas<'a> {
     }
     fn alloc_ast_paths(&'a self, paths: &[ast::Path]) -> &'a [ast::Path] {
         self.ast_paths.alloc_from_iter(paths.iter().cloned())
+    }
+    fn alloc_pattern_spans(&'a self, spans: impl Iterator<Item = Span>) -> &'a [Span] {
+        self.pattern_spans.alloc_from_iter(spans)
     }
 }
 
@@ -2413,7 +2418,14 @@ impl<'a> Resolver<'a> {
                             (format!("maybe a missing crate `{}`?", ident), None)
                         }
                     } else if i == 0 {
-                        (format!("use of undeclared type or module `{}`", ident), None)
+                        if ident
+                            .name
+                            .with(|n| n.chars().next().map_or(false, |c| c.is_ascii_uppercase()))
+                        {
+                            (format!("use of undeclared type `{}`", ident), None)
+                        } else {
+                            (format!("use of undeclared crate or module `{}`", ident), None)
+                        }
                     } else {
                         let mut msg =
                             format!("could not find `{}` in `{}`", ident, path[i - 1].ident);
@@ -3182,6 +3194,7 @@ impl<'a> Resolver<'a> {
                     .chain(path_str.split("::").skip(1).map(Ident::from_str))
                     .map(|i| self.new_ast_path_segment(i))
                     .collect(),
+                tokens: None,
             }
         } else {
             ast::Path {
@@ -3191,6 +3204,7 @@ impl<'a> Resolver<'a> {
                     .map(Ident::from_str)
                     .map(|i| self.new_ast_path_segment(i))
                     .collect(),
+                tokens: None,
             }
         };
         let module = self.get_module(module_id);

@@ -383,7 +383,7 @@ where
         // #55756) in cases where you have e.g., `<T as Foo<'a>>::Item:
         // 'a` in the environment but `trait Foo<'b> { type Item: 'b
         // }` in the trait definition.
-        approx_env_bounds.retain(|bound| match bound.0.kind {
+        approx_env_bounds.retain(|bound| match *bound.0.kind() {
             ty::Projection(projection_ty) => self
                 .verify_bound
                 .projection_declared_bounds_from_trait(projection_ty)

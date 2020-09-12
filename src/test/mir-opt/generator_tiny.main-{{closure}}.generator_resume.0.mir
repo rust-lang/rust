@@ -10,7 +10,7 @@
     storage_conflicts: BitMatrix(0x0) {},
 } */
 
-fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}]>, _2: u8) -> std::ops::GeneratorState<(), ()> {
+fn main::{{closure}}#0(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}]>, _2: u8) -> GeneratorState<(), ()> {
     debug _x => _10;                     // in scope 0 at $DIR/generator-tiny.rs:19:17: 19:19
     let mut _0: std::ops::GeneratorState<(), ()>; // return place in scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
     let _3: HasDrop;                     // in scope 0 at $DIR/generator-tiny.rs:20:13: 20:15

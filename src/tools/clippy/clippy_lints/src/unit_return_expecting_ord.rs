@@ -110,7 +110,7 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
 fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Span, Option<Span>)> {
     if_chain! {
         if let ExprKind::Closure(_, _fn_decl, body_id, span, _) = arg.kind;
-        if let ty::Closure(_def_id, substs) = &cx.typeck_results().node_type(arg.hir_id).kind;
+        if let ty::Closure(_def_id, substs) = &cx.typeck_results().node_type(arg.hir_id).kind();
         let ret_ty = substs.as_closure().sig().output();
         let ty = cx.tcx.erase_late_bound_regions(&ret_ty);
         if ty.is_unit();

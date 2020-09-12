@@ -194,7 +194,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
                     // Dereference suggestion
                     let sugg = |diag: &mut DiagnosticBuilder<'_>| {
-                        if let ty::Adt(def, ..) = ty.kind {
+                        if let ty::Adt(def, ..) = ty.kind() {
                             if let Some(span) = cx.tcx.hir().span_if_local(def.did) {
                                 if can_type_implement_copy(cx.tcx, cx.param_env, ty).is_ok() {
                                     diag.span_help(span, "consider marking this type as `Copy`");

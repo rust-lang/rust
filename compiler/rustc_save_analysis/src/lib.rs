@@ -21,7 +21,7 @@ use rustc_hir_pretty::{enum_def_to_string, fn_to_string, ty_to_string};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::ExternCrate;
 use rustc_middle::middle::privacy::AccessLevels;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::ty::{self, print::with_no_trimmed_paths, DefIdTree, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, Input, OutputType};
 use rustc_session::output::{filename_for_metadata, out_filename};
@@ -438,7 +438,7 @@ impl<'tcx> SaveContext<'tcx> {
                                     .next()
                                     .map(|item| item.def_id);
                             }
-                            qualname.push_str(">");
+                            qualname.push('>');
 
                             (qualname, trait_id, decl_id, docs, attrs)
                         }
@@ -524,12 +524,12 @@ impl<'tcx> SaveContext<'tcx> {
 
     pub fn get_expr_data(&self, expr: &hir::Expr<'_>) -> Option<Data> {
         let ty = self.typeck_results().expr_ty_adjusted_opt(expr)?;
-        if matches!(ty.kind, ty::Error(_)) {
+        if matches!(ty.kind(), ty::Error(_)) {
             return None;
         }
         match expr.kind {
             hir::ExprKind::Field(ref sub_ex, ident) => {
-                match self.typeck_results().expr_ty_adjusted(&sub_ex).kind {
+                match self.typeck_results().expr_ty_adjusted(&sub_ex).kind() {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
                         filter!(self.span_utils, ident.span);
@@ -551,7 +551,7 @@ impl<'tcx> SaveContext<'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Struct(qpath, ..) => match ty.kind {
+            hir::ExprKind::Struct(qpath, ..) => match ty.kind() {
                 ty::Adt(def, _) => {
                     let sub_span = qpath.last_segment_span();
                     filter!(self.span_utils, sub_span);
@@ -989,32 +989,34 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
     config: Option<Config>,
     mut handler: H,
 ) {
-    tcx.dep_graph.with_ignore(|| {
-        info!("Dumping crate {}", cratename);
+    with_no_trimmed_paths(|| {
+        tcx.dep_graph.with_ignore(|| {
+            info!("Dumping crate {}", cratename);
 
-        // Privacy checking requires and is done after type checking; use a
-        // fallback in case the access levels couldn't have been correctly computed.
-        let access_levels = match tcx.sess.compile_status() {
-            Ok(..) => tcx.privacy_access_levels(LOCAL_CRATE),
-            Err(..) => tcx.arena.alloc(AccessLevels::default()),
-        };
+            // Privacy checking requires and is done after type checking; use a
+            // fallback in case the access levels couldn't have been correctly computed.
+            let access_levels = match tcx.sess.compile_status() {
+                Ok(..) => tcx.privacy_access_levels(LOCAL_CRATE),
+                Err(..) => tcx.arena.alloc(AccessLevels::default()),
+            };
 
-        let save_ctxt = SaveContext {
-            tcx,
-            maybe_typeck_results: None,
-            access_levels: &access_levels,
-            span_utils: SpanUtils::new(&tcx.sess),
-            config: find_config(config),
-            impl_counter: Cell::new(0),
-        };
+            let save_ctxt = SaveContext {
+                tcx,
+                maybe_typeck_results: None,
+                access_levels: &access_levels,
+                span_utils: SpanUtils::new(&tcx.sess),
+                config: find_config(config),
+                impl_counter: Cell::new(0),
+            };
 
-        let mut visitor = DumpVisitor::new(save_ctxt);
+            let mut visitor = DumpVisitor::new(save_ctxt);
 
-        visitor.dump_crate_info(cratename, tcx.hir().krate());
-        visitor.dump_compilation_options(input, cratename);
-        visitor.process_crate(tcx.hir().krate());
+            visitor.dump_crate_info(cratename, tcx.hir().krate());
+            visitor.dump_compilation_options(input, cratename);
+            visitor.process_crate(tcx.hir().krate());
 
-        handler.save(&visitor.save_ctxt, &visitor.analysis())
+            handler.save(&visitor.save_ctxt, &visitor.analysis())
+        })
     })
 }
 

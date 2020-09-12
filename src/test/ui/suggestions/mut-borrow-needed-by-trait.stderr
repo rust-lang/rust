@@ -5,7 +5,7 @@ LL |     let fp = BufWriter::new(fp);
    |                             ^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
    |
    = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
-   = note: required by `std::io::BufWriter::<W>::new`
+   = note: required by `BufWriter::<W>::new`
 
 error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
   --> $DIR/mut-borrow-needed-by-trait.rs:17:14
@@ -16,7 +16,7 @@ LL |     let fp = BufWriter::new(fp);
   ::: $SRC_DIR/std/src/io/buffered.rs:LL:COL
    |
 LL | pub struct BufWriter<W: Write> {
-   |                         ----- required by this bound in `std::io::BufWriter`
+   |                         ----- required by this bound in `BufWriter`
    |
    = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
 
@@ -29,24 +29,24 @@ LL |     let fp = BufWriter::new(fp);
   ::: $SRC_DIR/std/src/io/buffered.rs:LL:COL
    |
 LL | pub struct BufWriter<W: Write> {
-   |                         ----- required by this bound in `std::io::BufWriter`
+   |                         ----- required by this bound in `BufWriter`
    |
    = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
 
-error[E0599]: no method named `write_fmt` found for struct `std::io::BufWriter<&dyn std::io::Write>` in the current scope
+error[E0599]: no method named `write_fmt` found for struct `BufWriter<&dyn std::io::Write>` in the current scope
   --> $DIR/mut-borrow-needed-by-trait.rs:22:5
    |
 LL |     writeln!(fp, "hello world").unwrap();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `std::io::BufWriter<&dyn std::io::Write>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `BufWriter<&dyn std::io::Write>`
    | 
   ::: $SRC_DIR/std/src/io/buffered.rs:LL:COL
    |
 LL | pub struct BufWriter<W: Write> {
-   | ------------------------------ doesn't satisfy `_: std::io::Write`
+   | ------------------------------ doesn't satisfy `BufWriter<&dyn std::io::Write>: std::io::Write`
    |
    = note: the method `write_fmt` exists but the following trait bounds were not satisfied:
            `&dyn std::io::Write: std::io::Write`
-           which is required by `std::io::BufWriter<&dyn std::io::Write>: std::io::Write`
+           which is required by `BufWriter<&dyn std::io::Write>: std::io::Write`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors

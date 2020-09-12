@@ -45,7 +45,7 @@
 # this flag will indicate that this version check should not be done.
 #version-check = true
 
-# Link libstdc++ statically into the librustc_llvm instead of relying on a
+# Link libstdc++ statically into the rustc_llvm instead of relying on a
 # dynamic version to be available.
 #static-libstdcpp = false
 
@@ -120,19 +120,18 @@
 # Defaults to host platform
 #build = "x86_64-unknown-linux-gnu"
 
-# In addition to the build triple, other triples to produce full compiler
-# toolchains for. Each of these triples will be bootstrapped from the build
-# triple and then will continue to bootstrap themselves. This platform must
-# currently be able to run all of the triples provided here.
+# Which triples to produce a compiler toolchain for. Each of these triples will
+# be bootstrapped from the build triple themselves.
 #
 # Defaults to just the build triple
 #host = ["x86_64-unknown-linux-gnu"]
 
-# In addition to all host triples, other triples to produce the standard library
-# for. Each host triple will be used to produce a copy of the standard library
-# for each target triple.
+# Which triples to build libraries (core/alloc/std/test/proc_macro) for. Each of
+# these triples will be bootstrapped from the build triple themselves.
 #
-# Defaults to just the build triple
+# Defaults to `host`. If you set this explicitly, you likely want to add all
+# host triples to this list as well in order for those host toolchains to be
+# able to compile programs for their native target.
 #target = ["x86_64-unknown-linux-gnu"]
 
 # Use this directory to store build artifacts.
@@ -309,7 +308,9 @@
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
 # compiler.
-#codegen-units = 1
+#
+# Uses the rustc defaults: https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
+#codegen-units = if incremental { 256 } else { 16 }
 
 # Sets the number of codegen units to build the standard library with,
 # regardless of what the codegen-unit setting for the rest of the compiler is.
@@ -392,7 +393,7 @@
 # desired in distributions, for example.
 #rpath = true
 
-# Emits extra output from tests so test failures are debuggable just from logfiles.
+# Prints each test name as it is executed, to help debug issues in the test harness itself.
 #verbose-tests = false
 
 # Flag indicating whether tests are compiled with optimizations (the -O flag).
@@ -429,7 +430,7 @@
 # supported platforms. The LLD from the bootstrap distribution will be used
 # and not the LLD compiled during the bootstrap.
 #
-# LLD will not be used if we're cross linking or running tests.
+# LLD will not be used if we're cross linking.
 #
 # Explicitly setting the linker for a target will override this option when targeting MSVC.
 #use-lld = false

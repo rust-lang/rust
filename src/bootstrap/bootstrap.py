@@ -398,14 +398,6 @@ class RustBuild(object):
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(self.date)
 
-            # This is required so that we don't mix incompatible MinGW
-            # libraries/binaries that are included in rust-std with
-            # the system MinGW ones.
-            if "pc-windows-gnu" in self.build:
-                filename = "rust-mingw-{}-{}{}".format(
-                    rustc_channel, self.build, tarball_suffix)
-                self._download_stage0_helper(filename, "rust-mingw", tarball_suffix)
-
         if self.cargo().startswith(self.bin_root()) and \
                 (not os.path.exists(self.cargo()) or
                  self.program_out_of_date(self.cargo_stamp())):
@@ -714,7 +706,6 @@ class RustBuild(object):
         # See also: <https://github.com/rust-lang/rust/issues/70208>.
         if "CARGO_BUILD_TARGET" in env:
             del env["CARGO_BUILD_TARGET"]
-        env["RUSTC_BOOTSTRAP"] = '1'
         env["CARGO_TARGET_DIR"] = build_dir
         env["RUSTC"] = self.rustc()
         env["LD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \

@@ -1758,7 +1758,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         {
             let place_ty =
                 Place::ty_from(place_span.0.local, base_proj, self.body(), self.infcx.tcx);
-            if let ty::Array(..) = place_ty.ty.kind {
+            if let ty::Array(..) = place_ty.ty.kind() {
                 let array_place = PlaceRef { local: place_span.0.local, projection: base_proj };
                 self.check_if_subslice_element_is_moved(
                     location,
@@ -1876,7 +1876,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // be already initialized
                     let tcx = self.infcx.tcx;
                     let base_ty = Place::ty_from(place.local, proj_base, self.body(), tcx).ty;
-                    match base_ty.kind {
+                    match base_ty.kind() {
                         ty::Adt(def, _) if def.has_dtor(tcx) => {
                             self.check_if_path_or_subpath_is_moved(
                                 location, InitializationRequiringAction::Assignment,
@@ -1979,7 +1979,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
                 if let ty::Adt(def, _) =
-                    Place::ty_from(base.local, base.projection, this.body(), tcx).ty.kind
+                    Place::ty_from(base.local, base.projection, this.body(), tcx).ty.kind()
                 {
                     if def.is_union() {
                         if this.move_data.path_map[mpi].iter().any(|moi| {
@@ -2206,7 +2206,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             Place::ty_from(place.local, proj_base, self.body(), self.infcx.tcx).ty;
 
                         // Check the kind of deref to decide
-                        match base_ty.kind {
+                        match base_ty.kind() {
                             ty::Ref(_, _, mutbl) => {
                                 match mutbl {
                                     // Shared borrowed data is never mutable

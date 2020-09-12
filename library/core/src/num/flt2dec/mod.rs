@@ -311,10 +311,10 @@ fn digits_to_dec_str<'a>(
         if frac_digits > buf.len() && frac_digits - buf.len() > minus_exp {
             parts[3] = MaybeUninit::new(Part::Zero((frac_digits - buf.len()) - minus_exp));
             // SAFETY: we just initialized the elements `..4`.
-            unsafe { MaybeUninit::slice_get_ref(&parts[..4]) }
+            unsafe { MaybeUninit::slice_assume_init_ref(&parts[..4]) }
         } else {
             // SAFETY: we just initialized the elements `..3`.
-            unsafe { MaybeUninit::slice_get_ref(&parts[..3]) }
+            unsafe { MaybeUninit::slice_assume_init_ref(&parts[..3]) }
         }
     } else {
         let exp = exp as usize;
@@ -326,10 +326,10 @@ fn digits_to_dec_str<'a>(
             if frac_digits > buf.len() - exp {
                 parts[3] = MaybeUninit::new(Part::Zero(frac_digits - (buf.len() - exp)));
                 // SAFETY: we just initialized the elements `..4`.
-                unsafe { MaybeUninit::slice_get_ref(&parts[..4]) }
+                unsafe { MaybeUninit::slice_assume_init_ref(&parts[..4]) }
             } else {
                 // SAFETY: we just initialized the elements `..3`.
-                unsafe { MaybeUninit::slice_get_ref(&parts[..3]) }
+                unsafe { MaybeUninit::slice_assume_init_ref(&parts[..3]) }
             }
         } else {
             // the decimal point is after rendered digits: [1234][____0000] or [1234][__][.][__].
@@ -339,10 +339,10 @@ fn digits_to_dec_str<'a>(
                 parts[2] = MaybeUninit::new(Part::Copy(b"."));
                 parts[3] = MaybeUninit::new(Part::Zero(frac_digits));
                 // SAFETY: we just initialized the elements `..4`.
-                unsafe { MaybeUninit::slice_get_ref(&parts[..4]) }
+                unsafe { MaybeUninit::slice_assume_init_ref(&parts[..4]) }
             } else {
                 // SAFETY: we just initialized the elements `..2`.
-                unsafe { MaybeUninit::slice_get_ref(&parts[..2]) }
+                unsafe { MaybeUninit::slice_assume_init_ref(&parts[..2]) }
             }
         }
     }
@@ -393,7 +393,7 @@ fn digits_to_exp_str<'a>(
         parts[n + 1] = MaybeUninit::new(Part::Num(exp as u16));
     }
     // SAFETY: we just initialized the elements `..n + 2`.
-    unsafe { MaybeUninit::slice_get_ref(&parts[..n + 2]) }
+    unsafe { MaybeUninit::slice_assume_init_ref(&parts[..n + 2]) }
 }
 
 /// Sign formatting options.
@@ -487,24 +487,30 @@ where
         FullDecoded::Nan => {
             parts[0] = MaybeUninit::new(Part::Copy(b"NaN"));
             // SAFETY: we just initialized the elements `..1`.
-            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) } }
         }
         FullDecoded::Infinite => {
             parts[0] = MaybeUninit::new(Part::Copy(b"inf"));
             // SAFETY: we just initialized the elements `..1`.
-            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) } }
         }
         FullDecoded::Zero => {
             if frac_digits > 0 {
                 // [0.][0000]
                 parts[0] = MaybeUninit::new(Part::Copy(b"0."));
                 parts[1] = MaybeUninit::new(Part::Zero(frac_digits));
-                // SAFETY: we just initialized the elements `..2`.
-                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..2]) } }
+                Formatted {
+                    sign,
+                    // SAFETY: we just initialized the elements `..2`.
+                    parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..2]) },
+                }
             } else {
                 parts[0] = MaybeUninit::new(Part::Copy(b"0"));
-                // SAFETY: we just initialized the elements `..1`.
-                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+                Formatted {
+                    sign,
+                    // SAFETY: we just initialized the elements `..1`.
+                    parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) },
+                }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -557,12 +563,12 @@ where
         FullDecoded::Nan => {
             parts[0] = MaybeUninit::new(Part::Copy(b"NaN"));
             // SAFETY: we just initialized the elements `..1`.
-            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) } }
         }
         FullDecoded::Infinite => {
             parts[0] = MaybeUninit::new(Part::Copy(b"inf"));
             // SAFETY: we just initialized the elements `..1`.
-            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) } }
         }
         FullDecoded::Zero => {
             parts[0] = if dec_bounds.0 <= 0 && 0 < dec_bounds.1 {
@@ -571,7 +577,7 @@ where
                 MaybeUninit::new(Part::Copy(if upper { b"0E0" } else { b"0e0" }))
             };
             // SAFETY: we just initialized the elements `..1`.
-            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) } }
         }
         FullDecoded::Finite(ref decoded) => {
             let (buf, exp) = format_shortest(decoded, buf);
@@ -648,12 +654,12 @@ where
         FullDecoded::Nan => {
             parts[0] = MaybeUninit::new(Part::Copy(b"NaN"));
             // SAFETY: we just initialized the elements `..1`.
-            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) } }
         }
         FullDecoded::Infinite => {
             parts[0] = MaybeUninit::new(Part::Copy(b"inf"));
             // SAFETY: we just initialized the elements `..1`.
-            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) } }
         }
         FullDecoded::Zero => {
             if ndigits > 1 {
@@ -661,12 +667,18 @@ where
                 parts[0] = MaybeUninit::new(Part::Copy(b"0."));
                 parts[1] = MaybeUninit::new(Part::Zero(ndigits - 1));
                 parts[2] = MaybeUninit::new(Part::Copy(if upper { b"E0" } else { b"e0" }));
-                // SAFETY: we just initialized the elements `..3`.
-                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..3]) } }
+                Formatted {
+                    sign,
+                    // SAFETY: we just initialized the elements `..3`.
+                    parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..3]) },
+                }
             } else {
                 parts[0] = MaybeUninit::new(Part::Copy(if upper { b"0E0" } else { b"0e0" }));
-                // SAFETY: we just initialized the elements `..1`.
-                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+                Formatted {
+                    sign,
+                    // SAFETY: we just initialized the elements `..1`.
+                    parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) },
+                }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -716,24 +728,30 @@ where
         FullDecoded::Nan => {
             parts[0] = MaybeUninit::new(Part::Copy(b"NaN"));
             // SAFETY: we just initialized the elements `..1`.
-            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) } }
         }
         FullDecoded::Infinite => {
             parts[0] = MaybeUninit::new(Part::Copy(b"inf"));
             // SAFETY: we just initialized the elements `..1`.
-            Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+            Formatted { sign, parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) } }
         }
         FullDecoded::Zero => {
             if frac_digits > 0 {
                 // [0.][0000]
                 parts[0] = MaybeUninit::new(Part::Copy(b"0."));
                 parts[1] = MaybeUninit::new(Part::Zero(frac_digits));
-                // SAFETY: we just initialized the elements `..2`.
-                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..2]) } }
+                Formatted {
+                    sign,
+                    // SAFETY: we just initialized the elements `..2`.
+                    parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..2]) },
+                }
             } else {
                 parts[0] = MaybeUninit::new(Part::Copy(b"0"));
-                // SAFETY: we just initialized the elements `..1`.
-                Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+                Formatted {
+                    sign,
+                    // SAFETY: we just initialized the elements `..1`.
+                    parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) },
+                }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -754,12 +772,18 @@ where
                     // [0.][0000]
                     parts[0] = MaybeUninit::new(Part::Copy(b"0."));
                     parts[1] = MaybeUninit::new(Part::Zero(frac_digits));
-                    // SAFETY: we just initialized the elements `..2`.
-                    Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..2]) } }
+                    Formatted {
+                        sign,
+                        // SAFETY: we just initialized the elements `..2`.
+                        parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..2]) },
+                    }
                 } else {
                     parts[0] = MaybeUninit::new(Part::Copy(b"0"));
-                    // SAFETY: we just initialized the elements `..1`.
-                    Formatted { sign, parts: unsafe { MaybeUninit::slice_get_ref(&parts[..1]) } }
+                    Formatted {
+                        sign,
+                        // SAFETY: we just initialized the elements `..1`.
+                        parts: unsafe { MaybeUninit::slice_assume_init_ref(&parts[..1]) },
+                    }
                 }
             } else {
                 Formatted { sign, parts: digits_to_dec_str(buf, exp, frac_digits, parts) }

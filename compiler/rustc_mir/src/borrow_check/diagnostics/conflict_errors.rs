@@ -291,7 +291,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let ty =
                 Place::ty_from(used_place.local, used_place.projection, self.body, self.infcx.tcx)
                     .ty;
-            let needs_note = match ty.kind {
+            let needs_note = match ty.kind() {
                 ty::Closure(id, _) => {
                     let tables = self.infcx.tcx.typeck(id.expect_local());
                     let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(id.expect_local());
@@ -306,7 +306,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let ty = place.ty(self.body, self.infcx.tcx).ty;
 
             if is_loop_move {
-                if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind {
+                if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
                     // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
                     err.span_suggestion_verbose(
                         span.shrink_to_lo(),
@@ -329,7 +329,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     Some(ref name) => format!("`{}`", name),
                     None => "value".to_owned(),
                 };
-                if let ty::Param(param_ty) = ty.kind {
+                if let ty::Param(param_ty) = ty.kind() {
                     let tcx = self.infcx.tcx;
                     let generics = tcx.generics_of(self.mir_def_id);
                     let param = generics.type_param(&param_ty, tcx);
@@ -997,7 +997,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         .opt_name(fn_hir_id)
                         .map(|name| format!("function `{}`", name))
                         .unwrap_or_else(|| {
-                            match &self.infcx.tcx.typeck(self.mir_def_id).node_type(fn_hir_id).kind
+                            match &self
+                                .infcx
+                                .tcx
+                                .typeck(self.mir_def_id)
+                                .node_type(fn_hir_id)
+                                .kind()
                             {
                                 ty::Closure(..) => "enclosing closure",
                                 ty::Generator(..) => "enclosing generator",
@@ -1625,7 +1630,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     },
                     ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
                         let base_ty = Place::ty_from(place.local, proj_base, self.body, tcx).ty;
-                        match base_ty.kind {
+                        match base_ty.kind() {
                             ty::Adt(def, _) if def.has_dtor(tcx) => {
                                 // Report the outermost adt with a destructor
                                 match base_access {
@@ -1689,7 +1694,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 None
             } else {
                 let ty = self.infcx.tcx.type_of(self.mir_def_id);
-                match ty.kind {
+                match ty.kind() {
                     ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
                         self.mir_def_id.to_def_id(),
                         self.infcx.tcx.fn_sig(self.mir_def_id),
@@ -1924,13 +1929,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // 3. The return type is not a reference. In this case, we don't highlight
         //    anything.
         let return_ty = sig.output();
-        match return_ty.skip_binder().kind {
+        match return_ty.skip_binder().kind() {
             ty::Ref(return_region, _, _) if return_region.has_name() && !is_closure => {
                 // This is case 1 from above, return type is a named reference so we need to
                 // search for relevant arguments.
                 let mut arguments = Vec::new();
                 for (index, argument) in sig.inputs().skip_binder().iter().enumerate() {
-                    if let ty::Ref(argument_region, _, _) = argument.kind {
+                    if let ty::Ref(argument_region, _, _) = argument.kind() {
                         if argument_region == return_region {
                             // Need to use the `rustc_middle::ty` types to compare against the
                             // `return_region`. Then use the `rustc_hir` type to get only
@@ -1976,9 +1981,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 // Closure arguments are wrapped in a tuple, so we need to get the first
                 // from that.
-                if let ty::Tuple(elems) = argument_ty.kind {
+                if let ty::Tuple(elems) = argument_ty.kind() {
                     let argument_ty = elems.first()?.expect_ty();
-                    if let ty::Ref(_, _, _) = argument_ty.kind {
+                    if let ty::Ref(_, _, _) = argument_ty.kind() {
                         return Some(AnnotatedBorrowFnSignature::Closure {
                             argument_ty,
                             argument_span,
@@ -1998,7 +2003,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let return_ty = sig.output().skip_binder();
 
                 // We expect the first argument to be a reference.
-                match argument_ty.kind {
+                match argument_ty.kind() {
                     ty::Ref(_, _, _) => {}
                     _ => return None,
                 }

@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
 use std::fmt::Debug;
+use std::iter::InPlaceIterable;
 use std::mem::size_of;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::rc::Rc;
 use std::vec::{Drain, IntoIter};
 
 struct DropCounter<'a> {
@@ -73,6 +75,42 @@ fn test_zst_capacity() {
 }
 
 #[test]
+fn test_indexing() {
+    let v: Vec<isize> = vec![10, 20];
+    assert_eq!(v[0], 10);
+    assert_eq!(v[1], 20);
+    let mut x: usize = 0;
+    assert_eq!(v[x], 10);
+    assert_eq!(v[x + 1], 20);
+    x = x + 1;
+    assert_eq!(v[x], 20);
+    assert_eq!(v[x - 1], 10);
+}
+
+#[test]
+fn test_debug_fmt() {
+    let vec1: Vec<isize> = vec![];
+    assert_eq!("[]", format!("{:?}", vec1));
+
+    let vec2 = vec![0, 1];
+    assert_eq!("[0, 1]", format!("{:?}", vec2));
+
+    let slice: &[isize] = &[4, 5];
+    assert_eq!("[4, 5]", format!("{:?}", slice));
+}
+
+#[test]
+fn test_push() {
+    let mut v = vec![];
+    v.push(1);
+    assert_eq!(v, [1]);
+    v.push(2);
+    assert_eq!(v, [1, 2]);
+    v.push(3);
+    assert_eq!(v, [1, 2, 3]);
+}
+
+#[test]
 fn test_extend() {
     let mut v = Vec::new();
     let mut w = Vec::new();
@@ -118,6 +156,18 @@ fn test_extend() {
 }
 
 #[test]
+fn test_extend_from_slice() {
+    let a: Vec<isize> = vec![1, 2, 3, 4, 5];
+    let b: Vec<isize> = vec![6, 7, 8, 9, 0];
+
+    let mut v: Vec<isize> = a;
+
+    v.extend_from_slice(&b);
+
+    assert_eq!(v, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
+}
+
+#[test]
 fn test_extend_ref() {
     let mut v = vec![1, 2];
     v.extend(&[3, 4, 5]);
@@ -130,6 +180,14 @@ fn test_extend_ref() {
 
     assert_eq!(v.len(), 7);
     assert_eq!(v, [1, 2, 3, 4, 5, 6, 7]);
+}
+
+#[test]
+fn test_slice_from_ref() {
+    let values = vec![1, 2, 3, 4, 5];
+    let slice = &values[1..3];
+
+    assert_eq!(slice, [2, 3]);
 }
 
 #[test]
@@ -341,6 +399,29 @@ fn test_zip_unzip() {
     assert_eq!((1, 4), (left[0], right[0]));
     assert_eq!((2, 5), (left[1], right[1]));
     assert_eq!((3, 6), (left[2], right[2]));
+}
+
+#[test]
+fn test_cmp() {
+    let x: &[isize] = &[1, 2, 3, 4, 5];
+    let cmp: &[isize] = &[1, 2, 3, 4, 5];
+    assert_eq!(&x[..], cmp);
+    let cmp: &[isize] = &[3, 4, 5];
+    assert_eq!(&x[2..], cmp);
+    let cmp: &[isize] = &[1, 2, 3];
+    assert_eq!(&x[..3], cmp);
+    let cmp: &[isize] = &[2, 3, 4];
+    assert_eq!(&x[1..4], cmp);
+
+    let x: Vec<isize> = vec![1, 2, 3, 4, 5];
+    let cmp: &[isize] = &[1, 2, 3, 4, 5];
+    assert_eq!(&x[..], cmp);
+    let cmp: &[isize] = &[3, 4, 5];
+    assert_eq!(&x[2..], cmp);
+    let cmp: &[isize] = &[1, 2, 3];
+    assert_eq!(&x[..3], cmp);
+    let cmp: &[isize] = &[2, 3, 4];
+    assert_eq!(&x[1..4], cmp);
 }
 
 #[test]
@@ -773,6 +854,87 @@ fn test_into_iter_leak() {
     catch_unwind(move || drop(v.into_iter())).ok();
 
     assert_eq!(unsafe { DROPS }, 3);
+}
+
+#[test]
+fn test_from_iter_specialization() {
+    let src: Vec<usize> = vec![0usize; 1];
+    let srcptr = src.as_ptr();
+    let sink = src.into_iter().collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr);
+}
+
+#[test]
+fn test_from_iter_partially_drained_in_place_specialization() {
+    let src: Vec<usize> = vec![0usize; 10];
+    let srcptr = src.as_ptr();
+    let mut iter = src.into_iter();
+    iter.next();
+    iter.next();
+    let sink = iter.collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr);
+}
+
+#[test]
+fn test_from_iter_specialization_with_iterator_adapters() {
+    fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {};
+    let src: Vec<usize> = vec![0usize; 65535];
+    let srcptr = src.as_ptr();
+    let iter = src
+        .into_iter()
+        .enumerate()
+        .map(|i| i.0 + i.1)
+        .zip(std::iter::repeat(1usize))
+        .map(|(a, b)| a + b)
+        .map_while(Option::Some)
+        .peekable()
+        .skip(1)
+        .map(|e| std::num::NonZeroUsize::new(e));
+    assert_in_place_trait(&iter);
+    let sink = iter.collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr as *const usize);
+}
+
+#[test]
+fn test_from_iter_specialization_head_tail_drop() {
+    let drop_count: Vec<_> = (0..=2).map(|_| Rc::new(())).collect();
+    let src: Vec<_> = drop_count.iter().cloned().collect();
+    let srcptr = src.as_ptr();
+    let iter = src.into_iter();
+    let sink: Vec<_> = iter.skip(1).take(1).collect();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr, "specialization was applied");
+    assert_eq!(Rc::strong_count(&drop_count[0]), 1, "front was dropped");
+    assert_eq!(Rc::strong_count(&drop_count[1]), 2, "one element was collected");
+    assert_eq!(Rc::strong_count(&drop_count[2]), 1, "tail was dropped");
+    assert_eq!(sink.len(), 1);
+}
+
+#[test]
+fn test_from_iter_specialization_panic_drop() {
+    let drop_count: Vec<_> = (0..=2).map(|_| Rc::new(())).collect();
+    let src: Vec<_> = drop_count.iter().cloned().collect();
+    let iter = src.into_iter();
+
+    let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        let _ = iter
+            .enumerate()
+            .filter_map(|(i, e)| {
+                if i == 1 {
+                    std::panic!("aborting iteration");
+                }
+                Some(e)
+            })
+            .collect::<Vec<_>>();
+    }));
+
+    assert!(
+        drop_count.iter().map(Rc::strong_count).all(|count| count == 1),
+        "all items were dropped once"
+    );
 }
 
 #[test]

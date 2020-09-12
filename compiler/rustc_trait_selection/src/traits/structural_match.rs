@@ -137,7 +137,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         debug!("Search visiting ty: {:?}", ty);
 
-        let (adt_def, substs) = match ty.kind {
+        let (adt_def, substs) = match *ty.kind() {
             ty::Adt(adt_def, substs) => (adt_def, substs),
             ty::Param(_) => {
                 self.found = Some(NonStructuralMatchTy::Param);

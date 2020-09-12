@@ -217,6 +217,16 @@ mod dist {
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
             ]
         );
+        assert_eq!(
+            first(builder.cache.all::<compile::Std>()),
+            &[
+                compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
+                compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
+            ],
+        );
         assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
     }
 
@@ -384,12 +394,9 @@ mod dist {
                 compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: b },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: c },
             ]
         );
         assert!(!builder.cache.all::<compile::Assemble>().is_empty());
@@ -399,10 +406,8 @@ mod dist {
                 compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: a },
                 compile::Rustc { compiler: Compiler { host: a, stage: 2 }, target: a },
-                compile::Rustc { compiler: Compiler { host: b, stage: 2 }, target: a },
                 compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: b },
                 compile::Rustc { compiler: Compiler { host: a, stage: 2 }, target: b },
-                compile::Rustc { compiler: Compiler { host: b, stage: 2 }, target: b },
             ]
         );
     }
@@ -425,12 +430,9 @@ mod dist {
                 compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: a },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: b },
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
-                compile::Std { compiler: Compiler { host: b, stage: 2 }, target: c },
             ]
         );
         assert_eq!(
@@ -439,7 +441,6 @@ mod dist {
                 compile::Assemble { target_compiler: Compiler { host: a, stage: 0 } },
                 compile::Assemble { target_compiler: Compiler { host: a, stage: 1 } },
                 compile::Assemble { target_compiler: Compiler { host: a, stage: 2 } },
-                compile::Assemble { target_compiler: Compiler { host: b, stage: 2 } },
             ]
         );
         assert_eq!(
@@ -447,7 +448,6 @@ mod dist {
             &[
                 compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: a },
-                compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: b },
             ]
         );
     }

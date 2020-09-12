@@ -1,4 +1,4 @@
-error[E0507]: cannot move out of dereference of `std::cell::Ref<'_, TheDarkKnight>`
+error[E0507]: cannot move out of dereference of `Ref<'_, TheDarkKnight>`
   --> $DIR/E0507.rs:12:5
    |
 LL |     x.borrow().nothing_is_true();

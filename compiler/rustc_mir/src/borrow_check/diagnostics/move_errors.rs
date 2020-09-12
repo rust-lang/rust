@@ -326,7 +326,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         debug!("report: ty={:?}", ty);
-        let mut err = match ty.kind {
+        let mut err = match ty.kind() {
             ty::Array(..) | ty::Slice(..) => {
                 self.cannot_move_out_of_interior_noncopy(span, ty, None)
             }
@@ -385,7 +385,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         };
         if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
-            let def_id = match move_place.ty(self.body, self.infcx.tcx).ty.kind {
+            let def_id = match *move_place.ty(self.body, self.infcx.tcx).ty.kind() {
                 ty::Adt(self_def, _) => self_def.did,
                 ty::Foreign(def_id)
                 | ty::FnDef(def_id, _)

@@ -125,6 +125,9 @@ top_level_options!(
         // try to not rely on this too much.
         actually_rustdoc: bool [TRACKED],
 
+        // Control path trimming.
+        trimmed_def_paths: TrimmedDefPaths [TRACKED],
+
         // Specifications of codegen units / ThinLTO which are forced as a
         // result of parsing command line options. These are not necessarily
         // what rustc was invoked with, but massaged a bit to agree with
@@ -847,6 +850,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "enable the experimental Chalk-based trait solving engine"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
+    combine_cgu: bool = (false, parse_bool, [TRACKED],
+        "combine CGUs into a single one"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
     debug_macros: bool = (false, parse_bool, [TRACKED],
@@ -890,6 +895,11 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         all statements)."),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
+    experimental_coverage: bool = (false, parse_bool, [TRACKED],
+        "enable and extend the `-Z instrument-coverage` function-level coverage \
+        feature, adding additional experimental (likely inaccurate) counters and \
+        code regions (used by `rustc` compiler developers to test new coverage \
+        counter placements) (default: no)"),
     fewer_names: bool = (false, parse_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
@@ -899,6 +909,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "force all crates to be `rustc_private` unstable (default: no)"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
         "set the optimization fuel quota for a crate"),
+    graphviz_dark_mode: bool = (false, parse_bool, [UNTRACKED],
+        "use dark-themed colors in graphviz output (default: no)"),
     hir_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about AST and HIR (default: no)"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],
@@ -1084,6 +1096,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "for every macro invocation, print its name and arguments (default: no)"),
     treat_err_as_bug: Option<usize> = (None, parse_treat_err_as_bug, [TRACKED],
         "treat error number `val` that occurs as bug"),
+    trim_diagnostic_paths: bool = (true, parse_bool, [UNTRACKED],
+        "in diagnostics, use heuristics to shorten paths referring to items"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
         "emit compiler diagnostics in a form suitable for UI testing (default: no)"),
     unleash_the_miri_inside_of_you: bool = (false, parse_bool, [TRACKED],

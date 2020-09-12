@@ -1,8 +1,8 @@
-error[E0277]: `main` has invalid return type `impl std::future::Future`
+error[E0277]: `main` has invalid return type `impl Future`
   --> $DIR/issue-68523.rs:3:20
    |
 LL | async fn main() -> Result<i32, ()> {
-   |                    ^^^^^^^^^^^^^^^ `main` can only return types that implement `std::process::Termination`
+   |                    ^^^^^^^^^^^^^^^ `main` can only return types that implement `Termination`
    |
    = help: consider using `()`, or a `Result`
 

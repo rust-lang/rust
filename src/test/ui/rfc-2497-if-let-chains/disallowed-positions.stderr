@@ -537,16 +537,16 @@ error[E0600]: cannot apply unary operator `-` to type `bool`
 LL |     if -let 0 = 0 {}
    |        ^^^^^^^^^^ cannot apply unary operator `-`
 
-error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/disallowed-positions.rs:46:8
    |
 LL |     if (let 0 = 0)? {}
    |        ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
-   = help: the trait `std::ops::Try` is not implemented for `bool`
-   = note: required by `std::ops::Try::into_result`
+   = help: the trait `Try` is not implemented for `bool`
+   = note: required by `into_result`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/disallowed-positions.rs:46:8
    |
 LL | / fn nested_within_if_expr() {
@@ -561,8 +561,8 @@ LL | |     if let true = let true = true {}
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `std::ops::Try` is not implemented for `()`
-   = note: required by `std::ops::Try::from_error`
+   = help: the trait `Try` is not implemented for `()`
+   = note: required by `from_error`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:56:8
@@ -588,19 +588,19 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:61:8
    |
 LL |     if ..(let 0 = 0) {}
-   |        ^^^^^^^^^^^^^ expected `bool`, found struct `std::ops::RangeTo`
+   |        ^^^^^^^^^^^^^ expected `bool`, found struct `RangeTo`
    |
    = note: expected type `bool`
-            found struct `std::ops::RangeTo<bool>`
+            found struct `RangeTo<bool>`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:63:8
    |
 LL |     if (let 0 = 0).. {}
-   |        ^^^^^^^^^^^^^ expected `bool`, found struct `std::ops::RangeFrom`
+   |        ^^^^^^^^^^^^^ expected `bool`, found struct `RangeFrom`
    |
    = note: expected type `bool`
-            found struct `std::ops::RangeFrom<bool>`
+            found struct `RangeFrom<bool>`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:67:12
@@ -695,14 +695,14 @@ LL |     if let Range { start: true, end } = t..&&false {}
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
 
-error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/disallowed-positions.rs:42:20
    |
 LL |         if let 0 = 0? {}
    |                    ^^ the `?` operator cannot be applied to type `{integer}`
    |
-   = help: the trait `std::ops::Try` is not implemented for `{integer}`
-   = note: required by `std::ops::Try::into_result`
+   = help: the trait `Try` is not implemented for `{integer}`
+   = note: required by `into_result`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:96:11
@@ -725,16 +725,16 @@ error[E0600]: cannot apply unary operator `-` to type `bool`
 LL |     while -let 0 = 0 {}
    |           ^^^^^^^^^^ cannot apply unary operator `-`
 
-error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/disallowed-positions.rs:110:11
    |
 LL |     while (let 0 = 0)? {}
    |           ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
-   = help: the trait `std::ops::Try` is not implemented for `bool`
-   = note: required by `std::ops::Try::into_result`
+   = help: the trait `Try` is not implemented for `bool`
+   = note: required by `into_result`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/disallowed-positions.rs:110:11
    |
 LL | / fn nested_within_while_expr() {
@@ -749,8 +749,8 @@ LL | |     while let true = let true = true {}
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `std::ops::Try` is not implemented for `()`
-   = note: required by `std::ops::Try::from_error`
+   = help: the trait `Try` is not implemented for `()`
+   = note: required by `from_error`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:120:11
@@ -776,19 +776,19 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:125:11
    |
 LL |     while ..(let 0 = 0) {}
-   |           ^^^^^^^^^^^^^ expected `bool`, found struct `std::ops::RangeTo`
+   |           ^^^^^^^^^^^^^ expected `bool`, found struct `RangeTo`
    |
    = note: expected type `bool`
-            found struct `std::ops::RangeTo<bool>`
+            found struct `RangeTo<bool>`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:127:11
    |
 LL |     while (let 0 = 0).. {}
-   |           ^^^^^^^^^^^^^ expected `bool`, found struct `std::ops::RangeFrom`
+   |           ^^^^^^^^^^^^^ expected `bool`, found struct `RangeFrom`
    |
    = note: expected type `bool`
-            found struct `std::ops::RangeFrom<bool>`
+            found struct `RangeFrom<bool>`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:131:15
@@ -883,14 +883,14 @@ LL |     while let Range { start: true, end } = t..&&false {}
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
 
-error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/disallowed-positions.rs:106:23
    |
 LL |         while let 0 = 0? {}
    |                       ^^ the `?` operator cannot be applied to type `{integer}`
    |
-   = help: the trait `std::ops::Try` is not implemented for `{integer}`
-   = note: required by `std::ops::Try::into_result`
+   = help: the trait `Try` is not implemented for `{integer}`
+   = note: required by `into_result`
 
 error[E0614]: type `bool` cannot be dereferenced
   --> $DIR/disallowed-positions.rs:173:5
@@ -904,16 +904,16 @@ error[E0600]: cannot apply unary operator `-` to type `bool`
 LL |     -let 0 = 0;
    |     ^^^^^^^^^^ cannot apply unary operator `-`
 
-error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/disallowed-positions.rs:183:5
    |
 LL |     (let 0 = 0)?;
    |     ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
-   = help: the trait `std::ops::Try` is not implemented for `bool`
-   = note: required by `std::ops::Try::into_result`
+   = help: the trait `Try` is not implemented for `bool`
+   = note: required by `into_result`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/disallowed-positions.rs:183:5
    |
 LL | / fn outside_if_and_while_expr() {
@@ -928,8 +928,8 @@ LL | |
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `std::ops::Try` is not implemented for `()`
-   = note: required by `std::ops::Try::from_error`
+   = help: the trait `Try` is not implemented for `()`
+   = note: required by `from_error`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:198:10
@@ -951,14 +951,14 @@ LL | fn outside_if_and_while_expr() {
 LL |     &let 0 = 0
    |     ^^^^^^^^^^ expected `()`, found `&bool`
 
-error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/disallowed-positions.rs:179:17
    |
 LL |         let 0 = 0?;
    |                 ^^ the `?` operator cannot be applied to type `{integer}`
    |
-   = help: the trait `std::ops::Try` is not implemented for `{integer}`
-   = note: required by `std::ops::Try::into_result`
+   = help: the trait `Try` is not implemented for `{integer}`
+   = note: required by `into_result`
 
 error: aborting due to 103 previous errors; 2 warnings emitted
 

@@ -42,3 +42,15 @@ pub unsafe trait TrustedLen: Iterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
+
+/// An iterator that when yielding an item will have taken at least one element
+/// from its underlying [`SourceIter`].
+///
+/// Calling next() guarantees that at least one value of the iterator's underlying source
+/// has been moved out and the result of the iterator chain could be inserted in its place,
+/// assuming structural constraints of the source allow such an insertion.
+/// In other words this trait indicates that an iterator pipeline can be collected in place.
+///
+/// [`SourceIter`]: ../../std/iter/trait.SourceIter.html
+#[unstable(issue = "none", feature = "inplace_iteration")]
+pub unsafe trait InPlaceIterable: Iterator {}

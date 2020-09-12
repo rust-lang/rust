@@ -352,7 +352,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
                 // We're only interested in types involving regions
-                if ty.flags.intersects(TypeFlags::HAS_FREE_REGIONS) {
+                if ty.flags().intersects(TypeFlags::HAS_FREE_REGIONS) {
                     ty.super_visit_with(self)
                 } else {
                     false // keep visiting
@@ -471,7 +471,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match t.kind {
+        match *t.kind() {
             ty::Bound(debruijn, bound_ty) => {
                 if debruijn == self.current_index {
                     let fld_t = &mut self.fld_t;
@@ -771,7 +771,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match ty.kind {
+        match *ty.kind() {
             ty::Bound(debruijn, bound_ty) => {
                 if self.amount == 0 || debruijn < self.current_index {
                     ty
@@ -922,8 +922,13 @@ struct HasTypeFlagsVisitor {
 
 impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     fn visit_ty(&mut self, t: Ty<'_>) -> bool {
-        debug!("HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}", t, t.flags, self.flags);
-        t.flags.intersects(self.flags)
+        debug!(
+            "HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}",
+            t,
+            t.flags(),
+            self.flags
+        );
+        t.flags().intersects(self.flags)
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
@@ -987,7 +992,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // ignore the inputs to a projection, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            if let ty::Projection(..) | ty::Opaque(..) = t.kind {
+            if let ty::Projection(..) | ty::Opaque(..) = t.kind() {
                 return false;
             }
         }

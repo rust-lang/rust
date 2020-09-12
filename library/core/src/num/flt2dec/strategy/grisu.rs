@@ -276,7 +276,7 @@ pub fn format_shortest_opt<'a>(
             let ten_kappa = (ten_kappa as u64) << e; // scale 10^kappa back to the shared exponent
             return round_and_weed(
                 // SAFETY: we initialized that memory above.
-                unsafe { MaybeUninit::slice_get_mut(&mut buf[..i]) },
+                unsafe { MaybeUninit::slice_assume_init_mut(&mut buf[..i]) },
                 exp,
                 plus1rem,
                 delta1,
@@ -327,7 +327,7 @@ pub fn format_shortest_opt<'a>(
             let ten_kappa = 1 << e; // implicit divisor
             return round_and_weed(
                 // SAFETY: we initialized that memory above.
-                unsafe { MaybeUninit::slice_get_mut(&mut buf[..i]) },
+                unsafe { MaybeUninit::slice_assume_init_mut(&mut buf[..i]) },
                 exp,
                 r,
                 threshold,
@@ -701,7 +701,7 @@ pub fn format_exact_opt<'a>(
         // `10^kappa` did not overflow after all, the second check is fine.
         if ten_kappa - remainder > remainder && ten_kappa - 2 * remainder >= 2 * ulp {
             // SAFETY: our caller initialized that memory.
-            return Some((unsafe { MaybeUninit::slice_get_ref(&buf[..len]) }, exp));
+            return Some((unsafe { MaybeUninit::slice_assume_init_ref(&buf[..len]) }, exp));
         }
 
         //   :<------- remainder ------>|   :
@@ -722,8 +722,10 @@ pub fn format_exact_opt<'a>(
         // as `10^kappa` is never zero). also note that `remainder - ulp <= 10^kappa`,
         // so the second check does not overflow.
         if remainder > ulp && ten_kappa - (remainder - ulp) <= remainder - ulp {
-            // SAFETY: our caller must have initialized that memory.
-            if let Some(c) = round_up(unsafe { MaybeUninit::slice_get_mut(&mut buf[..len]) }) {
+            if let Some(c) =
+                // SAFETY: our caller must have initialized that memory.
+                round_up(unsafe { MaybeUninit::slice_assume_init_mut(&mut buf[..len]) })
+            {
                 // only add an additional digit when we've been requested the fixed precision.
                 // we also need to check that, if the original buffer was empty,
                 // the additional digit can only be added when `exp == limit` (edge case).
@@ -734,7 +736,7 @@ pub fn format_exact_opt<'a>(
                 }
             }
             // SAFETY: we and our caller initialized that memory.
-            return Some((unsafe { MaybeUninit::slice_get_ref(&buf[..len]) }, exp));
+            return Some((unsafe { MaybeUninit::slice_assume_init_ref(&buf[..len]) }, exp));
         }
 
         // otherwise we are doomed (i.e., some values between `v - 1 ulp` and `v + 1 ulp` are

@@ -58,7 +58,7 @@ where
     let infcx = this.infcx();
     let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
     let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
-    match (&a.kind, &b.kind) {
+    match (a.kind(), b.kind()) {
         // If one side is known to be a variable and one is not,
         // create a variable (`v`) to represent the LUB. Make sure to
         // relate `v` to the non-type-variable first (by passing it

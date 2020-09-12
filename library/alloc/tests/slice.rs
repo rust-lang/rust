@@ -1460,6 +1460,15 @@ fn test_to_vec() {
 }
 
 #[test]
+fn test_in_place_iterator_specialization() {
+    let src: Box<[usize]> = box [1, 2, 3];
+    let src_ptr = src.as_ptr();
+    let sink: Box<_> = src.into_vec().into_iter().map(std::convert::identity).collect();
+    let sink_ptr = sink.as_ptr();
+    assert_eq!(src_ptr, sink_ptr);
+}
+
+#[test]
 fn test_box_slice_clone() {
     let data = vec![vec![0, 1], vec![0], vec![1]];
     let data2 = data.clone().into_boxed_slice().clone().to_vec();

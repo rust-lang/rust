@@ -11,7 +11,7 @@ fn unused() {
         println!("Hello!");
     };
 
-    async {};    //~ ERROR unused implementer of `std::future::Future` that must be used
+    async {};    //~ ERROR unused implementer of `Future` that must be used
     || async {}; //~ ERROR unused closure that must be used
     async || {}; //~ ERROR unused closure that must be used
 

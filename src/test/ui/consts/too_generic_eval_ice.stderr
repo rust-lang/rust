@@ -20,7 +20,7 @@ error[E0277]: can't compare `[{integer}; _]` with `[{integer}; 0]`
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |                              ^^ no implementation for `[{integer}; _] == [{integer}; 0]`
    |
-   = help: the trait `std::cmp::PartialEq<[{integer}; 0]>` is not implemented for `[{integer}; _]`
+   = help: the trait `PartialEq<[{integer}; 0]>` is not implemented for `[{integer}; _]`
 
 error: aborting due to 3 previous errors
 

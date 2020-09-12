@@ -136,7 +136,7 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Su
     if_chain! {
         // if the expression is a float literal and it is unsuffixed then
         // add a suffix so the suggestion is valid and unambiguous
-        if let ty::Float(float_ty) = cx.typeck_results().expr_ty(expr).kind;
+        if let ty::Float(float_ty) = cx.typeck_results().expr_ty(expr).kind();
         if let ExprKind::Lit(lit) = &expr.kind;
         if let ast::LitKind::Float(sym, ast::LitFloatType::Unsuffixed) = lit.node;
         then {

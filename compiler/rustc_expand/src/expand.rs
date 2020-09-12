@@ -13,7 +13,7 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrItem, Block, LitKind, NodeId, PatKind, Path};
-use rustc_ast::{ItemKind, MacArgs, MacCallStmt, MacStmtStyle, StmtKind};
+use rustc_ast::{ItemKind, MacArgs, MacCallStmt, MacStmtStyle, StmtKind, Unsafe};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -26,7 +26,6 @@ use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Limit;
-use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{ExpnId, FileName, Span, DUMMY_SP};
 
@@ -358,7 +357,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             kind: ast::ItemKind::Mod(krate.module),
             ident: Ident::invalid(),
             id: ast::DUMMY_NODE_ID,
-            vis: respan(krate.span.shrink_to_lo(), ast::VisibilityKind::Public),
+            vis: ast::Visibility {
+                span: krate.span.shrink_to_lo(),
+                kind: ast::VisibilityKind::Public,
+                tokens: None,
+            },
             tokens: None,
         })]);
 
@@ -370,11 +373,21 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             None => {
                 // Resolution failed so we return an empty expansion
                 krate.attrs = vec![];
-                krate.module = ast::Mod { inner: orig_mod_span, items: vec![], inline: true };
+                krate.module = ast::Mod {
+                    inner: orig_mod_span,
+                    unsafety: Unsafe::No,
+                    items: vec![],
+                    inline: true,
+                };
             }
             Some(ast::Item { span, kind, .. }) => {
                 krate.attrs = vec![];
-                krate.module = ast::Mod { inner: orig_mod_span, items: vec![], inline: true };
+                krate.module = ast::Mod {
+                    inner: orig_mod_span,
+                    unsafety: Unsafe::No,
+                    items: vec![],
+                    inline: true,
+                };
                 self.cx.span_err(
                     span,
                     &format!(
@@ -529,9 +542,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn error_derive_forbidden_on_non_adt(&self, derives: &[Path], item: &Annotatable) {
         let attr = self.cx.sess.find_by_name(item.attrs(), sym::derive);
         let span = attr.map_or(item.span(), |attr| attr.span);
-        let mut err = self
-            .cx
-            .struct_span_err(span, "`derive` may only be applied to structs, enums and unions");
+        let mut err = rustc_errors::struct_span_err!(
+            self.cx.sess,
+            span,
+            E0774,
+            "`derive` may only be applied to structs, enums and unions",
+        );
         if let Some(ast::Attribute { style: ast::AttrStyle::Inner, .. }) = attr {
             let trait_list = derives.iter().map(|t| pprust::path_to_string(t)).collect::<Vec<_>>();
             let suggestion = format!("#[derive({})]", trait_list.join(", "));
@@ -1380,10 +1396,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         // The placeholder expander gives ids to statements, so we avoid folding the id here.
-        let ast::Stmt { id, kind, span } = stmt;
+        let ast::Stmt { id, kind, span, tokens } = stmt;
         noop_flat_map_stmt_kind(kind, self)
             .into_iter()
-            .map(|kind| ast::Stmt { id, kind, span })
+            .map(|kind| ast::Stmt { id, kind, span, tokens: tokens.clone() })
             .collect()
     }
 
@@ -1438,8 +1454,15 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     push_directory(&self.cx.sess, ident, &item.attrs, dir)
                 } else {
                     // We have an outline `mod foo;` so we need to parse the file.
-                    let (new_mod, dir) =
-                        parse_external_mod(&self.cx.sess, ident, span, dir, &mut attrs, pushed);
+                    let (new_mod, dir) = parse_external_mod(
+                        &self.cx.sess,
+                        ident,
+                        span,
+                        old_mod.unsafety,
+                        dir,
+                        &mut attrs,
+                        pushed,
+                    );
 
                     let krate = ast::Crate {
                         span: new_mod.inner,
@@ -1757,6 +1780,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 kind: ast::AttrKind::Normal(AttrItem {
                     path: meta.path,
                     args: meta.kind.mac_args(meta.span),
+                    tokens: None,
                 }),
                 span: at.span,
                 id: at.id,

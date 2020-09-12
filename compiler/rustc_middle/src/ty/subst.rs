@@ -486,7 +486,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
             return t;
         }
 
-        match t.kind {
+        match *t.kind() {
             ty::Param(p) => self.ty_for_param(p, t),
             _ => t.super_fold_with(self),
         }

@@ -13,6 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, HirId};
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiagnostics, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
@@ -308,7 +309,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // #[rustc_deprecated] however wants to emit down the whole
                 // hierarchy.
                 if !skip || depr_entry.attr.is_since_rustc_version {
-                    let path = &self.def_path_str(def_id);
+                    let path = &with_no_trimmed_paths(|| self.def_path_str(def_id));
                     let kind = self.def_kind(def_id).descr(def_id);
                     let (message, lint) = deprecation_message(&depr_entry.attr, kind, path);
                     late_report_deprecation(

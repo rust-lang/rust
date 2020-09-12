@@ -13,7 +13,7 @@ error[E0107]: wrong number of type arguments: expected 1, found 0
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    |                                       ^^ expected 1 type argument
 
-error[E0191]: the value of the associated type `Output` (from trait `std::ops::FnOnce`) must be specified
+error[E0191]: the value of the associated type `Output` (from trait `FnOnce`) must be specified
   --> $DIR/issue-23024.rs:9:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));

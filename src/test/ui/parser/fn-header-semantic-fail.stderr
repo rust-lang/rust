@@ -178,7 +178,7 @@ LL |         async fn ft1() {}
    |                        expected `()`, found opaque type
    |
    = note: expected fn pointer `fn()`
-              found fn pointer `fn() -> impl std::future::Future`
+              found fn pointer `fn() -> impl Future`
 
 error[E0053]: method `ft5` has an incompatible type for trait
   --> $DIR/fn-header-semantic-fail.rs:34:48
@@ -193,7 +193,7 @@ LL |         const async unsafe extern "C" fn ft5() {}
    |                                                expected `()`, found opaque type
    |
    = note: expected fn pointer `unsafe extern "C" fn()`
-              found fn pointer `unsafe extern "C" fn() -> impl std::future::Future`
+              found fn pointer `unsafe extern "C" fn() -> impl Future`
 
 error: aborting due to 20 previous errors
 

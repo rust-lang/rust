@@ -159,7 +159,7 @@ pub struct Instant(time::Instant);
 /// | CloudABI  | [clock_time_get (Realtime Clock)]                                    |
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
 /// | UNIX      | [clock_gettime (Realtime Clock)]                                     |
-/// | DARWIN    | [gettimeofday]                                                       |
+/// | Darwin    | [gettimeofday]                                                       |
 /// | VXWorks   | [clock_gettime (Realtime Clock)]                                     |
 /// | WASI      | [__wasi_clock_time_get (Realtime Clock)]                             |
 /// | Windows   | [GetSystemTimePreciseAsFileTime] / [GetSystemTimeAsFileTime]         |
@@ -460,12 +460,13 @@ impl SystemTime {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::time::SystemTime;
     ///
     /// let sys_time = SystemTime::now();
-    /// let difference = sys_time.duration_since(sys_time)
-    ///                          .expect("Clock may have gone backwards");
+    /// let new_sys_time = SystemTime::now();
+    /// let difference = new_sys_time.duration_since(sys_time)
+    ///     .expect("Clock may have gone backwards");
     /// println!("{:?}", difference);
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]

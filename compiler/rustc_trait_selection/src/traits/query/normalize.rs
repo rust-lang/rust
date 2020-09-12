@@ -100,7 +100,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         }
 
         let ty = ty.super_fold_with(self);
-        match ty.kind {
+        match *ty.kind() {
             ty::Opaque(def_id, substs) => {
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal() {

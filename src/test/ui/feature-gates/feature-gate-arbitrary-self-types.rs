@@ -23,7 +23,7 @@ impl Foo for Bar {
 }
 
 impl Bar {
-    fn bar(self: Box<Ptr<Self>>) {} //~ ERROR `std::boxed::Box<Ptr<Bar>>` cannot be used as the
+    fn bar(self: Box<Ptr<Self>>) {} //~ ERROR `Box<Ptr<Bar>>` cannot be used as the
 }
 
 fn main() {}

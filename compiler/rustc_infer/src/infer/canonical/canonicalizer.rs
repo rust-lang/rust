@@ -340,7 +340,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match t.kind {
+        match *t.kind() {
             ty::Infer(ty::TyVar(vid)) => {
                 debug!("canonical: type var found with vid {:?}", vid);
                 match self.infcx.unwrap().probe_ty_var(vid) {
@@ -418,7 +418,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::Foreign(..)
             | ty::Param(..)
             | ty::Opaque(..) => {
-                if t.flags.intersects(self.needs_canonical_flags) {
+                if t.flags().intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)
                 } else {
                     t

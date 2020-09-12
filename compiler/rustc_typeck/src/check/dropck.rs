@@ -34,7 +34,7 @@ use rustc_trait_selection::traits::{ObligationCause, TraitEngine, TraitEngineExt
 pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
-    match dtor_self_type.kind {
+    match dtor_self_type.kind() {
         ty::Adt(adt_def, self_to_impl_substs) => {
             ensure_drop_params_and_item_params_correspond(
                 tcx,

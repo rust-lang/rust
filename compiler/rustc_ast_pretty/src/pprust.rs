@@ -1139,7 +1139,11 @@ impl<'a> State<'a> {
                 self.print_fn_full(sig, item.ident, gen, &item.vis, def, body, &item.attrs);
             }
             ast::ItemKind::Mod(ref _mod) => {
-                self.head(visibility_qualified(&item.vis, "mod"));
+                self.head(to_string(|s| {
+                    s.print_visibility(&item.vis);
+                    s.print_unsafety(_mod.unsafety);
+                    s.word("mod");
+                }));
                 self.print_ident(item.ident);
 
                 if _mod.inline || self.is_expanded {
@@ -1154,7 +1158,10 @@ impl<'a> State<'a> {
                 }
             }
             ast::ItemKind::ForeignMod(ref nmod) => {
-                self.head("extern");
+                self.head(to_string(|s| {
+                    s.print_unsafety(nmod.unsafety);
+                    s.word("extern");
+                }));
                 if let Some(abi) = nmod.abi {
                     self.print_literal(&abi.as_lit());
                     self.nbsp();
@@ -1352,7 +1359,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_visibility(&mut self, vis: &ast::Visibility) {
-        match vis.node {
+        match vis.kind {
             ast::VisibilityKind::Public => self.word_nbsp("pub"),
             ast::VisibilityKind::Crate(sugar) => match sugar {
                 ast::CrateSugar::PubCrate => self.word_nbsp("pub(crate)"),

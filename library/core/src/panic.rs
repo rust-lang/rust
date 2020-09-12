@@ -225,7 +225,7 @@ impl<'a> Location<'a> {
     /// assert_ne!(this_location.column(), another_location.column());
     /// ```
     #[stable(feature = "track_caller", since = "1.46.0")]
-    #[rustc_const_unstable(feature = "const_caller_location", issue = "47809")]
+    #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
     #[track_caller]
     pub const fn caller() -> &'static Location<'static> {
         crate::intrinsics::caller_location()

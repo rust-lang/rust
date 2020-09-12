@@ -45,3 +45,16 @@ fn test_from_cow_path() {
     let path = Path::new("hello");
     test_from_cow!(path: &Path);
 }
+
+#[test]
+fn cow_const() {
+    // test that the methods of `Cow` are usable in a const context
+
+    const COW: Cow<'_, str> = Cow::Borrowed("moo");
+
+    const IS_BORROWED: bool = COW.is_borrowed();
+    assert!(IS_BORROWED);
+
+    const IS_OWNED: bool = COW.is_owned();
+    assert!(!IS_OWNED);
+}

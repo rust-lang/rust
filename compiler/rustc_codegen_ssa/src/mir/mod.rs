@@ -369,8 +369,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 // individual LLVM function arguments.
 
                 let arg_ty = fx.monomorphize(&arg_decl.ty);
-                let tupled_arg_tys = match arg_ty.kind {
-                    ty::Tuple(ref tys) => tys,
+                let tupled_arg_tys = match arg_ty.kind() {
+                    ty::Tuple(tys) => tys,
                     _ => bug!("spread argument isn't a tuple?!"),
                 };
 

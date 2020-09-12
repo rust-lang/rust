@@ -50,7 +50,7 @@ impl TypeRelation<'tcx> for Lub<'combine, 'infcx, 'tcx> {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
             // FIXME(#41044) -- not correct, need test
-            ty::Bivariant => Ok(a.clone()),
+            ty::Bivariant => Ok(a),
             ty::Contravariant => self.fields.glb(self.a_is_expected).relate(a, b),
         }
     }

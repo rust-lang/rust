@@ -206,7 +206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(method) => {
                 let by_ref_binop = !op.node.is_by_value();
                 if is_assign == IsAssign::Yes || by_ref_binop {
-                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
+                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() {
                         let mutbl = match mutbl {
                             hir::Mutability::Not => AutoBorrowMutability::Not,
                             hir::Mutability::Mut => AutoBorrowMutability::Mut {
@@ -223,7 +223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 if by_ref_binop {
-                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].kind {
+                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].kind() {
                         let mutbl = match mutbl {
                             hir::Mutability::Not => AutoBorrowMutability::Not,
                             hir::Mutability::Mut => AutoBorrowMutability::Mut {
@@ -395,7 +395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
                 let mut suggested_deref = false;
-                if let Ref(_, rty, _) = lhs_ty.kind {
+                if let Ref(_, rty, _) = lhs_ty.kind() {
                     if {
                         self.infcx.type_is_copy_modulo_regions(self.param_env, rty, lhs_expr.span)
                             && self
@@ -436,7 +436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // concatenation (e.g., "Hello " + "World!"). This means
                         // we don't want the note in the else clause to be emitted
                     } else if let [ty] = &visitor.0[..] {
-                        if let ty::Param(p) = ty.kind {
+                        if let ty::Param(p) = *ty.kind() {
                             // Check if the method would be found if the type param wasn't
                             // involved. If so, it means that adding a trait bound to the param is
                             // enough. Otherwise we do not give the suggestion.
@@ -468,7 +468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ));
                             }
                         } else {
-                            bug!("type param visitor stored a non type param: {:?}", ty.kind);
+                            bug!("type param visitor stored a non type param: {:?}", ty.kind());
                         }
                     } else if !suggested_deref && !involves_fn {
                         suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
@@ -494,7 +494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_assign: IsAssign,
     ) -> bool /* did we suggest to call a function because of missing parenthesis? */ {
         err.span_label(span, ty.to_string());
-        if let FnDef(def_id, _) = ty.kind {
+        if let FnDef(def_id, _) = *ty.kind() {
             let source_map = self.tcx.sess.source_map();
             if !self.tcx.has_typeck_results(def_id) {
                 return false;
@@ -502,7 +502,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We're emitting a suggestion, so we can just ignore regions
             let fn_sig = self.tcx.fn_sig(def_id).skip_binder();
 
-            let other_ty = if let FnDef(def_id, _) = other_ty.kind {
+            let other_ty = if let FnDef(def_id, _) = *other_ty.kind() {
                 if !self.tcx.has_typeck_results(def_id) {
                     return false;
                 }
@@ -568,10 +568,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => false,
         };
 
-        match (&lhs_ty.kind, &rhs_ty.kind) {
+        match (lhs_ty.kind(), rhs_ty.kind()) {
             (&Ref(_, l_ty, _), &Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
-                if (l_ty.kind == Str || is_std_string(l_ty)) && (
-                        r_ty.kind == Str || is_std_string(r_ty) ||
+                if (*l_ty.kind() == Str || is_std_string(l_ty)) && (
+                        *r_ty.kind() == Str || is_std_string(r_ty) ||
                         &format!("{:?}", rhs_ty) == "&&str"
                     ) =>
             {
@@ -605,7 +605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             (&Ref(_, l_ty, _), &Adt(..)) // Handle `&str` & `&String` + `String`
-                if (l_ty.kind == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
+                if (*l_ty.kind() == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
             {
                 err.span_label(
                     op.span,
@@ -670,12 +670,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ex.span,
                         format!("cannot apply unary operator `{}`", op.as_str()),
                     );
-                    match actual.kind {
+                    match actual.kind() {
                         Uint(_) if op == hir::UnOp::UnNeg => {
                             err.note("unsigned values cannot be negated");
                         }
                         Str | Never | Char | Tuple(_) | Array(_, _) => {}
-                        Ref(_, ref lty, _) if lty.kind == Str => {}
+                        Ref(_, ref lty, _) if *lty.kind() == Str => {}
                         _ => {
                             let missing_trait = match op {
                                 hir::UnOp::UnNeg => "std::ops::Neg",
@@ -844,7 +844,7 @@ enum Op {
 
 /// Dereferences a single level of immutable referencing.
 fn deref_ty_if_possible(ty: Ty<'tcx>) -> Ty<'tcx> {
-    match ty.kind {
+    match ty.kind() {
         ty::Ref(_, ty, hir::Mutability::Not) => ty,
         _ => ty,
     }
@@ -903,7 +903,7 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
 
 /// If applicable, note that an implementation of `trait` for `ty` may fix the error.
 fn suggest_impl_missing(err: &mut DiagnosticBuilder<'_>, ty: Ty<'_>, missing_trait: &str) {
-    if let Adt(def, _) = ty.peel_refs().kind {
+    if let Adt(def, _) = ty.peel_refs().kind() {
         if def.did.is_local() {
             err.note(&format!(
                 "an implementation of `{}` might be missing for `{}`",
@@ -957,7 +957,7 @@ struct TypeParamVisitor<'tcx>(Vec<Ty<'tcx>>);
 
 impl<'tcx> TypeVisitor<'tcx> for TypeParamVisitor<'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
-        if let ty::Param(_) = ty.kind {
+        if let ty::Param(_) = ty.kind() {
             self.0.push(ty);
         }
         ty.super_visit_with(self)
@@ -972,7 +972,7 @@ impl TypeFolder<'tcx> for TypeParamEraser<'_, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match ty.kind {
+        match ty.kind() {
             ty::Param(_) => self.0.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::MiscVariable,
                 span: self.1,

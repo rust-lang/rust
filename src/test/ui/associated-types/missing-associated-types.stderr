@@ -6,10 +6,10 @@ LL | type Foo<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Y<Rhs>;
    |                     |
    |                     first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: std::ops::Add<Rhs> + std::ops::Sub<Rhs> + X<Rhs> + Y<Rhs> {}`
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + X<Rhs> + Y<Rhs> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Sub`) must be specified
+error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (from trait `Add`), `Output` (from trait `Mul`), `Output` (from trait `Sub`) must be specified
   --> $DIR/missing-associated-types.rs:12:21
    |
 LL |     type A;
@@ -35,10 +35,10 @@ LL | type Bar<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs>;
    |                     |
    |                     first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: std::ops::Add<Rhs> + std::ops::Sub<Rhs> + X<Rhs> + Z<Rhs> {}`
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0191]: the value of the associated types `A` (from trait `Z`), `B` (from trait `Z`), `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Sub`) must be specified
+error[E0191]: the value of the associated types `A` (from trait `Z`), `B` (from trait `Z`), `Output` (from trait `Add`), `Output` (from trait `Div`), `Output` (from trait `Div`), `Output` (from trait `Mul`), `Output` (from trait `Sub`) must be specified
   --> $DIR/missing-associated-types.rs:15:21
    |
 LL |     type A;
@@ -49,7 +49,7 @@ LL |     type B;
 LL | type Bar<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs>;
    |                     ^^^^^^^^   ^^^^^^^^   ^^^^^^   ^^^^^^ associated types `A`, `B`, `Output` must be specified
    |                     |          |          |
-   |                     |          |          associated types `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Div`) must be specified
+   |                     |          |          associated types `Output` (from trait `Mul`), `Output` (from trait `Div`) must be specified
    |                     |          associated type `Output` must be specified
    |                     associated type `Output` must be specified
    |
@@ -71,10 +71,10 @@ LL | type Baz<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Y<Rhs>;
    |                     |
    |                     first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: std::ops::Add<Rhs> + std::ops::Sub<Rhs> + Y<Rhs> {}`
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + Y<Rhs> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Sub`) must be specified
+error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (from trait `Add`), `Output` (from trait `Sub`) must be specified
   --> $DIR/missing-associated-types.rs:18:21
    |
 LL |     type A;
@@ -99,10 +99,10 @@ LL | type Bat<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Fine<Rhs>;
    |                     |
    |                     first non-auto trait
    |
-   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: std::ops::Add<Rhs> + std::ops::Sub<Rhs> + Fine<Rhs> {}`
+   = help: consider creating a new trait with all of these as super-traits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + Fine<Rhs> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0191]: the value of the associated types `Output` (from trait `std::ops::Add`), `Output` (from trait `std::ops::Sub`) must be specified
+error[E0191]: the value of the associated types `Output` (from trait `Add`), `Output` (from trait `Sub`) must be specified
   --> $DIR/missing-associated-types.rs:21:21
    |
 LL | type Bat<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Fine<Rhs>;
@@ -115,11 +115,11 @@ help: specify the associated types
 LL | type Bat<Rhs> = dyn Add<Rhs, Output = Type> + Sub<Rhs, Output = Type> + Fine<Rhs>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0191]: the value of the associated types `Output` (from trait `std::ops::Div`), `Output` (from trait `std::ops::Mul`) must be specified
+error[E0191]: the value of the associated types `Output` (from trait `Div`), `Output` (from trait `Mul`) must be specified
   --> $DIR/missing-associated-types.rs:24:21
    |
 LL | type Bal<Rhs> = dyn X<Rhs>;
-   |                     ^^^^^^ associated types `Output` (from trait `std::ops::Mul`), `Output` (from trait `std::ops::Div`) must be specified
+   |                     ^^^^^^ associated types `Output` (from trait `Mul`), `Output` (from trait `Div`) must be specified
    |
    = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated types
 

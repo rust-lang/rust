@@ -128,7 +128,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
             GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
         };
 
-        match ty.kind {
+        match *ty.kind() {
             // The field is of type &'a T which means that we will have
             // a predicate requirement of T: 'a (T outlives 'a).
             //

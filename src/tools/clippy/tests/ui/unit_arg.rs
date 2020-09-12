@@ -1,5 +1,11 @@
 #![warn(clippy::unit_arg)]
-#![allow(clippy::no_effect, unused_must_use, unused_variables)]
+#![allow(
+    clippy::no_effect,
+    unused_must_use,
+    unused_variables,
+    clippy::unused_unit,
+    clippy::or_fun_call
+)]
 
 use std::fmt::Debug;
 
@@ -47,6 +53,11 @@ fn bad() {
             foo(3);
         },
     );
+    // here Some(foo(2)) isn't the top level statement expression, wrap the suggestion in a block
+    None.or(Some(foo(2)));
+    // in this case, the suggestion can be inlined, no need for a surrounding block
+    // foo(()); foo(()) instead of { foo(()); foo(()) }
+    foo(foo(()))
 }
 
 fn ok() {

@@ -3,5 +3,5 @@
 struct NotDebug;
 
 fn main() {
-    let _: NotDebug = dbg!(NotDebug); //~ ERROR `NotDebug` doesn't implement `std::fmt::Debug`
+    let _: NotDebug = dbg!(NotDebug); //~ ERROR `NotDebug` doesn't implement `Debug`
 }

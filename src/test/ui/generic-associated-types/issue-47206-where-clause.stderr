@@ -5,7 +5,7 @@ LL |     type Assoc3<T>;
    |     --------------- definition of `Assoc3` from trait
 ...
 LL |     type Assoc3<T> where T: Iterator = Vec<T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: std::iter::Iterator`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: Iterator`
 
 error: aborting due to previous error
 

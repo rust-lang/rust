@@ -726,12 +726,12 @@ fn sanitize_witness<'tcx>(
     saved_locals: &GeneratorSavedLocals,
 ) {
     let allowed_upvars = tcx.erase_regions(upvars);
-    let allowed = match witness.kind {
+    let allowed = match witness.kind() {
         ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
         _ => {
             tcx.sess.delay_span_bug(
                 body.span,
-                &format!("unexpected generator witness type {:?}", witness.kind),
+                &format!("unexpected generator witness type {:?}", witness.kind()),
             );
             return;
         }
@@ -1252,7 +1252,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         let gen_ty = body.local_decls.raw[1].ty;
 
         // Get the interior types and substs which typeck computed
-        let (upvars, interior, discr_ty, movable) = match gen_ty.kind {
+        let (upvars, interior, discr_ty, movable) = match *gen_ty.kind() {
             ty::Generator(_, substs, movability) => {
                 let substs = substs.as_generator();
                 (

@@ -16,29 +16,29 @@ error: malformed `derive` attribute input
 LL | #[derive]
    | ^^^^^^^^^ help: missing traits to be derived: `#[derive(Trait1, Trait2, ...)]`
 
-error[E0277]: the trait bound `Test1: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `Test1: Clone` is not satisfied
   --> $DIR/malformed-derive-entry.rs:1:10
    |
 LL | #[derive(Copy(Bad))]
-   |          ^^^^ the trait `std::clone::Clone` is not implemented for `Test1`
+   |          ^^^^ the trait `Clone` is not implemented for `Test1`
    | 
   ::: $SRC_DIR/core/src/marker.rs:LL:COL
    |
 LL | pub trait Copy: Clone {
-   |                 ----- required by this bound in `std::marker::Copy`
+   |                 ----- required by this bound in `Copy`
    |
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `Test2: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `Test2: Clone` is not satisfied
   --> $DIR/malformed-derive-entry.rs:6:10
    |
 LL | #[derive(Copy="bad")]
-   |          ^^^^ the trait `std::clone::Clone` is not implemented for `Test2`
+   |          ^^^^ the trait `Clone` is not implemented for `Test2`
    | 
   ::: $SRC_DIR/core/src/marker.rs:LL:COL
    |
 LL | pub trait Copy: Clone {
-   |                 ----- required by this bound in `std::marker::Copy`
+   |                 ----- required by this bound in `Copy`
    |
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

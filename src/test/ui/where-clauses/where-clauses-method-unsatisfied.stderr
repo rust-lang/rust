@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `Bar: std::cmp::Eq` is not satisfied
+error[E0277]: the trait bound `Bar: Eq` is not satisfied
   --> $DIR/where-clauses-method-unsatisfied.rs:18:14
    |
 LL |     x.equals(&x);
-   |              ^^ the trait `std::cmp::Eq` is not implemented for `Bar`
+   |              ^^ the trait `Eq` is not implemented for `Bar`
 
 error: aborting due to previous error
 

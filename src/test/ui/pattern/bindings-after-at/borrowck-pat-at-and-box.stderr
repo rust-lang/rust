@@ -74,7 +74,7 @@ error[E0382]: use of moved value
   --> $DIR/borrowck-pat-at-and-box.rs:21:18
    |
 LL |     let a @ box &b = Box::new(&C);
-   |         ---------^   ------------ move occurs because value has type `std::boxed::Box<&C>`, which does not implement the `Copy` trait
+   |         ---------^   ------------ move occurs because value has type `Box<&C>`, which does not implement the `Copy` trait
    |         |        |
    |         |        value used here after move
    |         value moved here
@@ -83,7 +83,7 @@ error[E0382]: use of moved value
   --> $DIR/borrowck-pat-at-and-box.rs:24:17
    |
 LL |     let a @ box b = Box::new(C);
-   |         --------^   ----------- move occurs because value has type `std::boxed::Box<C>`, which does not implement the `Copy` trait
+   |         --------^   ----------- move occurs because value has type `Box<C>`, which does not implement the `Copy` trait
    |         |       |
    |         |       value used here after move
    |         value moved here
@@ -92,7 +92,7 @@ error[E0382]: use of moved value
   --> $DIR/borrowck-pat-at-and-box.rs:34:17
    |
 LL |     match Box::new(C) {
-   |           ----------- move occurs because value has type `std::boxed::Box<C>`, which does not implement the `Copy` trait
+   |           ----------- move occurs because value has type `Box<C>`, which does not implement the `Copy` trait
 LL |         a @ box b => {}
    |         --------^
    |         |       |
@@ -143,7 +143,7 @@ LL |     fn f1(a @ box &b: Box<&C>) {}
    |           |        |
    |           |        value used here after move
    |           value moved here
-   |           move occurs because value has type `std::boxed::Box<&C>`, which does not implement the `Copy` trait
+   |           move occurs because value has type `Box<&C>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value
   --> $DIR/borrowck-pat-at-and-box.rs:30:19
@@ -153,7 +153,7 @@ LL |     fn f2(a @ box b: Box<C>) {}
    |           |       |
    |           |       value used here after move
    |           value moved here
-   |           move occurs because value has type `std::boxed::Box<C>`, which does not implement the `Copy` trait
+   |           move occurs because value has type `Box<C>`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-pat-at-and-box.rs:58:27

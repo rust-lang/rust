@@ -207,7 +207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(span) = result.illegal_sized_bound {
             let mut needs_mut = false;
-            if let ty::Ref(region, t_type, mutability) = self_ty.kind {
+            if let ty::Ref(region, t_type, mutability) = self_ty.kind() {
                 let trait_type = self
                     .tcx
                     .mk_ref(region, ty::TypeAndMut { ty: t_type, mutbl: mutability.invert() });
@@ -424,7 +424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
 
         // Check if we have an enum variant.
-        if let ty::Adt(adt_def, _) = self_ty.kind {
+        if let ty::Adt(adt_def, _) = self_ty.kind() {
             if adt_def.is_enum() {
                 let variant_def = adt_def
                     .variants

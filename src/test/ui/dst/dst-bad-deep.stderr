@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `[isize]` cannot be known at compilati
 LL |     let h: &Fat<Fat<[isize]>> = &Fat { ptr: *g };
    |                                  ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Fat<Fat<[isize]>>`, the trait `std::marker::Sized` is not implemented for `[isize]`
+   = help: within `Fat<Fat<[isize]>>`, the trait `Sized` is not implemented for `[isize]`
    = note: required because it appears within the type `Fat<[isize]>`
    = note: required because it appears within the type `Fat<Fat<[isize]>>`
    = note: structs must have a statically known size to be initialized

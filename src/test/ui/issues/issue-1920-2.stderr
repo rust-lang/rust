@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `bar::S: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `S: Clone` is not satisfied
   --> $DIR/issue-1920-2.rs:10:20
    |
 LL | fn assert_clone<T>() where T : Clone { }
    |                                ----- required by this bound in `assert_clone`
 ...
 LL |     assert_clone::<bar::S>();
-   |                    ^^^^^^ the trait `std::clone::Clone` is not implemented for `bar::S`
+   |                    ^^^^^^ the trait `Clone` is not implemented for `S`
 
 error: aborting due to previous error
 

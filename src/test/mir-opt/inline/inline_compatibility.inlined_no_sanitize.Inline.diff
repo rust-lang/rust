@@ -1,0 +1,25 @@
+- // MIR for `inlined_no_sanitize` before Inline
++ // MIR for `inlined_no_sanitize` after Inline
+  
+  fn inlined_no_sanitize() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/inline-compatibility.rs:24:37: 24:37
+      let _1: ();                          // in scope 0 at $DIR/inline-compatibility.rs:25:5: 25:18
++     scope 1 {
++     }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/inline-compatibility.rs:25:5: 25:18
+-         _1 = no_sanitize() -> bb1;       // scope 0 at $DIR/inline-compatibility.rs:25:5: 25:18
+-                                          // mir::Constant
+-                                          // + span: $DIR/inline-compatibility.rs:25:5: 25:16
+-                                          // + literal: Const { ty: unsafe fn() {no_sanitize}, val: Value(Scalar(<ZST>)) }
+-     }
+- 
+-     bb1: {
++         _1 = const ();                   // scope 1 at $DIR/inline-compatibility.rs:39:29: 39:31
+          StorageDead(_1);                 // scope 0 at $DIR/inline-compatibility.rs:25:18: 25:19
+          _0 = const ();                   // scope 0 at $DIR/inline-compatibility.rs:24:37: 26:2
+          return;                          // scope 0 at $DIR/inline-compatibility.rs:26:2: 26:2
+      }
+  }
+  

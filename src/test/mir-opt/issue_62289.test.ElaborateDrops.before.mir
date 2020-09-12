@@ -1,6 +1,6 @@
 // MIR for `test` before ElaborateDrops
 
-fn test() -> std::option::Option<std::boxed::Box<u32>> {
+fn test() -> Option<Box<u32>> {
     let mut _0: std::option::Option<std::boxed::Box<u32>>; // return place in scope 0 at $DIR/issue-62289.rs:8:14: 8:30
     let mut _1: std::boxed::Box<u32>;    // in scope 0 at $DIR/issue-62289.rs:9:10: 9:21
     let mut _2: std::boxed::Box<u32>;    // in scope 0 at $DIR/issue-62289.rs:9:10: 9:21
@@ -29,8 +29,8 @@ fn test() -> std::option::Option<std::boxed::Box<u32>> {
         _2 = Box(u32);                   // scope 0 at $DIR/issue-62289.rs:9:10: 9:21
         StorageLive(_3);                 // scope 0 at $DIR/issue-62289.rs:9:15: 9:20
         StorageLive(_4);                 // scope 0 at $DIR/issue-62289.rs:9:15: 9:19
-        _4 = std::option::Option::<u32>::None; // scope 0 at $DIR/issue-62289.rs:9:15: 9:19
-        _3 = <std::option::Option<u32> as std::ops::Try>::into_result(move _4) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/issue-62289.rs:9:15: 9:20
+        _4 = Option::<u32>::None;        // scope 0 at $DIR/issue-62289.rs:9:15: 9:19
+        _3 = <Option<u32> as Try>::into_result(move _4) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/issue-62289.rs:9:15: 9:20
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:15: 9:20
                                          // + literal: Const { ty: fn(std::option::Option<u32>) -> std::result::Result<<std::option::Option<u32> as std::ops::Try>::Ok, <std::option::Option<u32> as std::ops::Try>::Error> {<std::option::Option<u32> as std::ops::Try>::into_result}, val: Value(Scalar(<ZST>)) }
@@ -69,7 +69,7 @@ fn test() -> std::option::Option<std::boxed::Box<u32>> {
         StorageLive(_8);                 // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
         StorageLive(_9);                 // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
         _9 = _6;                         // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
-        _8 = <std::option::NoneError as std::convert::From<std::option::NoneError>>::from(move _9) -> [return: bb8, unwind: bb3]; // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
+        _8 = <NoneError as From<NoneError>>::from(move _9) -> [return: bb8, unwind: bb3]; // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:19: 9:20
                                          // + literal: Const { ty: fn(std::option::NoneError) -> std::option::NoneError {<std::option::NoneError as std::convert::From<std::option::NoneError>>::from}, val: Value(Scalar(<ZST>)) }
@@ -81,7 +81,7 @@ fn test() -> std::option::Option<std::boxed::Box<u32>> {
 
     bb8: {
         StorageDead(_9);                 // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
-        _0 = <std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error(move _8) -> [return: bb9, unwind: bb3]; // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
+        _0 = <Option<Box<u32>> as Try>::from_error(move _8) -> [return: bb9, unwind: bb3]; // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:15: 9:20
                                          // + literal: Const { ty: fn(<std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::Error) -> std::option::Option<std::boxed::Box<u32>> {<std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error}, val: Value(Scalar(<ZST>)) }
@@ -106,7 +106,7 @@ fn test() -> std::option::Option<std::boxed::Box<u32>> {
 
     bb12: {
         StorageDead(_2);                 // scope 0 at $DIR/issue-62289.rs:9:20: 9:21
-        _0 = std::option::Option::<std::boxed::Box<u32>>::Some(move _1); // scope 0 at $DIR/issue-62289.rs:9:5: 9:22
+        _0 = Option::<Box<u32>>::Some(move _1); // scope 0 at $DIR/issue-62289.rs:9:5: 9:22
         drop(_1) -> bb13;                // scope 0 at $DIR/issue-62289.rs:9:21: 9:22
     }
 

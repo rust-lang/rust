@@ -6,7 +6,7 @@ LL | fn bar<T: Sized>() { }
 LL | fn foo<T: ?Sized>() { bar::<T>() }
    |        -                    ^ doesn't have a size known at compile-time
    |        |
-   |        this type parameter needs to be `std::marker::Sized`
+   |        this type parameter needs to be `Sized`
 
 error: aborting due to previous error
 

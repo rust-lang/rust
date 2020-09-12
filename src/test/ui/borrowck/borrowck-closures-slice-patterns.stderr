@@ -30,7 +30,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/borrowck-closures-slice-patterns.rs:25:5
    |
 LL | fn arr_by_move(x: [String; 3]) {
-   |                - move occurs because `x` has type `[std::string::String; 3]`, which does not implement the `Copy` trait
+   |                - move occurs because `x` has type `[String; 3]`, which does not implement the `Copy` trait
 LL |     let f = || {
    |             -- value moved into closure here
 LL |         let [y, z @ ..] = x;
@@ -71,7 +71,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/borrowck-closures-slice-patterns.rs:51:5
    |
 LL | fn arr_box_by_move(x: Box<[String; 3]>) {
-   |                    - move occurs because `x` has type `std::boxed::Box<[std::string::String; 3]>`, which does not implement the `Copy` trait
+   |                    - move occurs because `x` has type `Box<[String; 3]>`, which does not implement the `Copy` trait
 LL |     let f = || {
    |             -- value moved into closure here
 LL |         let [y, z @ ..] = *x;

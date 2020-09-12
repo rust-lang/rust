@@ -13,10 +13,9 @@ LL | |         thing_two()
 LL | |     }.await
    | |_____- `if` and `else` have incompatible types
    |
-   = note:     expected type `impl std::future::Future` (opaque type at <$DIR/opaque-type-error.rs:8:19>)
-           found opaque type `impl std::future::Future` (opaque type at <$DIR/opaque-type-error.rs:12:19>)
+   = note:     expected type `impl Future` (opaque type at <$DIR/opaque-type-error.rs:8:19>)
+           found opaque type `impl Future` (opaque type at <$DIR/opaque-type-error.rs:12:19>)
    = note: distinct uses of `impl Trait` result in different opaque types
-   = help: if both `Future`s have the same `Output` type, consider `.await`ing on both of them
 
 error: aborting due to previous error
 

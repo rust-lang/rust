@@ -1,33 +1,33 @@
-error[E0277]: the trait bound `NotClone: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `NotClone: Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:15:14
    |
 LL | trait Tr {
    | -------- required by `Tr`
 LL |     type Ty: Clone = NotClone;
-   |              ^^^^^ the trait `std::clone::Clone` is not implemented for `NotClone`
+   |              ^^^^^ the trait `Clone` is not implemented for `NotClone`
 
-error[E0277]: the trait bound `NotClone: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `NotClone: Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:20:27
    |
 LL | trait Tr2 where Self::Ty: Clone {
    | --------------------------^^^^^
    | |                         |
-   | |                         the trait `std::clone::Clone` is not implemented for `NotClone`
+   | |                         the trait `Clone` is not implemented for `NotClone`
    | required by `Tr2`
 
-error[E0277]: the trait bound `T: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `T: Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:33:15
    |
 LL | trait Foo<T> {
    | ------------ required by `Foo`
 LL |     type Bar: Clone = Vec<T>;
-   |               ^^^^^ the trait `std::clone::Clone` is not implemented for `T`
+   |               ^^^^^ the trait `Clone` is not implemented for `T`
    |
-   = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<T>`
+   = note: required because of the requirements on the impl of `Clone` for `Vec<T>`
 help: consider restricting type parameter `T`
    |
-LL | trait Foo<T: std::clone::Clone> {
-   |            ^^^^^^^^^^^^^^^^^^^
+LL | trait Foo<T: Clone> {
+   |            ^^^^^^^
 
 error[E0277]: the trait bound `(): Foo<Self>` is not satisfied
   --> $DIR/defaults-suitability.rs:39:17
@@ -66,12 +66,12 @@ LL | |     type Assoc = NotClone;
 LL | | }
    | |_- required by `D`
 
-error[E0277]: the trait bound `NotClone: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `NotClone: Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:57:23
    |
 LL | / trait D where
 LL | |     Vec<Self::Assoc>: Clone,
-   | |                       ^^^^^ the trait `std::clone::Clone` is not implemented for `NotClone`
+   | |                       ^^^^^ the trait `Clone` is not implemented for `NotClone`
 LL | |
 LL | |     Self::Assoc: IsU8<Self::Assoc>,
 ...  |
@@ -79,43 +79,43 @@ LL | |     type Assoc = NotClone;
 LL | | }
    | |_- required by `D`
    |
-   = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<NotClone>`
+   = note: required because of the requirements on the impl of `Clone` for `Vec<NotClone>`
 
-error[E0277]: the trait bound `<Self as Foo2<T>>::Baz: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `<Self as Foo2<T>>::Baz: Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:72:15
    |
 LL | trait Foo2<T> {
    | ------------- required by `Foo2`
 LL |     type Bar: Clone = Vec<Self::Baz>;
-   |               ^^^^^ the trait `std::clone::Clone` is not implemented for `<Self as Foo2<T>>::Baz`
+   |               ^^^^^ the trait `Clone` is not implemented for `<Self as Foo2<T>>::Baz`
    |
-   = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<<Self as Foo2<T>>::Baz>`
+   = note: required because of the requirements on the impl of `Clone` for `Vec<<Self as Foo2<T>>::Baz>`
 help: consider further restricting the associated type
    |
-LL | trait Foo2<T> where <Self as Foo2<T>>::Baz: std::clone::Clone {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | trait Foo2<T> where <Self as Foo2<T>>::Baz: Clone {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `<Self as Foo25<T>>::Baz: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `<Self as Foo25<T>>::Baz: Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:81:15
    |
 LL | trait Foo25<T: Clone> {
    | --------------------- required by `Foo25`
 LL |     type Bar: Clone = Vec<Self::Baz>;
-   |               ^^^^^ the trait `std::clone::Clone` is not implemented for `<Self as Foo25<T>>::Baz`
+   |               ^^^^^ the trait `Clone` is not implemented for `<Self as Foo25<T>>::Baz`
    |
-   = note: required because of the requirements on the impl of `std::clone::Clone` for `std::vec::Vec<<Self as Foo25<T>>::Baz>`
+   = note: required because of the requirements on the impl of `Clone` for `Vec<<Self as Foo25<T>>::Baz>`
 help: consider further restricting the associated type
    |
-LL | trait Foo25<T: Clone> where <Self as Foo25<T>>::Baz: std::clone::Clone {
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | trait Foo25<T: Clone> where <Self as Foo25<T>>::Baz: Clone {
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `T: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `T: Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:90:16
    |
 LL | / trait Foo3<T> where
 LL | |     Self::Bar: Clone,
 LL | |     Self::Baz: Clone,
-   | |                ^^^^^ the trait `std::clone::Clone` is not implemented for `T`
+   | |                ^^^^^ the trait `Clone` is not implemented for `T`
 LL | |
 ...  |
 LL | |     type Baz = T;
@@ -124,8 +124,8 @@ LL | | }
    |
 help: consider further restricting type parameter `T`
    |
-LL |     Self::Baz: Clone, T: std::clone::Clone
-   |                     ^^^^^^^^^^^^^^^^^^^^^^
+LL |     Self::Baz: Clone, T: Clone
+   |                     ^^^^^^^^^^
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/defaults-suitability.rs:27:5
@@ -136,9 +136,9 @@ LL |     type Ty = Vec<[u8]>;
   ::: $SRC_DIR/alloc/src/vec.rs:LL:COL
    |
 LL | pub struct Vec<T> {
-   |                - required by this bound in `std::vec::Vec`
+   |                - required by this bound in `Vec`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = help: the trait `Sized` is not implemented for `[u8]`
 
 error: aborting due to 11 previous errors
 

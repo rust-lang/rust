@@ -46,25 +46,25 @@ error[E0511]: invalid monomorphization of `atomic_cxchg` intrinsic: expected bas
 LL |     intrinsics::atomic_cxchg(p, v, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `atomic_load` intrinsic: expected basic integer type, found `&dyn std::ops::Fn()`
+error[E0511]: invalid monomorphization of `atomic_load` intrinsic: expected basic integer type, found `&dyn Fn()`
   --> $DIR/non-integer-atomic.rs:55:5
    |
 LL |     intrinsics::atomic_load(p);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `atomic_store` intrinsic: expected basic integer type, found `&dyn std::ops::Fn()`
+error[E0511]: invalid monomorphization of `atomic_store` intrinsic: expected basic integer type, found `&dyn Fn()`
   --> $DIR/non-integer-atomic.rs:60:5
    |
 LL |     intrinsics::atomic_store(p, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `atomic_xchg` intrinsic: expected basic integer type, found `&dyn std::ops::Fn()`
+error[E0511]: invalid monomorphization of `atomic_xchg` intrinsic: expected basic integer type, found `&dyn Fn()`
   --> $DIR/non-integer-atomic.rs:65:5
    |
 LL |     intrinsics::atomic_xchg(p, v);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `atomic_cxchg` intrinsic: expected basic integer type, found `&dyn std::ops::Fn()`
+error[E0511]: invalid monomorphization of `atomic_cxchg` intrinsic: expected basic integer type, found `&dyn Fn()`
   --> $DIR/non-integer-atomic.rs:70:5
    |
 LL |     intrinsics::atomic_cxchg(p, v, v);

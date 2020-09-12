@@ -77,7 +77,8 @@ impl<'a, K: 'a, V: 'a> BTreeMap<K, V> {
                     let min_len = if is_root { 0 } else { node::MIN_LEN };
                     assert!(node.len() >= min_len, "{} < {}", node.len(), min_len);
 
-                    for &key in node.keys() {
+                    for idx in 0..node.len() {
+                        let key = *unsafe { node.key_at(idx) };
                         checker.is_ascending(key);
                     }
                     leaf_length += node.len();
@@ -120,7 +121,13 @@ impl<'a, K: 'a, V: 'a> BTreeMap<K, V> {
                 Position::Leaf(leaf) => {
                     let depth = root_node.height();
                     let indent = "  ".repeat(depth);
-                    result += &format!("\n{}{:?}", indent, leaf.keys())
+                    result += &format!("\n{}", indent);
+                    for idx in 0..leaf.len() {
+                        if idx > 0 {
+                            result += ", ";
+                        }
+                        result += &format!("{:?}", unsafe { leaf.key_at(idx) });
+                    }
                 }
                 Position::Internal(_) => {}
                 Position::InternalKV(kv) => {
@@ -432,7 +439,6 @@ fn test_iter_mut_mutation() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // FIXME: fails in Miri <https://github.com/rust-lang/rust/issues/73915>
 fn test_values_mut() {
     let mut a: BTreeMap<_, _> = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i)).collect();
     test_all_refs(&mut 13, a.values_mut());
@@ -455,7 +461,6 @@ fn test_values_mut_mutation() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // FIXME: fails in Miri <https://github.com/rust-lang/rust/issues/73915>
 fn test_iter_entering_root_twice() {
     let mut map: BTreeMap<_, _> = (0..2).map(|i| (i, i)).collect();
     let mut it = map.iter_mut();
@@ -471,7 +476,6 @@ fn test_iter_entering_root_twice() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // FIXME: fails in Miri <https://github.com/rust-lang/rust/issues/73915>
 fn test_iter_descending_to_same_node_twice() {
     let mut map: BTreeMap<_, _> = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i)).collect();
     let mut it = map.iter_mut();
@@ -515,7 +519,6 @@ fn test_iter_mixed() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // FIXME: fails in Miri <https://github.com/rust-lang/rust/issues/73915>
 fn test_iter_min_max() {
     let mut a = BTreeMap::new();
     assert_eq!(a.iter().min(), None);

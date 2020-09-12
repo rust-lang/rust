@@ -261,6 +261,9 @@ pub struct Config {
     /// Path to / name of the Microsoft Console Debugger (CDB) executable
     pub cdb: Option<OsString>,
 
+    /// Version of CDB
+    pub cdb_version: Option<[u16; 4]>,
+
     /// Path to / name of the GDB executable
     pub gdb: Option<String>,
 

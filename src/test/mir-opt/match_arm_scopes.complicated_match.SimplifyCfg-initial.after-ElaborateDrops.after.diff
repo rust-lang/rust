@@ -1,7 +1,7 @@
 - // MIR for `complicated_match` after SimplifyCfg-initial
 + // MIR for `complicated_match` after ElaborateDrops
   
-  fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
+  fn complicated_match(_1: bool, _2: (bool, bool, String)) -> i32 {
       debug cond => _1;                    // in scope 0 at $DIR/match-arm-scopes.rs:13:22: 13:26
       debug items => _2;                   // in scope 0 at $DIR/match-arm-scopes.rs:13:34: 13:39
       let mut _0: i32;                     // return place in scope 0 at $DIR/match-arm-scopes.rs:13:66: 13:69

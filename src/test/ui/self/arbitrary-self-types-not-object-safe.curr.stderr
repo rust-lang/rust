@@ -26,8 +26,8 @@ LL |     fn foo(self: &Rc<Self>) -> usize;
 LL |     let x = Rc::new(5usize) as Rc<dyn Foo>;
    |             ^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
    |
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::rc::Rc<dyn Foo>>` for `std::rc::Rc<usize>`
-   = note: required by cast to type `std::rc::Rc<dyn Foo>`
+   = note: required because of the requirements on the impl of `CoerceUnsized<Rc<dyn Foo>>` for `Rc<usize>`
+   = note: required by cast to type `Rc<dyn Foo>`
 
 error: aborting due to 2 previous errors
 

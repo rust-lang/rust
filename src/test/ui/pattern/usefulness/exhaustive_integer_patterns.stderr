@@ -77,7 +77,7 @@ LL |     match (0u8, Some(())) {
    |           ^^^^^^^^^^^^^^^ patterns `(0_u8, Some(_))` and `(2_u8..=u8::MAX, Some(_))` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `(u8, std::option::Option<()>)`
+   = note: the matched value is of type `(u8, Option<()>)`
 
 error[E0004]: non-exhaustive patterns: `(126_u8..=127_u8, false)` not covered
   --> $DIR/exhaustive_integer_patterns.rs:126:11

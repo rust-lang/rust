@@ -1,4 +1,4 @@
-error[E0367]: `Drop` impl requires `T: std::marker::Sized` but the struct it is implemented for does not
+error[E0367]: `Drop` impl requires `T: Sized` but the struct it is implemented for does not
   --> $DIR/issue-17959.rs:11:6
    |
 LL | impl<T> Drop for G<T> {

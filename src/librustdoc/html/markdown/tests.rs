@@ -1,4 +1,4 @@
-use super::plain_summary_line;
+use super::plain_text_summary;
 use super::{ErrorCodes, IdMap, Ignore, LangString, Markdown, MarkdownHtml};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use std::cell::RefCell;
@@ -205,18 +205,25 @@ fn test_header_ids_multiple_blocks() {
 }
 
 #[test]
-fn test_plain_summary_line() {
+fn test_plain_text_summary() {
     fn t(input: &str, expect: &str) {
-        let output = plain_summary_line(input);
+        let output = plain_text_summary(input);
         assert_eq!(output, expect, "original: {}", input);
     }
 
     t("hello [Rust](https://www.rust-lang.org) :)", "hello Rust :)");
+    t("**bold**", "bold");
+    t("Multi-line\nsummary", "Multi-line summary");
+    t("Hard-break  \nsummary", "Hard-break summary");
+    t("hello [Rust] :)\n\n[Rust]: https://www.rust-lang.org", "hello Rust :)");
     t("hello [Rust](https://www.rust-lang.org \"Rust\") :)", "hello Rust :)");
     t("code `let x = i32;` ...", "code `let x = i32;` ...");
     t("type `Type<'static>` ...", "type `Type<'static>` ...");
     t("# top header", "top header");
     t("## header", "header");
+    t("first paragraph\n\nsecond paragraph", "first paragraph");
+    t("```\nfn main() {}\n```", "");
+    t("<div>hello</div>", "");
 }
 
 #[test]

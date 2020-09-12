@@ -232,7 +232,8 @@ error: lifetime name `'x` only used once
 
 ## trivial-casts
 
-This lint detects trivial casts which could be removed. Some example code
+This lint detects trivial casts which could be replaced with coercion, which may require
+type ascription or a temporary variable. Some example code
 that triggers this lint:
 
 ```rust

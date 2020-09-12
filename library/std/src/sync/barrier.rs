@@ -16,7 +16,7 @@ use crate::sync::{Condvar, Mutex};
 /// let mut handles = Vec::with_capacity(10);
 /// let barrier = Arc::new(Barrier::new(10));
 /// for _ in 0..10 {
-///     let c = barrier.clone();
+///     let c = Arc::clone(&barrier);
 ///     // The same messages will be printed together.
 ///     // You will NOT see any interleaving.
 ///     handles.push(thread::spawn(move|| {
@@ -113,7 +113,7 @@ impl Barrier {
     /// let mut handles = Vec::with_capacity(10);
     /// let barrier = Arc::new(Barrier::new(10));
     /// for _ in 0..10 {
-    ///     let c = barrier.clone();
+    ///     let c = Arc::clone(&barrier);
     ///     // The same messages will be printed together.
     ///     // You will NOT see any interleaving.
     ///     handles.push(thread::spawn(move|| {

@@ -2,10 +2,10 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:7:5
    |
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `std::string::String`
+   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
    |
-   = note: cannot satisfy `std::string::String: std::convert::From<&_>`
-   = note: required by `std::convert::From::from`
+   = note: cannot satisfy `String: From<&_>`
+   = note: required by `from`
 
 error[E0282]: type annotations needed
   --> $DIR/issue-72690.rs:11:6
@@ -19,68 +19,68 @@ error[E0283]: type annotations needed
 LL |     let _ = "x".as_ref();
    |                 ^^^^^^ cannot infer type for type `str`
    |
-   = note: cannot satisfy `str: std::convert::AsRef<_>`
+   = note: cannot satisfy `str: AsRef<_>`
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:19:5
    |
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `std::string::String`
+   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
    |
-   = note: cannot satisfy `std::string::String: std::convert::From<&_>`
-   = note: required by `std::convert::From::from`
+   = note: cannot satisfy `String: From<&_>`
+   = note: required by `from`
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:25:5
    |
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `std::string::String`
+   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
    |
-   = note: cannot satisfy `std::string::String: std::convert::From<&_>`
-   = note: required by `std::convert::From::from`
+   = note: cannot satisfy `String: From<&_>`
+   = note: required by `from`
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:33:5
    |
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `std::string::String`
+   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
    |
-   = note: cannot satisfy `std::string::String: std::convert::From<&_>`
-   = note: required by `std::convert::From::from`
+   = note: cannot satisfy `String: From<&_>`
+   = note: required by `from`
 
-error[E0283]: type annotations needed for `std::string::String`
+error[E0283]: type annotations needed for `String`
   --> $DIR/issue-72690.rs:41:5
    |
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `std::string::String`
+   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
 LL |     let _ = String::from("x");
    |         - consider giving this pattern a type
    |
-   = note: cannot satisfy `std::string::String: std::convert::From<&_>`
-   = note: required by `std::convert::From::from`
+   = note: cannot satisfy `String: From<&_>`
+   = note: required by `from`
 
-error[E0283]: type annotations needed for `std::string::String`
+error[E0283]: type annotations needed for `String`
   --> $DIR/issue-72690.rs:47:5
    |
 LL |     let _ = String::from("x");
    |         - consider giving this pattern a type
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `std::string::String`
+   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
    |
-   = note: cannot satisfy `std::string::String: std::convert::From<&_>`
-   = note: required by `std::convert::From::from`
+   = note: cannot satisfy `String: From<&_>`
+   = note: required by `from`
 
-error[E0283]: type annotations needed for `std::string::String`
+error[E0283]: type annotations needed for `String`
   --> $DIR/issue-72690.rs:55:5
    |
 LL |     let _ = String::from("x");
    |         - consider giving this pattern a type
 ...
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `std::string::String`
+   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
    |
-   = note: cannot satisfy `std::string::String: std::convert::From<&_>`
-   = note: required by `std::convert::From::from`
+   = note: cannot satisfy `String: From<&_>`
+   = note: required by `from`
 
 error: aborting due to 9 previous errors
 

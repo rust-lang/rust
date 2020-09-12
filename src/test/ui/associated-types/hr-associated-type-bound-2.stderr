@@ -5,7 +5,7 @@ LL |     1u32.f("abc");
    |          ^ method not found in `u32`
    |
    = note: the method `f` exists but the following trait bounds were not satisfied:
-           `<u32 as X<'b>>::U: std::clone::Clone`
+           `<u32 as X<'b>>::U: Clone`
            which is required by `u32: X`
 
 error: aborting due to previous error

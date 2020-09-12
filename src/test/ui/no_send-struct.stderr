@@ -7,7 +7,7 @@ LL | fn bar<T: Send>(_: T) {}
 LL |     bar(x);
    |         ^ `Foo` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `Foo`
+   = help: the trait `Send` is not implemented for `Foo`
 
 error: aborting due to previous error
 

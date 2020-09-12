@@ -233,26 +233,26 @@ LL |     let foo = || {
 LL |         let _ = await!(bar())?;
    |                 ^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
-error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/incorrect-syntax-suggestions.rs:16:19
    |
 LL |     let _ = await bar()?;
    |                   ^^^^^^
    |                   |
-   |                   the `?` operator cannot be applied to type `impl std::future::Future`
+   |                   the `?` operator cannot be applied to type `impl Future`
    |                   help: consider using `.await` here: `bar().await?`
    |
-   = help: the trait `std::ops::Try` is not implemented for `impl std::future::Future`
-   = note: required by `std::ops::Try::into_result`
+   = help: the trait `Try` is not implemented for `impl Future`
+   = note: required by `into_result`
 
-error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/incorrect-syntax-suggestions.rs:63:19
    |
 LL |     let _ = await bar()?;
-   |                   ^^^^^^ the `?` operator cannot be applied to type `impl std::future::Future`
+   |                   ^^^^^^ the `?` operator cannot be applied to type `impl Future`
    |
-   = help: the trait `std::ops::Try` is not implemented for `impl std::future::Future`
-   = note: required by `std::ops::Try::into_result`
+   = help: the trait `Try` is not implemented for `impl Future`
+   = note: required by `into_result`
 
 error: aborting due to 36 previous errors
 

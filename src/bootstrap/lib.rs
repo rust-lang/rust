@@ -103,8 +103,6 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-#![feature(drain_filter)]
-
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -299,9 +297,6 @@ pub enum Mode {
 
     /// Build librustc, and compiler libraries, placing output in the "stageN-rustc" directory.
     Rustc,
-
-    /// Build codegen libraries, placing output in the "stageN-codegen" directory
-    Codegen,
 
     /// Build a tool, placing output in the "stage0-bootstrap-tools"
     /// directory. This is for miscellaneous sets of tools that are built
@@ -572,7 +567,6 @@ impl Build {
         let suffix = match mode {
             Mode::Std => "-std",
             Mode::Rustc => "-rustc",
-            Mode::Codegen => "-codegen",
             Mode::ToolBootstrap => "-bootstrap-tools",
             Mode::ToolStd | Mode::ToolRustc => "-tools",
         };
@@ -850,7 +844,7 @@ impl Build {
     }
 
     /// Returns the path to the linker for the given target if it needs to be overridden.
-    fn linker(&self, target: TargetSelection, can_use_lld: bool) -> Option<&Path> {
+    fn linker(&self, target: TargetSelection) -> Option<&Path> {
         if let Some(linker) = self.config.target_config.get(&target).and_then(|c| c.linker.as_ref())
         {
             Some(linker)
@@ -863,11 +857,17 @@ impl Build {
             && !target.contains("msvc")
         {
             Some(self.cc(target))
-        } else if can_use_lld && self.config.use_lld && self.build == target {
+        } else if self.config.use_lld && !self.is_fuse_ld_lld(target) && self.build == target {
             Some(&self.initial_lld)
         } else {
             None
         }
+    }
+
+    // LLD is used through `-fuse-ld=lld` rather than directly.
+    // Only MSVC targets use LLD directly at the moment.
+    fn is_fuse_ld_lld(&self, target: TargetSelection) -> bool {
+        self.config.use_lld && !target.contains("msvc")
     }
 
     /// Returns if this target should statically link the C runtime, if specified

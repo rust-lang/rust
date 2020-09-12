@@ -1,4 +1,4 @@
-error[E0200]: the trait `lib::Foo` requires an `unsafe impl` declaration
+error[E0200]: the trait `Foo` requires an `unsafe impl` declaration
   --> $DIR/trait-safety-trait-impl-cc.rs:9:1
    |
 LL | / impl lib::Foo for Bar {

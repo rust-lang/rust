@@ -680,7 +680,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn type_var_diverges(&'a self, ty: Ty<'_>) -> bool {
-        match ty.kind {
+        match *ty.kind() {
             ty::Infer(ty::TyVar(vid)) => self.inner.borrow_mut().type_variables().var_diverges(vid),
             _ => false,
         }
@@ -693,7 +693,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn type_is_unconstrained_numeric(&'a self, ty: Ty<'_>) -> UnconstrainedNumeric {
         use rustc_middle::ty::error::UnconstrainedNumeric::Neither;
         use rustc_middle::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
-        match ty.kind {
+        match *ty.kind() {
             ty::Infer(ty::IntVar(vid)) => {
                 if self.inner.borrow_mut().int_unification_table().probe_value(vid).is_some() {
                     Neither
@@ -1557,7 +1557,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// not a type variable, just return it unmodified.
     // FIXME(eddyb) inline into `ShallowResolver::visit_ty`.
     fn shallow_resolve_ty(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        match typ.kind {
+        match *typ.kind() {
             ty::Infer(ty::TyVar(v)) => {
                 // Not entirely obvious: if `typ` is a type variable,
                 // it can be resolved to an int/float variable, which
@@ -1677,7 +1677,7 @@ impl TyOrConstInferVar<'tcx> {
     /// Tries to extract an inference variable from a type, returns `None`
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`).
     pub fn maybe_from_ty(ty: Ty<'tcx>) -> Option<Self> {
-        match ty.kind {
+        match *ty.kind() {
             ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
             ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
             ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),

@@ -19,6 +19,7 @@ pub mod paths;
 pub mod ptr;
 pub mod sugg;
 pub mod usage;
+
 pub use self::attrs::*;
 pub use self::diagnostics::*;
 pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
@@ -108,6 +109,7 @@ pub fn in_macro(span: Span) -> bool {
         false
     }
 }
+
 // If the snippet is empty, it's an attribute that was inserted during macro
 // expansion and we want to ignore those, because they could come from external
 // sources that the user has no control over.
@@ -129,7 +131,7 @@ pub fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
 
 /// Checks if type is struct, enum or union type with the given def path.
 pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::Adt(adt, _) => match_def_path(cx, adt.did, path),
         _ => false,
     }
@@ -137,7 +139,7 @@ pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
 
 /// Checks if the type is equal to a diagnostic item
 pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
         _ => false,
     }
@@ -145,7 +147,7 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
 
 /// Checks if the type is equal to a lang item
 pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::Adt(adt, _) => cx.tcx.lang_items().require(lang_item).unwrap() == adt.did,
         _ => false,
     }
@@ -571,7 +573,7 @@ pub fn snippet_block<'a, T: LintContext>(
 ) -> Cow<'a, str> {
     let snip = snippet(cx, span, default);
     let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
-    trim_multiline(snip, true, indent)
+    reindent_multiline(snip, true, indent)
 }
 
 /// Same as `snippet_block`, but adapts the applicability level by the rules of
@@ -585,7 +587,7 @@ pub fn snippet_block_with_applicability<'a, T: LintContext>(
 ) -> Cow<'a, str> {
     let snip = snippet_with_applicability(cx, span, default, applicability);
     let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
-    trim_multiline(snip, true, indent)
+    reindent_multiline(snip, true, indent)
 }
 
 /// Returns a new Span that extends the original Span to the first non-whitespace char of the first
@@ -661,16 +663,16 @@ pub fn expr_block<'a, T: LintContext>(
     }
 }
 
-/// Trim indentation from a multiline string with possibility of ignoring the
-/// first line.
-fn trim_multiline(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>) -> Cow<'_, str> {
-    let s_space = trim_multiline_inner(s, ignore_first, indent, ' ');
-    let s_tab = trim_multiline_inner(s_space, ignore_first, indent, '\t');
-    trim_multiline_inner(s_tab, ignore_first, indent, ' ')
+/// Reindent a multiline string with possibility of ignoring the first line.
+#[allow(clippy::needless_pass_by_value)]
+pub fn reindent_multiline(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>) -> Cow<'_, str> {
+    let s_space = reindent_multiline_inner(&s, ignore_first, indent, ' ');
+    let s_tab = reindent_multiline_inner(&s_space, ignore_first, indent, '\t');
+    reindent_multiline_inner(&s_tab, ignore_first, indent, ' ').into()
 }
 
-fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>, ch: char) -> Cow<'_, str> {
-    let mut x = s
+fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, ch: char) -> String {
+    let x = s
         .lines()
         .skip(ignore_first as usize)
         .filter_map(|l| {
@@ -683,26 +685,20 @@ fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, indent: Option<usiz
         })
         .min()
         .unwrap_or(0);
-    if let Some(indent) = indent {
-        x = x.saturating_sub(indent);
-    }
-    if x > 0 {
-        Cow::Owned(
-            s.lines()
-                .enumerate()
-                .map(|(i, l)| {
-                    if (ignore_first && i == 0) || l.is_empty() {
-                        l
-                    } else {
-                        l.split_at(x).1
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join("\n"),
-        )
-    } else {
-        s
-    }
+    let indent = indent.unwrap_or(0);
+    s.lines()
+        .enumerate()
+        .map(|(i, l)| {
+            if (ignore_first && i == 0) || l.is_empty() {
+                l.to_owned()
+            } else if x > indent {
+                l.split_at(x - indent).1.to_owned()
+            } else {
+                " ".repeat(indent - x) + l
+            }
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
 }
 
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
@@ -754,7 +750,7 @@ pub fn walk_ptrs_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
 
 /// Returns the base type for references and raw pointers.
 pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
-    match ty.kind {
+    match ty.kind() {
         ty::Ref(_, ty, _) => walk_ptrs_ty(ty),
         _ => ty,
     }
@@ -764,7 +760,7 @@ pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
 /// depth.
 pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
     fn inner(ty: Ty<'_>, depth: usize) -> (Ty<'_>, usize) {
-        match ty.kind {
+        match ty.kind() {
             ty::Ref(_, ty, _) => inner(ty, depth + 1),
             _ => (ty, depth),
         }
@@ -877,7 +873,7 @@ pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
 
 /// Returns `true` if the given type is an `unsafe` function.
 pub fn type_is_unsafe_function<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::FnDef(..) | ty::FnPtr(_) => ty.fn_sig(cx.tcx).unsafety() == Unsafety::Unsafe,
         _ => false,
     }
@@ -899,7 +895,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_
             return match res {
                 def::Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
                 // FIXME: check the constness of the arguments, see https://github.com/rust-lang/rust-clippy/pull/5682#issuecomment-638681210
-                def::Res::Def(DefKind::Fn, def_id) if has_no_arguments(cx, def_id) => {
+                def::Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) if has_no_arguments(cx, def_id) => {
                     const_eval::is_const_fn(cx.tcx, def_id)
                 },
                 def::Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
@@ -942,7 +938,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
             is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats.iter().map(|pat| &**pat))
         },
         PatKind::Slice(ref head, ref middle, ref tail) => {
-            match &cx.typeck_results().node_type(pat.hir_id).kind {
+            match &cx.typeck_results().node_type(pat.hir_id).kind() {
                 ty::Slice(..) => {
                     // [..] is the only irrefutable slice pattern.
                     !head.is_empty() || middle.is_none() || !tail.is_empty()
@@ -1156,12 +1152,12 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
         &paths::RECEIVER,
     ];
 
-    let ty_to_check = match probably_ref_ty.kind {
+    let ty_to_check = match probably_ref_ty.kind() {
         ty::Ref(_, ty_to_check, _) => ty_to_check,
         _ => probably_ref_ty,
     };
 
-    let def_id = match ty_to_check.kind {
+    let def_id = match ty_to_check.kind() {
         ty::Array(..) => return Some("array"),
         ty::Slice(..) => return Some("slice"),
         ty::Adt(adt, _) => adt.did,
@@ -1277,7 +1273,7 @@ pub fn must_use_attr(attrs: &[Attribute]) -> Option<&Attribute> {
 
 // Returns whether the type has #[must_use] attribute
 pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::Adt(ref adt, _) => must_use_attr(&cx.tcx.get_attrs(adt.did)).is_some(),
         ty::Foreign(ref did) => must_use_attr(&cx.tcx.get_attrs(*did)).is_some(),
         ty::Slice(ref ty)
@@ -1409,9 +1405,9 @@ pub fn run_lints(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bo
 /// Returns true iff the given type is a primitive (a bool or char, any integer or floating-point
 /// number type, a str, or an array, slice, or tuple of those types).
 pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
-        ty::Ref(_, inner, _) if inner.kind == ty::Str => true,
+        ty::Ref(_, inner, _) if *inner.kind() == ty::Str => true,
         ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
         ty::Tuple(inner_types) => inner_types.types().all(is_recursively_primitive_type),
         _ => false,
@@ -1423,24 +1419,23 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
 /// `is_recursively_primitive_type` function) and None otherwise.
 pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
-    let expr_kind = &expr_type.kind;
+    let expr_kind = expr_type.kind();
     let is_primitive = match expr_kind {
-        ty::Slice(ref element_type)
-        | ty::Ref(
-            _,
-            ty::TyS {
-                kind: ty::Slice(ref element_type),
-                ..
-            },
-            _,
-        ) => is_recursively_primitive_type(element_type),
+        ty::Slice(element_type) => is_recursively_primitive_type(element_type),
+        ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), &ty::Slice(_)) => {
+            if let ty::Slice(element_type) = inner_ty.kind() {
+                is_recursively_primitive_type(element_type)
+            } else {
+                unreachable!()
+            }
+        },
         _ => false,
     };
 
     if is_primitive {
         // if we have wrappers like Array, Slice or Tuple, print these
         // and get the type enclosed in the slice ref
-        match expr_type.peel_refs().walk().nth(1).unwrap().expect_ty().kind {
+        match expr_type.peel_refs().walk().nth(1).unwrap().expect_ty().kind() {
             ty::Slice(..) => return Some("slice".into()),
             ty::Array(..) => return Some("array".into()),
             ty::Tuple(..) => return Some("tuple".into()),
@@ -1475,26 +1470,26 @@ macro_rules! unwrap_cargo_metadata {
 
 #[cfg(test)]
 mod test {
-    use super::{trim_multiline, without_block_comments};
+    use super::{reindent_multiline, without_block_comments};
 
     #[test]
-    fn test_trim_multiline_single_line() {
-        assert_eq!("", trim_multiline("".into(), false, None));
-        assert_eq!("...", trim_multiline("...".into(), false, None));
-        assert_eq!("...", trim_multiline("    ...".into(), false, None));
-        assert_eq!("...", trim_multiline("\t...".into(), false, None));
-        assert_eq!("...", trim_multiline("\t\t...".into(), false, None));
+    fn test_reindent_multiline_single_line() {
+        assert_eq!("", reindent_multiline("".into(), false, None));
+        assert_eq!("...", reindent_multiline("...".into(), false, None));
+        assert_eq!("...", reindent_multiline("    ...".into(), false, None));
+        assert_eq!("...", reindent_multiline("\t...".into(), false, None));
+        assert_eq!("...", reindent_multiline("\t\t...".into(), false, None));
     }
 
     #[test]
     #[rustfmt::skip]
-    fn test_trim_multiline_block() {
+    fn test_reindent_multiline_block() {
         assert_eq!("\
     if x {
         y
     } else {
         z
-    }", trim_multiline("    if x {
+    }", reindent_multiline("    if x {
             y
         } else {
             z
@@ -1504,7 +1499,7 @@ mod test {
     \ty
     } else {
     \tz
-    }", trim_multiline("    if x {
+    }", reindent_multiline("    if x {
         \ty
         } else {
         \tz
@@ -1513,19 +1508,35 @@ mod test {
 
     #[test]
     #[rustfmt::skip]
-    fn test_trim_multiline_empty_line() {
+    fn test_reindent_multiline_empty_line() {
         assert_eq!("\
     if x {
         y
 
     } else {
         z
-    }", trim_multiline("    if x {
+    }", reindent_multiline("    if x {
             y
 
         } else {
             z
         }".into(), false, None));
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn test_reindent_multiline_lines_deeper() {
+        assert_eq!("\
+        if x {
+            y
+        } else {
+            z
+        }", reindent_multiline("\
+    if x {
+        y
+    } else {
+        z
+    }".into(), true, Some(8)));
     }
 
     #[test]

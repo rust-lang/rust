@@ -116,7 +116,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         //   * no metadata available - just log the case
         //   * known alignment - sized types, `[T]`, `str` or a foreign type
         //   * packed struct - there is no alignment padding
-        match field.ty.kind {
+        match field.ty.kind() {
             _ if self.llextra.is_none() => {
                 debug!(
                     "unsized field `{}`, of `{:?}` has no metadata for adjustment",

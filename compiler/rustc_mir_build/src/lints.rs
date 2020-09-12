@@ -70,7 +70,7 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
         let param_env = tcx.param_env(def_id);
 
         let func_ty = func.ty(body, tcx);
-        if let ty::FnDef(fn_def_id, substs) = func_ty.kind {
+        if let ty::FnDef(fn_def_id, substs) = *func_ty.kind() {
             let (call_fn_id, call_substs) =
                 if let Ok(Some(instance)) = Instance::resolve(tcx, param_env, fn_def_id, substs) {
                     (instance.def_id(), instance.substs)
@@ -117,7 +117,7 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
             // A diverging InlineAsm is treated as non-recursing
             TerminatorKind::InlineAsm { destination, .. } => {
                 if destination.is_some() {
-                    ControlFlow::Continue
+                    ControlFlow::CONTINUE
                 } else {
                     ControlFlow::Break(NonRecursive)
                 }
@@ -131,7 +131,7 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Goto { .. }
-            | TerminatorKind::SwitchInt { .. } => ControlFlow::Continue,
+            | TerminatorKind::SwitchInt { .. } => ControlFlow::CONTINUE,
         }
     }
 
@@ -144,7 +144,7 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
             }
         }
 
-        ControlFlow::Continue
+        ControlFlow::CONTINUE
     }
 
     fn ignore_edge(&mut self, bb: BasicBlock, target: BasicBlock) -> bool {

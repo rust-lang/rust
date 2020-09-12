@@ -1418,7 +1418,7 @@ impl EncodeContext<'a, 'tcx> {
         let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let ty = self.tcx.typeck(def_id).node_type(hir_id);
 
-        record!(self.tables.kind[def_id.to_def_id()] <- match ty.kind {
+        record!(self.tables.kind[def_id.to_def_id()] <- match ty.kind() {
             ty::Generator(..) => {
                 let data = self.tcx.generator_kind(def_id).unwrap();
                 EntryKind::Generator(data)
@@ -1432,7 +1432,7 @@ impl EncodeContext<'a, 'tcx> {
         record!(self.tables.span[def_id.to_def_id()] <- self.tcx.def_span(def_id));
         record!(self.tables.attributes[def_id.to_def_id()] <- &self.tcx.get_attrs(def_id.to_def_id())[..]);
         self.encode_item_type(def_id.to_def_id());
-        if let ty::Closure(def_id, substs) = ty.kind {
+        if let ty::Closure(def_id, substs) = *ty.kind() {
             record!(self.tables.fn_sig[def_id] <- substs.as_closure().sig());
         }
         self.encode_generics(def_id.to_def_id());

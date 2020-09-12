@@ -96,7 +96,7 @@ pub extern "C" fn zero_size_phantom(p: ZeroSizeWithPhantomData) { }
 //~^ ERROR uses type `ZeroSizeWithPhantomData`
 
 pub extern "C" fn zero_size_phantom_toplevel() -> PhantomData<bool> {
-//~^ ERROR uses type `std::marker::PhantomData<bool>`
+//~^ ERROR uses type `PhantomData<bool>`
     Default::default()
 }
 
@@ -158,7 +158,7 @@ pub extern "C" fn good2(size: *const libc::c_uint) { }
 pub extern "C" fn unused_generic1<T>(size: *const Foo) { }
 
 pub extern "C" fn unused_generic2<T>() -> PhantomData<bool> {
-//~^ ERROR uses type `std::marker::PhantomData<bool>`
+//~^ ERROR uses type `PhantomData<bool>`
     Default::default()
 }
 
@@ -171,10 +171,10 @@ pub extern "C" fn used_generic3<T: Default>() -> T {
 }
 
 pub extern "C" fn used_generic4<T>(x: Vec<T>) { }
-//~^ ERROR: uses type `std::vec::Vec<T>`
+//~^ ERROR: uses type `Vec<T>`
 
 pub extern "C" fn used_generic5<T>() -> Vec<T> {
-//~^ ERROR: uses type `std::vec::Vec<T>`
+//~^ ERROR: uses type `Vec<T>`
     Default::default()
 }
 

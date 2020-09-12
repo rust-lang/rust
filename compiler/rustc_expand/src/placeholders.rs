@@ -4,7 +4,7 @@ use crate::expand::{AstFragment, AstFragmentKind};
 use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_span::source_map::{dummy_spanned, DUMMY_SP};
+use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::Ident;
 
 use smallvec::{smallvec, SmallVec};
@@ -18,7 +18,7 @@ pub fn placeholder(
 ) -> AstFragment {
     fn mac_placeholder() -> ast::MacCall {
         ast::MacCall {
-            path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
+            path: ast::Path { span: DUMMY_SP, segments: Vec::new(), tokens: None },
             args: P(ast::MacArgs::Empty),
             prior_type_ascription: None,
         }
@@ -26,7 +26,11 @@ pub fn placeholder(
 
     let ident = Ident::invalid();
     let attrs = Vec::new();
-    let vis = vis.unwrap_or_else(|| dummy_spanned(ast::VisibilityKind::Inherited));
+    let vis = vis.unwrap_or(ast::Visibility {
+        span: DUMMY_SP,
+        kind: ast::VisibilityKind::Inherited,
+        tokens: None,
+    });
     let span = DUMMY_SP;
     let expr_placeholder = || {
         P(ast::Expr {
@@ -37,7 +41,8 @@ pub fn placeholder(
             tokens: None,
         })
     };
-    let ty = || P(ast::Ty { id, kind: ast::TyKind::MacCall(mac_placeholder()), span });
+    let ty =
+        || P(ast::Ty { id, kind: ast::TyKind::MacCall(mac_placeholder()), span, tokens: None });
     let pat =
         || P(ast::Pat { id, kind: ast::PatKind::MacCall(mac_placeholder()), span, tokens: None });
 
@@ -88,16 +93,19 @@ pub fn placeholder(
             kind: ast::PatKind::MacCall(mac_placeholder()),
             tokens: None,
         })),
-        AstFragmentKind::Ty => {
-            AstFragment::Ty(P(ast::Ty { id, span, kind: ast::TyKind::MacCall(mac_placeholder()) }))
-        }
+        AstFragmentKind::Ty => AstFragment::Ty(P(ast::Ty {
+            id,
+            span,
+            kind: ast::TyKind::MacCall(mac_placeholder()),
+            tokens: None,
+        })),
         AstFragmentKind::Stmts => AstFragment::Stmts(smallvec![{
             let mac = P(ast::MacCallStmt {
                 mac: mac_placeholder(),
                 style: ast::MacStmtStyle::Braces,
                 attrs: ast::AttrVec::new(),
             });
-            ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac) }
+            ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac), tokens: None }
         }]),
         AstFragmentKind::Arms => AstFragment::Arms(smallvec![ast::Arm {
             attrs: Default::default(),

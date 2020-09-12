@@ -126,6 +126,10 @@ h1, h2, h3, h4,
 	font-family: "Fira Sans", sans-serif;
 }
 
+.content ul.crate a.crate {
+	font: 16px/1.6 "Fira Sans";
+}
+
 ol, ul {
 	padding-left: 25px;
 }

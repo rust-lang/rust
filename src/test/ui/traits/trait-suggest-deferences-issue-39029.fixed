@@ -14,5 +14,5 @@ fn main() {
     let _works = TcpListener::bind("some string");
     let bad = NoToSocketAddrs("bad".to_owned());
     let _errors = TcpListener::bind(&*bad);
-    //~^ ERROR the trait bound `NoToSocketAddrs: std::net::ToSocketAddrs` is not satisfied
+    //~^ ERROR the trait bound `NoToSocketAddrs: ToSocketAddrs` is not satisfied
 }

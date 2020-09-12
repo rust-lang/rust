@@ -6,6 +6,7 @@ use self::EvaluationResult::*;
 use self::SelectionCandidate::*;
 
 use super::coherence::{self, Conflict};
+use super::const_evaluatable;
 use super::project;
 use super::project::normalize_with_depth_to;
 use super::util;
@@ -32,6 +33,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fast_reject;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{
@@ -541,14 +543,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
-                match self.tcx().const_eval_resolve(
-                    obligation.param_env,
+                match const_evaluatable::is_const_evaluatable(
+                    self.infcx,
                     def_id,
                     substs,
-                    None,
-                    None,
+                    obligation.param_env,
+                    obligation.cause.span,
                 ) {
-                    Ok(_) => Ok(EvaluatedToOk),
+                    Ok(()) => Ok(EvaluatedToOk),
                     Err(ErrorHandled::TooGeneric) => Ok(EvaluatedToAmbig),
                     Err(_) => Ok(EvaluatedToErr),
                 }
@@ -778,14 +780,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
                         let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
                         let self_ty = trait_ref.self_ty();
-                        let cause = IntercrateAmbiguityCause::DownstreamCrate {
-                            trait_desc: trait_ref.print_only_trait_path().to_string(),
-                            self_desc: if self_ty.has_concrete_skeleton() {
-                                Some(self_ty.to_string())
-                            } else {
-                                None
-                            },
-                        };
+                        let cause =
+                            with_no_trimmed_paths(|| IntercrateAmbiguityCause::DownstreamCrate {
+                                trait_desc: trait_ref.print_only_trait_path().to_string(),
+                                self_desc: if self_ty.has_concrete_skeleton() {
+                                    Some(self_ty.to_string())
+                                } else {
+                                    None
+                                },
+                            });
+
                         debug!("evaluate_stack: pushing cause = {:?}", cause);
                         self.intercrate_ambiguity_causes.as_mut().unwrap().push(cause);
                     }
@@ -1030,12 +1034,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if !candidate_set.ambiguous && no_candidates_apply {
                         let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
                         let self_ty = trait_ref.self_ty();
-                        let trait_desc = trait_ref.print_only_trait_path().to_string();
-                        let self_desc = if self_ty.has_concrete_skeleton() {
-                            Some(self_ty.to_string())
-                        } else {
-                            None
-                        };
+                        let (trait_desc, self_desc) = with_no_trimmed_paths(|| {
+                            let trait_desc = trait_ref.print_only_trait_path().to_string();
+                            let self_desc = if self_ty.has_concrete_skeleton() {
+                                Some(self_ty.to_string())
+                            } else {
+                                None
+                            };
+                            (trait_desc, self_desc)
+                        });
                         let cause = if let Conflict::Upstream = conflict {
                             IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
                         } else {
@@ -1301,7 +1308,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         let tcx = self.infcx.tcx;
-        let predicates = match placeholder_trait_predicate.trait_ref.self_ty().kind {
+        let predicates = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
             ty::Projection(ref data) => {
                 tcx.projection_predicates(data.item_def_id).subst(tcx, data.substs)
             }
@@ -1560,7 +1567,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // NOTE: binder moved to (*)
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
 
-        match self_ty.kind {
+        match self_ty.kind() {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
             | ty::Int(_)
@@ -1615,7 +1622,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
-        match self_ty.kind {
+        match self_ty.kind() {
             ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))
             | ty::FnDef(..)
@@ -1689,7 +1696,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
     fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
-        match t.kind {
+        match *t.kind() {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool

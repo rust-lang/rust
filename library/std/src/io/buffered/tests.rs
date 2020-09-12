@@ -1,5 +1,6 @@
 use crate::io::prelude::*;
 use crate::io::{self, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, SeekFrom};
+use crate::panic;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::thread;
 
@@ -84,6 +85,47 @@ fn test_buffered_reader_seek_relative() {
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
     assert!(reader.seek_relative(2).is_ok());
     assert_eq!(reader.fill_buf().ok(), Some(&[2, 3][..]));
+}
+
+#[test]
+fn test_buffered_reader_stream_position() {
+    let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
+    let mut reader = BufReader::with_capacity(2, io::Cursor::new(inner));
+
+    assert_eq!(reader.stream_position().ok(), Some(0));
+    assert_eq!(reader.seek(SeekFrom::Start(3)).ok(), Some(3));
+    assert_eq!(reader.stream_position().ok(), Some(3));
+    // relative seeking within the buffer and reading position should keep the buffer
+    assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
+    assert!(reader.seek_relative(0).is_ok());
+    assert_eq!(reader.stream_position().ok(), Some(3));
+    assert_eq!(reader.buffer(), &[0, 1][..]);
+    assert!(reader.seek_relative(1).is_ok());
+    assert_eq!(reader.stream_position().ok(), Some(4));
+    assert_eq!(reader.buffer(), &[1][..]);
+    assert!(reader.seek_relative(-1).is_ok());
+    assert_eq!(reader.stream_position().ok(), Some(3));
+    assert_eq!(reader.buffer(), &[0, 1][..]);
+    // relative seeking outside the buffer will discard it
+    assert!(reader.seek_relative(2).is_ok());
+    assert_eq!(reader.stream_position().ok(), Some(5));
+    assert_eq!(reader.buffer(), &[][..]);
+}
+
+#[test]
+fn test_buffered_reader_stream_position_panic() {
+    let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
+    let mut reader = BufReader::with_capacity(4, io::Cursor::new(inner));
+
+    // cause internal buffer to be filled but read only partially
+    let mut buffer = [0, 0];
+    assert!(reader.read_exact(&mut buffer).is_ok());
+    // rewinding the internal reader will cause buffer to loose sync
+    let inner = reader.get_mut();
+    assert!(inner.seek(SeekFrom::Start(0)).is_ok());
+    // overflow when subtracting the remaining buffer size from current position
+    let result = panic::catch_unwind(panic::AssertUnwindSafe(|| reader.stream_position().ok()));
+    assert!(result.is_err());
 }
 
 #[test]

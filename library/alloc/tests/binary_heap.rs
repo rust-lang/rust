@@ -231,6 +231,18 @@ fn test_to_vec() {
 }
 
 #[test]
+fn test_in_place_iterator_specialization() {
+    let src: Vec<usize> = vec![1, 2, 3];
+    let src_ptr = src.as_ptr();
+    let heap: BinaryHeap<_> = src.into_iter().map(std::convert::identity).collect();
+    let heap_ptr = heap.iter().next().unwrap() as *const usize;
+    assert_eq!(src_ptr, heap_ptr);
+    let sink: Vec<_> = heap.into_iter().map(std::convert::identity).collect();
+    let sink_ptr = sink.as_ptr();
+    assert_eq!(heap_ptr, sink_ptr);
+}
+
+#[test]
 fn test_empty_pop() {
     let mut heap = BinaryHeap::<i32>::new();
     assert!(heap.pop().is_none());

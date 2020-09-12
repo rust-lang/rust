@@ -13,7 +13,7 @@ use super::MoveDataParamEnv;
 use crate::util::elaborate_drops::DropFlagState;
 
 use super::move_paths::{HasMoveData, InitIndex, InitKind, MoveData, MovePathIndex};
-use super::{AnalysisDomain, BottomValue, GenKill, GenKillAnalysis};
+use super::{lattice, AnalysisDomain, GenKill, GenKillAnalysis};
 
 use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
@@ -290,27 +290,25 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
-    type Idx = MovePathIndex;
-
+    type Domain = BitSet<MovePathIndex>;
     const NAME: &'static str = "maybe_init";
 
-    fn bits_per_block(&self, _: &mir::Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
+    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = uninitialized
+        BitSet::new_empty(self.move_data().move_paths.len())
     }
 
-    fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
         drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe, |path, s| {
             assert!(s == DropFlagState::Present);
             state.insert(path);
         });
     }
-
-    fn pretty_print_idx(&self, w: &mut impl std::io::Write, mpi: Self::Idx) -> std::io::Result<()> {
-        write!(w, "{}", self.move_data().move_paths[mpi])
-    }
 }
 
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
+    type Idx = MovePathIndex;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -376,18 +374,18 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
-    type Idx = MovePathIndex;
+    type Domain = BitSet<MovePathIndex>;
 
     const NAME: &'static str = "maybe_uninit";
 
-    fn bits_per_block(&self, _: &mir::Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
+    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = initialized (start_block_effect counters this at outset)
+        BitSet::new_empty(self.move_data().move_paths.len())
     }
 
     // sets on_entry bits for Arg places
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
         // set all bits to 1 (uninit) before gathering counterevidence
-        assert!(self.bits_per_block(body) == state.domain_size());
         state.insert_all();
 
         drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe, |path, s| {
@@ -395,13 +393,11 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             state.remove(path);
         });
     }
-
-    fn pretty_print_idx(&self, w: &mut impl std::io::Write, mpi: Self::Idx) -> std::io::Result<()> {
-        write!(w, "{}", self.move_data().move_paths[mpi])
-    }
 }
 
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
+    type Idx = MovePathIndex;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -471,30 +467,30 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
 }
 
 impl<'a, 'tcx> AnalysisDomain<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
-    type Idx = MovePathIndex;
+    /// Use set intersection as the join operator.
+    type Domain = lattice::Dual<BitSet<MovePathIndex>>;
 
     const NAME: &'static str = "definite_init";
 
-    fn bits_per_block(&self, _: &mir::Body<'tcx>) -> usize {
-        self.move_data().move_paths.len()
+    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = initialized (start_block_effect counters this at outset)
+        lattice::Dual(BitSet::new_filled(self.move_data().move_paths.len()))
     }
 
     // sets on_entry bits for Arg places
-    fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
-        state.clear();
+    fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
+        state.0.clear();
 
         drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe, |path, s| {
             assert!(s == DropFlagState::Present);
-            state.insert(path);
+            state.0.insert(path);
         });
-    }
-
-    fn pretty_print_idx(&self, w: &mut impl std::io::Write, mpi: Self::Idx) -> std::io::Result<()> {
-        write!(w, "{}", self.move_data().move_paths[mpi])
     }
 }
 
 impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
+    type Idx = MovePathIndex;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -540,15 +536,16 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
-    type Idx = InitIndex;
+    type Domain = BitSet<InitIndex>;
 
     const NAME: &'static str = "ever_init";
 
-    fn bits_per_block(&self, _: &mir::Body<'tcx>) -> usize {
-        self.move_data().inits.len()
+    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = no initialized variables by default
+        BitSet::new_empty(self.move_data().inits.len())
     }
 
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain) {
         for arg_init in 0..body.arg_count {
             state.insert(InitIndex::new(arg_init));
         }
@@ -556,6 +553,8 @@ impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 }
 
 impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
+    type Idx = InitIndex;
+
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -624,24 +623,4 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
             trans.gen(*init_index);
         }
     }
-}
-
-impl<'a, 'tcx> BottomValue for MaybeInitializedPlaces<'a, 'tcx> {
-    /// bottom = uninitialized
-    const BOTTOM_VALUE: bool = false;
-}
-
-impl<'a, 'tcx> BottomValue for MaybeUninitializedPlaces<'a, 'tcx> {
-    /// bottom = initialized (start_block_effect counters this at outset)
-    const BOTTOM_VALUE: bool = false;
-}
-
-impl<'a, 'tcx> BottomValue for DefinitelyInitializedPlaces<'a, 'tcx> {
-    /// bottom = initialized (start_block_effect counters this at outset)
-    const BOTTOM_VALUE: bool = true;
-}
-
-impl<'a, 'tcx> BottomValue for EverInitializedPlaces<'a, 'tcx> {
-    /// bottom = no initialized variables by default
-    const BOTTOM_VALUE: bool = false;
 }

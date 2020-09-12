@@ -60,7 +60,7 @@ pub fn simplify_type(
     ty: Ty<'_>,
     can_simplify_params: bool,
 ) -> Option<SimplifiedType> {
-    match ty.kind {
+    match *ty.kind() {
         ty::Bool => Some(BoolSimplifiedType),
         ty::Char => Some(CharSimplifiedType),
         ty::Int(int_type) => Some(IntSimplifiedType(int_type)),

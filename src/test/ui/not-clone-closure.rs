@@ -8,5 +8,5 @@ fn main() {
         println!("Hello {}", a.0);
     };
 
-    let hello = hello.clone(); //~ ERROR the trait bound `S: std::clone::Clone` is not satisfied
+    let hello = hello.clone(); //~ ERROR the trait bound `S: Clone` is not satisfied
 }

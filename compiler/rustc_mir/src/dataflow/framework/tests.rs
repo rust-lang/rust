@@ -9,7 +9,6 @@ use rustc_middle::ty;
 use rustc_span::DUMMY_SP;
 
 use super::*;
-use crate::dataflow::BottomValue;
 
 /// Creates a `mir::Body` with a few disconnected basic blocks.
 ///
@@ -92,13 +91,13 @@ impl<D: Direction> MockAnalysis<'tcx, D> {
     /// The entry set for each `BasicBlock` is the ID of that block offset by a fixed amount to
     /// avoid colliding with the statement/terminator effects.
     fn mock_entry_set(&self, bb: BasicBlock) -> BitSet<usize> {
-        let mut ret = BitSet::new_empty(self.bits_per_block(self.body));
+        let mut ret = self.bottom_value(self.body);
         ret.insert(Self::BASIC_BLOCK_OFFSET + bb.index());
         ret
     }
 
     fn mock_entry_sets(&self) -> IndexVec<BasicBlock, BitSet<usize>> {
-        let empty = BitSet::new_empty(self.bits_per_block(self.body));
+        let empty = self.bottom_value(self.body);
         let mut ret = IndexVec::from_elem(empty, &self.body.basic_blocks());
 
         for (bb, _) in self.body.basic_blocks().iter_enumerated() {
@@ -130,7 +129,7 @@ impl<D: Direction> MockAnalysis<'tcx, D> {
     /// would be `[102, 0, 1, 2, 3, 4]`.
     fn expected_state_at_target(&self, target: SeekTarget) -> BitSet<usize> {
         let block = target.block();
-        let mut ret = BitSet::new_empty(self.bits_per_block(self.body));
+        let mut ret = self.bottom_value(self.body);
         ret.insert(Self::BASIC_BLOCK_OFFSET + block.index());
 
         let target = match target {
@@ -161,21 +160,17 @@ impl<D: Direction> MockAnalysis<'tcx, D> {
     }
 }
 
-impl<D: Direction> BottomValue for MockAnalysis<'tcx, D> {
-    const BOTTOM_VALUE: bool = false;
-}
-
 impl<D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
-    type Idx = usize;
+    type Domain = BitSet<usize>;
     type Direction = D;
 
     const NAME: &'static str = "mock";
 
-    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
-        Self::BASIC_BLOCK_OFFSET + body.basic_blocks().len()
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        BitSet::new_empty(Self::BASIC_BLOCK_OFFSET + body.basic_blocks().len())
     }
 
-    fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut BitSet<Self::Idx>) {
+    fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
         unimplemented!("This is never called since `MockAnalysis` is never iterated to fixpoint");
     }
 }
@@ -183,7 +178,7 @@ impl<D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
 impl<D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     fn apply_statement_effect(
         &self,
-        state: &mut BitSet<Self::Idx>,
+        state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -193,7 +188,7 @@ impl<D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
 
     fn apply_before_statement_effect(
         &self,
-        state: &mut BitSet<Self::Idx>,
+        state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -203,7 +198,7 @@ impl<D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
 
     fn apply_terminator_effect(
         &self,
-        state: &mut BitSet<Self::Idx>,
+        state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
@@ -213,7 +208,7 @@ impl<D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
 
     fn apply_before_terminator_effect(
         &self,
-        state: &mut BitSet<Self::Idx>,
+        state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
@@ -223,7 +218,7 @@ impl<D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
 
     fn apply_call_return_effect(
         &self,
-        _state: &mut BitSet<Self::Idx>,
+        _state: &mut Self::Domain,
         _block: BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],

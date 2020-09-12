@@ -5,7 +5,7 @@ LL | impl<Foo> Deref for Foo { }
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
-           - impl<T> std::ops::Deref for &T
+           - impl<T> Deref for &T
              where T: ?Sized;
 
 error[E0210]: type parameter `Foo` must be used as the type parameter for some local type (e.g., `MyStruct<Foo>`)

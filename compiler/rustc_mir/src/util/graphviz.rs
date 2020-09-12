@@ -55,16 +55,28 @@ where
     writeln!(w, "{} {}Mir_{} {{", kind, cluster, def_name)?;
 
     // Global graph properties
-    writeln!(w, r#"    graph [fontname="monospace"];"#)?;
-    writeln!(w, r#"    node [fontname="monospace"];"#)?;
-    writeln!(w, r#"    edge [fontname="monospace"];"#)?;
+    let font = r#"fontname="Courier, monospace""#;
+    let mut graph_attrs = vec![font];
+    let mut content_attrs = vec![font];
+
+    let dark_mode = tcx.sess.opts.debugging_opts.graphviz_dark_mode;
+    if dark_mode {
+        graph_attrs.push(r#"bgcolor="black""#);
+        content_attrs.push(r#"color="white""#);
+        content_attrs.push(r#"fontcolor="white""#);
+    }
+
+    writeln!(w, r#"    graph [{}];"#, graph_attrs.join(" "))?;
+    let content_attrs_str = content_attrs.join(" ");
+    writeln!(w, r#"    node [{}];"#, content_attrs_str)?;
+    writeln!(w, r#"    edge [{}];"#, content_attrs_str)?;
 
     // Graph label
     write_graph_label(tcx, def_id, body, w)?;
 
     // Nodes
     for (block, _) in body.basic_blocks().iter_enumerated() {
-        write_node(def_id, block, body, w)?;
+        write_node(def_id, block, body, dark_mode, w)?;
     }
 
     // Edges
@@ -84,6 +96,7 @@ where
 pub fn write_node_label<W: Write, INIT, FINI>(
     block: BasicBlock,
     body: &Body<'_>,
+    dark_mode: bool,
     w: &mut W,
     num_cols: u32,
     init: INIT,
@@ -100,8 +113,9 @@ where
     // Basic block number at the top.
     write!(
         w,
-        r#"<tr><td {attrs} colspan="{colspan}">{blk}</td></tr>"#,
-        attrs = r#"bgcolor="gray" align="center""#,
+        r#"<tr><td bgcolor="{bgcolor}" {attrs} colspan="{colspan}">{blk}</td></tr>"#,
+        bgcolor = if dark_mode { "dimgray" } else { "gray" },
+        attrs = r#"align="center""#,
         colspan = num_cols,
         blk = block.index()
     )?;
@@ -134,11 +148,12 @@ fn write_node<W: Write>(
     def_id: DefId,
     block: BasicBlock,
     body: &Body<'_>,
+    dark_mode: bool,
     w: &mut W,
 ) -> io::Result<()> {
     // Start a new node with the label to follow, in one of DOT's pseudo-HTML tables.
     write!(w, r#"    {} [shape="none", label=<"#, node(def_id, block))?;
-    write_node_label(block, body, w, 1, |_| Ok(()), |_| Ok(()))?;
+    write_node_label(block, body, dark_mode, w, 1, |_| Ok(()), |_| Ok(()))?;
     // Close the node label and the node itself.
     writeln!(w, ">];")
 }

@@ -7,7 +7,7 @@ LL | #![feature(generic_associated_types)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
-error[E0271]: type mismatch resolving `<T as std::ops::Deref>::Target == T`
+error[E0271]: type mismatch resolving `<T as Deref>::Target == T`
   --> $DIR/issue-68656-unsized-values.rs:16:5
    |
 LL |     type Item<'a>: std::ops::Deref<Target = T>;
@@ -19,11 +19,11 @@ LL |     type Item<'a> = T;
    |     ^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found associated type
    |
    = note: expected type parameter `T`
-             found associated type `<T as std::ops::Deref>::Target`
+             found associated type `<T as Deref>::Target`
 help: consider further restricting this bound
    |
-LL | impl<T: Copy + std::ops::Deref + std::ops::Deref<Target = T>> UnsafeCopy<T> for T {
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<T: Copy + std::ops::Deref + Deref<Target = T>> UnsafeCopy<T> for T {
+   |                                ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

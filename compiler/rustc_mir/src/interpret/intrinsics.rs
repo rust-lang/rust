@@ -76,7 +76,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
             ConstValue::from_u64(tcx.type_id_hash(tp_ty))
         }
         sym::variant_count => {
-            if let ty::Adt(ref adt, _) = tp_ty.kind {
+            if let ty::Adt(ref adt, _) = tp_ty.kind() {
                 ConstValue::from_machine_usize(adt.variants.len() as u64, &tcx)
             } else {
                 ConstValue::from_machine_usize(0u64, &tcx)

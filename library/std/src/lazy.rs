@@ -6,6 +6,7 @@ mod tests;
 use crate::{
     cell::{Cell, UnsafeCell},
     fmt,
+    marker::PhantomData,
     mem::{self, MaybeUninit},
     ops::{Deref, Drop},
     panic::{RefUnwindSafe, UnwindSafe},
@@ -46,6 +47,26 @@ pub struct SyncOnceCell<T> {
     once: Once,
     // Whether or not the value is initialized is tracked by `state_and_queue`.
     value: UnsafeCell<MaybeUninit<T>>,
+    /// `PhantomData` to make sure dropck understands we're dropping T in our Drop impl.
+    ///
+    /// ```compile_fail,E0597
+    /// #![feature(once_cell)]
+    ///
+    /// use std::lazy::SyncOnceCell;
+    ///
+    /// struct A<'a>(&'a str);
+    ///
+    /// impl<'a> Drop for A<'a> {
+    ///     fn drop(&mut self) {}
+    /// }
+    ///
+    /// let cell = SyncOnceCell::new();
+    /// {
+    ///     let s = String::new();
+    ///     let _ = cell.set(A(&s));
+    /// }
+    /// ```
+    _marker: PhantomData<T>,
 }
 
 // Why do we need `T: Send`?
@@ -119,7 +140,11 @@ impl<T> SyncOnceCell<T> {
     /// Creates a new empty cell.
     #[unstable(feature = "once_cell", issue = "74465")]
     pub const fn new() -> SyncOnceCell<T> {
-        SyncOnceCell { once: Once::new(), value: UnsafeCell::new(MaybeUninit::uninit()) }
+        SyncOnceCell {
+            once: Once::new(),
+            value: UnsafeCell::new(MaybeUninit::uninit()),
+            _marker: PhantomData,
+        }
     }
 
     /// Gets the reference to the underlying value.
@@ -268,7 +293,7 @@ impl<T> SyncOnceCell<T> {
 
         debug_assert!(self.is_initialized());
 
-        // Safety: The inner value has been initialized
+        // SAFETY: The inner value has been initialized
         Ok(unsafe { self.get_unchecked() })
     }
 
@@ -291,7 +316,7 @@ impl<T> SyncOnceCell<T> {
     /// ```
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn into_inner(mut self) -> Option<T> {
-        // Safety: Safe because we immediately free `self` without dropping
+        // SAFETY: Safe because we immediately free `self` without dropping
         let inner = unsafe { self.take_inner() };
 
         // Don't drop this `SyncOnceCell`. We just moved out one of the fields, but didn't set
@@ -391,7 +416,7 @@ impl<T> SyncOnceCell<T> {
 
 unsafe impl<#[may_dangle] T> Drop for SyncOnceCell<T> {
     fn drop(&mut self) {
-        // Safety: The cell is being dropped, so it can't be accessed again.
+        // SAFETY: The cell is being dropped, so it can't be accessed again.
         // We also don't touch the `T`, which validates our usage of #[may_dangle].
         unsafe { self.take_inner() };
     }

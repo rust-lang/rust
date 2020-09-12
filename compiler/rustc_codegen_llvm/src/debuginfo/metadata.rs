@@ -343,7 +343,7 @@ fn fixed_vec_metadata(
 
     let (size, align) = cx.size_and_align_of(array_or_slice_type);
 
-    let upper_bound = match array_or_slice_type.kind {
+    let upper_bound = match array_or_slice_type.kind() {
         ty::Array(_, len) => len.eval_usize(cx.tcx, ty::ParamEnv::reveal_all()) as c_longlong,
         _ => -1,
     };
@@ -432,7 +432,7 @@ fn subroutine_type_metadata(
 
     let signature_metadata: Vec<_> = iter::once(
         // return type
-        match signature.output().kind {
+        match signature.output().kind() {
             ty::Tuple(ref tys) if tys.is_empty() => None,
             _ => Some(type_metadata(cx, signature.output(), span)),
         },
@@ -472,7 +472,7 @@ fn trait_pointer_metadata(
     // type is assigned the correct name, size, namespace, and source location.
     // However, it does not describe the trait's methods.
 
-    let containing_scope = match trait_type.kind {
+    let containing_scope = match trait_type.kind() {
         ty::Dynamic(ref data, ..) => {
             data.principal_def_id().map(|did| get_namespace_for_item(cx, did))
         }
@@ -572,7 +572,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
 
     debug!("type_metadata: {:?}", t);
 
-    let ptr_metadata = |ty: Ty<'tcx>| match ty.kind {
+    let ptr_metadata = |ty: Ty<'tcx>| match *ty.kind() {
         ty::Slice(typ) => Ok(vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)),
         ty::Str => Ok(vec_slice_metadata(cx, t, cx.tcx.types.u8, unique_type_id, usage_site_span)),
         ty::Dynamic(..) => Ok(MetadataCreationResult::new(
@@ -592,7 +592,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
         }
     };
 
-    let MetadataCreationResult { metadata, already_stored_in_typemap } = match t.kind {
+    let MetadataCreationResult { metadata, already_stored_in_typemap } = match *t.kind() {
         ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
@@ -876,7 +876,7 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
     // .natvis visualizers (and perhaps other existing native debuggers?)
     let msvc_like_names = cx.tcx.sess.target.target.options.is_like_msvc;
 
-    let (name, encoding) = match t.kind {
+    let (name, encoding) = match t.kind() {
         ty::Never => ("!", DW_ATE_unsigned),
         ty::Tuple(ref elements) if elements.is_empty() => ("()", DW_ATE_unsigned),
         ty::Bool => ("bool", DW_ATE_boolean),
@@ -904,7 +904,7 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
         return ty_metadata;
     }
 
-    let typedef_name = match t.kind {
+    let typedef_name = match t.kind() {
         ty::Int(int_ty) => int_ty.name_str(),
         ty::Uint(uint_ty) => uint_ty.name_str(),
         ty::Float(float_ty) => float_ty.name_str(),
@@ -1239,7 +1239,7 @@ fn prepare_struct_metadata(
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
     let struct_name = compute_debuginfo_type_name(cx.tcx, struct_type, false);
 
-    let (struct_def_id, variant) = match struct_type.kind {
+    let (struct_def_id, variant) = match struct_type.kind() {
         ty::Adt(def, _) => (def.did, def.non_enum_variant()),
         _ => bug!("prepare_struct_metadata on a non-ADT"),
     };
@@ -1373,7 +1373,7 @@ fn prepare_union_metadata(
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
     let union_name = compute_debuginfo_type_name(cx.tcx, union_type, false);
 
-    let (union_def_id, variant) = match union_type.kind {
+    let (union_def_id, variant) = match union_type.kind() {
         ty::Adt(def, _) => (def.did, def.non_enum_variant()),
         _ => bug!("prepare_union_metadata on a non-ADT"),
     };
@@ -1457,14 +1457,14 @@ struct EnumMemberDescriptionFactory<'ll, 'tcx> {
 
 impl EnumMemberDescriptionFactory<'ll, 'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
-        let generator_variant_info_data = match self.enum_type.kind {
+        let generator_variant_info_data = match *self.enum_type.kind() {
             ty::Generator(def_id, ..) => {
                 Some(generator_layout_and_saved_local_names(cx.tcx, def_id))
             }
             _ => None,
         };
 
-        let variant_info_for = |index: VariantIdx| match self.enum_type.kind {
+        let variant_info_for = |index: VariantIdx| match *self.enum_type.kind() {
             ty::Adt(adt, _) => VariantInfo::Adt(&adt.variants[index]),
             ty::Generator(def_id, _, _) => {
                 let (generator_layout, generator_saved_local_names) =
@@ -1486,14 +1486,14 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
         } else {
             type_metadata(cx, self.enum_type, self.span)
         };
-        let flags = match self.enum_type.kind {
+        let flags = match self.enum_type.kind() {
             ty::Generator(..) => DIFlags::FlagArtificial,
             _ => DIFlags::FlagZero,
         };
 
         match self.layout.variants {
             Variants::Single { index } => {
-                if let ty::Adt(adt, _) = &self.enum_type.kind {
+                if let ty::Adt(adt, _) = self.enum_type.kind() {
                     if adt.variants.is_empty() {
                         return vec![];
                     }
@@ -1942,7 +1942,7 @@ fn prepare_enum_metadata(
     let tcx = cx.tcx;
     let enum_name = compute_debuginfo_type_name(tcx, enum_type, false);
     // FIXME(tmandry): This doesn't seem to have any effect.
-    let enum_flags = match enum_type.kind {
+    let enum_flags = match enum_type.kind() {
         ty::Generator(..) => DIFlags::FlagArtificial,
         _ => DIFlags::FlagZero,
     };
@@ -1957,13 +1957,13 @@ fn prepare_enum_metadata(
     let file_metadata = unknown_file_metadata(cx);
 
     let discriminant_type_metadata = |discr: Primitive| {
-        let enumerators_metadata: Vec<_> = match enum_type.kind {
+        let enumerators_metadata: Vec<_> = match enum_type.kind() {
             ty::Adt(def, _) => def
                 .discriminants(tcx)
                 .zip(&def.variants)
                 .map(|((_, discr), v)| {
                     let name = v.ident.as_str();
-                    let is_unsigned = match discr.ty.kind {
+                    let is_unsigned = match discr.ty.kind() {
                         ty::Int(_) => false,
                         ty::Uint(_) => true,
                         _ => bug!("non integer discriminant"),
@@ -2012,7 +2012,7 @@ fn prepare_enum_metadata(
                     type_metadata(cx, discr.to_ty(tcx), rustc_span::DUMMY_SP);
 
                 let item_name;
-                let discriminant_name = match enum_type.kind {
+                let discriminant_name = match enum_type.kind() {
                     ty::Adt(..) => {
                         item_name = tcx.item_name(enum_def_id).as_str();
                         &*item_name
@@ -2105,7 +2105,7 @@ fn prepare_enum_metadata(
         );
     }
 
-    let discriminator_name = match &enum_type.kind {
+    let discriminator_name = match enum_type.kind() {
         ty::Generator(..) => "__state",
         _ => "",
     };
@@ -2328,7 +2328,7 @@ fn set_members_of_composite_type(
 
 /// Computes the type parameters for a type, if any, for the given metadata.
 fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'ll DIArray> {
-    if let ty::Adt(def, substs) = ty.kind {
+    if let ty::Adt(def, substs) = *ty.kind() {
         if substs.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did);
             let names = get_parameter_names(cx, generics);

@@ -1,7 +1,8 @@
-// Regression test for #62504
-
-#![feature(const_generics)]
+// revisions: full min
 #![allow(incomplete_features)]
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 trait HasSize {
     const SIZE: usize;
@@ -16,7 +17,8 @@ struct ArrayHolder<const X: usize>([u32; X]);
 impl<const X: usize> ArrayHolder<X> {
     pub const fn new() -> Self {
         ArrayHolder([0; Self::SIZE])
-        //~^ ERROR constant expression depends on a generic parameter
+        //[full]~^ ERROR constant expression depends on a generic parameter
+        //[min]~^^ ERROR generic parameters must not be used inside of non trivial constant values
     }
 }
 

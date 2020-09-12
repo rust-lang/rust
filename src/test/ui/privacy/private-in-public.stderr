@@ -238,20 +238,20 @@ LL |     struct Priv;
 LL |         pub fn f(arg: Priv) {}
    |         ^^^^^^^^^^^^^^^^^^^ can't leak private type
 
-error[E0446]: private type `aliases_priv::Priv1` in public interface
+error[E0446]: private type `Priv1` in public interface
   --> $DIR/private-in-public.rs:131:5
    |
 LL |     struct Priv1;
-   |     - `aliases_priv::Priv1` declared as private
+   |     - `Priv1` declared as private
 ...
 LL |     pub fn f1(arg: PrivUseAlias) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
-error[E0446]: private type `aliases_priv::Priv2` in public interface
+error[E0446]: private type `Priv2` in public interface
   --> $DIR/private-in-public.rs:132:5
    |
 LL |     struct Priv2;
-   |     - `aliases_priv::Priv2` declared as private
+   |     - `Priv2` declared as private
 ...
 LL |     pub fn f2(arg: PrivAlias) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type

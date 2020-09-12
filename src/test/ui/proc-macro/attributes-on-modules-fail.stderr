@@ -1,4 +1,4 @@
-error: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/attributes-on-modules-fail.rs:16:1
    |
 LL | #[derive(Copy)]
@@ -64,5 +64,5 @@ LL | use m::X;
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0412, E0658.
+Some errors have detailed explanations: E0412, E0658, E0774.
 For more information about an error, try `rustc --explain E0412`.
