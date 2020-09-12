@@ -29,11 +29,11 @@ with a few restrictions. This is mostly useful in two cases:
 
 **Helping with issue triage**: Rust's issue tracker has more than 5,000 open
 issues at the time of this writing, so labels are the most powerful tool that we
-have to keep it as tidy as possible. You may not spend hours in the issue tracker
+have to keep it as tidy as possible. You don't need to spend hours in the issue tracker
 to triage issues, but if you open an issue, you should feel free to label it if
 you are comfortable with doing it yourself.
 
-**Updating the status of a PR**: we use "status labels" to reflect the status of
+**Updating the status of a PR**: We use "status labels" to reflect the status of
 PRs. For example, if your PR has merge conflicts, it will automatically be assigned
 the `S-waiting-on-author`, and reviewers might not review it until you rebase your
 PR. Once you do rebase your branch, you should change the labels yourself to remove
