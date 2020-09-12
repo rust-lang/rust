@@ -11,6 +11,7 @@ use core::convert::{From, TryFrom};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
+use core::hint;
 use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
 use core::mem::{self, align_of_val, size_of_val};
@@ -764,6 +765,7 @@ impl<T: ?Sized> Arc<T> {
         loop {
             // check if the weak counter is currently "locked"; if so, spin.
             if cur == usize::MAX {
+                hint::spin_loop();
                 cur = this.inner().weak.load(Relaxed);
                 continue;
             }
