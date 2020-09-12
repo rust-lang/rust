@@ -1,3 +1,33 @@
+error[E0658]: panicking in constant functions is unstable
+  --> $DIR/feature-gate-const_panic.rs:13:5
+   |
+LL |     assert!(2 + 2 == 4);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51999 <https://github.com/rust-lang/rust/issues/51999> for more information
+   = help: add `#![feature(const_panic)]` to the crate attributes to enable
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: panicking in constant functions is unstable
+  --> $DIR/feature-gate-const_panic.rs:18:5
+   |
+LL |     panic!("oh no");
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51999 <https://github.com/rust-lang/rust/issues/51999> for more information
+   = help: add `#![feature(const_panic)]` to the crate attributes to enable
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: panicking in constant functions is unstable
+  --> $DIR/feature-gate-const_panic.rs:23:5
+   |
+LL |     unimplemented!();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51999 <https://github.com/rust-lang/rust/issues/51999> for more information
+   = help: add `#![feature(const_panic)]` to the crate attributes to enable
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0658]: panicking in constants is unstable
   --> $DIR/feature-gate-const_panic.rs:3:15
    |
@@ -28,6 +58,6 @@ LL | const Y: () = unreachable!();
    = help: add `#![feature(const_panic)]` to the crate attributes to enable
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 3 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

@@ -1,8 +1,8 @@
 error: any use of this value will cause an error
   --> $DIR/const_panic.rs:4:19
    |
-LL | pub const Z: () = panic!("cheese");
-   | ------------------^^^^^^^^^^^^^^^^-
+LL | pub const Z: () = std::panic!("cheese");
+   | ------------------^^^^^^^^^^^^^^^^^^^^^-
    |                   |
    |                   the evaluated program panicked at 'cheese', $DIR/const_panic.rs:4:19
    |
@@ -12,22 +12,52 @@ LL | pub const Z: () = panic!("cheese");
 error: any use of this value will cause an error
   --> $DIR/const_panic.rs:7:19
    |
-LL | pub const Y: () = unreachable!();
-   | ------------------^^^^^^^^^^^^^^-
+LL | pub const Y: () = std::assert!(1 == 2);
+   | ------------------^^^^^^^^^^^^^^^^^^^^-
    |                   |
-   |                   the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:7:19
+   |                   the evaluated program panicked at 'assertion failed: 1 == 2', $DIR/const_panic.rs:7:19
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
   --> $DIR/const_panic.rs:10:19
    |
-LL | pub const X: () = unimplemented!();
-   | ------------------^^^^^^^^^^^^^^^^-
+LL | pub const X: () = std::unimplemented!();
+   | ------------------^^^^^^^^^^^^^^^^^^^^^-
    |                   |
    |                   the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:10:19
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 3 previous errors
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:13:19
+   |
+LL | pub const W: () = core::panic!("cheese");
+   | ------------------^^^^^^^^^^^^^^^^^^^^^^-
+   |                   |
+   |                   the evaluated program panicked at 'cheese', $DIR/const_panic.rs:13:19
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:16:19
+   |
+LL | pub const V: () = core::assert!(1.2 < 1.0);
+   | ------------------^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                   |
+   |                   the evaluated program panicked at 'assertion failed: 1.2 < 1.0', $DIR/const_panic.rs:16:19
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:19:19
+   |
+LL | pub const U: () = core::unimplemented!();
+   | ------------------^^^^^^^^^^^^^^^^^^^^^^-
+   |                   |
+   |                   the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:19:19
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
 
