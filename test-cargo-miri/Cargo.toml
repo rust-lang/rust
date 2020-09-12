@@ -1,7 +1,10 @@
+[workspace]
+members = ["subcrate"]
+
 [package]
 name = "cargo-miri-test"
 version = "0.1.0"
-authors = ["Oliver Schneider <git-spam-no-reply9815368754983@oli-obk.de>"]
+authors = ["Miri Team"]
 edition = "2018"
 
 [dependencies]

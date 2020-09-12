@@ -1,4 +1,6 @@
 use byteorder::{BigEndian, ByteOrder};
+use std::env;
+use std::path::PathBuf;
 #[cfg(unix)]
 use std::io::{self, BufRead};
 
@@ -17,8 +19,12 @@ fn main() {
         eprintln!("{}", arg);
     }
 
-    // If there were no arguments, access stdin.
+    // If there were no arguments, access stdin and test working dir.
     if std::env::args().len() <= 1 {
+        let env_dir = env::current_dir().unwrap();
+        let crate_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
+        assert_eq!(env_dir, crate_dir);
+
         #[cfg(unix)]
         for line in io::stdin().lock().lines() {
             let num: i32 = line.unwrap().parse().unwrap();

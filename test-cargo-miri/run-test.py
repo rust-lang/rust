@@ -63,6 +63,11 @@ def test_cargo_miri_run():
         cargo_miri("run") + ["--bin", "cargo-miri-test", "--", "hello world", '"hello world"'],
         "stdout.ref2", "stderr.ref2"
     )
+    test("`cargo miri run` (subcrate)",
+        cargo_miri("run") + ["-p", "subcrate"],
+        "stdout.ref3", "stderr.ref3",
+        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
+    )
 
 def test_cargo_miri_test():
     # rustdoc is not run on foreign targets
