@@ -337,13 +337,19 @@
 # binary, otherwise they are omitted.
 #
 # Defaults to rust.debug value
-#debug-assertions = false
+#debug-assertions = debug
 
 # Whether or not debug assertions are enabled for the standard library.
 # Overrides the `debug-assertions` option, if defined.
 #
 # Defaults to rust.debug-assertions value
-#debug-assertions-std = false
+#debug-assertions-std = debug-assertions
+
+# Whether or not to leave debug! and trace! calls in the rust binary.
+# Overrides the `debug-assertions` option, if defined.
+# 
+# Defaults to rust.debug-assertions value
+#debug-logging = debug-assertions
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
