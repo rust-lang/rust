@@ -58,10 +58,10 @@ impl CrateRunInfo {
 
     fn store(&self, filename: &Path) {
         let file = File::create(filename)
-            .unwrap_or_else(|_| show_error(format!("Cannot create `{}`", filename.display())));
+            .unwrap_or_else(|_| show_error(format!("cannot create `{}`", filename.display())));
         let file = BufWriter::new(file);
         serde_json::ser::to_writer(file, self)
-            .unwrap_or_else(|_| show_error(format!("Cannot write to `{}`", filename.display())));
+            .unwrap_or_else(|_| show_error(format!("cannot write to `{}`", filename.display())));
     }
 }
 
@@ -207,15 +207,15 @@ fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
         match buf.trim().to_lowercase().as_ref() {
             // Proceed.
             "" | "y" | "yes" => {}
-            "n" | "no" => show_error(format!("Aborting as per your request")),
-            a => show_error(format!("I do not understand `{}`", a)),
+            "n" | "no" => show_error(format!("aborting as per your request")),
+            a => show_error(format!("invalid answer `{}`", a)),
         };
     } else {
         println!("Running `{:?}` to {}.", cmd, text);
     }
 
     if cmd.status().expect(&format!("failed to execute {:?}", cmd)).success().not() {
-        show_error(format!("Failed to {}", text));
+        show_error(format!("failed to {}", text));
     }
 }
 
@@ -238,7 +238,7 @@ fn setup(subcommand: MiriCommand) {
     if xargo_version().map_or(true, |v| v < XARGO_MIN_VERSION) {
         if std::env::var_os("XARGO_CHECK").is_some() {
             // The user manually gave us a xargo binary; don't do anything automatically.
-            show_error(format!("Your xargo is too old; please upgrade to the latest version"))
+            show_error(format!("xargo is too old; please upgrade to the latest version"))
         }
         let mut cmd = cargo();
         cmd.args(&["install", "xargo", "-f"]);
@@ -278,7 +278,7 @@ fn setup(subcommand: MiriCommand) {
         }
     };
     if !rust_src.exists() {
-        show_error(format!("Given Rust source directory `{}` does not exist.", rust_src.display()));
+        show_error(format!("given Rust source directory `{}` does not exist.", rust_src.display()));
     }
 
     // Next, we need our own libstd. Prepare a xargo project for that purpose.
@@ -352,7 +352,7 @@ path = "lib.rs"
     command.env_remove("RUSTFLAGS");
     // Finally run it!
     if command.status().expect("failed to run xargo").success().not() {
-        show_error(format!("Failed to run xargo"));
+        show_error(format!("failed to run xargo"));
     }
 
     // That should be it! But we need to figure out where xargo built stuff.
@@ -578,7 +578,7 @@ fn phase_cargo_rustc(args: env::Args) {
 
         // Use our custom sysroot.
         let sysroot =
-            env::var_os("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
+            env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
         cmd.arg("--sysroot");
         cmd.arg(sysroot);
     } else {
@@ -600,9 +600,9 @@ fn phase_cargo_rustc(args: env::Args) {
     if emit_link_hack {
         // Some platforms prepend "lib", some do not... let's just create both files.
         let filename = out_filename("lib", ".rlib");
-        File::create(filename).expect("Failed to create rlib file");
+        File::create(filename).expect("failed to create rlib file");
         let filename = out_filename("", ".rlib");
-        File::create(filename).expect("Failed to create rlib file");
+        File::create(filename).expect("failed to create rlib file");
     }
 }
 
@@ -610,10 +610,10 @@ fn phase_cargo_runner(binary: &Path, binary_args: env::Args) {
     let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
 
     let file = File::open(&binary)
-        .unwrap_or_else(|_| show_error(format!("File {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary)));
+        .unwrap_or_else(|_| show_error(format!("file {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary)));
     let file = BufReader::new(file);
     let info: CrateRunInfo = serde_json::from_reader(file)
-        .unwrap_or_else(|_| show_error(format!("File {:?} does not contain valid JSON", binary)));
+        .unwrap_or_else(|_| show_error(format!("file {:?} contains outdated or invalid JSON; try `cargo clean`", binary)));
 
     // Set missing env vars. Looks like `build.rs` vars are still set at run-time, but
     // `CARGO_BIN_EXE_*` are not. This means we can give the run-time environment precedence,
@@ -657,7 +657,7 @@ fn phase_cargo_runner(binary: &Path, binary_args: env::Args) {
     }
     // Set sysroot.
     let sysroot =
-        env::var_os("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
+        env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
     cmd.arg("--sysroot");
     cmd.arg(sysroot);
     // Respect `MIRIFLAGS`.
