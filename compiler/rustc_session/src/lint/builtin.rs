@@ -5,7 +5,7 @@
 //! lints are all available in `rustc_lint::builtin`.
 
 use crate::lint::FutureIncompatibleInfo;
-use crate::{declare_lint, declare_lint_pass};
+use crate::{declare_lint, declare_lint_pass, declare_tool_lint};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
 
@@ -555,6 +555,12 @@ declare_lint! {
     };
 }
 
+declare_tool_lint! {
+    pub rustc::INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+    Deny,
+    "detects `#[unstable]` on stable trait implementations for stable types"
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -630,6 +636,7 @@ declare_lint_pass! {
         INCOMPLETE_INCLUDE,
         CENUM_IMPL_DROP_CAST,
         CONST_EVALUATABLE_UNCHECKED,
+        INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
     ]
 }
 
