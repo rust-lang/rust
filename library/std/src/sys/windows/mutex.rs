@@ -19,19 +19,24 @@
 //! CriticalSection is used and we keep track of who's holding the mutex to
 //! detect recursive locks.
 
-use crate::cell::UnsafeCell;
+use crate::cell::{Cell, UnsafeCell};
 use crate::mem::{self, MaybeUninit};
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::c;
 use crate::sys::compat;
 
 pub struct Mutex {
+    // This is either directly an SRWLOCK (if supported), or a Box<Inner> otherwise.
     lock: AtomicUsize,
-    held: UnsafeCell<bool>,
 }
 
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
+
+struct Inner {
+    remutex: ReentrantMutex,
+    held: Cell<bool>,
+}
 
 #[derive(Clone, Copy)]
 enum Kind {
@@ -51,7 +56,6 @@ impl Mutex {
             // This works because SRWLOCK_INIT is 0 (wrapped in a struct), so we are also properly
             // initializing an SRWLOCK here.
             lock: AtomicUsize::new(0),
-            held: UnsafeCell::new(false),
         }
     }
     #[inline]
@@ -60,10 +64,11 @@ impl Mutex {
         match kind() {
             Kind::SRWLock => c::AcquireSRWLockExclusive(raw(self)),
             Kind::CriticalSection => {
-                let re = self.remutex();
-                (*re).lock();
-                if !self.flag_locked() {
-                    (*re).unlock();
+                let inner = &mut *self.inner();
+                inner.remutex.lock();
+                if inner.held.replace(true) {
+                    // It was already locked, so we got a recursive lock which we do not want.
+                    inner.remutex.unlock();
                     panic!("cannot recursively lock a mutex");
                 }
             }
@@ -73,23 +78,27 @@ impl Mutex {
         match kind() {
             Kind::SRWLock => c::TryAcquireSRWLockExclusive(raw(self)) != 0,
             Kind::CriticalSection => {
-                let re = self.remutex();
-                if !(*re).try_lock() {
+                let inner = &mut *self.inner();
+                if !inner.remutex.try_lock() {
                     false
-                } else if self.flag_locked() {
-                    true
+                } else if inner.held.replace(true) {
+                    // It was already locked, so we got a recursive lock which we do not want.
+                    inner.remutex.unlock();
+                    false
                 } else {
-                    (*re).unlock();
-                    false
+                    true
                 }
             }
         }
     }
     pub unsafe fn unlock(&self) {
-        *self.held.get() = false;
         match kind() {
             Kind::SRWLock => c::ReleaseSRWLockExclusive(raw(self)),
-            Kind::CriticalSection => (*self.remutex()).unlock(),
+            Kind::CriticalSection => {
+                let inner = &mut *(self.lock.load(Ordering::SeqCst) as *mut Inner);
+                inner.held.set(false);
+                inner.remutex.unlock();
+            }
         }
     }
     pub unsafe fn destroy(&self) {
@@ -98,35 +107,26 @@ impl Mutex {
             Kind::CriticalSection => match self.lock.load(Ordering::SeqCst) {
                 0 => {}
                 n => {
-                    Box::from_raw(n as *mut ReentrantMutex).destroy();
+                    Box::from_raw(n as *mut Inner).remutex.destroy();
                 }
             },
         }
     }
 
-    unsafe fn remutex(&self) -> *mut ReentrantMutex {
+    unsafe fn inner(&self) -> *mut Inner {
         match self.lock.load(Ordering::SeqCst) {
             0 => {}
             n => return n as *mut _,
         }
-        let re = box ReentrantMutex::uninitialized();
-        re.init();
-        let re = Box::into_raw(re);
-        match self.lock.compare_and_swap(0, re as usize, Ordering::SeqCst) {
-            0 => re,
+        let inner = box Inner { remutex: ReentrantMutex::uninitialized(), held: Cell::new(false) };
+        inner.remutex.init();
+        let inner = Box::into_raw(inner);
+        match self.lock.compare_and_swap(0, inner as usize, Ordering::SeqCst) {
+            0 => inner,
             n => {
-                Box::from_raw(re).destroy();
+                Box::from_raw(inner).remutex.destroy();
                 n as *mut _
             }
-        }
-    }
-
-    unsafe fn flag_locked(&self) -> bool {
-        if *self.held.get() {
-            false
-        } else {
-            *self.held.get() = true;
-            true
         }
     }
 }
