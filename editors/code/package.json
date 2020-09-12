@@ -35,7 +35,7 @@
         "test": "node ./out/tests/runTests.js"
     },
     "dependencies": {
-        "node-fetch": "^2.6.0",
+        "node-fetch": "^2.6.1",
         "vscode-languageclient": "7.0.0-next.9"
     },
     "devDependencies": {
