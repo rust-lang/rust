@@ -626,6 +626,21 @@
                     },
                     "description": "List of warnings that should be displayed with hint severity.\nThe warnings will be indicated by faded text or three dots in code and will not show up in the problems panel.",
                     "default": []
+                },
+                "rust-analyzer.assist.importMergeBehaviour": {
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "full",
+                        "last"
+                    ],
+                    "enumDescriptions": [
+                        "No merging",
+                        "Merge all layers of the import trees",
+                        "Only merge the last layer of the import trees"
+                    ],
+                    "default": "full",
+                    "description": "The strategy to use when inserting new imports or merging imports."
                 }
             }
         },

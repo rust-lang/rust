@@ -4,12 +4,13 @@
 //! module, and we use to statically check that we only produce snippet
 //! assists if we are allowed to.
 
-use crate::AssistKind;
+use crate::{utils::MergeBehaviour, AssistKind};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssistConfig {
     pub snippet_cap: Option<SnippetCap>,
     pub allowed: Option<Vec<AssistKind>>,
+    pub insert_use: InsertUseConfig,
 }
 
 impl AssistConfig {
@@ -25,6 +26,21 @@ pub struct SnippetCap {
 
 impl Default for AssistConfig {
     fn default() -> Self {
-        AssistConfig { snippet_cap: Some(SnippetCap { _private: () }), allowed: None }
+        AssistConfig {
+            snippet_cap: Some(SnippetCap { _private: () }),
+            allowed: None,
+            insert_use: InsertUseConfig::default(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct InsertUseConfig {
+    pub merge: Option<MergeBehaviour>,
+}
+
+impl Default for InsertUseConfig {
+    fn default() -> Self {
+        InsertUseConfig { merge: Some(MergeBehaviour::Full) }
     }
 }

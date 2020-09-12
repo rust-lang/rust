@@ -2,7 +2,7 @@ use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SyntaxNode, TextRang
 use test_utils::mark;
 
 use crate::{
-    utils::{insert_use, ImportScope, MergeBehaviour},
+    utils::{insert_use, ImportScope},
     AssistContext, AssistId, AssistKind, Assists,
 };
 use ast::make;
@@ -60,7 +60,7 @@ pub(crate) fn replace_qualified_name_with_use(
                 let new_syntax = insert_use(
                     import_scope,
                     make::path_from_text(path_to_import),
-                    Some(MergeBehaviour::Full),
+                    ctx.config.insert_use.merge,
                 );
                 builder.replace(syntax.text_range(), new_syntax.to_string())
             }

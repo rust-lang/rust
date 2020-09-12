@@ -10,7 +10,10 @@
 use std::{ffi::OsString, path::PathBuf};
 
 use flycheck::FlycheckConfig;
-use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
+use ide::{
+    AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig,
+    MergeBehaviour,
+};
 use lsp_types::ClientCapabilities;
 use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
 use rustc_hash::FxHashSet;
@@ -263,6 +266,12 @@ impl Config {
         self.completion.add_call_parenthesis = data.completion_addCallParenthesis;
         self.completion.add_call_argument_snippets = data.completion_addCallArgumentSnippets;
 
+        self.assist.insert_use.merge = match data.assist_importMergeBehaviour {
+            MergeBehaviourDef::None => None,
+            MergeBehaviourDef::Full => Some(MergeBehaviour::Full),
+            MergeBehaviourDef::Last => Some(MergeBehaviour::Last),
+        };
+
         self.call_info_full = data.callInfo_full;
 
         self.lens = LensConfig {
@@ -370,6 +379,14 @@ enum ManifestOrProjectJson {
     ProjectJson(ProjectJsonData),
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum MergeBehaviourDef {
+    None,
+    Full,
+    Last,
+}
+
 macro_rules! config_data {
     (struct $name:ident { $($field:ident: $ty:ty = $default:expr,)*}) => {
         #[allow(non_snake_case)]
@@ -393,6 +410,8 @@ macro_rules! config_data {
 
 config_data! {
     struct ConfigData {
+        assist_importMergeBehaviour: MergeBehaviourDef = MergeBehaviourDef::None,
+
         callInfo_full: bool = true,
 
         cargo_autoreload: bool           = true,
