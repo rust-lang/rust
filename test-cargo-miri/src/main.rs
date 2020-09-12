@@ -1,6 +1,5 @@
 use byteorder::{BigEndian, ByteOrder};
 use std::env;
-use std::path::PathBuf;
 #[cfg(unix)]
 use std::io::{self, BufRead};
 
@@ -21,8 +20,12 @@ fn main() {
 
     // If there were no arguments, access stdin and test working dir.
     if std::env::args().len() <= 1 {
+        // CWD should be crate root.
+        // We have to normalize slashes, as the env var might be set for a different target's conventions.
         let env_dir = env::current_dir().unwrap();
-        let crate_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
+        let env_dir = env_dir.to_string_lossy().replace("\\", "/");
+        let crate_dir = env::var_os("CARGO_MANIFEST_DIR").unwrap();
+        let crate_dir = crate_dir.to_string_lossy().replace("\\", "/");
         assert_eq!(env_dir, crate_dir);
 
         #[cfg(unix)]
