@@ -364,6 +364,12 @@ pub fn tokenstream_probably_equal_for_proc_macro(
                 | token::CloseDelim(DelimToken::NoDelim)
                 // The pretty printer collapses many semicolons into one.
                 | token::Semi
+                // We don't preserve leading `|` tokens in patterns, so
+                // we ignore them entirely
+                | token::BinOp(token::BinOpToken::Or)
+                // We don't preserve trailing '+' tokens in trait bounds,
+                // so we ignore them entirely
+                | token::BinOp(token::BinOpToken::Plus)
                 // The pretty printer can turn `$crate` into `::crate_name`
                 | token::ModSep = token.kind {
                 return false;
