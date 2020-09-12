@@ -389,11 +389,7 @@ impl Error for ! {}
 )]
 impl Error for AllocErr {}
 
-#[unstable(
-    feature = "allocator_api",
-    reason = "the precise API and guarantees it provides may be tweaked.",
-    issue = "32838"
-)]
+#[stable(feature = "alloc_layout", since = "1.28.0")]
 impl Error for LayoutErr {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
