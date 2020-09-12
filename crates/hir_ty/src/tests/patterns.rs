@@ -654,3 +654,28 @@ fn slice_tail_pattern() {
         "#]],
     );
 }
+
+#[test]
+fn box_pattern() {
+    check_infer(
+        r#"
+        #[lang = "owned_box"]
+        pub struct Box<T>(T);
+
+        fn foo(params: Box<i32>) {
+            match params {
+                box integer => {}
+            }
+        }
+        "#,
+        expect![[r#"
+            52..58 'params': Box<i32>
+            70..124 '{     ...   } }': ()
+            76..122 'match ...     }': ()
+            82..88 'params': Box<i32>
+            99..110 'box integer': Box<i32>
+            103..110 'integer': i32
+            114..116 '{}': ()
+        "#]],
+    );
+}
