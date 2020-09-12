@@ -312,7 +312,7 @@ impl std::fmt<|> for Foo {
 }
     ",
             r"
-use std::fmt::{Debug, self};
+use std::fmt::{self, Debug};
 
 impl fmt for Foo {
 }
@@ -330,9 +330,8 @@ use std::fmt::{Debug, nested::{Display}};
 impl std::fmt::nested<|> for Foo {
 }
 ",
-            // FIXME(veykril): should be nested::{self, Display} here
             r"
-use std::fmt::{Debug, nested::{Display}, nested};
+use std::fmt::{Debug, nested::{self, Display}};
 
 impl nested for Foo {
 }
@@ -350,9 +349,8 @@ use std::fmt::{Debug, nested::{self, Display}};
 impl std::fmt::nested<|> for Foo {
 }
 ",
-            // FIXME(veykril): nested is duplicated now
             r"
-use std::fmt::{Debug, nested::{self, Display}, nested};
+use std::fmt::{Debug, nested::{self, Display}};
 
 impl nested for Foo {
 }
@@ -371,7 +369,7 @@ impl std::fmt::nested::Debug<|> for Foo {
 }
 ",
             r"
-use std::fmt::{Debug, nested::{Display}, nested::Debug};
+use std::fmt::{Debug, nested::{Debug, Display}};
 
 impl Debug for Foo {
 }
@@ -409,7 +407,7 @@ impl std::fmt::Display<|> for Foo {
 }
 ",
             r"
-use std::fmt::{nested::Debug, Display};
+use std::fmt::{Display, nested::Debug};
 
 impl Display for Foo {
 }
@@ -429,12 +427,8 @@ use crate::{
 
 fn foo() { crate::ty::lower<|>::trait_env() }
 ",
-            // FIXME(veykril): formatting broke here
             r"
-use crate::{
-    ty::{Substs, Ty},
-    AssocItem,
-ty::lower};
+use crate::{AssocItem, ty::{Substs, Ty, lower}};
 
 fn foo() { lower::trait_env() }
 ",
@@ -633,7 +627,7 @@ fn main() {
 }
     ",
             r"
-use std::fmt::{Display, self};
+use std::fmt::{self, Display};
 
 fn main() {
     fmt;
