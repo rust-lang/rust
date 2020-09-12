@@ -137,7 +137,12 @@ struct AncillaryDataIter<'a, T> {
 }
 
 impl<'a, T> AncillaryDataIter<'a, T> {
-    pub fn new(data: &'a [u8]) -> AncillaryDataIter<'a, T> {
+    /// Create `AncillaryDataIter` struct to iterate through the data unit in the control message.
+    ///
+    /// # Safety
+    ///
+    /// `data` must contain a valid control message.
+    unsafe fn new(data: &'a [u8]) -> AncillaryDataIter<'a, T> {
         AncillaryDataIter { data, phantom: PhantomData }
     }
 }
@@ -325,12 +330,24 @@ pub enum AncillaryData<'a> {
 }
 
 impl<'a> AncillaryData<'a> {
-    fn as_rights(data: &'a [u8]) -> Self {
+    /// Create a `AncillaryData::ScmRights` variant.
+    ///
+    /// # Safety
+    ///
+    /// `data` must contain a valid control message and the control message must be type of
+    /// `SOL_SOCKET` and level of `SCM_RIGHTS`.
+    unsafe fn as_rights(data: &'a [u8]) -> Self {
         let ancillary_data_iter = AncillaryDataIter::new(data);
         let scm_rights = ScmRights(ancillary_data_iter);
         AncillaryData::ScmRights(scm_rights)
     }
 
+    /// Create a `AncillaryData::ScmCredentials` variant.
+    ///
+    /// # Safety
+    ///
+    /// `data` must contain a valid control message and the control message must be type of
+    /// `SOL_SOCKET` and level of `SCM_CREDENTIALS` or `SCM_CREDENTIALS`.
     #[cfg(any(
         doc,
         target_os = "android",
@@ -345,7 +362,7 @@ impl<'a> AncillaryData<'a> {
         target_os = "openbsd",
         target_env = "uclibc",
     ))]
-    fn as_credentials(data: &'a [u8]) -> Self {
+    unsafe fn as_credentials(data: &'a [u8]) -> Self {
         let ancillary_data_iter = AncillaryDataIter::new(data);
         let scm_credentials = ScmCredentials(ancillary_data_iter);
         AncillaryData::ScmCredentials(scm_credentials)
