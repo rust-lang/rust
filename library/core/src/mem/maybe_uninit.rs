@@ -2,6 +2,7 @@ use crate::any::type_name;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem::ManuallyDrop;
+use crate::ptr;
 
 /// A wrapper type to construct uninitialized instances of `T`.
 ///
@@ -471,6 +472,8 @@ impl<T> MaybeUninit<T> {
     /// *immediate* undefined behavior, but will cause undefined behavior with most
     /// safe operations (including dropping it).
     ///
+    /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
+    ///
     /// # Examples
     ///
     /// Correct usage of this method:
@@ -519,8 +522,8 @@ impl<T> MaybeUninit<T> {
     /// this initialization invariant.
     ///
     /// Moreover, this leaves a copy of the same data behind in the `MaybeUninit<T>`. When using
-    /// multiple copies of the data (by calling `read` multiple times, or first
-    /// calling `read` and then [`assume_init`]), it is your responsibility
+    /// multiple copies of the data (by calling `assume_init_read` multiple times, or first
+    /// calling `assume_init_read` and then [`assume_init`]), it is your responsibility
     /// to ensure that that data may indeed be duplicated.
     ///
     /// [inv]: #initialization-invariant
@@ -536,16 +539,16 @@ impl<T> MaybeUninit<T> {
     ///
     /// let mut x = MaybeUninit::<u32>::uninit();
     /// x.write(13);
-    /// let x1 = unsafe { x.read() };
+    /// let x1 = unsafe { x.assume_init_read() };
     /// // `u32` is `Copy`, so we may read multiple times.
-    /// let x2 = unsafe { x.read() };
+    /// let x2 = unsafe { x.assume_init_read() };
     /// assert_eq!(x1, x2);
     ///
     /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninit();
     /// x.write(None);
-    /// let x1 = unsafe { x.read() };
+    /// let x1 = unsafe { x.assume_init_read() };
     /// // Duplicating a `None` value is okay, so we may read multiple times.
-    /// let x2 = unsafe { x.read() };
+    /// let x2 = unsafe { x.assume_init_read() };
     /// assert_eq!(x1, x2);
     /// ```
     ///
@@ -557,20 +560,48 @@ impl<T> MaybeUninit<T> {
     ///
     /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninit();
     /// x.write(Some(vec![0,1,2]));
-    /// let x1 = unsafe { x.read() };
-    /// let x2 = unsafe { x.read() };
+    /// let x1 = unsafe { x.assume_init_read() };
+    /// let x2 = unsafe { x.assume_init_read() };
     /// // We now created two copies of the same vector, leading to a double-free ⚠️ when
     /// // they both get dropped!
     /// ```
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
-    pub unsafe fn read(&self) -> T {
+    pub unsafe fn assume_init_read(&self) -> T {
         // SAFETY: the caller must guarantee that `self` is initialized.
         // Reading from `self.as_ptr()` is safe since `self` should be initialized.
         unsafe {
             intrinsics::assert_inhabited::<T>();
             self.as_ptr().read()
         }
+    }
+
+    /// Drops the contained value in place.
+    ///
+    /// If you have ownership of the `MaybeUninit`, you can use [`assume_init`] instead.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is
+    /// in an initialized state. Calling this when the content is not yet fully
+    /// initialized causes undefined behavior.
+    ///
+    /// On top of that, all additional invariants of the type `T` must be
+    /// satisfied, as the `Drop` implementation of `T` (or its members) may
+    /// rely on this. For example, a `1`-initialized [`Vec<T>`] is considered
+    /// initialized (under the current implementation; this does not constitute
+    /// a stable guarantee) because the only requirement the compiler knows
+    /// about it is that the data pointer must be non-null. Dropping such a
+    /// `Vec<T>` however will cause undefined behaviour.
+    ///
+    /// [`assume_init`]: MaybeUninit::assume_init
+    /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
+    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
+    pub unsafe fn assume_init_drop(&mut self) {
+        // SAFETY: the caller must guarantee that `self` is initialized and
+        // satisfies all invariants of `T`.
+        // Dropping the value in place is safe if that is the case.
+        unsafe { ptr::drop_in_place(self.as_mut_ptr()) }
     }
 
     /// Gets a shared reference to the contained value.
