@@ -12,4 +12,6 @@ fn not_in_miri() -> i32 {
 fn main() {
     not_in_miri();
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-env-changed=MIRITESTVAR");
+    println!("cargo:rustc-env=MIRITESTVAR=testval");
 }

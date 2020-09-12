@@ -50,11 +50,14 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
         fail("stderr does not match reference")
 
 def test_cargo_miri_run():
-    test("`cargo miri run`",
+    test("`cargo miri run` (without isolation)",
         cargo_miri("run"),
         "stdout.ref1", "stderr.ref1",
         stdin=b'12\n21\n',
-        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
+        env={
+            'MIRIFLAGS': "-Zmiri-disable-isolation",
+            'MIRITESTVAR': "wrongval", # make sure the build.rs value takes precedence
+        },
     )
     test("`cargo miri run` (with arguments and target)",
         cargo_miri("run") + ["--bin", "cargo-miri-test", "--", "hello world", '"hello world"'],

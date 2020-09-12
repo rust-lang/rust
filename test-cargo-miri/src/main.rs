@@ -3,6 +3,9 @@ use byteorder::{BigEndian, ByteOrder};
 use std::io::{self, BufRead};
 
 fn main() {
+    // Check env var set by `build.rs`.
+    assert_eq!(env!("MIRITESTVAR"), "testval");
+
     // Exercise external crate, printing to stdout.
     let buf = &[1,2,3,4];
     let n = <BigEndian as ByteOrder>::read_u32(buf);

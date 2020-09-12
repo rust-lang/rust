@@ -612,7 +612,9 @@ fn phase_cargo_runner(binary: &Path, binary_args: env::Args) {
     let info: CrateRunInfo = serde_json::from_reader(file)
         .unwrap_or_else(|_| show_error(format!("File {:?} does not contain valid JSON", binary)));
 
-    // Set missing env vars.
+    // Set missing env vars. Looks like `build.rs` vars are still set at run-time, but
+    // `CARGO_BIN_EXE_*` are not. This means we can give the run-time environment precedence,
+    // to rather do too little than too much.
     for (name, val) in info.env {
         if env::var_os(&name).is_none() {
             env::set_var(name, val);
