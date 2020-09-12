@@ -10,7 +10,7 @@ use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, BindingMode, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeFoldable};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Ident;
@@ -735,7 +735,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(err) =
             self.demand_suptype_with_origin(&self.pattern_cause(ti, pat.span), expected, pat_ty)
         {
-            self.emit_bad_pat_path(err, pat.span, res, pat_res, segments, ti.parent_pat);
+            self.emit_bad_pat_path(err, pat.span, res, pat_res, pat_ty, segments, ti.parent_pat);
         }
         pat_ty
     }
@@ -746,6 +746,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_span: Span,
         res: Res,
         pat_res: Res,
+        pat_ty: Ty<'tcx>,
         segments: &'b [hir::PathSegment<'b>],
         parent_pat: Option<&Pat<'_>>,
     ) {
@@ -771,9 +772,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
                     _ => {
-                        let msg = "introduce a new binding instead";
-                        let sugg = format!("other_{}", ident.as_str().to_lowercase());
-                        e.span_suggestion(ident.span, msg, sugg, Applicability::HasPlaceholders);
+                        let const_def_id = match pat_ty.kind() {
+                            Adt(def, _) => match res {
+                                Res::Def(DefKind::Const, _) => Some(def.did),
+                                _ => None,
+                            },
+                            _ => None,
+                        };
+
+                        let ranges = &[
+                            self.tcx.lang_items().range_struct(),
+                            self.tcx.lang_items().range_from_struct(),
+                            self.tcx.lang_items().range_to_struct(),
+                            self.tcx.lang_items().range_full_struct(),
+                            self.tcx.lang_items().range_inclusive_struct(),
+                            self.tcx.lang_items().range_to_inclusive_struct(),
+                        ];
+                        if const_def_id != None && ranges.contains(&const_def_id) {
+                            let msg = "constants only support matching by type, \
+                                if you meant to match against a range of values, \
+                                consider using a range pattern like `min ..= max` in the match block";
+                            e.note(msg);
+                        } else {
+                            let msg = "introduce a new binding instead";
+                            let sugg = format!("other_{}", ident.as_str().to_lowercase());
+                            e.span_suggestion(
+                                ident.span,
+                                msg,
+                                sugg,
+                                Applicability::HasPlaceholders,
+                            );
+                        }
                     }
                 };
             }

@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-76191.rs:10:9
+   |
+LL | const RANGE: RangeInclusive<i32> = 0..=255;
+   | ------------------------------------------- constant defined here
+...
+LL |     match n {
+   |           - this expression has type `i32`
+LL |         RANGE => {}
+   |         ^^^^^
+   |         |
+   |         expected `i32`, found struct `RangeInclusive`
+   |         `RANGE` is interpreted as a constant, not a new binding
+   |
+   = note: expected type `i32`
+            found struct `RangeInclusive<i32>`
+   = note: constants only support matching by type, if you meant to match against a range of values, consider using a range pattern like `min ..= max` in the match block
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
