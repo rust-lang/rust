@@ -1,3 +1,4 @@
+use crate::fmt::{self, Debug};
 use crate::future::Future;
 use crate::marker;
 use crate::pin::Pin;
@@ -10,8 +11,7 @@ use crate::task::{Context, Poll};
 /// documentation for more.
 ///
 /// [`pending`]: fn.pending.html
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
-#[derive(Debug)]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 pub struct Pending<T> {
     _data: marker::PhantomData<T>,
@@ -23,7 +23,6 @@ pub struct Pending<T> {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(future_readiness_fns)]
 /// use core::future;
 ///
 /// # async fn run() {
@@ -32,12 +31,12 @@ pub struct Pending<T> {
 /// unreachable!();
 /// # }
 /// ```
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 pub fn pending<T>() -> Pending<T> {
     Pending { _data: marker::PhantomData }
 }
 
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 impl<T> Future for Pending<T> {
     type Output = T;
 
@@ -46,10 +45,17 @@ impl<T> Future for Pending<T> {
     }
 }
 
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 impl<T> Unpin for Pending<T> {}
 
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
+impl<T> Debug for Pending<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Pending").finish()
+    }
+}
+
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 impl<T> Clone for Pending<T> {
     fn clone(&self) -> Self {
         pending()
