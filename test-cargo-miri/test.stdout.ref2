@@ -3,7 +3,6 @@ running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out
 
-no-harness test
 
 running 1 test
 test simple1 ... ok

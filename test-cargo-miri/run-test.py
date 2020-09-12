@@ -50,7 +50,7 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
         fail("stderr does not match reference")
 
 def test_cargo_miri_run():
-    test("`cargo miri run` (without isolation)",
+    test("`cargo miri run` (no isolation)",
         cargo_miri("run"),
         "stdout.ref1", "stderr.ref1",
         stdin=b'12\n21\n',
@@ -61,9 +61,9 @@ def test_cargo_miri_run():
     )
     test("`cargo miri run` (with arguments and target)",
         cargo_miri("run") + ["--bin", "cargo-miri-test", "--", "hello world", '"hello world"'],
-        "stdout.ref2", "stderr.ref2"
+        "stdout.ref2", "stderr.ref2",
     )
-    test("`cargo miri run` (subcrate)",
+    test("`cargo miri run` (subcrate, no ioslation)",
         cargo_miri("run") + ["-p", "subcrate"],
         "stdout.ref3", "stderr.ref3",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
@@ -76,25 +76,30 @@ def test_cargo_miri_test():
 
     test("`cargo miri test`",
         cargo_miri("test"),
-        "test.stdout.ref1",rustdoc_ref,
+        "test.stdout.ref1", rustdoc_ref,
         env={'MIRIFLAGS': "-Zmiri-seed=feed"},
+    )
+    test("`cargo miri test` (no isolation)",
+        cargo_miri("test"),
+        "test.stdout.ref1", rustdoc_ref,
+        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
     test("`cargo miri test` (with filter)",
         cargo_miri("test") + ["--", "--format=pretty", "le1"],
-        "test.stdout.ref2", rustdoc_ref
-    )
-    test("`cargo miri test` (without isolation)",
-        cargo_miri("test") + ["--", "--format=pretty", "num_cpus"],
-        "test.stdout.ref3", rustdoc_ref,
-        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
+        "test.stdout.ref2", rustdoc_ref,
     )
     test("`cargo miri test` (test target)",
         cargo_miri("test") + ["--test", "test", "--", "--format=pretty"],
-        "test.stdout.ref4", "test.stderr.ref2"
+        "test.stdout.ref3", "test.stderr.ref2",
     )
     test("`cargo miri test` (bin target)",
         cargo_miri("test") + ["--bin", "cargo-miri-test", "--", "--format=pretty"],
-        "test.stdout.ref5", "test.stderr.ref2"
+        "test.stdout.ref4", "test.stderr.ref2",
+    )
+    test("`cargo miri test` (subcrate)",
+        cargo_miri("test") + ["-p", "subcrate"],
+        "test.stdout.ref5", "test.stderr.ref2",
+        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))

@@ -7,3 +7,8 @@ edition = "2018"
 [[bin]]
 name = "subcrate"
 path = "main.rs"
+
+[[test]]
+name = "subtest"
+path = "test.rs"
+harness = false

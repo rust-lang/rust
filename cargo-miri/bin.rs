@@ -43,6 +43,8 @@ struct CrateRunInfo {
     args: Vec<String>,
     /// The environment.
     env: Vec<(OsString, OsString)>,
+    /// The current working directory.
+    current_dir: OsString,
 }
 
 impl CrateRunInfo {
@@ -50,7 +52,8 @@ impl CrateRunInfo {
     fn collect(args: env::Args) -> Self {
         let args = args.collect();
         let env = env::vars_os().collect();
-        CrateRunInfo { args, env }
+        let current_dir = env::current_dir().unwrap().into_os_string();
+        CrateRunInfo { args, env, current_dir }
     }
 
     fn store(&self, filename: &Path) {
@@ -671,6 +674,11 @@ fn phase_cargo_runner(binary: &Path, binary_args: env::Args) {
     // Then pass binary arguments.
     cmd.arg("--");
     cmd.args(binary_args);
+
+    // Make sure we use the build-time working directory for interpreting Miri/rustc arguments.
+    // But then we need to switch to the run-time one, which we instruct Miri do do by setting `MIRI_CWD`.
+    cmd.current_dir(info.current_dir);
+    cmd.env("MIRI_CWD", env::current_dir().unwrap());
 
     // Run it.
     if verbose {

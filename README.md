@@ -244,6 +244,10 @@ different Miri binaries, and as such worth documenting:
 * `MIRI_BE_RUSTC` when set to any value tells the Miri driver to actually not
   interpret the code but compile it like rustc would. This is useful to be sure
   that the compiled `rlib`s are compatible with Miri.
+* `MIRI_CWD` when set to any value tells the Miri driver to change to the given
+  directory after loading all the source files, but before commencing
+  interpretation. This is useful if the interpreted program wants a different
+  working directory at run-time than at build-time.
 
 ## Miri `extern` functions
 
