@@ -19,7 +19,7 @@
 -                 debug z => _3;           // in scope 3 at $DIR/cycle.rs:11:9: 11:10
 +                 debug z => _4;           // in scope 3 at $DIR/cycle.rs:11:9: 11:10
                   scope 4 {
-                      debug _x => _6;      // in scope 4 at $SRC_DIR/libcore/mem/mod.rs:LL:COL
+                      debug _x => _6;      // in scope 4 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
                   }
               }
           }
@@ -27,12 +27,9 @@
   
       bb0: {
 -         StorageLive(_1);                 // scope 0 at $DIR/cycle.rs:9:9: 9:14
--         _1 = const val() -> bb1;         // scope 0 at $DIR/cycle.rs:9:17: 9:22
+-         _1 = val() -> bb1;               // scope 0 at $DIR/cycle.rs:9:17: 9:22
 +         nop;                             // scope 0 at $DIR/cycle.rs:9:9: 9:14
-+         _4 = const val() -> bb1;         // scope 0 at $DIR/cycle.rs:9:17: 9:22
-                                           // ty::Const
-                                           // + ty: fn() -> i32 {val}
-                                           // + val: Value(Scalar(<ZST>))
++         _4 = val() -> bb1;               // scope 0 at $DIR/cycle.rs:9:17: 9:22
                                            // mir::Constant
                                            // + span: $DIR/cycle.rs:9:17: 9:20
                                            // + literal: Const { ty: fn() -> i32 {val}, val: Value(Scalar(<ZST>)) }
@@ -59,26 +56,14 @@
           StorageLive(_6);                 // scope 3 at $DIR/cycle.rs:14:10: 14:11
 -         _6 = _1;                         // scope 3 at $DIR/cycle.rs:14:10: 14:11
 +         _6 = _4;                         // scope 3 at $DIR/cycle.rs:14:10: 14:11
-          _5 = const ();                   // scope 4 at $SRC_DIR/libcore/mem/mod.rs:LL:COL
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $SRC_DIR/libcore/mem/mod.rs:LL:COL
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          drop(_6) -> bb2;                 // scope 4 at $SRC_DIR/libcore/mem/mod.rs:LL:COL
+          _5 = const ();                   // scope 4 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+          drop(_6) -> bb2;                 // scope 4 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
       }
   
       bb2: {
           StorageDead(_6);                 // scope 3 at $DIR/cycle.rs:14:11: 14:12
           StorageDead(_5);                 // scope 3 at $DIR/cycle.rs:14:12: 14:13
           _0 = const ();                   // scope 0 at $DIR/cycle.rs:8:11: 15:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/cycle.rs:8:11: 15:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
 -         StorageDead(_3);                 // scope 2 at $DIR/cycle.rs:15:1: 15:2
 -         StorageDead(_2);                 // scope 1 at $DIR/cycle.rs:15:1: 15:2
 -         StorageDead(_1);                 // scope 0 at $DIR/cycle.rs:15:1: 15:2

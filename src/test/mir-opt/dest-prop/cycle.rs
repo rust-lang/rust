@@ -4,7 +4,7 @@ fn val() -> i32 {
     1
 }
 
-// EMIT_MIR rustc.main.DestinationPropagation.diff
+// EMIT_MIR cycle.main.DestinationPropagation.diff
 fn main() {
     let mut x = val();
     let y = x;

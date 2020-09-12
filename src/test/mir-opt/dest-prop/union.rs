@@ -4,7 +4,7 @@ fn val() -> u32 {
     1
 }
 
-// EMIT_MIR rustc.main.DestinationPropagation.diff
+// EMIT_MIR union.main.DestinationPropagation.diff
 fn main() {
     union Un {
         us: u32,

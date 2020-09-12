@@ -8,7 +8,7 @@ fn cond() -> bool {
     true
 }
 
-// EMIT_MIR rustc.main.DestinationPropagation.diff
+// EMIT_MIR branch.main.DestinationPropagation.diff
 fn main() {
     let x = val();
 

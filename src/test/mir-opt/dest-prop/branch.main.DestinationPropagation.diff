@@ -17,12 +17,9 @@
   
       bb0: {
 -         StorageLive(_1);                 // scope 0 at $DIR/branch.rs:13:9: 13:10
--         _1 = const val() -> bb1;         // scope 0 at $DIR/branch.rs:13:13: 13:18
+-         _1 = val() -> bb1;               // scope 0 at $DIR/branch.rs:13:13: 13:18
 +         nop;                             // scope 0 at $DIR/branch.rs:13:9: 13:10
-+         _2 = const val() -> bb1;         // scope 0 at $DIR/branch.rs:13:13: 13:18
-                                           // ty::Const
-                                           // + ty: fn() -> i32 {val}
-                                           // + val: Value(Scalar(<ZST>))
++         _2 = val() -> bb1;               // scope 0 at $DIR/branch.rs:13:13: 13:18
                                            // mir::Constant
                                            // + span: $DIR/branch.rs:13:13: 13:16
                                            // + literal: Const { ty: fn() -> i32 {val}, val: Value(Scalar(<ZST>)) }
@@ -32,10 +29,7 @@
 -         StorageLive(_2);                 // scope 1 at $DIR/branch.rs:15:9: 15:10
 +         nop;                             // scope 1 at $DIR/branch.rs:15:9: 15:10
           StorageLive(_3);                 // scope 1 at $DIR/branch.rs:15:16: 15:22
-          _3 = const cond() -> bb2;        // scope 1 at $DIR/branch.rs:15:16: 15:22
-                                           // ty::Const
-                                           // + ty: fn() -> bool {cond}
-                                           // + val: Value(Scalar(<ZST>))
+          _3 = cond() -> bb2;              // scope 1 at $DIR/branch.rs:15:16: 15:22
                                            // mir::Constant
                                            // + span: $DIR/branch.rs:15:16: 15:20
                                            // + literal: Const { ty: fn() -> bool {cond}, val: Value(Scalar(<ZST>)) }
@@ -47,10 +41,7 @@
   
       bb3: {
           StorageLive(_4);                 // scope 1 at $DIR/branch.rs:18:9: 18:14
-          _4 = const val() -> bb5;         // scope 1 at $DIR/branch.rs:18:9: 18:14
-                                           // ty::Const
-                                           // + ty: fn() -> i32 {val}
-                                           // + val: Value(Scalar(<ZST>))
+          _4 = val() -> bb5;               // scope 1 at $DIR/branch.rs:18:9: 18:14
                                            // mir::Constant
                                            // + span: $DIR/branch.rs:18:9: 18:12
                                            // + literal: Const { ty: fn() -> i32 {val}, val: Value(Scalar(<ZST>)) }
@@ -72,12 +63,6 @@
       bb6: {
           StorageDead(_3);                 // scope 1 at $DIR/branch.rs:20:6: 20:7
           _0 = const ();                   // scope 0 at $DIR/branch.rs:12:11: 21:2
-                                           // ty::Const
-                                           // + ty: ()
-                                           // + val: Value(Scalar(<ZST>))
-                                           // mir::Constant
-                                           // + span: $DIR/branch.rs:12:11: 21:2
-                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
 -         StorageDead(_2);                 // scope 1 at $DIR/branch.rs:21:1: 21:2
 -         StorageDead(_1);                 // scope 0 at $DIR/branch.rs:21:1: 21:2
 +         nop;                             // scope 1 at $DIR/branch.rs:21:1: 21:2
