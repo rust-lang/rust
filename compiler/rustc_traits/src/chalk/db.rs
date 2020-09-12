@@ -110,25 +110,15 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             .map(|i| chalk_ir::AssocTypeId(i.def_id))
             .collect();
 
-        let well_known = if self
-            .interner
-            .tcx
-            .lang_items()
-            .sized_trait()
-            .map(|t| def_id == t)
-            .unwrap_or(false)
-        {
+        let well_known = if self.interner.tcx.lang_items().sized_trait() == Some(def_id) {
             Some(chalk_solve::rust_ir::WellKnownTrait::Sized)
-        } else if self.interner.tcx.lang_items().copy_trait().map(|t| def_id == t).unwrap_or(false)
-        {
+        } else if self.interner.tcx.lang_items().copy_trait() == Some(def_id) {
             Some(chalk_solve::rust_ir::WellKnownTrait::Copy)
-        } else if self.interner.tcx.lang_items().clone_trait().map(|t| def_id == t).unwrap_or(false)
-        {
+        } else if self.interner.tcx.lang_items().clone_trait() == Some(def_id) {
             Some(chalk_solve::rust_ir::WellKnownTrait::Clone)
-        } else if self.interner.tcx.lang_items().drop_trait().map(|t| def_id == t).unwrap_or(false)
-        {
+        } else if self.interner.tcx.lang_items().drop_trait() == Some(def_id) {
             Some(chalk_solve::rust_ir::WellKnownTrait::Drop)
-        } else if self.interner.tcx.lang_items().fn_trait().map(|t| def_id == t).unwrap_or(false) {
+        } else if self.interner.tcx.lang_items().fn_trait() == Some(def_id) {
             Some(chalk_solve::rust_ir::WellKnownTrait::Fn)
         } else if self
             .interner
