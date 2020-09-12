@@ -6,7 +6,7 @@ use rustc_infer::traits::Obligation;
 use rustc_middle::ty::{self, ToPredicate, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::InferCtxtExt as _;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
@@ -153,12 +153,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                                 suggest_box &= self.infcx.predicate_must_hold_modulo_regions(&obl);
                                 if !suggest_box {
+                                    // We've encountered some obligation that didn't hold, so the
+                                    // return expression can't just be boxed. We don't need to
+                                    // evaluate the rest of the obligations.
                                     break;
                                 }
                             }
                             _ => {}
                         }
                     }
+                    // If all the obligations hold (or there are no obligations) the tail expression
+                    // we can suggest to return a boxed trait object instead of an opaque type.
                     if suggest_box { self.ret_type_span.clone() } else { None }
                 }
                 _ => None,
