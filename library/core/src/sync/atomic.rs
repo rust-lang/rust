@@ -858,7 +858,7 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut(v: &mut *mut T) -> &Self {
-        let [] = [(); align_of::<Self>() - align_of::<*mut T>()];
+        let [] = [(); align_of::<AtomicPtr<()>>() - align_of::<*mut ()>()];
         // SAFETY:
         //  - the mutable reference guarantees unique ownership.
         //  - the alignment of `*mut T` and `Self` is the same on all platforms
