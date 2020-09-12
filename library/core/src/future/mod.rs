@@ -21,9 +21,9 @@ pub use self::future::Future;
 #[unstable(feature = "into_future", issue = "67644")]
 pub use into_future::IntoFuture;
 
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 pub use pending::{pending, Pending};
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 pub use ready::{ready, Ready};
 
 #[unstable(feature = "future_poll_fn", issue = "72302")]

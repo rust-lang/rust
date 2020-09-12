@@ -8,15 +8,15 @@ use crate::task::{Context, Poll};
 /// documentation for more.
 ///
 /// [`ready`]: fn.ready.html
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 #[derive(Debug, Clone)]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 pub struct Ready<T>(Option<T>);
 
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 impl<T> Unpin for Ready<T> {}
 
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 impl<T> Future for Ready<T> {
     type Output = T;
 
@@ -28,10 +28,13 @@ impl<T> Future for Ready<T> {
 
 /// Creates a future that is immediately ready with a value.
 ///
+/// Futures created through this function are functionally similar to those
+/// created through `async {}`. The main difference is that futures created
+/// through this function are named and implement `Unpin`.
+///
 /// # Examples
 ///
 /// ```
-/// #![feature(future_readiness_fns)]
 /// use core::future;
 ///
 /// # async fn run() {
@@ -39,7 +42,7 @@ impl<T> Future for Ready<T> {
 /// assert_eq!(a.await, 1);
 /// # }
 /// ```
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
+#[stable(feature = "future_readiness_fns", since = "1.47.0")]
 pub fn ready<T>(t: T) -> Ready<T> {
     Ready(Some(t))
 }
