@@ -588,11 +588,12 @@ impl Conflicts<'a> {
             }
 
             StatementKind::SetDiscriminant { .. }
-            | StatementKind::StorageLive(_)
-            | StatementKind::StorageDead(_)
-            | StatementKind::Retag(_, _)
-            | StatementKind::FakeRead(_, _)
-            | StatementKind::AscribeUserType(_, _)
+            | StatementKind::StorageLive(..)
+            | StatementKind::StorageDead(..)
+            | StatementKind::Retag(..)
+            | StatementKind::FakeRead(..)
+            | StatementKind::AscribeUserType(..)
+            | StatementKind::Coverage(..)
             | StatementKind::Nop => {}
         }
     }
