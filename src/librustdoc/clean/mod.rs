@@ -901,7 +901,8 @@ impl Clean<Item> for doctree::Function<'_> {
 
         let did = cx.tcx.hir().local_def_id(self.id);
         let constness = if is_const_fn(cx.tcx, did.to_def_id())
-            && !is_unstable_const_fn(cx.tcx, did.to_def_id()).is_some() {
+            && !is_unstable_const_fn(cx.tcx, did.to_def_id()).is_some()
+        {
             hir::Constness::Const
         } else {
             hir::Constness::NotConst
