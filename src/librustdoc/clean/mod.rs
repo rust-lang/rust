@@ -23,7 +23,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, AdtKind, Lift, Ty, TyCtxt};
-use rustc_mir::const_eval::{is_min_const_fn, is_unstable_const_fn};
+use rustc_mir::const_eval::{is_const_fn, is_min_const_fn, is_unstable_const_fn};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, Pos};
@@ -900,7 +900,8 @@ impl Clean<Item> for doctree::Function<'_> {
             enter_impl_trait(cx, || (self.generics.clean(cx), (self.decl, self.body).clean(cx)));
 
         let did = cx.tcx.hir().local_def_id(self.id);
-        let constness = if !is_unstable_const_fn(cx.tcx, did.to_def_id()).is_some() {
+        let constness = if is_const_fn(cx.tcx, did.to_def_id())
+            && !is_unstable_const_fn(cx.tcx, did.to_def_id()).is_some() {
             hir::Constness::Const
         } else {
             hir::Constness::NotConst
