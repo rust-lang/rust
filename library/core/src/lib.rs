@@ -80,6 +80,7 @@
 #![feature(const_int_pow)]
 #![feature(constctlz)]
 #![feature(const_panic)]
+#![feature(const_pin)]
 #![feature(const_fn_union)]
 #![feature(const_generics)]
 #![feature(const_option)]

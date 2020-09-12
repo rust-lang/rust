@@ -471,9 +471,10 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     ///
     /// Unlike `Pin::new_unchecked`, this method is safe because the pointer
     /// `P` dereferences to an [`Unpin`] type, which cancels the pinning guarantees.
-    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn new(pointer: P) -> Pin<P> {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin", since = "1.33.0")]
+    pub const fn new(pointer: P) -> Pin<P> {
         // SAFETY: the value pointed to is `Unpin`, and so has no requirements
         // around pinning.
         unsafe { Pin::new_unchecked(pointer) }
@@ -483,9 +484,10 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     ///
     /// This requires that the data inside this `Pin` is [`Unpin`] so that we
     /// can ignore the pinning invariants when unwrapping it.
-    #[stable(feature = "pin_into_inner", since = "1.39.0")]
     #[inline(always)]
-    pub fn into_inner(pin: Pin<P>) -> P {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin_into_inner", since = "1.39.0")]
+    pub const fn into_inner(pin: Pin<P>) -> P {
         pin.pointer
     }
 }
@@ -556,9 +558,10 @@ impl<P: Deref> Pin<P> {
     ///
     /// [`mem::swap`]: crate::mem::swap
     #[lang = "new_unchecked"]
-    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub unsafe fn new_unchecked(pointer: P) -> Pin<P> {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin", since = "1.33.0")]
+    pub const unsafe fn new_unchecked(pointer: P) -> Pin<P> {
         Pin { pointer }
     }
 
@@ -589,9 +592,10 @@ impl<P: Deref> Pin<P> {
     ///
     /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
     /// instead.
-    #[stable(feature = "pin_into_inner", since = "1.39.0")]
     #[inline(always)]
-    pub unsafe fn into_inner_unchecked(pin: Pin<P>) -> P {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin_into_inner", since = "1.39.0")]
+    pub const unsafe fn into_inner_unchecked(pin: Pin<P>) -> P {
         pin.pointer
     }
 }
@@ -693,17 +697,18 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// with the same lifetime as the original `Pin`.
     ///
     /// ["pinning projections"]: self#projections-and-structural-pinning
-    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn get_ref(self) -> &'a T {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin", since = "1.33.0")]
+    pub const fn get_ref(self) -> &'a T {
         self.pointer
     }
 }
 
 impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Converts this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
-    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
+    #[stable(feature = "pin", since = "1.33.0")]
     pub fn into_ref(self) -> Pin<&'a T> {
         Pin { pointer: self.pointer }
     }

@@ -39,6 +39,7 @@
 #![feature(iter_order_by)]
 #![feature(cmp_min_max_by)]
 #![feature(iter_map_while)]
+#![feature(const_pin)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
 #![feature(never_type)]
@@ -74,6 +75,7 @@ mod num;
 mod ops;
 mod option;
 mod pattern;
+mod pin;
 mod ptr;
 mod result;
 mod slice;
