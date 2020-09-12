@@ -2,7 +2,7 @@ warning: unresolved link to `error`
   --> $DIR/intra-links-warning-crlf.rs:7:6
    |
 LL | /// [error]
-   |      ^^^^^ unresolved link
+   |      ^^^^^ no item named `error` in `intra_links_warning_crlf`
    |
    = note: `#[warn(broken_intra_doc_links)]` on by default
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
@@ -11,7 +11,7 @@ warning: unresolved link to `error1`
   --> $DIR/intra-links-warning-crlf.rs:12:11
    |
 LL | /// docs [error1]
-   |           ^^^^^^ unresolved link
+   |           ^^^^^^ no item named `error1` in `intra_links_warning_crlf`
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -19,7 +19,7 @@ warning: unresolved link to `error2`
   --> $DIR/intra-links-warning-crlf.rs:15:11
    |
 LL | /// docs [error2]
-   |           ^^^^^^ unresolved link
+   |           ^^^^^^ no item named `error2` in `intra_links_warning_crlf`
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -27,7 +27,7 @@ warning: unresolved link to `error`
   --> $DIR/intra-links-warning-crlf.rs:23:20
    |
 LL |  * It also has an [error].
-   |                    ^^^^^ unresolved link
+   |                    ^^^^^ no item named `error` in `intra_links_warning_crlf`
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 

@@ -2,7 +2,7 @@ error: unresolved link to `v2`
   --> $DIR/deny-intra-link-resolution-failure.rs:3:6
    |
 LL | /// [v2]
-   |      ^^ unresolved link
+   |      ^^ no item named `v2` in `deny_intra_link_resolution_failure`
    |
 note: the lint level is defined here
   --> $DIR/deny-intra-link-resolution-failure.rs:1:9
