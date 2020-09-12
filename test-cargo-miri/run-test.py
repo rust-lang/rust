@@ -22,7 +22,7 @@ def cargo_miri(cmd):
     return args
 
 def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
-    print("==> Testing {} <==".format(name))
+    print("Testing {}...".format(name))
     ## Call `cargo miri`, capture all output
     p_env = os.environ.copy()
     p_env.update(env)
@@ -36,18 +36,17 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
     (stdout, stderr) = p.communicate(input=stdin)
     stdout = stdout.decode("UTF-8")
     stderr = stderr.decode("UTF-8")
+    if p.returncode == 0 and stdout == open(stdout_ref).read() and stderr == open(stderr_ref).read():
+        # All good!
+        return
     # Show output
-    print("=> captured stdout <=")
+    print("--- BEGIN stdout ---")
     print(stdout, end="")
-    print("=> captured stderr <=")
+    print("--- END stdout ---")
+    print("--- BEGIN stderr ---")
     print(stderr, end="")
-    # Test for failures
-    if p.returncode != 0:
-        fail("Non-zero exit status")
-    if stdout != open(stdout_ref).read():
-        fail("stdout does not match reference")
-    if stderr != open(stderr_ref).read():
-        fail("stderr does not match reference")
+    print("--- END stderr ---")
+    fail("exit code was {}".format(p.returncode))
 
 def test_cargo_miri_run():
     test("`cargo miri run` (no isolation)",
@@ -96,7 +95,7 @@ def test_cargo_miri_test():
         cargo_miri("test") + ["--bin", "cargo-miri-test", "--", "--format=pretty"],
         "test.stdout.ref4", "test.stderr.ref2",
     )
-    test("`cargo miri test` (subcrate)",
+    test("`cargo miri test` (subcrate, no isolation)",
         cargo_miri("test") + ["-p", "subcrate"],
         "test.stdout.ref5", "test.stderr.ref2",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
