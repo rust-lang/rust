@@ -1,6 +1,6 @@
-#![stable(feature = "unix_socket", since = "1.10.0")]
+//! Unix-specific networking functionality.
 
-//! Unix-specific networking functionality
+#![stable(feature = "unix_socket", since = "1.10.0")]
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;

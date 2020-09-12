@@ -10,6 +10,8 @@
 #![feature(core_private_diy_float)]
 #![feature(debug_non_exhaustive)]
 #![feature(dec2flt)]
+#![feature(duration_constants)]
+#![feature(duration_saturating_ops)]
 #![feature(exact_size_is_empty)]
 #![feature(fixed_size_array)]
 #![feature(flt2dec)]
