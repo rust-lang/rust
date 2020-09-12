@@ -51,11 +51,7 @@ fn is_string_literal(item: &str) -> bool {
     if item.len() < 2 {
         return false;
     }
-    if item.chars().nth(0) != Some('"') || item.chars().nth(item.len() - 1) != Some('"') {
-        return false;
-    }
-
-    true
+    item.starts_with("\"") && item.ends_with("\"")
 }
 
 /// Parser for a format-like string. It is more allowing in terms of string contents,
@@ -269,8 +265,8 @@ mod tests {
             ("{correct}}}", Some(("{}}}", vec!["correct"]))),
             ("{correct}}}}}", Some(("{}}}}}", vec!["correct"]))),
             ("{incorrect}}", None),
-            ("placeholders {} {}", Some(("placeholders {} {}", vec!["$0", "$1"]))),
-            ("mixed {} {2 + 2} {}", Some(("mixed {} {} {}", vec!["$0", "2 + 2", "$1"]))),
+            ("placeholders {} {}", Some(("placeholders {} {}", vec!["$1", "$2"]))),
+            ("mixed {} {2 + 2} {}", Some(("mixed {} {} {}", vec!["$1", "2 + 2", "$2"]))),
             (
                 "{SomeStruct { val_a: 0, val_b: 1 }}",
                 Some(("{}", vec!["SomeStruct { val_a: 0, val_b: 1 }"])),
@@ -309,11 +305,11 @@ mod tests {
     #[test]
     fn test_into_suggestion() {
         let test_vector = &[
-            (PostfixKind::Println, "{}", r#"println!("{}", $0)"#),
+            (PostfixKind::Println, "{}", r#"println!("{}", $1)"#),
             (
                 PostfixKind::LogInfo,
                 "{} {expr} {} {2 + 2}",
-                r#"log::info!("{} {} {} {}", $0, expr, $1, 2 + 2)"#,
+                r#"log::info!("{} {} {} {}", $1, expr, $2, 2 + 2)"#,
             ),
             (PostfixKind::Format, "{expr:?}", r#"format!("{:?}", expr)"#),
         ];
