@@ -403,6 +403,7 @@ impl Conflicts {
             .iterate_to_fixpoint()
             .into_results_cursor(body);
 
+        let mut reachable = None;
         dump_mir(
             tcx,
             None,
@@ -411,15 +412,18 @@ impl Conflicts {
             source,
             body,
             |pass_where, w| {
+                let reachable =
+                    reachable.get_or_insert_with(|| traversal::reachable_as_bitset(body));
+
                 match pass_where {
-                    PassWhere::BeforeLocation(loc) => {
+                    PassWhere::BeforeLocation(loc) if reachable.contains(loc.block) => {
                         init.seek_before_primary_effect(loc);
                         live.seek_after_primary_effect(loc);
 
                         writeln!(w, "        // init: {:?}", init.get())?;
                         writeln!(w, "        // live: {:?}", live.get())?;
                     }
-                    PassWhere::AfterTerminator(bb) => {
+                    PassWhere::AfterTerminator(bb) if reachable.contains(bb) => {
                         let loc = body.terminator_loc(bb);
                         init.seek_after_primary_effect(loc);
                         live.seek_before_primary_effect(loc);
@@ -428,7 +432,7 @@ impl Conflicts {
                         writeln!(w, "        // live: {:?}", live.get())?;
                     }
 
-                    PassWhere::BeforeBlock(bb) => {
+                    PassWhere::BeforeBlock(bb) if reachable.contains(bb) => {
                         init.seek_to_block_start(bb);
                         live.seek_to_block_start(bb);
 
@@ -437,6 +441,16 @@ impl Conflicts {
                     }
 
                     PassWhere::BeforeCFG | PassWhere::AfterCFG | PassWhere::AfterLocation(_) => {}
+
+                    PassWhere::BeforeLocation(_) | PassWhere::AfterTerminator(_) => {
+                        writeln!(w, "        // init: <unreachable>")?;
+                        writeln!(w, "        // live: <unreachable>")?;
+                    }
+
+                    PassWhere::BeforeBlock(_) => {
+                        writeln!(w, "    // init: <unreachable>")?;
+                        writeln!(w, "    // live: <unreachable>")?;
+                    }
                 }
 
                 Ok(())
