@@ -836,15 +836,6 @@ impl DirEntryExt for fs::DirEntry {
 ///
 /// The `dst` path will be a symbolic link pointing to the `src` path.
 ///
-/// # Note
-///
-/// On Windows, you must specify whether a symbolic link points to a file
-/// or directory. Use `os::windows::fs::symlink_file` to create a
-/// symbolic link to a file, or `os::windows::fs::symlink_dir` to create a
-/// symbolic link to a directory. Additionally, the process must have
-/// `SeCreateSymbolicLinkPrivilege` in order to be able to create a
-/// symbolic link.
-///
 /// # Examples
 ///
 /// ```no_run
