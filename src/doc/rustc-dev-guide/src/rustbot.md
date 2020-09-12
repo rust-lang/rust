@@ -13,9 +13,10 @@ comment on the issue at hand:
 
     @rustbot claim
 
-If you are a member of the `rust-lang` organization, `@rustbot` will assign the
-issue to you. Otherwise, `@rustbot` will assign itself as a placeholder and edit
-the top comment to reflect the fact that the issue is now assigned to you.
+This will tell `@rustbot` to assign the issue to you if it has no assignee yet.
+Note that because of some GitHub restrictions, you may be assigned indireclty,
+i.e. `@rustbot` will assign itself as a placeholder and edit the top comment to
+reflect the fact that the issue is now assigned to you.
 
 If you want to unassign from an issue, `@rustbot` has a different command:
 
