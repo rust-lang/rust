@@ -62,7 +62,7 @@ there's no way to add `const` to functions in `extern` blocks for now.
 
 ## rustc_const_stable
 
-The `#[stable(feature = "foo", "since = "1.420.69")]` attribute explicitly marks
+The `#[rustc_const_stable(feature = "foo", "since = "1.420.69")]` attribute explicitly marks
 a `const fn` as having its constness be `stable`. This attribute can make sense
 even on an `unstable` function, if that function is called from another
 `rustc_const_stable` function.
