@@ -12,28 +12,21 @@ use rustc_version::VersionMeta;
 
 const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 22);
 
-const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
+const CARGO_MIRI_HELP: &str = r#"Runs binary crates and tests in Miri
 
 Usage:
-    cargo miri [subcommand] [<cargo options>...] [--] [<miri options>...] [--] [<program/test suite options>...]
+    cargo miri [subcommand] [<cargo options>...] [--] [<program/test suite options>...]
 
 Subcommands:
-    run                      Run binaries (default)
+    run                      Run binaries
     test                     Run tests
     setup                    Only perform automatic setup, but without asking questions (for getting a proper libstd)
 
-Common options:
-    -h, --help               Print this message
-    --features               Features to compile for the package
-    -V, --version            Print version info and exit
-
-Other [options] are the same as `cargo check`.  Everything after the first "--" is
-passed verbatim to Miri, which will pass everything after the second "--" verbatim
-to the interpreted program.
+The cargo options are exactly the same as for `cargo run` and `cargo test`, respectively.
 
 Examples:
-    cargo miri run -- -Zmiri-disable-stacked-borrows
-    cargo miri test -- -- test-suite-filter
+    cargo miri run
+    cargo miri test -- test-suite-filter
 "#;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -393,7 +386,7 @@ fn phase_cargo_miri(mut args: env::Args) {
         Some("run") => MiriCommand::Run,
         Some("setup") => MiriCommand::Setup,
         // Invalid command.
-        _ => show_error(format!("`cargo miri` must be immediately followed by `test`, `run`, or `setup`.")),
+        _ => show_error(format!("`cargo miri` supports the following subcommands: `run`, `test`, and `setup`.")),
     };
     let verbose = has_arg_flag("-v");
 
@@ -424,8 +417,44 @@ fn phase_cargo_miri(mut args: env::Args) {
         host
     };
 
-    // Forward all further arguments.
-    cmd.args(args);
+    // Forward all further arguments. We do some processing here because we want to
+    // detect people still using the old way of passing flags to Miri
+    // (`cargo miri -- -Zmiri-foo`).
+    while let Some(arg) = args.next() {
+        cmd.arg(&arg);
+        if arg == "--" {
+            // Check if the next argument starts with `-Zmiri`. If yes, we assume
+            // this is an old-style invocation.
+            if let Some(next_arg) = args.next() {
+                if next_arg.starts_with("-Zmiri") {
+                    eprintln!(
+                        "WARNING: it seems like you are setting Miri's flags in `cargo miri` the old way,\n\
+                        i.e., by passing them after the first `--`. This style is deprecated; please set\n\
+                        the MIRIFLAGS environment variable instead. `cargo miri run/test` now interprets\n\
+                        arguments the exact same way as `cargo run/test`."
+                    );
+                    // Old-style invocation. Turn these into MIRIFLAGS.
+                    let mut miriflags = env::var("MIRIFLAGS").unwrap_or_default();
+                    miriflags.push(' ');
+                    miriflags.push_str(&next_arg);
+                    while let Some(further_arg) = args.next() {
+                        if further_arg == "--" {
+                            // End of the Miri flags!
+                            break;
+                        }
+                        miriflags.push(' ');
+                        miriflags.push_str(&further_arg);
+                    }
+                    env::set_var("MIRIFLAGS", miriflags);
+                    // Pass the remaining flags to cargo.
+                    cmd.args(args);
+                    break;
+                }
+                // Not a Miri argument after all, make sure we pass it to cargo.
+                cmd.arg(next_arg);
+            }
+        }
+    }
 
     // Set `RUSTC_WRAPPER` to ourselves.  Cargo will prepend that binary to its usual invocation,
     // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish
