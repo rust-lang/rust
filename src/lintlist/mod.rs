@@ -1719,6 +1719,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "panic_unimplemented",
     },
     Lint {
+        name: "panic_in_result_fn",
+        group: "restriction",
+        desc: "functions of type `Result<..>` that contain `panic!()`, `todo!()` or `unreachable()` or `unimplemented()` ",
+        deprecation: None,
+        module: "panic_in_result_fn",
+    },
+    Lint {
         name: "panic_params",
         group: "style",
         desc: "missing parameters in `panic!` calls",
