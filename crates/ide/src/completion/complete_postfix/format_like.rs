@@ -5,6 +5,7 @@
 //! The following postfix snippets are available:
 //!
 //! - `format` -> `format!(...)`
+//! - `panic` -> `panic!(...)`
 //! - `println` -> `println!(...)`
 //! - `log`:
 //!   + `logd` -> `log::debug!(...)`
