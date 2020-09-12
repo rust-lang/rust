@@ -120,7 +120,6 @@ pub(crate) fn insert_use(
         }
 
         if let ident_level @ 1..=usize::MAX = scope.indent_level().0 as usize {
-            // FIXME: this alone doesnt properly re-align all cases
             buf.push(make::tokens::whitespace(&" ".repeat(4 * ident_level)).into());
         }
         buf.push(use_item.syntax().clone().into());
@@ -164,22 +163,160 @@ pub(crate) fn try_merge_imports(
     Some(old.with_use_tree(merged))
 }
 
+pub(crate) fn try_merge_trees(
+    old: &ast::UseTree,
+    new: &ast::UseTree,
+    merge: MergeBehaviour,
+) -> Option<ast::UseTree> {
+    let lhs_path = old.path()?;
+    let rhs_path = new.path()?;
+
+    let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
+    let lhs = old.split_prefix(&lhs_prefix);
+    let rhs = new.split_prefix(&rhs_prefix);
+    recursive_merge(&lhs, &rhs, merge).map(|(merged, _)| merged)
+}
+
+/// Recursively "zips" together lhs and rhs.
+fn recursive_merge(
+    lhs: &ast::UseTree,
+    rhs: &ast::UseTree,
+    merge: MergeBehaviour,
+) -> Option<(ast::UseTree, bool)> {
+    let mut use_trees = lhs
+        .use_tree_list()
+        .into_iter()
+        .flat_map(|list| list.use_trees())
+        // check if any of the use trees are nested, if they are and the behaviour is `last` we are not allowed to merge this
+        // so early exit the iterator by using Option's Intoiterator impl
+        .map(|tree| match merge == MergeBehaviour::Last && tree.use_tree_list().is_some() {
+            true => None,
+            false => Some(tree),
+        })
+        .collect::<Option<Vec<_>>>()?;
+    use_trees.sort_unstable_by(|a, b| path_cmp_opt(a.path(), b.path()));
+    for rhs_t in rhs.use_tree_list().into_iter().flat_map(|list| list.use_trees()) {
+        let rhs_path = rhs_t.path();
+        match use_trees.binary_search_by(|p| path_cmp_opt(p.path(), rhs_path.clone())) {
+            Ok(idx) => {
+                let lhs_t = &mut use_trees[idx];
+                let lhs_path = lhs_t.path()?;
+                let rhs_path = rhs_path?;
+                let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
+                if lhs_prefix == lhs_path && rhs_prefix == rhs_path {
+                    let tree_is_self = |tree: ast::UseTree| {
+                        tree.path().as_ref().map(path_is_self).unwrap_or(false)
+                    };
+                    // check if only one of the two trees has a tree list, and whether that then contains `self` or not.
+                    // If this is the case we can skip this iteration since the path without the list is already included in the other one via `self`
+                    if lhs_t
+                        .use_tree_list()
+                        .xor(rhs_t.use_tree_list())
+                        .map(|tree_list| tree_list.use_trees().any(tree_is_self))
+                        .unwrap_or(false)
+                    {
+                        continue;
+                    }
+
+                    // glob imports arent part of the use-tree lists so we need to special handle them here as well
+                    // this special handling is only required for when we merge a module import into a glob import of said module
+                    // see the `merge_self_glob` or `merge_mod_into_glob` tests
+                    if lhs_t.star_token().is_some() || rhs_t.star_token().is_some() {
+                        *lhs_t = make::use_tree(
+                            make::path_unqualified(make::path_segment_self()),
+                            None,
+                            None,
+                            false,
+                        );
+                        use_trees.insert(
+                            idx,
+                            make::use_tree(
+                                make::path_unqualified(make::path_segment_self()),
+                                None,
+                                None,
+                                true,
+                            ),
+                        );
+                        continue;
+                    }
+                }
+                let lhs = lhs_t.split_prefix(&lhs_prefix);
+                let rhs = rhs_t.split_prefix(&rhs_prefix);
+                let this_has_children = use_trees.len() > 0;
+                match recursive_merge(&lhs, &rhs, merge) {
+                    Some((_, has_multiple_children))
+                        if merge == MergeBehaviour::Last
+                            && this_has_children
+                            && has_multiple_children =>
+                    {
+                        return None
+                    }
+                    Some((use_tree, _)) => use_trees[idx] = use_tree,
+                    None => use_trees.insert(idx, rhs_t),
+                }
+            }
+            Err(idx) => {
+                use_trees.insert(idx, rhs_t);
+            }
+        }
+    }
+    let has_multiple_children = use_trees.len() > 1;
+    Some((lhs.with_use_tree_list(make::use_tree_list(use_trees)), has_multiple_children))
+}
+
+/// Traverses both paths until they differ, returning the common prefix of both.
+fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast::Path)> {
+    let mut res = None;
+    let mut lhs_curr = first_path(&lhs);
+    let mut rhs_curr = first_path(&rhs);
+    loop {
+        match (lhs_curr.segment(), rhs_curr.segment()) {
+            (Some(lhs), Some(rhs)) if lhs.syntax().text() == rhs.syntax().text() => (),
+            _ => break res,
+        }
+        res = Some((lhs_curr.clone(), rhs_curr.clone()));
+
+        match lhs_curr.parent_path().zip(rhs_curr.parent_path()) {
+            Some((lhs, rhs)) => {
+                lhs_curr = lhs;
+                rhs_curr = rhs;
+            }
+            _ => break res,
+        }
+    }
+}
+
+fn path_is_self(path: &ast::Path) -> bool {
+    path.segment().and_then(|seg| seg.self_token()).is_some() && path.qualifier().is_none()
+}
+
+#[inline]
+fn first_segment(path: &ast::Path) -> Option<ast::PathSegment> {
+    first_path(path).segment()
+}
+
+fn first_path(path: &ast::Path) -> ast::Path {
+    successors(Some(path.clone()), ast::Path::qualifier).last().unwrap()
+}
+
+fn segment_iter(path: &ast::Path) -> impl Iterator<Item = ast::PathSegment> + Clone {
+    // cant make use of SyntaxNode::siblings, because the returned Iterator is not clone
+    successors(first_segment(path), |p| p.parent_path().parent_path().and_then(|p| p.segment()))
+}
+
 /// Orders paths in the following way:
 /// the sole self token comes first, after that come uppercase identifiers, then lowercase identifiers
-/// FIXME: rustfmt sort lowercase idents before uppercase
+// FIXME: rustfmt sort lowercase idents before uppercase, in general we want to have the same ordering rustfmt has
+// which is `self` and `super` first, then identifier imports with lowercase ones first, then glob imports and at last list imports.
+// Example foo::{self, foo, baz, Baz, Qux, *, {Bar}}
 fn path_cmp(a: &ast::Path, b: &ast::Path) -> Ordering {
-    let a = segment_iter(a);
-    let b = segment_iter(b);
-    let mut a_clone = a.clone();
-    let mut b_clone = b.clone();
-    match (
-        a_clone.next().and_then(|ps| ps.self_token()).is_some() && a_clone.next().is_none(),
-        b_clone.next().and_then(|ps| ps.self_token()).is_some() && b_clone.next().is_none(),
-    ) {
+    match (path_is_self(a), path_is_self(b)) {
         (true, true) => Ordering::Equal,
         (true, false) => Ordering::Less,
         (false, true) => Ordering::Greater,
         (false, false) => {
+            let a = segment_iter(a);
+            let b = segment_iter(b);
             // cmp_by would be useful for us here but that is currently unstable
             // cmp doesnt work due the lifetimes on text's return type
             a.zip(b)
@@ -200,143 +337,6 @@ fn path_cmp_opt(a: Option<ast::Path>, b: Option<ast::Path>) -> Ordering {
         (Some(_), None) => Ordering::Greater,
         (Some(a), Some(b)) => path_cmp(&a, &b),
     }
-}
-
-pub(crate) fn try_merge_trees(
-    old: &ast::UseTree,
-    new: &ast::UseTree,
-    merge: MergeBehaviour,
-) -> Option<ast::UseTree> {
-    let lhs_path = old.path()?;
-    let rhs_path = new.path()?;
-
-    let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
-    let lhs = old.split_prefix(&lhs_prefix);
-    let rhs = new.split_prefix(&rhs_prefix);
-    recursive_merge(&lhs, &rhs, merge).map(|(merged, _)| merged)
-}
-
-/// Returns the merged tree and the number of children it has, which is required to check if the tree is allowed to be used for MergeBehaviour::Last
-fn recursive_merge(
-    lhs: &ast::UseTree,
-    rhs: &ast::UseTree,
-    merge: MergeBehaviour,
-) -> Option<(ast::UseTree, usize)> {
-    let mut use_trees = lhs
-        .use_tree_list()
-        .into_iter()
-        .flat_map(|list| list.use_trees())
-        // check if any of the use trees are nested, if they are and the behaviour is last only we are not allowed to merge this
-        .map(|tree| match merge == MergeBehaviour::Last && tree.use_tree_list().is_some() {
-            true => None,
-            false => Some(tree),
-        })
-        .collect::<Option<Vec<_>>>()?;
-    use_trees.sort_unstable_by(|a, b| path_cmp_opt(a.path(), b.path()));
-    for rhs_t in rhs.use_tree_list().into_iter().flat_map(|list| list.use_trees()) {
-        let rhs_path = rhs_t.path();
-        match use_trees.binary_search_by(|p| path_cmp_opt(p.path(), rhs_path.clone())) {
-            Ok(idx) => {
-                let lhs_path = use_trees[idx].path()?;
-                let rhs_path = rhs_path?;
-                let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
-                if lhs_prefix == lhs_path && rhs_prefix == rhs_path {
-                    let tree_is_self =
-                        |tree: ast::UseTree| tree.path().map(path_is_self).unwrap_or(false);
-                    // check if only one of the two trees has a tree list, and whether that then contains `self` or not.
-                    // If this is the case we can skip this iteration since the path without the list is already included in the other one via `self`
-                    if use_trees[idx]
-                        .use_tree_list()
-                        .xor(rhs_t.use_tree_list())
-                        .map(|tree_list| tree_list.use_trees().any(tree_is_self))
-                        .unwrap_or(false)
-                    {
-                        continue;
-                    }
-
-                    // glob imports arent part of the use-tree lists so we need to special handle them here as well
-                    // this special handling is only required for when we merge a module import into a glob import of said module
-                    // see the `merge_self_glob` or `merge_mod_into_glob` tests
-                    if use_trees[idx].star_token().is_some() || rhs_t.star_token().is_some() {
-                        use_trees[idx] = make::use_tree(
-                            make::path_unqualified(make::path_segment_self()),
-                            None,
-                            None,
-                            false,
-                        );
-                        use_trees.insert(
-                            idx,
-                            make::use_tree(
-                                make::path_unqualified(make::path_segment_self()),
-                                None,
-                                None,
-                                true,
-                            ),
-                        );
-                        continue;
-                    }
-                }
-                let lhs = use_trees[idx].split_prefix(&lhs_prefix);
-                let rhs = rhs_t.split_prefix(&rhs_prefix);
-                match recursive_merge(&lhs, &rhs, merge) {
-                    Some((_, count))
-                        if merge == MergeBehaviour::Last && use_trees.len() > 1 && count > 1 =>
-                    {
-                        return None
-                    }
-                    Some((use_tree, _)) => use_trees[idx] = use_tree,
-                    None => use_trees.insert(idx, rhs_t),
-                }
-            }
-            Err(idx) => {
-                use_trees.insert(idx, rhs_t);
-            }
-        }
-    }
-    let count = use_trees.len();
-    let tl = make::use_tree_list(use_trees);
-    Some((lhs.with_use_tree_list(tl), count))
-}
-
-/// Traverses both paths until they differ, returning the common prefix of both.
-fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast::Path)> {
-    let mut res = None;
-    let mut lhs_curr = first_path(&lhs);
-    let mut rhs_curr = first_path(&rhs);
-    loop {
-        match (lhs_curr.segment(), rhs_curr.segment()) {
-            (Some(lhs), Some(rhs)) if lhs.syntax().text() == rhs.syntax().text() => (),
-            _ => break,
-        }
-        res = Some((lhs_curr.clone(), rhs_curr.clone()));
-
-        match lhs_curr.parent_path().zip(rhs_curr.parent_path()) {
-            Some((lhs, rhs)) => {
-                lhs_curr = lhs;
-                rhs_curr = rhs;
-            }
-            _ => break,
-        }
-    }
-
-    res
-}
-
-fn path_is_self(path: ast::Path) -> bool {
-    path.segment().and_then(|seg| seg.self_token()).is_some() && path.qualifier().is_none()
-}
-
-fn first_segment(path: &ast::Path) -> Option<ast::PathSegment> {
-    first_path(path).segment()
-}
-
-fn first_path(path: &ast::Path) -> ast::Path {
-    successors(Some(path.clone()), ast::Path::qualifier).last().unwrap()
-}
-
-fn segment_iter(path: &ast::Path) -> impl Iterator<Item = ast::PathSegment> + Clone {
-    // cant make use of SyntaxNode::siblings, because the returned Iterator is not clone
-    successors(first_segment(path), |p| p.parent_path().parent_path().and_then(|p| p.segment()))
 }
 
 /// What type of merges are allowed.
@@ -924,6 +924,6 @@ use foo::bar::baz::Qux;",
             .unwrap();
 
         let result = try_merge_imports(&use0, &use1, mb);
-        assert_eq!(result, None);
+        assert_eq!(result.map(|u| u.to_string()), None);
     }
 }
