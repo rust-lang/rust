@@ -1,0 +1,29 @@
+error: attribute should be applied to a function
+  --> $DIR/issue-54044.rs:4:1
+   |
+LL | #[cold]
+   | ^^^^^^^
+...
+LL | struct Foo;
+   | ----------- not a function
+   |
+note: the lint level is defined here
+  --> $DIR/issue-54044.rs:2:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: attribute should be applied to a function
+  --> $DIR/issue-54044.rs:10:5
+   |
+LL |     #[cold]
+   |     ^^^^^^^
+...
+LL |     5;
+   |     - not a function
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: aborting due to 2 previous errors
+

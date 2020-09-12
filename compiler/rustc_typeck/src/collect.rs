@@ -2525,10 +2525,17 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.export_name = Some(s);
             }
         } else if tcx.sess.check_name(attr, sym::target_feature) {
-            if !tcx.features().target_feature_11 {
-                check_target_feature_safe_fn(tcx, id, attr.span);
-            } else if let Some(local_id) = id.as_local() {
-                if tcx.fn_sig(id).unsafety() == hir::Unsafety::Normal {
+            if !tcx.is_closure(id) && tcx.fn_sig(id).unsafety() == hir::Unsafety::Normal {
+                if !tcx.features().target_feature_11 {
+                    let mut err = feature_err(
+                        &tcx.sess.parse_sess,
+                        sym::target_feature_11,
+                        attr.span,
+                        "`#[target_feature(..)]` can only be applied to `unsafe` functions",
+                    );
+                    err.span_label(tcx.def_span(id), "not an `unsafe` function");
+                    err.emit();
+                } else if let Some(local_id) = id.as_local() {
                     check_target_feature_trait_unsafe(tcx, local_id, attr.span);
                 }
             }
@@ -2782,21 +2789,6 @@ fn check_link_name_xor_ordinal(
         tcx.sess.span_err(span, msg);
     } else {
         tcx.sess.err(msg);
-    }
-}
-
-/// Checks the function annotated with `#[target_feature]` is unsafe,
-/// reporting an error if it isn't.
-fn check_target_feature_safe_fn(tcx: TyCtxt<'_>, id: DefId, attr_span: Span) {
-    if tcx.is_closure(id) || tcx.fn_sig(id).unsafety() == hir::Unsafety::Normal {
-        let mut err = feature_err(
-            &tcx.sess.parse_sess,
-            sym::target_feature_11,
-            attr_span,
-            "`#[target_feature(..)]` can only be applied to `unsafe` functions",
-        );
-        err.span_label(tcx.def_span(id), "not an `unsafe` function");
-        err.emit();
     }
 }
 
