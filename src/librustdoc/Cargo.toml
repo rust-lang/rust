@@ -15,7 +15,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 smallvec = "1.0"
 tempfile = "3"
-itertools = "0.8"
+itertools = "0.9"
 
 [dev-dependencies]
 expect-test = "1.0"
