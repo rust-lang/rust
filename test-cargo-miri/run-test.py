@@ -22,7 +22,7 @@ def cargo_miri(cmd):
     return args
 
 def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
-    print("==> Testing `{}` <==".format(name))
+    print("==> Testing {} <==".format(name))
     ## Call `cargo miri`, capture all output
     p_env = os.environ.copy()
     p_env.update(env)
@@ -50,13 +50,13 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
         fail("stderr does not match reference")
 
 def test_cargo_miri_run():
-    test("cargo miri run",
+    test("`cargo miri run`",
         cargo_miri("run"),
-        "stdout.ref", "stderr.ref",
+        "stdout.ref1", "stderr.ref1",
         stdin=b'12\n21\n',
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
-    test("cargo miri run (with arguments and target)",
+    test("`cargo miri run` (with arguments and target)",
         cargo_miri("run") + ["--bin", "cargo-miri-test", "--", "hello world", '"hello world"'],
         "stdout.ref2", "stderr.ref2"
     )
@@ -64,27 +64,27 @@ def test_cargo_miri_run():
 def test_cargo_miri_test():
     # rustdoc is not run on foreign targets
     is_foreign = 'MIRI_TEST_TARGET' in os.environ
-    rustdoc_ref = "test.stderr.ref2" if is_foreign else "test.stderr.ref"
+    rustdoc_ref = "test.stderr.ref2" if is_foreign else "test.stderr.ref1"
 
-    test("cargo miri test",
+    test("`cargo miri test`",
         cargo_miri("test"),
-        "test.stdout.ref",rustdoc_ref,
+        "test.stdout.ref1",rustdoc_ref,
         env={'MIRIFLAGS': "-Zmiri-seed=feed"},
     )
-    test("cargo miri test (with filter)",
+    test("`cargo miri test` (with filter)",
         cargo_miri("test") + ["--", "--format=pretty", "le1"],
         "test.stdout.ref2", rustdoc_ref
     )
-    test("cargo miri test (without isolation)",
+    test("`cargo miri test` (without isolation)",
         cargo_miri("test") + ["--", "--format=pretty", "num_cpus"],
         "test.stdout.ref3", rustdoc_ref,
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
-    test("cargo miri test (test target)",
+    test("`cargo miri test` (test target)",
         cargo_miri("test") + ["--test", "test", "--", "--format=pretty"],
         "test.stdout.ref4", "test.stderr.ref2"
     )
-    test("cargo miri test (bin target)",
+    test("`cargo miri test` (bin target)",
         cargo_miri("test") + ["--bin", "cargo-miri-test", "--", "--format=pretty"],
         "test.stdout.ref5", "test.stderr.ref2"
     )

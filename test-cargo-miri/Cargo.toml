@@ -13,3 +13,7 @@ num_cpus = "1.10.1"
 
 [lib]
 test = false # test that this is respected (will show in the output)
+
+[[test]]
+name = "no-harness"
+harness = false

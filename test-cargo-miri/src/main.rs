@@ -28,7 +28,6 @@ fn main() {
             println!("42");
         }
     }
-
 }
 
 #[cfg(test)]

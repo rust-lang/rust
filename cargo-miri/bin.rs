@@ -502,7 +502,7 @@ fn phase_cargo_rustc(args: env::Args) {
     /// Cargo does not give us this information directly, so we need to check
     /// various command-line flags.
     fn is_runnable_crate() -> bool {
-        let is_bin = get_arg_flag_value("--crate-type").as_deref() == Some("bin");
+        let is_bin = get_arg_flag_value("--crate-type").as_deref().unwrap_or("bin") == "bin";
         let is_test = has_arg_flag("--test");
         let print = get_arg_flag_value("--print").is_some();
         (is_bin || is_test) && !print
