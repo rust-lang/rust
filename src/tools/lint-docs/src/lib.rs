@@ -19,6 +19,13 @@ impl Lint {
     fn doc_contains(&self, text: &str) -> bool {
         self.doc.iter().any(|line| line.contains(text))
     }
+
+    fn is_ignored(&self) -> bool {
+        self.doc
+            .iter()
+            .filter(|line| line.starts_with("```rust"))
+            .all(|line| line.contains(",ignore"))
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -208,13 +215,8 @@ fn generate_output_example(
     // try to avoid adding to this list.
     if matches!(
         lint.name.as_str(),
-        "unused_features"
-            | "unstable_features"
-            | "incomplete_include"
-            | "unused_crate_dependencies"
-            | "exported_private_dependencies"
-            | "proc_macro_derive_resolution_fallback"
-            | "macro_use_extern_crate"
+        "unused_features" // broken lint
+        | "unstable_features" // deprecated
     ) {
         return Ok(());
     }
@@ -223,13 +225,22 @@ fn generate_output_example(
         return Ok(());
     }
     check_style(lint)?;
-    replace_produces(lint, rustc_path, verbose)?;
+    // Unfortunately some lints have extra requirements that this simple test
+    // setup can't handle (like extern crates). An alternative is to use a
+    // separate test suite, and use an include mechanism such as mdbook's
+    // `{{#rustdoc_include}}`.
+    if !lint.is_ignored() {
+        replace_produces(lint, rustc_path, verbose)?;
+    }
     Ok(())
 }
 
 /// Checks the doc style of the lint.
 fn check_style(lint: &Lint) -> Result<(), Box<dyn Error>> {
-    for expected in &["### Example", "### Explanation", "{{produces}}"] {
+    for &expected in &["### Example", "### Explanation", "{{produces}}"] {
+        if expected == "{{produces}}" && lint.is_ignored() {
+            continue;
+        }
         if !lint.doc_contains(expected) {
             return Err(format!("lint docs should contain the line `{}`", expected).into());
         }

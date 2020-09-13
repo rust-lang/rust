@@ -128,7 +128,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,ignore (needs separate file)
     /// fn main() {
     ///     include!("foo.txt");
     /// }
@@ -344,7 +344,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,ignore (needs extern crate)
     /// #![deny(unused_crate_dependencies)]
     /// ```
     ///
@@ -1984,7 +1984,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,ignore (needs extern crate)
     /// #![deny(macro_use_extern_crate)]
     ///
     /// #[macro_use]
@@ -2378,7 +2378,19 @@ declare_lint! {
     /// }
     /// ```
     ///
-    /// {{produces}}
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: formatting may not be suitable for sub-register argument
+    ///  --> src/main.rs:6:19
+    ///   |
+    /// 6 |         asm!("mov {0}, {0}", in(reg) 0i16);
+    ///   |                   ^^^  ^^^           ---- for this argument
+    ///   |
+    ///   = note: `#[warn(asm_sub_register)]` on by default
+    ///   = help: use the `x` modifier to have the register formatted as `ax`
+    ///   = help: or use the `r` modifier to keep the default formatting of `rax`
+    /// ```
     ///
     /// ### Explanation
     ///

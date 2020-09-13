@@ -319,8 +319,10 @@ impl LintBuffer {
 ///
 /// The `{{produces}}` tag will be automatically replaced with the output from
 /// the example by the build system. You can build and view the rustc book
-/// with `x.py doc --stage=1 src/doc/rustc --open` (use --stage=0 if just
-/// changing the wording of an existing lint).
+/// with `x.py doc --stage=1 src/doc/rustc --open`. If the lint example is too
+/// complex to run as a simple example (for example, it needs an extern
+/// crate), mark it with `ignore` and manually paste the expected output below
+/// the example.
 #[macro_export]
 macro_rules! declare_lint {
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
