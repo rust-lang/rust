@@ -189,7 +189,7 @@ fn get_bind_pat_hints(
 
     let ty = sema.type_of_pat(&pat.clone().into())?;
 
-    if should_not_display_type_hint(sema.db, &pat, &ty) {
+    if should_not_display_type_hint(sema, &pat, &ty) {
         return None;
     }
 
@@ -215,10 +215,12 @@ fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &Typ
 }
 
 fn should_not_display_type_hint(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     bind_pat: &ast::IdentPat,
     pat_ty: &Type,
 ) -> bool {
+    let db = sema.db;
+
     if pat_ty.is_unknown() {
         return true;
     }
@@ -248,6 +250,14 @@ fn should_not_display_type_hint(
                 ast::WhileExpr(it) => {
                     return it.condition().and_then(|condition| condition.pat()).is_some()
                         && pat_is_enum_variant(db, bind_pat, pat_ty);
+                },
+                ast::ForExpr(it) => {
+                    // We *should* display hint only if user provided "in {expr}" and we know the type of expr (and it's not unit).
+                    // Type of expr should be iterable.
+                    let type_is_known = |ty: Option<hir::Type>| ty.map(|ty| !ty.is_unit() && !ty.is_unknown()).unwrap_or(false);
+                    let should_display = it.in_token().is_some()
+                        && it.iterable().map(|expr| type_is_known(sema.type_of_expr(&expr))).unwrap_or(false);
+                    return !should_display;
                 },
                 _ => (),
             }
@@ -922,6 +932,43 @@ fn main() {
                     },
                 ]
             "#]],
+        );
+    }
+
+    #[test]
+    fn incomplete_for_no_hint() {
+        check(
+            r#"
+fn main() {
+    let data = &[1i32, 2, 3];
+      //^^^^ &[i32; _]
+    for i
+}"#,
+        );
+        check(
+            r#"
+fn main() {
+    let data = &[1i32, 2, 3];
+      //^^^^ &[i32; _]
+    for i in
+
+    println!("Unit expr");
+}"#,
+        );
+    }
+
+    #[test]
+    fn complete_for_hint() {
+        check(
+            r#"
+fn main() {
+    let data = &[ 1, 2, 3 ];
+      //^^^^ &[i32; _]
+    for i in data.into_iter() {
+      //^ &i32
+      println!("{}", i);
+    }
+}"#,
         );
     }
 }
