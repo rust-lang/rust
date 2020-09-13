@@ -71,23 +71,21 @@ unsafe impl GlobalAlloc for System {
                 c::HeapFree(c::GetProcessHeap(), 0, header.0 as c::LPVOID)
             }
         };
-        debug_assert!(err != 0, "Failed to free heap memory: {}", c::GetLastError());
+        debug_assert!(err != 0, "Failed to free heap memory: {}", unsafe {c::GetLastError()});
     }
 
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        unsafe {
-            if layout.align() <= MIN_ALIGN {
-                // SAFETY: HeapReAlloc is safe if ptr was allocated by this allocator
-                // and new_size is not 0.
-                unsafe {
-                    c::HeapReAlloc(c::GetProcessHeap(), 0, ptr as c::LPVOID, new_size) as *mut u8
-                }
-            } else {
-                // SAFETY: The safety contract for `realloc_fallback` must be upheld by the caller
-                unsafe {
-                    realloc_fallback(self, ptr, layout, new_size)
-                }
+        if layout.align() <= MIN_ALIGN {
+            // SAFETY: HeapReAlloc is safe if ptr was allocated by this allocator
+            // and new_size is not 0.
+            unsafe {
+                c::HeapReAlloc(c::GetProcessHeap(), 0, ptr as c::LPVOID, new_size) as *mut u8
+            }
+        } else {
+            // SAFETY: The safety contract for `realloc_fallback` must be upheld by the caller
+            unsafe {
+                realloc_fallback(self, ptr, layout, new_size)
             }
         }
     }
