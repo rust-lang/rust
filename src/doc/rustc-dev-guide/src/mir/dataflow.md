@@ -153,6 +153,7 @@ for (bb, block) in body.basic_blocks().iter_enumerated() {
 [*Static Program Analysis*]: https://cs.au.dk/~amoeller/spa/
 [`AnalysisDomain`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/trait.AnalysisDomain.html
 [`Analysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/trait.Analysis.html
+[`Engine`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/struct.Engine.html
 [`GenKillAnalysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/trait.GenKillAnalysis.html
 [`JoinSemiLattice`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/lattice/trait.JoinSemiLattice.html
 [`ResultsCursor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/struct.ResultsCursor.html
