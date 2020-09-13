@@ -1,6 +1,6 @@
-Def site: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#4)
-Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:24:37: 24:43 (#3) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:24:43: 24:45 (#3) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:43: 24:45 (#3) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:24:45: 24:50 (#3) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:50: 24:51 (#3) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:24:51: 24:53 (#3) }]
-Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#4) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#4) }]
+Def site: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#5)
+Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:24:37: 24:43 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:24:43: 24:45 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:43: 24:45 (#4) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:24:45: 24:50 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:50: 24:51 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:24:51: 24:53 (#4) }]
+Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#5) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#5) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#5) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#5) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#5) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#5) }]
 #![feature /* 0#0 */(prelude_import)]
 // ignore-tidy-linelength
 // aux-build:make-macro.rs
@@ -47,18 +47,20 @@ Expansions:
 0: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
 1: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
 2: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "produce_it")
-3: parent: ExpnId(2), call_site_ctxt: #3, def_site_ctxt: #0, kind: Macro(Bang, "meta_macro::print_def_site")
-4: parent: ExpnId(3), call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro(Bang, "$crate::dummy")
+3: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
+4: parent: ExpnId(2), call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro(Bang, "meta_macro::print_def_site")
+5: parent: ExpnId(4), call_site_ctxt: #5, def_site_ctxt: #0, kind: Macro(Bang, "$crate::dummy")
 
 SyntaxContexts:
 #0: parent: #0, outer_mark: (ExpnId(0), Opaque)
 #1: parent: #0, outer_mark: (ExpnId(1), Opaque)
 #2: parent: #0, outer_mark: (ExpnId(1), Transparent)
-#3: parent: #0, outer_mark: (ExpnId(2), SemiTransparent)
-#4: parent: #0, outer_mark: (ExpnId(3), Opaque)
-#5: parent: #3, outer_mark: (ExpnId(3), Transparent)
-#6: parent: #0, outer_mark: (ExpnId(3), SemiTransparent)
-#7: parent: #0, outer_mark: (ExpnId(4), Opaque)
-#8: parent: #4, outer_mark: (ExpnId(4), Transparent)
-#9: parent: #4, outer_mark: (ExpnId(4), SemiTransparent)
+#3: parent: #0, outer_mark: (ExpnId(3), Opaque)
+#4: parent: #0, outer_mark: (ExpnId(2), SemiTransparent)
+#5: parent: #0, outer_mark: (ExpnId(4), Opaque)
+#6: parent: #4, outer_mark: (ExpnId(4), Transparent)
+#7: parent: #0, outer_mark: (ExpnId(4), SemiTransparent)
+#8: parent: #0, outer_mark: (ExpnId(5), Opaque)
+#9: parent: #5, outer_mark: (ExpnId(5), Transparent)
+#10: parent: #5, outer_mark: (ExpnId(5), SemiTransparent)
 */

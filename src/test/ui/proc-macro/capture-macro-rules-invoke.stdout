@@ -8,7 +8,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:36:24: 36:28 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:21:21: 21:26 (#3),
+        span: $DIR/capture-macro-rules-invoke.rs:21:21: 21:26 (#4),
     },
 ]
 PRINT-BANG INPUT (DISPLAY): 1 + 1, { "a" }, let a = 1;, String, my_name, 'a, my_val = 30,
@@ -37,12 +37,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:38:17: 38:18 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:14:29: 14:34 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:14:29: 14:34 (#8),
     },
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/capture-macro-rules-invoke.rs:14:34: 14:35 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:14:34: 14:35 (#8),
     },
     Group {
         delimiter: None,
@@ -60,12 +60,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:39:13: 39:20 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:14:36: 14:42 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:14:36: 14:42 (#8),
     },
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/capture-macro-rules-invoke.rs:14:42: 14:43 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:14:42: 14:43 (#8),
     },
     Group {
         delimiter: None,
@@ -90,12 +90,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:40:21: 40:22 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:14:44: 14:49 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:14:44: 14:49 (#8),
     },
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/capture-macro-rules-invoke.rs:14:49: 14:50 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:14:49: 14:50 (#8),
     },
     Group {
         delimiter: None,
@@ -105,12 +105,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:41:13: 41:19 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:14:51: 14:54 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:14:51: 14:54 (#8),
     },
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/capture-macro-rules-invoke.rs:14:54: 14:55 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:14:54: 14:55 (#8),
     },
     Group {
         delimiter: None,
@@ -120,12 +120,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:42:13: 42:20 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:14:56: 14:62 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:14:56: 14:62 (#8),
     },
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/capture-macro-rules-invoke.rs:14:62: 14:63 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:14:62: 14:63 (#8),
     },
     Group {
         delimiter: None,
@@ -140,12 +140,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:43:13: 43:15 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:15:29: 15:38 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:15:29: 15:38 (#8),
     },
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/capture-macro-rules-invoke.rs:15:38: 15:39 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:15:38: 15:39 (#8),
     },
     Group {
         delimiter: None,
@@ -166,12 +166,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:44:22: 44:24 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:15:40: 15:45 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:15:40: 15:45 (#8),
     },
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/capture-macro-rules-invoke.rs:15:45: 15:46 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:15:45: 15:46 (#8),
     },
     Group {
         delimiter: None,
@@ -209,12 +209,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:45:26: 45:32 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:15:47: 15:52 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:15:47: 15:52 (#8),
     },
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/capture-macro-rules-invoke.rs:15:52: 15:53 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:15:52: 15:53 (#8),
     },
     Group {
         delimiter: None,
@@ -252,12 +252,12 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:46:16: 46:31 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:15:54: 15:58 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:15:54: 15:58 (#8),
     },
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/capture-macro-rules-invoke.rs:15:58: 15:59 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:15:58: 15:59 (#8),
     },
     Group {
         delimiter: Bracket,
@@ -280,7 +280,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/capture-macro-rules-invoke.rs:15:63: 15:64 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:15:63: 15:64 (#8),
     },
     Group {
         delimiter: None,
@@ -297,7 +297,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:48:14: 48:16 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:15:65: 15:69 (#7),
+        span: $DIR/capture-macro-rules-invoke.rs:15:65: 15:69 (#8),
     },
 ]
 PRINT-BANG INPUT (DISPLAY): (a, b)
@@ -325,6 +325,6 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-macro-rules-invoke.rs:52:26: 52:32 (#0),
             },
         ],
-        span: $DIR/capture-macro-rules-invoke.rs:27:21: 27:25 (#11),
+        span: $DIR/capture-macro-rules-invoke.rs:27:21: 27:25 (#12),
     },
 ]
