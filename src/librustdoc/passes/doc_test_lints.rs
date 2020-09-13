@@ -73,6 +73,7 @@ pub fn should_have_doc_example(item_kind: &clean::ItemEnum) -> bool {
         | clean::ImportItem(_)
         | clean::PrimitiveItem(_)
         | clean::KeywordItem(_)
+        | clean::ModuleItem(_)
     )
 }
 
