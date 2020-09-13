@@ -541,6 +541,16 @@ impl Build {
         if self.config.llvm_enabled() {
             features.push_str(" llvm");
         }
+
+        // If debug logging is on, then we want the default for tracing:
+        // https://github.com/tokio-rs/tracing/blob/3dd5c03d907afdf2c39444a29931833335171554/tracing/src/level_filters.rs#L26
+        // which is everything (including debug/trace/etc.)
+        // if its unset, if debug_assertions is on, then debug_logging will also be on
+        // as well as tracing *ignoring* this feature when debug_assertions is on
+        if !self.config.rust_debug_logging {
+            features.push_str(" max_level_info");
+        }
+
         features
     }
 
