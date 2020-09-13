@@ -127,19 +127,19 @@ For example, the following code uses a [`ResultsVisitor`]...
 
 ```rust,ignore
 // Assuming `MyVisitor` implements `ResultsVisitor<FlowState = MyAnalysis::Domain>`...
-let my_visitor = MyVisitor::new();
+let mut my_visitor = MyVisitor::new();
 
 // inspect the fixpoint state for every location within every block in RPO.
-let results = MyAnalysis()
+let results = MyAnalysis::new()
     .into_engine(tcx, body, def_id)
     .iterate_to_fixpoint()
-    .visit_with(body, traversal::reverse_postorder(body), &mut my_visitor);
+    .visit_in_rpo_with(body, &mut my_visitor);
 ```
 
 whereas this code uses [`ResultsCursor`]:
 
 ```rust,ignore
-let mut results = MyAnalysis()
+let mut results = MyAnalysis::new()
     .into_engine(tcx, body, def_id)
     .iterate_to_fixpoint()
     .into_results_cursor(body);
