@@ -1157,6 +1157,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
         LintId::of(&attrs::INLINE_ALWAYS),
         LintId::of(&await_holding_lock::AWAIT_HOLDING_LOCK),
+        LintId::of(&bit_mask::VERBOSE_BIT_MASK),
         LintId::of(&checked_conversions::CHECKED_CONVERSIONS),
         LintId::of(&copies::MATCH_SAME_ARMS),
         LintId::of(&copies::SAME_FUNCTIONS_IN_IF_CONDITION),
@@ -1254,7 +1255,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&attrs::USELESS_ATTRIBUTE),
         LintId::of(&bit_mask::BAD_BIT_MASK),
         LintId::of(&bit_mask::INEFFECTIVE_BIT_MASK),
-        LintId::of(&bit_mask::VERBOSE_BIT_MASK),
         LintId::of(&blacklisted_name::BLACKLISTED_NAME),
         LintId::of(&blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
         LintId::of(&booleans::LOGIC_BUG),
@@ -1512,7 +1512,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&assign_ops::ASSIGN_OP_PATTERN),
         LintId::of(&attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
         LintId::of(&attrs::UNKNOWN_CLIPPY_LINTS),
-        LintId::of(&bit_mask::VERBOSE_BIT_MASK),
         LintId::of(&blacklisted_name::BLACKLISTED_NAME),
         LintId::of(&blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
         LintId::of(&collapsible_if::COLLAPSIBLE_IF),
