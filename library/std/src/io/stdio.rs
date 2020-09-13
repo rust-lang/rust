@@ -6,8 +6,9 @@ use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
 use crate::io::{
-    self, BufReader, Error, ErrorKind, Initializer, IoSlice, IoSliceMut, LineWriter, Result, Write,
+    self, BufReader, Error, Initializer, IoSlice, IoSliceMut, LineWriter, Result, Write,
 };
+use crate::str;
 use crate::sync::{Arc, Mutex, MutexGuard, Once};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -905,9 +906,8 @@ impl fmt::Debug for StderrLock<'_> {
     }
 }
 
-/// Prints the given `str` and reads a [`String`] from
-/// [standard input](Stdin). The trailing newline is stripped.
-/// Gives an error on EOF (end of file).
+/// Similar to the [`prompt_line`] function, but does
+/// not print a prompt.
 ///
 /// # Note
 ///
@@ -921,7 +921,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// use std::io;
 ///
 /// fn main() -> io::Result<()> {
-///     let name = io::input("Enter name: ")?;
+///     let name = io::read_line("Enter name: ")?;
 ///
 ///     println!("Your name is {}!", name);
 ///
@@ -933,16 +933,57 @@ impl fmt::Debug for StderrLock<'_> {
     reason = "this function may be replaced with a more general mechanism",
     issue = "none"
 )]
-pub fn input(prompt: &str) -> Result<String> {
+pub fn read_line<T: fmt::Display + fmt::Debug>() -> Result<T, <T as str::FromStr>::Err>
+where
+    T: str::FromStr,
+    <T as str::FromStr>::Err: fmt::Debug,
+{
+    let mut input = String::new();
+    stdin().read_line(&mut input).expect("failed to read stdin");
+    input.trim_end_matches(&['\n', '\r'][..]).parse::<T>()
+}
+
+/// Prints the given `str` and reads a [`String`] from
+/// [standard input](Stdin). The trailing newline is stripped.
+/// Gives an error on EOF (end of file).
+///
+/// # Note
+///
+/// If you require more explicit control over capturing
+/// user input, see the [`Stdin::read_line`] method.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(io_input_prompt)]
+/// use std::io;
+///
+/// fn main() -> io::Result<()> {
+///     let name = io::prompt_line("Enter name: ")?;
+///
+///     println!("Your name is {}!", name);
+///
+///     Ok(())
+/// }
+/// ```
+#[unstable(
+    feature = "io_input_prompt",
+    reason = "this function may be replaced with a more general mechanism",
+    issue = "none"
+)]
+pub fn prompt_line<T: fmt::Display + fmt::Debug>(prompt: &str) -> Result<T, <T as str::FromStr>::Err>
+where
+    T: str::FromStr,
+    <T as str::FromStr>::Err: fmt::Debug,
+{
     let stdout = stdout();
     let mut lock = stdout.lock();
-    lock.write_all(prompt.as_bytes())?;
-    lock.flush()?;
+    lock.write_all(prompt.as_bytes())
+        .expect("failed to write whole buffer");
+    lock.flush().expect("failed to flush stdout");
     let mut input = String::new();
-    match stdin().read_line(&mut input)? {
-        0 => Err(Error::new(ErrorKind::UnexpectedEof, "input reached eof unexpectedly")),
-        _ => Ok(String::from(input.trim_end_matches(&['\n', '\r'][..]))),
-    }
+    stdin().read_line(&mut input).expect("failed to read stdin");
+    input.trim_end_matches(&['\n', '\r'][..]).parse::<T>()
 }
 
 /// Resets the thread-local stderr handle to the specified writer
