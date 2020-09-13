@@ -5,9 +5,7 @@ use crate::io::prelude::*;
 use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
-use crate::io::{
-    self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter, Write,
-};
+use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter, Write};
 use crate::result;
 use crate::str;
 use crate::sync::{Arc, Mutex, MutexGuard, Once};
@@ -921,7 +919,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// #![feature(io_input)]
 /// use std::io;
 ///
-/// fn main() -> io::Result<()> {
+/// fn main() -> Result<()> {
 ///     let name = io::read_line("Enter name: ")?;
 ///
 ///     println!("Your name is {}!", name);
@@ -959,7 +957,7 @@ where
 /// #![feature(io_input_prompt)]
 /// use std::io;
 ///
-/// fn main() -> io::Result<()> {
+/// fn main() -> Result<()> {
 ///     let name = io::prompt_line("Enter name: ")?;
 ///
 ///     println!("Your name is {}!", name);
@@ -972,15 +970,16 @@ where
     reason = "this function may be replaced with a more general mechanism",
     issue = "none"
 )]
-pub fn prompt_line<T: fmt::Display + fmt::Debug>(prompt: &str) -> result::Result<T, <T as str::FromStr>::Err>
+pub fn prompt_line<T: fmt::Display + fmt::Debug>(
+    prompt: &str
+) -> result::Result<T, <T as str::FromStr>::Err>
 where
     T: str::FromStr,
     <T as str::FromStr>::Err: fmt::Debug,
 {
     let stdout = stdout();
     let mut lock = stdout.lock();
-    lock.write_all(prompt.as_bytes())
-        .expect("failed to write whole buffer");
+    lock.write_all(prompt.as_bytes()).expect("failed to write whole buffer");
     lock.flush().expect("failed to flush stdout");
     let mut input = String::new();
     stdin().read_line(&mut input).expect("failed to read stdin");
