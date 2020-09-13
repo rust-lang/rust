@@ -70,7 +70,7 @@ unsafe impl GlobalAlloc for System {
                 let header = get_header(ptr);
                 c::HeapFree(c::GetProcessHeap(), 0, header.0 as c::LPVOID);
             }
-        }
+        };
         debug_assert!(err != 0, "Failed to free heap memory: {}", c::GetLastError());
     }
 
